@@ -99,7 +99,7 @@ def flip(input, axis, name=None):
         type="flip",
         inputs={"X": input},
         outputs={"Out": out},
-        attrs={"dims": axis})
+        attrs={"axis": axis})
     return out
 
 

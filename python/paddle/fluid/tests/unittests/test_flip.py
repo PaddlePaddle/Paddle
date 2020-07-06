@@ -68,7 +68,7 @@ class TestFlipOp(OpTest):
         self.outputs = {'Out': self.calc_ref_res()}
 
     def init_attrs(self):
-        self.attrs = {"dims": self.axis}
+        self.attrs = {"axis": self.axis}
 
     def test_check_output(self):
         self.check_output()

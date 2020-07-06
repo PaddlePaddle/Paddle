@@ -36,7 +36,7 @@ class FlipOp : public framework::OperatorWithKernel {
                       platform::errors::NotFound(
                           "Output(Out) of FlipOp should not be null."));
     auto x_dims = ctx->GetInputDim("X");
-    auto flip_dims = ctx->Attrs().Get<std::vector<int>>("dims");
+    auto flip_dims = ctx->Attrs().Get<std::vector<int>>("axis");
     size_t flip_dims_size = flip_dims.size();
 
     if (flip_dims_size > 0) {
@@ -110,7 +110,7 @@ class FlipOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of flip op.");
     AddOutput("Out", "(Tensor), The output tensor of flip op.");
-    AddAttr<std::vector<int>>("dims", "The axes to flip on.");
+    AddAttr<std::vector<int>>("axis", "The axes to flip on.");
     AddComment(R"DOC(
           Flip Operator.
           Reverse the order of a n-D tensor along given axis in dims.
