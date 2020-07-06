@@ -1621,7 +1621,7 @@ def trace(input, diagonal=0, start_axis=0, stop_axis=1, name=None):
                 data3 = paddle.trace(case3, diagonal=-3, start_axis=1, stop_axis=-1) # data2.shape = [3, 5]
     """
     inputs = {'Input': [input]}
-    attrs = {'offset': diagonal, 'dim1': start_axis, 'dim2': stop_axis}
+    attrs = {'diagonal': diagonal, 'start_axis': start_axis, 'stop_axis': stop_axis}
 
     def __check_input(input, diagonal, start_axis, stop_axis):
         check_dtype(input.dtype, 'Input',
@@ -1648,7 +1648,7 @@ def trace(input, diagonal=0, start_axis=0, stop_axis=1, name=None):
 
         assert  start_axis_ != stop_axis_,   \
                "start_axis and stop_axis cannot be the same dimension." \
-                "But received dim1 = %d, stop_axis = %d\n"%(start_axis, stop_axis)
+                "But received start_axis = %d, stop_axis = %d\n"%(start_axis, stop_axis)
 
     if not in_dygraph_mode():
         __check_input(input, diagonal, start_axis, stop_axis)
@@ -1659,9 +1659,9 @@ def trace(input, diagonal=0, start_axis=0, stop_axis=1, name=None):
     helper.append_op(
         type='trace',
         inputs={'Input': [input]},
-        attrs={'offset': diagonal,
-               'dim1': start_axis,
-               'dim2': stop_axis},
+        attrs={'diagonal': diagonal,
+               'start_axis': start_axis,
+               'stop_axis': stop_axis},
         outputs={'Out': [out]})
     return out
 
