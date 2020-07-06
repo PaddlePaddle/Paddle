@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/large_scale_kv.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #include "paddle/fluid/operators/math/blas.h"
@@ -429,12 +430,14 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void Init();
 
-  void InitSparse(const std::string varname);
+  void InitSparse();
 
   void InitDense(const std::string varname);
 
  private:
   int trainers_;
+  std::string sparse_attrs;
+
   // parameter for delta calc and send
   std::shared_ptr<Scope> delta_scope_;
 

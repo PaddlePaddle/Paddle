@@ -676,9 +676,7 @@ void GeoCommunicator::Init() {
     auto &recv_ctx = iter.second;
 
     auto recv_task = [this, &var_name, &recv_ctx] {
-      if (recv_ctx.is_sparse) {
-        InitSparse(var_name);
-      } else {
+      if (!recv_ctx.is_sparse) {
         InitDense(var_name);
       }
     };
@@ -688,6 +686,7 @@ void GeoCommunicator::Init() {
   for (auto &task : tasks) {
     task.wait();
   }
+  InitSparse();
 }
 
 void GeoCommunicator::InitDense(const std::string varname) {
@@ -700,20 +699,29 @@ void GeoCommunicator::InitDense(const std::string varname) {
   VLOG(1) << "init dense variable " << varname << " done";
 }
 
-void GeoCommunicator::InitSparse(const std::string varname) {
-  auto &ctx = send_varname_to_ctx_.at(varname);
+void GeoCommunicator::InitSparse() {
+  auto sparse_metas = string::split_string<std::string>(sparse_attrs, "#");
 
-  auto *var = recv_scope_->FindVar(varname);
-  auto &tensor = var->Get<framework::LoDTensor>();
+  std::vector<distributed::SparseMeta> metas;
 
-  auto dim1 = tensor.dims()[1];
+  for (auto &sparse_meta : sparse_metas) {
+    auto attrs = string::split_string<std::string>(sparse_meta, "&");
 
-  old_sparses_[varname] = std::make_shared<SparseValue>();
-  auto &sparse_value = old_sparses_.at(varname);
-  for (auto i = 0; i < tensor.dims()[0]; ++i) {
-    std::memcpy(sparse_value->operator[](i).data(),
-                tensor.data<float>() + i * dim1, dim1 * sizeof(float));
+    auto meta = distributed::SparseMeta();
+    meta.name = attrs[0];
+    meta.value_names = {"Param"};
+    meta.value_dims = {std::stoi(attrs[1])};
+    meta.mode = distributed::Mode::training;
+    meta.grad_name = "none";
+    meta.cached_varnames = {};
+    meta.initializer_attrs = string::split_string<std::string>(attrs[2]);
+    meta.entry = "none";
+
+    VLOG(3) << "add sparse meta: " << meta.ToString();
+    metas.push_back(meta);
   }
+
+  LargeScaleKV::Init(metas);
 
   VLOG(1) << "init sparse variable " << varname
           << " size: " << sparse_value->size() << " done";
