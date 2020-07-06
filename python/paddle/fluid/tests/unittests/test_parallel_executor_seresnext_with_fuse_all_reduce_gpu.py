@@ -28,9 +28,7 @@ class TestResnetWithFuseAllReduceGPU(TestResnetBase):
         # NOTE(zcd): In order to make the program faster,
         # this unit test remove drop_out and batch_norm.
         check_func = partial(
-            self.check_network_convergence,
-            optimizer=seresnext_net.optimizer,
-            fuse_all_reduce_ops=True)
+            optimizer=seresnext_net.optimizer, fuse_all_reduce_ops=True)
         self._compare_result_with_origin_model(
             check_func, use_cuda=True, delta2=1e-2)
 

@@ -744,6 +744,26 @@ EOF
     fi
 }
 
+summary_failtest=''
+tmpdir=`mktemp -d`
+function gather_failtests() {
+    for file in `ls $tmpdir`; do
+        exit_code=0
+        grep -q 'The following tests FAILED:' $tmpdir/$file||exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            #echo "$exit_code != 0"
+            failuretest=''
+        else
+            #echo "$exit_code == 0"
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmpdir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            summary_failtest="${summary_failtest}
+            ${failuretest}" 
+        fi
+        echo "failuretestxxx: $failuretest"
+        echo "summary_failtestxxx: $summary_failtest" 
+    done
+}
+
 function card_test() {
     set -m
     case_count $1 $2
@@ -779,17 +799,18 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
+        tmpfile=$tmpdir/$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
-            else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+            else  
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
@@ -801,6 +822,8 @@ function card_test() {
     else
         echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
     fi
+    gather_failtests
+    rm -f $tmpdir/*
     set +m
 }
 
@@ -878,6 +901,12 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        cat <<EOF
+        ========================================
+        Summary Failed Tests ...
+        ========================================
+EOF
+        echo "$summary_failtest"
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
