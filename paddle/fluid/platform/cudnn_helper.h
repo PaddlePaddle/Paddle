@@ -212,7 +212,7 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
       return CUDNN_TENSOR_NHWC;  // add, liyamei
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "CUDNN has no equivalent dataLayout for %s.", order));
+          "CUDNN has no equivalent dataLayout for input order."));
   }
   return CUDNN_TENSOR_NCHW;
 }
