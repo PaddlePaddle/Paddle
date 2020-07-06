@@ -526,7 +526,51 @@ void GeoCommunicator::SendSparse(const std::string &varname, int batches) {
     std::copy(pop_ids.begin(), pop_ids.end(), back_inserter(ids));
   }
 
-  VLOG(1) << "SendSparse receive var: " << varname << " ids: " << ids.size();
+  auto size = ids.size();
+
+  std::set<int64_t> st(ids.begin(), ids.end());
+  ids.assign(st.begin(), st.end());
+  VLOG(1) << "SendSparse receive var: " << varname << " unset: " << size
+          << " set: " << ids.size();
+
+  auto *var_latest = recv_scope_->FindVar(varname);
+  auto *var_timestamp = old_scope_->FindVar(varname);
+
+  PADDLE_ENFORCE_EQ(var_latest->IsInitialized(), true,
+                    platform::errors::Unavailable(
+                        "%s is not initialized, please check", varname));
+  PADDLE_ENFORCE_EQ(var_timestamp->IsInitialized(), true,
+                    platform::errors::Unavailable(
+                        "%s is not initialized, please check", varname));
+
+  auto &t_latest = var_latest->Get<framework::LoDTensor>();
+  auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
+
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto *var_delta = delta_scope_->Var(varname);
+  auto *t_delta = var_delta->GetMutable<framework::SelectedRows>();
+
+  t_delta->set_height(ids.size());
+  for (auto idx : ids) {
+    t_delta->mutable_rows()->push_back(idx);
+  }
+
+  auto *t_value = t_delta->mutable_value();
+  t_value->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
+
+  auto blas = math::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+  blas.VSUB(t_latest.numel(), t_latest.data<float>(),
+            t_timestamp->data<float>(), t_value->data<float>());
+
+  float coefficient = 1.0 / static_cast<float>(trainers_);
+  blas.SCAL(t_latest.numel(), coefficient, t_value->data<float>());
+
+  blas.VADD(t_latest.numel(), t_timestamp->data<float>(),
+            t_value->data<float>(), t_timestamp->data<float>());
+
+  auto &ctx = send_varname_to_ctx_.at(varname);
+  auto send = distributed::ParameterSend<float>();
+  send(ctx, *delta_scope_, true, 1);
 }
 
 void GeoCommunicator::SendDense(const std::string &varname) {
@@ -559,8 +603,8 @@ void GeoCommunicator::SendDense(const std::string &varname) {
             t_delta->data<float>(), t_timestamp->data<float>());
 
   auto &ctx = send_varname_to_ctx_.at(varname);
-  auto send_functor = distributed::ParameterSend<float>();
-  send_functor(ctx, *delta_scope_, true, 1);
+  auto send = distributed::ParameterSend<float>();
+  send(ctx, *delta_scope_, true, 1);
 }
 
 void GeoCommunicator::RecvByCommunicator() {
