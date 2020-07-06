@@ -97,15 +97,13 @@ class TestExecutor(unittest.TestCase):
                 train_data = [[1.0], [2.0], [3.0], [4.0]]
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0
-                _y_true, _lr, _ = exe.run(
-                    feed={'x': train_data,
-                          'y': y_true,
-                          'lr': a},
-                    fetch_list=[y_true, lr, cost],
-                    return_numpy=False)
+                _lr, _ = exe.run(feed={'x': train_data,
+                                       'y': y_true,
+                                       'lr': a},
+                                 fetch_list=[lr, cost],
+                                 return_numpy=False)
             self.assertEqual(_lr._dtype(), lr.dtype)
             self.assertEqual(_lr._dtype(), fluid.core.VarDesc.VarType.FP32)
-            self.assertEqual(_y_true._dtype(), fluid.core.VarDesc.VarType.FP32)
             self.assertEqual(type(y_true), list)
 
     def test_compiled_program_feed_scalar(self):
