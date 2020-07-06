@@ -867,8 +867,9 @@ def _get_sub_block_path(sub_block,
                         #     sub_outputs.append(sub_block.var(name))
                         sub_outputs.append(sub_block._var_recursive(name))
 
+        is_while = sub_block_op_desc.type in ["while"]
         sub_block_op_path = _find_op_path_(sub_block, sub_outputs, [],
-                                           no_grad_set, op_path_dict)
+                                           no_grad_set, op_path_dict, is_while)
         # # TODO better way than finding in list
         # for op_desc in sub_assign_to_out_ops:
         #     if op_desc not in sub_block_op_path:
@@ -1689,7 +1690,12 @@ def _find_no_grad_vars(block, op_path, targets, no_grad_set):
 #     return op_path
 
 
-def _find_op_path_(block, outputs, inputs, no_grad_set, op_path_dict=None):
+def _find_op_path_(block,
+                   outputs,
+                   inputs,
+                   no_grad_set,
+                   op_path_dict=None,
+                   is_while=False):
     """
     no_grad_set will also be changed
     """
@@ -1733,6 +1739,20 @@ def _find_op_path_(block, outputs, inputs, no_grad_set, op_path_dict=None):
                     output_names.add(name)
         else:
             relevant_op_flags[i] = False
+
+    if is_while:
+        # two times
+        for i, op in reversed(list(enumerate(block.ops))):
+            if op.has_attr("sub_block"):
+                pass
+
+            if _some_in_set_(
+                    op.desc.output_arg_names(),
+                    output_names) and core.has_non_empty_grad_op_maker(op.type):
+                for name in op.desc.input_arg_names():
+                    if name not in no_grad_set:
+                        output_names.add(name)
+                relevant_op_flags[i] = True
 
     op_path = [
         block.ops[i] for i in range(len(block.ops)) if relevant_op_flags[i]
