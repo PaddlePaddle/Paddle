@@ -78,6 +78,8 @@ def full_like(x, fill_value, dtype=None, name=None):
 
           import paddle
           import numpy as np
+          
+          paddle.enable_imperative()  # Now we are in imperative mode 
           input = paddle.data(name='input', dtype='float32', shape=[2, 3])
           output = paddle.full_like(input, 2.0)
           print(output.numpy()) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
@@ -87,10 +89,6 @@ def full_like(x, fill_value, dtype=None, name=None):
     if dtype is None:
         var_dtype = x.dtype
     else:
-        check_dtype(
-            dtype, 'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-            'full_like')
         var_dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
@@ -98,6 +96,9 @@ def full_like(x, fill_value, dtype=None, name=None):
                                       var_dtype)
 
     helper = LayerHelper("full_like", **locals())
+    check_dtype(dtype, 'dtype',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'full_like')
     out = helper.create_variable_for_type_inference(dtype=var_dtype)
 
     helper.append_op(
