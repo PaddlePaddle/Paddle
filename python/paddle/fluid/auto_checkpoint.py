@@ -62,22 +62,19 @@ class AutoCheckpointChecker(object):
             self._trainer_id is not None
 
 
-class EpochStatus(object):
-    def __init__(self):
-        self._epoch_no = None
-        self._hash_key = None
-
-
 class TrainStatus(object):
     def __init__(self, epoch_no=-1):
-        # completed epoch
         self._epoch_no = epoch_no
+        self._hash_key = None
+        self._key = None
 
     def next(self):
         return self._epoch_no + 1
 
     def __eq__(self, t):
-        return self._epoch_no == t._epoch_no
+        return self._epoch_no == t._epoch_no and \
+            self._hash_key == t._hash_key and \
+            self._key == t._key
 
     def __ne__(self, t):
         return not self == t
@@ -103,16 +100,20 @@ class TrainEpochRange(object):
         }
 
         self._hdfs = HDFSClient(self._hadoop_home, config)
-        self._job_cp_path = "{}/{}".format(
-            self._checker.get_job_checkpoint_path, name)
+        self._cp_path = "{}/{}".format(_get_checkpoint_path(name))
 
         self._cper = Checkpointer(self._hdfs)
-        self._cp_no = self._cper.get_last_checkpoint_no(self._job_cp_path)
-        if self._cp_no < 0:
+        self._train_status = self._try_to_load_checkpoint()
+        if self._train_status is None:
+            t = TrainStatus()
+            t._epoch_no = -1
+            t._hash_key = name
+            t._key = name
+            self._train_status = t
             return
 
-        train_status = self.load_train_status(self._job_cp_path)
         self._epoch_no = train_status["epoch_no"]
+        self._current_epoch_no = None
 
     def __enter__(self):
         print('enter')
@@ -121,14 +122,31 @@ class TrainEpochRange(object):
     def __exit__(self):
         print('exit')
 
-    def get(self):
+    def next(self):
         if self._max_epoch_num < 0:
             self._max_epoch_num = sys.maxint - 1
 
         assert self._epoch_no >= -1, "self._epoch_no:{} must >=0".format(
             self._epoch_no)
+
         for i in range(self._epoch_no + 1, self._max_epoch_num + 1):
+            self._current_epoch_no = i
+            self._try_to_save_checkpoint()
             yield i
+
+    def get(self):
+        assert self._current_epoch_no >= 0, "invalid epoch no:{}".format(
+            self._current_epoch_no)
+
+    def _try_to_save_checkpoint(self):
+        pass
+
+    def _try_to_load_checkpoint(self):
+        pass
+
+    @static
+    def _generate_range_name():
+        return unique_name.generate(g_checker._job_id + "_range_")
 
 
 def _get_train_epoch_range_obj():
@@ -139,12 +157,33 @@ def _can_auto_checkpoint():
     return g_checker.valid() and g_train_epoch_range is not None
 
 
+def _generate_program_name():
+    return unique_name.generate(g_checker._job_id + "_program_")
+
+
+def _generate_executor_name():
+    return unique_name.generate(g_checker._job_id + "_executor_")
+
+
+def _get_checkpoint_path(name):
+    return "%s/%s/%s".format(g_checker._hdfs_checkpoint_path, g_checker._job_id,
+                             name)
+
+
 def train_epoch_range(max_epoch_num):
     g_train_epoch_range = TrainEpochRange(
-        max_epoch_num, unique_name.generate("train_epoch_range"))
-    for i in t.get():
+        max_epoch_num, TrainEpochRange._generate_range_name())
+    for i in t.next():
         yield i
     g_train_epoch_range = None
+
+
+def _get_hash(key):
+    k = key
+    if sys.version_info[0] >= 3:
+        k = key.encode('utf-8')
+
+    return hashlib.md5(k).hexdigest()
 
 
 def _initial_ids(exe, program, io_key):
@@ -156,33 +195,30 @@ def _initial_ids(exe, program, io_key):
 
     k = "%s_%s_%s".format(exe._auto_checkpoint_name,
                           program._auto_checkpoint_name, io_key)
-    h = _get_hash(key)
-    logging.info("init auto checkpoint h:{} from key:{}".format(h, k))
 
+    t = None
     if k not in exe._auto_checkpoint_epoch_status:
-        exe._auto_checkpoint_epoch_status[k] = EpochStatus()
-        exe._auto_checkpoint_epoch_status._hash_key = h
+        h = _get_hash(key)
+        logging.info("init auto checkpoint h:{} from key:{}".format(h, k))
+
+        t = TrainStatus()
+        t._hash_key = h
+        t._key = k
+        exe._auto_checkpoint_epoch_status[k] = t
+    else:
+        t = exe._auto_checkpoint_epoch_status[k]
+
+    self._auto_checkpoint_running_status = t
 
 
-def _get_hash(key):
-    k = key
-    if sys.version_info[0] >= 3:
-        k = key.encode('utf-8')
-
-    return hashlib.md5(k).hexdigest()
-
-
-def _try_to_load_checkpoint(exe, program, io_key):
+def _try_to_load_exe_checkpoint(exe, program):
     pass
 
 
-def _try_to_save_checkpoint(exe, program, io_key):
-    pass
+def _try_to_save_exe_checkpoint(exe, program):
+    t = exe._auto_checkpoint_running_status
 
-
-def _generate_program_name():
-    return unique_name.generate(g_checker._job_id + "_program_")
-
-
-def _generate_executor_name():
-    return unique_name.generate(g_checker._job_id + "_executor_")
+    if t.epoch_no != g_train_epoch_range.get():
+        p = _get_checkpoint_path(t._hash_key)
+        cper = g_train_epoch_range._cper
+        cper.save_checkpoint(exe, program, p)

@@ -30,7 +30,7 @@ from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
-from .auto_checkpoint import _can_auto_checkpoint
+from . import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -556,6 +556,7 @@ class Executor(object):
 
         self._auto_checkpoint_name = None
         self._auto_checkpoint_epoch_status = {}
+        self._auto_checkpoint_running_status = None
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -1153,7 +1154,9 @@ class Executor(object):
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
-        if _can_auto_checkpoint():
+        if acp._can_auto_checkpoint():
+            acp._initial_ids(exe, program,
+                             _get_program_cache_key(fee, fetch_list))
             self._try_to_auto_load_checkpoint(
                 exe, program, _get_program_cache_key(feed, fetchlist))
             self._try_to_auto_save_checkpoint(
