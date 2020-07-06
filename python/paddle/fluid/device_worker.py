@@ -403,8 +403,7 @@ class Section(DeviceWorker):
         trainer_desc.device_worker_name = "SectionWorker"
         pipeline_opt = self._program._pipeline_opt
         section_param = trainer_desc.section_param
-        section_param.queue_size = pipeline_opt["queue_size"]
-        section_param.microbatch = pipeline_opt["queue_size"]
+        section_param.num_microbatches = pipeline_opt["num_microbatches"]
         section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
         for i, program in enumerate(pipeline_opt["section_program_list"]):
             cfg = section_param.section_config.add()

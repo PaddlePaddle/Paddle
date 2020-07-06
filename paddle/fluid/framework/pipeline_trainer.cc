@@ -24,9 +24,7 @@ namespace framework {
 void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
   const auto& section_params = trainer_desc.section_param();
-  // We set the blocking queue capacity to the value
-  // of number of microbatches in the python side.
-  num_microbatches_ = section_params.microbatch();
+  num_microbatches_ = section_params.num_microbatches();
   VLOG(3) << "Number of microbatches per minibatch: " << num_microbatches_;
   section_num_ = section_params.section_config_size();
   VLOG(3) << "Number of program sections: " << section_num_;
@@ -113,11 +111,7 @@ std::string PipelineTrainer::GetDumpPath(int tid) {
 
 void PipelineTrainer::InitDumpEnv() {
   queue_ = paddle::framework::MakeChannel<std::string>();
-  // Only set dump channel on the last section
-  for (int j = 0; j < section_num_; ++j) {
-    workers_[j]->SetChannelWriter(queue_.get());
-  }
-  // TODO(hutuxian): should make it as a config
+  // TODO(sandyhouse): should make it as a config
   dump_thread_num_ = 1;
   for (int i = 0; i < dump_thread_num_; i++) {
     dump_thread_.push_back(
