@@ -177,7 +177,7 @@ if(WITH_PYTHON)
 	  COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto
 	  COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto/__init__.py
           COMMAND copy /Y *.py ${proto_dstpath}
-	  COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto
+	  COMMAND copy distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
 	  COMMENT "Copy generated python proto into directory paddle/fleet/proto."
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
