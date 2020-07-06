@@ -61,6 +61,38 @@ class AutoCheckpointChecker(object):
             self._trainer_id is not None
 
 
+class TrainStatus(object):
+    def __init__(self, epoch_no=-1):
+        # completed epoch
+        self._epoch_no = epoch_no
+
+    def next(self):
+        return self._epoch_no + 1
+
+    def __eq__(self, t):
+        return self._epoch_no == t._epoch_no
+
+    def __ne__(self, t):
+        return not self == t
+
+
+class Checkpointer(object):
+    def __init__(self, fs):
+        pass
+
+    def save_checkpoint(self):
+        pass
+
+    def load_checkpoint(self):
+        pass
+
+    def get_last_checkpoint_no(self, dir_path):
+        pass
+
+    def load_train_status(self, path):
+        pass
+
+
 class TrainEpochRange(object):
     def __init__(self, max_epoch_num, name):
         self._max_epoch_num = max_epoch_num
@@ -77,8 +109,16 @@ class TrainEpochRange(object):
         }
 
         self._hdfs = HDFSClient(self._hadoop_home, config)
-        self._job_checkpoint_path = "{}/{}".format(
+        self._job_cp_path = "{}/{}".format(
             self._checker.get_job_checkpoint_path, name)
+
+        self._cper = Checkpointer(self._hdfs)
+        self._cp_no = self._cper.get_last_checkpoint_no(self._job_cp_path)
+        if self._cp_no < 0:
+            return
+
+        train_status = self.load_train_status(self._job_cp_path)
+        self._epoch_no = train_status["epoch_no"]
 
     def __enter__(self):
         print('enter')
@@ -89,15 +129,11 @@ class TrainEpochRange(object):
 
     def get(self):
         if self._max_epoch_num < 0:
-            i = 0
-            while True:
-                yield i
-                i += 1
-            return
+            self._max_epoch_num = sys.maxint - 1
 
-        assert self._epoch_no >= 0, "self._epoch_no:{} must >=0".format(
+        assert self._epoch_no >= -1, "self._epoch_no:{} must >=0".format(
             self._epoch_no)
-        for i in range(self._epoch_no, self._max_epoch_num):
+        for i in range(self._epoch_no + 1, self._max_epoch_num + 1):
             yield i
 
 
@@ -113,5 +149,4 @@ def train_epoch_range(max_epoch_num):
         max_epoch_num, unique_name.generate("train_epoch_range"))
     for i in t.get():
         yield i
-    print("end")
     g_train_epoch_range = None
