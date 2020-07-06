@@ -1424,6 +1424,15 @@ def linspace(start, stop, num, dtype, name=None):
              data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
 
     """
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+    if not isinstance(stop, Variable):
+        stop = fill_constant([1], dtype, stop)
+    if not isinstance(num, Variable):
+        num = fill_constant([1], 'int32', num)
+    if in_dygraph_mode():
+        return core.ops.linspace(start, stop, num)
+
     helper = LayerHelper("linspace", **locals())
 
     check_type(start, 'start', (Variable, float, int), linspace)
@@ -1431,21 +1440,10 @@ def linspace(start, stop, num, dtype, name=None):
     check_type(num, 'num', (Variable, float, int), linspace)
     check_dtype(dtype, 'dtype', ['float32', 'float64'], 'linspace')
 
-    if not isinstance(start, Variable):
-        start = fill_constant([1], dtype, start)
-    else:
-        check_variable_and_dtype(start, "start", ["float32", "float64"],
-                                 "linspace")
+    check_variable_and_dtype(start, "start", ["float32", "float64"], "linspace")
 
-    if not isinstance(stop, Variable):
-        stop = fill_constant([1], dtype, stop)
-    else:
-        check_variable_and_dtype(stop, "stop", ["float32", "float64"],
-                                 "linspace")
-    if not isinstance(num, Variable):
-        num = fill_constant([1], 'int32', num)
-    else:
-        check_variable_and_dtype(num, "num", ["int32"], "linspace")
+    check_variable_and_dtype(stop, "stop", ["float32", "float64"], "linspace")
+    check_variable_and_dtype(num, "num", ["int32"], "linspace")
 
     out = helper.create_variable_for_type_inference(dtype=start.dtype)
 
