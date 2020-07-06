@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/fill.h>
 #include "paddle/fluid/operators/controlflow/compare_reduce_op.h"
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 namespace paddle {
@@ -43,31 +44,41 @@ class CompareReduceOpKernel
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Input<Tensor>("Y");
     auto* z = context.Output<Tensor>("Out");
-    int axis = context.Attr<int>("axis");
+    bool shape_same = true;
 
     Tensor tmp;
     framework::DDim x_dims = x->dims();
     framework::DDim y_dims = y->dims();
-    int max_dim = std::max(x_dims.size(), y_dims.size());
-    axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-    std::vector<int> x_dims_array(max_dim);
-    std::vector<int> y_dims_array(max_dim);
-    std::vector<int> tmp_dims_array(max_dim);
-    GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
-                           y_dims_array.data(), tmp_dims_array.data(), max_dim,
-                           axis);
-    tmp.mutable_data<bool>(framework::make_ddim(tmp_dims_array),
-                           context.GetPlace());
-    ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, axis,
-                                                          Functor(), &tmp);
-    // Reduce by 'bitwise and' operator
-    std::vector<int> reduce_dims;
-    reduce_dims.resize(tmp.dims().size());
-    for (int i = 0; i < reduce_dims.size(); ++i) reduce_dims[i] = i;
-    auto stream = context.cuda_device_context().stream();
-    TensorReduce<bool, bool, BitwiseAdd, IdentityFunctor<bool>>(
-        tmp, z, reduce_dims, true, BitwiseAdd(), IdentityFunctor<bool>(),
-        stream);
+
+    if (x_dims.size() != y_dims.size()) {
+      shape_same = false;
+    } else {
+      for (auto i = 0; i < x_dims.size(); i++) {
+        if (x_dims[i] != y_dims[i]) {
+          shape_same = false;
+          break;
+        }
+      }
+    }
+
+    bool* z_data = z->mutable_data<bool>(context.GetPlace());
+    if (!shape_same) {
+      thrust::device_ptr<bool> z_dev_ptr(z_data);
+      thrust::fill(z_dev_ptr, z_dev_ptr + 1, false);
+      return;
+    } else {
+      tmp.mutable_data<bool>(x_dims, context.GetPlace());
+      ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, 0,
+                                                            Functor(), &tmp);
+      // Reduce by 'bitwise and' operator
+      std::vector<int> reduce_dims;
+      reduce_dims.resize(tmp.dims().size());
+      for (int i = 0; i < reduce_dims.size(); ++i) reduce_dims[i] = i;
+      auto stream = context.cuda_device_context().stream();
+      TensorReduce<bool, bool, BitwiseAdd, IdentityFunctor<bool>>(
+          tmp, z, reduce_dims, true, BitwiseAdd(), IdentityFunctor<bool>(),
+          stream);
+    }
   }
 };
 

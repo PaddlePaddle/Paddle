@@ -74,21 +74,21 @@ def equal_all(x, y, name=None):
           import paddle.imperative as imperative
 
           paddle.enable_imperative()
-          x = imperative.to_variable(np.array(1, 2, 3))
-          y = imperative.to_variable(np.array(1, 2, 3))
-          z = imperative.to_variable(np.array(1, 4, 3))
-          result1 = paddle.equal_all(x, y) # result1 = [ True ]
-          result2 = paddle.equal_all(x, z) # result2 = [ False ]
+          x = imperative.to_variable(np.array([1, 2, 3]))
+          y = imperative.to_variable(np.array([1, 2, 3]))
+          z = imperative.to_variable(np.array([1, 4, 3]))
+          result1 = paddle.equal_all(x, y)
+          print(result1.numpy()) # result1 = [True ]
+          result2 = paddle.equal_all(x, z)
+          print(result2.numpy()) # result2 = [False ]
     """
 
     helper = LayerHelper("equal_all", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
-    attrs['axis'] = 0
     helper.append_op(
         type='equal_reduce',
         inputs={'X': [x],
                 'Y': [y]},
-        attrs=attrs,
         outputs={'Out': [out]})
     return out
 
