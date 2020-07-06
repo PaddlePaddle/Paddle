@@ -243,7 +243,6 @@ EOF
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
         -DWITH_LITE=${WITH_LITE:-OFF}
-    
 
 }
 
@@ -747,9 +746,9 @@ EOF
 
 summary_failtest=''
 tmpdir=`mktemp -d`
+
 function gather_failtests() {
     for file in `ls $tmpdir`; do
-        #echo "file:" $tmpdir/$file
         exit_code=0
         grep -q 'The following tests FAILED:' $tmpdir/$file||exit_code=$?
         if [ $exit_code -ne 0 ]; then
@@ -758,12 +757,10 @@ function gather_failtests() {
         else
             #echo "$exit_code == 0"
             failuretest=`grep -A 10000 'The following tests FAILED:' $tmpdir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            summary_failtest="${summary_failtest}
+            ${failuretest}" 
         fi
-        echo "failuretest: ""$failuretest"
-        summary_failtest="${summary_failtest}
-        ${failuretest}" 
     done
-    echo "summary_failtest: $summary_failtest" 
 }
 
 function card_test() {
@@ -801,7 +798,8 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
-        tmpfile=$tmpdir/$i
+        tmpfile_rand=`mktemp`
+        tmpfile=$tmpdir/$tmpfile_rand
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
@@ -817,8 +815,6 @@ function card_test() {
         fi
     done
     wait; # wait for all subshells to finish
-    gather_failtests
-    rm -f $tmpdir/*
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
         echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
@@ -902,7 +898,14 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
-        echo "summary_failtest_all: $summary_failtest"
+        gather_failtests
+        if [ -n "${summary_failtest}" ];then
+            echo "========================================"
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: $summary_failtest"
+        fi
+        rm -f $tmpdir/*
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
