@@ -95,6 +95,21 @@ class WhileOp : public framework::OperatorBase {
         step_scopes->push_back(&current_scope);
         executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
                                     true);
+        // Each loop the value of LoDTensor in input would be saved sub_scope to
+        // ensure
+        // that the correct values can be used in the gradient calculation.
+        auto input_names = Inputs(kX);
+        for (auto &input_var_name : input_names) {
+          auto *ig_outside_var = scope.FindVar(input_var_name);
+          if (ig_outside_var->IsType<framework::LoDTensor>()) {
+            auto ig_outside_var_tensor = ig_outside_var->Get<LoDTensor>();
+            auto *ig_inside_var_tensor =
+                current_scope.Var(input_var_name)->GetMutable<LoDTensor>();
+            framework::TensorCopy(ig_outside_var_tensor, dev_place,
+                                  ig_inside_var_tensor);
+            ig_inside_var_tensor->set_lod(ig_outside_var_tensor.lod());
+          }
+        }
         cond_data =
             GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
       }
