@@ -700,7 +700,7 @@ void GeoCommunicator::InitDense(const std::string varname) {
 }
 
 void GeoCommunicator::InitSparse() {
-  auto sparse_metas = string::split_string<std::string>(sparse_attrs, "#");
+  auto sparse_metas = string::split_string<std::string>(sparse_attrs_, "#");
 
   std::vector<distributed::SparseMeta> metas;
 

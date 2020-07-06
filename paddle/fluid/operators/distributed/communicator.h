@@ -407,6 +407,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
     send_queue_size_ = max_merge_var_num_;
     trainers_ = std::stoi(envs.at("trainers"));
+    sparse_attrs_ = envs.at("sparse_attrs");
     VLOG(0) << "GeoCommunicator Initialized";
   }
 
@@ -436,7 +437,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
  private:
   int trainers_;
-  std::string sparse_attrs;
+  std::string sparse_attrs_;
 
   // parameter for delta calc and send
   std::shared_ptr<Scope> delta_scope_;
