@@ -49,6 +49,8 @@ from ...fluid.layers import retinanet_detection_output  #DEFINE_ALIAS
 from ...fluid.layers import retinanet_target_assign  #DEFINE_ALIAS
 from ...fluid.layers import roi_perspective_transform  #DEFINE_ALIAS
 from ...fluid.layers import shuffle_channel  #DEFINE_ALIAS
+from ...fluid.layers import bilateral_slice #DEFINE_ALIAS
+
 
 __all__ = [
     'affine_channel',
@@ -87,5 +89,6 @@ __all__ = [
     'shuffle_channel',
     'space_to_depth',
     'yolo_box',
-    'yolov3_loss'
+    'yolov3_loss',
+    'bilateral_slice'
 ]

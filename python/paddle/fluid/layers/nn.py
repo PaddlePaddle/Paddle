@@ -164,6 +164,7 @@ __all__ = [
     'similarity_focus',
     'hash',
     'grid_sampler',
+    'bilateral_slice',
     'log_loss',
     'add_position_encoding',
     'bilinear_tensor_product',
@@ -12934,6 +12935,69 @@ def grid_sampler(x, grid, name=None):
     ipts = {'X': x, 'Grid': grid}
 
     helper.append_op(type='grid_sampler', inputs=ipts, outputs={'Output': out})
+    return out
+
+
+def bilateral_slice(x, guide, grid, has_offset, name=None):
+    """
+    :alias_main: paddle.nn.functional.bilateral_slice
+	:alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
+	:old_api: paddle.fluid.layers.bilateral_slice
+
+    This operation slices input in in the location defined by guide, to produce output.
+
+    Args:
+        x(Variable): The input tensor, which is a 4-D tensor with shape
+                     [N, C, H, W], N is the batch size, C is the channel
+                     number, H and W is the feature height and width.
+                     The data type is float32.
+        guide(Variable): Input grid tensor of shape [N, H, W]. The
+                        data type is float32.
+        grid(Variable): Input grid tensor of shape [N, C, D, H, W]. The
+                        data type is float32.
+        has_offset(bool): Whether to slice with affine offset.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Variable: Output of shape [N, C, H, W]. The data type is same as input tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            # use with affine_grid
+            x = fluid.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
+            guide = fluid.data(name='x', shape=[None, 101, 60], dtype='float32')
+            grid = fluid.data(name='x', shape=[None, 12, 8, 10, 6], dtype='float32')
+
+            # without offset
+            output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=False)
+            
+            # has offset
+            output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=True)
+
+    """
+    helper = LayerHelper("bilateral_slice", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32'], 'bilateral_slice')
+    check_variable_and_dtype(guide, 'guide', ['float32'],
+                             'bilateral_slice')
+    check_variable_and_dtype(grid, 'grid', ['float32'],
+                             'bilateral_slice')
+    if not isinstance(x, Variable):
+        return ValueError("The x should be a Variable")
+
+    if not isinstance(grid, Variable):
+        return ValueError("The grid should be a Variable")
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    inputs = {'X': x, 'Guide': guide, 'Grid': grid}
+    
+    helper.append_op(type='bilateral_slice', inputs=inputs, attrs={'has_offset': has_offset}, outputs={'Out': out})
     return out
 
 
