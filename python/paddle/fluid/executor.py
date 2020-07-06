@@ -555,8 +555,6 @@ class Executor(object):
         self.pruned_program_scope_caches = dict()
 
         self._auto_checkpoint_name = None
-        #self._auto_checkpoint_epoch_status = {}
-        self._auto_checkpoint_running_status = None
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)

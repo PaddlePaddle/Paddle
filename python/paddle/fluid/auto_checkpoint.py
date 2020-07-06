@@ -88,25 +88,6 @@ class TrainStatus(object):
         pass
 
 
-"""
-class ExeStatus(object):
-    def __init__(self):
-        self._status = {} # key->train_status
-
-
-class RangeStatus(TrainStatus):
-    def __init__(self):
-        super(self).__init__()
-        self._exe_status = ExeStatus()
-        self._status = TrainStatus()
-
-    def serialize(self):
-        pass
-
-    def deserialize(self, user_info):
-        pass
-"""
-
 g_train_epoch_range = None
 g_checker = AutoCheckpointChecker()
 
@@ -144,23 +125,30 @@ class TrainEpochRange(object):
         if self._max_epoch_num < 0:
             self._max_epoch_num = sys.maxint - 1
 
-        assert self._epoch_no >= -1, "self._epoch_no:{} must >=0".format(
+        assert self._epoch_no >= -1, "self._epoch_no:{} must >=-1".format(
             self._epoch_no)
 
         for i in range(self._epoch_no + 1, self._max_epoch_num + 1):
             self._current_epoch_no = i
-            self._try_to_save_checkpoint()
+            self._save_checkpoint()
             yield i
 
     def get(self):
         assert self._current_epoch_no >= 0, "invalid epoch no:{}".format(
             self._current_epoch_no)
 
-    def _try_to_save_checkpoint(self):
-        pass
+    def _save_checkpoint(self):
+        for t in self._exe_status:
+            path = _save_exe_checkpoint(t._exe, t._program, t)
+            t._checkpoint_path = path
+            t.epoch_no = self.get()
+            logging.info("save exe checkpoint:{}".format(t))
+        self._save_range_checkpoint()
+        logging.info("save train_epoch_range checkpoint:{}".format(
+            self._status))
 
-    def _try_to_load_checkpoint(self):
-        #self._status, self._exe_status = self._try_to_load_checkpoint()
+    def _load_checkpoint(self):
+        self._status, self._exe_status = self._load_range_checkpoint()
         if self._status is None:
             t = TrainStatus()
             t._epoch_no = -1
@@ -223,36 +211,14 @@ def _initial_ids(exe, program, io_key):
 
     if exe._auto_checkpoint_name is None:
         exe._auto_checkpoint_name = _generate_executor_name()
-    """
-    k = "%s_%s_%s".format(exe._auto_checkpoint_name,
-                          program._auto_checkpoint_name, io_key)
-
-    t = None
-    if k not in exe._auto_checkpoint_epoch_status:
-        h = _get_hash(key)
-        logging.info("init auto checkpoint h:{} from key:{}".format(h, k))
-
-        t = TrainStatus()
-        t._hash_key = h
-        t._key = k
-        exe._auto_checkpoint_epoch_status[k] = t
-    else:
-        t = exe._auto_checkpoint_epoch_status[k]
-
-    exe._auto_checkpoint_running_status = t
-    """
 
 
-def _try_to_load_exe_checkpoint(exe, program, path):
+def _load_exe_checkpoint(exe, program, path):
     pass
 
 
-def _try_to_save_exe_checkpoint(exe, program, path):
-    t = exe._auto_checkpoint_running_status
-
-    if t.epoch_no != g_train_epoch_range.get():
-        p = _get_checkpoint_path(t._hash_key)
-        cper.save_checkpoint(exe, program, p)
+def _save_exe_checkpoint(exe, program, status):
+    pass
 
 
 def _auto_checkpoint(exe, program, io_key):
@@ -272,20 +238,16 @@ def _auto_checkpoint(exe, program, io_key):
             _try_to_load_exe_checkpoint(exe, program, t._checkpoint_path)
             logging.info("load_checkpoint from path:{} content:{}".format(
                 t._checkpoint_path, t))
-        t._restored = True
+            t._restored = True
     else:
         h = _get_hash(key)
+
         t = TrainStatus()
-        t._epoch_no = -1
+        t._epoch_no = g_train_epoch_range.get()
         t._hash_key = h
         t._key = k
         t._restored = True
+        t._exe = exe
+        t._program = program
+
         exe_status[key] = t
-
-    exe._auto_checkpoint_running_status = t
-
-    if t.epoch_no >= 0 and t.epoch_no != g_train_epoch_range.get():
-        path = _try_to_save_exe_checkpoint(exe, program)
-        t._checkpoint_path = path
-        logging.info("save exe checkpoint:{}".format(t))
-        t.epoch_no = epoch_no
