@@ -809,7 +809,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     @classmethod
     def _check_input_array(cls, item):
-        arr = np.array(item)
+        arr = np.asarray(item)
         if arr.dtype == np.object:
             raise TypeError(
                 "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
@@ -817,6 +817,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 "\n\t* Check the reader function passed to 'decorate_batch_generator'"
                 " to locate the data causes this issue.\n\t* Please consider using "
                 "'fluid.create_lod_tensor' to convert it to a LoD-Tensor.")
+        return arr
 
     def _exit_thread_expectedly(self):
         self._thread_done_event.set()
@@ -894,7 +895,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 array = core.LoDTensorArray()
                 for item in sample:
                     if not isinstance(item, core.LoDTensor):
-                        self._check_input_array(item)
+                        item = self._check_input_array(item)
                         tmp = core.LoDTensor()
                         tmp.set(item, core.CPUPlace())
                         item = tmp
@@ -1117,7 +1118,7 @@ class GeneratorLoader(DataLoaderBase):
 
     @classmethod
     def _check_input_array(cls, item):
-        arr = np.array(item)
+        arr = np.asarray(item)
         if arr.dtype == np.object:
             raise TypeError((
                 "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
