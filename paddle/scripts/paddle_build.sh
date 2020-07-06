@@ -746,6 +746,7 @@ EOF
 
 summary_failtest=''
 tmpdir=`mktemp -d`
+
 function gather_failtests() {
     for file in `ls $tmpdir`; do
         exit_code=0
@@ -759,8 +760,6 @@ function gather_failtests() {
             summary_failtest="${summary_failtest}
             ${failuretest}" 
         fi
-        echo "failuretestxxx: $failuretest"
-        echo "summary_failtestxxx: $summary_failtest" 
     done
 }
 
@@ -799,7 +798,8 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
-        tmpfile=$tmpdir/$i
+        tmpfile_rand=`date +%s%N`
+        tmpfile=$tmpdir/$tmpfile_rand
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
@@ -814,7 +814,6 @@ function card_test() {
             fi
         fi
     done
-
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
@@ -822,8 +821,6 @@ function card_test() {
     else
         echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
     fi
-    gather_failtests
-    rm -f $tmpdir/*
     set +m
 }
 
@@ -901,12 +898,14 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
-        cat <<EOF
-        ========================================
-        Summary Failed Tests ...
-        ========================================
-EOF
-        echo "$summary_failtest"
+        gather_failtests
+        if [ -n "${summary_failtest}" ];then
+            echo "========================================"
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: $summary_failtest"
+        fi
+        rm -f $tmpdir/*
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi

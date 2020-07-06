@@ -28,7 +28,10 @@ class TestMulOp(OpTest):
         self.op_type = "mul"
         self.dtype = np.float64
         self.init_dtype_type()
-        self.inputs = {'Y': np.random.random((5, 21)).astype(self.dtype)}
+        self.inputs = {
+            'X': np.random.random((20, 5)).astype(self.dtype),
+            'Y': np.random.random((5, 21)).astype(self.dtype)
+        }
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
     def init_dtype_type(self):
