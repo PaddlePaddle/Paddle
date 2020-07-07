@@ -22,6 +22,7 @@ from . import unique_name
 import paddle.fluid as fluid
 from fluid.incubate.fleet.utils.hdfs import HDFSClient
 import hashlib
+import json
 
 
 class AutoCheckpointChecker(object):
@@ -62,13 +63,15 @@ class AutoCheckpointChecker(object):
             self._trainer_id is not None
 
 
-class TrainStatus(object):
+class ExeTrainStatus(object):
     def __init__(self):
         self._epoch_no = -1
         self._hash_key = None
         self._key = None
         self._checkpoint_path = None
         self._restored = False
+        self._exe = None
+        self._program = None
 
     def next(self):
         return self._epoch_no + 1
@@ -81,11 +84,34 @@ class TrainStatus(object):
     def __ne__(self, t):
         return not self == t
 
-    def serialize(self):
-        pass
+    def serialize(self, pop_keys=["restored"]):
+        d = self._to_dict()
+        for k in pop_keys:
+            d.pop(k, None)
+        return json.dumps(d)
 
-    def deserialize(self):
-        pass
+    def deserialize(self, s):
+        d = json.loads(s)
+        self._epoch_no = d["epoch_no"]
+        self._key = d["key"]
+        self._hash_key = d["hash_key"]
+        self._checkpoint_path = d["checkpoint_path"]
+        if "restored" in d:
+            self._restored = d["restored"]
+
+    def _to_dict(self):
+        return {
+            "epoch_no": self._epoch_no,
+            "key": self._key,
+            "hash_key": self._hash_key,
+            "checkpoint_path": self._checkpoint_path,
+            "restored": self._restored,
+            "exe_name": self._exe._auto_checkpoint_name,
+            "program_name": self._program._auto_checkpoint_name,
+        }
+
+    def __str__(self):
+        return self.serialize([])
 
 
 g_train_epoch_range = None
@@ -95,43 +121,78 @@ g_checker = AutoCheckpointChecker()
 class TrainEpochRange(object):
     def __init__(self, max_epoch_num, name):
         self._max_epoch_num = max_epoch_num
-        self._epoch_no = -1
+        self._last_epoch_no = -1  # restored
+        self._epoch_no = self._last_epoch_no  # current
         self._name = name
+        self._checkpoint_path = _get_checkpoint_path(name)
+        self._restored = False
 
         self._checker = g_checker
         if not self._checker.valid():
             return
 
         config = {
-            "fs.default.name": self._hdfs_name,
-            "hadoop.job.ugi": self.hdfs_ugi
+            "fs.default.name": self._checker._hdfs_name,
+            "hadoop.job.ugi": self._checker._hdfs_ugi
         }
 
         self._hdfs = HDFSClient(self._hadoop_home, config)
-        self._cp_path = "{}/{}".format(_get_checkpoint_path(name))
+        self._cp_path = "{}/{}".format(self._checkpoint_path)
 
         self._cper = Checkpointer(self._hdfs)
-        self._status = None
+        #self._status = None
         self._exe_status = {}
 
-    def __enter__(self):
-        print('enter')
-        return self
+    def _to_dict(self):
+        d = {
+            "max_epoch_num": self._max_epoch_num,
+            "last_epcho_no": self._last_epoch_no,
+            "name": self._name,
+            "checkpoint_path": self._checkpoint_path,
+            "self._restored": self._restored
+        }
 
-    def __exit__(self):
-        print('exit')
+    def serialize(self, pop_keys=["restored"]):
+        # self
+        d = self._to_dict()
+        for k in pod_keys:
+            d.pop(k, None)
+
+        # registerd exe
+        d["exe_status"] = {}
+        e = ["exe_status"]
+        for t in self._exe_status:
+            e[t._hash_key] = t.serialize()
+        return json.dumps(d)
+
+    def deserialize(self, s):
+        d = json.loads(s)
+
+        # self
+        self._last_epoch_no = d["epoch_no"]
+        self._name = d["key"]
+        self._checkpoint_path = d["checkpoint_path"]
+        if "restored" in d:
+            self._restored = d["restored"]
+        self._epoch_no = self._last_epoch_no
+
+        # exe status
+        e = d["exe_status"]
+        for k, v in e:
+            t = json.loads(v)
+            self._exe_stats[k] = t
 
     def next(self):
         if self._max_epoch_num < 0:
             self._max_epoch_num = sys.maxint - 1
 
-        assert self._epoch_no >= -1, "self._epoch_no:{} must >=-1".format(
-            self._epoch_no)
+        assert self._last_epoch_no >= -1, "self._epoch_no:{} must >=-1".format(
+            self._last_epoch_no)
 
-        for i in range(self._epoch_no + 1, self._max_epoch_num + 1):
-            self._current_epoch_no = i
-            self._save_checkpoint()
+        for i in range(self._last_epoch_no + 1, self._max_epoch_num + 1):
             yield i
+            self._epoch_no = i
+            self._save_checkpoint()
 
     def get(self):
         assert self._current_epoch_no >= 0, "invalid epoch no:{}".format(
@@ -205,7 +266,7 @@ def _get_hash(key):
     return hashlib.md5(k).hexdigest()
 
 
-def _initial_ids(exe, program, io_key):
+def _initial_names(exe, program, io_key):
     if program._auto_checkpoint_name is None:
         program._auto_checkpoint_name = _generate_program_name()
 
@@ -225,7 +286,7 @@ def _auto_checkpoint(exe, program, io_key):
     if not _can_auto_checkpoint():
         return
 
-    _initial_ids(exe, program)
+    _initial_names(exe, program)
 
     exe_status = g_train_epoch_range._exe_status
     key = _get_running_key(exe._auto_checkpoint_name,
@@ -251,3 +312,5 @@ def _auto_checkpoint(exe, program, io_key):
         t._program = program
 
         exe_status[key] = t
+
+        logging.info("not found checkpoint, so train from scrach")
