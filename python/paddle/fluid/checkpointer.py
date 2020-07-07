@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle.fluid as fluid
+from fluid.incubate.utils.fs import FS, LocalFS
+from fluid.incubate.utils.hdfs import HDFSClient
+
 
 class SerializableBase(object):
     def serialize(self, path):
@@ -51,7 +55,11 @@ class Checkpointer(object):
         self._fs = fs
         self._checkpoint_prefix = "__paddle_fleet_checkpoint__"
 
-    def save_checkpoint(self, path, slists):
+    def save_checkpoint(self,
+                        path,
+                        slists,
+                        trainer_id=None,
+                        local_cache_path=".cache"):
         """
         Serialize objects in slists to path
         Return really saved path and checkpoint_no
@@ -77,6 +85,10 @@ class Checkpointer(object):
         if self._fs.need_upload_download():
             cache_path = "{}/{}.{}.saved_cache".format(
                 local_cache_path, self._checkpoint_prefix, max_no)
+
+            if trainer_id is not None:
+                cache_path = "{}.{}".format(cache_path, trainer_id)
+
             if not local_fs.is_exist(cache_path):
                 local_fs.mkdirs(cache_path)
             else:
@@ -99,7 +111,13 @@ class Checkpointer(object):
 
         return real_path, max_no
 
-    def load_checkpoint(self, path, slists, checkpoint_no=None):
+    def load_checkpoint(self,
+                        path,
+                        slists,
+                        trainer_id,
+                        local_cache_path=".cache",
+                        checkpoint_no=None,
+                        ignore_empty=True):
         """
         Deserialize objects in slists from path
         Return really load path
@@ -120,9 +138,12 @@ class Checkpointer(object):
 
         local_fs = LocalFS()
         if self._fs.need_upload_download():
-            cache_path = "{}/{}.{}.load_cache.{}".format(
-                local_cache_path, self._checkpoint_prefix, checkpoint_no,
-                trainer_id)
+            cache_path = "{}/{}.{}.load_cache".format(
+                local_cache_path, self._checkpoint_prefix, checkpoint_no)
+
+            if trainer_id is not None:
+                cache_path = "{}.{}".format(cache_path, trainer_id)
+
             if not local_fs.is_exist(local_cache_path):
                 local_fs.mkdirs(local_cache_path)
             if local_fs.is_exist(cache_path):
