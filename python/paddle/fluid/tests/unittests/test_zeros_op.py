@@ -36,7 +36,7 @@ class TestZerosOpError(unittest.TestCase):
 
 class ApiZerosTest(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program()):
+        with paddle.program_guard(fluid.Program()):
             zeros = paddle.zeros(shape=[10], dtype="float64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -44,7 +44,7 @@ class ApiZerosTest(unittest.TestCase):
             expected_result = np.zeros(10, dtype="float64")
         self.assertEqual((result == expected_result).all(), True)
 
-        with fluid.program_guard(fluid.Program()):
+        with paddle.program_guard(fluid.Program()):
             zeros = paddle.zeros(shape=[10], dtype="int64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -52,7 +52,7 @@ class ApiZerosTest(unittest.TestCase):
             expected_result = np.zeros(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
-        with fluid.program_guard(fluid.Program()):
+        with paddle.program_guard(fluid.Program()):
             zeros = paddle.zeros(shape=[10], dtype="int64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -64,13 +64,13 @@ class ApiZerosTest(unittest.TestCase):
 class ApiZerosError(unittest.TestCase):
     def test_errors(self):
         def test_error1():
-            with fluid.program_guard(fluid.Program()):
+            with paddle.program_guard(fluid.Program()):
                 ones = fluid.layers.zeros(shape=10, dtype="int64")
 
         self.assertRaises(TypeError, test_error1)
 
         def test_error2():
-            with fluid.program_guard(fluid.Program()):
+            with paddle.program_guard(fluid.Program()):
                 ones = fluid.layers.zeros(shape=[10], dtype="int8")
 
         self.assertRaises(TypeError, test_error2)

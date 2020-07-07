@@ -675,22 +675,14 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
           val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
           data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
-    inputs = {}
-    attrs = {'force_cpu': force_cpu}
-    if isinstance(value, Variable):
-        inputs['ValueTensor'] = value
+    if convert_dtype(dtype) in ['int64', 'int32']:
+        attrs['str_value'] = str(int(value))
     else:
-        attrs['value'] = float(value)
-        if convert_dtype(dtype) in ['int64', 'int32']:
-            attrs['str_value'] = str(int(value))
-        else:
-            attrs['str_value'] = str(float(value))
+        attrs['str_value'] = str(float(value))
 
     if in_dygraph_mode():
         if isinstance(shape, (list, tuple)):
-            shape = list(
-                map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
-                    shape))
+            shape = utils._convert_shape_to_list(shape)
         else:
             shape = list(shape.numpy().astype(int))
         if out is None:
@@ -709,6 +701,13 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         out.stop_gradient = True
         return out
 
+    helper = LayerHelper("fill_constant", **locals())
+    inputs = {}
+    attrs = {'force_cpu': force_cpu}
+    if isinstance(value, Variable):
+        inputs['ValueTensor'] = value
+    else:
+        attrs['value'] = float(value)
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
@@ -720,7 +719,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
                                  'fill_constant')
 
-    helper = LayerHelper("fill_constant", **locals())
     inputs = utils._get_shape_tensor_inputs(
         inputs=inputs,
         helper=helper,
@@ -1083,10 +1081,6 @@ def zeros(shape, dtype, force_cpu=False, name=None):
           import paddle.fluid as fluid
           data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
     """
-    check_type(shape, 'shape', (list, tuple), 'zeros')
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'zeros')
     return fill_constant(value=0.0, **locals())
 
 
