@@ -1646,11 +1646,14 @@ def _find_op_path_(block,
         # TODO(liym27): Consider other types of ops.
         for i, op in reversed(list(enumerate(block.ops))):
             if relevant_op_flags[i] == False \
-                    and _some_in_set_(op.desc.output_arg_names(),output_names) \
-                    and op.desc.type() in ["write_to_array"]:
-                for name in op.desc.input_arg_names():
-                    if name not in no_grad_set:
-                        output_names.add(name)
+                    and _some_in_set_(op.desc.output_arg_names(),output_names):
+
+                # if relevant_op_flags[i] == False \
+                #         and _some_in_set_(op.desc.output_arg_names(),output_names) \
+                #         and op.desc.type() in ["write_to_array"]:
+                #     for name in op.desc.input_arg_names():
+                #         if name not in no_grad_set:
+                #             output_names.add(name)
                 relevant_op_flags[i] = True
 
     op_path = [
