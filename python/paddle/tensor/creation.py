@@ -108,6 +108,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         attrs={'value': fill_value,
                "dtype": var_dtype},
         outputs={'Out': [out]})
+    out.stop_gradient = stop_gradient
 
     return out
 
