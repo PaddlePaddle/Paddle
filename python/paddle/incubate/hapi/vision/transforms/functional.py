@@ -15,6 +15,7 @@
 import sys
 import collections
 import random
+import math
 
 import cv2
 import numbers
@@ -128,9 +129,9 @@ def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
         numpy ndarray: Paded image.
     """
 
-    if not isinstance(padding, (numbers.Number, tuple)):
+    if not isinstance(padding, (numbers.Number, list, tuple)):
         raise TypeError('Got inappropriate padding arg')
-    if not isinstance(fill, (numbers.Number, str, tuple)):
+    if not isinstance(fill, (numbers.Number, str, list, tuple)):
         raise TypeError('Got inappropriate fill arg')
     if not isinstance(padding_mode, str):
         raise TypeError('Got inappropriate padding_mode arg')

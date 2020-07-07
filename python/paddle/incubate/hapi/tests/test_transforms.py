@@ -23,6 +23,7 @@ import numpy as np
 
 from paddle.incubate.hapi.datasets import DatasetFolder
 from paddle.incubate.hapi.vision.transforms import transforms
+import paddle.incubate.hapi.vision.transforms.functional as F
 
 
 class TestTransforms(unittest.TestCase):
@@ -101,7 +102,14 @@ class TestTransforms(unittest.TestCase):
         self.do_transform(trans)
 
     def test_rotate(self):
-        trans = transforms.Compose([transforms.RandomRotate(90)])
+        trans = transforms.Compose([
+            transforms.RandomRotate(90),
+            transforms.RandomRotate([-10, 10]),
+            transforms.RandomRotate(
+                45, expand=True),
+            transforms.RandomRotate(
+                10, expand=True, center=(60, 80)),
+        ])
         self.do_transform(trans)
 
     def test_pad(self):
@@ -112,9 +120,14 @@ class TestTransforms(unittest.TestCase):
         trans_pad = transforms.Pad(10)
         fake_img_padded = trans_pad(fake_img)
         np.testing.assert_equal(fake_img_padded.shape, (220, 170, 3))
+        trans_pad1 = transforms.Pad([1, 2])
+        trans_pad2 = transforms.Pad([1, 2, 3, 4])
+        img = trans_pad1(fake_img)
+        img = trans_pad2(img)
 
     def test_erase(self):
-        trans = transforms.Compose([transforms.RandomErasing()])
+        trans = transforms.Compose(
+            [transforms.RandomErasing(), transforms.RandomErasing(value=0.0)])
         self.do_transform(trans)
 
     def test_random_crop(self):
@@ -135,6 +148,15 @@ class TestTransforms(unittest.TestCase):
 
         np.testing.assert_equal(fake_img_crop2.shape, (140, 160, 3))
 
+        trans_random_crop_same = transforms.RandomCrop((140, 160))
+        img = trans_random_crop_same(fake_img_crop2)
+
+        trans_random_crop_bigger = transforms.RandomCrop((180, 200))
+        img = trans_random_crop_bigger(img)
+
+        trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
+        img = trans_random_crop_pad(img)
+
     def test_grayscale(self):
         trans = transforms.Compose([transforms.Grayscale()])
         self.do_transform(trans)
@@ -146,6 +168,10 @@ class TestTransforms(unittest.TestCase):
         np.testing.assert_equal(len(fake_img_gray.shape), 2)
         np.testing.assert_equal(fake_img_gray.shape[0], 500)
         np.testing.assert_equal(fake_img_gray.shape[1], 400)
+
+        trans_gray3 = transforms.Grayscale(3)
+        fake_img = np.random.rand(500, 400, 3).astype('float32')
+        fake_img_gray = trans_gray3(fake_img)
 
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
@@ -173,11 +199,32 @@ class TestTransforms(unittest.TestCase):
         with self.assertRaises(ValueError):
             transforms.Pad([1.0, 2.0, 3.0])
 
+        with self.assertRaises(TypeError):
+            fake_img = np.random.rand(100, 120, 3).astype('float32')
+            F.pad(fake_img, '1')
+
+        with self.assertRaises(TypeError):
+            fake_img = np.random.rand(100, 120, 3).astype('float32')
+            F.pad(fake_img, 1, {})
+
+        with self.assertRaises(TypeError):
+            fake_img = np.random.rand(100, 120, 3).astype('float32')
+            F.pad(fake_img, 1, padding_mode=-1)
+
+        with self.assertRaises(ValueError):
+            fake_img = np.random.rand(100, 120, 3).astype('float32')
+            F.pad(fake_img, [1.0, 2.0, 3.0])
+
         with self.assertRaises(ValueError):
             transforms.RandomRotate(-2)
 
         with self.assertRaises(ValueError):
             transforms.RandomRotate([1, 2, 3])
+
+        with self.assertRaises(ValueError):
+            trans_gray = transforms.Grayscale(5)
+            fake_img = np.random.rand(100, 120, 3).astype('float32')
+            trans_gray(fake_img)
 
     def test_info(self):
         str(transforms.Compose([transforms.Resize((224, 224))]))
