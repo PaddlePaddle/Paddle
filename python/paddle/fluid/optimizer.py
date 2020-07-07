@@ -141,6 +141,7 @@ class Optimizer(object):
                     adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
 
+
         '''
         state_dict = {}
         for k, v in self._accumulators.items():
