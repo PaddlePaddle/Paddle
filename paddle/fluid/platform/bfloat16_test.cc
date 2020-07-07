@@ -12,12 +12,13 @@ limitations under the License. */
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace platform {
+
+using bfloat16 = paddle::platform::bfloat16;
 
 TEST(bfloat16, conversion_cpu) {
   // Conversion from float
