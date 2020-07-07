@@ -14,15 +14,17 @@
 
 from .wrapped_decorator import signature_safe_contextmanager
 import sys
-from paddle.fluid import core
-from paddle.fluid import framework
 import logging
-from contextlib import contextmanager
-from . import unique_name
-import paddle.fluid as fluid
-from fluid.incubate.fleet.utils.hdfs import HDFSClient
 import hashlib
 import json
+from contextlib import contextmanager
+from . import unique_name
+from .checkpointer import SerializableBase
+from paddle.fluid import core
+from paddle.fluid import framework
+import paddle.fluid as fluid
+from fluid.incubate.fleet.utils.hdfs import HDFSClient
+from . import compiler
 
 
 class AutoCheckpointChecker(object):
@@ -63,7 +65,7 @@ class AutoCheckpointChecker(object):
             self._trainer_id is not None
 
 
-class ExeTrainStatus(object):
+class ExeTrainStatus(SerializableBase):
     def __init__(self):
         self._epoch_no = -1
         self._hash_key = None
@@ -72,6 +74,8 @@ class ExeTrainStatus(object):
         self._restored = False
         self._exe = None
         self._program = None
+
+        self._file_name = "exe_train_status"
 
     def next(self):
         return self._epoch_no + 1
@@ -84,14 +88,24 @@ class ExeTrainStatus(object):
     def __ne__(self, t):
         return not self == t
 
-    def serialize(self, pop_keys=["restored"]):
+    def serialize(self, path):
+        file_name = "{}/{}".format(path, self._file_name)
+        with open(file_name, 'w') as f:
+            s = self._serialize()
+            f.write(s)
+
+    def _serialize(self, pop_keys=["restored"]):
         d = self._to_dict()
         for k in pop_keys:
             d.pop(k, None)
         return json.dumps(d)
 
-    def deserialize(self, s):
-        d = json.loads(s)
+    def deserialize(self, path):
+        d = None
+        file_name = "{}/{}".format(path, self._file_name)
+        with open(file_name, 'r') as f:
+            d = json.load(f)
+
         self._epoch_no = d["epoch_no"]
         self._key = d["key"]
         self._hash_key = d["hash_key"]
@@ -111,14 +125,39 @@ class ExeTrainStatus(object):
         }
 
     def __str__(self):
-        return self.serialize([])
+        return self._serialize([])
 
 
 g_train_epoch_range = None
 g_checker = AutoCheckpointChecker()
 
 
-class TrainEpochRange(object):
+class PaddleModel(SerializableBase):
+    def __init__(self, exe, program):
+        self._exe = exe
+        self._origin_program = program
+        self._program = program
+        if isinstance(program, compiler.CompiledProgram):
+            self._program = program._program
+
+        self._file_name = "_paddle_fleet_param__"
+
+    def serialize(self, path):
+        io.save_persistables(
+            executor=self._exe,
+            dirname=path,
+            main_program=self._program,
+            filename=self._file_name)
+
+    def deserialize(self, path):
+        io.load_persistables(
+            executor=exe,
+            dirname=path,
+            main_program=self._program,
+            filename=self._file_name)
+
+
+class TrainEpochRange(SerializableBase):
     def __init__(self, max_epoch_num, name):
         self._max_epoch_num = max_epoch_num
         self._epoch_no = -1  # current
@@ -139,8 +178,8 @@ class TrainEpochRange(object):
         self._cp_path = "{}/{}".format(self._checkpoint_path)
 
         self._cper = Checkpointer(self._hdfs)
-        #self._status = None
         self._exe_status = {}
+        self._file_name = "range_train_status"
 
     def _to_dict(self):
         d = {
@@ -152,9 +191,15 @@ class TrainEpochRange(object):
         }
 
     def __str__(self):
-        return self.serialize(pop_keys=[])
+        return self._serialize(pop_keys=[])
 
-    def serialize(self, pop_keys=["restored"]):
+    def serialize(self, path):
+        file_name = "{}/{}".format(path, self._file_name)
+        with open(file_name, 'w') as f:
+            s = self._serilize()
+            f.write(s)
+
+    def _serialize(self, pop_keys=["restored"]):
         # self
         d = self._to_dict()
         for k in pod_keys:
@@ -164,11 +209,14 @@ class TrainEpochRange(object):
         d["exe_status"] = {}
         e = ["exe_status"]
         for t in self._exe_status:
-            e[t._hash_key] = t.serialize()
+            e[t._hash_key] = t._serialize()
         return json.dumps(d)
 
-    def deserialize(self, s):
-        d = json.loads(s)
+    def deserialize(self, path):
+        d = None
+        file_name = "{}/{}".format(path, self._file_name)
+        with open(file_name, 'w') as f:
+            d = json.load(f)
 
         # self
         self._max_epoch_num = d["max_epoch_num"]
@@ -207,8 +255,7 @@ class TrainEpochRange(object):
             t.epoch_no = self.get()
             logging.info("save exe checkpoint:{}".format(t))
         self._save_range_checkpoint()
-        logging.info("save train_epoch_range checkpoint:{}".format(
-            self._status))
+        logging.info("save train_epoch_range checkpoint:{}".format(self))
 
     def load_checkpoint(self):
         self._status, self._exe_status = self._load_range_checkpoint()
@@ -218,9 +265,6 @@ class TrainEpochRange(object):
             t._hash_key = name
             t._key = name
             self._status = t
-
-        self._epoch_no = self._status["epoch_no"]
-        self._current_epoch_no = None
 
     @static
     def _generate_range_name():
@@ -298,7 +342,7 @@ def _auto_checkpoint(exe, program, io_key):
     if key in exe_status:
         t = exe_status[key]
         if not t._restored:
-            _try_to_load_exe_checkpoint(exe, program, t._checkpoint_path)
+            _load_exe_checkpoint(exe, program, t._checkpoint_path)
             logging.info("load_checkpoint from path:{} content:{}".format(
                 t._checkpoint_path, t))
             t._restored = True
@@ -313,6 +357,7 @@ def _auto_checkpoint(exe, program, io_key):
         t._exe = exe
         t._program = program
 
+        # register this <exe,program,io>
         exe_status[key] = t
 
         logging.info("not found checkpoint, so train from scrach")
