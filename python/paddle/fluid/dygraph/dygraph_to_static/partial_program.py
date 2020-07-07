@@ -308,7 +308,7 @@ class PartialProgramLayer(layers.Layer):
         transforamtions to avoid confusing users.
         """
         assert isinstance(main_program, framework.Program)
-        for block in main_program.blocks():
+        for block in main_program.blocks:
             for op in block.ops:
                 if op.has_attr("op_callstack"):
                     op._remove_attr("op_callstack")
