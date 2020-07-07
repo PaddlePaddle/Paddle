@@ -121,8 +121,7 @@ g_checker = AutoCheckpointChecker()
 class TrainEpochRange(object):
     def __init__(self, max_epoch_num, name):
         self._max_epoch_num = max_epoch_num
-        self._last_epoch_no = -1  # restored
-        self._epoch_no = self._last_epoch_no  # current
+        self._epoch_no = -1  # current
         self._name = name
         self._checkpoint_path = _get_checkpoint_path(name)
         self._restored = False
@@ -146,11 +145,14 @@ class TrainEpochRange(object):
     def _to_dict(self):
         d = {
             "max_epoch_num": self._max_epoch_num,
-            "last_epcho_no": self._last_epoch_no,
+            "epoch_no": self._epoch_no,
             "name": self._name,
             "checkpoint_path": self._checkpoint_path,
-            "self._restored": self._restored
+            "restored": self._restored
         }
+
+    def __str__(self):
+        return self.serialize(pop_keys=[])
 
     def serialize(self, pop_keys=["restored"]):
         # self
@@ -158,7 +160,7 @@ class TrainEpochRange(object):
         for k in pod_keys:
             d.pop(k, None)
 
-        # registerd exe
+        # registerd exes
         d["exe_status"] = {}
         e = ["exe_status"]
         for t in self._exe_status:
@@ -169,14 +171,14 @@ class TrainEpochRange(object):
         d = json.loads(s)
 
         # self
-        self._last_epoch_no = d["epoch_no"]
-        self._name = d["key"]
+        self._max_epoch_num = d["max_epoch_num"]
+        self._epoch_no = d["epoch_no"]
+        self._name = d["name"]
         self._checkpoint_path = d["checkpoint_path"]
         if "restored" in d:
             self._restored = d["restored"]
-        self._epoch_no = self._last_epoch_no
 
-        # exe status
+        # exes status
         e = d["exe_status"]
         for k, v in e:
             t = json.loads(v)
@@ -186,19 +188,19 @@ class TrainEpochRange(object):
         if self._max_epoch_num < 0:
             self._max_epoch_num = sys.maxint - 1
 
-        assert self._last_epoch_no >= -1, "self._epoch_no:{} must >=-1".format(
-            self._last_epoch_no)
+        assert self._epoch_no >= -1, "self._epoch_no:{} must >=-1".format(
+            self._epoch_no)
 
-        for i in range(self._last_epoch_no + 1, self._max_epoch_num + 1):
+        start = self._epoch_no + 1
+        for i in range(start, self._max_epoch_num + 1):
             yield i
             self._epoch_no = i
             self._save_checkpoint()
 
     def get(self):
-        assert self._current_epoch_no >= 0, "invalid epoch no:{}".format(
-            self._current_epoch_no)
+        assert self._epoch_no >= 0, "invalid epoch no:{}".format(self._epoch_no)
 
-    def _save_checkpoint(self):
+    def save_checkpoint(self):
         for t in self._exe_status:
             path = _save_exe_checkpoint(t._exe, t._program, t)
             t._checkpoint_path = path
@@ -208,7 +210,7 @@ class TrainEpochRange(object):
         logging.info("save train_epoch_range checkpoint:{}".format(
             self._status))
 
-    def _load_checkpoint(self):
+    def load_checkpoint(self):
         self._status, self._exe_status = self._load_range_checkpoint()
         if self._status is None:
             t = TrainStatus()
@@ -306,7 +308,7 @@ def _auto_checkpoint(exe, program, io_key):
         t = TrainStatus()
         t._epoch_no = g_train_epoch_range.get()
         t._hash_key = h
-        t._key = k
+        t._key = key
         t._restored = True
         t._exe = exe
         t._program = program
