@@ -25,6 +25,7 @@ from paddle.fluid import framework
 import paddle.fluid as fluid
 from fluid.incubate.fleet.utils.hdfs import HDFSClient
 from . import compiler
+from threading import Thread, current_thread
 
 
 class AutoCheckpointChecker(object):
@@ -188,7 +189,7 @@ class TrainEpochRange(SerializableBase):
         self._exe_status = {}
         self._file_name = "range_train_status"
 
-        self._cper.load_checkpoint(self._checkpoint_path, [self])
+        self._cper.load_checkpoint(self._checkpoint_path + "/range", [self])
 
     def _to_dict(self):
         d = {
@@ -261,9 +262,14 @@ class TrainEpochRange(SerializableBase):
         assert self._epoch_no >= 0, "invalid epoch no:{}".format(self._epoch_no)
 
     def save_checkpoint(self):
+        """
+        status => /jobid/xxx_range_xx/range/
+        model =>                      /exe/
+        """
         for t in self._exe_status:
             m = PaddleModel(exe, program)
-            path, checkpoint_no = self._cper.save_checkpoint(t._checkpoint_path)
+            path, checkpoint_no = self._cper.save_checkpoint(
+                self._checkpoint_path + "/exe")
             # index info
             t._checkpoint_path = path
             t._checkpoint_no = checkpoint_no
@@ -271,7 +277,7 @@ class TrainEpochRange(SerializableBase):
 
             logging.info("save exe checkpoint:{}".format(t))
 
-        self._cper.save_checkpoint(self._checkpoint_path, [self])
+        self._cper.save_checkpoint(self._checkpoint_path + "/range", [self])
         logging.info("save train_epoch_range checkpoint:{}".format(self))
 
     @static
@@ -279,7 +285,7 @@ class TrainEpochRange(SerializableBase):
         return unique_name.generate(g_checker._job_id + "_range_")
 
 
-def _get_train_epoch_range_obj():
+def _get_train_epoch_range():
     return g_train_epoch_range
 
 
@@ -300,8 +306,8 @@ def _get_checkpoint_path(name):
                              name)
 
 
-def _get_running_key(exe_name, program_name, io_key):
-    return "%s_%s_%s".format(exe_name, program_name, io_key)
+def _get_running_key(exe_name, program_name):
+    return "%s_%s".format(exe_name, program_name)
 
 
 def train_epoch_range(max_epoch_num):
@@ -320,7 +326,7 @@ def _get_hash(key):
     return hashlib.md5(k).hexdigest()
 
 
-def _initial_names(exe, program, io_key):
+def _initial_names(exe, program):
     if program._auto_checkpoint_name is None:
         program._auto_checkpoint_name = _generate_program_name()
 
@@ -328,7 +334,7 @@ def _initial_names(exe, program, io_key):
         exe._auto_checkpoint_name = _generate_executor_name()
 
 
-def _auto_checkpoint(exe, program, io_key):
+def _auto_checkpoint(exe, program):
     if not _can_auto_checkpoint():
         return
 
@@ -336,7 +342,7 @@ def _auto_checkpoint(exe, program, io_key):
 
     exe_status = g_train_epoch_range._exe_status
     key = _get_running_key(exe._auto_checkpoint_name,
-                           program._auto_checkpoint_name, io_key)
+                           program._auto_checkpoint_name)
 
     t = None
     if key in exe_status:
@@ -362,3 +368,6 @@ def _auto_checkpoint(exe, program, io_key):
         exe_status[key] = t
 
         logging.info("not found checkpoint, so train from scrach")
+
+    assert current_thread(
+    ).name == "MainThread", "auto checkpoint must run under main thread"
