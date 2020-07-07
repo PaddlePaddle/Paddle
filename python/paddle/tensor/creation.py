@@ -65,9 +65,11 @@ def full_like(x, fill_value, dtype=None, name=None):
 
     Args:
         x(Variable): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
-        fill_value(bool|float16|float32|float64|int32|int64|Variable): The value to fill the tensor with. Default value is 0. 
+        fill_value(bool|float|int|Variable): The value to fill the tensor with. Default value is 0. 
             Note: this value shouldn't exceed the range of the output data type.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The default value is None, which means the output data type is the same as input.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The data type can be one
+            of bool, float16, float32, float64, int32, int64 .The default value is None, which means the output 
+            data type is the same as input.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
     
     Returns:
@@ -85,16 +87,14 @@ def full_like(x, fill_value, dtype=None, name=None):
           #output result : [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
     """
 
-    var_dtype = None
     if dtype is None:
-        var_dtype = x.dtype
+        dtype = x.dtype
     else:
         if not isinstance(dtype, core.VarDesc.VarType):
-            var_dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return core.ops.fill_any_like(x, 'value', fill_value, 'dtype',
-                                      var_dtype)
+        return core.ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
 
     helper = LayerHelper("full_like", **locals())
     check_dtype(dtype, 'dtype',
@@ -106,7 +106,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         type='fill_any_like',
         inputs={'X': [x]},
         attrs={'value': fill_value,
-               "dtype": var_dtype},
+               "dtype": dtype},
         outputs={'Out': [out]})
 
     return out

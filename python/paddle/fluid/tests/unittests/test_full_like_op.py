@@ -32,7 +32,7 @@ class TestFullOp(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             fill_value = 2.0
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.full_like(input, fill_value)
             output_dtype = paddle.full_like(input, fill_value, dtype='float32')
 
@@ -67,7 +67,8 @@ class TestFullOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             #for ci coverage
 
-            input_data = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input_data = paddle.data(
+                name='input', dtype='float32', shape=[2, 3])
             output = paddle.full_like(input_data, 2.0)
 
             def test_input_dtype():
