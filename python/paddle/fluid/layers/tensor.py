@@ -681,10 +681,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         attrs['str_value'] = str(float(value))
 
     if in_dygraph_mode():
-        if isinstance(shape, (list, tuple)):
-            shape = utils._convert_shape_to_list(shape)
-        else:
-            shape = list(shape.numpy().astype(int))
+        shape = utils._convert_shape_to_list(shape)
         if out is None:
             out = _varbase_creator(dtype=dtype)
 
