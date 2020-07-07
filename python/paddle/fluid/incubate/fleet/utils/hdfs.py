@@ -24,6 +24,7 @@ import copy
 import errno
 import time
 import logging
+import six
 from . import fs
 from .fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut
 import paddle.fluid as fluid
@@ -69,7 +70,7 @@ class HDFSClient(FS):
         self.pre_commands.append(dfs)
 
         if configs:
-            for k, v in configs.iteritems():
+            for k, v in six.iteritems(configs):
                 config_command = '-D%s=%s' % (k, v)
 
         self._time_out = time_out
