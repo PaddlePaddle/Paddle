@@ -652,6 +652,7 @@ void GeoCommunicator::RecvByCommunicator() {
 
 void GeoCommunicator::RecvSparse(const std::string &varname) {
   VLOG(1) << "RecvSparse receive var: " << varname;
+
   auto *var_latest = recv_scope_->FindVar(varname);
   auto *var_psrever = pserver_scope_->Var(varname);
 
@@ -665,12 +666,17 @@ void GeoCommunicator::RecvSparse(const std::string &varname) {
           "%s in pserver scope is not initialized, please check", varname));
 
   std::vector<int64_t> ids;
-  ids.assign(var_psrever->Get<framework::SelectedRows>().rows());
+  ids.assign(var_psrever->Get<framework::SelectedRows>().rows().begin(),
+             var_psrever->Get<framework::SelectedRows>().rows().end());
+
+  VLOG(1) << "RecvSparse receive var: " << varname
+          << " ids Size: " << ids.size();
 
   auto t_psrever = var_psrever->Get<framework::SelectedRows>().value();
 
   std::vector<std::vector<std::vector<float> *>> old_values;
   auto *ins = distributed::LargeScaleKV::GetInstance();
+  ins->Get(varname)->Init(ids);
   ins->Get(varname)->Get(ids, {"Param"}, &old_values);
 
   auto *t_latest = var_latest->GetMutable<framework::LoDTensor>();
@@ -681,13 +687,15 @@ void GeoCommunicator::RecvSparse(const std::string &varname) {
   std::vector<float> v_delta;
   v_delta.reserve(numel);
 
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
   auto blas = math::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
 
   for (auto j = 0; j < static_cast<int>(ids.size()); ++j) {
     blas.VSUB(dims1, t_psrever.data<float>() + j * dims1,
               old_values[j][0]->data(), v_delta.data() + j * dims1);
-    blas.VADD(dims1, t_latest.data() + ids[j] * dims1,
-              v_delta.data() + j * dims1, t_latest.data() + ids[j] * dims1);
+    blas.VADD(dims1, t_latest->data<float>() + ids[j] * dims1,
+              v_delta.data() + j * dims1,
+              t_latest->data<float>() + ids[j] * dims1);
     blas.VCOPY(dims1, t_psrever.data<float>() + j * dims1,
                old_values[j][0]->data());
   }

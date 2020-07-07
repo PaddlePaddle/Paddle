@@ -100,10 +100,11 @@ bool RequestSendHandler::Handle(const std::string& varname,
                 run_varname)) {
           auto& grad_slr =
               scope->FindVar(run_varname)->Get<framework::SelectedRows>();
-          AsyncSparseParamUpdateRecorder::GetInstance()->Update(
-              run_varname, grad_slr.rows());
 
           ins->Get(large_scale_var->GetMeta()->name)->Init(grad_slr.rows());
+
+          AsyncSparseParamUpdateRecorder::GetInstance()->Update(
+              run_varname, grad_slr.rows());
         }
       }
 
@@ -167,8 +168,10 @@ bool RequestGetHandler::Handle(const std::string& varname,
           AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
           !table_name.empty()) {
         std::vector<int64_t> updated_rows;
+
         AsyncSparseParamUpdateRecorder::GetInstance()->GetAndClear(
             varname, trainer_id, &updated_rows);
+
         if (VLOG_IS_ON(3)) {
           std::ostringstream sstream;
           sstream << "[";
@@ -179,22 +182,26 @@ bool RequestGetHandler::Handle(const std::string& varname,
           VLOG(3) << "updated_rows size: " << updated_rows.size() << " "
                   << sstream.str();
         }
-        auto& origin_tensor =
-            scope_->FindVar(varname)->Get<framework::LoDTensor>();
-        auto* origin_tensor_data = origin_tensor.data<float>();
-        auto& dims = origin_tensor.dims();
+
+        auto* ins = distributed::LargeScaleKV::GetInstance();
+        auto* large_scale_var = ins->Get(varname);
+        std::vector<std::vector<std::vector<float>*>> update_values;
+        large_scale_var->Get(updated_rows, {"Param"}, &update_values);
+
         *outvar = scope->Var();
         auto* out_slr = (*outvar)->GetMutable<framework::SelectedRows>();
+
         out_slr->set_rows(updated_rows);
-        out_slr->set_height(dims[0]);
+        out_slr->set_height(updated_rows.size());
+        auto width = large_scale_var->GetMeta()->value_dims[0];
+
         auto out_dims = framework::make_ddim(
-            {static_cast<int64_t>(updated_rows.size()), dims[1]});
+            {static_cast<int64_t>(updated_rows.size()), width});
         auto* data = out_slr->mutable_value()->mutable_data<float>(
-            out_dims, origin_tensor.place());
-        auto width = dims[1];
+            out_dims, platform::CPUPlace());
+
         for (size_t i = 0; i < updated_rows.size(); ++i) {
-          PADDLE_ENFORCE_LT(updated_rows[i], dims[0]);
-          memcpy(data + i * width, origin_tensor_data + updated_rows[i] * width,
+          memcpy(data + i * width, update_values[i][0]->data(),
                  sizeof(float) * width);
         }
       } else {

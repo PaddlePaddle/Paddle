@@ -60,7 +60,7 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
     // sparse param in recv_scope is LoDTensor
     rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
                                            *local_scope.get(), recv_var_name,
-                                           recv_var_name));
+                                           recv_var_name, recv_var_name));
   }
 
   for (size_t i = 0; i < rets.size(); i++) {
@@ -91,7 +91,7 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
   T *out_data =
       t_->mutable_value()->mutable_data<T>({ids_num, width}, cpu_place);
   t_->set_height(height);
-  out->set_rows(all_ids);
+  t_->set_rows(all_ids);
 
   int64_t cnt = 0;
   for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
@@ -104,9 +104,10 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
     std::copy_n(in_data, rows * width, out_data + cnt);
     cnt += rows * width;
   }
-  out->SyncIndex();
+  t_->SyncIndex();
 }
 
+template <typename T>
 void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto cpu_place = platform::CPUPlace();
@@ -136,7 +137,7 @@ void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
   }
 
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
-  barrier = true;
+  auto barrier = true;
 
   if (barrier) {
     for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
@@ -194,19 +195,18 @@ void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
 template <typename T>
 void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
                                   const framework::Scope &scope, bool barrier) {
-  VLOG(2) << "ParameterRecv in " << rpc_ctx.var_name;
+  VLOG(3) << "ParameterRecv in " << rpc_ctx.var_name;
 
   PADDLE_ENFORCE_GE(rpc_ctx.origin_varnames.size(), 1,
                     platform::errors::InvalidArgument(
                         "origin_varnames.size() >= 1 is permitted"));
 
-  auto *origin_var = scope.FindVar(rpc_ctx.origin_varnames[0]);
-
-  if (origin_var->IsType<framework::SelectedRows>()) {
+  if (rpc_ctx.is_sparse) {
     RecvSelectedRows<T>(rpc_ctx, scope);
   } else {
     RecvLodTensor<T>(rpc_ctx, scope);
   }
+
   VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
 }
 
