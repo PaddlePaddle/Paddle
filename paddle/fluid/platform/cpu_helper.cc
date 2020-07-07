@@ -43,7 +43,9 @@ void SetNumThreads(int num_threads) {
   platform::dynload::MKL_Set_Num_Threads(real_num_threads);
   omp_set_num_threads(real_num_threads);
 #else
-  PADDLE_ENFORCE(false, "To be implemented.");
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "The library (except OPENBLAS, MKLML) is to be implemented, thus "
+      "number of threads can not be set."));
 #endif
 }
 
