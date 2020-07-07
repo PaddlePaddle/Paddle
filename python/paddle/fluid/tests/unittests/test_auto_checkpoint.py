@@ -104,9 +104,20 @@ class AutoCheckpointTest(unittest.TestCase):
 
         return exe, loader, sgd, loss, prog, fluid.default_main_program()
 
-    def _run_save(self, exe, data_loader, main_program):
-        name1 = None
-        name2 = None
+    # break at epoch 0: not save epoch
+    def _run_save_0(self, exe, data_loader, main_program):
+        pass
+
+    # break at epoch 1: saved epoch_no is 0
+    def _run_save_1(self, exe, data_loader, main_program):
+        pass
+
+    # break at epoch 9: saved epoch_no is 9
+    def _run_save_9(self, exe, data_loader, main_program):
+        pass
+
+    # check two exe status
+    def _run_save_2_exe(self, exe, data_loader, main_program):
         for i in fluid.train_eoch_range(10):
             if i == 5:
                 break
@@ -120,8 +131,16 @@ class AutoCheckpointTest(unittest.TestCase):
                 fetch = exe.run(main_program, feed=data, fetch_list=[loss])
                 print("fetch:", loss)
 
-        # there must be one range checkpoint
-        # epoch_no == 5
+    def _run_save_multi_loop(self, exe, data_loader, main_program):
+        for i in fluid.train_eoch_range(10):
+            name1 = acp._get_train_epoch_range().name
+            for data in data_loader():
+                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
+                print("fetch:", loss)
+
+            for data in data_loader():
+                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
+                print("fetch:", loss)
 
         assert acp._get_train_epoch_range() == None
 
@@ -139,6 +158,9 @@ class AutoCheckpointTest(unittest.TestCase):
         self.assertNotEqual(name1, name2, "range must has uniq name")
 
         return name1, name2
+
+    def _run_save(self, exe, data_loader, main_program):
+        pass
 
     def _run_load(self, exe, main_program, name1, name2):
         pass
