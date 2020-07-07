@@ -123,7 +123,7 @@ def naive_bilateral_slice(x, guide, grid, has_offset):
     else:
         output_chans = coeffs_chans / input_chans
     
-    output = np.zeros([bs, output_chans, h, w]).astype('float32')
+    output = np.zeros([bs, int(output_chans), h, w]).astype('float32')
     
     coeff_stride = input_chans
     grid_chans = input_chans * output.shape[1]
@@ -178,6 +178,14 @@ class TestBilateralSliceOp(OpTest):
     def test_check_grad(self):
         place = paddle.fluid.CUDAPlace(0)
         self.check_grad_with_place(place, ['X'], 'Out')
+
+    def test_api(self):
+        x = paddle.fluid.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
+        guide = paddle.fluid.data(name='guide', shape=[None, 101, 60], dtype='float32')
+        grid = paddle.fluid.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
+
+        paddle.fluid.layers.bilateral_slice(x, guide, grid, self.has_offset)
+
 
     def initTestCase(self):
         self.has_offset = False

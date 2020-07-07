@@ -12945,6 +12945,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 	:old_api: paddle.fluid.layers.bilateral_slice
 
     This operation slices input in in the location defined by guide, to produce output.
+    For more information, please refer to `Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>`_
 
     Args:
         x(Variable): The input tensor, which is a 4-D tensor with shape
@@ -12971,8 +12972,8 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 
             # use with affine_grid
             x = fluid.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
-            guide = fluid.data(name='x', shape=[None, 101, 60], dtype='float32')
-            grid = fluid.data(name='x', shape=[None, 12, 8, 10, 6], dtype='float32')
+            guide = fluid.data(name='guide', shape=[None, 101, 60], dtype='float32')
+            grid = fluid.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
 
             # without offset
             output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=False)
@@ -12988,11 +12989,6 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
                              'bilateral_slice')
     check_variable_and_dtype(grid, 'grid', ['float32'],
                              'bilateral_slice')
-    if not isinstance(x, Variable):
-        return ValueError("The x should be a Variable")
-
-    if not isinstance(grid, Variable):
-        return ValueError("The grid should be a Variable")
 
     out = helper.create_variable_for_type_inference(x.dtype)
     inputs = {'X': x, 'Guide': guide, 'Grid': grid}
