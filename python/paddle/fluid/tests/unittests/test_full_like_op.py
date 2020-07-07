@@ -15,9 +15,8 @@
 from __future__ import print_function
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import Program, program_guard
 import paddle.compat as cpt
 import unittest
 import numpy as np
@@ -28,18 +27,18 @@ class TestFullOp(unittest.TestCase):
     """ Test fill_any_like op(whose API is full_like) for attr out. """
 
     def test_attr_tensor_API(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = Program()
+        train_program = Program()
+        with program_guard(train_program, startup_program):
             fill_value = 2.0
             input = paddle.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.full_like(input, fill_value)
             output_dtype = paddle.full_like(input, fill_value, dtype='float32')
 
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+            place = paddle.CPUPlace()
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            exe = paddle.Executor(place)
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)

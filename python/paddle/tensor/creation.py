@@ -100,7 +100,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'full_like')
-    out = helper.create_variable_for_type_inference(dtype=var_dtype)
+    out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
         type='fill_any_like',
