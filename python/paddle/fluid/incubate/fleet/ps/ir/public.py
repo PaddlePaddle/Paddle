@@ -224,7 +224,7 @@ class CompileTimeStrategy(object):
                     ps_sparse_varnames.append(table)
         return ps_sparse_varnames
 
-    def build_ctx(self, vars, mapping, is_grad, is_sparse):
+    def build_ctx(self, vars, mapping, is_grad, is_sparse, is_send):
         def get_grad_var_ep(slices):
             names = []
             eps = []
@@ -232,7 +232,10 @@ class CompileTimeStrategy(object):
 
             for slice in slices:
                 if self.is_geo_mode():
-                    names.append("{}.delta".format(slice.name))
+                    if is_send:
+                        names.append("{}.delta".format(slice.name))
+                    else:
+                        names.append(slice.name)
                 elif is_grad and self.is_sync_mode() and self.get_trainers(
                 ) > 1:
                     names.append("{}.trainer_{}".format(slice.name,
@@ -273,12 +276,14 @@ class CompileTimeStrategy(object):
         if not self.is_geo_mode():
             for merged in self.merged_dense_pairs:
                 grad = merged[1]
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False)
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False,
+                                     True)
                 send_ctx[ctx.var_name()] = ctx
 
             for merged in self.merged_sparse_pairs:
                 grad = merged[1]
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, True)
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
+                                     True)
                 send_ctx[ctx.var_name()] = ctx
 
             if self.is_async_mode():
@@ -288,9 +293,9 @@ class CompileTimeStrategy(object):
             for pairs in self.origin_sparse_pairs:
                 param, grad = pairs
                 param_ctx = self.build_ctx(param, self.param_var_mapping, False,
-                                           True)
+                                           True, True)
                 grad_ctx = self.build_ctx(grad, self.grad_var_mapping, True,
-                                          True)
+                                          True, True)
 
                 ctx = CommContext(param_ctx.var_name(),
                                   param_ctx.split_varnames(),
@@ -311,24 +316,27 @@ class CompileTimeStrategy(object):
             for pairs in self.merged_dense_pairs:
                 param = pairs[0]
                 ctx = self.build_ctx(param, self.param_var_mapping, False,
-                                     False)
+                                     False, True)
                 send_ctx[ctx.var_name()] = ctx
 
             for pairs in self.merged_sparse_pairs:
                 param = pairs[0]
-                ctx = self.build_ctx(param, self.param_var_mapping, False, True)
+                ctx = self.build_ctx(param, self.param_var_mapping, False, True,
+                                     True)
                 send_ctx[ctx.var_name()] = ctx
             name, ctx = self._step_ctx()
             send_ctx[name] = ctx
         else:
             for merged in self.merged_dense_pairs:
                 grad = merged[1]
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False)
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False,
+                                     True)
                 send_ctx[ctx.var_name()] = ctx
 
             for merged in self.merged_sparse_pairs:
                 grad = merged[1]
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False)
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False,
+                                     True)
                 send_ctx[ctx.var_name()] = ctx
 
             name, ctx = self._step_ctx()
@@ -352,12 +360,14 @@ class CompileTimeStrategy(object):
             if params.merged_var.name in sparse_varnames:
                 continue
 
-            ctx = self.build_ctx(params, self.param_var_mapping, False, False)
+            ctx = self.build_ctx(params, self.param_var_mapping, False, False,
+                                 False)
             dense_recv_ctx[ctx.var_name()] = ctx
 
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
-            ctx = self.build_ctx(param, self.param_var_mapping, False, True)
+            ctx = self.build_ctx(param, self.param_var_mapping, False, True,
+                                 False)
             sparse_recv_ctx[ctx.var_name()] = ctx
 
         if recv_type == 1:
