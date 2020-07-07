@@ -71,6 +71,7 @@ class ExeTrainStatus(SerializableBase):
         self._hash_key = None
         self._key = None
         self._checkpoint_path = None
+        self._checkpoint_no = None
         self._restored = False
         self._exe = None
         self._program = None
@@ -104,12 +105,15 @@ class ExeTrainStatus(SerializableBase):
         d = None
         file_name = "{}/{}".format(path, self._file_name)
         with open(file_name, 'r') as f:
-            d = json.load(f)
+            s = f.read()
+            d = self._deserialize(s)
 
+    def _deserialize(self, s):
         self._epoch_no = d["epoch_no"]
         self._key = d["key"]
         self._hash_key = d["hash_key"]
         self._checkpoint_path = d["checkpoint_path"]
+        self._checkpoint_no = d["checkpoint_no"]
         if "restored" in d:
             self._restored = d["restored"]
 
@@ -122,6 +126,7 @@ class ExeTrainStatus(SerializableBase):
             "restored": self._restored,
             "exe_name": self._exe._auto_checkpoint_name,
             "program_name": self._program._auto_checkpoint_name,
+            "checkpoint_no": self._checkpoint_no
         }
 
     def __str__(self):
@@ -150,11 +155,12 @@ class TrainEpochRange(SerializableBase):
         }
 
         self._hdfs = HDFSClient(self._hadoop_home, config)
-        self._cp_path = "{}/{}".format(self._checkpoint_path)
 
         self._cper = Checkpointer(self._hdfs)
         self._exe_status = {}
         self._file_name = "range_train_status"
+
+        self._cper.load_checkpoint(self._checkpoint_path, [self])
 
     def _to_dict(self):
         d = {
@@ -204,7 +210,8 @@ class TrainEpochRange(SerializableBase):
         # exes status
         e = d["exe_status"]
         for k, v in e:
-            t = json.loads(v)
+            t = ExeTrainStatus()
+            t._deserialize(v)
             self._exe_stats[k] = t
 
     def next(self):
@@ -225,21 +232,17 @@ class TrainEpochRange(SerializableBase):
 
     def save_checkpoint(self):
         for t in self._exe_status:
-            path = _save_exe_checkpoint(t._exe, t._program, t)
+            m = PaddleModel(exe, program)
+            path, checkpoint_no = self._cper.save_checkpoint(t._checkpoint_path)
+            # index info
             t._checkpoint_path = path
+            t._checkpoint_no = checkpoint_no
             t.epoch_no = self.get()
-            logging.info("save exe checkpoint:{}".format(t))
-        self._save_range_checkpoint()
-        logging.info("save train_epoch_range checkpoint:{}".format(self))
 
-    def load_checkpoint(self):
-        self._status, self._exe_status = self._load_range_checkpoint()
-        if self._status is None:
-            t = TrainStatus()
-            t._epoch_no = -1
-            t._hash_key = name
-            t._key = name
-            self._status = t
+            logging.info("save exe checkpoint:{}".format(t))
+
+        self._cper.save_checkpoint(self._checkpoint_path, [self])
+        logging.info("save train_epoch_range checkpoint:{}".format(self))
 
     @static
     def _generate_range_name():
@@ -295,14 +298,6 @@ def _initial_names(exe, program, io_key):
         exe._auto_checkpoint_name = _generate_executor_name()
 
 
-def _load_exe_checkpoint(exe, program, path):
-    pass
-
-
-def _save_exe_checkpoint(exe, program, status):
-    pass
-
-
 def _auto_checkpoint(exe, program, io_key):
     if not _can_auto_checkpoint():
         return
@@ -317,9 +312,10 @@ def _auto_checkpoint(exe, program, io_key):
     if key in exe_status:
         t = exe_status[key]
         if not t._restored:
-            _load_exe_checkpoint(exe, program, t._checkpoint_path)
-            logging.info("load_checkpoint from path:{} content:{}".format(
-                t._checkpoint_path, t))
+            a = Checkpointer(g_train_epoch_range.hdfs)
+            m = PaddleModel(exe, program)
+            a.load_checkpoint(t._checkpoint_path, [m])
+            logging.info("load_checkpoint exe checkpoint from {}".format(t))
             t._restored = True
     else:
         h = _get_hash(key)
