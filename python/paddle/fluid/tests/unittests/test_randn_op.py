@@ -17,9 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import Program, program_guard
 
 
 class TestRandnOp(unittest.TestCase):
@@ -38,9 +37,9 @@ class TestRandnOp(unittest.TestCase):
             var_shape = paddle.nn.data('X', [2], 'int32')
             x4 = paddle.randn(var_shape)
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+        exe = paddle.Executor(place)
         res = exe.run(train_program,
                       feed={'X': np.array(
                           shape, dtype='int32')},
@@ -54,8 +53,8 @@ class TestRandnOp(unittest.TestCase):
 class TestRandnOpForDygraph(unittest.TestCase):
     def test_api(self):
         shape = [1000, 784]
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
         with paddle.imperative.guard(place):
             x1 = paddle.randn(shape, 'float32')
             x2 = paddle.randn(shape, 'float64')
