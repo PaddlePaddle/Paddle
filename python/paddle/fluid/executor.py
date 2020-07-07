@@ -423,8 +423,9 @@ def _as_lodtensor(data, place, dtype=None):
                 dtype, core.VarDesc.VarType) else dtype
             data = np.array(data).astype(dtype)
         else:
-            raise TypeError("The feed data of type {} is not supported".format(
-                type(data)))
+            raise TypeError(
+                "Convert data of type {} to Tensor is not supported".format(
+                    type(data)))
 
     # convert numpy.ndarray to tensor
     tensor = core.LoDTensor()
