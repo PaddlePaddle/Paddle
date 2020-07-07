@@ -189,6 +189,8 @@ class TrainEpochRange(SerializableBase):
         self._exe_status = {}
         self._file_name = "range_train_status"
 
+        assert current_thread(
+        ).name == "MainThread", "auto checkpoint must run under main thread"
         self._cper.load_checkpoint(self._checkpoint_path + "/range", [self])
 
     def _to_dict(self):
@@ -244,6 +246,9 @@ class TrainEpochRange(SerializableBase):
             self._exe_stats[k] = t
 
     def next(self):
+        assert current_thread(
+        ).name == "MainThread", "auto checkpoint must run under main thread"
+
         if self._max_epoch_num < 0:
             self._max_epoch_num = sys.maxint - 1
 
