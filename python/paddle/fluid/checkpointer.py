@@ -30,12 +30,13 @@ class Checkpointer(object):
         """
         Serialize objects in slists to path
         """
-        if not fs.is_exist(path):
-            fs.mkdirs(path)
+        if not self._fs.is_exist(path):
+            self._fs.mkdirs(path)
         else:
-            assert fs.is_dir(path), "path:%s must be a directory".format(path)
+            assert self._fs.is_dir(path), "path:%s must be a directory".format(
+                path)
 
-        max_no = self._get_last_checkpoint_no(path, fs=fs)
+        max_no = self._get_last_checkpoint_no(path, self._fs=self._fs)
         if max_no < 0:
             max_no = -1
 
@@ -46,13 +47,13 @@ class Checkpointer(object):
         local_fs = LocalFS()
 
         cache_path = None
-        if fs.need_upload_download():
+        if self._fs.need_upload_download():
             cache_path = "{}/{}.{}.saved_cache".format(
                 local_cache_path, self._checkpoint_prefix, max_no + 1)
             if not local_fs.is_exist(cache_path):
                 local_fs.mkdirs(cache_path)
             else:
-                assert fs.is_dir(
+                assert self._fs.is_dir(
                     path), "cache path:{} must be a directory".format(
                         cache_path)
 
@@ -61,10 +62,10 @@ class Checkpointer(object):
         for s in slists:
             s.serialize(path)
 
-        if fs.need_upload_download():
-            fs.delete(tmp_path)
-            fs.upload(cache_path, tmp_path)
-        fs.mv(tmp_path, real_path)
+        if self._fs.need_upload_download():
+            self._fs.delete(tmp_path)
+            self._fs.upload(cache_path, tmp_path)
+        self._fs.mv(tmp_path, real_path)
 
         if not remain_all_checkpoint:
             self.clean_redundant_checkpoints(path)
@@ -74,7 +75,7 @@ class Checkpointer(object):
         Deserialize objects in slists from path
         """
 
-        max_no = self._get_last_checkpoint_no(path, fs)
+        max_no = self._get_last_checkpoint_no(path, self._fs)
 
         if not ignore_empty:
             assert max_no >= 0, "Can't find checkpoint"
@@ -83,7 +84,7 @@ class Checkpointer(object):
             return None
 
         local_fs = LocalFS()
-        if fs.need_upload_download():
+        if self._fs.need_upload_download():
             cache_path = "{}/{}.{}.load_cache.{}".format(
                 local_cache_path, self._checkpoint_prefix, max_no, trainer_id)
             if not local_fs.is_exist(local_cache_path):
@@ -93,18 +94,60 @@ class Checkpointer(object):
 
         real_path = "{}/{}.{}".format(path, self._checkpoint_prefix, max_no)
         load_path = real_path
-        if fs.need_upload_download():
-            fs.download(real_path, cache_path)
+        if self._fs.need_upload_download():
+            self._fs.download(real_path, cache_path)
             load_path = cache_path
 
         for s in slists:
             s.deserialize(save_path)
 
-    def _get_last_checkpoint_no(self, path):
-        pass
+    def _get_last_checkpoint_no(self, root_path, fs):
+        """
+        only get the first depth
+        """
+        max_no = -1
+        d = {}
+        dirs = self._fs.list_dirs(root_path)
+        for d in dirs:
+            g = d.split(".")
+            if len(g) != 2:
+                continue
 
-    def clean_redundant_check_points(self):
-        pass
+            if g[0] != "__paddle_fleet_checkpoint__":
+                continue
 
-    def get_path(self, path):
-        pass
+            try:
+                n = int(g[1])
+                if n > max_no:
+                    max_no = n
+            except:
+                continue
+
+        return max_no
+
+    def clean_redundant_checkpoints(self, root_path, checkpoint_num=1):
+        max_no = self._get_last_checkpoint_no(root_path, self._fs)
+        if max_no < 0:
+            return
+
+        if checkpoint_num < 1:
+            checkpoint_num = 1
+
+        dirs = self._fs.list_dirs(root_path)
+        for d in dirs:
+            g = d.split(".")
+            if len(g) != 2:
+                continue
+
+            if g[0] != self._checkpoint_prefix:
+                continue
+
+            try:
+                n = int(g[1])
+                if n <= max_no - checkpoint_num:
+                    path = "{}/{}.{}".format(root_path, self._checkpoint_prefix,
+                                             n)
+                    self._fs.delete(path)
+            except Exception as e:
+                print(e)
+                continue
