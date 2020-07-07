@@ -149,6 +149,8 @@ def index_select(x, index, axis=0, name=None):
         x (Variable): The input tensor variable.The dtype of x can be one of float32, float64, int32, int64.
         index (Variable): The 1-D tensor containing the indices to index.
         axis (int32|int64): The dimension in which we index.
+        name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
+            Default value is None, the framework set the name of output variable.  
 
     Returns:
         Variable: A Tensor with same data type as `input`.
@@ -167,12 +169,10 @@ def index_select(x, index, axis=0, name=None):
             x = paddle.to_variable(data)
             index = paddle.to_variable(data_index)
             out_z1 = paddle.index_select(x=x, index=index)
-            print(out_z1.numpy())
             #[[1. 2. 3. 4.]
             # [5. 6. 7. 8.]
             # [5. 6. 7. 8.]]
             out_z2 = paddle.index_select(x=x, index=index, dim=1)
-            print(out_z2.numpy())
             #[[ 1.  2.  2.]
             # [ 5.  6.  6.]
             # [ 9. 10. 10.]]
