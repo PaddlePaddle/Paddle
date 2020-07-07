@@ -50,9 +50,6 @@ static inline framework::DDim ComputeAndCheckShape(
           }
         }
       } else {
-        if (!is_runtime && inputs_dims[i][j] == -1) {
-          out_dims[axis] = -1;
-        }
         bool check_shape =
             is_runtime || (out_dims[j] > 0 && inputs_dims[i][j] > 0);
         if (check_shape) {
@@ -64,6 +61,9 @@ static inline framework::DDim ComputeAndCheckShape(
                                 "But received input[0]'s shape = "
                                 "[%s], input[%d]'s shape = [%s].",
                                 j, i, inputs_dims[0], i, inputs_dims[i]));
+        }
+        if (!is_runtime && out_dims[j] == -1 && inputs_dims[i][j] > 0) {
+          out_dims[j] = inputs_dims[i][j];
         }
       }
     }
