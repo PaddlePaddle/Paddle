@@ -333,12 +333,8 @@ def zeros(shape, dtype, name=None):
         shape(tuple|list): Shape of output tensor.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
             bool, float16, float32, float64, int32 and int64.
-        out(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
-        device(str, optional): Which device to run the operator. The :attr:`device` must be
-            None,'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default value is False.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
@@ -522,14 +518,13 @@ def full(shape, fill_value, dtype=None, name=None):
 
           paddle.enable_imperative()  # Now we are in imperative mode
           data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') # data1=[[0],[0]]
-          data2 = paddle.full(shape=[2,1], fill_value=5, dtype='int64') # data2=[[5],[5]]
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = paddle.fill_constant([1], "int32", 2)
           data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
-          shape = paddle.fill_constant([1,2], "int32", 2) # shape=[2,2]
+          shape = paddle.fill_constant([1, 2], "int32", 2) # shape=[2,2]
           data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
           
           # attr value is an Variable Tensor.
@@ -542,8 +537,7 @@ def full(shape, fill_value, dtype=None, name=None):
     if dtype is None:
         dtype = 'float32'
 
-    out = fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
-    return out
+    return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
 
 def arange(start, end, step=1, dtype=None, name=None):

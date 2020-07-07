@@ -644,6 +644,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: Tensor which is created according to shape and dtype.
@@ -666,7 +668,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
           data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
-          shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
+          shape = fluid.layers.fill_constant([2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
           
           # attr value is an Variable Tensor.
@@ -1069,6 +1071,8 @@ def zeros(shape, dtype, force_cpu=False, name=None):
         force_cpu (bool, optional): Whether force to store the output tensor in CPU memory.
             If :attr:`force_cpu` is False, the output tensor will be stored in running device memory.
             Default: False.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
