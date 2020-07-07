@@ -469,16 +469,14 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         dtype = 'float32'
     if num_columns is None:
         num_columns = num_rows
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return core.ops.eye('dtype', c_dtype, 'num_rows', num_rows,
-                            'num_columns', num_columns)
+        return core.ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
+                            num_columns)
 
     helper = LayerHelper("eye", **locals())
-
-    if dtype is None:
-        dtype = 'float32'
 
     check_dtype(dtype, 'dtype',
                 ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
@@ -498,9 +496,8 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         attrs={
             'num_rows': num_rows,
             'num_columns': num_columns,
-            'dtype': c_dtype
-        },
-        stop_gradient=True)
+            'dtype': dtype
+        })
     return out
 
 
