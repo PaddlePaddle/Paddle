@@ -282,7 +282,7 @@ def _contain_var(list_or_tuple):
     return False
 
 
-def _get_shape_tensor_inputs(inputs, helper, attrs, shape, op_type):
+def _get_shape_tensor_inputs(inputs, attrs, shape, op_type):
     from .tensor import fill_constant, cast
 
     def _get_attr_shape(list_shape):
@@ -295,7 +295,7 @@ def _get_shape_tensor_inputs(inputs, helper, attrs, shape, op_type):
         return attr_shape
 
     def _get_shape_tensor(list_shape):
-        new_shape_tensor = []
+        shape_tensor_list = []
         for idx, dim in enumerate(list_shape):
             if isinstance(dim, Variable):
                 dim.stop_gradient = True
@@ -305,11 +305,11 @@ def _get_shape_tensor_inputs(inputs, helper, attrs, shape, op_type):
                     '(When type of shape in' + op_type + 'is list or tuple.)')
                 if convert_dtype(dim.dtype) == 'int64':
                     dim = cast(x=dim, dtype='int32')
-                new_shape_tensor.append(dim)
+                shape_tensor_list.append(dim)
             else:
                 temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
-                new_shape_tensor.append(temp_out)
-        return new_shape_tensor
+                shape_tensor_list.append(temp_out)
+        return shape_tensor_list
 
     if isinstance(shape, Variable):
         shape.stop_gradient = True
@@ -325,8 +325,8 @@ def _get_shape_tensor_inputs(inputs, helper, attrs, shape, op_type):
         attrs["shape"] = _get_attr_shape(shape)
         if _contain_var(shape):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)
-
-    return inputs
+    else:
+        raise TypeError("Shape only supports Variable, or list, or tuple.")
 
 
 def _convert_to_tensor_list(old_list, dtype="int32"):
@@ -345,3 +345,16 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
             temp_out = fill_constant([1], dtype, ele, force_cpu=True)
             new_list_tensor.append(temp_out)
     return new_list_tensor
+
+
+def _convert_shape_to_list(shape):
+    """
+    Convert shape(list, tuple, variable) to list in imperative mode
+    """
+    if isinstance(shape, (list, tuple)):
+        shape = list(
+            map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
+                shape))
+    else:
+        shape = list(shape.numpy().astype(int))
+    return shape
