@@ -1396,7 +1396,7 @@ def range(start, end, step, dtype):
     return out
 
 
-def linspace(start, stop, num, dtype):
+def linspace(start, stop, num, dtype, name=None):
     """
     This OP return fixed number of evenly spaced values within a given interval.
 
@@ -1408,6 +1408,8 @@ def linspace(start, stop, num, dtype):
         num(int|Variable): The input :attr:`num` is given num of the sequence. It is an int scalar, \
             or a tensor of shape [1] with type int32.
         dtype(string): The data type of output tensor, it could be 'float32' and 'float64'.
+        name(str, optional): Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name`.Default: None.
 
     Returns:
         Variable, the output data type will be float32, float64.: The 1-D tensor with fixed number of evenly spaced values, \
@@ -1422,27 +1424,26 @@ def linspace(start, stop, num, dtype):
              data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
 
     """
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+    if not isinstance(stop, Variable):
+        stop = fill_constant([1], dtype, stop)
+    if not isinstance(num, Variable):
+        num = fill_constant([1], 'int32', num)
+    if in_dygraph_mode():
+        return core.ops.linspace(start, stop, num)
+
     helper = LayerHelper("linspace", **locals())
 
     check_type(start, 'start', (Variable, float, int), linspace)
     check_type(stop, 'stop', (Variable, float, int), linspace)
     check_type(num, 'num', (Variable, float, int), linspace)
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'linspace')
 
-    if not isinstance(start, Variable):
-        start = fill_constant([1], dtype, start)
-    else:
-        check_variable_and_dtype(start, "start", ["float32", "float64"],
-                                 "linspace")
+    check_variable_and_dtype(start, "start", ["float32", "float64"], "linspace")
 
-    if not isinstance(stop, Variable):
-        stop = fill_constant([1], dtype, stop)
-    else:
-        check_variable_and_dtype(stop, "stop", ["float32", "float64"],
-                                 "linspace")
-    if not isinstance(num, Variable):
-        num = fill_constant([1], 'int32', num)
-    else:
-        check_variable_and_dtype(num, "num", ["int32"], "linspace")
+    check_variable_and_dtype(stop, "stop", ["float32", "float64"], "linspace")
+    check_variable_and_dtype(num, "num", ["int32"], "linspace")
 
     out = helper.create_variable_for_type_inference(dtype=start.dtype)
 

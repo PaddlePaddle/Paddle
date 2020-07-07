@@ -27,8 +27,8 @@ from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
 from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import eye  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
-
 from ..fluid.layers import create_tensor  #DEFINE_ALIAS
+import paddle
 
 __all__ = [
     'create_tensor',
@@ -121,7 +121,7 @@ def full_like(input,
     return out
 
 
-def linspace(start, stop, num, dtype, out=None, device=None, name=None):
+def linspace(start, stop, num, dtype=None, name=None):
     """
 	:alias_main: paddle.linspace
 	:alias: paddle.linspace,paddle.tensor.linspace,paddle.tensor.creation.linspace
@@ -137,13 +137,8 @@ def linspace(start, stop, num, dtype, out=None, device=None, name=None):
             or a tensor of shape [1] with input data type float32, float64.
         num(int|Variable): The input :attr:`num` is given num of the sequence. It is an int scalar, \
             or a tensor of shape [1] with type int32.
-        dtype(string): The data type of output tensor, it could be 'float32' and 'float64'.
-        out (Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result. Default: None.
-        device (string, optional): Which device to run the operator. The :attr:`device` must be
-            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default: None.
+        dtype(string| optional): The data type of output tensor, it could be 'float32' and 'float64'.
+            Default is None(data type is float32)
         name(str, optional): Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name`.Default: None.
 
@@ -160,54 +155,10 @@ def linspace(start, stop, num, dtype, out=None, device=None, name=None):
              data = paddle.linspace(0, 10, 1, dtype='float32') # [0.0]
 
     """
-    helper = LayerHelper("linspace", **locals())
-
-    if not isinstance(start, Variable):
-        start = fill_constant([1], dtype, start)
-    if not isinstance(stop, Variable):
-        stop = fill_constant([1], dtype, stop)
-    if not isinstance(num, Variable):
-        num = fill_constant([1], 'int32', num)
-
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=start.dtype)
-    else:
-        check_dtype(
-            out.dtype, out.name,
-            convert_dtype(start.dtype), 'linspace',
-            "The out data type '%s' in linspace must be the same with '%s' seted by parameter 'dtype'."
-            % (out.dtype, dtype))
-        if name:
-            warning.warn(
-                "The output Variable name of the paddle.tensor.linspace operation can only be given by parameter out or name.\
-                When parameter out and name are set at the same time, out has a higher priority than name. \
-                Finally, the output Variable name is same as the out name %s." %
-                out.name,
-                category=UserWarning,
-                stacklevel=2)
-
-    if device is not None:
-        if device not in ['cpu', 'gpu']:
-            raise ValueError(
-                "The value of 'device' in linspace operation must be cpu or gpu, but received %s."
-                % (device))
-        else:
-            with device_guard(device):
-                helper.append_op(
-                    type='linspace',
-                    inputs={'Start': start,
-                            'Stop': stop,
-                            'Num': num},
-                    outputs={'Out': [out]})
-    else:
-        helper.append_op(
-            type='linspace',
-            inputs={'Start': start,
-                    'Stop': stop,
-                    'Num': num},
-            outputs={'Out': [out]})
-
-    return out
+    if dtype is None:
+        dtype = 'float32'
+    return paddle.fluid.layers.linspace(
+        start=start, stop=stop, num=num, dtype=dtype, name=name)
 
 
 def ones(shape, dtype=None, out=None, device=None):
