@@ -16,9 +16,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import Program, program_guard
 
 
 def check_randperm_out(n, data_np):
@@ -94,18 +93,32 @@ class TestRandpermOpFloat64(TestRandpermOp):
 
 
 class TestRandpermOpError(unittest.TestCase):
-    """ Test randperm op for raise error. """
-
     def test_errors(self):
-        main_prog = Program()
-        start_prog = Program()
-        with program_guard(main_prog, start_prog):
+        with program_guard(Program(), Program()):
             self.assertRaises(ValueError, paddle.randperm, -3)
             self.assertRaises(TypeError, paddle.randperm, 10, 'int8')
 
 
+class TestRandpermAPI(unittest.TestCase):
+    def test_out(self):
+        n = 10
+        place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+        with program_guard(Program(), Program()):
+            x1 = paddle.randperm(n)
+            x2 = paddle.randperm(n, 'float32')
+
+            exe = paddle.Executor(place)
+            res = exe.run(fetch_list=[x1, x2])
+
+            self.assertEqual(res[0].dtype, np.int64)
+            self.assertEqual(res[1].dtype, np.float32)
+            self.assertTrue(check_randperm_out(n, res[0]))
+            self.assertTrue(check_randperm_out(n, res[1]))
+
+
 class TestRandpermImperative(unittest.TestCase):
-    def test_check_output(self):
+    def test_out(self):
         with paddle.imperative.guard():
             n = 10
             for dtype in ['int32', np.int64, 'float32', 'float64']:
