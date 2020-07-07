@@ -109,6 +109,8 @@ class TestDataLoaderAssert(unittest.TestCase):
 
 # CI Converage cannot record stub in subprocess,
 # HACK a _worker_loop in main process call here
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestDataLoaderWorkerLoop(unittest.TestCase):
     def run_without_worker_done(self, use_shared_memory=True):
         try:
