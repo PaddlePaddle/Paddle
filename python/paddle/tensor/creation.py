@@ -80,16 +80,17 @@ def full_like(x, fill_value, dtype=None, name=None):
           import numpy as np
           
           paddle.enable_imperative()  # Now we are in imperative mode 
-          input = paddle.data(name='input', dtype='float32', shape=[2, 3])
+          input = paddle.full(name='input', dtype='float32', shape=[2, 3])
           output = paddle.full_like(input, 2.0)
-          print(output.numpy()) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
+          #output result : [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
     """
 
     var_dtype = None
     if dtype is None:
         var_dtype = x.dtype
     else:
-        var_dtype = convert_np_dtype_to_dtype_(dtype)
+        if not isinstance(dtype, core.VarDesc.VarType):
+            var_dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
         return core.ops.fill_any_like(x, 'value', fill_value, 'dtype',
