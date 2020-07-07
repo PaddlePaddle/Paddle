@@ -711,7 +711,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
 
     if isinstance(shape, Variable):
-        check_dtype(shape, 'shape', ['int32', 'int64'], 'fill_constant')
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
 
     if out is not None:
         check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
