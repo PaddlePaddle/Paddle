@@ -171,22 +171,26 @@ HOSTDEVICE inline bfloat16 operator-(const bfloat16& a) {
   return res;
 }
 
-HOSTDEVICE inline bfloat16& operator+=(bfloat16& a, const bfloat16& b) {  // NOLINT
+HOSTDEVICE inline bfloat16& operator+=(bfloat16& a,  // NOLINT
+                                       const bfloat16& b) {
   a = bfloat16(static_cast<float>(a) + static_cast<float>(b));
   return a;
 }
 
-HOSTDEVICE inline bfloat16& operator-=(bfloat16& a, const bfloat16& b) {  // NOLINT
+HOSTDEVICE inline bfloat16& operator-=(bfloat16& a,  // NOLINT
+                                       const bfloat16& b) {
   a = bfloat16(static_cast<float>(a) - static_cast<float>(b));
   return a;
 }
 
-HOSTDEVICE inline bfloat16& operator*=(bfloat16& a, const bfloat16& b) {  // NOLINT
+HOSTDEVICE inline bfloat16& operator*=(bfloat16& a,  // NOLINT
+                                       const bfloat16& b) {
   a = bfloat16(static_cast<float>(a) * static_cast<float>(b));
   return a;
 }
 
-HOSTDEVICE inline bfloat16& operator/=(bfloat16& a, const bfloat16& b) {  // NOLINT
+HOSTDEVICE inline bfloat16& operator/=(bfloat16& a,  // NOLINT
+                                       const bfloat16& b) {
   a = bfloat16(static_cast<float>(a) / static_cast<float>(b));
   return a;
 }
