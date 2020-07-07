@@ -132,31 +132,6 @@ g_train_epoch_range = None
 g_checker = AutoCheckpointChecker()
 
 
-class PaddleModel(SerializableBase):
-    def __init__(self, exe, program):
-        self._exe = exe
-        self._origin_program = program
-        self._program = program
-        if isinstance(program, compiler.CompiledProgram):
-            self._program = program._program
-
-        self._file_name = "_paddle_fleet_param__"
-
-    def serialize(self, path):
-        io.save_persistables(
-            executor=self._exe,
-            dirname=path,
-            main_program=self._program,
-            filename=self._file_name)
-
-    def deserialize(self, path):
-        io.load_persistables(
-            executor=exe,
-            dirname=path,
-            main_program=self._program,
-            filename=self._file_name)
-
-
 class TrainEpochRange(SerializableBase):
     def __init__(self, max_epoch_num, name):
         self._max_epoch_num = max_epoch_num
