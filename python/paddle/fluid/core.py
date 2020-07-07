@@ -174,7 +174,7 @@ def run_shell_command(cmd):
 
 def get_dso_path(core_so, dso_name):
     if core_so and dso_name:
-        return run_shell_command("ldd --version | awk '/ldd/{print $NF}'" %
+        return run_shell_command("ldd %s|grep %s|awk '{print $3}'" %
                                  (core_so, dso_name)).strip()
     else:
         return None
@@ -201,7 +201,7 @@ def pre_load(dso_name):
 
 
 def get_glibc_ver():
-    return run_shell_command("ldd --version|grep ldd|awk '{print $3}'").strip()
+    return run_shell_command("ldd --version | awk '/ldd/{print $NF}'").strip()
 
 
 def less_than_ver(a, b):
