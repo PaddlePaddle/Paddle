@@ -675,10 +675,13 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
           val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
           data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
-    if convert_dtype(dtype) in ['int64', 'int32']:
-        attrs['str_value'] = str(int(value))
-    else:
-        attrs['str_value'] = str(float(value))
+
+    attrs = {'force_cpu': force_cpu}
+    if not isinstance(shape, Variable):
+        if convert_dtype(dtype) in ['int64', 'int32']:
+            attrs['str_value'] = str(int(value))
+        else:
+            attrs['str_value'] = str(float(value))
 
     if in_dygraph_mode():
         shape = utils._convert_shape_to_list(shape)
@@ -700,7 +703,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
     helper = LayerHelper("fill_constant", **locals())
     inputs = {}
-    attrs = {'force_cpu': force_cpu}
     if isinstance(value, Variable):
         inputs['ValueTensor'] = value
     else:
