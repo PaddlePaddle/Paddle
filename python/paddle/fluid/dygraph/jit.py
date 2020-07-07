@@ -489,10 +489,10 @@ class SaveLoadConfig(object):
     def separate_params(self):
         """
         Configure whether to save the Layer parameters as separete files.
-        (In order to be compatible with the behavior of :ref:`api_fluid_io_load_inference_model` )
+        (In order to be compatible with the behavior of :ref:`api_fluid_io_save_inference_model` )
 
-        If True, each parameter will be saved to a file separately, the file name is the parameter name. Default False.
-        If True, the SaveLoadConfig.params_filename configuration will not take effect.
+        If True, each parameter will be saved to a file separately, the file name is the parameter name,
+        and the SaveLoadConfig.params_filename configuration will not take effect. Default False.
 
         Examples:
             .. code-block:: python
@@ -572,11 +572,11 @@ def save(layer, model_path, input_spec=None, configs=None):
 
     The saved model can be loaded by follow APIs:
       - :ref:`api_fluid_dygraph_jit_load`
-      - :ref:`api_fluid_io_load_inference_model` (need pass ``params_filename=__variables__``)
+      - :ref:`api_fluid_io_load_inference_model` (need pass ``params_filename='__variables__'``)
       - Other C++ inference APIs
 
     Args:
-        layer (Layer): the Layer to be saved. The Layer should be decorated by `declarative`.
+        layer (Layer): the Layer to be saved. The Layer should be decorated by `@declarative`.
         model_path (str): the directory to save the model.
         input_spec (list[Varibale], optional): Describes the input of the saved model. 
             It is the example inputs that will be passed to saved TranslatedLayer's forward
@@ -770,11 +770,11 @@ def load(model_path, configs=None):
     as :ref:`api_fluid_dygraph_TranslatedLayer`, then performing inference or fine-tune training.
 
     .. note::
-        For some historical reasons, if you load model saved by :ref:`api_fluid_io_load_inference_model`,
-        there will be the following limitations when using it:
+        For some historical reasons, if you load model saved by :ref:`api_fluid_io_save_inference_model`,
+        there will be the following limitations when using it in fine-tuning:
         1. Imperative mode do not support LoDTensor. All original model's feed targets or parametars that depend on LoD are temporarily unavailable.
         2. All saved model's feed targets need to be passed into TranslatedLayer's forwrad function.
-        3. The ``stop_gradient`` information is lost and can not be recovered.
+        3. The variable's ``stop_gradient`` information is lost and can not be recovered.
         4. The parameter's ``trainable`` information is lost and can not be recovered.
 
     Args:
