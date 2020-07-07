@@ -141,7 +141,7 @@ class TestFillAnyLikeOpError(unittest.TestCase):
             self.assertRaises(
                 ValueError,
                 paddle.full_like,
-                input=input_data,
+                x=input_data,
                 fill_value=2,
                 dtype='uint4')
             self.assertRaises(
@@ -275,6 +275,16 @@ class TestOnesZerosError(unittest.TestCase):
                 fluid.layers.ones_like(data, dtype="float32", out=out)
 
         self.assertRaises(TypeError, test_ones_like_out_dtype_error)
+
+
+class ImperativeModeTest(unittest.TestCase):
+    def test_full_like_imperative(self):
+        with paddle.imperative.guard():
+            input = paddle.arange(6, 10, dtype='float32')
+            out = paddle.full_like(input, fill_value=888.88, dtype='float32')
+            out_numpy = np.random.random((4)).astype("float32")
+            out_numpy.fill(888.88)
+            self.assertTrue((out.numpy() == out_numpy).all(), True)
 
 
 if __name__ == "__main__":
