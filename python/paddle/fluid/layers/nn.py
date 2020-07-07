@@ -9862,7 +9862,7 @@ def flatten_2d(x, axis=1, name=None):
             import paddle.fluid as fluid
             x = fluid.data(name="x", shape=[4, 4, 3], dtype="float32")
             # x shape is [4, 4, 3]
-            out = fluid.layers.flatten(x=x, axis=2)
+            out = fluid.layers.flatten_2d(x=x, axis=2)
             # out shape is [16, 3]
     """
     check_variable_and_dtype(
