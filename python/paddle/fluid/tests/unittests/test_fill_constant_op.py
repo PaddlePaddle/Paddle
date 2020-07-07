@@ -86,14 +86,12 @@ class TestFillConstantOp4(OpTest):
 class TestFillConstantOp5(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
-            data = fluid.data(name="X", shape=[1], dtype="float32")
-            out = paddle.zeros(shape=[1], out=data, dtype="float32")
+            out_np = np.zeros(shape=(1), dtype='float32')
+            out = paddle.zeros(shape=[1], dtype="float32")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
-            result = exe.run(feed={"X": np.array(
-                [0.1], dtype="float32")},
-                             fetch_list=[data, out])
-            self.assertEqual(result[0], result[1])
+            result = exe.run(fetch_list=[out])
+            self.assertEqual((result == out_np).all(), True)
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(name="X", shape=[1], dtype="float32")
             out = paddle.ones(shape=[1], out=data, dtype="float32")
@@ -408,7 +406,7 @@ class ApiZerosTest(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            zeros = paddle.zeros(shape=[10], dtype="int64", device="cpu")
+            zeros = paddle.zeros(shape=[10], dtype="int64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[zeros])

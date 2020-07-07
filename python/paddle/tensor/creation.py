@@ -322,7 +322,7 @@ def ones_like(input, dtype=None, device=None, name=None):
     return out
 
 
-def zeros(shape, dtype, out=None, device=None):
+def zeros(shape, dtype, name=None):
     """
 	:alias_main: paddle.zeros
 	:alias: paddle.zeros,paddle.tensor.zeros,paddle.tensor.creation.zeros
@@ -347,21 +347,12 @@ def zeros(shape, dtype, out=None, device=None):
         .. code-block:: python
 
           import paddle
+          
+          paddle.enable_imperative()  # Now we are in imperative mode
           data = paddle.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
-          data = paddle.zeros(shape=[2, 2], dtype='float32', device='cpu') # [[0., 0.], [0., 0.]]
+          data = paddle.zeros(shape=[2, 2], dtype='int32', name='zeros') # [[0, 0], [0, 0]]
     """
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'zeros')
-    if device is not None:
-        if device not in ['cpu', 'gpu']:
-            raise ValueError(
-                "The value of 'device' in zeros_op must be cpu or gpu, but received %s."
-                % (device))
-        with fluid.device_guard(device):
-            return fill_constant(value=0.0, shape=shape, dtype=dtype, out=out)
-
-    return fill_constant(value=0.0, shape=shape, dtype=dtype, out=out)
+    return fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
 
 
 def zeros_like(input, dtype=None, device=None, name=None):
@@ -497,13 +488,7 @@ def eye(num_rows,
     return out
 
 
-def full(shape,
-         fill_value,
-         out=None,
-         dtype=None,
-         device=None,
-         stop_gradient=True,
-         name=None):
+def full(shape, fill_value, dtype=None, name=None):
     """
 	:alias_main: paddle.full
 	:alias: paddle.full,paddle.tensor.full,paddle.tensor.creation.full
@@ -517,17 +502,9 @@ def full(shape,
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
         fill_value(bool|float16|float32|float64|int32|int64|Variable): The constant value
             used to initialize the Tensor to be created. If fill_value is an Variable, it must be an 1-D Tensor.
-        out(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created tensor is `float32`
-        device(str, optional): On which device to run this Op. The :attr:`device` must be
-            None, 'cpu' or 'gpu'. If :attr:`device` is None, the device that the user set in 
-            the paddle program will be chosen. Default value is None.
-        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
-            default value is True.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
     
@@ -536,28 +513,27 @@ def full(shape,
 
     Raises:
         TypeError: The `dtype` must be one of None, bool, float16, float32, float64, int32 and int64.
-        TypeError: The `out` must be a Variable.
         TypeError: The `shape` must be one of Variable, list tuple.
     
     Examples:
         .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
 
+          paddle.enable_imperative()  # Now we are in imperative mode
           data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') # data1=[[0],[0]]
-          data2 = paddle.full(shape=[2,1], fill_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
+          data2 = paddle.full(shape=[2,1], fill_value=5, dtype='int64') # data2=[[5],[5]]
 
           # attr shape is a list which contains Variable Tensor.
-          positive_2 = fluid.layers.fill_constant([1], "int32", 2)
+          positive_2 = paddle.fill_constant([1], "int32", 2)
           data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
-          shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
+          shape = paddle.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
           
           # attr value is an Variable Tensor.
-          val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
+          val = paddle.fill_constant([1], "float32", 2.0) # val=[2.0]
           data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
 
@@ -566,20 +542,7 @@ def full(shape,
     if dtype is None:
         dtype = 'float32'
 
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full')
-    check_type(shape, 'shape', (Variable, list, tuple), 'full')
-    if out is not None:
-        check_type(out, 'out', (Variable), 'full')
-
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    out.stop_gradient = stop_gradient
-
-    with device_guard(device):
-        out = fill_constant(shape=shape, dtype=dtype, value=fill_value, out=out)
+    out = fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
     return out
 
 

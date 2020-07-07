@@ -620,7 +620,7 @@ def assign(input, output=None):
     return output
 
 
-def fill_constant(shape, dtype, value, force_cpu=False, out=None):
+def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     """
 	:alias_main: paddle.fill_constant
 	:alias: paddle.fill_constant,paddle.tensor.fill_constant,paddle.tensor.creation.fill_constant
@@ -1057,7 +1057,7 @@ def ones(shape, dtype, force_cpu=False):
     return fill_constant(value=1.0, **locals())
 
 
-def zeros(shape, dtype, force_cpu=False):
+def zeros(shape, dtype, force_cpu=False, name=None):
     """
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
     Its :attr:`stop_gradient` will be set to True to stop gradient computation.
