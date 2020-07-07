@@ -65,6 +65,11 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_math_op_patch_var_base)
 endif()
 
+if(APPLE OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_hdfs)
+    LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
+endif()
+
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
     LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
@@ -351,7 +356,7 @@ if(WITH_DISTRIBUTE)
         endif()
         bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
-        set(dist_ut_port 1000)
+        set(dist_ut_port 20001)
         foreach(TEST_OP ${DIST_TEST_OPS})
             bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
             MATH(EXPR dist_ut_port "${dist_ut_port}+50")
