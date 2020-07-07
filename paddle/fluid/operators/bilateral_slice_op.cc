@@ -21,7 +21,6 @@ namespace operators {
 using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
-
 class BilateralSliceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -34,8 +33,9 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Output", "BilateralSlice");
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4,
-            platform::errors::Unimplemented(
+    PADDLE_ENFORCE_EQ(
+        dim_x.size(), 4,
+        platform::errors::Unimplemented(
             "Input(X) dimension must be 4, but got dimension = %d .",
             dim_x.size()));
 
@@ -48,20 +48,20 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
     int64_t bs = grid_dims[0];
     int64_t coeffs_chans = grid_dims[1];
     int64_t input_chans = input_dims[1];
-    
+
     int64_t output_chans;
     if (has_offset) {
       PADDLE_ENFORCE_EQ((coeffs_chans % (input_chans + 1)), 0,
-                "Slicing with affine offset, coefficients grid "
-                "should have n_out*(n_in+1) channels.");
-      output_chans = coeffs_chans/(input_chans + 1);
+                        "Slicing with affine offset, coefficients grid "
+                        "should have n_out*(n_in+1) channels.");
+      output_chans = coeffs_chans / (input_chans + 1);
     } else {
-      PADDLE_ENFORCE_EQ((coeffs_chans % input_chans),  0,
-                "Slicing without affine offset, coefficients grid "
-                "should have n_out*n_in channels.");
+      PADDLE_ENFORCE_EQ((coeffs_chans % input_chans), 0,
+                        "Slicing without affine offset, coefficients grid "
+                        "should have n_out*n_in channels.");
       output_chans = coeffs_chans / input_chans;
     }
-    
+
     std::vector<int64_t> output_dims;
     output_dims.push_back(bs);
     output_dims.push_back(output_chans);
@@ -81,7 +81,6 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
   }
@@ -102,13 +101,10 @@ class BilateralSliceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "The output tensor of bilateral slice operator, "
               "This is a tensor in same rank with Input(X).");
-    AddAttr<bool>(
-        "has_offset",
-        "an optional bool. Defaults to False. ")
+    AddAttr<bool>("has_offset", "an optional bool. Defaults to False. ")
         .SetDefault(false);
     AddComment(R"DOC(
           This operator enhance input X according guide and grid
-
           For details of bilateral slice, please refer to paper:
           https://groups.csail.mit.edu/graphics/hdrnet/
          )DOC");
@@ -122,9 +118,12 @@ class BilateralSliceOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BilateralSliceOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Grid"), "Input", "Grid", "BilateralSliceOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Guide"), "Input", "Guide", "BilateralSliceOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input", "Out", "BilateralSliceOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Grid"), "Input", "Grid",
+                   "BilateralSliceOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Guide"), "Input", "Guide",
+                   "BilateralSliceOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input", "Out",
+                   "BilateralSliceOpGrad");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_grid = ctx->GetInputDim("Grid");
@@ -146,7 +145,6 @@ class BilateralSliceOpGrad : public framework::OperatorWithKernel {
                                        ctx, framework::GradVarName("Out")),
                                    ctx.GetPlace());
   }
-
 };
 
 template <typename T>
@@ -169,14 +167,13 @@ class BilateralSliceGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-
 template <typename T>
 class BilateralSliceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
-        platform::errors::Unimplemented("BilateralSlice only supports GPU now."));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::Unimplemented(
+                          "BilateralSlice only supports GPU now."));
   }
 };
 
@@ -184,10 +181,10 @@ class BilateralSliceKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(bilateral_slice, ops::BilateralSliceOp, ops::BilateralSliceOpMaker,
+REGISTER_OPERATOR(bilateral_slice, ops::BilateralSliceOp,
+                  ops::BilateralSliceOpMaker,
                   ops::BilateralSliceGradMaker<paddle::framework::OpDesc>,
                   ops::BilateralSliceGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilateral_slice_grad, ops::BilateralSliceOpGrad);
 REGISTER_OP_CPU_KERNEL(bilateral_slice, ops::BilateralSliceKernel<float>,
                        ops::BilateralSliceKernel<double>);
-

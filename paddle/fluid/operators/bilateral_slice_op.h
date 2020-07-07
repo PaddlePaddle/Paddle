@@ -8,7 +8,6 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-
 #pragma once
 #include <algorithm>
 #include <string>
@@ -20,14 +19,14 @@ namespace paddle {
 namespace operators {
 
 struct GridSizes {
-        int64_t h;
-        int64_t w;
-        int64_t bs;
-        int64_t coeffs_chans;
-        int64_t gd;
-        int64_t gh;
-        int64_t gw;
-        int64_t input_chans;
+  int64_t h;
+  int64_t w;
+  int64_t bs;
+  int64_t coeffs_chans;
+  int64_t gd;
+  int64_t gh;
+  int64_t gw;
+  int64_t input_chans;
 };
 
 }  // namespace operators

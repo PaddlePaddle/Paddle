@@ -12985,15 +12985,17 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     helper = LayerHelper("bilateral_slice", **locals())
 
     check_variable_and_dtype(x, 'x', ['float32'], 'bilateral_slice')
-    check_variable_and_dtype(guide, 'guide', ['float32'],
-                             'bilateral_slice')
-    check_variable_and_dtype(grid, 'grid', ['float32'],
-                             'bilateral_slice')
+    check_variable_and_dtype(guide, 'guide', ['float32'], 'bilateral_slice')
+    check_variable_and_dtype(grid, 'grid', ['float32'], 'bilateral_slice')
 
     out = helper.create_variable_for_type_inference(x.dtype)
     inputs = {'X': x, 'Guide': guide, 'Grid': grid}
-    
-    helper.append_op(type='bilateral_slice', inputs=inputs, attrs={'has_offset': has_offset}, outputs={'Out': out})
+
+    helper.append_op(
+        type='bilateral_slice',
+        inputs=inputs,
+        attrs={'has_offset': has_offset},
+        outputs={'Out': out})
     return out
 
 
