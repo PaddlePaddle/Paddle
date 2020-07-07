@@ -102,7 +102,7 @@ class AutoCheckpointTest(unittest.TestCase):
             drop_last=True,
             num_workers=2)
 
-        return exe, loader, sgd, loss, fluid.default_main_program()
+        return exe, loader, sgd, loss, prog, fluid.default_main_program()
 
     def _run_save(self, exe, data_loader, main_program):
         name1 = None
@@ -144,8 +144,8 @@ class AutoCheckpointTest(unittest.TestCase):
         pass
 
     def test_without_fleet(self):
-        exe, loader, _, loss, main_program = self._init_model()
-        self._run_save(exe, loader, main_program)
+        exe, loader, _, loss, compiled, main_program = self._init_env()
+        self._run_save(exe, loader, compiled)
 
     """
     def test_with_fleet(self):

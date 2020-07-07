@@ -38,6 +38,7 @@ class AutoCheckpointChecker(object):
         self._hdfs_ugi = None
         self._hdfs_checkpoint_path = None
         self._trainer_id = None
+        self._ce_test = None
         try:
             self._run_env = os.environ("PADDLE_RUNNING_ENV")
             self._plat_form = os.environ("PADDLE_RUNNING_PLATFORM")
@@ -48,6 +49,14 @@ class AutoCheckpointChecker(object):
             self._hdfs_checkpoint_path = os.environ(
                 "PADDLE_EDL_HDFS_CHECKPOINT_PATH")
             self._trainer_id = int(os.getenv("PADDLE_EDL_TRAINER_ID"))
+            self._ce_test = bool(os.getenv("PADDLE_EDL_ONLY_FOR_CE_TEST"))
+
+            if not self._ce_test:
+                assert len(self._hdfs_home) > 3 and \
+                    len(self._hdfs_name) > 6 and \
+                    len(self._hdfs_ugi) > 3 and \
+                    len(self._hdfs_checkpoint_path) > 0, "hdfs environ must set"
+
         except Exception as e:
             #logging.warning("auto checkpoint must run under PADDLE_RUNNING_ENV,PADDLE_RUNNING_PLATFORM,PADDLE_JOB_ID:{}".format(e))
             return
@@ -56,7 +65,7 @@ class AutoCheckpointChecker(object):
         return "{}/{}".format(self._hdfs_checkpoint_path, self._job_id)
 
     def valid(self):
-        return self._run_env is not None and \
+        setted =  self._run_env is not None and \
             self._plat_form is not None and \
             self._job_id is not None and \
             self._hdfs_home is not None and \
@@ -64,6 +73,14 @@ class AutoCheckpointChecker(object):
             self._hdfs_ugi is not None and \
             self._hdfs_checkpoint_path is not None and \
             self._trainer_id is not None
+
+        if not setted:
+            return False
+
+        if self._run_env != "PADDLE_EDL_AUTO_CHECKPOINT":
+            return False
+
+        return True
 
     @property
     def trainer_id(self):
@@ -182,6 +199,9 @@ class TrainEpochRange(SerializableBase):
             "fs.default.name": self._checker.hdfs_name,
             "hadoop.job.ugi": self._checker.hdfs_ugi
         }
+
+        if self._ce_test:
+            config = None
 
         self._hdfs = HDFSClient(self._hadoop_home, config)
 
