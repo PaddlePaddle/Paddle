@@ -765,6 +765,8 @@ class SparseVariable {
     return shard_blocks_[id & shard_mask_].get();
   }
 
+  SparseMeta &GetMeta() const { return meta_; }
+
  private:
   std::unique_ptr<framework::RWLock> rwlock_{nullptr};
 

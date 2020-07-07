@@ -89,9 +89,9 @@ bool RequestSendHandler::Handle(const std::string& varname,
       // for sparse ids
       if (var->IsType<framework::SelectedRows>()) {
         auto* ins = distributed::LargeScaleKV::GetInstance();
-        auto varnames = ins->GetByGrad(run_varname)->CachedVarnames();
+        auto* large_scale_var = ins->GetByGrad(run_varname);
 
-        for (auto name : varnames) {
+        for (auto name : large_scale_var->CachedVarnames()) {
           scope->Var(name);
         }
 
@@ -103,7 +103,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
           AsyncSparseParamUpdateRecorder::GetInstance()->Update(
               run_varname, grad_slr.rows());
 
-          ins->Get(run_varname)->Init(grad_slr.rows());
+          ins->Get(large_scale_var->GetMeta().name)->Init(grad_slr.rows());
         }
       }
 
