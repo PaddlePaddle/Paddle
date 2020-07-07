@@ -247,15 +247,6 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.sync = "True"
         self.assertEqual(strategy.sync, False)
 
-    def test_async(self):
-        strategy = paddle.fleet.DistributedStrategy()
-        strategy.async = True
-        self.assertEqual(strategy.async, True)
-        strategy.async = False
-        self.assertEqual(strategy.async, False)
-        strategy.async = "True"
-        self.assertEqual(strategy.async, False)
-
     def test_async_k_step(self):
         strategy = paddle.fleet.DistributedStrategy()
         strategy.async_k_step = 10000
