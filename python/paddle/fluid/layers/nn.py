@@ -185,6 +185,7 @@ __all__ = [
     'filter_by_instag',
     'shard_index',
     'hard_swish',
+    'mish',
     'gather_tree',
     'uniform_random',
     'unbind',
@@ -10486,29 +10487,24 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
 
-    helper = LayerHelper('gaussian_random', **locals())
-    out = helper.create_variable_for_type_inference(dtype)
-    if not isinstance(shape, (list, tuple, Variable)):
-        raise TypeError(
-            "The type of 'shape' in fill_constant must be Variable, list or tuple, but "
-            "received %s." % (type(shape)))
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    check_type(shape, 'shape', (list, tuple, Variable), 'gaussian_random')
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'gaussian_random')
+
+    inputs = {}
     attrs = {
         'mean': mean,
         'std': std,
         'seed': seed,
-        'dtype': c_dtype,
+        'dtype': dtype,
         'use_mkldnn': False
     }
-
-    inputs = {}
     utils._get_shape_tensor_inputs(
-        inputs=inputs,
-        helper=helper,
-        attrs=attrs,
-        shape=shape,
-        op_type='gaussian_random')
+        inputs=inputs, attrs=attrs, shape=shape, op_type='gaussian_random')
 
+    helper = LayerHelper('gaussian_random', **locals())
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='gaussian_random',
         inputs=inputs,
@@ -12796,16 +12792,14 @@ def hash(input, hash_size, num_hash=1, name=None):
 
             place = fluid.core.CPUPlace()
 
-            x = fluid.data(name="x", shape=[1], dtype="int32", lod_level=1)
-            res = fluid.layers.hash(name="res",input=x, hash_size=1000, num_hash=4)
+            x = fluid.data(name="x", shape=[2,2], dtype="int32", lod_level=1)
+            res = fluid.layers.hash(name="res", input=x, hash_size=1000, num_hash=4)
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             in1 = np.array([[1,2],[3,4]]).astype("int32")
             print(in1)
-            x_i = fluid.core.LoDTensor()
-            x_i.set(in1,place)
-            x_i.set_recursive_sequence_lengths([[0,2]])
+            x_i = fluid.create_lod_tensor(in1, [[0, 2]], place)
             res = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res], return_numpy=False)
             print(np.array(res[0]))
             # [[[722]
@@ -12818,8 +12812,8 @@ def hash(input, hash_size, num_hash=1, name=None):
             #   [901]]]
     """
     check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'hash')
-    check_type(hash_size, 'hash_size', ['int32', 'int64'], 'hash')
-    check_type(num_hash, 'num_hash', ['int32', 'int64'], 'hash')
+    check_type(hash_size, 'hash_size', int, 'hash')
+    check_type(num_hash, 'num_hash', int, 'hash')
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
         helper.input_dtype(), stop_gradient=True)
@@ -14038,7 +14032,7 @@ def unique(x, dtype='int32'):
 
              import numpy as np
              import paddle.fluid as fluid
-             x = fluid.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
+             x = fluid.layers.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
              out, index = fluid.layers.unique(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
     """
 
@@ -14784,6 +14778,81 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
     return out
 
 
+@templatedoc()
+def mish(x, threshold=20, name=None):
+    """
+    This operator implements the mish activation function.
+    Refer to `Mish: A Self Regularized Non-Monotonic Neural
+    Activation Function <https://arxiv.org/abs/1908.08681>`_
+
+
+    The formula is as follows if :attr:`threshold` is :code:`None` or negative:
+
+    .. math::
+
+        out = x * \\tanh(\\ln(1 + e^{x}))
+
+    The formula is as follows if :attr:`threshold` is set as positive value:
+
+    .. math::
+
+	out = \\begin{cases}
+		x \\ast \\tanh(x), \\text{if } x > \\text{threshold} \\\\
+		x \\ast \\tanh(e^{x}), \\text{if } x < -\\text{threshold} \\\\
+		x \\ast \\tanh(\\ln(1 + e^{x})),  \\text{otherwise}
+	      \\end{cases}
+
+    Args:
+        x (Variable): Input feature, multi-dimensional Tensor. The data type
+                      should be float16, float32 or float64.
+        threshold (float|None): threshold for softplus in Mish operator.
+                Approximate value of softplus will be used if absolute value
+                of input is greater than :attr:threshold and :attr:threshold
+                is set as positive value. For none or negative threshold,
+                approximate value is not used. Default 20.
+        name (str, optional): The default value is None. Normally there is no
+                need for user to set this property. For more information, please
+                refer to :ref:`api_guide_Name`
+
+    Returns:
+        Variable: The output tensor with the same shape and data type as input.
+
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        DATATYPE='float32'
+
+        x_data = np.array([i for i in range(1,5)]).reshape([1,1,4]).astype(DATATYPE)
+
+        x = fluid.data(name="x", shape=[None,1,4], dtype=DATATYPE)
+        y = fluid.layers.mish(x)
+
+        place = fluid.CPUPlace()
+        # place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
+        print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
+    """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
+    check_type(threshold, 'threshold', (float, int), 'mish')
+    assert threshold > 0, "threshold of mish should be greater than 0, " \
+                          "but got {}".format(threshold)
+
+    helper = LayerHelper('mish', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='mish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold or -1})
+    return out
+
+
 def gather_tree(ids, parents):
     """
     To be used after beam search. After beam search, we get selected ids at
@@ -14863,7 +14932,8 @@ def gather_tree(ids, parents):
 
 
 @templatedoc()
-def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
+def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
+                   name=None):
     """
     This OP initializes a variable with random values sampled from a
     uniform distribution in the range [min, max).
@@ -14878,18 +14948,24 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape (list|tuple|Variable): The shape of the output Tensor,  if the shape is a list or tuple,
-                                     its elements can be an integer
-                                     or a Tensor with the shape [1], and the type of the Tensor must be int32 or int64.
-                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor must be int32 or int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the output Tensor. Supported data types: float32, float64.
-                                                  Default: float32.
-        min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
-        max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
-        seed (int, optional): Random seed used for generating samples. 0 means use a
-            seed generated by the system. Note that if seed is not 0, this
-            operator will always generate the same random numbers every time.
-            Default 0.
+        shape (list|tuple|Variable): The shape of the output Tensor,  if the
+            shape is a list or tuple, its elements can be an integer or a
+            Tensor with the shape [1], and the type of the Tensor must be
+            int32 or int64. If the shape is a Variable, it is a 1-D Tensor, and
+            the type of the Tensor must be int32 or int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the
+            output Tensor. Supported data types: float32, float64. Default: float32.
+        min (float, optional): The lower bound on the range of random values
+            to generate, the min is included in the range. Default -1.0.
+        max (float, optional): The upper bound on the range of random values
+            to generate, the max is excluded in the range. Default 1.0.
+        seed (int, optional): Random seed used for generating samples. 0 means
+            use a seed generated by the system. Note that if seed is not 0,
+            this operator will always generate the same random numbers every
+            time. Default 0.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: A Tensor of the specified shape filled with uniform_random values.
@@ -14919,62 +14995,30 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
             result_4 = fluid.layers.uniform_random(var_shape_int32)
 
-
-
     """
-    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        shape = utils._convert_shape_to_list(shape)
+        return core.ops.uniform_random('shape', shape, 'min',
+                                       float(min), 'max',
+                                       float(max), 'seed', seed, 'dtype', dtype)
+
+    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random')
     check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random')
 
-    def get_new_shape_tensor(list_shape):
-        new_shape_tensor = []
-        for dim in list_shape:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_shape_tensor.append(dim)
-            else:
-                assert (isinstance(dim, int))
-                temp_out = helper.create_variable_for_type_inference('int64')
-                fill_constant([1], 'int64', dim, force_cpu=True, out=temp_out)
-                new_shape_tensor.append(temp_out)
-        return new_shape_tensor
-
-    def get_attr_shape(list_shape):
-        unk_dim_idx = -1
-        attrs_shape = []
-        for dim_idx, dim_size in enumerate(list_shape):
-            if isinstance(dim_size, Variable):
-                attrs_shape.append(-1)
-            else:
-                attrs_shape.append(dim_size)
-                assert dim_size > 0, (
-                    "Each dimension size given in shape must not be negative "
-                    "except one unknown dimension.")
-        return attrs_shape
-
-    helper = LayerHelper("uniform_random", **locals())
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
-    if in_dygraph_mode():
-        attrs['shape'] = shape
-    else:
-        if isinstance(shape, Variable):
-            shape.stop_gradient = True
-            inputs["ShapeTensor"] = shape
-        elif isinstance(shape, (list, tuple)):
-            assert len(shape) > 0, (
-                "The size of argument(shape) can't be zero.")
-            attrs["shape"] = get_attr_shape(shape)
-            if utils._contain_var(shape):
-                inputs['ShapeTensorList'] = get_new_shape_tensor(shape)
+    utils._get_shape_tensor_inputs(
+        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random')
 
+    helper = LayerHelper("uniform_random", **locals())
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
         outputs={"Out": out})
-
-    return helper.append_activation(out)
+    return out
 
 
 def unbind(input, axis=0):

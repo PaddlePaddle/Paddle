@@ -5111,7 +5111,8 @@ class ParamBase(core.VarBase):
                                         list(shape) if shape else [], name,
                                         core.VarDesc.VarType.LOD_TENSOR, True)
 
-        self.trainable = kwargs.get('trainable', True)
+        trainable = kwargs.get('trainable', True)
+        self.stop_gradient = not trainable
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
@@ -5125,6 +5126,19 @@ class ParamBase(core.VarBase):
 
     def __str__(self):
         return self.to_string(True)
+
+    @property
+    def trainable(self):
+        return not self.stop_gradient
+
+    @trainable.setter
+    def trainable(self, trainable):
+        if isinstance(trainable, bool):
+            self.stop_gradient = not trainable
+        else:
+            raise ValueError(
+                "The type of trainable MUST be bool, but the type is ",
+                type(trainable))
 
     def to_string(self, throw_on_error, with_details=False):
         """
