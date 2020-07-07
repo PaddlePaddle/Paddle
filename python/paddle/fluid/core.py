@@ -174,7 +174,7 @@ def run_shell_command(cmd):
 
 def get_dso_path(core_so, dso_name):
     if core_so and dso_name:
-        return run_shell_command("ldd %s|grep %s|awk '{print $3}'" %
+        return run_shell_command("ldd --version | awk '/ldd/{print $NF}'" %
                                  (core_so, dso_name)).strip()
     else:
         return None
