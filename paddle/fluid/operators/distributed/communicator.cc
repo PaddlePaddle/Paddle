@@ -553,8 +553,6 @@ void GeoCommunicator::SendSparse(const std::string &varname, int batches) {
   std::vector<float> v_timestamp;
   v_timestamp.reserve(ids.size() * dims1);
 
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
-
   auto *var_delta = delta_scope_->Var(varname);
   auto *t_delta = var_delta->GetMutable<framework::SelectedRows>();
   t_delta->set_height(ids.size());
@@ -571,6 +569,7 @@ void GeoCommunicator::SendSparse(const std::string &varname, int batches) {
     t_delta->mutable_rows()->push_back(ids[j]);
   }
 
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
   auto *t_value = t_delta->mutable_value();
   t_value->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
 
@@ -653,6 +652,45 @@ void GeoCommunicator::RecvByCommunicator() {
 
 void GeoCommunicator::RecvSparse(const std::string &varname) {
   VLOG(1) << "RecvSparse receive var: " << varname;
+  auto *var_latest = recv_scope_->FindVar(varname);
+  auto *var_psrever = pserver_scope_->Var(varname);
+
+  auto &ctx = recv_varname_to_ctx_.at(varname);
+  auto recv = distributed::ParameterRecv<float>();
+  recv(ctx, *pserver_scope_, true);
+
+  PADDLE_ENFORCE_EQ(
+      var_psrever->IsInitialized(), true,
+      platform::errors::Unavailable(
+          "%s in pserver scope is not initialized, please check", varname));
+
+  std::vector<int64_t> ids;
+  ids.assign(var_psrever->Get<framework::SelectedRows>().rows());
+
+  auto t_psrever = var_psrever->Get<framework::SelectedRows>().value();
+
+  std::vector<std::vector<std::vector<float> *>> old_values;
+  auto *ins = distributed::LargeScaleKV::GetInstance();
+  ins->Get(varname)->Get(ids, {"Param"}, &old_values);
+
+  auto *t_latest = var_latest->GetMutable<framework::LoDTensor>();
+
+  auto dims1 = t_latest->dims()[1];
+  auto numel = ids.size() * dims1;
+
+  std::vector<float> v_delta;
+  v_delta.reserve(numel);
+
+  auto blas = math::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+
+  for (auto j = 0; j < static_cast<int>(ids.size()); ++j) {
+    blas.VSUB(dims1, t_psrever.data<float>() + j * dims1,
+              old_values[j][0]->data(), v_delta.data() + j * dims1);
+    blas.VADD(dims1, t_latest.data() + ids[j] * dims1,
+              v_delta.data() + j * dims1, t_latest.data() + ids[j] * dims1);
+    blas.VCOPY(dims1, t_psrever.data<float>() + j * dims1,
+               old_values[j][0]->data());
+  }
 }
 
 void GeoCommunicator::RecvDense(const std::string &varname) {

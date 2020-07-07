@@ -40,21 +40,74 @@ using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
 template <typename T>
-void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
-                                  const framework::Scope &scope, bool barrier) {
-  VLOG(2) << "ParameterRecv in " << rpc_ctx.var_name;
+void RecvSelectedRows(const CommContext &rpc_ctx,
+                      const framework::Scope &scope) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto cpu_place = platform::CPUPlace();
+  auto &cpu_ctx = *pool.Get(cpu_place);
 
-  PADDLE_ENFORCE_GE(rpc_ctx.origin_varnames.size(), 1,
-                    platform::errors::InvalidArgument(
-                        "origin_varnames.size() >= 1 is permitted"));
+  distributed::RPCClient *rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
-  auto *origin_var = scope.FindVar(rpc_ctx.origin_varnames[0]);
+  std::vector<distributed::VarHandlePtr> rets;
 
-  if (origin_var->IsType<framework::SelectedRows>()) {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("Only support LodTensor now"));
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
+
+  for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+    auto &recv_var_name = rpc_ctx.splited_varnames[i];
+    local_scope->Var(recv_var_name);
+    VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
+    // sparse param in recv_scope is LoDTensor
+    rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
+                                           *local_scope.get(), recv_var_name,
+                                           recv_var_name));
   }
 
+  for (size_t i = 0; i < rets.size(); i++) {
+    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
+                                               "internal error in RPCClient"));
+  }
+
+  int64_t height = 0;
+  int64_t ids_num = 0;
+  int64_t width = 0;
+
+  std::vector<int64_t> all_ids;
+
+  for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+    auto &recv_var_name = rpc_ctx.splited_varnames[i];
+    auto *recv_var = local_scope->FindVar(recv_var_name);
+    auto &recv_t = recv_var->Get<framework::SelectedRows>();
+
+    height += recv_t.height();
+    ids_num += recv_t.rows().size();
+    width = recv_t.value().dims()[1];
+
+    all_ids.insert(all_ids.end(), recv_t.rows().begin(), recv_t.rows().end());
+  }
+
+  auto *var = scope.FindVar(rpc_ctx.var_name);
+  auto *t_ = var->GetMutable<framework::SelectedRows>();
+  T *out_data =
+      t_->mutable_value()->mutable_data<T>({ids_num, width}, cpu_place);
+  t_->set_height(height);
+  out->set_rows(all_ids);
+
+  int64_t cnt = 0;
+  for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+    auto &recv_var_name = rpc_ctx.splited_varnames[i];
+    auto *recv_var = local_scope->FindVar(recv_var_name);
+    auto &recv_t = recv_var->Get<framework::SelectedRows>();
+
+    auto rows = recv_t.rows().size();
+    const T *in_data = recv_t.value().data<T>();
+    std::copy_n(in_data, rows * width, out_data + cnt);
+    cnt += rows * width;
+  }
+  out->SyncIndex();
+}
+
+void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto cpu_place = platform::CPUPlace();
   auto &cpu_ctx = *pool.Get(cpu_place);
@@ -83,6 +136,7 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
   }
 
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
+  barrier = true;
 
   if (barrier) {
     for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
@@ -134,6 +188,24 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
     auto size = origin_t->numel() * framework::SizeOfType(origin_t->type());
     memory::Copy(cpu_place, origin_t->data<void>(), cpu_place, src_ptr, size);
     src_ptr = reinterpret_cast<char *>(const_cast<void *>(src_ptr)) + size;
+  }
+}
+
+template <typename T>
+void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
+                                  const framework::Scope &scope, bool barrier) {
+  VLOG(2) << "ParameterRecv in " << rpc_ctx.var_name;
+
+  PADDLE_ENFORCE_GE(rpc_ctx.origin_varnames.size(), 1,
+                    platform::errors::InvalidArgument(
+                        "origin_varnames.size() >= 1 is permitted"));
+
+  auto *origin_var = scope.FindVar(rpc_ctx.origin_varnames[0]);
+
+  if (origin_var->IsType<framework::SelectedRows>()) {
+    RecvSelectedRows<T>(rpc_ctx, scope);
+  } else {
+    RecvLodTensor<T>(rpc_ctx, scope);
   }
   VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
 }
