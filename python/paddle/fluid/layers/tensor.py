@@ -685,12 +685,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             attrs['str_value'] = str(float(value))
 
     if in_dygraph_mode():
-        if isinstance(shape, (list, tuple)):
-            shape = list(
-                map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
-                    shape))
-        else:
-            shape = list(shape.numpy().astype(int))
+        shape = utils._convert_shape_to_list(shape)
         if out is None:
             out = _varbase_creator(dtype=dtype)
 
@@ -719,12 +714,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                                  'fill_constant')
 
     helper = LayerHelper("fill_constant", **locals())
-    inputs = utils._get_shape_tensor_inputs(
-        inputs=inputs,
-        helper=helper,
-        attrs=attrs,
-        shape=shape,
-        op_type='fill_constant')
+    utils._get_shape_tensor_inputs(
+        inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant')
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
