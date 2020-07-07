@@ -45,7 +45,7 @@ class ProgramStats(object):
         input_names = []
         for name in self.var_op_deps:
             if len(self.var_op_deps[name]["var_as_output_ops"]) == 0 and \
-                    len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
+                len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
                 if self.block.var(name).persistable:
                     continue
                 input_names.append(name)
@@ -191,7 +191,7 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
         return []
     result_descs = []
     op_role_attr_name = \
-        core.op_proto_and_checker_maker.kOpRoleAttrName()
+            core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward
     for desc in descs:
         if isinstance(desc, framework.Operator):
@@ -407,7 +407,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                 else:
                     if len(renamed_vars[var_name]) == 1:
                         new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
-                                   str(var_rename_count[var_name])
+                            str(var_rename_count[var_name])
                         var_rename_count[var_name] += 1
                         # rename original var_name
                         renamed_vars[var_name][0] = new_name
@@ -1742,17 +1742,30 @@ def _find_op_path_(block,
 
     if is_while:
         # two times
+        add_write_to_array = False
         for i, op in reversed(list(enumerate(block.ops))):
-            if op.has_attr("sub_block"):
+            if relevant_op_flags[i] == True:
                 pass
 
             if _some_in_set_(
                     op.desc.output_arg_names(),
                     output_names) and core.has_non_empty_grad_op_maker(op.type):
-                for name in op.desc.input_arg_names():
-                    if name not in no_grad_set:
-                        output_names.add(name)
-                relevant_op_flags[i] = True
+                if op.desc.type() in ["write_to_array"]:
+                    for name in op.desc.input_arg_names():
+                        if name not in no_grad_set:
+                            output_names.add(name)
+                    relevant_op_flags[i] = True
+        # maybe need to use another for-loop to add op
+        # if op.has_attr("sub_block"):
+        #     pass
+        #
+        # if _some_in_set_(
+        #         op.desc.output_arg_names(),
+        #         output_names) and core.has_non_empty_grad_op_maker(op.type):
+        #     for name in op.desc.input_arg_names():
+        #         if name not in no_grad_set:
+        #             output_names.add(name)
+        #     relevant_op_flags[i] = True
 
     op_path = [
         block.ops[i] for i in range(len(block.ops)) if relevant_op_flags[i]
