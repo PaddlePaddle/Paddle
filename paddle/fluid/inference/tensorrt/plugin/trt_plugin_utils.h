@@ -128,6 +128,12 @@ inline void DeserializeValue(void const** buffer, size_t* buffer_size,
   return details::Serializer<T>::Deserialize(buffer, buffer_size, value);
 }
 
+template <typename T>
+inline void SerializeCudaPointer(void** buffer, T* value, int size) {
+  cudaMemcpy((*buffer), value, size * sizeof(T), cudaMemcpyDeviceToHost);
+  reinterpret_cast<char*&>(*buffer) += size * sizeof(T);
+}
+
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
