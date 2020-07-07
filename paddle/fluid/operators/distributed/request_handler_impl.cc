@@ -103,7 +103,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
           AsyncSparseParamUpdateRecorder::GetInstance()->Update(
               run_varname, grad_slr.rows());
 
-          ins->Get(large_scale_var->GetMeta().name)->Init(grad_slr.rows());
+          ins->Get(large_scale_var->GetMeta()->name)->Init(grad_slr.rows());
         }
       }
 
