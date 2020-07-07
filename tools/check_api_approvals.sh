@@ -141,8 +141,8 @@ for API_FILE in ${API_FILES[*]}; do
         echo_line="You must have one RD (Shixiaowei02 (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py, which manages the white list of no_grad_set without value in operators. For more information, please refer to[https://github.com/PaddlePaddle/Paddle/wiki/It's-recommend-to-set-no_grad_set-to-be-None].\n"
         check_approval 1 39303645 6836917 43953930
       elif [ "${API_FILE}" == "tools/wlist.json" ];then
-        echo_line="You must have one TPM (saxon-zh or Boyan-Liu or swtkiwi or Heeenrrry) approval for the api whitelist for the tools/wlist.json.\n"
-        check_approval 1 31623103 2870059 27208573 28379894
+        echo_line="You must have one RD (lelelelelez (Recommend) or luotao1) approval for the api whitelist for the tools/wlist.json.\n"
+        check_approval 1 22937122 6836917
       else
           echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
