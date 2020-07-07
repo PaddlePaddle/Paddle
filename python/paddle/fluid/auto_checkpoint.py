@@ -64,6 +64,34 @@ class AutoCheckpointChecker(object):
             self._hdfs_checkpoint_path is not None and \
             self._trainer_id is not None
 
+    @property
+    def trainer_id(self):
+        return self._trainer_id
+
+    @property
+    def run_env(self):
+        return self.run_env
+
+    @property
+    def plat_form(self):
+        return self.plat_form
+
+    @property
+    def job_id(self):
+        return self.job_id
+
+    @property
+    def hdfs_home(self):
+        return self._hdfs_home
+
+    @property
+    def hdfs_ugi(self):
+        return self.hdfs_ugi
+
+    @property
+    def hdfs_checkpoint_path(self):
+        return self._hdfs_checkpoint_path
+
 
 class ExeTrainStatus(SerializableBase):
     def __init__(self):
@@ -150,8 +178,8 @@ class TrainEpochRange(SerializableBase):
             return
 
         config = {
-            "fs.default.name": self._checker._hdfs_name,
-            "hadoop.job.ugi": self._checker._hdfs_ugi
+            "fs.default.name": self._checker.hdfs_name,
+            "hadoop.job.ugi": self._checker.hdfs_ugi
         }
 
         self._hdfs = HDFSClient(self._hadoop_home, config)
@@ -225,7 +253,9 @@ class TrainEpochRange(SerializableBase):
         for i in range(start, self._max_epoch_num + 1):
             yield i
             self._epoch_no = i
-            self._save_checkpoint()
+
+            if self._checker.trainer_id == 0:
+                self._save_checkpoint()
 
     def get(self):
         assert self._epoch_no >= 0, "invalid epoch no:{}".format(self._epoch_no)
