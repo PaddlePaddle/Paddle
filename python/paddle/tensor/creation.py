@@ -82,7 +82,7 @@ def full_like(x, fill_value, dtype=None, name=None):
           import numpy as np
           
           paddle.enable_imperative()  # Now we are in imperative mode 
-          input = paddle.full(name='input', dtype='float32', shape=[2, 3])
+          input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
           output = paddle.full_like(input, 2.0)
           #output result : [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
     """
