@@ -10502,8 +10502,8 @@ def gaussian_random(shape,
         return core.ops.gaussian_random('shape', shape, 'mean', mean, 'std',
                                         std, 'seed', seed, 'dtype', dtype)
 
-    check_type(shape, 'shape', (list, tuple, Variable), 'gaussian_random')
-    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'gaussian_random')
+    check_type(shape, 'shape', (list, tuple, Variable), 'gaussian_random/randn')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'gaussian_random/randn')
 
     inputs = {}
     attrs = {
@@ -10514,7 +10514,10 @@ def gaussian_random(shape,
         'use_mkldnn': False
     }
     utils._get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='gaussian_random')
+        inputs=inputs,
+        attrs=attrs,
+        shape=shape,
+        op_type='gaussian_random/randn')
 
     helper = LayerHelper('gaussian_random', **locals())
     out = helper.create_variable_for_type_inference(dtype)
