@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import math
+import warnings
 
 from .. import unique_name
 from ..framework import Variable
@@ -78,8 +79,6 @@ class LearningRateDecay(object):
             if key not in self.__dict__:
                 continue
             value = self.__dict__[key]
-            if value is None:
-                continue
             if isinstance(value, Variable):
                 assert value.shape == [
                     1
@@ -100,7 +99,18 @@ class LearningRateDecay(object):
         """
         Loads the schedulers state.
         """
-        self.__dict__.update(state_dict)
+        self._state_keys()
+        for key in self.keys:
+            if key in state_dict:
+                self.__dict__[key] = state_dict[key]
+            else:
+                raise RuntimeError(
+                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict".
+                    format(key))
+        if len(state_dict) > len(self.keys):
+            warnings.warn(
+                "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
+            )
 
     def step(self):
         raise NotImplementedError()
