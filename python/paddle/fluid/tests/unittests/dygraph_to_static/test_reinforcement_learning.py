@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gym
 import math
 import itertools
 import numpy as np
@@ -23,10 +22,20 @@ from paddle.fluid.dygraph import declarative, ProgramTranslator
 
 import unittest
 
+# Note: Packages gym is not in requirements.txt, and it shall not. 
+# Because it's only needed in this unittest, so we try to call
+# `pip install --user gym` to solve this dependency.
+try:
+    import gym
+except ImportError:
+    from pip._internal import main as pip
+    pip(['install', '--user', 'gym'])
+    import gym
+
 SEED = 2020
-env = gym.make('CartPole-v0')
-env.seed(SEED)
 program_translator = ProgramTranslator()
+# TODO(Aurelius84): Remove it after we support multiple backward for same program.
+fluid.set_flags({'FLAGS_eager_delete_tensor_gb': -1.0})
 
 
 class Policy(Layer):
@@ -39,6 +48,7 @@ class Policy(Layer):
 
         self.saved_log_probs = []
         self.rewards = []
+        self.debug = []
 
     @declarative
     def forward(self, x):
@@ -48,7 +58,6 @@ class Policy(Layer):
         x = fluid.layers.relu(x)
         action_scores = self.affine2(x)
 
-        # self._x_for_debug = x
         log_prob = fluid.layers.softmax(action_scores, axis=1)
 
         return log_prob
@@ -56,12 +65,15 @@ class Policy(Layer):
 
 class Args(object):
     gamma = 0.99
-    render = False
     log_interval = 1
+    train_step = 10
 
 
 def train(args, place, to_static):
     program_translator.enable(to_static)
+
+    env = gym.make('CartPole-v0')
+    env.seed(SEED)
 
     with fluid.dygraph.guard(place):
         fluid.default_main_program().random_seed = SEED
@@ -112,6 +124,8 @@ def train(args, place, to_static):
             state = to_variable(state)
             state.stop_gradient = True
             loss_probs = policy(state)
+            policy.debug.append(loss_probs)
+            # print(loss_probs.name)
             probs = loss_probs.numpy()
 
             action, _mask = sample_action(probs[0])
@@ -123,7 +137,7 @@ def train(args, place, to_static):
             loss_probs = fluid.layers.reduce_sum(loss_probs, dim=-1)
 
             policy.saved_log_probs.append(loss_probs)
-            return action
+            return action, loss_probs
 
         def finish_episode():
             R = 0
@@ -138,6 +152,7 @@ def train(args, place, to_static):
             returns = np.array(returns).astype("float32")
             returns = (returns - mean) / (std + eps)
 
+            # calculate policy loss of each step.
             for log_prob, R in zip(policy.saved_log_probs, returns):
                 log_prob_numpy = log_prob.numpy()
 
@@ -145,40 +160,39 @@ def train(args, place, to_static):
                 _R = -1 * R * R_numpy
                 _R = to_variable(_R)
                 _R.stop_gradient = True
-                curr_loss = fluid.layers.elementwise_mul(_R, log_prob)
-                policy_loss.append(curr_loss)
+                cur_loss = fluid.layers.elementwise_mul(_R, log_prob)
+                policy_loss.append(cur_loss)
 
             policy_loss = fluid.layers.concat(policy_loss)
             policy_loss = fluid.layers.reduce_sum(policy_loss)
-            # print(policy_loss)
 
             policy_loss.backward()
-            # print(policy_loss.gradient())
             optimizer.minimize(policy_loss)
-
-            # dy_grad = policy._x_for_debug.gradient()
-
+            # for param in policy.parameters():
+            #     print(param.name, param.gradient())
+            # print(policy.debug[0].gradient())
+            # print(policy.debug[1].gradient())
+            # exit()
             policy.clear_gradients()
             del policy.rewards[:]
             del policy.saved_log_probs[:]
 
             return returns
 
-        out_reward = []
+        loss_data = []
         running_reward = 10
         for i_episode in itertools.count(1):
             state, ep_reward = env.reset(), 0
-            for t in range(1, 1000):  # Don't infinite loop while learning
+            # TODO(Aurelius84): In RL, we continuously select actions with multiple steps, 
+            # then accumulate loss to apply optimization. But currently some vars will be desconstructed
+            # in the first step. Set FLAGS_eager_delete_tensor_gb=-1 temporarily.
+            for t in range(1, 1000):
                 state = np.array(state).astype("float32")
-                action = select_action(state)
-                continue
+                action, loss = select_action(state)
                 state, reward, done, _ = env.step(action)
 
-                # log reward
-                out_reward.append(reward)
-
-                if args.render:
-                    env.render()
+                # log loss_probs
+                loss_data.append(loss.numpy()[0])
 
                 policy.rewards.append(reward)
                 ep_reward += reward
@@ -186,35 +200,34 @@ def train(args, place, to_static):
                 if done:
                     break
 
-            for log_probs in policy.saved_log_probs:
-                print(log_probs)
-            exit()
-            running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
+            # sum loss and apply optimization
             returns = finish_episode()
-            if i_episode % args.log_interval == 0:
-                print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.
-                      format(i_episode, ep_reward, running_reward))
 
-            if running_reward > env.spec.reward_threshold:
-                print("Solved! Running reward is now {} and "
-                      "the last episode runs to {} time steps!".format(
-                          running_reward, t))
-                fluid.save_dygraph(policy.state_dict(), args.save_dir)
+            running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
+            if i_episode % args.log_interval == 0:
+                print(
+                    'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'.
+                    format(i_episode, ep_reward, running_reward,
+                           loss.numpy()[0]))
+
+            if i_episode > args.train_step:
                 break
-        return np.array(out_reward)
+
+        return np.array(loss_data)
 
 
 class TestDeclarative(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
             else fluid.CPUPlace()
-        self.place = fluid.CPUPlace()
         self.args = Args()
 
     def test_train(self):
         st_out = train(self.args, self.place, to_static=True)
-        # dy_out = train(self.args, self.place, to_static=False)
-        # self.assertTrue(np.allclose(st_out, dy_out), msg="dy_out:\n {}\n st_out:\n{}\n".format(dy_out, st_out))
+        dy_out = train(self.args, self.place, to_static=False)
+        self.assertTrue(
+            np.allclose(st_out, dy_out),
+            msg="dy_out:\n {}\n st_out:\n{}\n".format(dy_out, st_out))
 
 
 if __name__ == '__main__':

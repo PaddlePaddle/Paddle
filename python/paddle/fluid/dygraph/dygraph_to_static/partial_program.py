@@ -227,7 +227,8 @@ class PartialProgramLayer(layers.Layer):
         tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                      "program_out_scope",
                                      core.VarDesc.VarType.STEP_SCOPES, True)
-
+        # FIXME(Aurelius84): Remove it.
+        self._inner_scope = core.Scope()
         tmp_scope_vec.value().set_scope(self._inner_scope)
 
         return input_vars, out_vars, tmp_scope_vec
