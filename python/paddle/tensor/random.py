@@ -220,8 +220,8 @@ def randn(shape, dtype=None, name=None):
             type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
             the elements of it should be integers or Tensors with shape [1]. If
             ``shape`` is a Variable, it should be an 1-D Tensor .
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output 
-            tensor, which can be float32, float64. if dtype is `None` , the data 
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output
+            tensor, which can be float32, float64. If dtype is `None` , the data
             type of output tensor is `float32` . Default is None.
         name(str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
