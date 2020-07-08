@@ -15,5 +15,42 @@
 from __future__ import print_function
 from paddle.fleet import RoleMakerBase
 from . import obj_creator
+from strategy_compiler import StrategyCompiler
+from meta_optimizer import MetaOptimizerFactory
 
-# __all__ = ['Fleet']
+__all__ = ['Fleet']
+
+
+class Fleet(object):
+    """
+    Unified API for distributed training of PaddlePaddle
+    Fleet is initialized through init function
+    """
+
+    def __init__(self):
+        pass
+
+    def init(self, role_maker):
+        self.role_maker = role_maker
+        self.strategy_compiler = StrategyCompiler()
+
+    def distributed_optimizer(self, optimizer, strategy):
+        self.user_defined_optimizer = optimizer
+        self.user_defined_strategy = strategy
+
+    def minimize(self, loss):
+        distributed_optimizer_list = \
+            MetaOptimizerFactory()._get_valid_meta_optimizers()
+        valid_optimizer_list = []
+        # recall meta optimizers for ranking
+        for opt in distributed_optimizer_list:
+            if opt.can_apply(loss, self.role_maker, self.user_defined_optimizer,
+                             self.user_defined_strategy):
+                valid_optimizer_list.append(opt)
+        # combine recalled meta optimizers to be a valid meta optimizer
+        meta_optimizer, compiled_strategy = \
+                self.strategy_compiler.generate_optimizer(
+                    loss, self.role_maker, self.optimizer,
+                    self.strategy, valid_optimizer_list)
+        optimize_ops, params_grads = meta_optimizer.minimize(loss)
+        return optimize_ops, params_grads
