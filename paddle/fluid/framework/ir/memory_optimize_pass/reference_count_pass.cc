@@ -77,11 +77,13 @@ class ShrinkDepsOpFunctor {
       const std::vector<details::OpHandleBase *> &ops) const {
     std::unordered_map<details::OpHandleBase *, size_t> op_to_idx;
     for (size_t i = 0; i < ops.size(); ++i) {
-      PADDLE_ENFORCE(graph_.HasOp(ops[i]), "Op does not exist in graph");
+      PADDLE_ENFORCE_EQ(graph_.HasOp(ops[i]), true,
+                        platform::errors::Fatal("Op does not exist in graph"));
       op_to_idx[ops[i]] = i;
     }
 
-    PADDLE_ENFORCE(op_to_idx.size() == ops.size(), "Duplicate ops");
+    PADDLE_ENFORCE_EQ(op_to_idx.size(), ops.size(),
+                      platform::errors::Fatal("graph may have duplicate ops"));
 
     std::vector<std::vector<RelationShip>> ret(ops.size());
     for (auto &e : ret) {
@@ -263,8 +265,9 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
 
   PADDLE_ENFORCE(last_live_ops_of_vars.empty() && var_infos.empty(),
-                 "Last Live Ops and Reference Counts of vars should be "
-                 "initialized at here.");
+                 platform::errors::Fatal(
+                     "Last Live Ops and Reference Counts of vars should be "
+                     "initialized at here."));
 
   const auto &vars = graph->Get<details::GraphVars>(details::kGraphVars);
 
@@ -304,7 +307,10 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       auto &var_name = name_var_pair.first;
       auto &var_handles = name_var_pair.second;
 
-      PADDLE_ENFORCE_EQ(var_desc->Name(), var_name);
+      PADDLE_ENFORCE_EQ(var_desc->Name(), var_name,
+                        platform::errors::Fatal(
+                            "A Var, it's VarName(%s) and DescName(%s) not same",
+                            var_name, var_desc->Name()));
 
       PADDLE_ENFORCE_EQ(
           var_handles.empty(), false,
