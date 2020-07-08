@@ -889,15 +889,15 @@ def meshgrid(*input, **kwargs):
           #example 2: in dygraph mode
 
           import paddle
-          import paddle.fluid as fluid
           import numpy as np
+          
+          paddle.enable_imperative()
 
           input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
           input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          with fluid.dygraph.guard():
-              tensor_3 = fluid.dygraph.to_variable(input_3)
-              tensor_4 = fluid.dygraph.to_variable(input_4)
-              grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
+          tensor_3 = paddle.imperative.to_variable(input_3)
+          tensor_4 = paddle.imperative.to_variable(input_4)
+          grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
           #the shape of grid_x is (100, 200)
           #the shape of grid_y is (100, 200)
