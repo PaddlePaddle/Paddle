@@ -404,9 +404,9 @@ def _as_lodtensor(data, place, dtype=None):
             >>>     ...
 
         Args:
-            data(numpy.ndarray): a instance of array, scaler, list or tuple
+            data(numpy.ndarray|list|tuple|scalar): a instance of array, scalar, list or tuple
             data(core.Place): the place of created tensor
-            dtype(core.VarDesc.VarType): the expected data type of created tensor
+            dtype(core.VarDesc.VarType|str): the expected data type of created tensor
 
         Returns:
             LoDTensor
@@ -414,14 +414,19 @@ def _as_lodtensor(data, place, dtype=None):
     #NOTE(zhiqiu): convert python builtin, like float, int, and list, to numpy ndarray
     if not isinstance(data, np.ndarray):
         assert dtype is not None, 'The dtype should be given when feed data is not np.ndarray'
+        dtype = convert_dtype(dtype) if isinstance(
+            dtype, core.VarDesc.VarType) else dtype
         if np.isscalar(data):
-            dtype = convert_dtype(dtype) if isinstance(
-                dtype, core.VarDesc.VarType) else dtype
             data = np.array([data]).astype(dtype)
         elif isinstance(data, (list, tuple)):
-            dtype = convert_dtype(dtype) if isinstance(
-                dtype, core.VarDesc.VarType) else dtype
-            data = np.array(data).astype(dtype)
+            data = np.array(data)
+            if data.dtype == np.object:
+                raise TypeError(
+                    "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                    "this means the input data contains nested lists with different lengths. "
+                    "Please consider using 'fluid.create_lod_tensor' to convert it to a LoD-Tensor."
+                )
+            data = data.astype(dtype)
         else:
             raise TypeError(
                 "Convert data of type {} to Tensor is not supported".format(
