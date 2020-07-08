@@ -64,8 +64,8 @@ class AutoCheckpointTest(unittest.TestCase):
             "PADDLE_RUNNING_ENV": "PADDLE_EDL_AUTO_CHECKPOINT",
             "PADDLE_EDL_TRAINER_ID": "0",
             "PADDLE_RUNNING_PLATFORM": "PADDLE_CLOUD",
-            "PADDLE_JOB_ID": "test_job_id",
-            "PADDLE_EDL_HDFS_HOME": "./hadoop/",
+            "PADDLE_JOB_ID": "test_job1",
+            "PADDLE_EDL_HDFS_HOME": "/usr/local/hadoop-2.7.7",
             "PADDLE_EDL_HDFS_NAME": "",
             "PADDLE_EDL_HDFS_UGI": "",
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "checkpoint",
@@ -124,11 +124,11 @@ class AutoCheckpointTest(unittest.TestCase):
         )
         i = 0
         for i in acp.train_epoch_range(10):
-            name1 = acp._get_train_epoch_range().name
-            print("name1:", name1, "epoch_no:", i)
+            name = acp._get_train_epoch_range().name
             for data in data_loader():
                 fetch = exe.run(main_program, feed=data, fetch_list=[loss])
-                #print("fetch:", loss)
+                print("fetch:", fetch)
+            print("name:", name, "epoch_no:", i)
 
         print("_run_save_0 i:", i)
         self.assertTrue(i, 9)

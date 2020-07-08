@@ -52,6 +52,11 @@ def _get_logger(log_level, name="auto_checkpoint"):
     return logger
 
 
+def _thread_checker():
+    assert current_thread().name == "MainThread", \
+        "auto checkpoint must run under main thread"
+
+
 class AutoCheckpointChecker(object):
     def __init__(self):
         self._run_env = None
@@ -92,7 +97,7 @@ class AutoCheckpointChecker(object):
             logger.fatal("exception:", e)
 
     def get_checkpoint_path(self, name):
-        return "%s/%s/%s".format(self.hdfs_checkpoint_path, self.job_id, name)
+        return "{}/{}/{}".format(self.hdfs_checkpoint_path, self.job_id, name)
 
     def valid(self):
         return  self._run_env is not None and \
@@ -229,7 +234,7 @@ class ExeTrainStatus(SerializableBase):
 class TrainEpochRange(SerializableBase):
     def __init__(self, max_epoch_num, name):
         self._max_epoch_num = max_epoch_num
-        self._epoch_no = 0  # start epoch_no
+        self._epoch_no = 0  # current epoch_no
         self._name = name
         self._restored = False
         self._exe_status = {}
@@ -253,8 +258,7 @@ class TrainEpochRange(SerializableBase):
         self._cper = Checkpointer(self._hdfs)
         self._file_name = "range_train_status"
 
-        assert current_thread(
-        ).name == "MainThread", "auto checkpoint must run under main thread"
+        _thread_checker()
         self._cper.load_checkpoint(self._checkpoint_path + "/range", [self],
                                    self._checker.trainer_id)
 
@@ -315,8 +319,7 @@ class TrainEpochRange(SerializableBase):
             self._exe_stats[k] = t
 
     def next(self):
-        assert current_thread(
-        ).name == "MainThread", "auto checkpoint must run under main thread"
+        _thread_checker()
 
         if self._max_epoch_num < 0:
             self._max_epoch_num = sys.maxint - 1
@@ -326,10 +329,11 @@ class TrainEpochRange(SerializableBase):
 
         start = self._epoch_no
         for i in range(start, self._max_epoch_num + 1):
-            yield i
             self._epoch_no = i
+            yield i
 
             if self._checker.trainer_id == 0:
+                print("prepare to save_checkpoint")
                 self.save_checkpoint()
 
     def get(self):
@@ -345,6 +349,7 @@ class TrainEpochRange(SerializableBase):
             return
 
         for k, t in six.iteritems(self._exe_status):
+            logger.info("save exe checkpoint:{}".format(t))
             m = PaddleModel(t._exe, t._program)
             path, checkpoint_no = self._cper.save_checkpoint(
                 self._checkpoint_path + "/exe", [t], self._checker.trainer_id)
@@ -369,7 +374,7 @@ def _can_auto_checkpoint():
 
 
 def _get_running_key(exe_name, program_name):
-    return "%s_%s".format(exe_name, program_name)
+    return "{}_{}".format(exe_name, program_name)
 
 
 def _get_checker():
@@ -452,7 +457,6 @@ def _auto_checkpoint(exe, program):
         # register this <exe,program,io>
         exe_status[key] = t
 
-        logger.info("not found checkpoint, so train from scrach")
+        logger.info("not found checkpoint, so train from epoch 0")
 
-    assert current_thread(
-    ).name == "MainThread", "auto checkpoint must run under main thread"
+    _thread_checker()

@@ -197,10 +197,23 @@ class HDFSClient(FS):
         if self.is_exist(fs_path):
             return
 
-        cmd = "{} -mkdir {}".format(self._base_cmd, fs_path)
-        ret, lines = self._run_cmd(cmd)
+        out_hdfs = False
+
+        cmd = "{} -mkdir {} ".format(self._base_cmd, fs_path)
+        ret, out = self._run_cmd(cmd, redirect_stderr=True)
         if ret != 0:
-            raise ExecuteError
+            for l in out:
+                if "No such file or directory" in l:
+                    out_hdfs = True
+                    break
+            if not out_hdfs:
+                raise ExecuteError
+
+        if out_hdfs and not self.is_exist(fs_path):
+            cmd = "{} -mkdir -p {}".format(self._base_cmd, fs_path)
+            ret, lines = self._run_cmd(cmd)
+            if ret != 0:
+                raise ExecuteError
 
     @_handle_errors
     def mv(self, fs_src_path, fs_dst_path, test_exists=True):

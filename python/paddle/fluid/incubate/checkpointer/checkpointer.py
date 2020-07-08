@@ -53,7 +53,7 @@ class PaddleModel(SerializableBase):
 class Checkpointer(object):
     def __init__(self, fs):
         self._fs = fs
-        self._checkpoint_prefix = "__paddle_fleet_checkpoint__"
+        self._checkpoint_prefix = "__paddle_checkpoint__"
 
     def save_checkpoint(self,
                         path,
@@ -105,9 +105,6 @@ class Checkpointer(object):
             self._fs.delete(tmp_path)
             self._fs.upload(cache_path, tmp_path)
         self._fs.mv(tmp_path, real_path)
-
-        if not remain_all_checkpoint:
-            self.clean_redundant_checkpoints(path)
 
         return real_path, max_no
 
@@ -161,34 +158,43 @@ class Checkpointer(object):
 
         return real_path
 
-    def _get_last_checkpoint_no(self, root_path):
-        """
-        only get the first depth
-        """
-        max_no = -1
-        d = {}
+    def get_checkpoint_no(self, root_path):
+        a = []
         dirs = self._fs.list_dirs(root_path)
         for d in dirs:
             g = d.split(".")
             if len(g) != 2:
                 continue
 
-            if g[0] != "__paddle_fleet_checkpoint__":
+            if g[0] != self._checkpoint_prefix:
                 continue
 
             try:
                 n = int(g[1])
-                if n > max_no:
-                    max_no = n
+                a.append(n)
             except:
                 continue
 
-        return max_no
+        return a.sort()
 
-    def clean_redundant_checkpoints(self, root_path, checkpoint_num=1):
+    def _get_last_checkpoint_no(self, root_path):
+        """
+        only get the first depth
+        """
+        a = self.get_checkpoint_no(root_path)
+        if len(a) > 0:
+            return a[-1]
+
+        return -1
+
+    def clean_redundant_checkpoints(self, root_path, reserved=[]):
         max_no = self._get_last_checkpoint_no(root_path)
         if max_no < 0:
             return
+
+        s = set(reserved)
+        if len(r) == 0:
+            s.add(max_no)
 
         if checkpoint_num < 1:
             checkpoint_num = 1
@@ -204,7 +210,7 @@ class Checkpointer(object):
 
             try:
                 n = int(g[1])
-                if n <= max_no - checkpoint_num:
+                if n not in s:
                     path = "{}/{}.{}".format(root_path, self._checkpoint_prefix,
                                              n)
                     self._fs.delete(path)
