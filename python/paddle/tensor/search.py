@@ -154,6 +154,10 @@ def index_select(x, index, axis=0, name=None):
 
     Returns:
         Variable: A Tensor with same data type as `input`.
+    
+    Raises:
+        TypeError: x must be a Variable and the dtype of x must be one of  float32, float64, int32 and int64.
+        TypeError: index must be a Variable adn the dtype of index must be int32 or int64.
 
     Examples:
         .. code-block:: python
