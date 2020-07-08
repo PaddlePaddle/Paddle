@@ -85,14 +85,14 @@ class TraceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<int>(
         "axis1",
-        R"DOC((int, default 0), the first dim of the 2-D planes from which the diagonals should be taken. 
-        Can be both positive and negative. Default: 0.
+        R"DOC((int, default 0), the first axis of the 2-D planes from which the diagonals should be taken. 
+        Can be either positive or negative. Default: 0.
         )DOC")
         .SetDefault(-2);
     AddAttr<int>(
         "axis2",
-        R"DOC((int, default 1), the second dim of the 2-D planes from which the diagonals should be taken. 
-        Can be both positive and negative. Default: 1.
+        R"DOC((int, default 1), the second axis of the 2-D planes from which the diagonals should be taken. 
+        Can be either positive or negative. Default: 1.
         )DOC")
         .SetDefault(-1);
     AddComment(R"DOC(
