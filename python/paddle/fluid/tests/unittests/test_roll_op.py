@@ -107,6 +107,20 @@ class TestRollAPI(unittest.TestCase):
                                [4.0, 5.0, 6.0]])
         self.assertTrue(np.allclose(expect_out, np_z))
 
+    def test_roll_op_false(self):
+        self.input_data()
+
+        def test_axis_out_range():
+            with program_guard(Program(), Program()):
+                x = fluid.layers.data(name='x', shape=[-1, 3])
+                z = paddle.roll(x, shifts=1, axis=10)
+                exe = fluid.Executor(fluid.CPUPlace())
+                res, = exe.run(feed={'x': self.data_x},
+                               fetch_list=[z.name],
+                               return_numpy=False)
+
+        self.assertRaises(ValueError, test_axis_out_range)
+
 
 if __name__ == "__main__":
     unittest.main()
