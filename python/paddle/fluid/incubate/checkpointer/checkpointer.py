@@ -175,7 +175,8 @@ class Checkpointer(object):
             except:
                 continue
 
-        return a.sort()
+        a.sort()
+        return a
 
     def _get_last_checkpoint_no(self, root_path):
         """

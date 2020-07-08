@@ -270,6 +270,7 @@ class TrainEpochRange(SerializableBase):
             "checkpoint_path": self._checkpoint_path,
             "restored": self._restored
         }
+        return d
 
     def __str__(self):
         return self._serialize(pop_keys=[])
@@ -281,18 +282,18 @@ class TrainEpochRange(SerializableBase):
     def serialize(self, path):
         file_name = "{}/{}".format(path, self._file_name)
         with open(file_name, 'w') as f:
-            s = self._serilize()
+            s = self._serialize()
             f.write(s)
 
     def _serialize(self, pop_keys=["restored"]):
         # self
         d = self._to_dict()
-        for k in pod_keys:
+        for k in pop_keys:
             d.pop(k, None)
 
         # registerd exes
         d["exe_status"] = {}
-        e = ["exe_status"]
+        e = d["exe_status"]
         for k, t in six.iteritems(self._exe_status):
             e[t._hash_key] = t._serialize()
         return json.dumps(d)
