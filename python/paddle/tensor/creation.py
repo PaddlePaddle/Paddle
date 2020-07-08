@@ -441,9 +441,10 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     Args:
         num_rows(int): the number of rows in each batch tensor.
         num_columns(int, optional): the number of columns in each batch tensor.
-                          If None, default: num_rows.
-        dtype(string, optional): The data type of the returned tensor.
-                       It should be int32, int64, float16, float32, float64.
+            If None, default: num_rows.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the returned tensor.
+            It should be int32, int64, float16, float32, float64. Default: if None, the data type
+            is float32.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 

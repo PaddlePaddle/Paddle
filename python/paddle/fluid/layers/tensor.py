@@ -1545,12 +1545,12 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
 
     Args:
         num_rows(int): the number of rows in each batch tensor.
-        num_columns(int): the number of columns in each batch tensor.
-                          If None, default: num_rows.
-        batch_shape(list(int)): If provided, the returned tensor will have a leading
-                                batch size of this shape.
-        dtype(string): The data type of the returned tensor.
-                       It should be int32, int64, float16, float32, float64.
+        num_columns(int, optional): the number of columns in each batch tensor.
+            If None, default: num_rows.
+        batch_shape(list(int), optional): If provided, the returned tensor will have a leading
+            batch size of this shape, default is None.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the returned tensor.
+            It should be int32, int64, float16, float32, float64, default is 'float32'.
 
     Returns:
         Variable: An identity Tensor or LoDTensor of shape batch_shape + [num_rows, num_columns].
@@ -1583,7 +1583,8 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
     else:
         num_columns = num_rows
     out = helper.create_variable_for_type_inference(dtype=dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
         type='eye',
         inputs={},
@@ -1591,7 +1592,7 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
         attrs={
             'num_rows': num_rows,
             'num_columns': num_columns,
-            'dtype': c_dtype
+            'dtype': dtype
         },
         stop_gradient=True)
     out.stop_gradient = True
