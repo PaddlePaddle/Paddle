@@ -21,9 +21,9 @@ import sys
 
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.fluid.incubate.checkpointer.auto_checkpoint import train_epoch_range
 
 import numpy as np
-import paddle.fluid as fluid
 from paddle.io import Dataset, BatchSampler, DataLoader
 
 BATCH_NUM = 20
