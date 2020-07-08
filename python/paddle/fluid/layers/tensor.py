@@ -638,7 +638,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
-        value(float16|float32|float64|int32|int64|Variable): The constant value used to initialize 
+        value(bool|float|int|Variable): The constant value used to initialize 
             the Tensor to be created. If value is an Variable, it should be an 1-D Tensor.
         force_cpu(bool): data should be on CPU if it's true, default value is False.
         out(Variable, optional): Optional output which can be any created 

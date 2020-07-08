@@ -332,7 +332,7 @@ def zeros(shape, dtype=None, name=None):
     Args:
         shape(tuple|list): Shape of output tensor.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output tensor, it supports
-            bool, float16, float32, float64, int32 and int64, default is None.
+            bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
