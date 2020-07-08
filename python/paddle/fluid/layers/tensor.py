@@ -729,7 +729,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         type='fill_constant',
         inputs=inputs,
         outputs={'Out': [out]},
-        attrs=attrs)
+        attrs=attrs,
+        stop_gradient=True)
+    out.stop_gradient = True
     return out
 
 
