@@ -123,7 +123,7 @@ class AutoCheckpointTest(unittest.TestCase):
         exe, data_loader, _, loss, compiled, main_program, image, label = self._init_env(
         )
         i = 0
-        for i in acp.train_epoch_range(10):
+        for i in acp.train_epoch_range(10, 0):
             name = acp._get_train_epoch_range().name
             for data in data_loader():
                 fetch = exe.run(main_program, feed=data, fetch_list=[loss])

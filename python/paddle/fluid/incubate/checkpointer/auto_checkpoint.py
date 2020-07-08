@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import six
+import time
 from threading import Thread, current_thread
 from contextlib import contextmanager
 
@@ -232,12 +233,14 @@ class ExeTrainStatus(SerializableBase):
 
 
 class TrainEpochRange(SerializableBase):
-    def __init__(self, max_epoch_num, name):
+    def __init__(self, max_epoch_num, name, save_checkpoint_inter=300):
         self._max_epoch_num = max_epoch_num
         self._epoch_no = 0  # current epoch_no
+        self._last_checkpoint_time = None
         self._name = name
         self._restored = False
         self._exe_status = {}
+        self._save_checkpoint_inter = save_checkpoint_inter
 
         self._checker = g_checker
         if not self._checker.valid():
@@ -328,6 +331,7 @@ class TrainEpochRange(SerializableBase):
         assert self._epoch_no >= 0, "self._epoch_no:{} must >=-1".format(
             self._epoch_no)
 
+        self._last_checkpoint_time = time.time()
         start = self._epoch_no
         for i in range(start, self._max_epoch_num + 1):
             self._epoch_no = i
@@ -335,7 +339,10 @@ class TrainEpochRange(SerializableBase):
 
             if self._checker.trainer_id == 0:
                 print("prepare to save_checkpoint")
-                self.save_checkpoint()
+                if time.time() - self._last_checkpoint_time >= self._save_checkpoint_inter or \
+                        i == self._max_epoch_num:
+                    self.save_checkpoint()
+                self._last_checkpoint_time = time.time()
 
     def get(self):
         assert self._epoch_no >= 0, "invalid epoch no:{}".format(self._epoch_no)
@@ -387,7 +394,7 @@ def _get_checker():
     return g_checker
 
 
-def train_epoch_range(max_epoch_num):
+def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
     if not _get_checker().valid():
         print("train_epoch_range not valid:")
         if max_epoch_num < 0:
@@ -398,8 +405,10 @@ def train_epoch_range(max_epoch_num):
         return
 
     global g_train_epoch_range
-    g_train_epoch_range = TrainEpochRange(max_epoch_num,
-                                          g_checker.generate_range_name())
+    g_train_epoch_range = TrainEpochRange(
+        max_epoch_num,
+        g_checker.generate_range_name(),
+        save_checkpoint_inter=save_checkpoint_inter)
 
     print("train_epoch_range:", g_train_epoch_range.name)
 
