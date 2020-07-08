@@ -309,11 +309,10 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                     format(epoch, right_result, fluid_result))
 
             with self.assertRaises(TypeError):
-                lr = fluid.dygraph.MultiStepDecay(learning_rate, "test", 0.1)
+                lr = fluid.dygraph.StepDecay(learning_rate, "test", 0.1)
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.MultiStepDecay(learning_rate, [20, 30, 50],
-                                                  1)
+                lr = fluid.dygraph.StepDecay(learning_rate, 20, 2)
 
 
 class TestLearningRateDecay(unittest.TestCase):

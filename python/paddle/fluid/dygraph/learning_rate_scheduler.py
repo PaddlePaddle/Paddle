@@ -448,7 +448,7 @@ class PolynomialDecay(LearningRateDecay):
         learning_rate(Variable|float): The initial learning rate. If the type 
             is Variable, it's a tensor with shape [1], the data type can be  
             float32 or float64. It also can be set to python int number.
-        decay_steps(int32): The decay step size. It determines the decay cycle.
+        decay_steps(int): The decay step size. It determines the decay cycle.
         end_learning_rate(float, optional): The minimum final learning rate. The default value is 0.0001.
         power(float, optional): Power of polynomial. The default value is 1.0.
         cycle(bool, optional): If set true, decay the learning rate every decay_steps. The default value is False.
@@ -954,6 +954,7 @@ class _LearningRateEpochDecay(LearningRateDecay):
         self.base_lr = float(learning_rate)
 
         self.epoch_num = -1
+        self.dtype = dtype
         if dtype is None:
             self.dtype = "float32"
         self.learning_rate = self.create_lr_var(self.base_lr)
@@ -1007,7 +1008,7 @@ class StepDecay(_LearningRateEpochDecay):
 
     Parameters:
         learning_rate (float|int): The initial learning rate. It can be set to python float or int number.
-        step_size (int): Period of learning rate decay..
+        step_size (int): Period of learning rate decay.
         decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
             It should be less than 1.0. Default: 0.1.
 
@@ -1085,7 +1086,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
             learning_rate = 0.005
 
     Parameters:
-        learning_rate (float|int): The initial learning rate. It can be set to python float or int number. If it
+        learning_rate (float|int): The initial learning rate. It can be set to python float or int number.
         milestones (tuple|list): List or tuple of each boundaries. Must be increasing.
         decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
             It should be less than 1.0. Default: 0.1.
