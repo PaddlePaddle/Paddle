@@ -744,21 +744,20 @@ EOF
     fi
 }
 
-summary_failtest=''
-tmpdir=`mktemp -d`
+failed_test_lists=''
+tmp_dir=`mktemp -d`
 
-function gather_failtests() {
-    for file in `ls $tmpdir`; do
+function collect_failed_tests() {
+    for file in `ls $tmp_dir`; do
         exit_code=0
-        grep -q 'The following tests FAILED:' $tmpdir/$file||exit_code=$?
+        grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
         if [ $exit_code -ne 0 ]; then
-            #echo "$exit_code != 0"
             failuretest=''
         else
-            #echo "$exit_code == 0"
-            failuretest=`grep -A 10000 'The following tests FAILED:' $tmpdir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
-            summary_failtest="${summary_failtest}
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failed_test_lists="${failed_test_lists}
             ${failuretest}" 
+            echo "failed_test_lists: ${failed_test_lists}"
         fi
     done
 }
@@ -785,7 +784,7 @@ function card_test() {
     fi
 
     trap 'caught_error' CHLD
-
+    tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
     for (( i = 0; i < $NUM_PROC; i++ )); do
         # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
@@ -798,8 +797,7 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
-        tmpfile_rand=`date +%s%N`
-        tmpfile=$tmpdir/$tmpfile_rand
+        tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
@@ -898,14 +896,18 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
-        gather_failtests
-        if [ -n "${summary_failtest}" ];then
+        collect_failed_tests
+        echo "failed_test_lists: ${failed_test_lists}"
+        if [ -n "${failed_test_lists}" ];then
+            failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+            echo "failed_test_lists_ult: ${failed_test_lists_ult}"
             echo "========================================"
             echo "Summary Failed Tests... "
             echo "========================================"
-            echo "The following tests FAILED: $summary_failtest"
+            echo "The following tests FAILED: "
+            echo "${failed_test_lists_ult}"
         fi
-        rm -f $tmpdir/*
+        rm -f $tmp_dir/*
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
