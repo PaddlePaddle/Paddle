@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-from fluid.incubate.utils.fs import FS, LocalFS
-from fluid.incubate.utils.hdfs import HDFSClient
+from .incubate.fleet.utils.fs import FS, LocalFS
+from .incubate.fleet.utils.hdfs import HDFSClient
 
 
 class SerializableBase(object):
@@ -70,7 +69,7 @@ class Checkpointer(object):
             assert self._fs.is_dir(path), "path:%s must be a directory".format(
                 path)
 
-        max_no = self._get_last_checkpoint_no(path, self._fs=self._fs)
+        max_no = self._get_last_checkpoint_no(path)
         if max_no < 0:
             max_no = -1
         max_no += 1
@@ -124,7 +123,7 @@ class Checkpointer(object):
         """
 
         if checkpoint_no is None:
-            max_no = self._get_last_checkpoint_no(path, self._fs)
+            max_no = self._get_last_checkpoint_no(path)
 
             if not ignore_empty:
                 assert max_no >= 0, "Can't find checkpoint"
@@ -161,7 +160,7 @@ class Checkpointer(object):
 
         return real_path
 
-    def _get_last_checkpoint_no(self, root_path, fs):
+    def _get_last_checkpoint_no(self, root_path):
         """
         only get the first depth
         """
@@ -186,7 +185,7 @@ class Checkpointer(object):
         return max_no
 
     def clean_redundant_checkpoints(self, root_path, checkpoint_num=1):
-        max_no = self._get_last_checkpoint_no(root_path, self._fs)
+        max_no = self._get_last_checkpoint_no(root_path)
         if max_no < 0:
             return
 

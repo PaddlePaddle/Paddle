@@ -102,11 +102,21 @@ class AutoCheckpointTest(unittest.TestCase):
             drop_last=True,
             num_workers=2)
 
-        return exe, loader, sgd, loss, prog, fluid.default_main_program()
+        return exe, loader, sgd, loss, prog, fluid.default_main_program(
+        ), image, label
 
     # break at epoch 0: not save epoch
-    def _run_save_0(self, exe, data_loader, main_program):
-        pass
+    def _run_save_0(self):
+        exe, loader, _, loss, compiled, main_program, image, label = self._init_env(
+        )
+        for i in fluid.train_eoch_range(10):
+            name1 = acp._get_train_epoch_range().name
+            print("name1:", name1)
+            for data in data_loader():
+                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
+                print("fetch:", loss)
+
+        fluid.io.save_inference_model(save_dir, [image, label], [loss], exe)
 
     # break at epoch 1: saved epoch_no is 0
     def _run_save_1(self, exe, data_loader, main_program):
@@ -166,8 +176,7 @@ class AutoCheckpointTest(unittest.TestCase):
         pass
 
     def test_without_fleet(self):
-        exe, loader, _, loss, compiled, main_program = self._init_env()
-        self._run_save(exe, loader, compiled)
+        self._run_save_0()
 
     """
     def test_with_fleet(self):
