@@ -1426,15 +1426,10 @@ def linspace(start, stop, num, dtype, name=None):
 
     helper = LayerHelper("linspace", **locals())
 
-    check_dtype(start.dtype, 'start', ['float32', 'float64'], linspace)
-    check_dtype(stop.dtype, 'stop', ['float32', 'float64'], linspace)
-    check_dtype(num.dtype, 'num', ['int32', 'int64'], linspace)
+    check_dtype(start.dtype, 'start', ['float32', 'float64'], 'linspace')
+    check_dtype(stop.dtype, 'stop', ['float32', 'float64'], 'linspace')
+    check_dtype(num.dtype, 'num', ['int32', 'int64'], 'linspace')
     check_dtype(dtype, 'dtype', ['float32', 'float64'], 'linspace')
-
-    check_variable_and_dtype(start, "start", ["float32", "float64"], "linspace")
-
-    check_variable_and_dtype(stop, "stop", ["float32", "float64"], "linspace")
-    check_variable_and_dtype(num, "num", ["int32"], "linspace")
 
     out = helper.create_variable_for_type_inference(dtype=start.dtype)
 

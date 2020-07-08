@@ -72,7 +72,7 @@ class TestLinspaceOpNumOneCase(OpTest):
 
 class TestLinspaceAPI(unittest.TestCase):
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with paddle.program_guard(paddle.Program()):
             out = paddle.linspace(
                 0, 10, 5, dtype='float32', name='linspace_res')
             assert 'linspace_res' in out.name
