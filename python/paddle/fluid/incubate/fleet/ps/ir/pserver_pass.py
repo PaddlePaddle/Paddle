@@ -548,11 +548,8 @@ def add_optimizer_pass(program, config):
                 counter_increment_idx = idx
                 break
 
-        if counter_increment_idx == -1:
-            raise ValueError(
-                "can not find right decay counter, submit a issue is recommended"
-            )
-        lr_ops.pop(counter_increment_idx)
+        if counter_increment_idx != -1:
+            lr_ops.pop(counter_increment_idx)
 
         lr_decay_block = program._create_block(program.num_blocks - 1)
         optimize_blocks.append(lr_decay_block)
