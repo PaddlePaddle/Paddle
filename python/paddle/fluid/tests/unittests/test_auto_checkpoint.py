@@ -36,6 +36,8 @@ CLASS_NUM = 10
 USE_GPU = False  # whether use GPU to run model
 places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
 
+logger = None
+
 
 # define a random dataset
 class RandomDataset(Dataset):
@@ -53,9 +55,14 @@ class RandomDataset(Dataset):
 
 class AutoCheckpointTest(unittest.TestCase):
     def setUp(self):
+        global logger
+        logger = acp._get_logger(20)
+        logger.info("enter tests")
+
         self._old_environ = dict(os.environ)
         proc_env = {
-            "PADDLE_RUNNING_ENV": "PADDLE_AUTO_CHECKPOINT",
+            "PADDLE_RUNNING_ENV": "PADDLE_EDL_AUTO_CHECKPOINT",
+            "PADDLE_EDL_TRAINER_ID": "0",
             "PADDLE_RUNNING_PLATFORM": "PADDLE_CLOUD",
             "PADDLE_JOB_ID": "test_job_id",
             "PADDLE_EDL_HDFS_HOME": "./hadoop/",
@@ -113,18 +120,20 @@ class AutoCheckpointTest(unittest.TestCase):
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        exe, loader, _, loss, compiled, main_program, image, label = self._init_env(
+        exe, data_loader, _, loss, compiled, main_program, image, label = self._init_env(
         )
         i = 0
         for i in acp.train_epoch_range(10):
             name1 = acp._get_train_epoch_range().name
-            print("name1:", name1)
+            print("name1:", name1, "epoch_no:", i)
             for data in data_loader():
                 fetch = exe.run(main_program, feed=data, fetch_list=[loss])
-                print("fetch:", loss)
+                #print("fetch:", loss)
 
+        print("_run_save_0 i:", i)
         self.assertTrue(i, 9)
-        fluid.io.save_inference_model(save_dir, [image, label], [loss], exe)
+        fluid.io.save_inference_model(save_dir, [image.name, label.name],
+                                      [loss], exe)
 
         fs.delete(save_dir)
 

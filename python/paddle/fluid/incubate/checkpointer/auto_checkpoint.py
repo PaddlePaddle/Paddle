@@ -25,10 +25,30 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 from paddle.fluid import compiler
-from .checkpointer import SerializableBase
+from .checkpointer import SerializableBase, Checkpointer
 
 g_train_epoch_range = None
 g_checker = None
+
+logger = None
+
+
+def _get_logger(log_level, name="auto_checkpoint"):
+    global logger
+    if logger != None:
+        return logger
+
+    logger = logging.getLogger(name)
+    logger.setLevel(log_level)
+    logger.propagate = False
+
+    log_handler = logging.StreamHandler()
+    log_format = logging.Formatter(
+        '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+    log_handler.setFormatter(log_format)
+    logger.addHandler(log_handler)
+
+    return logger
 
 
 class AutoCheckpointChecker(object):
@@ -42,8 +62,12 @@ class AutoCheckpointChecker(object):
         self._hdfs_checkpoint_path = None
         self._trainer_id = None
         self._ce_test = None
+
+        self._run_env = os.getenv("PADDLE_RUNNING_ENV")
+        if self.run_env != "PADDLE_EDL_AUTO_CHECKPOINT":
+            return
+
         try:
-            self._run_env = os.environ["PADDLE_RUNNING_ENV"]
             self._platform = os.environ["PADDLE_RUNNING_PLATFORM"]
             self._job_id = os.environ["PADDLE_JOB_ID"]
             self._hdfs_home = os.environ["PADDLE_EDL_HDFS_HOME"]
@@ -59,16 +83,18 @@ class AutoCheckpointChecker(object):
                     len(self._hdfs_name) > 6 and \
                     len(self._hdfs_ugi) > 3 and \
                     len(self._hdfs_checkpoint_path) > 0, "hdfs environ must set"
+            else:
+                assert len(self._hdfs_home) > 3 and \
+                    len(self._hdfs_checkpoint_path) > 0, "hdfs environ must set"
 
         except Exception as e:
-            print("exception:", e)
-            #logging.warning("auto checkpoint must run under PADDLE_RUNNING_ENV,PADDLE_RUNNING_PLATFORM,PADDLE_JOB_ID:{}".format(e))
+            logger.fatal("exception:", e)
 
-    def get_job_checkpoint_path(self):
-        return "{}/{}".format(self._hdfs_checkpoint_path, self._job_id)
+    def get_checkpoint_path(self, name):
+        return "%s/%s/%s".format(self.hdfs_checkpoint_path, self.job_id, name)
 
     def valid(self):
-        setted =  self._run_env is not None and \
+        return  self._run_env is not None and \
             self._platform is not None and \
             self._job_id is not None and \
             self._hdfs_home is not None and \
@@ -76,14 +102,6 @@ class AutoCheckpointChecker(object):
             self._hdfs_ugi is not None and \
             self._hdfs_checkpoint_path is not None and \
             self._trainer_id is not None
-
-        if not setted:
-            return False
-
-        if self._run_env != "PADDLE_EDL_AUTO_CHECKPOINT":
-            return False
-
-        return True
 
     def __str__(self):
         return "run_env:{} platform:{} job_id:{} \
@@ -99,27 +117,47 @@ class AutoCheckpointChecker(object):
 
     @property
     def run_env(self):
-        return self.run_env
+        return self._run_env
 
     @property
-    def plat_form(self):
-        return self.plat_form
+    def platform(self):
+        return self._platform
 
     @property
     def job_id(self):
-        return self.job_id
+        return self._job_id
 
     @property
     def hdfs_home(self):
         return self._hdfs_home
 
     @property
+    def hdfs_name(self):
+        return self._hdfs_name
+
+    @property
+    def ce_test(self):
+        return self._ce_test
+
+    @property
     def hdfs_ugi(self):
-        return self.hdfs_ugi
+        return self._hdfs_ugi
 
     @property
     def hdfs_checkpoint_path(self):
         return self._hdfs_checkpoint_path
+
+    def generate_range_name(self):
+        assert self.valid()
+        return unique_name.generate(g_checker._job_id + "_range_")
+
+    def generate_program_name(self):
+        assert self.valid()
+        return unique_name.generate(g_checker._job_id + "_program_")
+
+    def generate_executor_name(self):
+        assert self.valid()
+        return unique_name.generate(g_checker._job_id + "_executor_")
 
 
 class ExeTrainStatus(SerializableBase):
@@ -195,30 +233,32 @@ class TrainEpochRange(SerializableBase):
         self._max_epoch_num = max_epoch_num
         self._epoch_no = -1  # current
         self._name = name
-        self._checkpoint_path = _get_checkpoint_path(name)
         self._restored = False
+        self._exe_status = {}
 
         self._checker = g_checker
         if not self._checker.valid():
             return
+
+        self._checkpoint_path = self._checker.get_checkpoint_path(name)
 
         config = {
             "fs.default.name": self._checker.hdfs_name,
             "hadoop.job.ugi": self._checker.hdfs_ugi
         }
 
-        if self._ce_test:
+        if self._checker.ce_test:
             config = None
 
-        self._hdfs = HDFSClient(self._hadoop_home, config)
+        self._hdfs = HDFSClient(self._checker.hdfs_home, config)
 
         self._cper = Checkpointer(self._hdfs)
-        self._exe_status = {}
         self._file_name = "range_train_status"
 
         assert current_thread(
         ).name == "MainThread", "auto checkpoint must run under main thread"
-        self._cper.load_checkpoint(self._checkpoint_path + "/range", [self])
+        self._cper.load_checkpoint(self._checkpoint_path + "/range", [self],
+                                   self._checker.trainer_id)
 
     def _to_dict(self):
         d = {
@@ -231,6 +271,10 @@ class TrainEpochRange(SerializableBase):
 
     def __str__(self):
         return self._serialize(pop_keys=[])
+
+    @property
+    def name(self):
+        return self._name
 
     def serialize(self, path):
         file_name = "{}/{}".format(path, self._file_name)
@@ -288,7 +332,7 @@ class TrainEpochRange(SerializableBase):
             self._epoch_no = i
 
             if self._checker.trainer_id == 0:
-                self._save_checkpoint()
+                self.save_checkpoint()
 
     def get(self):
         assert self._epoch_no >= 0, "invalid epoch no:{}".format(self._epoch_no)
@@ -298,6 +342,9 @@ class TrainEpochRange(SerializableBase):
         status => /jobid/xxx_range_xx/range/
         model =>                      /exe/
         """
+        if not self._checker.valid():
+            return
+
         for t in self._exe_status:
             m = PaddleModel(exe, program)
             path, checkpoint_no = self._cper.save_checkpoint(
@@ -307,17 +354,10 @@ class TrainEpochRange(SerializableBase):
             t._checkpoint_no = checkpoint_no
             t.epoch_no = self.get()
 
-            logging.info("save exe checkpoint:{}".format(t))
+            logger.info("save exe checkpoint:{}".format(t))
 
         self._cper.save_checkpoint(self._checkpoint_path + "/range", [self])
-        logging.info("save train_epoch_range checkpoint:{}".format(self))
-
-    @staticmethod
-    def _generate_range_name():
-        if g_checker.valid():
-            return unique_name.generate(g_checker._job_id + "_range_")
-        else:
-            return None
+        logger.info("save train_epoch_range checkpoint:{}".format(self))
 
 
 def _get_train_epoch_range():
@@ -325,32 +365,40 @@ def _get_train_epoch_range():
 
 
 def _can_auto_checkpoint():
+    _get_checker()
     return g_checker.valid() and g_train_epoch_range is not None
-
-
-def _generate_program_name():
-    return unique_name.generate(g_checker._job_id + "_program_")
-
-
-def _generate_executor_name():
-    return unique_name.generate(g_checker._job_id + "_executor_")
-
-
-def _get_checkpoint_path(name):
-    return "%s/%s/%s".format(g_checker._hdfs_checkpoint_path, g_checker._job_id,
-                             name)
 
 
 def _get_running_key(exe_name, program_name):
     return "%s_%s".format(exe_name, program_name)
 
 
+def _get_checker():
+    _get_logger(20)
+    global g_checker
+    if g_checker is None:
+        g_checker = AutoCheckpointChecker()
+
+    return g_checker
+
+
 def train_epoch_range(max_epoch_num):
+    if not _get_checker().valid():
+        print("train_epoch_range not valid:")
+        for i in range(0, max_epoch_num):
+            yield i
+        logger.warning("auto checkpoint will take effect on PaddleCloud")
+        return
+
     global g_train_epoch_range
-    g_train_epoch_range = TrainEpochRange(
-        max_epoch_num, TrainEpochRange._generate_range_name())
+    g_train_epoch_range = TrainEpochRange(max_epoch_num,
+                                          g_checker.generate_range_name())
+
+    print("train_epoch_range:", g_train_epoch_range.name)
+
     for i in g_train_epoch_range.next():
         yield i
+
     g_train_epoch_range = None
 
 
@@ -364,16 +412,13 @@ def _get_hash(key):
 
 def _initial_names(exe, program):
     if program._auto_checkpoint_name is None:
-        program._auto_checkpoint_name = _generate_program_name()
+        program._auto_checkpoint_name = g_checker.generate_program_name()
 
     if exe._auto_checkpoint_name is None:
-        exe._auto_checkpoint_name = _generate_executor_name()
+        exe._auto_checkpoint_name = g_checker.generate_executor_name()
 
 
 def _auto_checkpoint(exe, program):
-    global g_checker
-    g_checker = AutoCheckpointChecker()
-
     if not _can_auto_checkpoint():
         return
 
@@ -390,7 +435,7 @@ def _auto_checkpoint(exe, program):
             a = Checkpointer(g_train_epoch_range.hdfs)
             m = PaddleModel(exe, program)
             a.load_checkpoint(t._checkpoint_path, [m])
-            logging.info("load_checkpoint exe checkpoint from {}".format(t))
+            logger.info("load_checkpoint exe checkpoint from {}".format(t))
             t._restored = True
     else:
         h = _get_hash(key)
@@ -406,7 +451,7 @@ def _auto_checkpoint(exe, program):
         # register this <exe,program,io>
         exe_status[key] = t
 
-        logging.info("not found checkpoint, so train from scrach")
+        logger.info("not found checkpoint, so train from scrach")
 
     assert current_thread(
     ).name == "MainThread", "auto checkpoint must run under main thread"
