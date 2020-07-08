@@ -17,6 +17,7 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
 #if CUDA_VERSION < 9000
@@ -55,7 +56,7 @@ namespace platform {
  *
  * Parameters:
  *    - i: loop index
- *    - nthreads: total thread numbers
+ *    - num: total element numbers
  *
  * Examples:
  *    template <typename T>
@@ -69,9 +70,9 @@ namespace platform {
  *    }
  *
 */
-#define CUDA_KERNEL_LOOP(i, nthreads)                        \
+#define CUDA_KERNEL_LOOP(i, num)                             \
   int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
-  for (int i = __index__; __index__ < (nthreads);            \
+  for (int i = __index__; __index__ < (num);                 \
        __index__ += blockDim.x * gridDim.x, i = __index__)
 
 class CublasHandleHolder {

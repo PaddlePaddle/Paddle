@@ -25,6 +25,8 @@
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
+#include "paddle/fluid/platform/cuda_helper.h"
+
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 using paddle::platform::float16;
 
