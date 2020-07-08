@@ -68,7 +68,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         fill_value(bool|float|int|Variable): The value to fill the tensor with. Default value is 0. 
             Note: this value shouldn't exceed the range of the output data type.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The data type can be one
-            of bool, float16, float32, float64, int32, int64 .The default value is None, which means the output 
+            of bool, float16, float32, float64, int32, int64. The default value is None, which means the output 
             data type is the same as input.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
     
