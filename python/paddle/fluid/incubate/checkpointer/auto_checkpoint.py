@@ -17,6 +17,7 @@ import logging
 import hashlib
 import json
 import os
+import six
 from threading import Thread, current_thread
 from contextlib import contextmanager
 
@@ -25,7 +26,7 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 from paddle.fluid import compiler
-from .checkpointer import SerializableBase, Checkpointer
+from .checkpointer import SerializableBase, Checkpointer, PaddleModel
 
 g_train_epoch_range = None
 g_checker = None
@@ -162,7 +163,7 @@ class AutoCheckpointChecker(object):
 
 class ExeTrainStatus(SerializableBase):
     def __init__(self):
-        self._epoch_no = -1
+        self._epoch_no = 0  # start epoch_no
         self._hash_key = None
         self._key = None
         self._checkpoint_path = None
@@ -172,9 +173,6 @@ class ExeTrainStatus(SerializableBase):
         self._program = None
 
         self._file_name = "exe_train_status"
-
-    def next(self):
-        return self._epoch_no + 1
 
     def __eq__(self, t):
         return self._epoch_no == t._epoch_no and \
@@ -231,7 +229,7 @@ class ExeTrainStatus(SerializableBase):
 class TrainEpochRange(SerializableBase):
     def __init__(self, max_epoch_num, name):
         self._max_epoch_num = max_epoch_num
-        self._epoch_no = -1  # current
+        self._epoch_no = 0  # start epoch_no
         self._name = name
         self._restored = False
         self._exe_status = {}
@@ -291,7 +289,7 @@ class TrainEpochRange(SerializableBase):
         # registerd exes
         d["exe_status"] = {}
         e = ["exe_status"]
-        for t in self._exe_status:
+        for k, t in six.iteritems(self._exe_status):
             e[t._hash_key] = t._serialize()
         return json.dumps(d)
 
@@ -311,7 +309,7 @@ class TrainEpochRange(SerializableBase):
 
         # exes status
         e = d["exe_status"]
-        for k, v in e:
+        for k, v in six.iteritems(e):
             t = ExeTrainStatus()
             t._deserialize(v)
             self._exe_stats[k] = t
@@ -323,10 +321,10 @@ class TrainEpochRange(SerializableBase):
         if self._max_epoch_num < 0:
             self._max_epoch_num = sys.maxint - 1
 
-        assert self._epoch_no >= -1, "self._epoch_no:{} must >=-1".format(
+        assert self._epoch_no >= 0, "self._epoch_no:{} must >=-1".format(
             self._epoch_no)
 
-        start = self._epoch_no + 1
+        start = self._epoch_no
         for i in range(start, self._max_epoch_num + 1):
             yield i
             self._epoch_no = i
@@ -336,6 +334,7 @@ class TrainEpochRange(SerializableBase):
 
     def get(self):
         assert self._epoch_no >= 0, "invalid epoch no:{}".format(self._epoch_no)
+        return self._epoch_no
 
     def save_checkpoint(self):
         """
@@ -345,10 +344,10 @@ class TrainEpochRange(SerializableBase):
         if not self._checker.valid():
             return
 
-        for t in self._exe_status:
-            m = PaddleModel(exe, program)
+        for k, t in six.iteritems(self._exe_status):
+            m = PaddleModel(t._exe, t._program)
             path, checkpoint_no = self._cper.save_checkpoint(
-                self._checkpoint_path + "/exe")
+                self._checkpoint_path + "/exe", [t], self._checker.trainer_id)
             # index info
             t._checkpoint_path = path
             t._checkpoint_no = checkpoint_no
@@ -385,7 +384,9 @@ def _get_checker():
 def train_epoch_range(max_epoch_num):
     if not _get_checker().valid():
         print("train_epoch_range not valid:")
-        for i in range(0, max_epoch_num):
+        if max_epoch_num < 0:
+            max_epoch_num = sys.maxint - 1
+        for i in range(0, max_epoch_num + 1):
             yield i
         logger.warning("auto checkpoint will take effect on PaddleCloud")
         return
@@ -440,7 +441,7 @@ def _auto_checkpoint(exe, program):
     else:
         h = _get_hash(key)
 
-        t = TrainStatus()
+        t = ExeTrainStatus()
         t._epoch_no = g_train_epoch_range.get()
         t._hash_key = h
         t._key = key

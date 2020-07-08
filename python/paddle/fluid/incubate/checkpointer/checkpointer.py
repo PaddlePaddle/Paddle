@@ -14,6 +14,7 @@
 
 from paddle.fluid.incubate.fleet.utils.fs import FS, LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.fluid import compiler
 
 
 class SerializableBase(object):

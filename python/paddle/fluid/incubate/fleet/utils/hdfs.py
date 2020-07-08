@@ -27,7 +27,7 @@ import logging
 import six
 from . import fs
 from .fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut
-import paddle
+from paddle.fluid import core
 import functools
 
 from pathlib import PurePosixPath, Path
@@ -80,7 +80,7 @@ class HDFSClient(FS):
             r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:')
 
     def _run_cmd(self, cmd, redirect_stderr=False):
-        ret, output = fluid.core.shell_execute_cmd(cmd, 0, 0, redirect_stderr)
+        ret, output = core.shell_execute_cmd(cmd, 0, 0, redirect_stderr)
         return int(ret), output.splitlines()
 
     def list_dirs(self, fs_path):
