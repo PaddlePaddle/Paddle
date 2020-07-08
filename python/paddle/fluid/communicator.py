@@ -66,9 +66,11 @@ class Communicator(object):
         if envs is None:
             envs = {}
 
-        if mode in [DistributedMode.SYNC, DistributedMode.GEO]:
+        if mode == DistributedMode.SYNC:
             envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
             envs["trainer_id"] = str(kwargs["trainer_id"])
+
+        if mode == DistributedMode.GEO:
             envs["trainers"] = str(kwargs["trainers"])
             envs["sparse_attrs"] = str(kwargs["sparse_attrs"])
 
