@@ -61,7 +61,7 @@ namespace platform {
  *    template <typename T>
  *    __global__ void Scale(T* logit_grad, const T* loss_grad, const int num,
  *                      const int d, const int remain) {
- *    CUDA_1D_KERNEL_LOOP(index, num) {
+ *    CUDA_KERNEL_LOOP(index, num) {
  *      int idx_n = index / d;
  *      int idx_remain = index % remain;
  *      logit_grad[index] *= loss_grad[idx_n * remain + idx_remain];
@@ -69,7 +69,7 @@ namespace platform {
  *    }
  *
 */
-#define CUDA_1D_KERNEL_LOOP(i, nthreads)                     \
+#define CUDA_KERNEL_LOOP(i, nthreads)                        \
   int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
   for (int i = __index__; __index__ < (nthreads);            \
        __index__ += blockDim.x * gridDim.x, i = __index__)

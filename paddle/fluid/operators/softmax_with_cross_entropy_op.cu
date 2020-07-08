@@ -24,7 +24,7 @@ template <typename T>
 __global__ void CrossEntropyGrad(T* logit_grad, const int64_t* labels,
                                  const int n, const int d, const int remain,
                                  const int ignore_index) {
-  CUDA_1D_KERNEL_LOOP(index, n * remain) {
+  CUDA_KERNEL_LOOP(index, n * remain) {
     int idx_n = index / remain;
     int idx_remain = index % remain;
     int idx = idx_n * d + labels[index] * remain + idx_remain;
@@ -36,7 +36,7 @@ __global__ void CrossEntropyGrad(T* logit_grad, const int64_t* labels,
 template <typename T>
 __global__ void Scale(T* logit_grad, const T* loss_grad, const int num,
                       const int d, const int remain) {
-  CUDA_1D_KERNEL_LOOP(index, num) {
+  CUDA_KERNEL_LOOP(index, num) {
     int idx_n = index / d;
     int idx_remain = index % remain;
     logit_grad[index] *= loss_grad[idx_n * remain + idx_remain];
