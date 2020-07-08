@@ -89,9 +89,9 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
     return fc3
 
 
-class DynamicLenet(fluid.dygraph.Layer):
+class ImperativeLenet(fluid.dygraph.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
-        super(DynamicLenet, self).__init__()
+        super(ImperativeLenet, self).__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
         fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
@@ -150,19 +150,19 @@ class DynamicLenet(fluid.dygraph.Layer):
         return x
 
 
-class TestDygraphQat(unittest.TestCase):
+class TestImperativeQat(unittest.TestCase):
     """
     QAT = quantization-aware training
     """
 
     def test_qat_save(self):
-        dygraph_qat = ImperativeQuantAware(
+        imperative_qat = ImperativeQuantAware(
             weight_quantize_type='abs_max',
             activation_quantize_type='moving_average_abs_max')
 
         with fluid.dygraph.guard():
-            lenet = DynamicLenet()
-            dygraph_qat.quantize(lenet)
+            lenet = ImperativeLenet()
+            imperative_qat.quantize(lenet)
             adam = AdamOptimizer(
                 learning_rate=0.001, parameter_list=lenet.parameters())
             train_reader = paddle.batch(
@@ -231,7 +231,7 @@ class TestDygraphQat(unittest.TestCase):
 
         # save inference quantized model
         path = "./mnist_infer_model"
-        dygraph_qat.save_quant_model(
+        imperative_qat.save_quant_model(
             dirname=path,
             model=lenet,
             input_shape=[(1, 28, 28)],
@@ -281,11 +281,11 @@ class TestDygraphQat(unittest.TestCase):
         seed = 1000
         lr = 0.1
 
-        # dygraph train
+        # imperative train
         _logger.info(
             "--------------------------dynamic graph qat--------------------------"
         )
-        dygraph_qat = ImperativeQuantAware(
+        imperative_qat = ImperativeQuantAware(
             weight_quantize_type=weight_quantize_type,
             activation_quantize_type=activation_quant_type)
 
@@ -293,7 +293,7 @@ class TestDygraphQat(unittest.TestCase):
             np.random.seed(seed)
             fluid.default_main_program().random_seed = seed
             fluid.default_startup_program().random_seed = seed
-            lenet = DynamicLenet()
+            lenet = ImperativeLenet()
             fixed_state = {}
             for name, param in lenet.named_parameters():
                 p_shape = param.numpy().shape
@@ -308,7 +308,7 @@ class TestDygraphQat(unittest.TestCase):
                 param_init_map[param.name] = value
             lenet.set_dict(fixed_state)
 
-            dygraph_qat.quantize(lenet)
+            imperative_qat.quantize(lenet)
             adam = AdamOptimizer(
                 learning_rate=lr, parameter_list=lenet.parameters())
             dynamic_loss_rec = []
@@ -332,7 +332,7 @@ class TestDygraphQat(unittest.TestCase):
                 if batch_id % 100 == 0:
                     _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
 
-        dygraph_qat.save_quant_model(
+        imperative_qat.save_quant_model(
             dirname="./dynamic_mnist",
             model=lenet,
             input_shape=[(1, 28, 28)],
@@ -418,7 +418,7 @@ class TestDygraphQat(unittest.TestCase):
                 rtol=rtol,
                 atol=atol,
                 equal_nan=True),
-            msg='Failed to do the dygraph qat.')
+            msg='Failed to do the imperative qat.')
 
 
 if __name__ == '__main__':

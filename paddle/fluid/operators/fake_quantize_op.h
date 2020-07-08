@@ -326,7 +326,7 @@ class FakeQuantDequantGradKernel : public framework::OpKernel<T> {
 
     // Initialize dx as same as d_out
     d_x->mutable_data<T>(context.GetPlace());
-    framework::TensorCopySync(*d_out, context.GetPlace(), d_x);
+    framework::TensorCopy(*d_out, context.GetPlace(), d_x);
   }
 };
 
