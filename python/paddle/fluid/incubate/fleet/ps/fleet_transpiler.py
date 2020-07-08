@@ -139,6 +139,7 @@ class FleetTranspiler(Fleet):
                             break
                 return "#".join(init_attrs)
 
+            kwargs = {}
             kwargs["trainers"] = self.worker_num()
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
