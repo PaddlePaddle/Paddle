@@ -4849,8 +4849,6 @@ def split(input, num_or_sections, dim=-1, name=None):
 
         if isinstance(dim, Variable):
             dim = dim.numpy()
-            assert dim.shape == (1,
-                                 ), "dim of type Variable should have shape [1]"
             dim = dim[0]
         dim = (len(input.shape) + dim) if dim < 0 else dim
         attrs += ('axis', dim)
