@@ -25,7 +25,6 @@ from paddle.common_ops_import import *
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
 from ..fluid.layers import diag  #DEFINE_ALIAS
-from ..fluid.layers import eye  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 
 from ..fluid.layers import create_tensor  #DEFINE_ALIAS
