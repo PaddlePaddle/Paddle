@@ -116,6 +116,19 @@ def step_decay(global_step, learning_rate, step_size, decay_rate=0.1):
     return learning_rate * math.pow(decay_rate, global_step // step_size)
 
 
+def lambda_decay(global_step, learning_rate, lr_lambda):
+    return learning_rate * lr_lambda(global_step)
+
+
+def cosine_annealing_decay(global_step, learning_rate, T_max, eta_min=0):
+    if (global_step - T_max) % (2 * T_max) != 0:
+        return eta_min + (learning_rate - eta_min) * (1 + math.cos(
+            math.pi * global_step / T_max)) / 2
+    else:
+        return eta_min + (learning_rate - eta_min) * (1 - math.cos(math.pi /
+                                                                   T_max))
+
+
 class TestLearningRateDecayDygraph(unittest.TestCase):
     def test_NoamDecay(self):
         with fluid.dygraph.guard():
@@ -175,7 +188,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result,
-                    msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.
+                    msg='Failed lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.
                     format(epoch, right_result, fluid_result))
 
             with self.assertRaises(ValueError):
@@ -207,15 +220,60 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result,
-                    msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.
+                    msg='Failed lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.
                     format(epoch, right_result, fluid_result))
 
             with self.assertRaises(TypeError):
-                lr = fluid.dygraph.MultiStepDecay(learning_rate, "test", 0.1)
+                lr = fluid.dygraph.StepDecay(learning_rate, "test", 0.1)
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.MultiStepDecay(learning_rate, [20, 30, 50],
-                                                  1)
+                lr = fluid.dygraph.StepDecay(learning_rate, 20, 2)
+
+    def test_LambdaDecay(self):
+        with fluid.dygraph.guard():
+            learning_rate = 0.5
+            lr_lambda = lambda x: 0.95**x
+            scheduler = fluid.dygraph.LambdaDecay(learning_rate, lr_lambda)
+            for epoch in range(30):
+                right_result = lambda_decay(epoch, learning_rate, lr_lambda)
+                fluid_result = scheduler().numpy()[0]
+                scheduler.epoch()
+                self.assertAlmostEqual(
+                    right_result,
+                    fluid_result,
+                    msg='Failed lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.
+                    format(epoch, right_result, fluid_result))
+
+            with self.assertRaises(TypeError):
+                lr = fluid.dygraph.LambdaDecay(learning_rate, "test")
+
+    def test_CosineAnnealingDecay(self):
+        with fluid.dygraph.guard():
+            learning_rate = 0.5
+            T_max = 5
+            eta_min = 0.1
+            scheduler = fluid.dygraph.CosineAnnealingDecay(learning_rate, T_max,
+                                                           eta_min)
+            for epoch in range(11):
+                right_result = cosine_annealing_decay(epoch, learning_rate,
+                                                      T_max, eta_min)
+                fluid_result = scheduler().numpy()[0]
+                scheduler.epoch()
+
+                print("epoch:{}, right_result:{}, fluid_result:{}".format(
+                    epoch, right_result, fluid_result))
+                self.assertAlmostEqual(
+                    right_result,
+                    fluid_result,
+                    msg='Failed lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.
+                    format(epoch, right_result, fluid_result))
+
+            with self.assertRaises(TypeError):
+                lr = fluid.dygraph.CosineAnnealingDecay(learning_rate, "test")
+
+            with self.assertRaises(TypeError):
+                lr = fluid.dygraph.CosineAnnealingDecay(learning_rate, 5,
+                                                        "test")
 
 
 class TestLearningRateDecay(unittest.TestCase):

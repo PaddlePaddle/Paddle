@@ -23,7 +23,8 @@ from ..data_feeder import check_type
 __all__ = [
     'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
     'InverseTimeDecay', 'PolynomialDecay', 'CosineDecay', 'LinearLrWarmup',
-    'ReduceLROnPlateau', 'StepDecay', 'MultiStepDecay'
+    'ReduceLROnPlateau', 'StepDecay', 'MultiStepDecay', 'LambdaDecay',
+    'CosineAnnealingDecay'
 ]
 
 
@@ -402,7 +403,7 @@ class PolynomialDecay(LearningRateDecay):
         learning_rate(Variable|float): The initial learning rate. If the type 
             is Variable, it's a tensor with shape [1], the data type can be  
             float32 or float64. It also can be set to python int number.
-        decay_steps(int32): The decay step size. It determines the decay cycle.
+        decay_steps(int): The decay step size. It determines the decay cycle.
         end_learning_rate(float, optional): The minimum final learning rate. The default value is 0.0001.
         power(float, optional): Power of polynomial. The default value is 1.0.
         cycle(bool, optional): If set true, decay the learning rate every decay_steps. The default value is False.
@@ -897,6 +898,7 @@ class _LearningRateEpochDecay(LearningRateDecay):
         self.base_lr = float(learning_rate)
 
         self.epoch_num = -1
+        self.dtype = dtype
         if dtype is None:
             self.dtype = "float32"
         self.learning_rate = self.create_lr_var(self.base_lr)
@@ -947,7 +949,7 @@ class StepDecay(_LearningRateEpochDecay):
 
     Parameters:
         learning_rate (float|int): The initial learning rate. It can be set to python float or int number.
-        step_size (int): Period of learning rate decay..
+        step_size (int): Period of learning rate decay.
         decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
             It should be less than 1.0. Default: 0.1.
 
@@ -1025,7 +1027,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
             learning_rate = 0.005
 
     Parameters:
-        learning_rate (float|int): The initial learning rate. It can be set to python float or int number. If it
+        learning_rate (float|int): The initial learning rate. It can be set to python float or int number.
         milestones (tuple|list): List or tuple of each boundaries. Must be increasing.
         decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
             It should be less than 1.0. Default: 0.1.
@@ -1087,3 +1089,156 @@ class MultiStepDecay(_LearningRateEpochDecay):
                 return self.base_lr * (decay_rate**i)
 
         return self.base_lr * (decay_rate**len(self.milestones))
+
+
+class LambdaDecay(_LearningRateEpochDecay):
+    """
+    :api_attr: imperative
+
+    Sets the learning rate of ``optimizer`` to the initial lr times a multiplicative factor, and this multiplicative
+    factor is computed by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
+
+    The algorithm can be described as the code below. 
+
+    .. code-block:: text
+
+        learning_rate = 0.5        # init learning_rate
+        lr_lambda = lambda epoch: 0.95 ** epoch
+
+        learning_rate = 0.5        # epoch 0
+        learning_rate = 0.475      # epoch 1
+        learning_rate = 0.45125    # epoch 2
+
+    Parameters:
+        learning_rate (float|int): The initial learning rate. It can be set to python float or int number.
+        lr_lambda (function): A function which computes a multiplicative factor given an integer parameter ``epoch`` , and 
+            then multiply the initial learning rate by this multiplicative factor.
+    
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import numpy as np
+            with fluid.dygraph.guard():
+                x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+                linear = fluid.dygraph.Linear(10, 10)
+                input = fluid.dygraph.to_variable(x)
+                scheduler = fluid.dygraph.LambdaDecay(0.5, lr_lambda=lambda x: 0.95**x)
+                adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
+
+                for epoch in range(6):
+                    for batch_id in range(5):
+                        out = linear(input)
+                        loss = fluid.layers.reduce_mean(out)
+                        adam.minimize(loss)
+                    scheduler.epoch()
+
+                    print("epoch:%d, current lr is %f" .format(epoch, adam.current_step_lr()))
+                    # epoch:0, current lr is 0.5
+                    # epoch:1, current lr is 0.475
+                    # epoch:2, current lr is 0.45125
+
+    """
+
+    def __init__(self, learning_rate, lr_lambda):
+        if not callable(lr_lambda):
+            raise TypeError(
+                "The type of 'lr_lambda' in 'LambdaDecay' must be 'function', but received %s."
+                % type(lr_lambda))
+
+        self.lr_lambda = lr_lambda
+        super(LambdaDecay, self).__init__(learning_rate)
+
+    def get_lr(self):
+        base_lr = self.create_lr_var(self.base_lr)
+
+        return self.base_lr * self.lr_lambda(self.epoch_num)
+
+
+class CosineAnnealingDecay(_LearningRateEpochDecay):
+    """
+    :api_attr: imperative
+
+    Set the learning rate using a cosine annealing schedule, where :math:`\eta_{max}` is set to 
+    the initial learning_rate. :math:`T_{cur}` is the number of epochs since the last restart in 
+    SGDR:
+
+    The algorithm can be described as following.
+
+    .. math::
+        \begin{aligned}
+            \eta_t & = \eta_{min} + \frac{1}{2}(\eta_{max} - \eta_{min})\left(1
+            + \cos\left(\frac{T_{cur}}{T_{max}}\pi\right)\right),
+            & T_{cur} \neq (2k+1)T_{max}; \\
+            \eta_{t+1} & = \eta_{t} + \frac{1}{2}(\eta_{max} - \eta_{min})
+            \left(1 - \cos\left(\frac{1}{T_{max}}\pi\right)\right),
+            & T_{cur} = (2k+1)T_{max}.
+        \end{aligned}
+    
+    It has been proposed in `SGDR: Stochastic Gradient Descent with Warm Restarts <https://arxiv.org/abs/1608.03983>`_. 
+    Note that this only implements the cosine annealing part of SGDR, and not the restarts.
+
+    Parameters:
+        learning_rate (float|int): The initial learning rate, that is :math:`\eta_{max}` . It can be set to python float or int number.
+        T_max (int): Maximum number of iterations. It is half of the decay cycle of learning rate.
+        eta_min (float|int, optional): Minimum learning rate, that is :math:`\eta_{min}` . Default: 0.
+
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import numpy as np
+            with fluid.dygraph.guard():
+                x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+                linear = fluid.dygraph.Linear(10, 10)
+                input = fluid.dygraph.to_variable(x)
+                scheduler = fluid.dygraph.CosineAnnealingDecay(0.5, 5)
+                adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
+
+                for epoch in range(10):
+                    for batch_id in range(5):
+                        out = linear(input)
+                        loss = fluid.layers.reduce_mean(out)
+                        adam.minimize(loss)
+                    scheduler.epoch()
+
+                    print("epoch:%d, current lr is %f" % (epoch, adam.current_step_lr()))
+                    # epoch:0, current lr is 0.5        (eta_max) The beginning of 1th cycle
+                    # epoch:1, current lr is 0.452254
+                    # epoch:2, current lr is 0.327254
+                    # ...
+                    # epoch:5, current lr is 0.095492   half of 1th cycle
+                    # ...
+                    # epoch:10, current lr is 0.5       (eta_max) The end of 1th cycle
+                    # ...
+    """
+
+    def __init__(self, learning_rate, T_max, eta_min=0):
+        if not isinstance(T_max, int):
+            raise TypeError(
+                "The type of 'T_max' in 'CosineAnnealingDecay' must be 'int', but received %s."
+                % type(T_max))
+        if not isinstance(eta_min, (float, int)):
+            raise TypeError(
+                "The type of 'eta_min' in 'CosineAnnealingDecay' must be 'float, int', but received %s."
+                % type(eta_min))
+        self.T_max = T_max
+        self.eta_min = float(eta_min)
+        super(CosineAnnealingDecay, self).__init__(learning_rate)
+
+    def get_lr(self):
+        from .. import layers
+        base_lr = self.create_lr_var(self.base_lr)
+        if (self.epoch_num - self.T_max) % (2 * self.T_max) != 0:
+            return self.eta_min + (base_lr - self.eta_min) * (1 + math.cos(
+                math.pi * self.epoch_num / self.T_max)) / 2
+        else:
+            return self.eta_min + (base_lr - self.eta_min) * (1 - math.cos(
+                math.pi / self.T_max))
