@@ -11322,7 +11322,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     return helper.append_activation(out)
 
 
-def elementwise_add(x, y, axis=-1, act=None, name=None):
+def elementwise_add(x, y, axis=-1, act=None, name=None, use_mkldnn=False):
     """
     :alias_main: paddle.elementwise_add
 	:alias: paddle.elementwise_add,paddle.tensor.elementwise_add,paddle.tensor.math.elementwise_add
@@ -11405,7 +11405,12 @@ Examples:
     """
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_add')
+            x,
+            y,
+            axis=axis,
+            act=act,
+            op_name='elementwise_add',
+            use_mkldnn=use_mkldnn)
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 

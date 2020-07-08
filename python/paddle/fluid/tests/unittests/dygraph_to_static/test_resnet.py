@@ -66,7 +66,8 @@ class ConvBNLayer(fluid.dygraph.Layer):
                  filter_size,
                  stride=1,
                  groups=1,
-                 act=None):
+                 act=None,
+                 use_mkldnn=False):
         super(ConvBNLayer, self).__init__()
 
         self._conv = Conv2D(
@@ -79,7 +80,8 @@ class ConvBNLayer(fluid.dygraph.Layer):
             act=None,
             bias_attr=False)
 
-        self._batch_norm = BatchNorm(num_filters, act=act)
+        self._batch_norm = BatchNorm(
+            num_filters, act=act, use_mkldnn=use_mkldnn)
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -89,32 +91,41 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
 
 class BottleneckBlock(fluid.dygraph.Layer):
-    def __init__(self, num_channels, num_filters, stride, shortcut=True):
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 stride,
+                 shortcut=True,
+                 use_mkldnn=False):
         super(BottleneckBlock, self).__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
             num_filters=num_filters,
             filter_size=1,
-            act='relu')
+            act='relu',
+            use_mkldnn=use_mkldnn)
         self.conv1 = ConvBNLayer(
             num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
-            act='relu')
+            act='relu',
+            use_mkldnn=use_mkldnn)
         self.conv2 = ConvBNLayer(
             num_channels=num_filters,
             num_filters=num_filters * 4,
             filter_size=1,
-            act=None)
+            act=None,
+            use_mkldnn=use_mkldnn)
 
         if not shortcut:
             self.short = ConvBNLayer(
                 num_channels=num_channels,
                 num_filters=num_filters * 4,
                 filter_size=1,
-                stride=stride)
+                stride=stride,
+                use_mkldnn=use_mkldnn)
 
         self.shortcut = shortcut
 
@@ -130,15 +141,16 @@ class BottleneckBlock(fluid.dygraph.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=conv2)
+        y = fluid.layers.elementwise_add(
+            x=short, y=conv2, use_mkldnn=use_mkldnn)
 
         layer_helper = fluid.layer_helper.LayerHelper(
-            self.full_name(), act='relu')
+            self.full_name(), act='relu', use_mkldnn=use_mkldnn)
         return layer_helper.append_activation(y)
 
 
 class ResNet(fluid.dygraph.Layer):
-    def __init__(self, layers=50, class_dim=102):
+    def __init__(self, layers=50, class_dim=102, use_mkldnn=False):
         super(ResNet, self).__init__()
 
         self.layers = layers
@@ -156,9 +168,18 @@ class ResNet(fluid.dygraph.Layer):
         num_filters = [64, 128, 256, 512]
 
         self.conv = ConvBNLayer(
-            num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
+            num_channels=3,
+            num_filters=64,
+            filter_size=7,
+            stride=2,
+            act='relu',
+            use_mkldnn=use_mkldnn)
         self.pool2d_max = Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
+            pool_size=3,
+            pool_stride=2,
+            pool_padding=1,
+            pool_type='max',
+            use_mkldnn=use_mkldnn)
 
         self.bottleneck_block_list = []
         for block in range(len(depth)):
@@ -171,12 +192,16 @@ class ResNet(fluid.dygraph.Layer):
                         if i == 0 else num_filters[block] * 4,
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
-                        shortcut=shortcut))
+                        shortcut=shortcut,
+                        use_mkldnn=use_mkldnn))
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
         self.pool2d_avg = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True)
+            pool_size=7,
+            pool_type='avg',
+            global_pooling=True,
+            use_mkldnn=use_mkldnn)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
 
@@ -187,7 +212,8 @@ class ResNet(fluid.dygraph.Layer):
             class_dim,
             act='softmax',
             param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)))
+                initializer=fluid.initializer.Uniform(-stdv, stdv)),
+            use_mkldnn=use_mkldnn)
 
     @dygraph_to_static_func
     def forward(self, inputs, label):
@@ -207,7 +233,7 @@ class ResNet(fluid.dygraph.Layer):
         return pred, avg_loss_, acc_top1_, acc_top5_
 
 
-def train_resnet_in_static_mode():
+def train_resnet_in_static_mode(use_mkldnn=False):
     """
     Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
     """
@@ -221,7 +247,7 @@ def train_resnet_in_static_mode():
         img = fluid.data(name="img", shape=[None, 3, 224, 224], dtype="float32")
         label = fluid.data(name="label", shape=[None, 1], dtype="int64")
         label.stop_gradient = True
-        resnet = ResNet()
+        resnet = ResNet(use_mkldnn=use_mkldnn)
         pred, avg_loss_, acc_top1_, acc_top5_ = resnet(img, label)
         optimizer = optimizer_setting(parameter_list=resnet.parameters())
         optimizer.minimize(avg_loss_)
@@ -269,7 +295,10 @@ def train_resnet_in_static_mode():
 
 class TestResnet(unittest.TestCase):
     def test_in_static_mode(self):
-        train_resnet_in_static_mode()
+        train_resnet_in_static_mode(use_mkldnn=False)
+
+    def test_in_static_mode_mkldnn(self):
+        train_resnet_in_static_mode(use_mkldnn=True)
 
 
 if __name__ == '__main__':

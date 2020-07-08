@@ -214,6 +214,18 @@ void VarBase::ClearGradient() {
         if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
 #endif
       }
+#ifdef PADDLE_WITH_MKLDNN
+      // Clear mkl-dnn cache
+      if (platform::is_cpu_place(grad_t->place())) {
+        platform::DeviceContextPool& pool =
+            platform::DeviceContextPool::Instance();
+        platform::MKLDNNDeviceContext* dev_ctx =
+            (platform::MKLDNNDeviceContext*)pool.Get(grad_t->place());
+        dev_ctx->ResetBlobMap();
+        platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+            paddle::framework::DataLayout::kNCHW);
+      }
+#endif
     }
   }
 }
