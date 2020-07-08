@@ -348,6 +348,8 @@ def zeros(shape, dtype=None, name=None):
           data = paddle.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
           data = paddle.zeros(shape=[2, 2], dtype='int32', name='zeros') # [[0, 0], [0, 0]]
     """
+    if dtype is None:
+        dtype = 'float32'
     return fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
 
 
