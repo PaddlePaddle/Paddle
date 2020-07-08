@@ -43,6 +43,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 from paddle.fluid.incubate.fleet.ps import version
+from paddle.fluid.incubate.fleet.ps.ir.public import get_all_get_sparse_tablenames
 from paddle.fluid.incubate.fleet.ps.ir.checkport import wait_server_ready
 from paddle.fluid.incubate.fleet.ps.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
@@ -104,14 +105,38 @@ class FleetTranspiler(Fleet):
             None
         """
 
-        def extra_strategy_envs():
+        def sync_strategy_envs():
             kwargs = {}
             kwargs[
                 "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
             kwargs["trainer_id"] = self._role_maker.worker_id()
+            return kwargs
+
+        def geo_strategy_envs():
+            def get_sparse_attrs():
+                opt_init_map = {}
+                opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
+                opt_init_map["fill_constant"] = ["value"]
+                opt_init_map["uniform_random"] = ["seed", "min", "max"]
+                opt_init_map[
+                    "truncated_gaussian_random"] = ["seed", "mean", "std"]
+
+                table_names = get_all_get_sparse_tablenames(
+                    self._origin_main_program)
+                init_attrs = []
+                for value_name in table_names:
+                    for op in self._origin_startup_program.global_block().ops:
+                        if op.type in opt_init_map.keys(
+                        ) and value_name == op.output("Out")[0]:
+                            init_attr = [op.type]
+                            for attr in opt_init_map[op.type]:
+                                init_attr.append(str(op.attr(attr)))
+                            init_attrs.append("&".join(init_attr))
+                            break
+                return "#".join(init_attrs)
+
             kwargs["trainers"] = self.worker_num()
-            kwargs[
-                "sparse_attrs"] = "SparseFeatFactors:10:uniform_random&0&-1.0&1.0"
+            kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
         # if MPISymetricRoleMaker is defined
@@ -128,9 +153,9 @@ class FleetTranspiler(Fleet):
         kwargs = None
 
         if isinstance(self._strategy, GeoStrategy):
-            kwargs = extra_strategy_envs()
+            kwargs = geo_strategy_envs()
         if isinstance(self._strategy, SyncStrategy):
-            kwargs = extra_strategy_envs()
+            kwargs = sync_strategy_envs()
 
         send_ctx = fleet.compiled_config.get_communicator_send_context()
 
