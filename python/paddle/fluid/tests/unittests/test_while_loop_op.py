@@ -242,6 +242,45 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             np.allclose(np.asarray(res[1]), i_grad),
             msg=" \nres = \n{} \n\n ans = \n{}".format(res[1], i_grad))
 
+    def test_while_loop_backward2(self):
+        def cond(i, x):
+            return i < 5
+
+        def body(i, x):
+            x = x + i
+            i = i + 1
+            return [i, x]
+
+        main_program = Program()
+        startup_program = Program()
+        with fluid.program_guard(main_program, startup_program):
+            i = fluid.data(name='i', shape=[1], dtype='float32')
+            i.stop_gradient = False
+            x = fluid.data(name='x', shape=[1], dtype='float32')
+            x.stop_gradient = False
+
+            out = layers.while_loop(cond, body, [i, x])
+            mean = layers.mean(out[1])
+            append_backward(mean)
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        feed_i = np.ones(1).astype('float32')
+        feed_x = np.ones(1).astype('float32')
+        data = np.asarray([11]).astype('float32')
+        i_grad = np.asarray([1]).astype('float32')
+
+        res = exe.run(main_program,
+                      feed={'i': feed_i,
+                            'x': feed_x},
+                      fetch_list=[mean.name, i.grad_name])
+        self.assertTrue(np.allclose(np.asarray(res[0]), data))
+        self.assertTrue(
+            np.allclose(np.asarray(res[1]), i_grad),
+            msg=" \nres = \n{} \n\n ans = \n{}".format(res[1], i_grad))
+
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
     def test_nested_net_with_backward_and_lodtensor(self):
