@@ -9896,7 +9896,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     """
     **Flatten op**
 
-    Flattens a contiguous range of dims in a tensor.
+    Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
 
     For Example:
 
@@ -9929,14 +9929,14 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     Args:
         x (Variable): A tensor of rank >= axis. A tensor with type float32,
                       float64, int8, int32, int64.
-        start_axis (int): the first dimension to flatten
-        stop_axis (int): the last dimension to flatten
+        start_axis (int): the first axis to flatten
+        stop_axis (int): the last axis to flatten
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
 
     Returns:
         Variable: A tensor with the contents of the input tensor, with input \
-                  dimensions flattened by indicated start axis and end axis. \
+                  axes flattened by indicated start axis and end axis. \
                   A Tensor with type same as input x.
 
     Raises:
@@ -9948,10 +9948,16 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         .. code-block:: python
 
             import paddle
-            x = paddle.data(name="x", shape=[4, 4, 3], dtype="float32")
-            # x shape is [4, 4, 3]
-            out = paddle.flatten(x=x, start_axis=1, stop_axis=2)
-            # out shape is [4, 12]
+
+            paddle.enable_imperative()
+
+            image_shape=(2, 3, 4, 4)
+            x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3]).reshape(image_shape) / 100.
+            x = x.astype('float32')
+            
+            img = paddle.imperative.to_variable(x)
+            out = paddle.flatten(img, start_axis=1, stop_axis=2)
+            # out shape is [2, 12, 4]
     """
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
