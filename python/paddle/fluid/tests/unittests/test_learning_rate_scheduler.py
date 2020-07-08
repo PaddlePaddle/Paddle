@@ -273,7 +273,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result,
-                    msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.
+                    msg='Failed lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.
                     format(epoch, right_result, fluid_result))
 
             with self.assertRaises(ValueError):
@@ -305,7 +305,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result,
-                    msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.
+                    msg='Failed lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.
                     format(epoch, right_result, fluid_result))
 
             with self.assertRaises(TypeError):

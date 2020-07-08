@@ -428,11 +428,14 @@ class Optimizer(object):
 
         """
         current_lr = self._global_learning_rate()
-        if current_lr:
+        if isinstance(current_lr, framework.Variable):
             return self._global_learning_rate().numpy()[0]
 
         if isinstance(self._learning_rate, float):
             return self._learning_rate
+        elif isinstance(self._learning_rate, _LearningRateEpochDecay):
+            step_lr = self._learning_rate()
+            return step_lr.numpy()[0]
         else:
             step_lr = self._learning_rate.step()
             if isinstance(step_lr, (float, int)):
