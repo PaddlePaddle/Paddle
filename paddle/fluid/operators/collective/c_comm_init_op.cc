@@ -52,8 +52,8 @@ class CCommInitOp : public framework::OperatorBase {
     int nranks = Attr<int>("nranks");
     int rank_id = Attr<int>("rank");
     int rid = Attr<int>("ring_id");
-    int device_id = boost::get<platform::CUDAPlace>(place).device;
-    if (HasAttr("device_id")) {
+    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
     platform::NCCLCommContext::Instance().CreateNCCLComm(
@@ -78,7 +78,8 @@ Initialize collective communicatoin context within this trainer
                  "(int) The rank of the trainer in distributed training.");
     AddAttr<int>(
         "device_id",
-        "(int) The deivce_id on which to initialize the communicator.");
+        "(int) The deivce_id on which to initialize the communicator.")
+        .SetDefault(-1);
     AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
   }
