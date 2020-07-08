@@ -210,7 +210,7 @@ def linspace(start, stop, num, dtype, out=None, device=None, name=None):
     return out
 
 
-def ones(shape, dtype=None, out=None, device=None):
+def ones(shape, dtype=None, name=None):
     """
 	:alias_main: paddle.ones
 	:alias: paddle.ones,paddle.tensor.ones,paddle.tensor.creation.ones
@@ -219,14 +219,10 @@ def ones(shape, dtype=None, out=None, device=None):
 
     Args:
         shape(tuple|list): Shape of output tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
-            bool, float16, float32, float64, int32 and int64.
-        out(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
-        device(str, optional): Which device to run the operator. The :attr:`device` must be
-            None,'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default value is False.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64. Default: if None, the data type is 'float32'.
+        name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
+            Default value is None, the framework set the name of output variable.  
 
     Returns:
         Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
@@ -235,21 +231,14 @@ def ones(shape, dtype=None, out=None, device=None):
         .. code-block:: python
 
           import paddle
+          
+          paddle.enable_imperative()
           data = paddle.ones(shape=[3, 2], dtype='float32') # [[1., 1.], [1., 1.], [1., 1.]]
           data = paddle.ones(shape=[2, 2], dtype='float32', device='cpu') # [[1., 1.], [1., 1.]]
     """
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'zeros')
-
-    if device is not None:
-        if device not in ['cpu', 'gpu']:
-            raise ValueError(
-                "The value of 'device' in zeros_op must be cpu or gpu, but received %s."
-                % (device))
-        with fluid.device_guard(device):
-            return fill_constant(value=1.0, shape=shape, dtype=dtype, out=out)
-    return fill_constant(value=1.0, shape=shape, dtype=dtype, out=out)
+    if dtype is None:
+        dtype = 'float32'
+    return fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
 
 
 def ones_like(input, dtype=None, device=None, name=None):
