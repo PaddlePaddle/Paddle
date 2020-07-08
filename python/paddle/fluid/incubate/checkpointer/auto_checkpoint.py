@@ -12,26 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .wrapped_decorator import signature_safe_contextmanager
 import sys
 import logging
 import hashlib
 import json
+import os
+from threading import Thread, current_thread
 from contextlib import contextmanager
-from . import unique_name
-from .checkpointer import SerializableBase
+
+from paddle.fluid import unique_name
 from paddle.fluid import core
 from paddle.fluid import framework
-import paddle.fluid as fluid
-from fluid.incubate.fleet.utils.hdfs import HDFSClient
-from . import compiler
-from threading import Thread, current_thread
+from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.fluid import compiler
+from .checkpointer import SerializableBase
+
+g_train_epoch_range = None
+g_checker = None
 
 
 class AutoCheckpointChecker(object):
     def __init__(self):
         self._run_env = None
-        self._plat_form = None
+        self._platform = None
         self._job_id = None
         self._hdfs_home = None
         self._hdfs_name = None
@@ -40,16 +43,16 @@ class AutoCheckpointChecker(object):
         self._trainer_id = None
         self._ce_test = None
         try:
-            self._run_env = os.environ("PADDLE_RUNNING_ENV")
-            self._plat_form = os.environ("PADDLE_RUNNING_PLATFORM")
-            self._job_id = os.environ("PADDLE_JOB_ID")
-            self._hdfs_home = os.environ("PADDLE_EDL_HDFS_HOME")
-            self._hdfs_name = os.environ("PADDLE_EDL_HDFS_NAME")
-            self._hdfs_ugi = os.environ("PADDLE_EDL_HDFS_UGI")
-            self._hdfs_checkpoint_path = os.environ(
-                "PADDLE_EDL_HDFS_CHECKPOINT_PATH")
-            self._trainer_id = int(os.getenv("PADDLE_EDL_TRAINER_ID"))
-            self._ce_test = bool(os.getenv("PADDLE_EDL_ONLY_FOR_CE_TEST"))
+            self._run_env = os.environ["PADDLE_RUNNING_ENV"]
+            self._platform = os.environ["PADDLE_RUNNING_PLATFORM"]
+            self._job_id = os.environ["PADDLE_JOB_ID"]
+            self._hdfs_home = os.environ["PADDLE_EDL_HDFS_HOME"]
+            self._hdfs_name = os.environ["PADDLE_EDL_HDFS_NAME"]
+            self._hdfs_ugi = os.environ["PADDLE_EDL_HDFS_UGI"]
+            self._hdfs_checkpoint_path = os.environ[
+                "PADDLE_EDL_HDFS_CHECKPOINT_PATH"]
+            self._trainer_id = int(os.environ["PADDLE_EDL_TRAINER_ID"])
+            self._ce_test = bool(os.environ["PADDLE_EDL_ONLY_FOR_CE_TEST"])
 
             if not self._ce_test:
                 assert len(self._hdfs_home) > 3 and \
@@ -58,15 +61,15 @@ class AutoCheckpointChecker(object):
                     len(self._hdfs_checkpoint_path) > 0, "hdfs environ must set"
 
         except Exception as e:
+            print("exception:", e)
             #logging.warning("auto checkpoint must run under PADDLE_RUNNING_ENV,PADDLE_RUNNING_PLATFORM,PADDLE_JOB_ID:{}".format(e))
-            return
 
     def get_job_checkpoint_path(self):
         return "{}/{}".format(self._hdfs_checkpoint_path, self._job_id)
 
     def valid(self):
         setted =  self._run_env is not None and \
-            self._plat_form is not None and \
+            self._platform is not None and \
             self._job_id is not None and \
             self._hdfs_home is not None and \
             self._hdfs_name is not None and \
@@ -81,6 +84,14 @@ class AutoCheckpointChecker(object):
             return False
 
         return True
+
+    def __str__(self):
+        return "run_env:{} platform:{} job_id:{} \
+            hdfs_home:{} hdfs_name:{} hdfs_ugi:{} \
+            hdfs_checkpoint_path:{} trainer_id:{} ce_test".format(
+            self._run_env, self._platform, self._hdfs_home, self._hdfs_name,
+            self._hdfs_ugi, self._hdfs_checkpoint_path, self._trainer_id,
+            self._ce_test)
 
     @property
     def trainer_id(self):
@@ -177,10 +188,6 @@ class ExeTrainStatus(SerializableBase):
 
     def __str__(self):
         return self._serialize([])
-
-
-g_train_epoch_range = None
-g_checker = AutoCheckpointChecker()
 
 
 class TrainEpochRange(SerializableBase):
@@ -305,9 +312,12 @@ class TrainEpochRange(SerializableBase):
         self._cper.save_checkpoint(self._checkpoint_path + "/range", [self])
         logging.info("save train_epoch_range checkpoint:{}".format(self))
 
-    @static
+    @staticmethod
     def _generate_range_name():
-        return unique_name.generate(g_checker._job_id + "_range_")
+        if g_checker.valid():
+            return unique_name.generate(g_checker._job_id + "_range_")
+        else:
+            return None
 
 
 def _get_train_epoch_range():
@@ -336,9 +346,10 @@ def _get_running_key(exe_name, program_name):
 
 
 def train_epoch_range(max_epoch_num):
+    global g_train_epoch_range
     g_train_epoch_range = TrainEpochRange(
         max_epoch_num, TrainEpochRange._generate_range_name())
-    for i in t.next():
+    for i in g_train_epoch_range.next():
         yield i
     g_train_epoch_range = None
 
@@ -360,6 +371,9 @@ def _initial_names(exe, program):
 
 
 def _auto_checkpoint(exe, program):
+    global g_checker
+    g_checker = AutoCheckpointChecker()
+
     if not _can_auto_checkpoint():
         return
 

@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid
-from fluid.incubate.fleet.utils.fs import FS, LocalFS
-from fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.fluid.incubate.fleet.utils.fs import FS, LocalFS
+from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 
 
 class SerializableBase(object):

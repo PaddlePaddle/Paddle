@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet, TrainStatus
@@ -21,7 +22,7 @@ import sys
 
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
-from paddle.fluid.incubate.checkpointer.auto_checkpoint import train_epoch_range
+import paddle.fluid.incubate.checkpointer.auto_checkpoint as acp
 
 import numpy as np
 from paddle.io import Dataset, BatchSampler, DataLoader
@@ -64,6 +65,7 @@ class AutoCheckpointTest(unittest.TestCase):
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1"
         }
         os.environ.update(proc_env)
+        print(os.environ)
 
     def tearDown(self):
         os.environ.clear()
@@ -107,16 +109,24 @@ class AutoCheckpointTest(unittest.TestCase):
 
     # break at epoch 0: not save epoch
     def _run_save_0(self):
+        fs = LocalFS()
+        save_dir = "./run_save_0"
+        fs.delete(save_dir)
+
         exe, loader, _, loss, compiled, main_program, image, label = self._init_env(
         )
-        for i in fluid.train_eoch_range(10):
+        i = 0
+        for i in acp.train_epoch_range(10):
             name1 = acp._get_train_epoch_range().name
             print("name1:", name1)
             for data in data_loader():
                 fetch = exe.run(main_program, feed=data, fetch_list=[loss])
                 print("fetch:", loss)
 
+        self.assertTrue(i, 9)
         fluid.io.save_inference_model(save_dir, [image, label], [loss], exe)
+
+        fs.delete(save_dir)
 
     # break at epoch 1: saved epoch_no is 0
     def _run_save_1(self, exe, data_loader, main_program):
@@ -128,7 +138,7 @@ class AutoCheckpointTest(unittest.TestCase):
 
     # check two exe status
     def _run_save_2_exe(self, exe, data_loader, main_program):
-        for i in fluid.train_eoch_range(10):
+        for i in acp.train_eoch_range(10):
             if i == 5:
                 break
 
@@ -142,7 +152,7 @@ class AutoCheckpointTest(unittest.TestCase):
                 print("fetch:", loss)
 
     def _run_save_multi_loop(self, exe, data_loader, main_program):
-        for i in fluid.train_eoch_range(10):
+        for i in acp.train_eoch_range(10):
             name1 = acp._get_train_epoch_range().name
             for data in data_loader():
                 fetch = exe.run(main_program, feed=data, fetch_list=[loss])
@@ -156,7 +166,7 @@ class AutoCheckpointTest(unittest.TestCase):
 
         # range must has uniq name
         a = []
-        for i in fluid.train_eoch_range(10):
+        for i in acp.train_eoch_range(10):
             name2 = acp._get_train_epoch_range().name
             a.append(i)
             for data in data_loader():
