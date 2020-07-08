@@ -42,13 +42,13 @@ extern void* nccl_dso_handle;
   };                                                                     \
   extern DynLoad__##__name __name
 #else
-#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name) \
-  struct DynLoad__##__name {                   \
-    template <typename... Args>                \
-    ncclResult_t operator()(Args... args) {    \
-      return __name(args...);                  \
-    }                                          \
-  };                                           \
+#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                          \
+  struct DynLoad__##__name {                                            \
+    template <typename... Args>                                         \
+    inline auto operator()(Args... args) -> decltype(__name(args...)) { \
+      return __name(args...);                                           \
+    }                                                                   \
+  };                                                                    \
   extern DynLoad__##__name __name
 #endif
 

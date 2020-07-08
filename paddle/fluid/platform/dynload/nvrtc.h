@@ -45,13 +45,13 @@ extern bool HasNVRTC();
 
 #else
 
-#define DECLARE_DYNAMIC_LOAD_NVRTC_WRAP(__name) \
-  struct DynLoad__##__name {                    \
-    template <typename... Args>                 \
-    inline auto operator()(Args... args) {      \
-      return ::__name(args...);                 \
-    }                                           \
-  };                                            \
+#define DECLARE_DYNAMIC_LOAD_NVRTC_WRAP(__name)                             \
+  struct DynLoad__##__name {                                                \
+    template <typename... Args>                                             \
+    inline auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
+      return ::__name(args...);                                             \
+    }                                                                       \
+  };                                                                        \
   extern DynLoad__##__name __name
 
 #endif
