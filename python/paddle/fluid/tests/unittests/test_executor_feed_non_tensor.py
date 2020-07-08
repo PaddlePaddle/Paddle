@@ -168,6 +168,11 @@ class TestAsLodTensor(unittest.TestCase):
                                               fluid.core.VarDesc.VarType.FP64)
         self.assertEqual(tensor._dtype(), fluid.core.VarDesc.VarType.FP64)
 
+    def test_as_lodtensor_nested_list(self):
+        cpu = fluid.CPUPlace()
+        self.assertRaises(TypeError, fluid.executor._as_lodtensor,
+                          [[1], [1, 2]], cpu, fluid.core.VarDesc.VarType.INT32)
+
 
 if __name__ == '__main__':
     unittest.main()
