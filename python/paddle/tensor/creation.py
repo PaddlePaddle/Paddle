@@ -322,7 +322,7 @@ def ones_like(input, dtype=None, device=None, name=None):
     return out
 
 
-def zeros(shape, dtype, name=None):
+def zeros(shape, dtype=None, name=None):
     """
 	:alias_main: paddle.zeros
 	:alias: paddle.zeros,paddle.tensor.zeros,paddle.tensor.creation.zeros
@@ -331,8 +331,8 @@ def zeros(shape, dtype, name=None):
 
     Args:
         shape(tuple|list): Shape of output tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
-            bool, float16, float32, float64, int32 and int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64, default is None.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
