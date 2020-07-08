@@ -58,9 +58,6 @@ TEST(PD_AnalysisConfig, use_gpu) {
                           false);
   bool trt_enable = PD_TensorrtEngineEnabled(config);
   CHECK(trt_enable) << "NO";
-  PD_EnableNgraph(config);
-  bool ngraph_enable = PD_NgraphEnabled(config);
-  LOG(INFO) << ngraph_enable << " Ngraph";
   PD_EnableMemoryOptim(config);
   bool memory_optim_enable = PD_MemoryOptimEnabled(config);
   CHECK(memory_optim_enable) << "NO";

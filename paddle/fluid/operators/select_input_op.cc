@@ -40,9 +40,13 @@ class SelectInputOp : public framework::OperatorBase {
     size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
 
     const std::vector<std::string> &x_names = Inputs("X");
-    PADDLE_ENFORCE_LT(output_branch, x_names.size(),
-                      "Selected branch number is greater than actual branch "
-                      "num in SelectInputOp");
+    PADDLE_ENFORCE_LT(
+        output_branch, x_names.size(),
+        platform::errors::InvalidArgument(
+            "Input 'Mask' in SelectInputOp is invalid. "
+            "'Mask' must be less than the size of input vector 'X'. "
+            "But received Mask = %d, X's size = %d.",
+            output_branch, x_names.size()));
 
     const framework::Variable *selected_x =
         scope.FindVar(x_names[output_branch]);
@@ -76,12 +80,9 @@ specifying the output branchi.
 class SelectInputInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(context->HasInputs("X"), true,
-                      "SelectInputOp must have input X.");
-    PADDLE_ENFORCE_EQ(context->HasInput("Mask"), true,
-                      "SelectInputOp must have input Mask.");
-    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
-                      "SelectInputOp must have output Out.");
+    OP_INOUT_CHECK(context->HasInputs("X"), "Input", "X", "SelectInput");
+    OP_INOUT_CHECK(context->HasInput("Mask"), "Input", "Mask", "SelectInput");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "SelectInput");
   }
 };
 

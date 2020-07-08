@@ -69,20 +69,23 @@ class LookupTableKernel : public framework::OpKernel<T> {
         } else {
           PADDLE_ENFORCE_LT(
               ids[i], row_number,
-              "Variable value (input) of OP(fluid.layers.embedding) "
-              "expected >= 0 and < %ld, but got %ld. Please check input "
-              "value.",
-              row_number, ids[i]);
+              platform::errors::InvalidArgument(
+                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "expected >= 0 and < %ld, but got %ld. Please check input "
+                  "value.",
+                  row_number, ids[i]));
           PADDLE_ENFORCE_GE(
               ids[i], 0,
-              "Variable value (input) of OP(fluid.layers.embedding) "
-              "expected >= 0 and < %ld, but got %ld. Please check input "
-              "value.",
-              row_number, ids[i]);
+              platform::errors::InvalidArgument(
+                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "expected >= 0 and < %ld, but got %ld. Please check input "
+                  "value.",
+                  row_number, ids[i]));
           memcpy(output + i * row_width, table + ids[i] * row_width,
                  row_width * sizeof(T));
         }
       }
+
     } else if (table_var->IsType<SelectedRows>()) {
       const auto &table_t = table_var->Get<SelectedRows>();
       int64_t row_width = table_t.value().dims()[1];
@@ -116,6 +119,18 @@ class LookupTableKernel : public framework::OpKernel<T> {
             }
           } else {
             auto id_index = table_t.Index(ids[i]);
+            PADDLE_ENFORCE_GE(
+                ids[i], 0,
+                platform::errors::InvalidArgument(
+                    "Variable value (input) of OP(fluid.layers.embedding) "
+                    "expected >= 0. But received %ld",
+                    ids[i]));
+            PADDLE_ENFORCE_GE(
+                id_index, 0,
+                platform::errors::InvalidArgument(
+                    "the input key should be exists. But received %d.",
+                    id_index));
+
             if (input_data_type == framework::proto::VarType::INT8) {
               memcpy(output + i * row_width, table + id_index * row_width,
                      row_width * sizeof(T));
@@ -183,7 +198,6 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
                         "output@Grad's shape = [%s].",
                         d_table_value->dims(), d_output_dims_2d);
       memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
-
     } else {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
@@ -206,14 +220,18 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
         } else {
           PADDLE_ENFORCE_LT(
               ids_data[i], N,
-              "Variable value (input) of OP(fluid.layers.embedding) "
-              "expected >= 0 and < %ld, but got %ld. Please check input value.",
-              N, ids_data[i]);
+              platform::errors::InvalidArgument(
+                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "expected >= 0 and < %ld, but got %ld. Please check input "
+                  "value.",
+                  N, ids_data[i]));
           PADDLE_ENFORCE_GE(
               ids_data[i], 0,
-              "Variable value (input) of OP(fluid.layers.embedding) "
-              "expected >= 0 and < %ld, but got %ld. Please check input value.",
-              N, ids_data[i]);
+              platform::errors::InvalidArgument(
+                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "expected >= 0 and < %ld, but got %ld. Please check input"
+                  "value.",
+                  N, ids_data[i]));
           for (int j = 0; j < D; ++j) {
             d_table_data[ids_data[i] * D + j] += d_output_data[i * D + j];
           }

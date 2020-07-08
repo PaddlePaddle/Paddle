@@ -83,7 +83,9 @@ struct Transform<platform::CUDADeviceContext> {
   void operator()(const platform::CUDADeviceContext& context, InputIter first,
                   InputIter last, OutputIter result, UnaryOperation op) {
     auto place = context.GetPlace();
-    PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "The CUDA Transform must be used in GPU place."));
     thrust::transform(thrust::cuda::par.on(context.stream()),
                       details::CastToCUDATransformIterator(first),
                       details::CastToCUDATransformIterator(last),
@@ -96,7 +98,9 @@ struct Transform<platform::CUDADeviceContext> {
                   InputIter1 last1, InputIter2 first2, OutputIter result,
                   BinaryOperation op) {
     auto place = context.GetPlace();
-    PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "The CUDA Transform must be used in GPU place."));
     thrust::transform(thrust::cuda::par.on(context.stream()),
                       details::CastToCUDATransformIterator(first1),
                       details::CastToCUDATransformIterator(last1),

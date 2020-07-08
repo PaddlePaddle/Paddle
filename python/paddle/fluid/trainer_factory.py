@@ -17,10 +17,10 @@ import threading
 import time
 import logging
 import numpy as np
+from paddle.fluid.log_helper import get_logger
 
-FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
-logging.basicConfig(level=logging.INFO, format=FORMAT)
-local_logger = logging.getLogger(__name__)
+local_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
 from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
@@ -72,6 +72,14 @@ class TrainerFactory(object):
                     trainer._set_dump_converter(opt_info["dump_converter"])
                 if opt_info.get("dump_param") is not None:
                     trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("enable_random_dump") is not None:
+                    trainer._set_enable_random_dump(opt_info[
+                        "enable_random_dump"])
+                if opt_info.get("dump_interval") is not None:
+                    trainer._set_dump_interval(opt_info["dump_interval"])
+                if opt_info.get("random_with_lineid") is not None:
+                    trainer._set_random_with_lineid(opt_info[
+                        "random_with_lineid"])
 
             if "fleet_desc" in opt_info:
                 device_worker._set_fleet_desc(opt_info["fleet_desc"])

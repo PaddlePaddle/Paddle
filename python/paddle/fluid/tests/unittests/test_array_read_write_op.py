@@ -15,12 +15,46 @@
 from __future__ import print_function
 
 import unittest
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import default_main_program
+from paddle.fluid import compiler, Program, program_guard
 import numpy
+
+
+def _test_read_write(x):
+    i = layers.zeros(shape=[1], dtype='int64')
+    i.stop_gradient = False
+    arr = layers.array_write(x=x[0], i=i)
+    i = layers.increment(x=i)
+    arr = layers.array_write(x=x[1], i=i, array=arr)
+    i = layers.increment(x=i)
+    arr = layers.array_write(x=x[2], i=i, array=arr)
+
+    i = layers.zeros(shape=[1], dtype='int64')
+    i.stop_gradient = False
+    a0 = layers.array_read(array=arr, i=i)
+    i = layers.increment(x=i)
+    a1 = layers.array_read(array=arr, i=i)
+    i = layers.increment(x=i)
+    a2 = layers.array_read(array=arr, i=i)
+
+    mean_a0 = layers.mean(a0)
+    mean_a1 = layers.mean(a1)
+    mean_a2 = layers.mean(a2)
+
+    a_sum = layers.sums(input=[mean_a0, mean_a1, mean_a2])
+
+    mean_x0 = layers.mean(x[0])
+    mean_x1 = layers.mean(x[1])
+    mean_x2 = layers.mean(x[2])
+
+    x_sum = layers.sums(input=[mean_x0, mean_x1, mean_x2])
+
+    return a_sum, x_sum
 
 
 class TestArrayReadWrite(unittest.TestCase):
@@ -31,50 +65,19 @@ class TestArrayReadWrite(unittest.TestCase):
                     name='x1', shape=[100]), layers.data(
                         name='x2', shape=[100])
         ]
-
         for each_x in x:
             each_x.stop_gradient = False
 
-        i = layers.zeros(shape=[1], dtype='int64')
-        i.stop_gradient = False
-        arr = layers.array_write(x=x[0], i=i)
-        i = layers.increment(x=i)
-        arr = layers.array_write(x=x[1], i=i, array=arr)
-        i = layers.increment(x=i)
-        arr = layers.array_write(x=x[2], i=i, array=arr)
-
-        i = layers.zeros(shape=[1], dtype='int64')
-        i.stop_gradient = False
-        a0 = layers.array_read(array=arr, i=i)
-        i = layers.increment(x=i)
-        a1 = layers.array_read(array=arr, i=i)
-        i = layers.increment(x=i)
-        a2 = layers.array_read(array=arr, i=i)
-
-        mean_a0 = layers.mean(a0)
-        mean_a1 = layers.mean(a1)
-        mean_a2 = layers.mean(a2)
-
-        a_sum = layers.sums(input=[mean_a0, mean_a1, mean_a2])
-
-        mean_x0 = layers.mean(x[0])
-        mean_x1 = layers.mean(x[1])
-        mean_x2 = layers.mean(x[2])
-
-        x_sum = layers.sums(input=[mean_x0, mean_x1, mean_x2])
-
-        scope = core.Scope()
-        cpu = core.CPUPlace()
-
-        exe = Executor(cpu)
-
         tensor = numpy.random.random(size=(100, 100)).astype('float32')
+        a_sum, x_sum = _test_read_write(x)
 
+        place = core.CPUPlace()
+        exe = Executor(place)
         outs = exe.run(feed={'x0': tensor,
                              'x1': tensor,
                              'x2': tensor},
                        fetch_list=[a_sum, x_sum],
-                       scope=scope)
+                       scope=core.Scope())
         self.assertEqual(outs[0], outs[1])
 
         total_sum = layers.sums(input=[a_sum, x_sum])
@@ -99,6 +102,42 @@ class TestArrayReadWrite(unittest.TestCase):
         # with mean_op.
         # the input gradient should also be 1
         self.assertAlmostEqual(1.0, g_out_sum, delta=0.1)
+
+        with fluid.dygraph.guard(place):
+            tensor1 = fluid.dygraph.to_variable(tensor)
+            tensor2 = fluid.dygraph.to_variable(tensor)
+            tensor3 = fluid.dygraph.to_variable(tensor)
+            x_dygraph = [tensor1, tensor2, tensor3]
+            for each_x in x_dygraph:
+                each_x.stop_gradient = False
+            a_sum_dygraph, x_sum_dygraph = _test_read_write(x_dygraph)
+            self.assertEqual(a_sum_dygraph, x_sum_dygraph)
+
+            total_sum_dygraph = layers.sums(
+                input=[a_sum_dygraph, x_sum_dygraph])
+            total_sum_scaled_dygraph = layers.scale(
+                x=total_sum_dygraph, scale=1 / 6.0)
+            total_sum_scaled_dygraph.backward()
+            g_out_dygraph = [
+                item._grad_ivar().numpy().sum() for item in x_dygraph
+            ]
+            g_out_sum_dygraph = numpy.array(g_out_dygraph).sum()
+
+            self.assertAlmostEqual(1.0, g_out_sum_dygraph, delta=0.1)
+
+
+class TestArrayReadWriteOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            #for ci coverage
+            x1 = numpy.random.randn(2, 4).astype('int32')
+            x2 = fluid.layers.fill_constant(shape=[1], dtype='int32', value=1)
+            x3 = numpy.random.randn(2, 4).astype('int32')
+
+            self.assertRaises(
+                TypeError, fluid.layers.array_read, array=x1, i=x2)
+            self.assertRaises(
+                TypeError, fluid.layers.array_write, array=x1, i=x2, out=x3)
 
 
 if __name__ == '__main__':

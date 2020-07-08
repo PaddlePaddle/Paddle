@@ -36,6 +36,40 @@ class TestFakeQuantizeOp(OpTest):
         self.check_output()
 
 
+class TestFakeQuantizeOp1(OpTest):
+    def setUp(self):
+        self.op_type = "fake_quantize_abs_max"
+        self.attrs = {'bit_length': 8}
+        self.inputs = {'X': np.zeros((10, 10)).astype("float32"), }
+        scale = np.max(np.abs(self.inputs['X'])).astype("float32")
+        inv_scale = 1.0 / (scale + 1e-6) if scale < 1e-30 else 1.0 / scale
+        self.outputs = {
+            'Out': np.round(self.inputs['X'] * inv_scale * (
+                (1 << (self.attrs['bit_length'] - 1)) - 1)),
+            'OutScale': np.array(scale).astype("float32"),
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestFakeQuantizeOp2(OpTest):
+    def setUp(self):
+        self.op_type = "fake_quantize_abs_max"
+        self.attrs = {'bit_length': 8}
+        self.inputs = {'X': np.full((10, 10), 1e-40).astype("float32"), }
+        scale = np.max(np.abs(self.inputs['X'])).astype("float32")
+        inv_scale = 1.0 / (scale + 1e-6) if scale < 1e-30 else 1.0 / scale
+        self.outputs = {
+            'Out': np.round(self.inputs['X'] * inv_scale * (
+                (1 << (self.attrs['bit_length'] - 1)) - 1)),
+            'OutScale': np.array(scale).astype("float32"),
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestFakeChannelWiseQuantizeOp(OpTest):
     def setUp(self):
         self.op_type = "fake_channel_wise_quantize_abs_max"

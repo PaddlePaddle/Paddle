@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import paddle
 
 
 class MyLayer(fluid.Layer):
@@ -66,7 +67,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
             fc1 = fluid.Linear(10, 3)
             fc2 = fluid.Linear(3, 10, bias_attr=False)
             custom = MyLayer(3, 10)
-            model = fluid.dygraph.Sequential(fc1, fc2, custom)
+            model = paddle.nn.Sequential(fc1, fc2, custom)
 
             named_parameters = list(model.named_parameters())
             expected_named_parameters = list()
@@ -77,6 +78,41 @@ class TestImperativeNamedParameters(unittest.TestCase):
                     expected_named_parameters.append((full_name, param))
 
             self.assertListEqual(expected_named_parameters, named_parameters)
+
+    def test_dir_layer(self):
+        with fluid.dygraph.guard():
+
+            class Mymodel(fluid.dygraph.Layer):
+                def __init__(self):
+                    super(Mymodel, self).__init__()
+                    self.linear1 = fluid.dygraph.Linear(10, 10)
+                    self.linear2 = fluid.dygraph.Linear(5, 5)
+                    self.conv2d = fluid.dygraph.Conv2D(3, 2, 3)
+                    self.embedding = fluid.dygraph.Embedding(size=[128, 16])
+                    self.h_0 = fluid.dygraph.to_variable(
+                        np.zeros([10, 10]).astype('float32'))
+                    self.weight = self.create_parameter(
+                        shape=[2, 3],
+                        attr=fluid.ParamAttr(),
+                        dtype="float32",
+                        is_bias=False)
+
+            model = Mymodel()
+
+            expected_members = dir(model)
+
+            self.assertTrue("linear1" in expected_members,
+                            "model should contain Layer: linear1")
+            self.assertTrue("linear2" in expected_members,
+                            "model should contain Layer: linear2")
+            self.assertTrue("conv2d" in expected_members,
+                            "model should contain Layer: conv2d")
+            self.assertTrue("embedding" in expected_members,
+                            "model should contain Layer: embedding")
+            self.assertTrue("h_0" in expected_members,
+                            "model should contain buffer: h_0")
+            self.assertTrue("weight" in expected_members,
+                            "model should contain parameter: weight")
 
 
 if __name__ == '__main__':

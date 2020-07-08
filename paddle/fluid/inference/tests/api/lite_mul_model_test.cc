@@ -16,21 +16,26 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <cmath>
+#include <mutex>   // NOLINT
+#include <thread>  // NOLINT
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
 
-TEST(AnalysisPredictor, use_gpu) {
-  std::string model_dir = FLAGS_infer_model + "/" + "mul_model";
-  AnalysisConfig config;
-  config.EnableUseGpu(100, 0);
-  config.SetModel(model_dir);
-  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
+int test_main(const AnalysisConfig& config, Barrier* barrier = nullptr) {
+  static std::mutex mutex;
+  std::unique_ptr<PaddlePredictor> predictor;
+  {
+    std::unique_lock<std::mutex> lock(mutex);
+    predictor = std::move(CreatePaddlePredictor(config));
+  }
+  if (barrier) {
+    barrier->Wait();
+  }
 
   std::vector<PaddleTensor> inputs;
-  auto predictor = CreatePaddlePredictor(config);
   std::vector<float> input({1});
 
   PaddleTensor in;
@@ -40,19 +45,46 @@ TEST(AnalysisPredictor, use_gpu) {
   inputs.emplace_back(in);
 
   std::vector<PaddleTensor> outputs;
-  ASSERT_TRUE(predictor->Run(inputs, &outputs));
-
+  predictor->Run(inputs, &outputs);
   const std::vector<float> truth_values = {
-      -0.00621776, -0.00620937, 0.00990623,  -0.0039817, -0.00074315,
-      0.61229795,  -0.00491806, -0.00068755, 0.18409646, 0.30090684};
-
+      -0.00621776f, -0.00620937f, 0.00990623f,  -0.0039817f, -0.00074315f,
+      0.61229795f,  -0.00491806f, -0.00068755f, 0.18409646f, 0.30090684f};
   const size_t expected_size = 1;
   EXPECT_EQ(outputs.size(), expected_size);
   float* data_o = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < outputs[0].data.length() / sizeof(float); ++j) {
     EXPECT_LT(std::abs(data_o[j] - truth_values[j]), 10e-6);
   }
+  return 0;
 }
+
+#ifdef PADDLE_WITH_CUDA
+TEST(AnalysisPredictor, thread_local_stream) {
+  const size_t thread_num = 5;
+  std::vector<std::thread> threads(thread_num);
+  Barrier barrier(thread_num);
+  for (size_t i = 0; i < threads.size(); ++i) {
+    threads[i] = std::thread([&barrier, i]() {
+      AnalysisConfig config;
+      config.EnableUseGpu(100, 0);
+      config.SetModel(FLAGS_infer_model + "/" + "mul_model");
+      config.EnableGpuMultiStream();
+      test_main(config, &barrier);
+    });
+  }
+  for (auto& th : threads) {
+    th.join();
+  }
+}
+
+TEST(AnalysisPredictor, lite_engine) {
+  AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(FLAGS_infer_model + "/" + "mul_model");
+  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
+  test_main(config);
+}
+#endif
 
 }  // namespace inference
 }  // namespace paddle

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <vector>
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/roi_align_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -258,28 +259,60 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
     roi_batch_id_list.Resize({rois_num});
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
-    auto lod = rois->lod();
-    PADDLE_ENFORCE_EQ(
-        lod.empty(), false,
-        "Input(ROIs) Tensor of ROIAlignOp does not contain LoD information.");
-    auto rois_lod = lod.back();
-    int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(
-        rois_batch_size, batch_size,
-        "The rois_batch_size and imgs batch_size must be the same.");
-    int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                      "The rois_num from input and lod must be the same.");
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        roi_batch_id_data[i] = n;
+    auto& dev_ctx = ctx.cuda_device_context();
+    auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    if (ctx.HasInput("RoisLod")) {
+      auto* rois_lod = ctx.Input<Tensor>("RoisLod");
+      int rois_batch_size = rois_lod->numel();
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size - 1, batch_size,
+          platform::errors::InvalidArgument(
+              "The rois_batch_size and imgs "
+              "batch_size must be the same. But received rois_batch_size = %d, "
+              "batch_size = %d",
+              rois_batch_size, batch_size));
+
+      std::vector<int64_t> rois_lod_(rois_batch_size);
+      memory::Copy(cplace, rois_lod_.data(), gplace, rois_lod->data<int64_t>(),
+                   sizeof(int64_t) * rois_batch_size, 0);
+      for (int n = 0; n < rois_batch_size - 1; ++n) {
+        for (size_t i = rois_lod_[n]; i < rois_lod_[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+      }
+    } else {
+      auto lod = rois->lod();
+      PADDLE_ENFORCE_EQ(
+          lod.empty(), false,
+          platform::errors::InvalidArgument("Input(ROIs) in ROIAlignOp does "
+                                            "not contain LoD information."));
+      auto rois_lod = lod.back();
+      int rois_batch_size = rois_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument(
+              "The batch size of rois and batch size "
+              "of images must be the same. But received rois batch size = %d, "
+              "and images batch size = %d",
+              rois_batch_size, batch_size));
+      int rois_num_with_lod = rois_lod[rois_batch_size];
+      PADDLE_ENFORCE_EQ(
+          rois_num, rois_num_with_lod,
+          platform::errors::InvalidArgument(
+              "The actual number of rois and the number of rois "
+              "provided from Input(RoIsLoD) in RoIAlign must be the same."
+              " But received actual number of rois is %d, and the number "
+              "of rois from RoIsLoD is %d",
+              rois_num, rois_num_with_lod));
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
       }
     }
-    auto& dev_ctx = ctx.cuda_device_context();
     int bytes = roi_batch_id_list.numel() * sizeof(int);
     auto roi_ptr = memory::Alloc(dev_ctx, bytes);
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
-    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
                  dev_ctx.stream());
     GPUROIAlignForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
@@ -316,19 +349,33 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     roi_batch_id_list.Resize({rois_num});
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        roi_batch_id_data[i] = n;
+
+    auto& dev_ctx = ctx.cuda_device_context();
+    auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    if (ctx.HasInput("RoisLod")) {
+      auto* rois_lod = ctx.Input<Tensor>("RoisLod");
+      int rois_batch_size = rois_lod->numel();
+      std::vector<int64_t> rois_lod_(rois_batch_size);
+      memory::Copy(cplace, rois_lod_.data(), gplace, rois_lod->data<int64_t>(),
+                   sizeof(int64_t) * rois_batch_size, 0);
+      for (int n = 0; n < rois_batch_size - 1; ++n) {
+        for (size_t i = rois_lod_[n]; i < rois_lod_[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+      }
+    } else {
+      auto rois_lod = rois->lod().back();
+      int rois_batch_size = rois_lod.size() - 1;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
       }
     }
-    auto& dev_ctx = ctx.cuda_device_context();
     auto roi_ptr =
         memory::Alloc(dev_ctx, roi_batch_id_list.numel() * sizeof(int));
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     int bytes = roi_batch_id_list.numel() * sizeof(int);
-    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
                  dev_ctx.stream());
     in_grad->mutable_data<T>(ctx.GetPlace());

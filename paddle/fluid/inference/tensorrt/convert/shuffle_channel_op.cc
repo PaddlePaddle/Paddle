@@ -29,11 +29,22 @@ class ShuffleChannelOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto input_dims = input->getDimensions();
-    PADDLE_ENFORCE(input_dims.nbDims == 3);
+    PADDLE_ENFORCE_EQ(
+        input_dims.nbDims, 3,
+        platform::errors::InvalidArgument("ShuffleChannel TRT op converter "
+                                          "input dims is invalid. The input "
+                                          "dims size should be 3, but got %d.",
+                                          input_dims.nbDims));
     int c = input_dims.d[0];
     int h = input_dims.d[1];
     int w = input_dims.d[2];
-    int group = boost::get<int>(op_desc.GetAttr("group"));
+    int group = BOOST_GET_CONST(int, op_desc.GetAttr("group"));
+
+    if (engine_->with_dynamic_shape()) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "You are running the TRT Dynamic Shape mode, "
+          "the shuffle_channel op does not support dynamic shape yet"));
+    }
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     nvinfer1::Dims4 reshape_dim(group, c / group, h, w);

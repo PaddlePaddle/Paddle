@@ -24,14 +24,22 @@ namespace operators {
 
 inline float get_period_sparcity(const std::vector<float>& sparsity,
                                  float cur_step, float rampup_steps) {
-  PADDLE_ENFORCE_GE(static_cast<int>(cur_step), 0);
+  PADDLE_ENFORCE_GE(static_cast<int>(cur_step), 0,
+                    platform::errors::InvalidArgument(
+                        "DGC current step=%d, but it must >= 0, "
+                        "please submit issue in github",
+                        static_cast<int>(cur_step)));
 
   size_t idx = static_cast<int>(cur_step * sparsity.size() / rampup_steps);
   if (idx >= sparsity.size()) {
     idx = sparsity.size() - 1;
   }
 
-  PADDLE_ENFORCE_LT(idx, sparsity.size());
+  PADDLE_ENFORCE_LT(
+      idx, sparsity.size(),
+      platform::errors::OutOfRange(
+          "sparsity index out of bounds. idx=%d >= sparsity.size=%d", idx,
+          sparsity.size()));
   return sparsity[idx];
 }
 
@@ -55,7 +63,10 @@ class DGCOpKernel : public framework::OpKernel<T> {
     // nranks
     auto nranks_tensor = ctx.Input<framework::Tensor>("nranks");
     const int nranks = static_cast<const int>(*nranks_tensor->data<float>());
-    PADDLE_ENFORCE_GT(nranks, 1, "DGC is not useful when num_trainers <= 1");
+    PADDLE_ENFORCE_GT(nranks, 1,
+                      platform::errors::PreconditionNotMet(
+                          "DGC is not useful when num_trainers <= 1. Please "
+                          "use multi card or multi machine GPU"));
 
     // regularization
     auto p = ctx.Input<framework::Tensor>("Param");
@@ -105,8 +116,10 @@ class DGCOpKernel : public framework::OpKernel<T> {
         1 - get_period_sparcity(
                 sparsity, static_cast<float>(*current_step - rampup_begin_step),
                 rampup_step);
-    PADDLE_ENFORCE_GE(ratio, 0.0);
-    PADDLE_ENFORCE_LT(ratio, 1.0);
+    PADDLE_ENFORCE_GE(ratio, 0.0, platform::errors::InvalidArgument(
+                                      "DGC sparsity ratio must >= 0"));
+    PADDLE_ENFORCE_LT(ratio, 1.0, platform::errors::InvalidArgument(
+                                      "DGC sparsity ratio must < 1"));
     int k = static_cast<int>(g->numel() * ratio);
 
     VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov
@@ -169,7 +182,9 @@ class DGCOpKernel : public framework::OpKernel<T> {
             static_cast<void*>(encode_grad_out_data), k, v_out_data,
             static_cast<int>(v_out->numel()), buf, dev_ctx.stream(),
             u_out_data)) {
-      LOG(FATAL) << "v_out numel:" << v_out->numel();
+      // TODO(weihang): owner should polish this error message
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "V_out numel error, V_out numel is %d.", v_out->numel()));
     }
 
     math::SetConstant<DeviceContext, T> tset;

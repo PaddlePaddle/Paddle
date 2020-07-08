@@ -236,6 +236,65 @@ class LayerList(Layer):
 
         Parameters:
             sublayer (Layer): sublayer to append
+
+        Examples:
+            .. code-block:: python
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
+                    another = fluid.dygraph.Linear(10, 10)
+                    linears.append(another)
+                    print(len(linears))  # 11
         """
         self.add_sublayer(str(len(self)), sublayer)
+        return self
+
+    def insert(self, index, sublayer):
+        """
+        Insert a sublayer before a given index in the list.
+
+        Parameters:
+            index (int): index to insert.
+            sublayer (Layer): sublayer to insert
+
+        Examples:
+            .. code-block:: python
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
+                    another = fluid.dygraph.Linear(10, 10)
+                    linears.insert(3, another)
+                    print(linears[3] is another)  # True
+        """
+        assert isinstance(index, int) and \
+               0 <= index < len(self._sub_layers), \
+            "index should be an integer in range [0, len(self))"
+        for i in range(len(self._sub_layers), index, -1):
+            self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
+        self._sub_layers[str(index)] = sublayer
+
+    def extend(self, sublayers):
+        """
+        Appends sublayers to the end of the list.
+
+        Parameters:
+            sublayers (iterable of Layer): iterable of sublayers to append
+
+        Examples:
+            .. code-block:: python
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
+                    another_list = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(5)])
+                    linears.extend(another_list)
+                    print(len(linears))  # 15
+                    print(another_list[0] is linears[10])  # True
+        """
+        offset = len(self)
+        for i, sublayer in enumerate(sublayers):
+            idx = str(offset + i)
+            self.add_sublayer(idx, sublayer)
         return self

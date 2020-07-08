@@ -57,6 +57,8 @@ class OpDesc {
 
   const std::vector<std::string> &Output(const std::string &name) const;
 
+  bool HasOutput(const std::string &name) const;
+
   std::vector<std::string> OutputArgumentNames() const;
 
   void SetOutput(const std::string &param_name,
@@ -85,7 +87,7 @@ class OpDesc {
   T GetAttrIfExists(const std::string &name) const {
     T result{};
     if (HasAttr(name)) {
-      result = boost::get<T>(GetAttr(name));
+      result = BOOST_GET_CONST(T, GetAttr(name));
     }
     return result;
   }

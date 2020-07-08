@@ -67,7 +67,10 @@ class ClipByNormKernel : public framework::OpKernel<T> {
                    framework::ToTypeName(in_var->Type()));
     }
 
-    PADDLE_ENFORCE_NOT_NULL(input);
+    PADDLE_ENFORCE_NOT_NULL(input,
+                            platform::errors::InvalidArgument(
+                                "Input(X) of ClipByNormOp should not be null. "
+                                "Please check if it is created correctly."));
 
     auto x = EigenVector<T>::Flatten(*input);
     auto out = EigenVector<T>::Flatten(*output);
@@ -79,7 +82,12 @@ class ClipByNormKernel : public framework::OpKernel<T> {
     auto scaling = temp + (static_cast<T>(1) - temp) * max_norm / x_norm;
     Eigen::array<int, 1> one_dim{{1}};
     Eigen::DSizes<int, 1> m_dsize(input->numel());
-    out.device(place) = x * scaling.reshape(one_dim).broadcast(m_dsize);
+    if (context.GetPlace() == platform::CPUPlace()) {
+      out.device(place) =
+          x * scaling.reshape(one_dim).eval().broadcast(m_dsize);
+    } else {
+      out.device(place) = x * scaling.reshape(one_dim).broadcast(m_dsize);
+    }
   }
 };
 
@@ -89,12 +97,19 @@ class ClipByNormOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ClipByNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ClipByNormOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of ClipByNormOp should not be null. Please "
+                          "check if it is created correctly."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of ClipByNormOp should not be null. "
+                          "Please check if it is created correctly."));
     auto max_norm = ctx->Attrs().Get<float>("max_norm");
-    PADDLE_ENFORCE_GT(max_norm, 0, "max_norm should be greater than 0.");
+    PADDLE_ENFORCE_GT(max_norm, 0, platform::errors::InvalidArgument(
+                                       "max_norm should be greater than 0. "
+                                       "Received max_norm is %f.",
+                                       max_norm));
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");

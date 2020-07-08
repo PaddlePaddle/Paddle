@@ -20,9 +20,17 @@ limitations under the License. */
 #include "glog/logging.h"
 
 namespace paddle {
+namespace platform {
+
+void ParseCommandLineFlags(int argc, char **argv, bool remove);
+
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 
-void InitGflags(std::vector<std::string> argv);
+bool InitGflags(std::vector<std::string> argv);
 
 void InitGLOG(const std::string &prog_name);
 

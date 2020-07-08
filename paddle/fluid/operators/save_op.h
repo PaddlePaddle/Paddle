@@ -45,12 +45,13 @@ class SaveOpKernel : public framework::OpKernel<T> {
     auto filename = ctx.Attr<std::string>("file_path");
     auto overwrite = ctx.Attr<bool>("overwrite");
 
-    VLOG(4) << "Save var output file_path: " << filename;
+    VLOG(4) << "save output file_path: " << filename;
 
-    if (FileExists(filename) && !overwrite) {
-      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
-                   filename, overwrite);
-    }
+    PADDLE_ENFORCE_EQ(
+        FileExists(filename) && !overwrite, false,
+        platform::errors::PreconditionNotMet(
+            "%s exists!, cannot save to it when overwrite is set to false.",
+            filename, overwrite));
 
     MkDirRecursively(DirName(filename).c_str());
 

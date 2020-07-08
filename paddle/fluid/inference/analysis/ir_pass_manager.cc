@@ -130,10 +130,11 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("optim_input_shape",
                 new std::map<std::string, std::vector<int>>(
                     argument->optim_input_shape()));
-    }
-    if (pass_name == "ngraph_subgraph_pass") {
-      pass->Set("program",
-                new framework::ProgramDesc *(&argument->main_program()));
+      // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
+      // not
+      // run fp16.
+      pass->Set("disable_trt_plugin_fp16",
+                new bool(argument->disable_trt_plugin_fp16()));
     }
     if (pass_name == "lite_subgraph_pass") {
       bool enable_int8 =

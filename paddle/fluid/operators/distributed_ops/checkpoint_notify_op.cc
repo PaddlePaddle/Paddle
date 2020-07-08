@@ -58,7 +58,10 @@ class CheckpointNotifyOp : public framework::OperatorBase {
       VLOG(3) << "checkpoint notify sending with path: " << save_path
               << " and var:" << slice_varnames[i] << " to " << epmap[i];
     }
-    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+    PADDLE_ENFORCE_EQ(
+        rpc_client->Wait(), true,
+        platform::errors::Fatal("Fail to notify checkpoint."
+                                " Internal error occurs in RPCClient."));
   }
 };
 

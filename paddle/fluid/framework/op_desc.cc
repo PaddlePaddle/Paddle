@@ -365,6 +365,10 @@ const std::vector<std::string> &OpDesc::Output(const std::string &name) const {
   return it->second;
 }
 
+bool OpDesc::HasOutput(const std::string &name) const {
+  return outputs_.find(name) != outputs_.end();
+}
+
 std::vector<std::string> OpDesc::OutputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->outputs_) {
@@ -422,7 +426,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
   if (attr_type == proto::AttrType::INTS &&
-      boost::get<std::vector<int>>(v).size() == 0u) {
+      BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
     const proto::OpProto::Attr &attr = GetProtoAttr(name);
     switch (attr.type()) {
@@ -472,7 +476,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // In order to set bool attr properly
   if (attr_type == proto::AttrType::INT && HasProtoAttr(name) &&
       GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
-    this->attrs_[name] = static_cast<bool>(boost::get<int>(v));
+    this->attrs_[name] = static_cast<bool>(BOOST_GET_CONST(int, v));
     need_update_ = true;
     return;
   }
@@ -529,7 +533,7 @@ Attribute OpDesc::GetNullableAttr(const std::string &name) const {
 std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  auto blocks = boost::get<std::vector<BlockDesc *>>(it->second);
+  auto blocks = BOOST_GET_CONST(std::vector<BlockDesc *>, it->second);
 
   std::vector<int> ids;
   for (auto n : blocks) {
@@ -542,7 +546,7 @@ std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
 int OpDesc::GetBlockAttrId(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  return boost::get<BlockDesc *>(it->second)->ID();
+  return BOOST_GET_CONST(BlockDesc *, it->second)->ID();
 }
 
 const std::unordered_map<std::string, Attribute> &OpDesc::GetAttrMap() const {
@@ -564,7 +568,7 @@ void OpDesc::RenameOutput(const std::string &old_name,
 
   auto it = attrs_.find(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName());
   if (it != attrs_.end()) {
-    auto &op_vars = boost::get<std::vector<std::string>>(it->second);
+    auto &op_vars = BOOST_GET(std::vector<std::string>, it->second);
     std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
   }
 
@@ -579,7 +583,7 @@ void OpDesc::RenameInput(const std::string &old_name,
 
   auto it = attrs_.find(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName());
   if (it != attrs_.end()) {
-    auto &op_vars = boost::get<std::vector<std::string>>(it->second);
+    auto &op_vars = BOOST_GET(std::vector<std::string>, it->second);
     std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
   }
 
@@ -721,6 +725,9 @@ CompileTimeInferShapeContext::CompileTimeInferShapeContext(
     : op_(op), block_(block) {}
 
 bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
+  if (op_.Inputs().find(name) == op_.Inputs().end()) {
+    return false;
+  }
   const std::vector<std::string> &input_names = op_.Input(name);
   auto length = input_names.size();
   if (length == 0) {
@@ -734,6 +741,9 @@ bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
 }
 
 bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
+  if (op_.Outputs().find(name) == op_.Outputs().end()) {
+    return false;
+  }
   const std::vector<std::string> &output_names = op_.Output(name);
   auto length = output_names.size();
   if (length == 0) {
@@ -747,6 +757,9 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
 }
 
 bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
+  if (op_.Inputs().find(name) == op_.Inputs().end()) {
+    return false;
+  }
   const std::vector<std::string> &input_names = op_.Input(name);
   if (input_names.empty()) {
     return false;
@@ -758,6 +771,9 @@ bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
 }
 
 bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
+  if (op_.Outputs().find(name) == op_.Outputs().end()) {
+    return false;
+  }
   const std::vector<std::string> &output_names = op_.Output(name);
   if (output_names.empty()) {
     return false;

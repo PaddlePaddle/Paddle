@@ -26,10 +26,12 @@ from . import tensor
 from . import nn
 from . import ops
 from ... import compat as cpt
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
 import six
-import numpy
+import numpy as np
 from functools import reduce
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'prior_box',
@@ -55,6 +57,7 @@ __all__ = [
     'box_clip',
     'multiclass_nms',
     'locality_aware_nms',
+    'matrix_nms',
     'retinanet_detection_output',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
@@ -228,16 +231,33 @@ def retinanet_target_assign(bbox_pred,
           gt_boxes = fluid.data(name='gt_boxes', shape=[10, 4],
                             dtype='float32')
           gt_labels = fluid.data(name='gt_labels', shape=[10, 1],
-                            dtype='float32')
+                            dtype='int32')
           is_crowd = fluid.data(name='is_crowd', shape=[1],
-                            dtype='float32')
-          im_info = fluid.data(name='im_infoss', shape=[1, 3],
+                            dtype='int32')
+          im_info = fluid.data(name='im_info', shape=[1, 3],
                             dtype='float32')
           score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \\
                 fluid.layers.retinanet_target_assign(bbox_pred, cls_logits, anchor_box,
                 anchor_var, gt_boxes, gt_labels, is_crowd, im_info, 10)
 
     """
+
+    check_variable_and_dtype(bbox_pred, 'bbox_pred', ['float32', 'float64'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(cls_logits, 'cls_logits', ['float32', 'float64'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(anchor_box, 'anchor_box', ['float32', 'float64'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(anchor_var, 'anchor_var', ['float32', 'float64'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(gt_boxes, 'gt_boxes', ['float32', 'float64'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(gt_labels, 'gt_labels', ['int32'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'retinanet_target_assign')
 
     helper = LayerHelper('retinanet_target_assign', **locals())
     # Assign target label to anchors
@@ -387,6 +407,22 @@ def rpn_target_assign(bbox_pred,
     """
 
     helper = LayerHelper('rpn_target_assign', **locals())
+
+    check_variable_and_dtype(bbox_pred, 'bbox_pred', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(cls_logits, 'cls_logits', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(anchor_box, 'anchor_box', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(anchor_var, 'anchor_var', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(gt_boxes, 'gt_boxes', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'rpn_target_assign')
+
     # Assign target label to anchors
     loc_index = helper.create_variable_for_type_inference(dtype='int32')
     score_index = helper.create_variable_for_type_inference(dtype='int32')
@@ -433,8 +469,12 @@ def rpn_target_assign(bbox_pred,
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
 
-def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
+def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
     """
+	:alias_main: paddle.nn.functional.sigmoid_focal_loss
+	:alias: paddle.nn.functional.sigmoid_focal_loss,paddle.nn.functional.loss.sigmoid_focal_loss
+	:old_api: paddle.fluid.layers.sigmoid_focal_loss
+
     **Sigmoid Focal Loss Operator.**
 
     `Focal Loss <https://arxiv.org/abs/1708.02002>`_ is used to address the foreground-background
@@ -474,9 +514,9 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
             is int32.
         fg_num(Variable): A 1-D tensor with shape [1] represents the number of positive samples in a
             mini-batch, which should be obtained before this OP. The data type of :attr:`fg_num` is int32.
-        gamma(float): Hyper-parameter to balance the easy and hard examples. Default value is
+        gamma(int|float): Hyper-parameter to balance the easy and hard examples. Default value is
             set to 2.0.
-        alpha(float): Hyper-parameter to balance the positive and negative example. Default value
+        alpha(int|float): Hyper-parameter to balance the positive and negative example. Default value
             is set to 0.25.
 
     Returns:
@@ -487,17 +527,79 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
     Examples:
         .. code-block:: python
 
+            import numpy as np
             import paddle.fluid as fluid
-
-            input = fluid.data(name='data', shape=[10,80], dtype='float32')
-            label = fluid.data(name='label', shape=[10,1], dtype='int32')
-            fg_num = fluid.data(name='fg_num', shape=[1], dtype='int32')
-            loss = fluid.layers.sigmoid_focal_loss(x=input,
-                                                   label=label,
-                                                   fg_num=fg_num,
-                                                   gamma=2.,
-                                                   alpha=0.25)
+            
+            num_classes = 10  # exclude background
+            image_width = 16
+            image_height = 16
+            batch_size = 32
+            max_iter = 20
+            
+            
+            def gen_train_data():
+                x_data = np.random.uniform(0, 255, (batch_size, 3, image_height,
+                                                    image_width)).astype('float64')
+                label_data = np.random.randint(0, num_classes,
+                                               (batch_size, 1)).astype('int32')
+                return {"x": x_data, "label": label_data}
+            
+            
+            def get_focal_loss(pred, label, fg_num, num_classes):
+                pred = fluid.layers.reshape(pred, [-1, num_classes])
+                label = fluid.layers.reshape(label, [-1, 1])
+                label.stop_gradient = True
+                loss = fluid.layers.sigmoid_focal_loss(
+                    pred, label, fg_num, gamma=2.0, alpha=0.25)
+                loss = fluid.layers.reduce_sum(loss)
+                return loss
+            
+            
+            def build_model(mode='train'):
+                x = fluid.data(name="x", shape=[-1, 3, -1, -1], dtype='float64')
+                output = fluid.layers.pool2d(input=x, pool_type='avg', global_pooling=True)
+                output = fluid.layers.fc(
+                    input=output,
+                    size=num_classes,
+                    # Notice: size is set to be the number of target classes (excluding backgorund)
+                    # because sigmoid activation will be done in the sigmoid_focal_loss op.
+                    act=None)
+                if mode == 'train':
+                    label = fluid.data(name="label", shape=[-1, 1], dtype='int32')
+                    # Obtain the fg_num needed by the sigmoid_focal_loss op:
+                    # 0 in label represents background, >=1 in label represents foreground,
+                    # find the elements in label which are greater or equal than 1, then
+                    # computed the numbers of these elements.
+                    data = fluid.layers.fill_constant(shape=[1], value=1, dtype='int32')
+                    fg_label = fluid.layers.greater_equal(label, data)
+                    fg_label = fluid.layers.cast(fg_label, dtype='int32')
+                    fg_num = fluid.layers.reduce_sum(fg_label)
+                    fg_num.stop_gradient = True
+                    avg_loss = get_focal_loss(output, label, fg_num, num_classes)
+                    return avg_loss
+                else:
+                    # During evaluating or testing phase,
+                    # output of the final fc layer should be connected to a sigmoid layer.
+                    pred = fluid.layers.sigmoid(output)
+                    return pred
+            
+            
+            loss = build_model('train')
+            moment_optimizer = fluid.optimizer.MomentumOptimizer(
+                learning_rate=0.001, momentum=0.9)
+            moment_optimizer.minimize(loss)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            for i in range(max_iter):
+                outs = exe.run(feed=gen_train_data(), fetch_list=[loss.name])
+                print(outs)
     """
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                             'sigmoid_focal_loss')
+    check_variable_and_dtype(label, 'label', ['int32'], 'sigmoid_focal_loss')
+    check_variable_and_dtype(fg_num, 'fg_num', ['int32'], 'sigmoid_focal_loss')
 
     helper = LayerHelper("sigmoid_focal_loss", **locals())
 
@@ -526,6 +628,10 @@ def detection_output(loc,
                      nms_eta=1.0,
                      return_index=False):
     """
+	:alias_main: paddle.nn.functional.detection_output
+	:alias: paddle.nn.functional.detection_output,paddle.nn.functional.vision.detection_output
+	:old_api: paddle.fluid.layers.detection_output
+
     Given the regression locations, classification confidences and prior boxes,
     calculate the detection outputs by performing following steps:
 
@@ -655,6 +761,10 @@ def detection_output(loc,
 @templatedoc()
 def iou_similarity(x, y, box_normalized=True, name=None):
     """
+	:alias_main: paddle.nn.functional.iou_similarity
+	:alias: paddle.nn.functional.iou_similarity,paddle.nn.functional.loss.iou_similarity
+	:old_api: paddle.fluid.layers.iou_similarity
+
     ${comment}
 
     Args:
@@ -691,11 +801,7 @@ def iou_similarity(x, y, box_normalized=True, name=None):
             #             [0.       ]] with shape: [2, 1]
     """
     helper = LayerHelper("iou_similarity", **locals())
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="iou_similarity",
@@ -715,6 +821,10 @@ def box_coder(prior_box,
               name=None,
               axis=0):
     """
+	:alias_main: paddle.nn.functional.box_coder
+	:alias: paddle.nn.functional.box_coder,paddle.nn.functional.vision.box_coder
+	:old_api: paddle.fluid.layers.box_coder
+
     **Box Coder Layer**
 
     Encode/Decode the target bounding box with the priorbox information.
@@ -825,14 +935,14 @@ def box_coder(prior_box,
                                     box_normalized=False,
                                     axis=1)
     """
+    check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
+                             'box_coder')
+    check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
+                             'box_coder')
     helper = LayerHelper("box_coder", **locals())
 
-    if name is None:
-        output_box = helper.create_variable_for_type_inference(
-            dtype=prior_box.dtype)
-    else:
-        output_box = helper.create_variable(
-            name=name, dtype=prior_box.dtype, persistable=False)
+    output_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
 
     inputs = {"PriorBox": prior_box, "TargetBox": target_box}
     attrs = {
@@ -875,12 +985,10 @@ def polygon_box_transform(input, name=None):
             input = fluid.data(name='input', shape=[4, 10, 5, 5], dtype='float32')
             out = fluid.layers.polygon_box_transform(input)
     """
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'polygon_box_transform')
     helper = LayerHelper("polygon_box_transform", **locals())
-    if name is None:
-        output = helper.create_variable_for_type_inference(dtype=input.dtype)
-    else:
-        output = helper.create_variable(
-            name=name, dtype=prior_box.input, persistable=False)
+    output = helper.create_variable_for_type_inference(dtype=input.dtype)
 
     helper.append_op(
         type="polygon_box_transform",
@@ -901,8 +1009,13 @@ def yolov3_loss(x,
                 downsample_ratio,
                 gt_score=None,
                 use_label_smooth=True,
-                name=None):
+                name=None,
+                scale_x_y=1.):
     """
+	:alias_main: paddle.nn.functional.yolov3_loss
+	:alias: paddle.nn.functional.yolov3_loss,paddle.nn.functional.vision.yolov3_loss
+	:old_api: paddle.fluid.layers.yolov3_loss
+
     ${comment}
 
     Args:
@@ -927,6 +1040,7 @@ def yolov3_loss(x,
         gt_score (Variable): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
+        scale_x_y (float): ${scale_x_y_comment}
 
     Returns:
         Variable: A 1-D tensor with shape [N], the value of yolov3 loss
@@ -979,11 +1093,7 @@ def yolov3_loss(x,
         raise TypeError(
             "Attr use_label_smooth of yolov3_loss must be a bool value")
 
-    if name is None:
-        loss = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        loss = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
     gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
@@ -993,7 +1103,7 @@ def yolov3_loss(x,
         "GTBox": gt_box,
         "GTLabel": gt_label,
     }
-    if gt_score:
+    if gt_score is not None:
         inputs["GTScore"] = gt_score
 
     attrs = {
@@ -1003,6 +1113,7 @@ def yolov3_loss(x,
         "ignore_thresh": ignore_thresh,
         "downsample_ratio": downsample_ratio,
         "use_label_smooth": use_label_smooth,
+        "scale_x_y": scale_x_y,
     }
 
     helper.append_op(
@@ -1025,8 +1136,13 @@ def yolo_box(x,
              conf_thresh,
              downsample_ratio,
              clip_bbox=True,
-             name=None):
+             name=None,
+             scale_x_y=1.):
     """
+	:alias_main: paddle.nn.functional.yolo_box
+	:alias: paddle.nn.functional.yolo_box,paddle.nn.functional.vision.yolo_box
+	:old_api: paddle.fluid.layers.yolo_box
+
     ${comment}
 
     Args:
@@ -1037,6 +1153,7 @@ def yolo_box(x,
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
         clip_bbox (bool): ${clip_bbox_comment}
+        scale_x_y (float): ${scale_x_y_comment}
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
@@ -1085,6 +1202,7 @@ def yolo_box(x,
         "conf_thresh": conf_thresh,
         "downsample_ratio": downsample_ratio,
         "clip_bbox": clip_bbox,
+        "scale_x_y": scale_x_y,
     }
 
     helper.append_op(
@@ -1159,15 +1277,16 @@ def detection_map(detect_res,
         return helper.create_variable_for_type_inference(dtype=type)
 
     map_out = __create_var('float32')
-    accum_pos_count_out = out_states[0] if out_states else __create_var('int32')
-    accum_true_pos_out = out_states[1] if out_states else __create_var(
-        'float32')
-    accum_false_pos_out = out_states[2] if out_states else __create_var(
-        'float32')
+    accum_pos_count_out = out_states[
+        0] if out_states is not None else __create_var('int32')
+    accum_true_pos_out = out_states[
+        1] if out_states is not None else __create_var('float32')
+    accum_false_pos_out = out_states[
+        2] if out_states is not None else __create_var('float32')
 
-    pos_count = input_states[0] if input_states else None
-    true_pos = input_states[1] if input_states else None
-    false_pos = input_states[2] if input_states else None
+    pos_count = input_states[0] if input_states is not None else None
+    true_pos = input_states[1] if input_states is not None else None
+    false_pos = input_states[2] if input_states is not None else None
 
     helper.append_op(
         type="detection_map",
@@ -1199,6 +1318,10 @@ def bipartite_match(dist_matrix,
                     dist_threshold=None,
                     name=None):
     """
+	:alias_main: paddle.nn.functional.bipartite_match
+	:alias: paddle.nn.functional.bipartite_match,paddle.nn.functional.vision.bipartite_match
+	:old_api: paddle.fluid.layers.bipartite_match
+
     This operator implements a greedy bipartite matching algorithm, which is
     used to obtain the matching with the maximum distance based on the input
     distance matrix. For input 2D matrix, the bipartite matching algorithm can
@@ -1289,6 +1412,10 @@ def target_assign(input,
                   mismatch_value=None,
                   name=None):
     """
+	:alias_main: paddle.nn.functional.target_assign
+	:alias: paddle.nn.functional.target_assign,paddle.nn.functional.extension.target_assign
+	:old_api: paddle.fluid.layers.target_assign
+
     This operator can be, for given the target bounding boxes or labels,
     to assign classification and regression targets to each prediction as well as
     weights to prediction. The weights is used to specify which prediction would
@@ -1403,6 +1530,10 @@ def ssd_loss(location,
              normalize=True,
              sample_size=None):
     """
+	:alias_main: paddle.nn.functional.ssd_loss
+	:alias: paddle.nn.functional.ssd_loss,paddle.nn.functional.loss.ssd_loss
+	:old_api: paddle.fluid.layers.ssd_loss
+
     **Multi-box loss layer for object detection algorithm of SSD**
 
     This layer is to compute detection loss for SSD given the location offset
@@ -1646,6 +1777,10 @@ def prior_box(input,
               name=None,
               min_max_aspect_ratios_order=False):
     """
+	:alias_main: paddle.nn.functional.prior_box
+	:alias: paddle.nn.functional.prior_box,paddle.nn.functional.vision.prior_box
+	:old_api: paddle.fluid.layers.prior_box
+
     This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
     Each position of the input produce N prior boxes, N is determined by
     the count of min_sizes, max_sizes and aspect_ratios, The size of the
@@ -1743,6 +1878,8 @@ def prior_box(input,
     """
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
+    check_variable_and_dtype(
+        input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box')
 
     def _is_list_or_tuple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
@@ -1801,6 +1938,10 @@ def density_prior_box(input,
                       flatten_to_2d=False,
                       name=None):
     """
+	:alias_main: paddle.nn.functional.density_prior_box
+	:alias: paddle.nn.functional.density_prior_box,paddle.nn.functional.vision.density_prior_box
+	:old_api: paddle.fluid.layers.density_prior_box
+
 
     This op generates density prior boxes for SSD(Single Shot MultiBox Detector) 
     algorithm. Each position of the input produce N prior boxes, N is 
@@ -1921,18 +2062,18 @@ def density_prior_box(input,
     """
     helper = LayerHelper("density_prior_box", **locals())
     dtype = helper.input_dtype()
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'density_prior_box')
 
     def _is_list_or_tuple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
-    if not _is_list_or_tuple_(densities):
-        raise TypeError('densities should be a list or a tuple or None.')
-    if not _is_list_or_tuple_(fixed_sizes):
-        raise TypeError('fixed_sizes should be a list or a tuple or None.')
-    if not _is_list_or_tuple_(fixed_ratios):
-        raise TypeError('fixed_ratios should be a list or a tuple or None.')
+    check_type(densities, 'densities', (list, tuple), 'density_prior_box')
+    check_type(fixed_sizes, 'fixed_sizes', (list, tuple), 'density_prior_box')
+    check_type(fixed_ratios, 'fixed_ratios', (list, tuple), 'density_prior_box')
     if len(densities) != len(fixed_sizes):
         raise ValueError('densities and fixed_sizes length should be euqal.')
+
     if not (_is_list_or_tuple_(steps) and len(steps) == 2):
         raise ValueError('steps should be a list or tuple ',
                          'with length 2, (step_width, step_height).')
@@ -1989,6 +2130,8 @@ def multi_box_head(inputs,
                    name=None,
                    min_max_aspect_ratios_order=False):
     """
+	:api_attr: Static Graph
+
     Base on SSD ((Single Shot MultiBox Detector) algorithm, generate prior boxes,
     regression location and classification confidence on multiple input feature
     maps, then output the concatenate results. The details of this algorithm,
@@ -2159,17 +2302,17 @@ def multi_box_head(inputs,
             aspect_ratios, num_layer,
             'aspect_ratios should be list or tuple, and the length of inputs '
             'and aspect_ratios should be the same.')
-    if step_h:
+    if step_h is not None:
         _is_list_or_tuple_and_equal(
             step_h, num_layer,
             'step_h should be list or tuple, and the length of inputs and '
             'step_h should be the same.')
-    if step_w:
+    if step_w is not None:
         _is_list_or_tuple_and_equal(
             step_w, num_layer,
             'step_w should be list or tuple, and the length of inputs and '
             'step_w should be the same.')
-    if steps:
+    if steps is not None:
         _is_list_or_tuple_and_equal(
             steps, num_layer,
             'steps should be list or tuple, and the length of inputs and '
@@ -2264,6 +2407,10 @@ def anchor_generator(input,
                      offset=0.5,
                      name=None):
     """
+	:alias_main: paddle.nn.functional.anchor_generator
+	:alias: paddle.nn.functional.anchor_generator,paddle.nn.functional.vision.anchor_generator
+	:old_api: paddle.fluid.layers.anchor_generator
+
     **Anchor generator operator**
 
     Generate anchors for Faster RCNN algorithm.
@@ -2412,6 +2559,17 @@ def roi_perspective_transform(input,
             rois = fluid.data(name='rois', shape=[None, 8], lod_level=1, dtype='float32')
             out, mask, transform_matrix = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
+    check_variable_and_dtype(input, 'input', ['float32'],
+                             'roi_perspective_transform')
+    check_variable_and_dtype(rois, 'rois', ['float32'],
+                             'roi_perspective_transform')
+    check_type(transformed_height, 'transformed_height', int,
+               'roi_perspective_transform')
+    check_type(transformed_width, 'transformed_width', int,
+               'roi_perspective_transform')
+    check_type(spatial_scale, 'spatial_scale', float,
+               'roi_perspective_transform')
+
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
@@ -2454,6 +2612,10 @@ def generate_proposal_labels(rpn_rois,
                              is_cls_agnostic=False,
                              is_cascade_rcnn=False):
     """
+	:alias_main: paddle.nn.functional.generate_proposal_labels
+	:alias: paddle.nn.functional.generate_proposal_labels,paddle.nn.functional.vision.generate_proposal_labels
+	:old_api: paddle.fluid.layers.generate_proposal_labels
+
     **Generate Proposal Labels of Faster-RCNN**
 
     This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
@@ -2517,6 +2679,13 @@ def generate_proposal_labels(rpn_rois,
 
     helper = LayerHelper('generate_proposal_labels', **locals())
 
+    check_variable_and_dtype(rpn_rois, 'rpn_rois', ['float32', 'float64'],
+                             'generate_proposal_labels')
+    check_variable_and_dtype(gt_classes, 'gt_classes', ['int32'],
+                             'generate_proposal_labels')
+    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
+                             'generate_proposal_labels')
+
     rois = helper.create_variable_for_type_inference(dtype=rpn_rois.dtype)
     labels_int32 = helper.create_variable_for_type_inference(
         dtype=gt_classes.dtype)
@@ -2568,6 +2737,10 @@ def generate_proposal_labels(rpn_rois,
 def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                          labels_int32, num_classes, resolution):
     """
+	:alias_main: paddle.nn.functional.generate_mask_labels
+	:alias: paddle.nn.functional.generate_mask_labels,paddle.nn.functional.vision.generate_mask_labels
+	:old_api: paddle.fluid.layers.generate_mask_labels
+
     **Generate Mask Labels for Mask-RCNN**
 
     This operator can be, for given the RoIs and corresponding labels,
@@ -2720,8 +2893,13 @@ def generate_proposals(scores,
                        nms_thresh=0.5,
                        min_size=0.1,
                        eta=1.0,
-                       name=None):
+                       name=None,
+                       return_rois_num=False):
     """
+	:alias_main: paddle.nn.functional.generate_proposals
+	:alias: paddle.nn.functional.generate_proposals,paddle.nn.functional.vision.generate_proposals
+	:old_api: paddle.fluid.layers.generate_proposals
+
     **Generate proposal Faster-RCNN**
 
     This operation proposes RoIs according to each box with their
@@ -2750,7 +2928,7 @@ def generate_proposals(scores,
         im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin
             image information for N batch. Height and width are the input sizes 
             and scale is the ratio of network input size and original size. 
-            The data type must be int32.
+            The data type can be float32 or float64.
         anchors(Variable):   A 4-D Tensor represents the anchors with a layout
             of [H, W, A, 4]. H and W are height and width of the feature map,
             num_anchors is the box count of each position. Each anchor is
@@ -2767,7 +2945,10 @@ def generate_proposals(scores,
             width < min_size. The data type must be float32. `0.1` by default.
         eta(float): Apply in adaptive NMS, if adaptive `threshold > 0.5`,
             `adaptive_threshold = adaptive_threshold * eta` in each iteration.
-
+        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's 
+            num of each image in one batch. The N is the image's num. For example, the tensor has values [4,5] that represents
+            the first image has 4 Rois, the second image has 5 Rois. It only used in rcnn model. 
+            'False' by default. 
     Returns:
         tuple:
         A tuple with format ``(rpn_rois, rpn_roi_probs)``.
@@ -2790,10 +2971,23 @@ def generate_proposals(scores,
     """
     helper = LayerHelper('generate_proposals', **locals())
 
+    check_variable_and_dtype(scores, 'scores', ['float32'],
+                             'generate_proposals')
+    check_variable_and_dtype(bbox_deltas, 'bbox_deltas', ['float32'],
+                             'generate_proposals')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'generate_proposals')
+    check_variable_and_dtype(anchors, 'anchors', ['float32'],
+                             'generate_proposals')
+    check_variable_and_dtype(variances, 'variances', ['float32'],
+                             'generate_proposals')
+
     rpn_rois = helper.create_variable_for_type_inference(
         dtype=bbox_deltas.dtype)
     rpn_roi_probs = helper.create_variable_for_type_inference(
         dtype=scores.dtype)
+    rpn_rois_lod = helper.create_variable_for_type_inference(dtype='int32')
+
     helper.append_op(
         type="generate_proposals",
         inputs={
@@ -2810,16 +3004,27 @@ def generate_proposals(scores,
             'min_size': min_size,
             'eta': eta
         },
-        outputs={'RpnRois': rpn_rois,
-                 'RpnRoiProbs': rpn_roi_probs})
+        outputs={
+            'RpnRois': rpn_rois,
+            'RpnRoiProbs': rpn_roi_probs,
+            'RpnRoisLod': rpn_rois_lod
+        })
     rpn_rois.stop_gradient = True
     rpn_roi_probs.stop_gradient = True
+    rpn_rois_lod.stop_gradient = True
 
-    return rpn_rois, rpn_roi_probs
+    if return_rois_num:
+        return rpn_rois, rpn_roi_probs, rpn_rois_lod
+    else:
+        return rpn_rois, rpn_roi_probs
 
 
 def box_clip(input, im_info, name=None):
     """
+	:alias_main: paddle.nn.functional.box_clip
+	:alias: paddle.nn.functional.box_clip,paddle.nn.functional.vision.box_clip
+	:old_api: paddle.fluid.layers.box_clip
+	
     Clip the box into the size given by im_info
     For each input box, The formula is given as follows:
         
@@ -2866,6 +3071,10 @@ def box_clip(input, im_info, name=None):
                 input=boxes, im_info=im_info)
     """
 
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'box_clip')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'box_clip')
+
     helper = LayerHelper("box_clip", **locals())
     output = helper.create_variable_for_type_inference(dtype=input.dtype)
     inputs = {"Input": input, "ImInfo": im_info}
@@ -2882,7 +3091,7 @@ def retinanet_detection_output(bboxes,
                                nms_top_k=1000,
                                keep_top_k=100,
                                nms_threshold=0.3,
-                               nms_eta=1.):
+                               nms_eta=1.0):
     """
     **Detection Output Layer for the detector RetinaNet.**
 
@@ -2978,16 +3187,34 @@ def retinanet_detection_output(bboxes,
            im_info = fluid.data(
                name="im_info", shape=[1, 3], dtype='float32')
            nmsed_outs = fluid.layers.retinanet_detection_output(
-                                          bboxes=[bboxes_low, bboxes_high],
-                                          scores=[scores_low, scores_high],
-                                          anchors=[anchors_low, anchors_high],
-                                          im_info=im_info,
-                                          score_threshold=0.05,
-                                          nms_top_k=1000,
-                                          keep_top_k=100,
-                                          nms_threshold=0.45,
-                                          nms_eta=1.)
+               bboxes=[bboxes_low, bboxes_high],
+               scores=[scores_low, scores_high],
+               anchors=[anchors_low, anchors_high],
+               im_info=im_info,
+               score_threshold=0.05,
+               nms_top_k=1000,
+               keep_top_k=100,
+               nms_threshold=0.45,
+               nms_eta=1.0)
     """
+
+    check_type(bboxes, 'bboxes', (list), 'retinanet_detection_output')
+    for i, bbox in enumerate(bboxes):
+        check_variable_and_dtype(bbox, 'bbox{}'.format(i),
+                                 ['float32', 'float64'],
+                                 'retinanet_detection_output')
+    check_type(scores, 'scores', (list), 'retinanet_detection_output')
+    for i, score in enumerate(scores):
+        check_variable_and_dtype(score, 'score{}'.format(i),
+                                 ['float32', 'float64'],
+                                 'retinanet_detection_output')
+    check_type(anchors, 'anchors', (list), 'retinanet_detection_output')
+    for i, anchor in enumerate(anchors):
+        check_variable_and_dtype(anchor, 'anchor{}'.format(i),
+                                 ['float32', 'float64'],
+                                 'retinanet_detection_output')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'retinanet_detection_output')
 
     helper = LayerHelper('retinanet_detection_output', **locals())
     output = helper.create_variable_for_type_inference(
@@ -3023,6 +3250,10 @@ def multiclass_nms(bboxes,
                    background_label=0,
                    name=None):
     """
+	:alias_main: paddle.nn.functional.multiclass_nms
+	:alias: paddle.nn.functional.multiclass_nms,paddle.nn.functional.extension.multiclass_nms
+	:old_api: paddle.fluid.layers.multiclass_nms
+
     **Multiclass NMS**
     
     This operator is to do multi-class non maximum suppression (NMS) on
@@ -3130,8 +3361,19 @@ def multiclass_nms(bboxes,
                                               keep_top_k=200,
                                               normalized=False)
     """
-    helper = LayerHelper('multiclass_nms', **locals())
+    check_variable_and_dtype(bboxes, 'BBoxes', ['float32', 'float64'],
+                             'multiclass_nms')
+    check_variable_and_dtype(scores, 'Scores', ['float32', 'float64'],
+                             'multiclass_nms')
+    check_type(score_threshold, 'score_threshold', float, 'multicalss_nms')
+    check_type(nms_top_k, 'nums_top_k', int, 'multiclass_nms')
+    check_type(keep_top_k, 'keep_top_k', int, 'mutliclass_nms')
+    check_type(nms_threshold, 'nms_threshold', float, 'multiclass_nms')
+    check_type(normalized, 'normalized', bool, 'multiclass_nms')
+    check_type(nms_eta, 'nms_eta', float, 'multiclass_nms')
+    check_type(background_label, 'background_label', int, 'multiclass_nms')
 
+    helper = LayerHelper('multiclass_nms', **locals())
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     helper.append_op(
         type="multiclass_nms",
@@ -3144,7 +3386,6 @@ def multiclass_nms(bboxes,
             'nms_threshold': nms_threshold,
             'nms_eta': nms_eta,
             'keep_top_k': keep_top_k,
-            'nms_eta': nms_eta,
             'normalized': normalized
         },
         outputs={'Out': output})
@@ -3203,10 +3444,10 @@ def locality_aware_nms(bboxes,
         nms_top_k (int): Maximum number of detections to be kept according to
                          the confidences after the filtering detections based
                          on score_threshold.
-        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
-        nms_eta (float): The threshold to be used in NMS. Default: 1.0
         keep_top_k (int): Number of total bboxes to be kept per image after NMS
                           step. -1 means keeping all bboxes after NMS step.
+        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
+        nms_eta (float): The threshold to be used in NMS. Default: 1.0
         normalized (bool): Whether detections are normalized. Default: True
         name(str): Name of the locality aware nms op, please refer to :ref:`api_guide_Name` .
                           Default: None.
@@ -3241,6 +3482,18 @@ def locality_aware_nms(bboxes,
                                               keep_top_k=200,
                                               normalized=False)
     """
+    check_variable_and_dtype(bboxes, 'bboxes', ['float32', 'float64'],
+                             'locality_aware_nms')
+    check_variable_and_dtype(scores, 'scores', ['float32', 'float64'],
+                             'locality_aware_nms')
+    check_type(background_label, 'background_label', int, 'locality_aware_nms')
+    check_type(score_threshold, 'score_threshold', float, 'locality_aware_nms')
+    check_type(nms_top_k, 'nms_top_k', int, 'locality_aware_nms')
+    check_type(nms_eta, 'nms_eta', float, 'locality_aware_nms')
+    check_type(nms_threshold, 'nms_threshold', float, 'locality_aware_nms')
+    check_type(keep_top_k, 'keep_top_k', int, 'locality_aware_nms')
+    check_type(normalized, 'normalized', bool, 'locality_aware_nms')
+
     shape = scores.shape
     assert len(shape) == 3, "dim size of scores must be 3"
     assert shape[
@@ -3271,6 +3524,133 @@ def locality_aware_nms(bboxes,
     return output
 
 
+def matrix_nms(bboxes,
+               scores,
+               score_threshold,
+               post_threshold,
+               nms_top_k,
+               keep_top_k,
+               use_gaussian=False,
+               gaussian_sigma=2.,
+               background_label=0,
+               normalized=True,
+               return_index=False,
+               name=None):
+    """
+    **Matrix NMS**
+
+    This operator does matrix non maximum suppression (NMS).
+
+    First selects a subset of candidate bounding boxes that have higher scores
+    than score_threshold (if provided), then the top k candidate is selected if
+    nms_top_k is larger than -1. Score of the remaining candidate are then
+    decayed according to the Matrix NMS scheme.
+    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    per image if keep_top_k is larger than -1.
+
+    Args:
+        bboxes (Variable): A 3-D Tensor with shape [N, M, 4] represents the
+                           predicted locations of M bounding bboxes,
+                           N is the batch size. Each bounding box has four
+                           coordinate values and the layout is
+                           [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           The data type is float32 or float64.
+        scores (Variable): A 3-D Tensor with shape [N, C, M]
+                           represents the predicted confidence predictions.
+                           N is the batch size, C is the class number, M is
+                           number of bounding boxes. For each category there
+                           are total M scores which corresponding M bounding
+                           boxes. Please note, M is equal to the 2nd dimension
+                           of BBoxes. The data type is float32 or float64.
+        score_threshold (float): Threshold to filter out bounding boxes with
+                                 low confidence score.
+        post_threshold (float): Threshold to filter out bounding boxes with
+                                low confidence score AFTER decaying.
+        nms_top_k (int): Maximum number of detections to be kept according to
+                         the confidences after the filtering detections based
+                         on score_threshold.
+        keep_top_k (int): Number of total bboxes to be kept per image after NMS
+                          step. -1 means keeping all bboxes after NMS step.
+        use_gaussian (bool): Use Gaussian as the decay function. Default: False
+        gaussian_sigma (float): Sigma for Gaussian decay function. Default: 2.0
+        background_label (int): The index of background label, the background
+                                label will be ignored. If set to -1, then all
+                                categories will be considered. Default: 0
+        normalized (bool): Whether detections are normalized. Default: True
+        return_index(bool): Whether return selected index. Default: False
+        name(str): Name of the matrix nms op. Default: None.
+
+    Returns:
+        A tuple with two Variables: (Out, Index) if return_index is True,
+        otherwise, one Variable(Out) is returned.
+
+        Out (Variable): A 2-D LoDTensor with shape [No, 6] containing the
+             detection results.
+             Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
+             (After version 1.3, when no boxes detected, the lod is changed
+             from {0} to {1})
+
+        Index (Variable): A 2-D LoDTensor with shape [No, 1] containing the
+            selected indices, which are absolute values cross batches.
+
+    Examples:
+        .. code-block:: python
+
+
+            import paddle.fluid as fluid
+            boxes = fluid.data(name='bboxes', shape=[None,81, 4],
+                                      dtype='float32', lod_level=1)
+            scores = fluid.data(name='scores', shape=[None,81],
+                                      dtype='float32', lod_level=1)
+            out = fluid.layers.matrix_nms(bboxes=boxes,
+                                          scores=scores,
+                                          background_label=0,
+                                          score_threshold=0.5,
+                                          post_threshold=0.1,
+                                          nms_top_k=400,
+                                          keep_top_k=200,
+                                          normalized=False)
+    """
+    check_variable_and_dtype(bboxes, 'BBoxes', ['float32', 'float64'],
+                             'matrix_nms')
+    check_variable_and_dtype(scores, 'Scores', ['float32', 'float64'],
+                             'matrix_nms')
+    check_type(score_threshold, 'score_threshold', float, 'matrix_nms')
+    check_type(post_threshold, 'post_threshold', float, 'matrix_nms')
+    check_type(nms_top_k, 'nums_top_k', int, 'matrix_nms')
+    check_type(keep_top_k, 'keep_top_k', int, 'matrix_nms')
+    check_type(normalized, 'normalized', bool, 'matrix_nms')
+    check_type(use_gaussian, 'use_gaussian', bool, 'matrix_nms')
+    check_type(gaussian_sigma, 'gaussian_sigma', float, 'matrix_nms')
+    check_type(background_label, 'background_label', int, 'matrix_nms')
+
+    helper = LayerHelper('matrix_nms', **locals())
+    output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+    index = helper.create_variable_for_type_inference(dtype='int')
+    helper.append_op(
+        type="matrix_nms",
+        inputs={'BBoxes': bboxes,
+                'Scores': scores},
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'post_threshold': post_threshold,
+            'nms_top_k': nms_top_k,
+            'gaussian_sigma': gaussian_sigma,
+            'use_gaussian': use_gaussian,
+            'keep_top_k': keep_top_k,
+            'normalized': normalized
+        },
+        outputs={'Out': output,
+                 'Index': index})
+    output.stop_gradient = True
+
+    if return_index:
+        return output, index
+    else:
+        return output
+
+
 def distribute_fpn_proposals(fpn_rois,
                              min_level,
                              max_level,
@@ -3278,6 +3658,10 @@ def distribute_fpn_proposals(fpn_rois,
                              refer_scale,
                              name=None):
     """
+	:alias_main: paddle.nn.functional.distribute_fpn_proposals
+	:alias: paddle.nn.functional.distribute_fpn_proposals,paddle.nn.functional.vision.distribute_fpn_proposals
+	:old_api: paddle.fluid.layers.distribute_fpn_proposals
+	
     **This op only takes LoDTensor as input.** In Feature Pyramid Networks 
     (FPN) models, it is needed to distribute all proposals into different FPN 
     level, with respect to scale of the proposals, the referring scale and the 
@@ -3332,7 +3716,8 @@ def distribute_fpn_proposals(fpn_rois,
                 refer_level=4,
                 refer_scale=224)
     """
-
+    check_variable_and_dtype(fpn_rois, 'fpn_rois', ['float32', 'float64'],
+                             'distribute_fpn_proposals')
     helper = LayerHelper('distribute_fpn_proposals', **locals())
     dtype = helper.input_dtype('fpn_rois')
     num_lvl = max_level - min_level + 1
@@ -3362,6 +3747,10 @@ def box_decoder_and_assign(prior_box,
                            box_clip,
                            name=None):
     """
+	:alias_main: paddle.nn.functional.box_decoder_and_assign
+	:alias: paddle.nn.functional.box_decoder_and_assign,paddle.nn.functional.vision.box_decoder_and_assign
+	:old_api: paddle.fluid.layers.box_decoder_and_assign
+	
     ${comment}
     Args:
         prior_box(${prior_box_type}): ${prior_box_comment}
@@ -3397,6 +3786,12 @@ def box_decoder_and_assign(prior_box,
                 pb, pbv, loc, scores, 4.135)
 
     """
+    check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
+                             'box_decoder_and_assign')
+    check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
+                             'box_decoder_and_assign')
+    check_variable_and_dtype(box_score, 'box_score', ['float32', 'float64'],
+                             'box_decoder_and_assign')
     helper = LayerHelper("box_decoder_and_assign", **locals())
 
     decoded_box = helper.create_variable_for_type_inference(
@@ -3427,6 +3822,10 @@ def collect_fpn_proposals(multi_rois,
                           post_nms_top_n,
                           name=None):
     """
+	:alias_main: paddle.nn.functional.collect_fpn_proposals
+	:alias: paddle.nn.functional.collect_fpn_proposals,paddle.nn.functional.vision.collect_fpn_proposals
+	:old_api: paddle.fluid.layers.collect_fpn_proposals
+	
     **This OP only supports LoDTensor as input**. Concat multi-level RoIs 
     (Region of Interest) and select N RoIs with respect to multi_scores. 
     This operation performs the following steps:
@@ -3478,9 +3877,12 @@ def collect_fpn_proposals(multi_rois,
                 max_level=5, 
                 post_nms_top_n=2000)
     """
-
+    check_type(multi_rois, 'multi_rois', list, 'collect_fpn_proposals')
+    check_type(multi_scores, 'multi_scores', list, 'collect_fpn_proposals')
     helper = LayerHelper('collect_fpn_proposals', **locals())
     dtype = helper.input_dtype('multi_rois')
+    check_dtype(dtype, 'multi_rois', ['float32', 'float64'],
+                'collect_fpn_proposals')
     num_lvl = max_level - min_level + 1
     input_rois = multi_rois[:num_lvl]
     input_scores = multi_scores[:num_lvl]

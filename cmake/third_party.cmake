@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include(ExternalProject)
 # Creat a target named "third_party", which can compile external dependencies on all platform(windows/linux/mac)
 
 set(THIRD_PARTY_PATH  "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -21,6 +22,7 @@ set(THIRD_PARTY_CACHE_PATH     "${CMAKE_SOURCE_DIR}"    CACHE STRING
     "A path cache third party source code to avoid repeated download.")
 
 set(THIRD_PARTY_BUILD_TYPE Release)
+set(third_party_deps)
 
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
@@ -100,6 +102,31 @@ MACRO(UNSET_VAR VAR_NAME)
     UNSET(${VAR_NAME})
 ENDMACRO()
 
+# Funciton to Download the dependencies during compilation
+# This function has 2 parameters, URL / DIRNAME:
+# 1. URL:           The download url of 3rd dependencies
+# 2. NAME:          The name of file, that determin the dirname
+#
+FUNCTION(file_download_and_uncompress URL NAME)
+  MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}")
+  SET(${NAME}_INCLUDE_DIR ${THIRD_PARTY_PATH}/${NAME}/data PARENT_SCOPE)
+  ExternalProject_Add(
+      extern_download_${NAME}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
+      PREFIX                ${THIRD_PARTY_PATH}/${NAME}
+      URL                   ${URL}
+      DOWNLOAD_DIR          ${THIRD_PARTY_PATH}/${NAME}/data/
+      SOURCE_DIR            ${THIRD_PARTY_PATH}/${NAME}/data/
+      DOWNLOAD_NO_PROGRESS  1
+      CONFIGURE_COMMAND     ""
+      BUILD_COMMAND         ""
+      UPDATE_COMMAND        ""
+      INSTALL_COMMAND       ""
+    )
+  set(third_party_deps ${third_party_deps} extern_download_${NAME} PARENT_SCOPE)
+ENDFUNCTION()
+
+
 # Correction of flags on different Platform(WIN/MAC) and Print Warning Message
 if (APPLE)
     if(WITH_MKL)
@@ -118,13 +145,6 @@ if(WIN32 OR APPLE)
             "Windows, Mac are not supported with libxsmm in Paddle yet."
             "Force WITH_LIBXSMM=OFF")
         SET(WITH_LIBXSMM OFF CACHE STRING "Disable LIBXSMM in Windows and MacOS" FORCE)
-    endif()
-
-    if(WITH_NGRAPH)
-        MESSAGE(WARNING
-            "Windows or Mac is not supported with nGraph in Paddle yet."
-            "Force WITH_NGRAPH=OFF")
-        SET(WITH_NGRAPH OFF CACHE STRING "Disable nGraph in Windows and MacOS" FORCE)
     endif()
 
     if(WITH_BOX_PS)
@@ -185,7 +205,6 @@ include(external/dlpack)    # download dlpack
 include(external/xxhash)    # download, build, install xxhash
 include(external/warpctc)   # download, build, install warpctc
 
-set(third_party_deps)
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
@@ -226,6 +245,9 @@ ENDIF()
 if(WITH_GPU)
     include(external/cub)       # download cub
     list(APPEND third_party_deps extern_cub)
+  
+    set(CUDAERROR_URL  "http://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
+    file_download_and_uncompress(${CUDAERROR_URL} "cudaerror") # download file cudaErrorMessage
 endif(WITH_GPU)
 
 if(WITH_PSLIB)
@@ -260,18 +282,6 @@ if(WITH_DISTRIBUTE)
     endif()
 endif()
 
-if(WITH_NGRAPH)
-    if(WITH_MKLDNN)
-        include(external/ngraph)    # download, build, install nGraph
-        list(APPEND third_party_deps extern_ngraph)
-    else()
-        MESSAGE(WARNING
-            "nGraph needs mkl-dnn to be enabled."
-            "Force WITH_NGRAPH=OFF")
-        SET(WITH_NGRAPH OFF CACHE STRING "Disable nGraph if mkl-dnn is disabled" FORCE)
-    endif()
-endif()
-
 if(WITH_XBYAK)
     include(external/xbyak)         # download, build, install xbyak
     list(APPEND third_party_deps extern_xbyak)
@@ -293,4 +303,8 @@ if (WITH_LITE)
     include(external/lite)
 endif (WITH_LITE)
 
-add_custom_target(third_party DEPENDS ${third_party_deps})
+if (WITH_CRYPTO)
+    include(external/cryptopp)   # download, build, install cryptopp
+endif (WITH_CRYPTO)
+
+add_custom_target(third_party ALL DEPENDS ${third_party_deps})

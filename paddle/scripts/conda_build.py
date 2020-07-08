@@ -47,6 +47,9 @@ requirements:
     - graphviz
     - protobuf
     - py-cpuinfo==5.0.0
+    - pathlib
+    - astor
+    - gast>=0.3.3
     - matplotlib
 """
 
@@ -62,6 +65,9 @@ requirements:
     - pillow
     - graphviz
     - protobuf
+    - astor
+    - pathlib
+    - gast>=0.3.3
     - py-cpuinfo==5.0.0
 """
         self.test = """
@@ -110,7 +116,7 @@ python setup.py install
     """
         self.cuda100 = r"""
     - cudatoolkit>=10.0, <10.1
-    - cudnn>=7.3, <7.4
+    - cudnn>=7.6, <7.7
     """
         self.cuda_info = [(self.cuda90, "cuda9.0", ".post97"),
                           (self.cuda100, "cuda10.0", ".post107")]

@@ -31,40 +31,44 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Anchor"),
-                   "Input(Anchor) of RpnTargetAssignOp should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("GtBoxes"),
-                   "Input(GtBoxes) of RpnTargetAssignOp should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("IsCrowd"),
-                   "Input(Anchor) of RpnTargetAssignOp should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("ImInfo"),
-                   "Input(ImInfo) of RpnTargetAssignOp should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("Anchor"), "Input", "Anchor",
+                   "rpn_target_assign");
+    OP_INOUT_CHECK(ctx->HasInput("GtBoxes"), "Input", "GtBoxes",
+                   "rpn_target_assign");
+    OP_INOUT_CHECK(ctx->HasInput("IsCrowd"), "Input", "IsCrowd",
+                   "rpn_target_assign");
+    OP_INOUT_CHECK(ctx->HasInput("ImInfo"), "Input", "ImInfo",
+                   "rpn_target_assign");
 
-    PADDLE_ENFORCE(
-        ctx->HasOutput("LocationIndex"),
-        "Output(LocationIndex) of RpnTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("ScoreIndex"),
-        "Output(ScoreIndex) of RpnTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("TargetLabel"),
-        "Output(TargetLabel) of RpnTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("TargetBBox"),
-        "Output(TargetBBox) of RpnTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("BBoxInsideWeight"),
-        "Output(BBoxInsideWeight) of RpnTargetAssignOp should not be null");
+    OP_INOUT_CHECK(ctx->HasOutput("LocationIndex"), "Output", "LocationIndex",
+                   "rpn_target_assign");
+    OP_INOUT_CHECK(ctx->HasOutput("ScoreIndex"), "Output", "ScoreIndex",
+                   "rpn_target_assign");
+    OP_INOUT_CHECK(ctx->HasOutput("TargetLabel"), "Output", "TargetLabel",
+                   "rpn_target_assign");
+    OP_INOUT_CHECK(ctx->HasOutput("TargetBBox"), "Output", "TargetBBox",
+                   "rpn_target_assign");
+    OP_INOUT_CHECK(ctx->HasOutput("BBoxInsideWeight"), "Output",
+                   "BBoxInsideWeight", "rpn_target_assign");
 
     auto anchor_dims = ctx->GetInputDim("Anchor");
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
     PADDLE_ENFORCE_EQ(anchor_dims.size(), 2,
-                      "The rank of Input(Anchor) must be 2.");
+                      platform::errors::InvalidArgument(
+                          "The dimensions size of Input(Anchor) must be 2. But "
+                          "received dimensions size=[%d], dimensions=[%s].",
+                          anchor_dims.size(), anchor_dims));
     PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
-                      "The rank of Input(GtBoxes) must be 2.");
+                      platform::errors::InvalidArgument(
+                          "The dimensions size of Input(GtBoxes) must be 2. "
+                          "But received dimensions size=[%d], dimensions=[%s].",
+                          gt_boxes_dims.size(), gt_boxes_dims));
     PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
-                      "The rank of Input(ImInfo) must be 2.");
+                      platform::errors::InvalidArgument(
+                          "The dimensions size of Input(ImInfo) must be 2. But "
+                          "received dimensions size=[%d], dimensions=[%s].",
+                          im_info_dims.size(), im_info_dims));
 
     ctx->SetOutputDim("LocationIndex", {-1});
     ctx->SetOutputDim("ScoreIndex", {-1});
@@ -357,9 +361,15 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
 
     PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
-                      "RpnTargetAssignOp gt_boxes needs 1 level of LoD");
+                      platform::errors::InvalidArgument(
+                          "RpnTargetAssignOp gt_boxes needs 1 level of LoD. "
+                          "But received level of LoD is [%d], LoD is [%s].",
+                          gt_boxes->lod().size(), gt_boxes->lod()));
     PADDLE_ENFORCE_EQ(is_crowd->lod().size(), 1UL,
-                      "RpnTargetAssignOp is_crowd needs 1 level of LoD");
+                      platform::errors::InvalidArgument(
+                          "RpnTargetAssignOp is_crowd needs 1 level of LoD. "
+                          "But received level of LoD is [%d], LoD is [%s].",
+                          is_crowd->lod().size(), is_crowd->lod()));
     int64_t anchor_num = static_cast<int64_t>(anchor->dims()[0]);
     int64_t batch_num = static_cast<int64_t>(gt_boxes->lod().back().size() - 1);
 
@@ -479,8 +489,20 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       lod0_score.emplace_back(total_score_num);
     }
 
-    PADDLE_ENFORCE_LE(total_loc_num, max_num);
-    PADDLE_ENFORCE_LE(total_score_num, max_num);
+    PADDLE_ENFORCE_LE(
+        total_loc_num, max_num,
+        platform::errors::InvalidArgument(
+            "The number of sampled bboxes should not be greater than the "
+            "number of all anchor boxes(%d), but the number of sampled "
+            "bboxes is :%d.",
+            max_num, total_loc_num));
+    PADDLE_ENFORCE_LE(
+        total_score_num, max_num,
+        platform::errors::InvalidArgument(
+            "The number of sampled scores should not be greater than the "
+            "number of all anchor boxes(%d), but the number of sampled "
+            "scores is :%d.",
+            max_num, total_score_num));
 
     lod_loc.emplace_back(lod0_loc);
     loc_score.emplace_back(lod0_score);
@@ -665,54 +687,58 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput("Anchor"),
-        "Input(Anchor) of RetinanetTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasInput("GtBoxes"),
-        "Input(GtBoxes) of RetinanetTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasInput("GtLabels"),
-        "Input(GtLabels) of RetinanetTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasInput("IsCrowd"),
-        "Input(Anchor) of RetinanetTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasInput("ImInfo"),
-        "Input(ImInfo) of RetinanetTargetAssignOp should not be null");
-
-    PADDLE_ENFORCE(
-        ctx->HasOutput("LocationIndex"),
-        "Output(LocationIndex) of RetinanetTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("ScoreIndex"),
-        "Output(ScoreIndex) of RetinanetTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("TargetLabel"),
-        "Output(TargetLabel) of RetinanetTargetAssignOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("TargetBBox"),
-        "Output(TargetBBox) of RetinanetTargetAssignOp should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("BBoxInsideWeight"),
-                   "Output(BBoxInsideWeight) of RetinanetTargetAssignOp should "
-                   "not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("ForegroundNumber"),
-                   "Output(ForegroundNumber) of RetinanetTargetAssignOp should "
-                   "not be null");
+    OP_INOUT_CHECK(ctx->HasInput("Anchor"), "Input", "Anchor",
+                   "retinanet_target_assign");
+    OP_INOUT_CHECK(ctx->HasInput("GtBoxes"), "Input", "GtBoxes",
+                   "retinanet_target_assign");
+    OP_INOUT_CHECK(ctx->HasInput("GtLabels"), "Input", "GtLabels",
+                   "retinanet_target_assign");
+    OP_INOUT_CHECK(ctx->HasInput("IsCrowd"), "Input", "IsCrowd",
+                   "retinanet_target_assign");
+    OP_INOUT_CHECK(ctx->HasInput("ImInfo"), "Input", "ImInfo",
+                   "retinanet_target_assign");
+    OP_INOUT_CHECK(ctx->HasOutput("LocationIndex"), "Output", "LocationIndex",
+                   "retinanet_target_assign");
+    OP_INOUT_CHECK(ctx->HasOutput("ScoreIndex"), "Output", "ScoreIndex",
+                   "retinanet_target_assign");
+    OP_INOUT_CHECK(ctx->HasOutput("TargetLabel"), "Output", "TargetLabel",
+                   "retinanet_target_assign");
+    OP_INOUT_CHECK(ctx->HasOutput("TargetBBox"), "Output", "TargetBBox",
+                   "retinanet_target_assign");
+    OP_INOUT_CHECK(ctx->HasOutput("BBoxInsideWeight"), "Output",
+                   "BBoxInsideWeight", "retinanet_target_assign");
+    OP_INOUT_CHECK(ctx->HasOutput("ForegroundNumber"), "Output",
+                   "ForegroundNumber", "retinanet_target_assign");
 
     auto anchor_dims = ctx->GetInputDim("Anchor");
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
     auto gt_labels_dims = ctx->GetInputDim("GtLabels");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
 
-    PADDLE_ENFORCE_EQ(anchor_dims.size(), 2,
-                      "The rank of Input(Anchor) must be 2.");
-    PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
-                      "The rank of Input(GtBoxes) must be 2.");
-    PADDLE_ENFORCE_EQ(gt_labels_dims.size(), 2,
-                      "The rank of Input(GtLabels) must be 2.");
-    PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
-                      "The rank of Input(ImInfo) must be 2.");
+    PADDLE_ENFORCE_EQ(
+        anchor_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The rank of Input(Anchor) should be 2, but received Anchor "
+            "rank is :%d, Anchor shape is:[%s].",
+            anchor_dims.size(), anchor_dims));
+    PADDLE_ENFORCE_EQ(
+        gt_boxes_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The rank of Input(GtBoxes) should be 2, but received GtBoxes "
+            "rank is :%d, GtBoxes shape is:[%s].",
+            gt_boxes_dims.size(), gt_boxes_dims));
+    PADDLE_ENFORCE_EQ(
+        gt_labels_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The rank of Input(GtLabels) should be 2, but received GtLabels "
+            "rank is :%d, GtLabels shape is:[%s].",
+            gt_labels_dims.size(), gt_labels_dims));
+    PADDLE_ENFORCE_EQ(
+        im_info_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The rank of Input(ImInfo) should be 2, but received ImInfo "
+            "rank is :%d, ImInfo shape is:[%s].",
+            im_info_dims.size(), im_info_dims));
 
     ctx->SetOutputDim("LocationIndex", {gt_labels_dims[0]});
     ctx->SetOutputDim("ScoreIndex", {gt_labels_dims[0]});
@@ -862,12 +888,24 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
     auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
     auto* fg_num = context.Output<LoDTensor>("ForegroundNumber");
 
-    PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
-                      "RetinanetTargetAssignOp gt_boxes needs 1 level of LoD");
-    PADDLE_ENFORCE_EQ(gt_labels->lod().size(), 1UL,
-                      "RetinanetTargetAssignOp gt_boxes needs 1 level of LoD");
-    PADDLE_ENFORCE_EQ(is_crowd->lod().size(), 1UL,
-                      "RetinanetTargetAssignOp is_crowd needs 1 level of LoD");
+    PADDLE_ENFORCE_EQ(
+        gt_boxes->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "The LoD level of Input(GtBoxes) should be 1, but received GtBoxes "
+            "LoD level is :%d.",
+            gt_boxes->lod().size()));
+    PADDLE_ENFORCE_EQ(
+        gt_labels->lod().size(), 1UL,
+        platform::errors::InvalidArgument("The LoD level of Input(GtLabels) "
+                                          "should be 1, but received GtLabels "
+                                          "LoD level is :%d.",
+                                          gt_labels->lod().size()));
+    PADDLE_ENFORCE_EQ(
+        is_crowd->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "The LoD level of Input(IsCrowd) should be 1, but received IsCrowd "
+            "LoD level is :%d.",
+            is_crowd->lod().size()));
 
     int64_t anchor_num = static_cast<int64_t>(anchor->dims()[0]);
     int64_t batch_num = static_cast<int64_t>(gt_boxes->lod().back().size() - 1);
@@ -996,9 +1034,26 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
       lod0_fg.emplace_back(total_fg_num);
     }
 
-    PADDLE_ENFORCE_LE(total_loc_num, max_num);
-    PADDLE_ENFORCE_LE(total_score_num, max_num);
-    PADDLE_ENFORCE_LE(total_fg_num, batch_num);
+    PADDLE_ENFORCE_LE(
+        total_loc_num, max_num,
+        platform::errors::InvalidArgument(
+            "The number of sampled bboxes should not be greater than the "
+            "number of all anchor boxes(%d), but the number of sampled "
+            "bboxes is :%d.",
+            max_num, total_loc_num));
+    PADDLE_ENFORCE_LE(
+        total_score_num, max_num,
+        platform::errors::InvalidArgument(
+            "The number of sampled scores should not be greater than the "
+            "number of all anchor boxes(%d), but the number of sampled "
+            "scores is :%d.",
+            max_num, total_score_num));
+    PADDLE_ENFORCE_LE(
+        total_fg_num, batch_num,
+        platform::errors::InvalidArgument(
+            "The number of foreground numbers should not be greater than the "
+            "batch size(%d), but the number of foreground numbers is :%d.",
+            batch_num, total_fg_num));
 
     lod_loc.emplace_back(lod0_loc);
     loc_score.emplace_back(lod0_score);

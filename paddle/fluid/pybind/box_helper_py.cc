@@ -54,6 +54,8 @@ void BindBoxHelper(py::module* m) {
       .def("preload_into_memory", &framework::BoxHelper::PreLoadIntoMemory,
            py::call_guard<py::gil_scoped_release>())
       .def("load_into_memory", &framework::BoxHelper::LoadIntoMemory,
+           py::call_guard<py::gil_scoped_release>())
+      .def("slots_shuffle", &framework::BoxHelper::SlotsShuffle,
            py::call_guard<py::gil_scoped_release>());
 }  // end BoxHelper
 
@@ -61,17 +63,22 @@ void BindBoxHelper(py::module* m) {
 void BindBoxWrapper(py::module* m) {
   py::class_<framework::BoxWrapper, std::shared_ptr<framework::BoxWrapper>>(
       *m, "BoxWrapper")
-      .def(py::init([]() {
+      .def(py::init([](int embedx_dim, int expand_embed_dim) {
         // return std::make_shared<paddle::framework::BoxHelper>(dataset);
-        return framework::BoxWrapper::GetInstance();
+        return framework::BoxWrapper::SetInstance(embedx_dim, expand_embed_dim);
       }))
       .def("save_base", &framework::BoxWrapper::SaveBase,
            py::call_guard<py::gil_scoped_release>())
       .def("feed_pass", &framework::BoxWrapper::FeedPass,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_test_mode", &framework::BoxWrapper::SetTestMode,
+           py::call_guard<py::gil_scoped_release>())
       .def("save_delta", &framework::BoxWrapper::SaveDelta,
            py::call_guard<py::gil_scoped_release>())
-      .def("initialize_gpu", &framework::BoxWrapper::InitializeGPU,
+      .def("initialize_gpu_and_load_model",
+           &framework::BoxWrapper::InitializeGPUAndLoadModel,
+           py::call_guard<py::gil_scoped_release>())
+      .def("initialize_auc_runner", &framework::BoxWrapper::InitializeAucRunner,
            py::call_guard<py::gil_scoped_release>())
       .def("init_metric", &framework::BoxWrapper::InitMetric,
            py::call_guard<py::gil_scoped_release>())
@@ -79,7 +86,9 @@ void BindBoxWrapper(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("get_metric_name_list", &framework::BoxWrapper::GetMetricNameList,
            py::call_guard<py::gil_scoped_release>())
-      .def("flip_pass_flag", &framework::BoxWrapper::FlipPassFlag,
+      .def("flip_phase", &framework::BoxWrapper::FlipPhase,
+           py::call_guard<py::gil_scoped_release>())
+      .def("init_afs_api", &framework::BoxWrapper::InitAfsAPI,
            py::call_guard<py::gil_scoped_release>())
       .def("finalize", &framework::BoxWrapper::Finalize,
            py::call_guard<py::gil_scoped_release>());

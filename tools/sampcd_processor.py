@@ -457,7 +457,9 @@ def get_filenames():
     '''
     filenames = []
     global methods
+    global whl_error
     methods = []
+    whl_error = []
     get_incrementapi()
     API_spec = 'dev_pr_diff_api.spec'
     with open(API_spec) as f:
@@ -466,6 +468,7 @@ def get_filenames():
             try:
                 module = eval(api).__module__
             except AttributeError:
+                whl_error.append(api)
                 continue
             if len(module.split('.')) > 2:
                 filename = '../python/'
@@ -474,10 +477,15 @@ def get_filenames():
                     filename = filename + '%s/' % module.split('.')[i]
                 filename = filename + module_py
             else:
-                print("\n----Exception in get api filename----\n")
-                print("\n" + api + 'module is ' + module + "\n")
-            if filename not in filenames:
-                filenames.append(filename)
+                filename = ''
+                print("\nWARNING:----Exception in get api filename----\n")
+                print("\n" + api + ' module is ' + module + "\n")
+            if filename != '':
+                # rm contrib file
+                if filename.startswith('../python/paddle/fluid/contrib'):
+                    pass
+                elif filename not in filenames:
+                    filenames.append(filename)
             # get all methods
             method = ''
             if inspect.isclass(eval(api)):
@@ -488,7 +496,7 @@ def get_filenames():
                 name = '%s.%s' % (api.split('.')[-2], api.split('.')[-1])
             else:
                 name = ''
-                print("\n----Exception in get api methods----\n")
+                print("\nWARNING:----Exception in get api methods----\n")
                 print("\n" + line + "\n")
                 print("\n" + api + ' method is None!!!' + "\n")
             for j in range(2, len(module.split('.'))):
@@ -577,7 +585,7 @@ else:
         os.mkdir("./samplecode_temp")
     cpus = multiprocessing.cpu_count()
     filenames = get_filenames()
-    if len(filenames) == 0:
+    if len(filenames) == 0 and len(whl_error) == 0:
         print("-----API_PR.spec is the same as API_DEV.spec-----")
         exit(0)
     elif '../python/paddle/fluid/core_avx.py' in filenames:
@@ -605,8 +613,27 @@ else:
     os.rmdir("./samplecode_temp")
 
     print("----------------End of the Check--------------------")
-    for temp in result:
-        if not temp:
-            print("Mistakes found in sample codes")
-            exit(1)
+    if len(whl_error) != 0:
+        print("%s is not in whl." % whl_error)
+        print("")
+        print("Please check the whl package and API_PR.spec!")
+        print("You can follow these steps in order to generate API.spec:")
+        print("1. cd ${paddle_path}, compile paddle;")
+        print("2. pip install build/python/dist/(build whl package);")
+        print(
+            "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
+        )
+        for temp in result:
+            if not temp:
+                print("")
+                print("In addition, mistakes found in sample codes.")
+                print("Please check sample codes.")
+        print("----------------------------------------------------")
+        exit(1)
+    else:
+        for temp in result:
+            if not temp:
+                print("Mistakes found in sample codes.")
+                print("Please check sample codes.")
+                exit(1)
     print("Sample code check is successful!")

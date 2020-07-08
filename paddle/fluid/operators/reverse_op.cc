@@ -24,22 +24,55 @@ class ReverseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
-    const auto& x_dims = ctx->GetInputDim("X");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Reverse");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Reverse");
+
+    auto x_var_type = ctx->GetInputsVarType("X")[0];
     const auto& axis = ctx->Attrs().Get<std::vector<int>>("axis");
-    PADDLE_ENFORCE(!axis.empty(), "'axis' can not be empty.");
+    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      PADDLE_ENFORCE_EQ(
+          axis.size(), 1,
+          platform::errors::InvalidArgument(
+              "The size of axis must be 1 when the Input(X) is LoDTensorArray, "
+              "but received %d.",
+              axis.size()));
+      PADDLE_ENFORCE_EQ(axis[0], 0, platform::errors::InvalidArgument(
+                                        "The value of axis should be 1 when "
+                                        "the Input(X) is LoDTensorArray, "
+                                        "but received %d.",
+                                        axis[0]));
+      // In runtime, shape is determined by RunImpl.
+      if (!ctx->IsRuntime()) {
+        const auto& x_dims = ctx->GetInputDim("X");
+        ctx->SetOutputDim("Out", x_dims);
+      }
+      return;
+    }
+    const auto& x_dims = ctx->GetInputDim("X");
+    PADDLE_ENFORCE_NE(axis.empty(), true, platform::errors::InvalidArgument(
+                                              "'axis' can not be empty."));
     for (int a : axis) {
       PADDLE_ENFORCE_LT(a, x_dims.size(),
                         paddle::platform::errors::OutOfRange(
-                            "The axis must be less than input tensor's rank."));
+                            "The axis must be less than input tensor's rank. "
+                            "but got %d >= %d",
+                            a, x_dims.size()));
       PADDLE_ENFORCE_GE(
           a, -x_dims.size(),
           paddle::platform::errors::OutOfRange(
               "The axis must be greater than the negative number of "
-              "input tensor's rank."));
+              "input tensor's rank, but got %d < %d",
+              a, -x_dims.size()));
     }
     ctx->SetOutputDim("Out", x_dims);
+  }
+};
+
+class ReverseOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    ctx->SetOutputType("Out", ctx->GetInputType("X"));
+    ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
   }
 };
 
@@ -103,8 +136,9 @@ class ReverseGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(reverse, ops::ReverseOp, ops::ReverseOpMaker,
                   ops::ReverseGradMaker<paddle::framework::OpDesc>,
-                  ops::ReverseGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(reverse_grad, ops::ReverseOp);
+                  ops::ReverseGradMaker<paddle::imperative::OpBase>,
+                  ops::ReverseOpVarTypeInference);
+REGISTER_OPERATOR(reverse_grad, ops::ReverseOp, ops::ReverseOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(
     reverse, ops::ReverseKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, uint8_t>,
