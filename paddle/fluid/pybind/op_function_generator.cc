@@ -34,6 +34,7 @@
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_ins_map = {
     {"layer_norm", {"X", "Scale", "Bias"}},
+    {"instance_norm", {"X", "Scale", "Bias"}},
     {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
     {"label_smooth", {"X", "PriorDist"}},
     {"assign", {"X"}},
