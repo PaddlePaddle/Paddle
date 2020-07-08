@@ -97,6 +97,17 @@ function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_mode
              --iterations=2)
 endfunction()
 
+function(inference_analysis_lexical_test_run TARGET_NAME test_binary infer_model data_path)
+    inference_analysis_test_run(${TARGET_NAME}
+    COMMAND ${test_binary}
+        ARGS --infer_model=${infer_model}
+             --infer_data=${data_path}
+             --batch_size=50
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --with_accuracy_layer=true
+             --iterations=2)
+endfunction()
+
 function(preprocess_data2bin_test_run target py_script_source data_dir output_file)
 	py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/${py_script_source}
 	        ARGS --data_dir=${data_dir}
@@ -314,6 +325,19 @@ if(WITH_MKLDNN)
   set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
   download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
   inference_analysis_api_object_dection_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
+
+  ### Lexcial analysis
+  set(LEXICAL_DATA_MODEL "/home/li/repo/models/PaddleNLP/lexical_analysis")
+  set(XNLI_DATA_PATH "${LEXICAL_DATA_MODEL}/test_eval_0708.bin")
+  set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis_xnli")
+  set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_xnli_tester.cc")
+
+  # build test binary to be used in subsequent tests
+  inference_analysis_api_test_build(${LEXICAL_TEST_APP} ${LEXICAL_TEST_APP_SRC})
+
+  # Lexcial analysis test
+  set(LEXICAL_MODEL_DIR "${LEXICAL_DATA_MODEL}/GRU_infer_model")
+  inference_analysis_lexical_test_run(test_analyzer_lexical_GRU ${LEXICAL_TEST_APP} ${LEXICAL_MODEL_DIR} ${XNLI_DATA_PATH})
 
   ### optimized FP32 vs. Quant INT8 tests
   
