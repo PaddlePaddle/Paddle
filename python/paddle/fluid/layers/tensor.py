@@ -677,7 +677,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     """
 
     attrs = {'force_cpu': force_cpu}
-    if not isinstance(shape, Variable):
+    if not isinstance(value, Variable):
         if convert_dtype(dtype) in ['int64', 'int32']:
             attrs['str_value'] = str(int(value))
         else:
@@ -705,8 +705,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     inputs = {}
     if isinstance(value, Variable):
         inputs['ValueTensor'] = value
-    else:
-        attrs['value'] = float(value)
+
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
