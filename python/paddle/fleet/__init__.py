@@ -13,16 +13,11 @@
 # limitations under the License.
 
 # TODO: define distributed api under this directory, 
-# __all__ = ['metric',
-#            'optimizer',
-#            'RoleMaker',
-#            'dataset',
-#            '	DatasetFactory',
-#            '	InMemoryDataset',
-#            '	QueueDataset',
-#            'transpiler',
-#            '	DistributeTranspiler',
-#            '	DistributeTranspilerConfig',
-#            '	HashName',
-#            '	RoundRobin',
-#            'collective']
+from .base.distributed_strategy import DistributedStrategy
+#from .base.role_maker import PaddleCloudRoleMaker, UserDefinedRoleMaker
+#from .base.fleet_base import Fleet
+
+#__all__ = [
+#    "DistributedStrategy", "PaddleCloudRoleMaker", "UserDefinedRoleMaker"
+#]
+__all__ = ['DistributedStrategy']

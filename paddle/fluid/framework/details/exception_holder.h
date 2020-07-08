@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 
 #include "glog/logging.h"

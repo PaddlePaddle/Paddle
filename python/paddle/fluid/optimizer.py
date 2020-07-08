@@ -4474,7 +4474,7 @@ class PipelineOptimizer(object):
             "place_list": place_list,
             "place_id_list": place_id_list,
             "sync_steps": -1,
-            "queue_size": self._num_microbatches,
+            "num_microbatches": self._num_microbatches,
             "start_cpu_core_id": self._start_cpu_core_id,
         }
         return optimize_ops, params_grads, program_list
