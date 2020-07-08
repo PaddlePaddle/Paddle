@@ -209,7 +209,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     auto* id_data = id_tensor->data<int64_t>();
     std::vector<int64_t> ids;
 
-    for (int64_t i = 0; i < id_tensor.numel(); ++i) {
+    for (int64_t i = 0; i < id_tensor->numel(); ++i) {
       if (id_data[i] < 0) {
         PADDLE_THROW(
             "Variable value (input) of OP(embedding) "
