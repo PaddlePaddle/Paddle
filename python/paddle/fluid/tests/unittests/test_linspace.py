@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import core
 
 
 class TestLinspaceOpCommonCase(OpTest):
@@ -71,6 +72,15 @@ class TestLinspaceOpNumOneCase(OpTest):
 
 
 class TestLinspaceAPI(unittest.TestCase):
+    def test_dtype(self):
+        out_1 = paddle.linspace(0, 10, 5, dtype='float32')
+        out_2 = paddle.linspace(0, 10, 5, dtype=np.float32)
+        out_3 = paddle.linspace(0, 10, 5, dtype=core.VarDesc.VarType.FP32)
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
+                                      fetch_list=[out_1, out_2, out_3])
+        assert np.array_equal(res_1, res_2)
+
     def test_name(self):
         with paddle.program_guard(paddle.Program()):
             out = paddle.linspace(
