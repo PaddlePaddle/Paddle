@@ -63,7 +63,7 @@ TEST(bfloat16, conversion_cpu) {
 
   // Conversion operator
   EXPECT_EQ(static_cast<float>(bfloat16(0.5f)), 0.5f);
-  EXPECT_NEAR(static_cast<double>(bfloat16(0.33333)), 0.33333, 0.001);
+  EXPECT_NEAR(static_cast<double>(bfloat16(0.33333)), 0.33333, 0.01);
   EXPECT_EQ(static_cast<int>(bfloat16(-1)), -1);
   EXPECT_EQ(static_cast<bool>(bfloat16(true)), true);
 }
@@ -72,15 +72,14 @@ TEST(bfloat16, arithmetic_cpu) {
   EXPECT_NEAR(static_cast<float>(bfloat16(1) + bfloat16(1)), 2, 0.001);
   EXPECT_EQ(static_cast<float>(bfloat16(5) + bfloat16(-5)), 0);
   EXPECT_NEAR(static_cast<float>(bfloat16(0.33333f) + bfloat16(0.66667f)), 1.0f,
-              0.001);
+              0.01);
   EXPECT_EQ(static_cast<float>(bfloat16(3) - bfloat16(5)), -2);
   EXPECT_NEAR(static_cast<float>(bfloat16(0.66667f) - bfloat16(0.33333f)),
-              0.33334f, 0.001);
-  EXPECT_NEAR(static_cast<float>(bfloat16(3.3f) * bfloat16(2.0f)), 6.6f, 0.001);
-  EXPECT_NEAR(static_cast<float>(bfloat16(-2.1f) * bfloat16(-3.0f)), 6.3f,
-              0.001);
+              0.33334f, 0.01);
+  EXPECT_NEAR(static_cast<float>(bfloat16(3.3f) * bfloat16(2.0f)), 6.6f, 0.01);
+  EXPECT_NEAR(static_cast<float>(bfloat16(-2.1f) * bfloat16(-3.0f)), 6.3f, 0.1);
   EXPECT_NEAR(static_cast<float>(bfloat16(2.0f) / bfloat16(3.0f)), 0.66667f,
-              0.001);
+              0.01);
   EXPECT_EQ(static_cast<float>(bfloat16(1.0f) / bfloat16(2.0f)), 0.5f);
   EXPECT_EQ(static_cast<float>(-bfloat16(512.0f)), -512.0f);
   EXPECT_EQ(static_cast<float>(-bfloat16(-512.0f)), 512.0f);
