@@ -118,9 +118,8 @@ class ExceptionHolder {
       exception_.reset(new platform::EnforceNotMet(exp));
       type_ = kEnforceNotMet;
     } else {
-      VLOG(2)
-          << "Non-first exception is discarded, the original error message is"
-          << exception_->what();
+      VLOG(2) << "Non-first exception is discarded, the error message is"
+              << exception_->what();
     }
   }
 
@@ -130,9 +129,8 @@ class ExceptionHolder {
       exception_.reset(new paddle::memory::allocation::BadAlloc(exp));
       type_ = kBadAlloc;
     } else {
-      VLOG(2)
-          << "Non-first exception is discarded, the original error message is"
-          << exception_->what();
+      VLOG(2) << "Non-first exception is discarded, the error message is"
+              << exception_->what();
     }
   }
 
@@ -154,9 +152,8 @@ class ExceptionHolder {
       exception_.reset(new std::exception(exp));
       type_ = kBaseException;
     } else {
-      VLOG(2)
-          << "Non-first exception is discarded, the original error message is"
-          << exception_->what();
+      VLOG(2) << "Non-first exception is discarded, the error message is"
+              << exception_->what();
     }
   }
 
