@@ -1399,6 +1399,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         num(int|Variable): The input :attr:`num` is given num of the sequence. It is an int scalar, \
             or a tensor of shape [1] with type int32.
         dtype(np.dtype|core.VarDesc.VarType|str): The data type of output tensor, it could be 'float32' and 'float64'.
+            Default: if None, the datat type is `float32`.
         name(str, optional): Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name`.Default: None.
 
