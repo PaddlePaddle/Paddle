@@ -749,7 +749,11 @@ function card_test() {
     case_count $1 $2
     ut_startTime_s=`date +%s` 
     # get the CUDA device count
-    CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+    if [ "$WITH_GPU" == "ON" ];then
+      CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+    else
+      CUDA_DEVICE_COUNT=4
+    fi
 
     testcases=$1
     if (( $# > 1 )); then
