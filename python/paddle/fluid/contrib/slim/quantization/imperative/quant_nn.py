@@ -29,6 +29,15 @@ __all__ = [
 
 
 class FakeQuantMovingAverage(layers.Layer):
+    """
+    FakeQuantMovingAverage layer does the moving_average_abs_max quant and then dequant.
+    Its computational formula is described as below:
+
+    :math:`scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)`
+    :math:`range = 2^{bit\_length - 1} - 1`
+    :math:`Out = round(X / scale * range) * scale / range`
+    """
+
     def __init__(self,
                  name=None,
                  moving_rate=0.9,
@@ -118,6 +127,15 @@ class FakeQuantMovingAverage(layers.Layer):
 
 
 class FakeQuantAbsMax(layers.Layer):
+    """
+    FakeQuantAbsMax layer does the abs_max quant and then dequant.
+    Its computational formula is described as below:
+
+    :math:`scale = max(abs(X))`
+    :math:`range = 2^{bit\_length - 1} - 1`
+    :math:`Out = round(X / scale * range) * scale / range`
+    """
+
     def __init__(self,
                  name=None,
                  quant_bits=8,
@@ -203,6 +221,11 @@ def _get_fake_quant_type(quant_type, name, moving_rate, quant_bits, dtype,
 
 
 class QuantizedConv2D(layers.Layer):
+    """
+    The computational logic of QuantizedConv2D is the same with Conv2D.
+    The only difference is that its inputs are all fake quantized.
+    """
+
     def __init__(self,
                  layer,
                  weight_bits=8,
@@ -283,6 +306,11 @@ class QuantizedConv2D(layers.Layer):
 
 
 class QuantizedLinear(layers.Layer):
+    """
+    The computational logic of QuantizedLinear is the same with Linear.
+    The only difference is that its inputs are all fake quantized.
+    """
+
     def __init__(self,
                  layer,
                  weight_bits=8,

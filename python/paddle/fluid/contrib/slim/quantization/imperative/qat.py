@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import logging
-import sys
 import numpy as np
+import sys
 from paddle.fluid import dygraph
 from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.log_helper import get_logger
-from .quant_nn import QuantizedConv2D
-from .quant_nn import QuantizedLinear
+from . import quant_nn
 
 __all__ = ['ImperativeQuantAware']
 
@@ -29,6 +28,11 @@ _logger = get_logger(
 
 
 class ImperativeQuantAware(object):
+    """
+    Add the fake quant logic for given quantizable layers, namely add the quant_dequant
+    computational logic both for activation inputs and weight inputs.
+    """
+
     def __init__(self,
                  weight_bits=8,
                  activation_bits=8,
@@ -36,6 +40,59 @@ class ImperativeQuantAware(object):
                  activation_quantize_type='moving_average_abs_max',
                  moving_rate=0.9,
                  quantizable_layer_type=['Conv2D', 'Linear']):
+        """
+        The constructor for ImperativeQuantAware.
+
+        Args:
+            weight_bits(int): quantization bit number for weights,
+                whereas the bias is not quantized.
+            activation_bits(int): quantization bit number for activations.
+            weight_quantize_type(str): quantization type for weights,
+                which supports 'abs_max' now. The 'moving_average_abs_max'
+                usually is not used for weights, since weights are fixed once the
+                model is well trained.
+            activation_quantize_type(str): quantization type for activations,
+                which supports 'abs_max' and 'moving_average_abs_max' now.
+                If using 'abs_max' mode, the quantization scale will be calculated
+                dynamically each step in both training and testing period. If using
+                'moving_average_abs_max', the static quantization scale will be calculated
+                during training and used in inference.
+            moving_rate(float): the parameter for 'moving_average_abs_max' quantization.
+            quantizable_op_type(list[str]): List the type of layers that will be quantized. 
+                Default is ['Conv2D', 'Linear']. The quantizable_op_type in
+                QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
+
+
+        Examples:
+        .. code-block:: python
+
+            from paddle.fluid.contrib.slim.quantization \
+                import ImperativeQuantAware
+            from paddle.incubate.hapi.vision.models \
+                import resnet
+            
+            model = resnet.resnet50(pretrained=True)
+
+            imperative_qat = ImperativeQuantAware(
+                weight_quantize_type='abs_max',
+                activation_quantize_type='moving_average_abs_max')
+            
+            # Add the fake quant logical.
+            # The original model will be rewrite.
+            imperative_qat.quantize(model)
+
+            # Fine-tune the quantized model
+            # ...
+            
+            # Save quant model for the inference.
+            imperative_qat.save_quantized_model(
+                dirname="./resnet50_qat",
+                model=model,
+                input_shape=[(3, 224, 224)],
+                input_dtype=['float32'],
+                feed=[0],
+                fetch=[0])
+        """
         super(ImperativeQuantAware, self).__init__()
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
@@ -65,6 +122,16 @@ class ImperativeQuantAware(object):
                 layer, str), "{} is unspported to be quantized.".format(layer)
 
     def quantize(self, model):
+        """
+        According to weights' and activations' quantization types, the model will be added some fake
+        quant ops, such as fake_quantize_dequantize_moving_average_abs_max, fake_quantize_dequantize_abs_max
+        and so on.
+
+        Args:
+            model(fluid.dygraph.Layer): the model to be quantized.
+        Returns:
+            None
+        """
         for name, layer in model.named_sublayers():
             if not isinstance(layer, self._quantizable_layer_type):
                 continue
@@ -80,14 +147,37 @@ class ImperativeQuantAware(object):
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(obj, target, quant_layer)
 
-    def save_quant_model(self,
-                         dirname,
-                         model,
-                         input_shape,
-                         input_dtype,
-                         feed,
-                         fetch,
-                         append_batch_size=True):
+    def save_quantized_model(self,
+                             dirname,
+                             model,
+                             input_shape,
+                             input_dtype,
+                             feed,
+                             fetch,
+                             append_batch_size=True):
+        """
+        Save the quantized model for the inference.
+
+        Args:
+            dirname (str): the directory to save the quantized model.
+            model(fluid.dygraph.Layer): the quantized model to be saved.
+            input_shape(list[tuple(int)]): The shape value for each input,
+                e.g. [(3, 224, 224)].
+            input_dtype(list[str]): The dtype value for each input,
+                e.g. ['float32'].
+            feed(list[int]): the indices of the input variables of the
+                imperative functions which will be saved as input variables in
+                inference model.
+            fetch(list[int]): the indices of the returned variable of the
+                imperative functions which will be saved as output variables in
+                inference model.
+            append_batch_size(bool, optional):
+                If true, it prepends an extra axis to the input_shape, meanwhile,
+                the input_shape shouldn't contain the batch size dimension.
+                Otherwise, it just uses the input_shape. Default True.
+        Returns:
+            None
+        """
         assert isinstance(
             input_shape, list), "The parameter `input_shape` shoubld be a list."
         assert isinstance(
@@ -133,8 +223,7 @@ class ImperativeQuantAware(object):
                 layer.full_name()))
             sys.exit(-1)
 
-        module = sys.modules[__name__]
-        quantized_layer = getattr(module, quantized_counterpart[index])(
+        quantized_layer = quant_nn.__dict__[quantized_counterpart[index]](
             layer, self._weight_bits, self._activation_bits, self._moving_rate,
             self._weight_quantize_type, self._activation_quantize_type)
         return quantized_layer
