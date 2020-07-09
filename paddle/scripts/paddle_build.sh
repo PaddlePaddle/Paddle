@@ -714,6 +714,7 @@ function bind_test() {
         # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
         # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
         env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure &
+    fi
     done
     wait
 }
@@ -749,11 +750,7 @@ function card_test() {
     case_count $1 $2
     ut_startTime_s=`date +%s` 
     # get the CUDA device count
-    if [ "$WITH_GPU" == "ON" ];then
-      CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
-    else
-      CUDA_DEVICE_COUNT=4
-    fi
+    CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
 
     testcases=$1
     if (( $# > 1 )); then
@@ -808,7 +805,7 @@ function card_test() {
     set +m
 }
 
-function parallel_test_base() {
+function parallel_test_base_gpu() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -889,11 +886,34 @@ set -ex
     fi
 }
 
+function parallel_test_base_cpu() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit cpu tests ...
+    ========================================
+EOF
+        ut_startTime_s=`date +%s`
+        ctest --output-on-failure -j $1
+        ut_endTime_s=`date +%s`
+        echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test() {
     ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    parallel_test_base
+    if [ "$WITH_GPU" == "ON" ];then
+        parallel_test_base_gpu
+    else
+        parallel_test_base_cpu ${PROC_RUN:-1}
+    fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
 }
