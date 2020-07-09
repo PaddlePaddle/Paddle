@@ -46,7 +46,7 @@ class PaddleModel(SerializableBase):
     def deserialize(self, path):
         from ...io import load_persistables
         load_persistables(
-            executor=exe,
+            executor=self._exe,
             dirname=path,
             main_program=self._program,
             filename=self._file_name)
@@ -134,6 +134,7 @@ class Checkpointer(object):
             checkpoint_no = max_no
         else:
             assert isinstance(checkpoint_no, int)
+            assert checkpoint_no >= 0
 
         local_fs = LocalFS()
         if self._fs.need_upload_download():

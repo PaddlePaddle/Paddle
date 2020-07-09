@@ -220,7 +220,7 @@ class ExeTrainStatus(SerializableBase):
         self._checkpoint_no = d["checkpoint_no"]
         self._exe_name = d["exe_name"]
         self._program_name = d["program_name"]
-        self._restored = True
+        self._restored = False
 
     def _to_dict(self):
         return {
@@ -311,7 +311,7 @@ class TrainEpochRange(SerializableBase):
         return json.dumps(d)
 
     @property
-    def restored(self):
+    def is_restored(self):
         return self._restored
 
     def deserialize(self, path):
@@ -470,7 +470,7 @@ def _auto_checkpoint(exe, program):
     key = _get_running_key(exe._auto_checkpoint_name,
                            program._auto_checkpoint_name)
 
-    if g_train_epoch_range.restored:
+    if g_train_epoch_range.is_restored:
         assert key in exe_status, "when restored key:{} must be in train_epoch_range:{}".format(
             key, g_train_epoch_range)
 
@@ -482,7 +482,7 @@ def _auto_checkpoint(exe, program):
             a = Checkpointer(g_train_epoch_range._hdfs)
             m = PaddleModel(exe, program)
             a.load_checkpoint(
-                t._checkpoint_path, [m],
+                g_checker.get_exe_checkpoint_path(key), [m],
                 trainer_id=g_checker.trainer_id,
                 checkpoint_no=t._checkpoint_no)
             t._restored = True

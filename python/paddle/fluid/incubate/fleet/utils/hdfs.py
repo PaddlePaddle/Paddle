@@ -182,9 +182,11 @@ class HDFSClient(FS):
     @_handle_errors
     def download(self, fs_path, local_path):
         if self.is_exist(local_path):
+            logging.fatal("{} exits".format(fs_path))
             raise FSFileExistsError
 
         if not self.is_exist(fs_path):
+            logging.fatal("{} not exits".format(fs_path))
             raise FSFileNotExistsError
 
         cmd = "{} -get {} {}".format(self._base_cmd, fs_path, local_path)
