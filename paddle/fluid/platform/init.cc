@@ -98,9 +98,8 @@ void InitP2P(std::vector<int> devices) {
       for (int j = 0; j < count; ++j) {
         if (devices[i] == devices[j]) continue;
         int can_acess = -1;
-        PADDLE_ENFORCE(
-            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]),
-            "Failed to test P2P access.");
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]));
         if (can_acess != 1) {
           LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
                        << " to " << devices[j];

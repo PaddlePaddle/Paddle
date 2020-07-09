@@ -3114,15 +3114,17 @@ def instance_norm(input,
             The data type is float32 or float64.
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
-        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+        param_attr(ParamAttr|None|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
 	     If the Initializer of the param_attr is not set, the parameter is initialized
-	     with Xavier. Default: None.
-        bias_attr(ParamAttr|None): The parameter attribute for the bias of instance_norm.
+	     with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
+             Default: None.
+        bias_attr(ParamAttr|None|bool, optional): The parameter attribute for the bias of instance_norm.
              If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
+             If the bias_attr is set to False, instance_norm will not create bias_attr.
 	     Default: None.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -3142,7 +3144,9 @@ def instance_norm(input,
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'instance_norm')
-    assert bias_attr is not False, "bias_attr should not be False in instance_norm."
+    if param_attr is False:
+        assert bias_attr is False, "param_attr and bias_attr must be set to Fasle at the same time in instance_norm"
+
     helper = LayerHelper('instance_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -3155,18 +3159,19 @@ def instance_norm(input,
 
     param_shape = [channel_num]
 
-    # create parameter
-    scale = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=param_shape,
-        dtype=dtype,
-        default_initializer=Constant(1.0))
-    bias = helper.create_parameter(
-        attr=helper.bias_attr,
-        shape=param_shape,
-        dtype=dtype,
-        is_bias=True,
-        default_initializer=Constant(0.0))
+    if param_attr and bias_attr:
+        # create parameter
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0))
+        bias = helper.create_parameter(
+            attr=helper.bias_attr,
+            shape=param_shape,
+            dtype=dtype,
+            is_bias=True,
+            default_initializer=Constant(0.0))
 
     # create output
     saved_mean = helper.create_variable_for_type_inference(
@@ -3176,13 +3181,14 @@ def instance_norm(input,
 
     instance_norm_out = helper.create_variable_for_type_inference(dtype)
 
+    inputs = {"X": input}
+    if param_attr and bias_attr:
+        inputs["Scale"] = scale
+        inputs["Bias"] = bias
+
     helper.append_op(
         type="instance_norm",
-        inputs={
-            "X": input,
-            "Scale": scale,
-            "Bias": bias,
-        },
+        inputs=inputs,
         outputs={
             "Y": instance_norm_out,
             "SavedMean": saved_mean,
@@ -10487,29 +10493,24 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
 
-    helper = LayerHelper('gaussian_random', **locals())
-    out = helper.create_variable_for_type_inference(dtype)
-    if not isinstance(shape, (list, tuple, Variable)):
-        raise TypeError(
-            "The type of 'shape' in fill_constant must be Variable, list or tuple, but "
-            "received %s." % (type(shape)))
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    check_type(shape, 'shape', (list, tuple, Variable), 'gaussian_random')
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'gaussian_random')
+
+    inputs = {}
     attrs = {
         'mean': mean,
         'std': std,
         'seed': seed,
-        'dtype': c_dtype,
+        'dtype': dtype,
         'use_mkldnn': False
     }
-
-    inputs = {}
     utils._get_shape_tensor_inputs(
-        inputs=inputs,
-        helper=helper,
-        attrs=attrs,
-        shape=shape,
-        op_type='gaussian_random')
+        inputs=inputs, attrs=attrs, shape=shape, op_type='gaussian_random')
 
+    helper = LayerHelper('gaussian_random', **locals())
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='gaussian_random',
         inputs=inputs,
@@ -14937,7 +14938,8 @@ def gather_tree(ids, parents):
 
 
 @templatedoc()
-def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
+def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
+                   name=None):
     """
     This OP initializes a variable with random values sampled from a
     uniform distribution in the range [min, max).
@@ -14952,18 +14954,24 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape (list|tuple|Variable): The shape of the output Tensor,  if the shape is a list or tuple,
-                                     its elements can be an integer
-                                     or a Tensor with the shape [1], and the type of the Tensor must be int32 or int64.
-                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor must be int32 or int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the output Tensor. Supported data types: float32, float64.
-                                                  Default: float32.
-        min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
-        max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
-        seed (int, optional): Random seed used for generating samples. 0 means use a
-            seed generated by the system. Note that if seed is not 0, this
-            operator will always generate the same random numbers every time.
-            Default 0.
+        shape (list|tuple|Variable): The shape of the output Tensor,  if the
+            shape is a list or tuple, its elements can be an integer or a
+            Tensor with the shape [1], and the type of the Tensor must be
+            int32 or int64. If the shape is a Variable, it is a 1-D Tensor, and
+            the type of the Tensor must be int32 or int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the
+            output Tensor. Supported data types: float32, float64. Default: float32.
+        min (float, optional): The lower bound on the range of random values
+            to generate, the min is included in the range. Default -1.0.
+        max (float, optional): The upper bound on the range of random values
+            to generate, the max is excluded in the range. Default 1.0.
+        seed (int, optional): Random seed used for generating samples. 0 means
+            use a seed generated by the system. Note that if seed is not 0,
+            this operator will always generate the same random numbers every
+            time. Default 0.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: A Tensor of the specified shape filled with uniform_random values.
@@ -14993,62 +15001,30 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
             result_4 = fluid.layers.uniform_random(var_shape_int32)
 
-
-
     """
-    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        shape = utils._convert_shape_to_list(shape)
+        return core.ops.uniform_random('shape', shape, 'min',
+                                       float(min), 'max',
+                                       float(max), 'seed', seed, 'dtype', dtype)
+
+    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random')
     check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random')
 
-    def get_new_shape_tensor(list_shape):
-        new_shape_tensor = []
-        for dim in list_shape:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_shape_tensor.append(dim)
-            else:
-                assert (isinstance(dim, int))
-                temp_out = helper.create_variable_for_type_inference('int64')
-                fill_constant([1], 'int64', dim, force_cpu=True, out=temp_out)
-                new_shape_tensor.append(temp_out)
-        return new_shape_tensor
-
-    def get_attr_shape(list_shape):
-        unk_dim_idx = -1
-        attrs_shape = []
-        for dim_idx, dim_size in enumerate(list_shape):
-            if isinstance(dim_size, Variable):
-                attrs_shape.append(-1)
-            else:
-                attrs_shape.append(dim_size)
-                assert dim_size > 0, (
-                    "Each dimension size given in shape must not be negative "
-                    "except one unknown dimension.")
-        return attrs_shape
-
-    helper = LayerHelper("uniform_random", **locals())
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
-    if in_dygraph_mode():
-        attrs['shape'] = shape
-    else:
-        if isinstance(shape, Variable):
-            shape.stop_gradient = True
-            inputs["ShapeTensor"] = shape
-        elif isinstance(shape, (list, tuple)):
-            assert len(shape) > 0, (
-                "The size of argument(shape) can't be zero.")
-            attrs["shape"] = get_attr_shape(shape)
-            if utils._contain_var(shape):
-                inputs['ShapeTensorList'] = get_new_shape_tensor(shape)
+    utils._get_shape_tensor_inputs(
+        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random')
 
+    helper = LayerHelper("uniform_random", **locals())
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
         outputs={"Out": out})
-
-    return helper.append_activation(out)
+    return out
 
 
 def unbind(input, axis=0):

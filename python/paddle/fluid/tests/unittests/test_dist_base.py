@@ -937,11 +937,6 @@ class TestDistBase(unittest.TestCase):
                          need_envs={},
                          log_name=""):
 
-        print(
-            "disable distributed unittests temporary, will enable it soon. (tangwei)"
-        )
-        return
-
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         local_losses \
@@ -981,11 +976,6 @@ class TestDistBase(unittest.TestCase):
                                      check_error_log=False,
                                      need_envs={},
                                      log_name=""):
-
-        print(
-            "disable distributed unittests temporary, will enable it soon. (tangwei)"
-        )
-        return
 
         # need open p2p or shm otherwise multi cards mode will hang
         need_envs.update({"NCCL_P2P_DISABLE": "0", "NCCL_SHM_DISABLE": "0"})

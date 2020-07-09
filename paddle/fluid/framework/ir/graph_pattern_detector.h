@@ -231,7 +231,7 @@ class PDPattern {
 
   std::vector<std::unique_ptr<PDNode>> nodes_;
   std::vector<edge_t> edges_;
-  std::unordered_map<std::string, PDNode*> node_map_;
+  std::map<std::string, PDNode*> node_map_;
   static size_t id_;
 };
 
@@ -263,7 +263,7 @@ class PDPattern {
  */
 class GraphPatternDetector {
  public:
-  using subgraph_t = std::unordered_map<PDNode*, Node*>;
+  using subgraph_t = std::map<PDNode*, Node*>;
 
   // Operate on the detected pattern.
   using handle_t =
