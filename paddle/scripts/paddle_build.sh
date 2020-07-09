@@ -897,7 +897,7 @@ EOF
         ut_startTime_s=`date +%s`
         ctest --output-on-failure -j $1
         ut_endTime_s=`date +%s`
-        echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "CPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
