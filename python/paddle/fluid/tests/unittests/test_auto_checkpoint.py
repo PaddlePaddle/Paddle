@@ -156,7 +156,7 @@ class AutoCheckpointTest(unittest.TestCase):
 
         o = None
         i = 0
-        for i in acp._run_only_for_inter(name, 3, 0):
+        for i in acp._run_only_for_inter(load_name, 3, 0):
             o = acp._get_train_epoch_range()
             for data in data_loader():
                 fetch = exe.run(main_program, feed=data, fetch_list=[loss])

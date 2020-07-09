@@ -351,7 +351,7 @@ class TrainEpochRange(SerializableBase):
             yield i
 
             if self._checker.trainer_id == 0:
-                logging.info("prepare to save_checkpoint")
+                logger.info("prepare to save_auto_checkpoint")
                 if time.time() - self._last_checkpoint_time >= self._save_checkpoint_inter or \
                         i >= self._max_epoch_num:
                     self.save_checkpoint()
@@ -423,8 +423,9 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
         logger.warning("auto checkpoint will take effect on PaddleCloud")
         return
 
-    _run_only_for_inter(g_checker.generate_range_name(), max_epoch_num,
-                        save_checkpoint_inter)
+    for i in _run_only_for_inter(g_checker.generate_range_name(), max_epoch_num,
+                                 save_checkpoint_inter):
+        yield i
 
 
 def _run_only_for_inter(range_name, max_epoch_num, save_checkpoint_inter):
