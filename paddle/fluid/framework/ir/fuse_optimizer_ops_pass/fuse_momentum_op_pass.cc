@@ -37,7 +37,8 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &momentum_ops, ir::Graph *graph) const {
-    PADDLE_ENFORCE_GT(momentum_ops.size(), static_cast<size_t>(0));
+    PADDLE_ENFORCE_GT(momentum_ops.size(), static_cast<size_t>(0),
+                      platform::errors::Fatal("momentum_ops must not empyt"));
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
@@ -50,14 +51,26 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
 
     for (auto &momentum_op : momentum_ops) {
       PADDLE_ENFORCE_EQ(
-          mu, BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu")));
+          mu, BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu")),
+          platform::errors::Fatal(
+              "mu=%f,but it should %f in attr", mu,
+              BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu"))));
       PADDLE_ENFORCE_EQ(
           use_nesterov,
-          BOOST_GET_CONST(bool, momentum_op->Op()->GetAttr("use_nesterov")));
+          BOOST_GET_CONST(bool, momentum_op->Op()->GetAttr("use_nesterov")),
+          platform::errors::Fatal(
+              "use_nesterov=%d,but it should %d in attr", use_nesterov,
+              BOOST_GET_CONST(bool,
+                              momentum_op->Op()->GetAttr("use_nesterov"))));
       PADDLE_ENFORCE_EQ(
           op_role,
           BOOST_GET_CONST(int, momentum_op->Op()->GetAttr(
-                                   OpProtoAndCheckerMaker::OpRoleAttrName())));
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())),
+          platform::errors::Fatal(
+              "op_role=%d,but it should %d in attr", op_role,
+              BOOST_GET_CONST(int,
+                              momentum_op->Op()->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName()))));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have

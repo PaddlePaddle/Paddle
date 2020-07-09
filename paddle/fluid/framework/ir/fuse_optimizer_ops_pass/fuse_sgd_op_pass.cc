@@ -35,7 +35,8 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &sgd_ops, ir::Graph *graph) const {
-    PADDLE_ENFORCE_GT(sgd_ops.size(), static_cast<size_t>(0));
+    PADDLE_ENFORCE_GT(sgd_ops.size(), static_cast<size_t>(0),
+                      platform::errors::Fatal("sgd_ops must not empyt"));
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.

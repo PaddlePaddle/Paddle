@@ -50,18 +50,22 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
                                  fused_scale2->inputs.end());
     for (auto &out_node : fused_scale1->outputs) {
       if (fused_scale2_in_nodes.count(out_node)) {
-        PADDLE_ENFORCE(out_node->IsCtrlVar(),
-                       "The dependency var only should be ctrl var.");
+        PADDLE_ENFORCE_EQ(out_node->IsCtrlVar(), true,
+                          platform::errors::Fatal(
+                              "The dependency var only should be ctrl var."));
         not_need_ctrl_var_nodes.insert(out_node);
       }
     }
 
     for (auto &node : not_need_ctrl_var_nodes) {
       // remove this node from the input op node.
-      PADDLE_ENFORCE(!node->inputs.empty(),
-                     "The input should not be empty here.");
+      PADDLE_ENFORCE_EQ(
+          node->inputs.empty(), false,
+          platform::errors::Fatal("The input should not be empty here."));
       auto op_node = node->inputs.front();
-      PADDLE_ENFORCE(op_node->IsOp());
+      PADDLE_ENFORCE_EQ(op_node->IsOp(), true,
+                        platform::errors::Fatal("node(%s) should be a OP Node.",
+                                                op_node->Name()));
       op_node->outputs.erase(
           remove_if(
               op_node->outputs.begin(), op_node->outputs.end(),
@@ -85,7 +89,8 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const {
-    PADDLE_ENFORCE_GT(adam_ops.size(), static_cast<size_t>(0));
+    PADDLE_ENFORCE_GT(adam_ops.size(), static_cast<size_t>(0),
+                      platform::errors::Fatal("no adam op in the graph."));
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
@@ -102,22 +107,44 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
         int64_t, adam_ops[0]->Op()->GetAttr("min_row_size_to_use_multithread"));
     for (auto &adam_op : adam_ops) {
       PADDLE_ENFORCE_EQ(
-          beta1, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1")));
+          beta1, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1")),
+          platform::errors::Fatal(
+              "beta1=%f,but it should %f in attr", beta1,
+              BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1"))));
       PADDLE_ENFORCE_EQ(
-          beta2, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2")));
+          beta2, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2")),
+          platform::errors::Fatal(
+              "beta2=%f,but it should %f in attr", beta2,
+              BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2"))));
       PADDLE_ENFORCE_EQ(
-          epsilon, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon")));
+          epsilon, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon")),
+          platform::errors::Fatal(
+              "epsilon=%f,but it should %f in attr", epsilon,
+              BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon"))));
       PADDLE_ENFORCE_EQ(
-          lazy_mode,
-          BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode")));
+          lazy_mode, BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode")),
+          platform::errors::Fatal(
+              "lazy_mode=%d,but it should %d in attr", lazy_mode,
+              BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode"))));
       PADDLE_ENFORCE_EQ(
           min_row_size_to_use_multithread,
           BOOST_GET_CONST(int64_t, adam_op->Op()->GetAttr(
-                                       "min_row_size_to_use_multithread")));
+                                       "min_row_size_to_use_multithread")),
+          platform::errors::Fatal(
+              "min_row_size_to_use_multithread=%I64,but it should %I64 in attr",
+              min_row_size_to_use_multithread,
+              BOOST_GET_CONST(
+                  int64_t,
+                  adam_op->Op()->GetAttr("min_row_size_to_use_multithread"))));
       PADDLE_ENFORCE_EQ(
           op_role,
           BOOST_GET_CONST(int, adam_op->Op()->GetAttr(
-                                   OpProtoAndCheckerMaker::OpRoleAttrName())));
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())),
+          platform::errors::Fatal(
+              "op_role=%d,but it should %d in attr", op_role,
+              BOOST_GET_CONST(int,
+                              adam_op->Op()->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName()))));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
@@ -154,7 +181,10 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
                          const std::string &fused_var_name,
                          const std::vector<ir::Node *> &adam_ops,
                          ir::Graph *graph) const {
-    PADDLE_ENFORCE_EQ(beta_name.size(), adam_ops.size());
+    PADDLE_ENFORCE_EQ(beta_name.size(), adam_ops.size(),
+                      platform::errors::Fatal(
+                          "beta_name size(%d) must equal to adam_op size(%d).",
+                          beta_name.size(), adam_ops.size()));
     const std::string scale_op_name = "scale";
 
     // Get the scale_ops of dealing the adam's beta var.
@@ -168,7 +198,9 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
             return var_node->Var() &&
                    var_node->Var()->Name() == beta_1_pow_name;
           });
-      PADDLE_ENFORCE(beta_pow_iter != adam_ops[i]->inputs.end());
+      PADDLE_ENFORCE_NE(beta_pow_iter, adam_ops[i]->inputs.end(),
+                        platform::errors::Fatal("can not find %s in adam_ops",
+                                                beta_1_pow_name));
 
       auto beta_pow_node = *beta_pow_iter;
       auto scale_op_iter = std::find_if(
@@ -176,11 +208,17 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
           [&scale_op_name](ir::Node *op_node) -> bool {
             return op_node->Op() && op_node->Op()->Type() == scale_op_name;
           });
-      PADDLE_ENFORCE(scale_op_iter != beta_pow_node->outputs.end());
+      PADDLE_ENFORCE_NE(scale_op_iter, beta_pow_node->outputs.end(),
+                        platform::errors::Fatal(
+                            "can not find %s in beta_pow_node", scale_op_name));
 
       scale_ops.emplace_back(*scale_op_iter);
     }
-    PADDLE_ENFORCE_EQ(scale_ops.size(), beta_name.size());
+    PADDLE_ENFORCE_EQ(
+        scale_ops.size(), beta_name.size(),
+        platform::errors::Fatal(
+            "beta_name size(%d) must equal to scale_ops size(%d).",
+            beta_name.size(), scale_ops.size()));
     VLOG(6) << "The number of scale op is " << scale_ops.size() << ".";
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
@@ -193,16 +231,31 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
         BOOST_GET_CONST(bool, scale_ops[0]->Op()->GetAttr("bias_after_scale"));
     for (auto &scale_op : scale_ops) {
       PADDLE_ENFORCE_EQ(
-          scale, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale")));
+          scale, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale")),
+          platform::errors::Fatal(
+              "scale=%f,but it should %f in attr", scale,
+              BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale"))));
       PADDLE_ENFORCE_EQ(
-          bias, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias")));
+          bias, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias")),
+          platform::errors::Fatal(
+              "bias=%f,but it should %f in attr", bias,
+              BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias"))));
       PADDLE_ENFORCE_EQ(
           bias_after_scale,
-          BOOST_GET_CONST(bool, scale_op->Op()->GetAttr("bias_after_scale")));
+          BOOST_GET_CONST(bool, scale_op->Op()->GetAttr("bias_after_scale")),
+          platform::errors::Fatal(
+              "bias_after_scale=%d,but it should %d in attr", bias_after_scale,
+              BOOST_GET_CONST(bool,
+                              scale_op->Op()->GetAttr("bias_after_scale"))));
       PADDLE_ENFORCE_EQ(
           op_role,
           BOOST_GET_CONST(int, scale_op->Op()->GetAttr(
-                                   OpProtoAndCheckerMaker::OpRoleAttrName())));
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())),
+          platform::errors::Fatal(
+              "op_role=%d,but it should %d in attr", op_role,
+              BOOST_GET_CONST(int,
+                              scale_op->Op()->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName()))));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
