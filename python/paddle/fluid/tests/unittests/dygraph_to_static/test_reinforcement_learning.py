@@ -25,12 +25,15 @@ import unittest
 # Note: Packages gym is not in requirements.txt, and it shall not. 
 # Because it's only needed in this unittest, so we try to call
 # `pip install --user gym` to solve this dependency.
-try:
-    import gym
-except ImportError:
-    from pip._internal import main as pip
-    pip(['install', '--user', 'gym'])
-    import gym
+# try:
+import gym
+# except ImportError:
+#     try:
+#         from pip import main as  pipmain
+#     except ImportError:
+#         from pip._internal import main as pipmain
+#     pipmain(['install', '--user', 'gym'])
+#     import gym
 
 SEED = 2020
 program_translator = ProgramTranslator()
