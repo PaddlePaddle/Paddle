@@ -41,6 +41,7 @@ logger = None
 g_exe = fluid.Executor(places[0])
 g_main = fluid.default_main_program()
 g_startup = fluid.default_startup_program()
+g_compiled = None
 
 
 # define a random dataset
@@ -76,7 +77,6 @@ class AutoCheckpointTest(unittest.TestCase):
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1"
         }
         os.environ.update(proc_env)
-        print(os.environ)
 
     def tearDown(self):
         os.environ.clear()
@@ -100,7 +100,7 @@ class AutoCheckpointTest(unittest.TestCase):
 
         g_exe.run(g_startup)
 
-        prog = fluid.CompiledProgram(g_main).with_data_parallel(
+        g_compiled = fluid.CompiledProgram(g_main).with_data_parallel(
             loss_name=loss.name)
 
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
@@ -114,7 +114,7 @@ class AutoCheckpointTest(unittest.TestCase):
             drop_last=True,
             num_workers=2)
 
-        return loader, sgd, loss, prog, image, label
+        return loader, sgd, loss, image, label
 
     # break at epoch 0: not save epoch
     def _run_save_0(self):
@@ -122,7 +122,7 @@ class AutoCheckpointTest(unittest.TestCase):
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        data_loader, _, loss, compiled, image, label = self._init_env()
+        data_loader, optimizer, loss, image, label = self._init_env()
 
         o = None
         i = 0
@@ -133,7 +133,7 @@ class AutoCheckpointTest(unittest.TestCase):
             print("name:", o.name, "epoch_no:", i)
 
             for data in data_loader():
-                fetch = g_exe.run(compiled, feed=data, fetch_list=[loss])
+                fetch = g_exe.run(g_compiled, feed=data, fetch_list=[loss])
             fluid.io.save_inference_model(
                 save_dir, [image.name, label.name], [loss],
                 g_exe,
@@ -144,7 +144,7 @@ class AutoCheckpointTest(unittest.TestCase):
         assert o == None, "now train epoch must not exits now"
         self.assertEqual(i, 2)
         fluid.io.save_inference_model(save_dir, [image.name, label.name],
-                                      [loss], exe)
+                                      [loss], g_exe)
 
         fs.delete(save_dir)
         return name
@@ -154,19 +154,19 @@ class AutoCheckpointTest(unittest.TestCase):
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        data_loader, _, loss, compiled, image, label = self._init_env()
+        data_loader, optimizer, loss, image, label = self._init_env()
 
         o = None
         i = 0
         for i in acp._run_only_for_inter(load_name, 3, 0):
             o = acp._get_train_epoch_range()
             for data in data_loader():
-                fetch = g_exe.run(compiled, feed=data, fetch_list=[loss])
+                fetch = g_exe.run(g_compiled, feed=data, fetch_list=[loss])
             print("name:", o.name, "epoch_no:", i, "exe_status num:",
                   len(o._exe_status))
             fluid.io.save_inference_model(save_dir, [image.name, label.name],
-                                          [loss], exe)
-            self.assertEqual(o._exe_status, 1)
+                                          [loss], g_exe)
+            self.assertEqual(len(o._exe_status), 1)
 
         o = acp._get_train_epoch_range()
         assert o == None, "now train epoch must not exits now"
@@ -243,7 +243,6 @@ class AutoCheckpointTest(unittest.TestCase):
         fs.delete(checker.hdfs_checkpoint_path)
 
         name = self._run_save_0()
-        self._run_load_0(name)
         self._run_load_0(name)
         self._run_load_0(name)
 
