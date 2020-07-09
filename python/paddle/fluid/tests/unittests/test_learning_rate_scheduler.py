@@ -263,12 +263,17 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             learning_rate = 0.5
             milestones = [2, 4, 8]
             decay_rate = 0.2
+            linear = fluid.dygraph.Linear(10, 10)
+
             scheduler = fluid.dygraph.MultiStepDecay(learning_rate, milestones,
                                                      decay_rate)
+
+            adam = fluid.optimizer.AdamOptimizer(
+                learning_rate=scheduler, parameter_list=linear.parameters())
             for epoch in range(10):
                 right_result = multi_step_decay(epoch, learning_rate,
                                                 milestones, decay_rate)
-                fluid_result = scheduler().numpy()[0]
+                fluid_result = adam.current_step_lr()
                 scheduler.epoch()
                 self.assertAlmostEqual(
                     right_result,

@@ -152,11 +152,8 @@ class Optimizer(object):
 
             if not isinstance(self._learning_rate, _LearningRateEpochDecay):
                 var_tmp = None
-                if framework.in_dygraph_mode():
-                    var_temp = framework._varbase_creator(
-                        None, name='global_step', dtype='int32')
-                else:
-                    var_temp = Variable(None, name='global_step', dtype='int32')
+                var_temp = framework._varbase_creator(
+                    None, name='global_step', dtype='int32')
 
                 tensor.fill_constant(
                     [1], "int32", self._learning_rate.step_num, out=var_temp)
