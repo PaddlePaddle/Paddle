@@ -395,6 +395,7 @@ def _get_train_epoch_range():
 
 
 def _can_auto_checkpoint(program):
+    print("program auto checkpoint:", program._auto_checkpoint)
     if isinstance(program, compiler.CompiledProgram):
         if not program._auto_checkpoint or program._program._is_distributed:
             return False
