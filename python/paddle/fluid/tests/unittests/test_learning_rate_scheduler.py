@@ -116,6 +116,10 @@ def step_decay(global_step, learning_rate, step_size, decay_rate=0.1):
     return learning_rate * math.pow(decay_rate, global_step // step_size)
 
 
+def lambda_decay(global_step, learning_rate, lr_lambda):
+    return learning_rate * lr_lambda(global_step)
+
+
 class TestLearningRateDecayDygraph(unittest.TestCase):
     def test_NoamDecay(self):
         with fluid.dygraph.guard():
@@ -216,6 +220,29 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 lr = fluid.dygraph.MultiStepDecay(2.0, [20, 30, 50])
+
+    def test_LambdaDecay(self):
+        with fluid.dygraph.guard():
+            learning_rate = 0.5
+            lr_lambda = lambda x: 0.95**x
+            scheduler = fluid.dygraph.LambdaDecay(learning_rate, lr_lambda)
+
+            linear = fluid.dygraph.nn.Linear(10, 10)
+            adam = fluid.optimizer.Adam(
+                scheduler, parameter_list=linear.parameters())
+
+            for epoch in range(30):
+                right_result = lambda_decay(epoch, learning_rate, lr_lambda)
+                fluid_result = scheduler().numpy()[0]
+                scheduler.epoch()
+                self.assertAlmostEqual(
+                    right_result,
+                    fluid_result,
+                    msg='Failed lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.
+                    format(epoch, right_result, fluid_result))
+
+            with self.assertRaises(TypeError):
+                lr = fluid.dygraph.LambdaDecay(learning_rate, "test")
 
 
 class TestLearningRateDecay(unittest.TestCase):

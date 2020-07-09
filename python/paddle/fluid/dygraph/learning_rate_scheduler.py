@@ -23,7 +23,7 @@ from ..data_feeder import check_type
 __all__ = [
     'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
     'InverseTimeDecay', 'PolynomialDecay', 'CosineDecay', 'LinearLrWarmup',
-    'ReduceLROnPlateau', 'StepDecay', 'MultiStepDecay'
+    'ReduceLROnPlateau', 'StepDecay', 'MultiStepDecay', 'LambdaDecay'
 ]
 
 
@@ -1086,3 +1086,70 @@ class MultiStepDecay(_LearningRateEpochDecay):
                 return self.base_lr * (decay_rate**i)
 
         return self.base_lr * (decay_rate**len(self.milestones))
+
+
+class LambdaDecay(_LearningRateEpochDecay):
+    """
+    :api_attr: imperative
+
+    Sets the learning rate of ``optimizer`` to the initial lr times a multiplicative factor, and this multiplicative
+    factor is computed by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
+
+    The algorithm can be described as the code below. 
+
+    .. code-block:: text
+
+        learning_rate = 0.5        # init learning_rate
+        lr_lambda = lambda epoch: 0.95 ** epoch
+
+        learning_rate = 0.5        # epoch 0
+        learning_rate = 0.475      # epoch 1
+        learning_rate = 0.45125    # epoch 2
+
+    Parameters:
+        learning_rate (float|int): The initial learning rate. It can be set to python float or int number.
+        lr_lambda (function): A function which computes a multiplicative factor given an integer parameter ``epoch`` , and 
+            then multiply the initial learning rate by this multiplicative factor.
+    
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import numpy as np
+            with fluid.dygraph.guard():
+                x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+                linear = fluid.dygraph.Linear(10, 10)
+                input = fluid.dygraph.to_variable(x)
+                scheduler = fluid.dygraph.LambdaDecay(0.5, lr_lambda=lambda x: 0.95**x)
+                adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
+
+                for epoch in range(6):
+                    for batch_id in range(5):
+                        out = linear(input)
+                        loss = fluid.layers.reduce_mean(out)
+                        adam.minimize(loss)
+                    scheduler.epoch()
+
+                    print("epoch:%d, current lr is %f" .format(epoch, adam.current_step_lr()))
+                    # epoch:0, current lr is 0.5
+                    # epoch:1, current lr is 0.475
+                    # epoch:2, current lr is 0.45125
+
+    """
+
+    def __init__(self, learning_rate, lr_lambda):
+        if not callable(lr_lambda):
+            raise TypeError(
+                "The type of 'lr_lambda' in 'LambdaDecay' must be 'function', but received %s."
+                % type(lr_lambda))
+
+        self.lr_lambda = lr_lambda
+        super(LambdaDecay, self).__init__(learning_rate)
+
+    def get_lr(self):
+        base_lr = self.create_lr_var(self.base_lr)
+
+        return self.base_lr * self.lr_lambda(self.epoch_num)
