@@ -191,7 +191,8 @@ def _load_program_scope(main=None, startup=None, scope=None):
     with paddle.fluid.scope_guard(scope):
         with paddle.fluid.program_guard(prog, startup_prog):
             with paddle.fluid.unique_name.guard():
-                yield
+                with paddle.fluid.framework._dygraph_guard(None):
+                    yield
 
 
 def _get_valid_program(main_program):
