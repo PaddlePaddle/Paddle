@@ -28,7 +28,6 @@ from ..fluid.layers import expand  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import flatten  #DEFINE_ALIAS
 from ..fluid.layers import reshape  #DEFINE_ALIAS
-from ..fluid.layers import reverse  #DEFINE_ALIAS
 from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
@@ -62,7 +61,7 @@ def flip(x, axis, name=None):
     Args:
         x (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
-        axis (list): The axis(axes) to flip on.
+        axis (list): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -103,6 +102,9 @@ def flip(x, axis, name=None):
         outputs={"Out": out},
         attrs={"axis": axis})
     return out
+
+
+reverse = flip  #DEFINE_ALIAS
 
 
 def roll(input, shifts, dims=None):
