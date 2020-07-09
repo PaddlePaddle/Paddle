@@ -26,8 +26,8 @@ class TransposeFlattenConcatFusePassTest(InferencePassTest):
             data2 = fluid.data(name="data2", shape=[5, 5, 5], dtype="float32")
             trans1 = fluid.layers.transpose(data1, perm=[2, 1, 0])
             trans2 = fluid.layers.transpose(data2, perm=[2, 1, 0])
-            flatt1 = fluid.layers.flatten_2d(trans1)
-            flatt2 = fluid.layers.flatten_2d(trans2)
+            flatt1 = fluid.layers.flatten(trans1)
+            flatt2 = fluid.layers.flatten(trans2)
             concat_out = fluid.layers.concat([flatt1, flatt2])
             # There is no parameters for above structure. 
             # Hence, append a batch_norm to avoid failure caused by load_combined. 

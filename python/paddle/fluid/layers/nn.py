@@ -122,7 +122,6 @@ __all__ = [
     'leaky_relu',
     'soft_relu',
     'flatten',
-    'flatten_2d',
     'stack',
     'pad2d',
     'unstack',
@@ -9809,7 +9808,7 @@ def soft_relu(x, threshold=40.0, name=None):
     return out
 
 
-def flatten_2d(x, axis=1, name=None):
+def flatten(x, axis=1, name=None):
     """
     **Flatten op**
 
@@ -9868,7 +9867,7 @@ def flatten_2d(x, axis=1, name=None):
             import paddle.fluid as fluid
             x = fluid.data(name="x", shape=[4, 4, 3], dtype="float32")
             # x shape is [4, 4, 3]
-            out = fluid.layers.flatten_2d(x=x, axis=2)
+            out = fluid.layers.flatten(x=x, axis=2)
             # out shape is [16, 3]
     """
     check_variable_and_dtype(
@@ -9889,108 +9888,6 @@ def flatten_2d(x, axis=1, name=None):
         outputs={'Out': out,
                  'XShape': x_shape},
         attrs={"axis": axis})
-    return out
-
-
-def flatten(x, start_axis=0, stop_axis=-1, name=None):
-    """
-    **Flatten op**
-
-    Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
-
-    For Example:
-
-    .. code-block:: text
-
-        Case 1:
-
-          Given
-            X.shape = (3, 100, 100, 4)
-
-          and
-            start_axis = 1
-            end_axis = 2
-
-          We get:
-            Out.shape = (3, 1000 * 100, 2)
-
-        Case 2:
-
-          Given
-            X.shape = (3, 100, 100, 4)
-
-          and
-            start_axis = 0
-            stop_axis = -1
-
-          We get:
-            Out.shape = (3 * 100 * 100 * 4)
-
-    Args:
-        x (Variable): A tensor of rank >= axis. A tensor with type float32,
-                      float64, int8, int32, int64.
-        start_axis (int): the first axis to flatten
-        stop_axis (int): the last axis to flatten
-        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
-                        Generally, no setting is required. Default: None.
-
-    Returns:
-        Variable: A tensor with the contents of the input tensor, with input \
-                  axes flattened by indicated start axis and end axis. \
-                  A Tensor with type same as input x.
-
-    Raises:
-        ValueError: If x is not a variable.
-        ValueError: If axis is illegal.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            paddle.enable_imperative()
-
-            image_shape=(2, 3, 4, 4)
-            x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3]).reshape(image_shape) / 100.
-            x = x.astype('float32')
-            
-            img = paddle.imperative.to_variable(x)
-            out = paddle.flatten(img, start_axis=1, stop_axis=2)
-            # out shape is [2, 12, 4]
-    """
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
-    helper = LayerHelper('flatten', **locals())
-
-    if not (isinstance(x, Variable)):
-        raise ValueError("The input x should be a Variable")
-
-    x_dim = len(x.shape)
-    if not (isinstance(start_axis, int)) or (
-            start_axis > x_dim - 1) or start_axis < -x_dim:
-        raise ValueError(
-            "The start_axis should be a int, and in range [-rank(x), rank(x))")
-    if not (isinstance(stop_axis, int)) or (
-            stop_axis > x_dim - 1) or stop_axis < -x_dim:
-        raise ValueError(
-            "The stop_axis should be a int, and in range [-rank(x), rank(x))")
-    if start_axis < 0:
-        start_axis = start_axis + x_dim
-    if stop_axis < 0:
-        stop_axis = stop_axis + x_dim
-    if start_axis > stop_axis:
-        raise ValueError("The stop_axis should be larger than stat_axis")
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-    x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='flatten_new',
-        inputs={"X": x},
-        outputs={'Out': out,
-                 'XShape': x_shape},
-        attrs={"start_axis": start_axis,
-               "stop_axis": stop_axis})
     return out
 
 

@@ -152,13 +152,13 @@ class TestFlatten2OpError(unittest.TestCase):
 
         def test_ValueError2():
             x_var = paddle.nn.data(name="x", shape=image_shape, dtype='float32')
-            fluid.layers.flatten(x_var, start_axis=10, stop_axis=1)
+            paddle.flatten(x_var, start_axis=10, stop_axis=1)
 
         self.assertRaises(ValueError, test_ValueError2)
 
         def test_ValueError3():
             x_var = paddle.nn.data(name="x", shape=image_shape, dtype='float32')
-            fluid.layers.flatten(x_var, start_axis=2, stop_axis=10)
+            paddle.flatten(x_var, start_axis=2, stop_axis=10)
 
         self.assertRaises(ValueError, test_ValueError3)
 
@@ -168,7 +168,7 @@ class TestFlatten2OpError(unittest.TestCase):
                            image_shape[3]).reshape(image_shape) / 100.
             x2 = x2.astype('float16')
             x2_var = paddle.data(name='x2', shape=[3, 2, 4, 5], dtype='float16')
-            fluid.layers.flatten(x2_var)
+            paddle.flatten(x2_var)
 
         self.assertRaises(TypeError, test_type)
 
