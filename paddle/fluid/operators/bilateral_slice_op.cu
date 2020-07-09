@@ -148,14 +148,15 @@ class BilateralSliceOpCUDAKernel : public framework::OpKernel<T> {
     int64_t gh = grid_dims[3];
     int64_t gw = grid_dims[4];
 
-    GridSizes grid_sizes = {.h = h,
-                            .w = w,
-                            .bs = batch_size,
-                            .coeffs_chans = coeffs_chans,
-                            .gd = gd,
-                            .gh = gh,
-                            .gw = gw,
-                            .input_chans = input_chans};
+    GridSizes grid_sizes;
+    grid_sizes.h = h;
+    grid_sizes.w = w;
+    grid_sizes.bs = batch_size;
+    grid_sizes.coeffs_chans = coeffs_chans;
+    grid_sizes.gd = gd;
+    grid_sizes.gh = gh;
+    grid_sizes.gw = gw;
+    grid_sizes.input_chans = input_chans;
 
     int total_count = batch_size * h * w * output_dims[1];
 
@@ -456,14 +457,15 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
     int guide_count = batch_size * h * w;
     int input_count = batch_size * h * w * input_chans;
 
-    GridSizes grid_sizes = {.h = h,
-                            .w = w,
-                            .bs = batch_size,
-                            .coeffs_chans = coeffs_chans,
-                            .gd = gd,
-                            .gh = gh,
-                            .gw = gw,
-                            .input_chans = input_chans};
+    GridSizes grid_sizes;
+    grid_sizes.h = h;
+    grid_sizes.w = w;
+    grid_sizes.bs = batch_size;
+    grid_sizes.coeffs_chans = coeffs_chans;
+    grid_sizes.gd = gd;
+    grid_sizes.gh = gh;
+    grid_sizes.gw = gw;
+    grid_sizes.input_chans = input_chans;
 
     platform::GpuLaunchConfig config =
         platform::getGpuLaunchConfig(grid_count, ctx);
@@ -493,8 +495,7 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(bilateral_slice, ops::BilateralSliceOpCUDAKernel<float>,
-                        ops::BilateralSliceOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(bilateral_slice,
+                        ops::BilateralSliceOpCUDAKernel<float>);
 REGISTER_OP_CUDA_KERNEL(bilateral_slice_grad,
-                        ops::BilateralSliceGradOpCUDAKernel<float>,
-                        ops::BilateralSliceGradOpCUDAKernel<double>);
+                        ops::BilateralSliceGradOpCUDAKernel<float>);

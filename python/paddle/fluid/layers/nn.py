@@ -12944,8 +12944,8 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 	:alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
 	:old_api: paddle.fluid.layers.bilateral_slice
 
-    This operation slices input in in the location defined by guide, to produce output.
-    For more information, please refer to `Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>`_
+    This operation implements bilateral slicing on the input according to the guide map.
+    For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_
 
     Args:
         x(Variable): The input tensor, which is a 4-D tensor with shape
@@ -12979,7 +12979,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             
             # has offset
             output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=True)
-            
+
     """
     helper = LayerHelper("bilateral_slice", **locals())
 
