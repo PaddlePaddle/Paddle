@@ -29,7 +29,7 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
     auto out_e = framework::EigenVector<T>::Flatten(*out);
 
     auto& dev = *dev_ctx.eigen_device();
-    out_e.device(dev) = scale_factor[0] * in_e / max_range;
+    out_e.device(dev) = in_e * scale_factor[0] / max_range;
   }
 };
 
@@ -48,7 +48,7 @@ struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
         auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
         auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
         auto& dev = *dev_ctx.eigen_device();
-        out_e.device(dev) = s * in_e / max_range;
+        out_e.device(dev) = in_e * s / max_range;
       }
     } else if (scale_num == 2) {
       int batch_size = in->dims()[0];
@@ -67,7 +67,7 @@ struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
           auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
           auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
           auto& dev = *dev_ctx.eigen_device();
-          out_e.device(dev) = (s * scale_two[0]) * in_e / max_range;
+          out_e.device(dev) = in_e * s * scale_two[0] / max_range;
         }
       }
     }
