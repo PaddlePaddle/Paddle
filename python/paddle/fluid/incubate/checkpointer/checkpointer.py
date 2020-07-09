@@ -194,7 +194,7 @@ class Checkpointer(object):
             return
 
         s = set(reserved)
-        if len(r) == 0:
+        if len(s) == 0:
             s.add(max_no)
 
         if checkpoint_num < 1:

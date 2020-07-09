@@ -97,8 +97,13 @@ class AutoCheckpointChecker(object):
         except Exception as e:
             logger.fatal("exception:", e)
 
-    def get_checkpoint_path(self, name):
-        return "{}/{}/{}".format(self.hdfs_checkpoint_path, self.job_id, name)
+    def get_range_checkpoint_path(self, name):
+        return "{}/{}/range/{}".format(self.hdfs_checkpoint_path, self.job_id,
+                                       name)
+
+    def get_exe_checkpoint_path(self, name):
+        return "{}/{}/exe/{}".format(self.hdfs_checkpoint_path, self.job_id,
+                                     name)
 
     def valid(self):
         return  self._run_env is not None and \
@@ -156,15 +161,15 @@ class AutoCheckpointChecker(object):
 
     def generate_range_name(self):
         assert self.valid()
-        return unique_name.generate(g_checker._job_id + "_range_")
+        return unique_name.generate("_range_")
 
     def generate_program_name(self):
         assert self.valid()
-        return unique_name.generate(g_checker._job_id + "_program_")
+        return unique_name.generate("_program_")
 
     def generate_executor_name(self):
         assert self.valid()
-        return unique_name.generate(g_checker._job_id + "_executor_")
+        return unique_name.generate("_executor_")
 
 
 class ExeTrainStatus(SerializableBase):
@@ -246,7 +251,7 @@ class TrainEpochRange(SerializableBase):
         if not self._checker.valid():
             return
 
-        self._checkpoint_path = self._checker.get_checkpoint_path(name)
+        self._checkpoint_path = self._checker.get_range_checkpoint_path(name)
 
         config = {
             "fs.default.name": self._checker.hdfs_name,
@@ -262,7 +267,7 @@ class TrainEpochRange(SerializableBase):
         self._file_name = "range_train_status"
 
         _thread_checker()
-        self._cper.load_checkpoint(self._checkpoint_path + "/range", [self],
+        self._cper.load_checkpoint(self._checkpoint_path, [self],
                                    self._checker.trainer_id)
 
     def _to_dict(self):
@@ -340,7 +345,7 @@ class TrainEpochRange(SerializableBase):
             if self._checker.trainer_id == 0:
                 print("prepare to save_checkpoint")
                 if time.time() - self._last_checkpoint_time >= self._save_checkpoint_inter or \
-                        i == self._max_epoch_num:
+                        i >= self._max_epoch_num:
                     self.save_checkpoint()
                 self._last_checkpoint_time = time.time()
 
@@ -351,25 +356,27 @@ class TrainEpochRange(SerializableBase):
     def save_checkpoint(self):
         """
         status => /jobid/xxx_range_xx/range/
-        model =>                      /exe/
+        model =>                       /exe/
         """
         if not self._checker.valid():
             return
 
         for k, t in six.iteritems(self._exe_status):
-            logger.info("save exe checkpoint:{}".format(t))
+            #logger.info("save exe checkpoint:{}".format(t))
             m = PaddleModel(t._exe, t._program)
+            p = self._checker.get_exe_checkpoint_path(t._hash_key)
             path, checkpoint_no = self._cper.save_checkpoint(
-                self._checkpoint_path + "/exe", [t], self._checker.trainer_id)
+                p, [t], self._checker.trainer_id)
             # index info
             t._checkpoint_path = path
             t._checkpoint_no = checkpoint_no
             t.epoch_no = self.get()
 
-            logger.info("save exe checkpoint:{}".format(t))
+            logger.info("save exe checkpoint:{}".format(m))
 
-        self._cper.save_checkpoint(self._checkpoint_path + "/range", [self])
-        logger.info("save train_epoch_range checkpoint:{}".format(self))
+        if len(self._exe_status) > 0:
+            self._cper.save_checkpoint(self._checkpoint_path, [self])
+            logger.info("save train_epoch_range checkpoint:{}".format(self))
 
 
 def _get_train_epoch_range():
@@ -454,11 +461,11 @@ def _auto_checkpoint(exe, program):
             logger.info("load_checkpoint exe checkpoint from {}".format(t))
             t._restored = True
     else:
-        h = _get_hash(key)
+        #h = _get_hash(key)
 
         t = ExeTrainStatus()
         t._epoch_no = g_train_epoch_range.get()
-        t._hash_key = h
+        t._hash_key = key
         t._key = key
         t._restored = True
         t._exe = exe
