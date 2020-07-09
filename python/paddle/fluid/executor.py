@@ -30,7 +30,6 @@ from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
-from .incubate.checkpointer import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -1152,7 +1151,10 @@ class Executor(object):
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
-        acp._auto_checkpoint(self, program)
+        run_env = os.getenv("PADDLE_RUNNING_ENV")
+        if run_env == "PADDLE_EDL_AUTO_CHECKPOINT":
+            from .incubate.checkpointer.auto_checkpoint import _auto_checkpoint
+            _auto_checkpoint(self, program)
 
         # For backward compatibility, run directly.
         if not compiled:
