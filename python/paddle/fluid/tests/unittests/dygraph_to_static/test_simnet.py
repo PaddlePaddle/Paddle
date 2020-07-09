@@ -79,7 +79,8 @@ class FakeReaderProcessor(object):
             query = [random.randint(0, 26) for i in range(self.seq_len)]
             pos_title = query[:]
             neg_title = [26 - q for q in query]
-            self.data_samples.append([query, pos_title, neg_title])
+            self.data_samples.append(
+                np.array([query, pos_title, neg_title]).astype(np.int64))
 
     def get_reader(self, mode, epoch=0):
         def reader_with_pairwise():
