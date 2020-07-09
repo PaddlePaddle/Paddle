@@ -15,7 +15,6 @@
 from ..fleet.utils.fs import FS, LocalFS
 from ..fleet.utils.hdfs import HDFSClient
 from ...compiler import CompiledProgram
-from ...io import save_persistables, load_persistables
 
 
 class SerializableBase(object):
@@ -37,6 +36,7 @@ class PaddleModel(SerializableBase):
         self._file_name = "_paddle_fleet_param__"
 
     def serialize(self, path):
+        from ...io import save_persistables
         save_persistables(
             executor=self._exe,
             dirname=path,
@@ -44,6 +44,7 @@ class PaddleModel(SerializableBase):
             filename=self._file_name)
 
     def deserialize(self, path):
+        from ...io import load_persistables
         load_persistables(
             executor=exe,
             dirname=path,

@@ -300,7 +300,7 @@ class TrainEpochRange(SerializableBase):
         d["exe_status"] = {}
         e = d["exe_status"]
         for k, t in six.iteritems(self._exe_status):
-            e[t._hash_key] = t._serialize()
+            e[t._key] = t._serialize()
         return json.dumps(d)
 
     def deserialize(self, path):
@@ -340,7 +340,7 @@ class TrainEpochRange(SerializableBase):
             yield i
 
             if self._checker.trainer_id == 0:
-                print("prepare to save_checkpoint")
+                logging.info("prepare to save_checkpoint")
                 if time.time() - self._last_checkpoint_time >= self._save_checkpoint_inter or \
                         i >= self._max_epoch_num:
                     self.save_checkpoint()
@@ -358,7 +358,9 @@ class TrainEpochRange(SerializableBase):
         if not self._checker.valid():
             return
 
-        for k, t in six.iteritems(self._exe_status):
+        e = self._exe_status
+        l = e.values()
+        for t in l:
             m = PaddleModel(t._exe, t._program)
             p = self._checker.get_exe_checkpoint_path(t._hash_key)
             path, checkpoint_no = self._cper.save_checkpoint(
@@ -367,6 +369,8 @@ class TrainEpochRange(SerializableBase):
             t._checkpoint_path = path
             t._checkpoint_no = checkpoint_no
             t.epoch_no = self.get()
+
+            e[t._key] = t
 
             logger.info("save exe checkpoint:{}".format(t))
 
@@ -442,6 +446,8 @@ def _auto_checkpoint(exe, program):
         return
 
     _initial_names(exe, program)
+    print("exe_name:", exe._auto_checkpoint_name, "program_name:",
+          program._auto_checkpoint_name)
 
     exe_status = g_train_epoch_range._exe_status
     key = _get_running_key(exe._auto_checkpoint_name,
