@@ -158,6 +158,7 @@ class CompiledProgram(object):
         self._exec_strategy = None
 
         # identifier for auto checkpoint
+        self._auto_checkpoint = True
         self._auto_checkpoint_name = None
 
     def with_data_parallel(self,

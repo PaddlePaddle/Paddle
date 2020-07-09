@@ -22,7 +22,7 @@ import time
 from threading import Thread, current_thread
 from contextlib import contextmanager
 
-from paddle.fluid import unique_name
+from paddle.fluid import unique_name, compiler
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 from .checkpointer import SerializableBase, Checkpointer, PaddleModel
 
@@ -310,6 +310,10 @@ class TrainEpochRange(SerializableBase):
             e[t._key] = t._serialize()
         return json.dumps(d)
 
+    @property
+    def restored(self):
+        return self._restored
+
     def deserialize(self, path):
         d = None
         file_name = "{}/{}".format(path, self._file_name)
@@ -391,8 +395,12 @@ def _get_train_epoch_range():
 
 
 def _can_auto_checkpoint(program):
-    if not program._auto_checkpoint or program._is_distributed:
-        return False
+    if isinstance(program, compiler.CompiledProgram):
+        if not program._auto_checkpoint or program._program._is_distributed:
+            return False
+    else:
+        if not program._auto_checkpoint or program._is_distributed:
+            return False
 
     _get_checker()
     return g_checker.valid() and g_train_epoch_range is not None
@@ -461,6 +469,10 @@ def _auto_checkpoint(exe, program):
     exe_status = g_train_epoch_range._exe_status
     key = _get_running_key(exe._auto_checkpoint_name,
                            program._auto_checkpoint_name)
+
+    if g_train_epoch_range.restored:
+        assert key in exe_status, "when restored key:{} must be in train_epoch_range:{}".format(
+            key, g_train_epoch_range)
 
     t = None
     if key in exe_status:

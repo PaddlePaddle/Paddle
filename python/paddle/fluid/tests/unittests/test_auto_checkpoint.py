@@ -38,6 +38,10 @@ places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
 
 logger = None
 
+g_exe = fluid.Executor(places[0])
+g_main = fluid.default_main_program()
+g_startup = fluid.default_startup_program()
+
 
 # define a random dataset
 class RandomDataset(Dataset):
@@ -94,11 +98,10 @@ class AutoCheckpointTest(unittest.TestCase):
 
         sgd, loss = simple_net(image, label)
 
-        exe = fluid.Executor(places[0])
-        exe.run(fluid.default_startup_program())
+        g_exe.run(g_startup)
 
-        prog = fluid.CompiledProgram(fluid.default_main_program(
-        )).with_data_parallel(loss_name=loss.name)
+        prog = fluid.CompiledProgram(g_main).with_data_parallel(
+            loss_name=loss.name)
 
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
 
@@ -111,8 +114,7 @@ class AutoCheckpointTest(unittest.TestCase):
             drop_last=True,
             num_workers=2)
 
-        return exe, loader, sgd, loss, prog, fluid.default_main_program(
-        ), image, label
+        return loader, sgd, loss, prog, image, label
 
     # break at epoch 0: not save epoch
     def _run_save_0(self):
@@ -120,8 +122,7 @@ class AutoCheckpointTest(unittest.TestCase):
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        exe, data_loader, _, loss, compiled, main_program, image, label = self._init_env(
-        )
+        data_loader, _, loss, compiled, image, label = self._init_env()
 
         o = None
         i = 0
@@ -132,9 +133,11 @@ class AutoCheckpointTest(unittest.TestCase):
             print("name:", o.name, "epoch_no:", i)
 
             for data in data_loader():
-                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
-            fluid.io.save_inference_model(save_dir, [image.name, label.name],
-                                          [loss], exe)
+                fetch = g_exe.run(compiled, feed=data, fetch_list=[loss])
+            fluid.io.save_inference_model(
+                save_dir, [image.name, label.name], [loss],
+                g_exe,
+                main_program=g_main)
             assert len(o._exe_status) == 1, "there must be only 1 exestatus"
 
         o = acp._get_train_epoch_range()
@@ -151,25 +154,27 @@ class AutoCheckpointTest(unittest.TestCase):
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        exe, data_loader, _, loss, compiled, main_program, image, label = self._init_env(
-        )
+        data_loader, _, loss, compiled, image, label = self._init_env()
 
         o = None
         i = 0
         for i in acp._run_only_for_inter(load_name, 3, 0):
             o = acp._get_train_epoch_range()
             for data in data_loader():
-                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
-            print("name:", o.name, "epoch_no:", i)
+                fetch = g_exe.run(compiled, feed=data, fetch_list=[loss])
+            print("name:", o.name, "epoch_no:", i, "exe_status num:",
+                  len(o._exe_status))
             fluid.io.save_inference_model(save_dir, [image.name, label.name],
                                           [loss], exe)
-            assert len(o._exe_status) == 1, "there must be only 1 exestatus"
+            self.assertEqual(o._exe_status, 1)
 
         o = acp._get_train_epoch_range()
         assert o == None, "now train epoch must not exits now"
         self.assertEqual(i, 2)
-        fluid.io.save_inference_model(save_dir, [image.name, label.name],
-                                      [loss], exe)
+        fluid.io.save_inference_model(
+            save_dir, [image.name, label.name], [loss],
+            g_exe,
+            main_program=g_main)
 
         fs.delete(save_dir)
 
@@ -189,22 +194,22 @@ class AutoCheckpointTest(unittest.TestCase):
 
             name1 = acp._get_train_epoch_range().name
             for data in data_loader():
-                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
+                fetch = g_exe.run(main_program, feed=data, fetch_list=[loss])
                 print("fetch:", loss)
 
             for data in data_loader():
-                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
+                fetch = g_exe.run(main_program, feed=data, fetch_list=[loss])
                 print("fetch:", loss)
 
     def _run_save_multi_loop(self, exe, data_loader, main_program):
         for i in acp.train_eoch_range(10):
             name1 = acp._get_train_epoch_range().name
             for data in data_loader():
-                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
+                fetch = g_exe.run(main_program, feed=data, fetch_list=[loss])
                 print("fetch:", loss)
 
             for data in data_loader():
-                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
+                fetch = g_exe.run(main_program, feed=data, fetch_list=[loss])
                 print("fetch:", loss)
 
         assert acp._get_train_epoch_range() == None
@@ -215,7 +220,9 @@ class AutoCheckpointTest(unittest.TestCase):
             name2 = acp._get_train_epoch_range().name
             a.append(i)
             for data in data_loader():
-                fetch = exe.run(main_program, feed=data, fetch_list=[loss.name])
+                fetch = g_exe.run(main_program,
+                                  feed=data,
+                                  fetch_list=[loss.name])
                 print("fetch:", loss)
         assert acp._get_train_epoch_range() == None
 
