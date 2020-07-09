@@ -1387,7 +1387,7 @@ def range(start, end, step, dtype):
     return out
 
 
-def linspace(start, stop, num, dtype, name=None):
+def linspace(start, stop, num, dtype=None, name=None):
     """
     This OP return fixed number of evenly spaced values within a given interval.
 
@@ -1415,6 +1415,8 @@ def linspace(start, stop, num, dtype, name=None):
              data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
 
     """
+    if dtype is None:
+        dtype = 'float32'
     if not isinstance(start, Variable):
         start = fill_constant([1], dtype, start)
     if not isinstance(stop, Variable):

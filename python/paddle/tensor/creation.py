@@ -28,7 +28,7 @@ from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import eye  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 from ..fluid.layers import create_tensor  #DEFINE_ALIAS
-import paddle
+from ..fluid.layers import linspace  #DEFINE_ALIAS
 
 __all__ = [
     'create_tensor',
@@ -65,8 +65,7 @@ def full_like(x, fill_value, dtype=None, name=None):
 
     Args:
         x(Variable): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
-        fill_value(bool|float|int|Variable): The value to fill the tensor with. Default value is 0. 
-            Note: this value shouldn't exceed the range of the output data type.
+        fill_value(bool|float|int|Variable): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The data type can be one
             of bool, float16, float32, float64, int32, int64. The default value is None, which means the output 
             data type is the same as input.
@@ -110,46 +109,6 @@ def full_like(x, fill_value, dtype=None, name=None):
         outputs={'Out': [out]})
 
     return out
-
-
-def linspace(start, stop, num, dtype=None, name=None):
-    """
-	:alias_main: paddle.linspace
-	:alias: paddle.linspace,paddle.tensor.linspace,paddle.tensor.creation.linspace
-
-    This OP return fixed number of evenly spaced values within a given interval.
-    
-    **NOTICE**: The output of this OP has no gradient.
-
-    Args:
-        start(float|Variable): The input :attr:`start` is start variable of range. It is a float scalar, \
-            or a tensor of shape [1] with input data type float32, float64.
-        stop(float|Variable): The input :attr:`stop` is start variable of range. It is a float scalar, \
-            or a tensor of shape [1] with input data type float32, float64.
-        num(int|Variable): The input :attr:`num` is given num of the sequence. It is an int scalar, \
-            or a tensor of shape [1] with type int32.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output tensor, it could be 'float32' and 'float64'.
-            Default is None(data type is float32)
-        name(str, optional): Normally there is no need for user to set this property. 
-            For more information, please refer to :ref:`api_guide_Name`.Default: None.
-
-    Returns:
-        Variable, the output data type will be float32, float64.: The 1-D tensor with fixed number of evenly spaced values, \
-        the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
-        the value with input :attr:`start`. 
-
-    Examples:
-        .. code-block:: python
-
-             import paddle
-             data = paddle.linspace(0, 10, 5, dtype='float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
-             data = paddle.linspace(0, 10, 1, dtype='float32') # [0.0]
-
-    """
-    if dtype is None:
-        dtype = 'float32'
-    return paddle.fluid.layers.linspace(
-        start=start, stop=stop, num=num, dtype=dtype, name=name)
 
 
 def ones(shape, dtype=None, out=None, device=None):
