@@ -58,12 +58,19 @@ function init() {
     ENABLE_MAKE_CLEAN=${ENABLE_MAKE_CLEAN:-ON}
 }
 
+function add_python_package(){
+    # `gym` is only used in unittest, it's not suitable to added in requirements.txt.
+    # Add it dynamically.
+    echo "gym" >> ${PADDLE_ROOT}/python/requirements.txt
+}
+
 function cmake_base() {
     # Build script will not fail if *.deb does not exist
     rm *.deb 2>/dev/null || true
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
+    add_python_package
     # Support build for all python versions, currently
     # including cp27-cp27m and cp27-cp27mu.
     PYTHON_FLAGS=""
