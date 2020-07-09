@@ -12970,7 +12970,6 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 
             import paddle.fluid as fluid
 
-            # use with affine_grid
             x = fluid.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
             guide = fluid.data(name='guide', shape=[None, 101, 60], dtype='float32')
             grid = fluid.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
@@ -12980,7 +12979,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             
             # has offset
             output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=True)
-
+            
     """
     helper = LayerHelper("bilateral_slice", **locals())
 
