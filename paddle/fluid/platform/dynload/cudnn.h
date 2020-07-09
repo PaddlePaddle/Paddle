@@ -28,8 +28,6 @@ extern std::once_flag cudnn_dso_flag;
 extern void* cudnn_dso_handle;
 extern bool HasCUDNN();
 
-#ifdef PADDLE_USE_DSO
-
 extern void EnforceCUDNNLoaded(const char* fn_name);
 #define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                            \
   struct DynLoad__##__name {                                               \
@@ -45,19 +43,6 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
     }                                                                      \
   };                                                                       \
   extern struct DynLoad__##__name __name
-
-#else
-
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name) \
-  struct DynLoad__##__name {                    \
-    template <typename... Args>                 \
-    inline auto operator()(Args... args) {      \
-      return ::__name(args...);                 \
-    }                                           \
-  };                                            \
-  extern DynLoad__##__name __name
-
-#endif
 
 /**
  * include all needed cudnn functions in HPPL
