@@ -590,7 +590,7 @@ def squeeze(x, axis=None, name=None):
     return layers.squeeze(x, axis, name)
 
 
-def unsqueeze(input, axes, out=None, name=None):
+def unsqueeze(x, axis, name=None):
     """
 	:alias_main: paddle.unsqueeze
 	:alias: paddle.unsqueeze,paddle.tensor.unsqueeze,paddle.tensor.manipulation.unsqueeze
@@ -608,11 +608,11 @@ def unsqueeze(input, axes, out=None, name=None):
 
     Args:
         input (Variable): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
-        axes (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
-        name (str|None): Name for this layer.
+        axis (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
+        name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Variable: Output unsqueezed Tensor, with data type being float32, float64, int32, int64.
+        Variable: Output unsqueezed Tensor. Data type is same as input Tensor.
 
     Examples:
         .. code-block:: python
@@ -628,10 +628,19 @@ def unsqueeze(input, axes, out=None, name=None):
                 output = paddle.unsqueeze(input, axes=[1])
                 # output.shape [5, 1, 10]
     """
+    if axis == None:
+        axis = []
+    elif isinstance(axis):
+        axis = [axis]
+
+    if in_dygraph_mode():
+        out, _ = core.ops.unsqueeze2(x, 'axis', axis)
+        return out
+
     if not isinstance(axes, (int, list, tuple, Variable)):
         raise TypeError(
-            "The type of 'axes' in unsqueeze must be int, list, tuple or Variable, but "
-            "received %s." % (type(axes)))
+            "The type of 'axis' in unsqueeze must be int, list, tuple or Variable, but "
+            "received %s." % (type(axis)))
     helper = LayerHelper("unsqueeze2", **locals())
     inputs = {"X": input}
     attrs = {}
