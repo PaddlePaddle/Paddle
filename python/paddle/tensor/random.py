@@ -16,7 +16,6 @@
 
 import numpy as np
 
-from ..fluid import core
 from ..fluid.framework import device_guard, in_dygraph_mode, _varbase_creator, Variable, convert_np_dtype_to_dtype_
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..fluid.layer_helper import LayerHelper

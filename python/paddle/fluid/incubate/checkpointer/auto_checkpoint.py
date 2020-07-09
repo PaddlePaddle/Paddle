@@ -23,10 +23,7 @@ from threading import Thread, current_thread
 from contextlib import contextmanager
 
 from paddle.fluid import unique_name
-from paddle.fluid import core
-from paddle.fluid import framework
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
-from paddle.fluid import compiler
 from .checkpointer import SerializableBase, Checkpointer, PaddleModel
 
 g_train_epoch_range = None
@@ -362,17 +359,16 @@ class TrainEpochRange(SerializableBase):
             return
 
         for k, t in six.iteritems(self._exe_status):
-            #logger.info("save exe checkpoint:{}".format(t))
             m = PaddleModel(t._exe, t._program)
             p = self._checker.get_exe_checkpoint_path(t._hash_key)
             path, checkpoint_no = self._cper.save_checkpoint(
-                p, [t], self._checker.trainer_id)
+                p, [m], self._checker.trainer_id)
             # index info
             t._checkpoint_path = path
             t._checkpoint_no = checkpoint_no
             t.epoch_no = self.get()
 
-            logger.info("save exe checkpoint:{}".format(m))
+            logger.info("save exe checkpoint:{}".format(t))
 
         if len(self._exe_status) > 0:
             self._cper.save_checkpoint(self._checkpoint_path, [self])

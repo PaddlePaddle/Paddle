@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.incubate.fleet.utils.fs import FS, LocalFS
-from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
-from paddle.fluid import compiler
+from ..fleet.utils.fs import FS, LocalFS
+from ..fleet.utils.hdfs import HDFSClient
+from ...compiler import CompiledProgram
+from ...io import save_persistables, load_persistables
 
 
 class SerializableBase(object):
@@ -30,20 +31,20 @@ class PaddleModel(SerializableBase):
         self._exe = exe
         self._origin_program = program
         self._program = program
-        if isinstance(program, compiler.CompiledProgram):
+        if isinstance(program, CompiledProgram):
             self._program = program._program
 
         self._file_name = "_paddle_fleet_param__"
 
     def serialize(self, path):
-        io.save_persistables(
+        save_persistables(
             executor=self._exe,
             dirname=path,
             main_program=self._program,
             filename=self._file_name)
 
     def deserialize(self, path):
-        io.load_persistables(
+        load_persistables(
             executor=exe,
             dirname=path,
             main_program=self._program,
