@@ -844,18 +844,19 @@ def triu(input, diagonal=0, name=None):
     return _tril_triu_op(LayerHelper('triu', **locals()))
 
 
-def meshgrid(*input, **kwargs):
+def meshgrid(*args, **kwargs):
     """
 	:alias_main: paddle.meshgrid
 	:alias: paddle.meshgrid,paddle.tensor.meshgrid,paddle.tensor.creation.meshgrid
 
-    This op takes a list of N tensors as input, each of which is 1-dimensional 
+    This op takes a list of N tensors as input *args, each of which is 1-dimensional 
     vector, and creates N-dimensional grids.
     
     Args:
-        input(Variable|list of Variable) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
+        *args(Variable|list of Variable) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
             (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
-        name (str, optional): The default value is None. Normally there is no need for
+        **kwargs (optional): Currently, we only accept name in **kwargs 
+            The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
  
     Returns:
@@ -904,29 +905,30 @@ def meshgrid(*input, **kwargs):
 
     """
 
-    if len(input) == 1 and isinstance(input[0], (list, tuple)):
-        input = input[0]
+    if len(args) == 1 and isinstance(args[0], (list, tuple)):
+        args = args[0]
     if in_dygraph_mode():
-        num = len(input)
-        out = core.ops.meshgrid(list(input), num)
+        num = len(args)
+        out = core.ops.meshgrid(list(args), num)
         return out
 
+    name = kwargs.get("name", None)
     helper = LayerHelper('meshgrid', **locals())
 
-    if not isinstance(input, (list, tuple)):
-        raise TypeError("The type of input in meshgrid should be list.")
+    if not isinstance(args, (list, tuple)):
+        raise TypeError("The type of input args in meshgrid should be list.")
 
-    for id, input_ in enumerate(input):
+    for id, input_ in enumerate(args):
         check_dtype(input_.dtype, 'create data type',
                     ['float16', 'float32', 'float64', 'int32', 'int64'],
                     'meshgrid')
 
-    num = len(input)
+    num = len(args)
     out = [
-        helper.create_variable_for_type_inference(dtype=input[i].dtype)
+        helper.create_variable_for_type_inference(dtype=args[i].dtype)
         for i in range(num)
     ]
     helper.append_op(
-        type='meshgrid', inputs={'X': list(input)}, outputs={'Out': out})
+        type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out})
 
     return out
