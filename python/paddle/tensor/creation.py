@@ -28,6 +28,7 @@ from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 
 from ..fluid.layers import create_tensor  #DEFINE_ALIAS
+import paddle
 
 __all__ = [
     'create_tensor',
@@ -469,36 +470,11 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         dtype = 'float32'
     if num_columns is None:
         num_columns = num_rows
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-
-    if in_dygraph_mode():
-        return core.ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
-                            num_columns)
-
-    helper = LayerHelper("eye", **locals())
-
-    check_dtype(dtype, 'dtype',
-                ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
-
-    if not isinstance(num_rows, int) or num_rows < 0:
-        raise TypeError("num_rows should be a non-negative int")
-    if num_columns is not None:
-        if not isinstance(num_columns, int) or num_columns < 0:
-            raise TypeError("num_columns should be a non-negative int")
-
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    helper.append_op(
-        type='eye',
-        inputs={},
-        outputs={'Out': [out]},
-        attrs={
-            'num_rows': num_rows,
-            'num_columns': num_columns,
-            'dtype': dtype
-        })
-    return out
+    return paddle.fluid.layers.eye(num_rows=num_rows,
+                                   num_columns=num_columns,
+                                   batch_shape=None,
+                                   dtype=dtype,
+                                   name=name)
 
 
 def full(shape,

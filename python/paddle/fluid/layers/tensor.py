@@ -1533,7 +1533,11 @@ def diag(diagonal):
     return out
 
 
-def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
+def eye(num_rows,
+        num_columns=None,
+        batch_shape=None,
+        dtype='float32',
+        name=None):
     """
 	:alias_main: paddle.eye
 	:alias: paddle.eye,paddle.tensor.eye,paddle.tensor.creation.eye
@@ -1551,6 +1555,9 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
             batch size of this shape, default is None.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the returned tensor.
             It should be int32, int64, float16, float32, float64, default is 'float32'.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: An identity Tensor or LoDTensor of shape batch_shape + [num_rows, num_columns].
@@ -1574,7 +1581,16 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
 
     """
 
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        return core.ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
+                            num_columns)
+
     helper = LayerHelper("eye", **locals())
+    check_dtype(dtype, 'dtype',
+                ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
     if not isinstance(num_rows, int) or num_rows < 0:
         raise TypeError("num_rows should be a non-negative int")
     if num_columns is not None:
@@ -1583,8 +1599,6 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
     else:
         num_columns = num_rows
     out = helper.create_variable_for_type_inference(dtype=dtype)
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
         type='eye',
         inputs={},
