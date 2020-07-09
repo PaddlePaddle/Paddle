@@ -714,7 +714,6 @@ function bind_test() {
         # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
         # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
         env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure &
-    fi
     done
     wait
 }
