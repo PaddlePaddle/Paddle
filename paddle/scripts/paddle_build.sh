@@ -802,7 +802,7 @@ function card_test() {
     set +m
 }
 
-function parallel_test_base() {
+function parallel_test_base_gpu() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -883,11 +883,34 @@ set -ex
     fi
 }
 
+function parallel_test_base_cpu() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit cpu tests ...
+    ========================================
+EOF
+        ut_startTime_s=`date +%s`
+        ctest --output-on-failure -j $1
+        ut_endTime_s=`date +%s`
+        echo "CPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test() {
     ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    parallel_test_base
+    if [ "$WITH_GPU" == "ON" ];then
+        parallel_test_base_gpu
+    else
+        parallel_test_base_cpu ${PROC_RUN:-1}
+    fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
 }
