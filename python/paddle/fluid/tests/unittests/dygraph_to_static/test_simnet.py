@@ -164,8 +164,6 @@ class TestSimnet(unittest.TestCase):
         dygraph_loss = train(conf_dict, to_static=False)
         static_loss = train(conf_dict, to_static=True)
 
-        #print(dygraph_loss)
-        #print(static_loss)
         self.assertEqual(len(dygraph_loss), len(static_loss))
         for i in range(len(dygraph_loss)):
             self.assertAlmostEqual(dygraph_loss[i], static_loss[i])
