@@ -248,6 +248,13 @@ inline std::ostream& operator<<(std::ostream& os, const bfloat16& a) {
 namespace std {
 
 template <>
+struct is_pod<paddle::platform::bfloat16> {
+  static const bool value =
+      is_trivial<paddle::platform::bfloat16>::value &&
+      is_standard_layout<paddle::platform::bfloat16>::value;
+};
+
+template <>
 struct is_floating_point<paddle::platform::bfloat16>
     : std::integral_constant<
           bool, std::is_same<paddle::platform::bfloat16,
@@ -271,12 +278,67 @@ inline bool isinf(const paddle::platform::bfloat16& a) {
   return paddle::platform::isinf(a);
 }
 
+template <>
+struct numeric_limits<paddle::platform::bfloat16> {
+  static const bool is_specialized = true;
+  static const bool is_signed = true;
+  static const bool is_integer = false;
+  static const bool is_exact = false;
+  static const bool has_infinity = true;
+  static const bool has_quiet_NaN = true;
+  static const bool has_signaling_NaN = true;
+  static const float_denorm_style has_denorm = denorm_present;
+  static const bool has_denorm_loss = false;
+  static const std::float_round_style round_style = std::round_to_nearest;
+  static const bool is_iec559 = false;
+  static const bool is_bounded = false;
+  static const bool is_modulo = false;
+  static const int digits = 8;
+  static const int digits10 = 2;
+  static const int max_digits10 = 9;
+  static const int radix = 2;
+  static const int min_exponent = -125;
+  static const int min_exponent10 = -37;
+  static const int max_exponent = 128;
+  static const int max_exponent10 = 38;
+  static const bool traps = true;
+  static const bool tinyness_before = false;
+};
+
 }  // namespace std
 
 namespace Eigen {
 
 using bfloat16 = paddle::platform::bfloat16;
 
+template <>
+struct NumTraits<bfloat16> : GenericNumTraits<bfloat16> {
+  enum {
+    IsSigned = true,
+    IsInteger = false,
+    IsComplex = false,
+    RequireInitialization = false
+  };
+
+  HOSTDEVICE static inline bfloat16 epsilon() {
+    return paddle::platform::raw_uint16_to_bfloat16(0x3400);
+  }
+  HOSTDEVICE static inline bfloat16 dummy_precision() {
+    return bfloat16(1e-5f);
+  }
+  HOSTDEVICE static inline bfloat16 highest() {
+    return paddle::platform::raw_uint16_to_bfloat16(0x7f7f);
+  }
+  HOSTDEVICE static inline bfloat16 lowest() {
+    return paddle::platform::raw_uint16_to_bfloat16(0xff7f);
+  }
+  HOSTDEVICE static inline bfloat16 infinity() {
+    return paddle::platform::raw_uint16_to_bfloat16(0x7f80);
+  }
+  HOSTDEVICE static inline bfloat16 quiet_NaN() {
+    return paddle::platform::raw_uint16_to_bfloat16(0xffc1);
+  }
+};
 namespace numext {
 
 template <>

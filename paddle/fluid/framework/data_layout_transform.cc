@@ -106,7 +106,8 @@ using mkldnn::memory;
 using mkldnn::primitive;
 using mkldnn::reorder;
 
-void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
+template <class T>
+void* GetDataFromTensor(const Tensor& tensor, T type) {
   switch (type) {
     case mkldnn::memory::data_type::f32:
       return platform::to_void_cast(tensor.data<float>());
@@ -180,7 +181,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   out->Resize(in.dims());
 
   if (in_format != out_format) {
-    void* in_data = GetDataFromTensor(in, in_type);
+    void* in_data = GetDataFromTensor<mkldnn::memory::data_type>(in, in_type);
     const std::string key =
         platform::CreateKey(in_tz, in_format, out_format, in_type);
 
