@@ -202,18 +202,13 @@ class Optimizer(object):
                         'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
                 global_step = state_dict['global_step']
 
-                if isinstance(global_step, core.VarBase):
+                if isinstance(global_step, Variable):
                     step_np = global_step
                     step_np = np.array(step_np.value().get_tensor())
                     assert step_np.shape == (1,),  \
                             "global step shape is (1,), the shape is {}".format( step_np.shape )
 
                     self._learning_rate.step_num = int(step_np[0])
-                elif isinstance(global_step, Variable):
-                    step_np = global_step.numpy()
-                    assert step_np.shape == (1,),  \
-                            "global step shape is (1,), the shape is {}".format( step_np.shape )
-                    self._learning_rate.step_num = step_np[0]
                 elif isinstance(global_step, np.ndarray):
                     assert global_step.shape == (1,),  \
                             "global step shape is (1,), the shape is {}".format( global_step.shape )
