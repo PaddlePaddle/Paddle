@@ -341,13 +341,14 @@ class TrainEpochRange(SerializableBase):
 
         self._last_checkpoint_time = time.time()
         start = self._epoch_no + 1
-        logger.info("started epoch_no:{} {}".format(self._epoch_no,
-                                                    self._max_epoch_num))
+        logger.info("started epoch_no:{} max_epoch_num:{}".format(
+            self._epoch_no, self._max_epoch_num))
         for i in range(start, self._max_epoch_num):
             self._epoch_no = i
             yield i
 
-            if self._checker.trainer_id == 0:
+            # not save last one because exe and program can't be restored.
+            if self._checker.trainer_id == 0 and i != self._max_epoch_num - 1:
                 if time.time() - self._last_checkpoint_time >= self._save_checkpoint_inter or \
                         i >= self._max_epoch_num:
                     self.save_checkpoint()

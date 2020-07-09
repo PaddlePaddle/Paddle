@@ -167,7 +167,7 @@ class AutoCheckpointTest(unittest.TestCase):
 
         o = acp._get_train_epoch_range()
         assert o == None, "now train epoch must not exits now"
-        self.assertEqual(i, 0)
+        self.assertEqual(i, 2)
         fluid.io.save_inference_model(save_dir, [image.name, label.name],
                                       [loss], exe)
 
@@ -236,6 +236,8 @@ class AutoCheckpointTest(unittest.TestCase):
         fs.delete(checker.hdfs_checkpoint_path)
 
         name = self._run_save_0()
+        self._run_load_0(name)
+        self._run_load_0(name)
         self._run_load_0(name)
 
         fs.delete(checker.hdfs_checkpoint_path)
