@@ -56,9 +56,10 @@ bool OpGraphView::HasOp(details::OpHandleBase *op) const {
 }
 
 void OpGraphView::EnforceHasOp(details::OpHandleBase *op) const {
-  PADDLE_ENFORCE(HasOp(op), platform::errors::Fatal(
-                                "Cannot find op %s in OpGraphView",
-                                op == nullptr ? "nullptr" : op->DebugString()));
+  PADDLE_ENFORCE_EQ(
+      HasOp(op), true,
+      platform::errors::Fatal("Cannot find op %s in OpGraphView",
+                              op == nullptr ? "nullptr" : op->DebugString()));
 }
 
 const std::unordered_set<details::OpHandleBase *> &OpGraphView::PendingOps(

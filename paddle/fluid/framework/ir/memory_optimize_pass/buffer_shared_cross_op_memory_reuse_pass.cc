@@ -427,8 +427,8 @@ void BufferSharedCrossOpMemoryReusePass::SetOpDep(
   } else {
     auto idx1 = OpIndex(op1);
     auto idx2 = OpIndex(op2);
-    PADDLE_ENFORCE(
-        dep != NodeDependency::kSame && idx1 != idx2,
+    PADDLE_ENFORCE_EQ(
+        (dep != NodeDependency::kSame && idx1 != idx2), true,
         platform::errors::Fatal("Op(%s) and Op(%s) should not have same "
                                 "index(%d), and dep should not kSame.",
                                 op1->Name(), op2->Name(), idx1));

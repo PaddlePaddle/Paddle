@@ -131,8 +131,8 @@ void OpGraphView::BreadthFirstVisit(Callback &&callback) const {
                     platform::errors::Fatal("There are unvisited ops"));
   PADDLE_ENFORCE_EQ(visited_ops.size(), op_num,
                     platform::errors::Fatal("There are unvisited ops"));
-  PADDLE_ENFORCE(op_deps.empty(),
-                 platform::errors::Fatal("There are unvisited ops"));
+  PADDLE_ENFORCE_EQ(op_deps.empty(), true,
+                    platform::errors::Fatal("There are unvisited ops"));
 }
 
 }  // namespace ir
