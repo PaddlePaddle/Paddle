@@ -125,7 +125,38 @@ class AutoCheckpointTest(unittest.TestCase):
 
         o = None
         i = 0
+        name = None
         for i in acp.train_epoch_range(3, 0):
+            o = acp._get_train_epoch_range()
+            name = o.name
+            print("name:", o.name, "epoch_no:", i)
+
+            for data in data_loader():
+                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
+            fluid.io.save_inference_model(save_dir, [image.name, label.name],
+                                          [loss], exe)
+            assert len(o._exe_status) == 1, "there must be only 1 exestatus"
+
+        o = acp._get_train_epoch_range()
+        assert o == None, "now train epoch must not exits now"
+        self.assertEqual(i, 2)
+        fluid.io.save_inference_model(save_dir, [image.name, label.name],
+                                      [loss], exe)
+
+        fs.delete(save_dir)
+        return name
+
+    def _run_load_0(self, load_name):
+        fs = LocalFS()
+        save_dir = "./run_save_0"
+        fs.delete(save_dir)
+
+        exe, data_loader, _, loss, compiled, main_program, image, label = self._init_env(
+        )
+
+        o = None
+        i = 0
+        for i in acp._run_only_for_inter(name, 3, 0):
             o = acp._get_train_epoch_range()
             for data in data_loader():
                 fetch = exe.run(main_program, feed=data, fetch_list=[loss])
@@ -136,7 +167,7 @@ class AutoCheckpointTest(unittest.TestCase):
 
         o = acp._get_train_epoch_range()
         assert o == None, "now train epoch must not exits now"
-        self.assertTrue(i, 2)
+        self.assertEqual(i, 0)
         fluid.io.save_inference_model(save_dir, [image.name, label.name],
                                       [loss], exe)
 
@@ -200,7 +231,14 @@ class AutoCheckpointTest(unittest.TestCase):
         pass
 
     def test_without_fleet(self):
-        self._run_save_0()
+        checker = acp._get_checker()
+        fs = HDFSClient(checker.hdfs_home, None)
+        fs.delete(checker.hdfs_checkpoint_path)
+
+        name = self._run_save_0()
+        self._run_load_0(name)
+
+        fs.delete(checker.hdfs_checkpoint_path)
 
     """
     def test_with_fleet(self):
