@@ -264,8 +264,11 @@ class TrainEpochRange(SerializableBase):
         self._file_name = "range_train_status"
 
         _thread_checker()
-        self._cper.load_checkpoint(self._checkpoint_path, [self],
-                                   self._checker.trainer_id)
+
+        if self._cper._get_last_checkpoint_no(self._checkpoint_path) > 0:
+            self._cper.load_checkpoint(self._checkpoint_path, [self],
+                                       self._checker.trainer_id)
+            logger.info("load_checkpoint:", self)
 
     def _to_dict(self):
         d = {
@@ -306,7 +309,7 @@ class TrainEpochRange(SerializableBase):
     def deserialize(self, path):
         d = None
         file_name = "{}/{}".format(path, self._file_name)
-        with open(file_name, 'w') as f:
+        with open(file_name, 'r') as f:
             d = json.load(f)
 
         # self
@@ -460,10 +463,13 @@ def _auto_checkpoint(exe, program):
     if key in exe_status:
         t = exe_status[key]
         if not t._restored:
+            logger.info("load checkpoint of:{}".format(t))
             a = Checkpointer(g_train_epoch_range.hdfs)
             m = PaddleModel(exe, program)
-            a.load_checkpoint(t._checkpoint_path, [m])
-            logger.info("load_checkpoint exe checkpoint from {}".format(t))
+            a.load_checkpoint(
+                t._checkpoint_path, [m],
+                trainer_id=g_checker.trainer_id,
+                checkpoint_no=t._checkpoint_no)
             t._restored = True
     else:
         #h = _get_hash(key)
