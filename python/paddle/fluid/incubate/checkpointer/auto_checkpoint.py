@@ -272,7 +272,7 @@ class TrainEpochRange(SerializableBase):
         if self._cper._get_last_checkpoint_no(self._checkpoint_path) > 0:
             self._cper.load_checkpoint(self._checkpoint_path, [self],
                                        self._checker.trainer_id)
-            logger.info("load_checkpoint:{}".format(self))
+            logger.info("load tain_epoch_range checkpoint:{}".format(self))
 
     def _to_dict(self):
         d = {
@@ -315,7 +315,6 @@ class TrainEpochRange(SerializableBase):
         file_name = "{}/{}".format(path, self._file_name)
         with open(file_name, 'r') as f:
             d = json.load(f)
-        logger.info("read from {} content:{}".format(file_name, d))
 
         # self
         self._max_epoch_num = d["max_epoch_num"]
@@ -330,8 +329,6 @@ class TrainEpochRange(SerializableBase):
             t = ExeTrainStatus()
             t._deserialize(v)
             self._exe_status[k] = t
-
-        logger.info("deserialize ok")
 
     def next(self):
         _thread_checker()
@@ -351,7 +348,6 @@ class TrainEpochRange(SerializableBase):
             yield i
 
             if self._checker.trainer_id == 0:
-                logger.info("prepare to save_auto_checkpoint")
                 if time.time() - self._last_checkpoint_time >= self._save_checkpoint_inter or \
                         i >= self._max_epoch_num:
                     self.save_checkpoint()
@@ -382,7 +378,7 @@ class TrainEpochRange(SerializableBase):
 
             e[t._key] = t
 
-            logger.info("save exe checkpoint:{}".format(t))
+            logger.info("save executor checkpoint:{}".format(t))
 
         if len(self._exe_status) > 0:
             self._cper.save_checkpoint(self._checkpoint_path, [self])
@@ -469,7 +465,7 @@ def _auto_checkpoint(exe, program):
     if key in exe_status:
         t = exe_status[key]
         if not t._restored:
-            logger.info("load checkpoint of:{}".format(t))
+            logger.info("load executor checkpoint {}".format(t))
             a = Checkpointer(g_train_epoch_range._hdfs)
             m = PaddleModel(exe, program)
             a.load_checkpoint(
