@@ -112,8 +112,12 @@ void CPUQuantizePass::QuantizeInputs(Graph* g, Node* op, std::string input_name,
                                      std::string scale_attr_name) const {
   auto inputs = op->inputs;
   auto output = op->outputs[0];
-  PADDLE_ENFORCE_GE(inputs.size(), 1);
-  PADDLE_ENFORCE_EQ(op->outputs.size(), 1);
+  PADDLE_ENFORCE_GE(
+      inputs.size(), 1,
+      platform::errors::Fatal("OP(%s)'s inputs must >= 1.", op->Name()));
+  PADDLE_ENFORCE_EQ(
+      op->outputs.size(), 1,
+      platform::errors::Fatal("OP(%s)'s outputs must == 1.", op->Name()));
 
   // create a quantize op desc prototype
   OpDesc q_desc;
@@ -779,10 +783,12 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
 
 void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          platform::errors::Fatal("graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
-  PADDLE_ENFORCE(param_scope());
+  PADDLE_ENFORCE_NOT_NULL(param_scope(),
+                          platform::errors::Fatal("scope cannot be nullptr."));
 
   QuantizeConv(graph, false /* with_residual_data */);
   QuantizeConv(graph, true /* with_residual_data */);
