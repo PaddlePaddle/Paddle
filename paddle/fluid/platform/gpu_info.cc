@@ -344,10 +344,10 @@ class RecordedCudaMallocHelper {
     PADDLE_ENFORCE_GE(
         dev_id, 0,
         platform::errors::OutOfRange(
-            "Device id must be not less than 0, but got %d", dev_id));
+            "Device id must be not less than 0, but got %d.", dev_id));
     PADDLE_ENFORCE_LT(
         dev_id, instances_.size(),
-        platform::errors::OutOfRange("Device id %d exceeds gpu card number %d",
+        platform::errors::OutOfRange("Device id %d exceeds gpu card number %d.",
                                      dev_id, instances_.size()));
     return instances_[dev_id].get();
   }
