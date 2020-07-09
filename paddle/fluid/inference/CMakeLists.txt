@@ -36,7 +36,6 @@ endif()
 
 # fluid_modules exclude API-interface of inference/api and inference/capi
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
-get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
 
 add_subdirectory(api)
 
