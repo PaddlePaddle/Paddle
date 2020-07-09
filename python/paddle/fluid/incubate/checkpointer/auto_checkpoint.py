@@ -442,6 +442,9 @@ def _initial_names(exe, program):
 
 
 def _auto_checkpoint(exe, program):
+    if not program._auto_checkpoint:
+        return
+
     if not _can_auto_checkpoint():
         return
 
