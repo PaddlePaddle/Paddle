@@ -122,6 +122,8 @@ function cmake_base() {
                 exit 1
             fi
         fi
+        # delete `gym` to avoid modifying requirements.txt in *.whl
+        sed -i .bak "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
@@ -178,9 +180,9 @@ function cmake_base() {
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
+        # delete `gym` to avoid modifying requirements.txt in *.whl
+        sed -i "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     fi
-    # delete `gym` to avoid modifying requirements.txt in *.whl
-    sed -i "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
 
     if [ "$SYSTEM" == "Darwin" ]; then
         WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
