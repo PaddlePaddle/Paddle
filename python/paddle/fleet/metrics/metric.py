@@ -49,7 +49,30 @@ def sum(input, scope=None):
     output = output.reshape(old_shape)
     return output
 
-def max(input, scope):
+def max(input, scope=None):
+    """
+    distributed max in fleet
+
+    Args:
+        input(Variable): output of a layer
+        scope(Scope): specific scope, default is None
+
+    Returns:
+        global_metric(numpy.array): max array
+
+    Example:
+        .. code-block:: python
+
+          # in model.py
+          input = fluid.layers.cast(some_input, dtype='float32')
+          cnt = fluid.layers.reduce_sum(input)
+          global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp = fluid.layers.elementwise_max(, global_cnt)
+          fluid.layers.assign(tmp, global_cnt)
+
+          # in train.py, after train or infer
+          print("max array: ", paddle.fleet.max(global_cnt))
+    """
     if scope is None:
         scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
@@ -60,18 +83,65 @@ def max(input, scope):
     output = output.reshape(old_shape)
     return output
 
-def min(input, scope):
+def min(input, scope=None):
+    """
+    distributed min in fleet
+
+    Args:
+        input(Variable): output of a layer
+        scope(Scope): specific scope, default is None
+
+    Returns:
+        global_metric(numpy.array): min array
+
+    Example:
+        .. code-block:: python
+
+          # in model.py
+          input = fluid.layers.cast(some_input, dtype='float32')
+          cnt = fluid.layers.reduce_sum(input)
+          global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp = fluid.layers.elementwise_min(, global_cnt)
+          fluid.layers.assign(tmp, global_cnt)
+
+          # in train.py, after train or infer
+          print("min array: ", paddle.fleet.min(global_cnt))
+    """
     if scope is None:
         scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
     input = np.array(scope.find_var(input.name).get_tensor())
     old_shape = np.array(input.shape)
     output = np.copy(input) * 0
-    fleet._role_maker._all_reduce(input, output, mode="max")
+    fleet._role_maker._all_reduce(input, output, mode="min")
     output = output.reshape(old_shape)
     return output
 
-def auc(stat_pos, stat_neg, scope):
+def auc(stat_pos, stat_neg, scope=None):
+    """
+    distributed auc in fleet
+
+    Args:
+        stat_pos(Variable): stat_pos in output of fluid.layers.auc
+        stat_neg(Variable): stat_neg in output of fluid.layers.auc
+        scope(Scope): specific scope, default is None
+
+    Returns:
+        auc_value(float): auc value
+
+    Example:
+        .. code-block:: python
+
+          # in model.py
+          similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(output, min=-15.0, max=15.0))
+          binary_predict = fluid.layers.concat(
+              input=[fluid.layers.elementwise_sub(fluid.layers.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1)
+          self.auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg] =
+              fluid.layers.auc(input=binary_predict, label=label, curve='ROC', num_thresholds=4096)
+
+          # in train.py, after train or infer
+          print("auc: ", paddle.fleet.auc(stat_pos, stat_neg))
+    """
     if scope is None:
         scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
@@ -122,7 +192,28 @@ def auc(stat_pos, stat_neg, scope):
     fleet._role_maker._barrier_worker()
     return auc_value
 
-def mae(abserr, total_ins_num, scope):
+def mae(abserr, total_ins_num, scope=None):
+    """
+    distributed mae in fleet
+
+    Args:
+        abserr(Variable): abserr in output of fluid.contrib.layers.ctr_metric_bundle
+        total_ins_num(int|float): total train/infer instance count
+        scope(Scope): specific scope, default is None
+
+    Returns:
+        mae(float): mae value
+
+    Example:
+        .. code-block:: python
+
+          # in model.py
+          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+
+          # in train.py, after train or infer
+          print("mae: ", paddle.fleet.mae(abserr, total_ins_num))
+    """
+
     if scope is None:
         scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
@@ -135,7 +226,27 @@ def mae(abserr, total_ins_num, scope):
     mae_value = global_abserr[0] / total_ins_num
     return mae_value
 
-def rmse(sqrerr, total_ins_num, scope):
+def rmse(sqrerr, total_ins_num, scope=None):
+    """
+    distributed rmse in fleet
+
+    Args:
+        sqrerr(Variable): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
+        total_ins_num(int|float): total train/infer instance count
+        scope(Scope): specific scope, default is None
+
+    Returns:
+        rmse(float): rmse value
+
+    Example:
+        .. code-block:: python
+
+          # in model.py
+          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+
+          # in train.py, after train or infer
+          print("rmse: ", paddle.fleet.rmse(sqrerr, total_ins_num))
+    """
     if scope is None:
         scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
@@ -148,7 +259,27 @@ def rmse(sqrerr, total_ins_num, scope):
     rmse_value = math.sqrt(global_abserr[0] / total_ins_num)
     return rmse_value
 
-def mse(sqrerr, total_ins_num, scope):
+def mse(sqrerr, total_ins_num, scope=None):
+    """
+    distributed mse in fleet
+
+    Args:
+        sqrerr(Variable): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
+        total_ins_num(int|float): total train/infer instance count
+        scope(Scope): specific scope, default is None
+
+    Returns:
+        mse(float): mse value
+
+    Example:
+        .. code-block:: python
+
+          # in model.py
+          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+
+          # in train.py, after train or infer
+          print("mse: ", paddle.fleet.mse(sqrerr, total_ins_num))
+    """
     if scope is None:
         scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
@@ -161,7 +292,8 @@ def mse(sqrerr, total_ins_num, scope):
     mse_value = global_abserr[0] / total_ins_num
     return mse_value
 
-def acc(correct, total):
+def acc(correct, total, scope=None):
+    pass
     
     
 
