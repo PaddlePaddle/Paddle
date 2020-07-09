@@ -1592,7 +1592,7 @@ def _find_op_path_(block,
 
     Args:
         block(Block): The block in which to get op path.
-        outputs(list[Variable]): The target variables.
+        targets(list[Variable]): The target variables.
         inputs(list[Variable]): The input variables.
         no_grad_set(set): The set of no grad var name. no_grad_set will be changed.
         op_path_dict(dict): op_path_dict will be changed. op_path_dict will be changed.
