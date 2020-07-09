@@ -303,6 +303,34 @@ struct numeric_limits<paddle::platform::bfloat16> {
   static const int max_exponent10 = 38;
   static const bool traps = true;
   static const bool tinyness_before = false;
+
+  static paddle::platform::bfloat16(min)() {
+    return paddle::platform::raw_uint16_to_bfloat16(0x007f);
+  }
+  static paddle::platform::bfloat16 lowest() {
+    return paddle::platform::raw_uint16_to_bfloat16(0xff7f);
+  }
+  static paddle::platform::bfloat16(max)() {
+    return paddle::platform::raw_uint16_to_bfloat16(0x7f7f);
+  }
+  static paddle::platform::bfloat16 epsilon() {
+    return paddle::platform::raw_uint16_to_bfloat16(0x3400);
+  }
+  static paddle::platform::bfloat16 round_error() {
+    return paddle::platform::bfloat16(0.5);
+  }
+  static paddle::platform::bfloat16 infinity() {
+    return paddle::platform::raw_uint16_to_bfloat16(0x7f80);
+  }
+  static paddle::platform::bfloat16 quiet_NaN() {
+    return paddle::platform::raw_uint16_to_bfloat16(0xffc1);
+  }
+  static paddle::platform::bfloat16 signaling_NaN() {
+    return paddle::platform::raw_uint16_to_bfloat16(0xff81);
+  }
+  static paddle::platform::bfloat16 denorm_min() {
+    return paddle::platform::raw_uint16_to_bfloat16(0x0001);
+  }
 };
 
 }  // namespace std
