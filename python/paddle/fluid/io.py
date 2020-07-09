@@ -770,6 +770,7 @@ def load_vars(executor,
             filename=filename)
     else:
         load_prog = Program()
+        load_prog._auto_checkpont = False
         load_block = load_prog.global_block()
 
         if main_program is None:

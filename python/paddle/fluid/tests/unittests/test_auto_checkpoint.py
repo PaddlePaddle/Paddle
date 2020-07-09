@@ -122,16 +122,21 @@ class AutoCheckpointTest(unittest.TestCase):
 
         exe, data_loader, _, loss, compiled, main_program, image, label = self._init_env(
         )
+
+        o = None
         i = 0
-        for i in acp.train_epoch_range(10, 0):
-            name = acp._get_train_epoch_range().name
+        for i in acp.train_epoch_range(3, 0):
+            o = acp._get_train_epoch_range()
             for data in data_loader():
                 fetch = exe.run(main_program, feed=data, fetch_list=[loss])
-                print("fetch:", fetch)
-            print("name:", name, "epoch_no:", i)
+            print("name:", o.name, "epoch_no:", i)
+            fluid.io.save_inference_model(save_dir, [image.name, label.name],
+                                          [loss], exe)
+            assert len(o._exe_status) == 1, "there must be only 1 exestatus"
 
-        print("_run_save_0 i:", i)
-        self.assertTrue(i, 9)
+        o = acp._get_train_epoch_range()
+        assert o == None, "now train epoch must not exits now"
+        self.assertTrue(i, 2)
         fluid.io.save_inference_model(save_dir, [image.name, label.name],
                                       [loss], exe)
 

@@ -328,14 +328,14 @@ class TrainEpochRange(SerializableBase):
         _thread_checker()
 
         if self._max_epoch_num < 0:
-            self._max_epoch_num = sys.maxint - 1
+            self._max_epoch_num = sys.maxint
 
         assert self._epoch_no >= 0, "self._epoch_no:{} must >=-1".format(
             self._epoch_no)
 
         self._last_checkpoint_time = time.time()
         start = self._epoch_no
-        for i in range(start, self._max_epoch_num + 1):
+        for i in range(start, self._max_epoch_num):
             self._epoch_no = i
             yield i
 
@@ -383,7 +383,10 @@ def _get_train_epoch_range():
     return g_train_epoch_range
 
 
-def _can_auto_checkpoint():
+def _can_auto_checkpoint(program):
+    if not program._auto_checkpoint or program._is_distributed:
+        return False
+
     _get_checker()
     return g_checker.valid() and g_train_epoch_range is not None
 
@@ -442,10 +445,7 @@ def _initial_names(exe, program):
 
 
 def _auto_checkpoint(exe, program):
-    if not program._auto_checkpoint:
-        return
-
-    if not _can_auto_checkpoint():
+    if not _can_auto_checkpoint(program):
         return
 
     _initial_names(exe, program)
