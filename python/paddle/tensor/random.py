@@ -88,8 +88,8 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
         # example 2:
         # attr shape is a list which contains tensor Variable.
-        dim_1 = fluid.layers.fill_constant([1],"int64",2)
-        dim_2 = fluid.layers.fill_constant([1],"int32",3)
+        dim_1 = paddle.fill_constant([1],"int64",2)
+        dim_2 = paddle.fill_constant([1],"int32",3)
         result_2 = paddle.randint(low=-5, high=5, shape=[dim_1, dim_2], dtype="int32")
         print(result_2.numpy())
         # [[ 0 -1 -3]
