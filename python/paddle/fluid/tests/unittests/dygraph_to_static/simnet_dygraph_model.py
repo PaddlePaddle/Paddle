@@ -38,6 +38,8 @@ class EmbeddingLayer(object):
         """
         operation
         """
+        # TODO(huihuangzheng): The original code set the is_sparse=True, but it
+        # causes crush in dy2stat. Set it to True after fixing it.
         emb = Embedding(
             size=[self.dict_size, self.emb_dim],
             is_sparse=False,
@@ -496,6 +498,9 @@ class BOW(Layer):
         pred = cos_sim_layer.ops(left_bow, right_bow)
         return left_bow, pred
 
+        # TODO(huihuangzheng): uncomment the following return statements after
+        # we fix it.
+        #
         # matching layer
         #if self.task_mode == "pairwise":
         #    left_bow = self.bow_layer(left_soft)

@@ -161,14 +161,14 @@ class TestSimnet(unittest.TestCase):
         if fluid.is_compiled_with_cuda():
             fluid.set_flags({"FLAGS_cudnn_deterministic": True})
         conf_dict = create_conf_dict()
-        #dygraph_loss = train(conf_dict, to_static=False)
+        dygraph_loss = train(conf_dict, to_static=False)
         static_loss = train(conf_dict, to_static=True)
 
         #print(dygraph_loss)
         #print(static_loss)
-        #self.assertEqual(len(dygraph_loss), len(static_loss))
-        #for i in range(len(dygraph_loss)):
-        #    self.assertAlmostEqual(dygraph_loss[i], static_loss[i])
+        self.assertEqual(len(dygraph_loss), len(static_loss))
+        for i in range(len(dygraph_loss)):
+            self.assertAlmostEqual(dygraph_loss[i], static_loss[i])
 
 
 if __name__ == '__main__':
