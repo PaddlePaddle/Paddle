@@ -27,8 +27,6 @@ extern std::once_flag nvrtc_dso_flag;
 extern void* nvrtc_dso_handle;
 extern bool HasNVRTC();
 
-#ifdef PADDLE_USE_DSO
-
 #define DECLARE_DYNAMIC_LOAD_NVRTC_WRAP(__name)                            \
   struct DynLoad__##__name {                                               \
     template <typename... Args>                                            \
@@ -42,19 +40,6 @@ extern bool HasNVRTC();
     }                                                                      \
   };                                                                       \
   extern struct DynLoad__##__name __name
-
-#else
-
-#define DECLARE_DYNAMIC_LOAD_NVRTC_WRAP(__name) \
-  struct DynLoad__##__name {                    \
-    template <typename... Args>                 \
-    inline auto operator()(Args... args) {      \
-      return ::__name(args...);                 \
-    }                                           \
-  };                                            \
-  extern DynLoad__##__name __name
-
-#endif
 
 /**
  * include all needed nvrtc functions

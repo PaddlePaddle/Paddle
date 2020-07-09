@@ -193,7 +193,6 @@ function cmake_base() {
     Configuring cmake in /paddle/build ...
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
-        -DWITH_DSO=ON
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
@@ -222,7 +221,6 @@ EOF
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
-        -DWITH_DSO=ON \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
