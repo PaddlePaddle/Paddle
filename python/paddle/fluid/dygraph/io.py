@@ -517,11 +517,11 @@ def _construct_params_and_buffers(model_path,
 class TranslatedLayer(layers.Layer):
     """
     TranslatedLayer is a imperative Layer for holding the model loaded by 
-    :ref:`api_fluid_dygraph_jit_load` . It can be used like a general Layer 
+    :ref:`api_imperative_jit_load` . It can be used like a general Layer 
     object in eval or train mode.
     
     .. note:
-        The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_fluid_dygraph_jit_load` .
+        The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_imperative_jit_load` .
 
     Examples:
         .. code-block:: python
