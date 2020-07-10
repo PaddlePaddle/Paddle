@@ -76,7 +76,6 @@ __all__ = [
         'elementwise_max',
         'elementwise_min',
         'elementwise_mod',
-        'elementwise_mul',
         'elementwise_pow',
         'elementwise_sub',
         'exp',
@@ -107,6 +106,7 @@ __all__ = [
         'min',
         'mm',
         'div',
+        'multiply',
         'add',
         'atan',
         'logsumexp',
@@ -580,11 +580,46 @@ Examples:
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+def multiply(x, y, axis=-1, name=None):
+    """
+	:alias_main: paddle.multiply
+	:alias: paddle.multiply,paddle.tensor.multiply,paddle.tensor.math.multiply
+
+Examples:
+
+    .. code-block:: python
+
+        import paddle
+
+        # use dygraph
+        paddle.enable_imperative()
+        x = paddle.rand([2, 3], dtype='float32')
+        y = paddle.rand([2, 3], dtype='float32')
+        z = paddle.multiply(x, y)
+        print(x.numpy(), 'X', y.numpy(), '=', z.numpy())
+
+        x = paddle.rand([2, 3, 2], dtype='float32')
+        y = paddle.rand([3], dtype='float32')
+        z = paddle.elementwise_mul(x, y, axis=1)
+        print(x.numpy(), 'X', y.numpy(), '=', z.numpy())
+
+
+    """
+    op_type = 'elementwise_mul'
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
 for func in [
         add,
         div,
+        multiply,
 ]:
-    proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div'}
+    proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div', 'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
     if func.__name__ in ['add']:
         alias_main = ':alias_main: paddle.%(func)s' % {'func': func.__name__}
@@ -601,9 +636,6 @@ for func in [
         ]
     else:
         additional_args_lines = [
-            "out (Variable, optinal): The Variable that stores results of the operation. If out is None, \
-            a new Variable will be created to store the results."
-                                                                 ,
             "name (string, optional): Name of the output. \
             Default is None. It's used to print debug info for developers. Details: \
             :ref:`api_guide_Name` "
