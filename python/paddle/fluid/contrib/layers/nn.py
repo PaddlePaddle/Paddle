@@ -25,6 +25,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
+from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
@@ -35,7 +36,7 @@ __all__ = [
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
     'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler', 'batch_fc',
-    '_pull_box_extended_sparse'
+    '_pull_box_extended_sparse', 'cross_norm_layer_hadamard'
 ]
 
 
@@ -1301,7 +1302,13 @@ def rank_attention(input,
     return output
 
 
-def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
+def batch_fc(input,
+             param_size,
+             param_attr,
+             bias_size,
+             bias_attr,
+             batchcount,
+             act=None):
     """
     **Batch FC layer**
     This Op can calculate BatchFC. This is similar to matmul op, 
@@ -1321,16 +1328,16 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     Examples:
         .. code-block:: python
            import paddle.fluid as fluid
-           
-           input = fluid.data(name="input", shape=[16, 2, 3], dtype="float32")
+           batchcount = 3
+           input = fluid.data(name="input", shape=[16, 2 * batchcount], dtype="float32")
            out = fluid.contrib.layers.batch_fc(input=input,
-                                               param_size=[16, 3, 10],
+                                               param_size=[2, 3 * batchcount],
                                                param_attr=
                                                  fluid.ParamAttr(learning_rate=1.0,
                                                                name="w_0",
                                                                initializer=
                                                                fluid.initializer.Xavier(uniform=False)),
-                                               bias_size=[16, 10],
+                                               bias_size=[1, 3 * batchcount],
                                                bias_attr=
                                                  fluid.ParamAttr(learning_rate=1.0,
                                                                name="b_0",
@@ -1342,10 +1349,10 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     helper = LayerHelper("batch_fc", **locals())
     check_type(input, 'input', (Variable), 'batch_fc')
     input_shape = input.shape
-    assert input_shape[0] == param_size[0]
-    assert input_shape[2] == param_size[1]
-    assert param_size[2] == bias_size[1]
-    assert input_shape[0] == bias_size[0]
+    #assert input_shape[0] == param_size[0]
+    #assert input_shape[2] == param_size[1]
+    #assert param_size[2] == bias_size[1]
+    #assert input_shape[0] == bias_size[0]
 
     dtype = helper.input_dtype()
     check_dtype(dtype, 'input', ['float32', 'float64'], 'batch_fc')
@@ -1360,6 +1367,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
         inputs={"Input": input,
                 "W": w,
                 "Bias": b},
+        attrs={'batchcount': batchcount},
         outputs={"Out": pre_act})
     return helper.append_activation(pre_act)
 
@@ -1409,3 +1417,63 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
     if len(outs) == 1:
         return outs[0], outs_extend[0]
     return outs, outs_extend
+
+
+def cross_norm_layer_hadamard(input,
+                              fields_num,
+                              embed_dim,
+                              param_dict={},
+                              summary_decay_rate=0.9999999,
+                              epsilon=1e-04,
+                              name=None):
+    """
+    **Cross Norm Layer Hadamard**
+    """
+    helper = LayerHelper('cross_norm_hadamard', **locals())
+    dtype = helper.input_dtype()
+
+    assert fields_num * 2 * embed_dim == input.shape[1]
+    summary_len = (embed_dim * 3 + 1) * fields_num
+    param_shape = [3, summary_len]
+    batch_size_default = 1e4
+    batch_sum_default = 0.0
+    batch_square_sum_default = 1e4
+
+    if param_dict and isinstance(param_dict, dict):
+        batch_size_default = param_dict.get("batch_size", 1e4)
+        batch_sum_default = param_dict.get("batch_sum", 0.0)
+        batch_square_sum_default = param_dict.get("batch_square", 1e4)
+
+    np_layer = np.zeros(param_shape)
+    np_layer[0, :] = batch_size_default
+    np_layer[1, :] = batch_sum_default
+    np_layer[2, :] = batch_square_sum_default
+    summary_input = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.cross_summary',
+            initializer=NumpyArrayInitializer(np_layer),
+            trainable=True),
+        shape=param_shape,
+        dtype=input.dtype)
+
+    means = helper.create_variable(dtype=dtype, stop_gradient=True)
+    scales = helper.create_variable(dtype=dtype, stop_gradient=True)
+
+    out = helper.create_variable(dtype=dtype)
+    helper.append_op(
+        type="cross_norm_hadamard",
+        inputs={"Input": input,
+                "SummaryInput": summary_input},
+        outputs={
+            "Out": out,
+            "CudaMeans": means,
+            "CudaScales": scales,
+            "SummaryInput": summary_input
+        },
+        attrs={
+            "fields_num": fields_num,
+            "embed_dim": embed_dim,
+            "epsilon": epsilon,
+            "summary_decay_rate": summary_decay_rate
+        })
+    return out
