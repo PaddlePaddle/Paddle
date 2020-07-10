@@ -354,6 +354,7 @@ class TrainEpochRange(SerializableBase):
         start = self._epoch_no + 1
         logger.info("started epoch_no:{} max_epoch_num:{}".format(
             start, self._max_epoch_num))
+
         for i in range(start, self._max_epoch_num):
             self._epoch_no = i
             yield i
@@ -442,13 +443,20 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
     try:
         g_train_epoch_range = TrainEpochRange(
             max_epoch_num,
-            g_checker.generate_program_name(),
+            g_checker.generate_range_name(),
             save_checkpoint_inter=save_checkpoint_inter)
 
         for i in g_train_epoch_range.next():
             yield i
+
+        g_train_epoch_range = None
     except GeneratorExit:
         g_train_epoch_range = None
+        print("in train_epoch_rane 2")
+        raise GeneratorExit
+    except Exception as e:
+        g_train_epoch_range = None
+        raise e
 
 
 def _get_hash(key):
