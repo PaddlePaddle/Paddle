@@ -64,17 +64,22 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 #undef SET_IN
 
     // Multiply embeddings with Weights
-    PADDLE_ENFORCE(scope);
+    PADDLE_ENFORCE_NOT_NULL(
+        scope, platform::errors::Fatal("scope cannot be nullptr."));
     const std::string& embeddings = patterns::UniqueKey("Embeddings");
     auto* embeddings_var = scope->Var(embeddings);
-    PADDLE_ENFORCE(embeddings_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        embeddings_var,
+        platform::errors::Fatal("embeddings_var cannot be nullptr."));
     auto* embeddings_tensor =
         embeddings_var->GetMutable<framework::LoDTensor>();
     // Get WeightX size: [single_embedding, fc_size]
     // and embedding size: [dict_size, single_embedding]
     // and create new size of embeddings eg. [dict_size , hidden_size]
     auto* embedding_var = scope->FindVar(W->Name());
-    PADDLE_ENFORCE(embedding_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        embedding_var,
+        platform::errors::Fatal("embedding_var cannot be nullptr."));
     const auto& embedding_tensor = embedding_var->Get<framework::LoDTensor>();
 
     const auto& weightx_tensor =
@@ -90,7 +95,9 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
     // Adding biases to GEMM result to be
     auto* lstm_bias_var = scope->FindVar(bias->Name());
-    PADDLE_ENFORCE(lstm_bias_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        lstm_bias_var,
+        platform::errors::Fatal("lstm_bias_var cannot be nullptr."));
     const auto& lstm_bias_tensor = lstm_bias_var->Get<framework::LoDTensor>();
 
     auto alpha = 1.0f;

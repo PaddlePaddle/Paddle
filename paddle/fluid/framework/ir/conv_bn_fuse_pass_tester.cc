@@ -71,8 +71,12 @@ void TestMain(const std::string& conv_type) {
   int num_bn_nodes_after = GetNumOpNodes(graph, "batch_norm");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_bn_nodes_before, 1);
-  PADDLE_ENFORCE_EQ(num_bn_nodes_after, 0);
+  PADDLE_ENFORCE_EQ(
+      num_bn_nodes_before, 1,
+      platform::errors::Fatal("node num before batch_norm must 1."));
+  PADDLE_ENFORCE_EQ(
+      num_bn_nodes_after, 0,
+      platform::errors::Fatal("node num after batch_norm must 0."));
 }
 
 TEST(ConvBNFusePass, conv2d) { TestMain("conv"); }
