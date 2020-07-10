@@ -25,6 +25,7 @@ from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 import paddle.fluid.incubate.checkpointer.auto_checkpoint as acp
 from paddle.fluid.incubate.checkpointer.checkpointer import PaddleModel
 from paddle.fluid.framework import program_guard
+from paddle.fluid import unique_name
 
 import numpy as np
 from paddle.io import Dataset, BatchSampler, DataLoader
@@ -32,7 +33,7 @@ from paddle.io import Dataset, BatchSampler, DataLoader
 BATCH_NUM = 20
 BATCH_SIZE = 16
 
-IMAGE_SIZE = 128
+#IMAGE_SIZE = 128
 CLASS_NUM = 10
 
 USE_GPU = False  # whether use GPU to run model
@@ -47,7 +48,7 @@ class RandomDataset(Dataset):
         self.num_samples = num_samples
 
     def __getitem__(self, idx):
-        image = np.random.random([IMAGE_SIZE]).astype('float32')
+        image = np.random.random([16, 16]).astype('float32')
         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
         return image, label
 
@@ -80,42 +81,42 @@ class AutoCheckpointTest(unittest.TestCase):
         os.environ.update(self._old_environ)
 
     def _init_env(self, exe, main_prog, startup_prog):
-        def simple_net(image, label):
-            with fluid.program_guard(main_prog, startup_prog):
-                fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
-                cross_entropy = fluid.layers.softmax_with_cross_entropy(image,
-                                                                        label)
-                loss = fluid.layers.reduce_mean(cross_entropy)
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                sgd.minimize(loss)
-                return sgd, loss
+        def simple_net():
+            image = fluid.data(
+                name='image', shape=[-1, 16, 16], dtype='float32')
+            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
 
-        image = fluid.data(
-            name='image', shape=[None, IMAGE_SIZE], dtype='float32')
-        label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            fc_tmp = fluid.layers.fc(image, size=CLASS_NUM)
+            cross_entropy = fluid.layers.softmax_with_cross_entropy(fc_tmp,
+                                                                    label)
+            loss = fluid.layers.reduce_mean(cross_entropy)
+            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+            sgd.minimize(loss)
+            return sgd, loss, image, label
 
-        sgd, loss = simple_net(image, label)
+        with program_guard(main_prog, startup_prog):
+            sgd, loss, image, label = simple_net()
+
+            compiled = fluid.CompiledProgram(main_prog).with_data_parallel(
+                loss_name=loss.name)
+
+            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+            loader = DataLoader(
+                dataset,
+                feed_list=[image, label],
+                places=places,
+                batch_size=BATCH_SIZE,
+                shuffle=True,
+                drop_last=True,
+                num_workers=2)
 
         exe.run(startup_prog)
-
-        compiled = fluid.CompiledProgram(main_prog).with_data_parallel(
-            loss_name=loss.name)
-
-        dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-
-        loader = DataLoader(
-            dataset,
-            feed_list=[image, label],
-            places=places,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            drop_last=True,
-            num_workers=2)
 
         return compiled, loader, sgd, loss, image, label
 
     def _run_save_model(self):
         exe, main_prog, startup_prog = self._generate()
+        print("default main prog:", main_prog)
 
         save_dir = "./run_save_model"
         fs = LocalFS()
@@ -141,7 +142,7 @@ class AutoCheckpointTest(unittest.TestCase):
         m2.deserialize(save_dir)
 
         print("end _run_save_model")
-        #fs.delete(save_dir)
+        fs.delete(save_dir)
 
     # break at epoch 0: not save epoch
 
@@ -154,6 +155,8 @@ class AutoCheckpointTest(unittest.TestCase):
 
         compiled, data_loader, optimizer, loss, image, label = \
             self._init_env(exe, main_prog, startup_prog)
+
+        print("main_prog:", main_prog)
 
         o = None
         i = 0
@@ -182,11 +185,17 @@ class AutoCheckpointTest(unittest.TestCase):
         o = acp._get_train_epoch_range()
         assert o == None, "now train epoch must not exits now"
         self.assertEqual(i, 2)
-        fluid.io.save_inference_model(save_dir, [image.name, label.name],
-                                      [loss], exe)
+        fluid.io.save_inference_model(
+            save_dir, [image.name, label.name], [loss],
+            exe,
+            main_program=compiled)
 
         fs.delete(save_dir)
         return name
+
+    def _reset_generator(self):
+        unique_name.generator = fluid.unique_name.UniqueNameGenerator()
+        acp.generator = fluid.unique_name.UniqueNameGenerator()
 
     def _run_load_0(self):
         exe, main_prog, startup_prog = self._generate()
@@ -195,19 +204,22 @@ class AutoCheckpointTest(unittest.TestCase):
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        compiled, data_loader, optimizer, loss, image, label = self._init_env()
+        compiled, data_loader, optimizer, loss, image, label = self._init_env(
+            exe, main_prog, startup_prog)
 
         o = None
         i = 0
-        for i in acp._run_only_for_inter(load_name, 3, 0):
+        for i in acp.train_epoch_range(3, 0):
             o = acp._get_train_epoch_range()
             for data in data_loader():
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
             print("name:", o.name, "epoch_no:", i, "exe_status num:",
                   len(o._exe_status))
-            fluid.io.save_inference_model(save_dir, [image.name, label.name],
-                                          [loss], exe)
+            fluid.io.save_inference_model(
+                save_dir, [image.name, label.name], [loss],
+                exe,
+                main_program=main_prog)
             self.assertEqual(len(o._exe_status), 1)
 
         o = acp._get_train_epoch_range()
@@ -216,7 +228,7 @@ class AutoCheckpointTest(unittest.TestCase):
         fluid.io.save_inference_model(
             save_dir, [image.name, label.name], [loss],
             exe,
-            main_program=g_main)
+            main_program=compiled)
 
         fs.delete(save_dir)
 
@@ -278,8 +290,10 @@ class AutoCheckpointTest(unittest.TestCase):
         pass
 
     def _generate(self):
-        main_prog = fluid.default_main_program()
-        startup_prog = fluid.default_startup_program()
+        main_prog = fluid.Program()
+        startup_prog = fluid.Program()
+        #main_prog = fluid.default_main_program()
+        #startup_prog = fluid.default_startup_program()
         exe = fluid.Executor(places[0])
 
         return exe, main_prog, startup_prog
@@ -289,17 +303,17 @@ class AutoCheckpointTest(unittest.TestCase):
         fs = HDFSClient(checker.hdfs_home, None)
         fs.delete(checker.hdfs_checkpoint_path)
 
-        acp._reset_generator()
+        self._reset_generator()
         self._run_save_model()
 
-        acp._reset_generator()
+        self._reset_generator()
         self._run_save_0()
 
-        acp._reset_generator()
-        self._run_load_0(name)
+        self._reset_generator()
+        self._run_load_0()
 
-        acp._reset_generator()
-        self._run_load_0(name)
+        self._reset_generator()
+        self._run_load_0()
 
         fs.delete(checker.hdfs_checkpoint_path)
 

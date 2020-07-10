@@ -32,6 +32,8 @@ g_checker = None
 
 logger = None
 
+generator = unique_name.UniqueNameGenerator()
+
 
 def _get_logger(log_level, name="auto_checkpoint"):
     global logger
@@ -54,30 +56,6 @@ def _get_logger(log_level, name="auto_checkpoint"):
 def _thread_checker():
     assert current_thread().name == "MainThread", \
         "auto checkpoint must run under main thread"
-
-
-class UniqueNameGenerator(unique_name.UniqueNameGenerator):
-    """
-    Generate unique name with prefix.
-
-    Args:
-        prefix(str): The generated name prefix. All generated name will be
-                     started with this prefix.
-    """
-
-    def __init__(self, prefix=None):
-        super(UniqueNameGenerator, self).__init__(prefix)
-
-    def reset(self):
-        for k, v in six.iteritems(self.ids):
-            self.ids[k] = 0
-
-
-g_generator = UniqueNameGenerator()
-
-
-def _reset_generator():
-    g_generator.reset()
 
 
 class AutoCheckpointChecker(object):
@@ -183,15 +161,15 @@ class AutoCheckpointChecker(object):
 
     def generate_range_name(self):
         assert self.valid()
-        return g_generator("_range_")
+        return generator("_range_")
 
     def generate_program_name(self):
         assert self.valid()
-        return g_generator("_program_")
+        return generator("_program_")
 
     def generate_executor_name(self):
         assert self.valid()
-        return g_generator("_executor_")
+        return generator("_executor_")
 
 
 class ExeTrainStatus(SerializableBase):
@@ -453,15 +431,11 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
         logger.warning("auto checkpoint will take effect on PaddleCloud")
         return
 
-    for i in _run_only_for_inter(g_checker.generate_range_name(), max_epoch_num,
-                                 save_checkpoint_inter):
-        yield i
-
-
-def _run_only_for_inter(range_name, max_epoch_num, save_checkpoint_inter):
     global g_train_epoch_range
     g_train_epoch_range = TrainEpochRange(
-        max_epoch_num, range_name, save_checkpoint_inter=save_checkpoint_inter)
+        max_epoch_num,
+        g_checker.generate_program_name(),
+        save_checkpoint_inter=save_checkpoint_inter)
 
     for i in g_train_epoch_range.next():
         yield i
