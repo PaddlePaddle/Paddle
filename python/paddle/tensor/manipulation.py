@@ -159,6 +159,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         .. code-block:: python
 
             import paddle
+            import numpy as np
 
             paddle.enable_imperative()
 
