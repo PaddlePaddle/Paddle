@@ -230,7 +230,7 @@ class AutoCheckpointTest(unittest.TestCase):
 
         return exe, main_prog, startup_prog
 
-    def _test_basic(self):
+    def test_basic(self):
         logger.info("begin test_basic")
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
@@ -273,7 +273,8 @@ class AutoCheckpointTest(unittest.TestCase):
         fs.delete(checker.hdfs_checkpoint_path)
         logger.info("end test_corener_epoch_no")
 
-    def _test_multiple(self):
+    def test_multiple(self):
+        logger.info("begin test_multiple")
         fs = LocalFS()
         save_dir = "./run_save_0"
         fs.delete(save_dir)
@@ -287,6 +288,7 @@ class AutoCheckpointTest(unittest.TestCase):
         compiled2, data_loader2, optimizer2, loss2, image2, label2 = \
             self._init_env(exe, main_prog2, startup_prog2)
 
+        o = None
         for i in acp.train_epoch_range(3, 0):
             for data in data_loader1():
                 fetch = exe.run(compiled1, feed=data, fetch_list=[loss1])
@@ -297,7 +299,12 @@ class AutoCheckpointTest(unittest.TestCase):
             o = acp._get_train_epoch_range()
             self.assertTrue(len(o._exe_status), 2)
 
+        o = acp._get_train_epoch_range()
+        self.assertTrue(o == None, "now train epoch must not exits now")
+        self.assertEqual(i, 2)
+
         fs.delete(save_dir)
+        logger.info("end test_multiple")
 
     """
     def test_distributed_basic(self):
