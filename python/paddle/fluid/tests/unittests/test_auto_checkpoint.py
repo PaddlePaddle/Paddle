@@ -116,7 +116,7 @@ class AutoCheckpointTest(unittest.TestCase):
 
     def _run_save_model(self):
         exe, main_prog, startup_prog = self._generate()
-        print("default main prog:", main_prog)
+        #print("default main prog:", main_prog)
 
         save_dir = "./run_save_model"
         fs = LocalFS()
@@ -129,11 +129,12 @@ class AutoCheckpointTest(unittest.TestCase):
         for i in range(3):
             for data in data_loader():
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
-
+        """
         vars = list(
             filter(fluid.io.is_persistable, compiled._program.list_vars()))
         for var in vars:
             print("var:", var.name)
+        """
 
         m1 = PaddleModel(exe, compiled)
         m1.serialize(save_dir)
@@ -156,7 +157,7 @@ class AutoCheckpointTest(unittest.TestCase):
         compiled, data_loader, optimizer, loss, image, label = \
             self._init_env(exe, main_prog, startup_prog)
 
-        print("main_prog:", main_prog)
+        #print("main_prog:", main_prog)
 
         o = None
         i = 0
@@ -168,13 +169,14 @@ class AutoCheckpointTest(unittest.TestCase):
 
             for data in data_loader():
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
-
+            """
             print("run_save_0 begin", i)
             vars = list(
                 filter(fluid.io.is_persistable, compiled._program.list_vars()))
             for var in vars:
                 print("var:", var.name)
             print("run_save_0 end", i)
+            """
 
             fluid.io.save_inference_model(
                 save_dir, [image.name, label.name], [loss],
@@ -201,7 +203,7 @@ class AutoCheckpointTest(unittest.TestCase):
         exe, main_prog, startup_prog = self._generate()
 
         fs = LocalFS()
-        save_dir = "./run_save_0"
+        save_dir = "./run_load_0"
         fs.delete(save_dir)
 
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
@@ -214,8 +216,8 @@ class AutoCheckpointTest(unittest.TestCase):
             for data in data_loader():
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
-            print("name:", o.name, "epoch_no:", i, "exe_status num:",
-                  len(o._exe_status))
+            #print("name:", o.name, "epoch_no:", i, "exe_status num:",
+            #      len(o._exe_status))
             fluid.io.save_inference_model(
                 save_dir, [image.name, label.name], [loss],
                 exe,

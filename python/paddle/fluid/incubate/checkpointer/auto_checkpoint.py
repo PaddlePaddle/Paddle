@@ -463,7 +463,7 @@ def _auto_checkpoint(exe, program):
     if not _can_auto_checkpoint(program):
         return
 
-    print("program auto checkpoint:", program._auto_checkpoint)
+    #print("program auto checkpoint:", program._auto_checkpoint)
     _initial_names(exe, program)
 
     exe_status = g_train_epoch_range._exe_status
