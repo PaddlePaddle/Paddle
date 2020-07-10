@@ -179,7 +179,7 @@ class ExeTrainStatus(SerializableBase):
         self._key = None
         self._checkpoint_path = None
         self._checkpoint_no = None
-        self._restored = False
+        self._restored_from = None
         self._exe = None
         self._program = None
         self._exe_name = None
@@ -201,7 +201,7 @@ class ExeTrainStatus(SerializableBase):
             s = self._serialize()
             f.write(s)
 
-    def _serialize(self, pop_keys=["restored"]):
+    def _serialize(self, pop_keys=["restored_from"]):
         d = self._to_dict()
         for k in pop_keys:
             d.pop(k, None)
@@ -223,7 +223,6 @@ class ExeTrainStatus(SerializableBase):
         self._checkpoint_no = d["checkpoint_no"]
         self._exe_name = d["exe_name"]
         self._program_name = d["program_name"]
-        self._restored = False
 
     def _to_dict(self):
         return {
@@ -231,7 +230,7 @@ class ExeTrainStatus(SerializableBase):
             "key": self._key,
             "hash_key": self._hash_key,
             "checkpoint_path": self._checkpoint_path,
-            "restored": self._restored,
+            "restored_from": self._restored_from,
             "exe_name": self._exe_name,
             "program_name": self._program_name,
             "checkpoint_no": self._checkpoint_no
@@ -247,7 +246,7 @@ class TrainEpochRange(SerializableBase):
         self._epoch_no = -1  # current epoch_no
         self._last_checkpoint_time = None
         self._name = name
-        self._restored = False
+        self._restored_from = None
         self._exe_status = {}
         self._save_checkpoint_inter = save_checkpoint_inter
 
@@ -275,7 +274,10 @@ class TrainEpochRange(SerializableBase):
         if self._cper._get_last_checkpoint_no(self._checkpoint_path) > 0:
             self._cper.load_checkpoint(self._checkpoint_path, [self],
                                        self._checker.trainer_id)
+            self._restored_from = "checkpoint"
             logger.info("load tain_epoch_range checkpoint:{}".format(self))
+        else:
+            self._restored_from = "memory_init"
 
     def _to_dict(self):
         d = {
@@ -283,12 +285,12 @@ class TrainEpochRange(SerializableBase):
             "epoch_no": self._epoch_no,
             "name": self._name,
             "checkpoint_path": self._checkpoint_path,
-            "restored": self._restored
+            "restored_from": self._restored_from
         }
         return d
 
     def __str__(self):
-        return self._serialize(pop_keys=[])
+        return self._serialize([])
 
     @property
     def name(self):
@@ -300,7 +302,7 @@ class TrainEpochRange(SerializableBase):
             s = self._serialize()
             f.write(s)
 
-    def _serialize(self, pop_keys=["restored"]):
+    def _serialize(self, pop_keys=["restored_from"]):
         # self
         d = self._to_dict()
         for k in pop_keys:
@@ -315,7 +317,7 @@ class TrainEpochRange(SerializableBase):
 
     @property
     def is_restored(self):
-        return self._restored
+        return self._restored_from
 
     def deserialize(self, path):
         d = None
@@ -328,7 +330,6 @@ class TrainEpochRange(SerializableBase):
         self._epoch_no = d["epoch_no"]
         self._name = d["name"]
         self._checkpoint_path = d["checkpoint_path"]
-        self._restored = True
 
         # exes status
         e = d["exe_status"]
@@ -470,24 +471,25 @@ def _auto_checkpoint(exe, program):
     key = _get_running_key(exe._auto_checkpoint_name,
                            program._auto_checkpoint_name)
 
-    if g_train_epoch_range.is_restored:
+    if g_train_epoch_range.is_restored == "checkpoint":
         assert key in exe_status, "when restored key:{} must be in train_epoch_range:{}".format(
             key, g_train_epoch_range)
 
     t = None
     if key in exe_status:
         t = exe_status[key]
-        if not t._restored:
-            logger.info("load executor checkpoint {}".format(t))
+        if t._restored_from is None:
             a = Checkpointer(g_train_epoch_range._hdfs)
             m = PaddleModel(exe, program)
             a.load_checkpoint(
                 g_checker.get_exe_checkpoint_path(key), [m],
                 trainer_id=g_checker.trainer_id,
                 checkpoint_no=t._checkpoint_no)
-            t._restored = True
+            t._restored_from = "checkpoint"
+            logger.info("load executor checkpoint {}".format(t))
         t._exe = exe
         t._program = program
+        t._epoch_no = g_train_epoch_range.get()
     else:
         #h = _get_hash(key)
 
@@ -495,7 +497,7 @@ def _auto_checkpoint(exe, program):
         t._epoch_no = g_train_epoch_range.get()
         t._hash_key = key
         t._key = key
-        t._restored = True
+        t._restored_from = "memory_init"
         t._exe = exe
         t._program = program
         t._exe_name = exe._auto_checkpoint_name
