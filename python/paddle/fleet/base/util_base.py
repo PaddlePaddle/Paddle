@@ -16,8 +16,8 @@
 """basic collective operations in python"""
 """remote file system"""
 
+
 # __all__ = ['UtilBase']
-'''
 class UtilBase(object):
     def __init__(self, role_maker, fleet_obj):
         self.role_maker = roke_maker
@@ -61,4 +61,40 @@ class UtilBase(object):
 
     def print_on_rank(self):
         pass
-'''
+
+    def wait_server_ready(endpoints):
+        """
+        Wait until parameter servers are ready, use connext_ex to detect
+        port readiness.
+
+        Args:
+        endpoints (list): endpoints string list, like:
+        ["127.0.0.1:8080", "127.0.0.1:8081"]
+
+        Examples:
+            .. code-block:: python
+
+               wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
+    """
+        assert not isinstance(endpoints, string_types)
+        while True:
+            all_ok = True
+            not_ready_endpoints = []
+            for ep in endpoints:
+                ip_port = ep.split(":")
+                with closing(
+                        socket.socket(socket.AF_INET,
+                                      socket.SOCK_STREAM)) as sock:
+                    sock.settimeout(2)
+                    result = sock.connect_ex((ip_port[0], int(ip_port[1])))
+                    if result != 0:
+                        all_ok = False
+                        not_ready_endpoints.append(ep)
+            if not all_ok:
+                sys.stderr.write("server not ready, wait 3 sec to retry...\n")
+                sys.stderr.write("not ready endpoints:" + str(
+                    not_ready_endpoints) + "\n")
+                sys.stderr.flush()
+                time.sleep(3)
+            else:
+                break

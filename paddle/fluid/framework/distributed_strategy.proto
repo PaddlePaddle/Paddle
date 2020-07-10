@@ -49,6 +49,7 @@ message DistributedStrategy {
   optional int32 num_iteration_per_drop_scope = 23 [ default = 1 ];
   optional bool sync_batch_norm = 24 [ default = false ];
   optional bool fuse_all_optimizer_ops = 25 [ default = false ];
+  optional bool sync_nccl_allreduce = 26 [ default = true ];
 
   // pipeline training
   optional bool pipeline = 101 [ default = false ];

@@ -14,21 +14,14 @@
 import paddle.fluid.optimizer.RecomputeOptimizer as RO
 
 
-class RecomputeOptimizer(object):
+class RecomputeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        self.inner_opt = RO(optimizer)
+        super(RecomputeOptimizer, self).__init__(optimizer)
+        #self.inner_opt = RO(optimizer)
+        self.inner_opt = optimizer
+        self.wrapped_opt = RO(optimizer)
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
-
-    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
-                        user_defined_strategy):
-        self.loss = loss
-        self.role_maker = role_maker
-        self.user_defined_optimizer = user_defined_optimizer
-        self.user_defined_strategy = user_defined_strategy
-
-    def _update_inner_optimier(self, optimizer):
-        self.inner_opt = optimizer
 
     def _can_apply(self):
         if self.user_defined_strategy.recompute == True:
@@ -39,18 +32,14 @@ class RecomputeOptimizer(object):
             else:
                 return True
 
-    def _can_update(self, optimizer):
-        if str(optimizer.__class__.__name__) in self.meta_optimizers_white_list:
-            return True
-
     def backward(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
-        return self.inner_opt.backward(loss, startup_program, parameter_list,
-                                       no_grad_set, callbacks)
+        return self.wrapped_opt.backward(loss, startup_program, parameter_list,
+                                         no_grad_set, callbacks)
 
     def minimize(self,
                  loss,
@@ -58,5 +47,6 @@ class RecomputeOptimizer(object):
                  parameter_list=None,
                  no_grad_set=None):
         optimize_ops, params_grads = \
-            self.inner_opt.minimize(loss, startup_program,
-                                    parameter_list, no_grad_set)
+            self.wrapped_opt.minimize(loss, startup_program,
+                                      parameter_list, no_grad_set)
+        return optimize_ops, params_grads

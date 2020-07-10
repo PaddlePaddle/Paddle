@@ -34,11 +34,148 @@ class Fleet(object):
         self.role_maker = role_maker
         self.strategy_compiler = StrategyCompiler()
 
+    def is_first_worker(self):
+        """
+        Check whether the node is the first instance of worker.
+
+        Returns:
+            bool: True if this is the first node of worker,
+                  False if not.
+        
+        """
+        return self._role_maker.is_first_worker()
+
+    def worker_index(self):
+        """
+        Get current worker index.
+
+        Returns:
+            int: node id
+        """
+        return self._role_maker.worker_index()
+
+    def worker_num(self):
+        """
+        Get current total worker number.
+
+        Returns:
+            int: worker numbers
+        """
+        return self._role_maker.worker_num()
+
+    def is_worker(self):
+        """
+        Check whether the node is an instance of worker.
+
+        Returns:
+            bool: True if this is a node of worker,
+                  False if not.
+        """
+        return self._role_maker.is_worker()
+
+    def worker_endpoints(self, to_string=False):
+        """
+        Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
+
+        Returns:
+            list/string: server endpoints
+        """
+
+        if to_string:
+            return ",".join(self._role_maker.get_trainer_endpoints())
+        else:
+            return self._role_maker.get_trainer_endpoints()
+
+    def server_num(self):
+        """
+        Get current total worker number.
+
+        Returns:
+            int: server number
+        """
+        return len(self._role_maker.get_pserver_endpoints())
+
+    def server_index(self):
+        """
+        Get current server index.
+
+        Returns:
+            int: node id
+        """
+        return self._role_maker.server_index()
+
+    def server_endpoints(self, to_string=False):
+        """
+        Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
+
+        Returns:
+            list/string: server endpoints
+        """
+
+        if to_string:
+            return ",".join(self._role_maker.get_pserver_endpoints())
+        else:
+            return self._role_maker.get_pserver_endpoints()
+
+    def is_server(self):
+        """
+        Check whether the node is an instance of server.
+
+        Returns:
+            bool: True if this is a node of server,
+                  False if not.
+        """
+        return self._role_maker.is_server()
+
+    @property
+    def util(self):
+        """
+        
+        """
+        return self._util
+
+    def barrier_worker(self):
+        """
+        barrier between workers
+        """
+        self._role_maker.barrier_worker()
+
+    @abc.abstractmethod
+    def init_worker(self):
+        pass
+
+    @abc.abstractmethod
+    def init_server(self, model_dir=None):
+        pass
+
+    @abc.abstractmethod
+    def run_server(self):
+        pass
+
+    @abc.abstractmethod
+    def stop_worker(self):
+        pass
+
     def distributed_optimizer(self, optimizer, strategy):
         self.user_defined_optimizer = optimizer
         self.user_defined_strategy = strategy
 
-    def minimize(self, loss):
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set):
+        # cache original feed forward program
+        self.origin_main_program = loss.block.program
+        if startup_program == None:
+            self.origin_startup_program = \
+                paddle.default_startup_program().clone(for_test=False)
+            startup_program = paddle.default_startup_program()
+        else:
+            self.origin_startup_program = \
+                startup_program.clone(for_test=False)
+
+        # compile time
         distributed_optimizer_list = \
             MetaOptimizerFactory()._get_valid_meta_optimizers()
         valid_optimizer_list = []
@@ -52,5 +189,10 @@ class Fleet(object):
                 self.strategy_compiler.generate_optimizer(
                     loss, self.role_maker, self.optimizer,
                     self.strategy, valid_optimizer_list)
-        optimize_ops, params_grads = meta_optimizer.minimize(loss)
+        optimize_ops, params_grads = meta_optimizer.minimize(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+
         return optimize_ops, params_grads

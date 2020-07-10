@@ -13,4 +13,4 @@
 
 from .recompute_optimizer import RecomputeOptimizer
 
-__all__ = ['RecomputeOptimizer', ]
+__all__ = ['RecomputeOptimizer']
