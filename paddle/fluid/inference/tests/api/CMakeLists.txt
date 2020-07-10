@@ -97,7 +97,7 @@ function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_mode
              --iterations=2)
 endfunction()
 
-function(inference_analysis_lexical_test_run TARGET_NAME test_binary infer_model data_path)
+function(inference_analysis_api_lexical_test_run TARGET_NAME test_binary infer_model data_path)
     inference_analysis_test_run(${TARGET_NAME}
     COMMAND ${test_binary}
         ARGS --infer_model=${infer_model}
@@ -105,6 +105,7 @@ function(inference_analysis_lexical_test_run TARGET_NAME test_binary infer_model
              --batch_size=50
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=true
+             --use_analysis=true
              --iterations=2)
 endfunction()
 
@@ -336,8 +337,8 @@ if(WITH_MKLDNN)
   inference_analysis_api_test_build(${LEXICAL_TEST_APP} ${LEXICAL_TEST_APP_SRC})
 
   # Lexcial analysis test
-  set(LEXICAL_MODEL_DIR "${LEXICAL_DATA_MODEL}/GRU_infer_model")
-  inference_analysis_lexical_test_run(test_analyzer_lexical_GRU ${LEXICAL_TEST_APP} ${LEXICAL_MODEL_DIR} ${XNLI_DATA_PATH})
+  set(LEXICAL_MODEL_DIR "${LEXICAL_DATA_MODEL}/GRU_eval_model")
+  inference_analysis_api_lexical_test_run(test_analyzer_lexical_GRU ${LEXICAL_TEST_APP} ${LEXICAL_MODEL_DIR} ${XNLI_DATA_PATH})
 
   ### optimized FP32 vs. Quant INT8 tests
   

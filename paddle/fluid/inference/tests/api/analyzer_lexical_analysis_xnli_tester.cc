@@ -108,8 +108,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   TensorReader<int64_t> words_reader(file, words_begining_offset, "words");
   TensorReader<int64_t> targets_reader(file, targets_beginning_offset,
                                        "targets");
-
-  auto iterations_max = total_words_num / batch_size;
+  // If FLAGS_iterations is set to 0, run all batches
+  auto iterations_max = total_sentences_num / batch_size;
   auto iterations = iterations_max;
   if (FLAGS_iterations > 0 && FLAGS_iterations < iterations_max) {
     iterations = FLAGS_iterations;
@@ -149,15 +149,33 @@ TEST(Analyzer_lexical_analysis_xnli, quantization) {
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
                  input_slots_all, &outputs, FLAGS_num_threads,
                  FLAGS_use_analysis);
-  // LOG(INFO) << "--- The first dimension of output size is " <<
-  // outputs.size();
-  // LOG(INFO) << "--- The second dimension of output size is "
-  //           << outputs[0].size();
-  // int64_t *pdata = static_cast<int64_t *>(outputs[0].data.data());
-  // for (size_t i = 0; i < batch1_size; ++i) {
-  //   EXPECT_EQ(pdata[i], lac_ref_data[i]);
-  // }
-  // LOG(INFO) << "--- The value is "<< outputs[0].data.data();
+  if (FLAGS_with_accuracy_layer) {
+    EXPECT_GT(outputs.size(), 0UL);
+    EXPECT_EQ(3UL, outputs[0].size());
+    std::vector<int64_t> acc_sum(3);
+    for (size_t i = 0; i < outputs.size(); i++) {
+      for (size_t j = 0; j < 3UL; j++) {
+        acc_sum[j] =
+            acc_sum[j] + *static_cast<int64_t *>(outputs[i][j].data.data());
+      }
+    }
+    // nums_infer, nums_label, nums_correct
+    auto precision =
+        acc_sum[0] ? static_cast<float>(acc_sum[2]) / acc_sum[0] : 0;
+    auto recall = acc_sum[1] ? static_cast<float>(acc_sum[2]) / acc_sum[1] : 0;
+    auto f1_score =
+        acc_sum[2]
+            ? static_cast<float>(2 * precision * recall) / (precision + recall)
+            : 0;
+    LOG(INFO) << "Precision: " << precision << ", Recall: " << recall
+              << ", f1_score: " << f1_score;
+  } else {
+    EXPECT_GT(outputs.size(), 0UL);
+    EXPECT_EQ(1UL, outputs[0].size());
+    LOG(INFO) << "Can only provide performance withoug accuracy because the "
+                 "model does not contain accuracy layer. Please "
+                 "save eval model to achieve accuracy.";
+  }
 }
 
 }  // namespace analysis
