@@ -21,23 +21,27 @@ namespace operators {
 using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
-__device__ float DiffAbs(float x) {
-  float eps = 1e-8;
+template <typename T>
+__device__ T DiffAbs(T x) {
+  T eps = 1e-8;
   return sqrt(x * x + eps);
 }
 
-__device__ float DdiffAbs(float x) {
-  float eps = 1e-8;
+template <typename T>
+__device__ T DdiffAbs(T x) {
+  T eps = 1e-8;
   return x / sqrt(x * x + eps);
 }
 
-__device__ float WeightZ(float x) {
-  float abx = DiffAbs(x);
+template <typename T>
+__device__ T WeightZ(T x) {
+  T abx = DiffAbs(x);
   return max(1.0f - abx, 0.0f);
 }
 
-__device__ float DweightZ(float x) {
-  float abx = DiffAbs(x);
+template <typename T>
+__device__ T DweightZ(T x) {
+  T abx = DiffAbs(x);
   if (abx > 1.0f) {
     return 0.0f;
   } else {
@@ -70,9 +74,9 @@ __global__ void BilateralSliceCudaForwardKernel(
     int out_c = (idx / (h * w)) % output_chans;
     int b = (idx / (output_chans * w * h));
 
-    float gx = (x + 0.5f) * gw / (1.0f * w);
-    float gy = (y + 0.5f) * gh / (1.0f * h);
-    float gz = guide[x + w * (y + h * b)] * gd;
+    T gx = (x + 0.5f) * gw / (1.0f * w);
+    T gy = (y + 0.5f) * gh / (1.0f * h);
+    T gz = guide[x + w * (y + h * b)] * gd;
 
     int fx = static_cast<int>(floor(gx - 0.5f));
     int fy = static_cast<int>(floor(gy - 0.5f));
@@ -83,21 +87,21 @@ __global__ void BilateralSliceCudaForwardKernel(
     int sc = gd * gw * gh;
     int sb = grid_chans * gd * gw * gh;
 
-    float value = 0.0f;
+    T value = 0.0f;
     for (int in_c = 0; in_c < coeff_stride; ++in_c) {
-      float coeff_sample = 0.0f;
+      T coeff_sample = 0.0f;
 
       for (int xx = fx; xx < fx + 2; ++xx) {
         int x_ = max(min(xx, gw - 1), 0);
-        float wx = max(1.0f - abs(xx + 0.5 - gx), 0.0f);
+        T wx = max(1.0f - abs(xx + 0.5 - gx), 0.0f);
 
         for (int yy = fy; yy < fy + 2; ++yy) {
           int y_ = max(min(yy, gh - 1), 0);
-          float wy = max(1.0f - abs(yy + 0.5 - gy), 0.0f);
+          T wy = max(1.0f - abs(yy + 0.5 - gy), 0.0f);
 
           for (int zz = fz; zz < fz + 2; ++zz) {
             int z_ = max(min(zz, gd - 1), 0);
-            float wz = WeightZ(zz + 0.5 - gz);
+            T wz = WeightZ(zz + 0.5 - gz);
             int c_ = coeff_stride * out_c + in_c;
             int grid_idx = x_ + sy * y_ + sz * z_ + sc * c_ + sb * b;
 
@@ -196,8 +200,8 @@ __global__ void BilateralSliceCudaGridGradKernel(
     int c = (idx / (gd * gh * gw)) % grid_chans;
     int b = (idx / (grid_chans * gd * gw * gh));
 
-    float scale_w = w * 1.0 / gw;
-    float scale_h = h * 1.0 / gh;
+    T scale_w = w * 1.0 / gw;
+    T scale_h = h * 1.0 / gh;
 
     int left_x = static_cast<int>(floor(scale_w * (gx + 0.5 - 1)));
     int right_x = static_cast<int>(ceil(scale_w * (gx + 0.5 + 1)));
@@ -215,7 +219,7 @@ __global__ void BilateralSliceCudaGridGradKernel(
     int out_c = c / coeff_stride;
     int in_c = c % coeff_stride;
 
-    float value = 0.0f;
+    T value = 0.0f;
     for (int x = left_x; x < right_x; ++x) {
       int x_ = x;
 
@@ -226,8 +230,8 @@ __global__ void BilateralSliceCudaGridGradKernel(
         x_ = 2 * w - 1 - x_;
       }
 
-      float gx2 = (x + 0.5f) / scale_w;
-      float wx = max(1.0f - abs(gx + 0.5 - gx2), 0.0f);
+      T gx2 = (x + 0.5f) / scale_w;
+      T wx = max(1.0f - abs(gx + 0.5 - gx2), 0.0f);
 
       for (int y = left_y; y < right_y; ++y) {
         int y_ = y;
@@ -239,12 +243,12 @@ __global__ void BilateralSliceCudaGridGradKernel(
           y_ = 2 * h - 1 - y_;
         }
 
-        float gy2 = (y + 0.5f) / scale_h;
-        float wy = max(1.0f - abs(gy + 0.5 - gy2), 0.0f);
+        T gy2 = (y + 0.5f) / scale_h;
+        T wy = max(1.0f - abs(gy + 0.5 - gy2), 0.0f);
 
         int guide_idx = x_ + w * y_ + h * w * b;
-        float gz2 = guide[guide_idx] * gd;
-        float wz = WeightZ(gz + 0.5f - gz2);
+        T gz2 = guide[guide_idx] * gd;
+        T wz = WeightZ(gz + 0.5f - gz2);
         if (((gz == 0) && (gz2 < 0.5f)) ||
             ((gz == (gd - 1)) && (gz2 > (gd - 0.5f)))) {
           wz = 1.0f;
@@ -288,9 +292,9 @@ __global__ void BilateralSliceCudaGuideGradKernel(
     int y = (idx / w) % h;
     int b = (idx / (w * h));
 
-    float gx = (x + 0.5f) * gw / (1.0f * w);
-    float gy = (y + 0.5f) * gh / (1.0f * h);
-    float gz = guide[x + w * (y + h * b)] * gd;
+    T gx = (x + 0.5f) * gw / (1.0f * w);
+    T gy = (y + 0.5f) * gh / (1.0f * h);
+    T gz = guide[x + w * (y + h * b)] * gd;
 
     int fx = static_cast<int>(floor(gx - 0.5f));
     int fy = static_cast<int>(floor(gy - 0.5f));
@@ -301,22 +305,22 @@ __global__ void BilateralSliceCudaGuideGradKernel(
     int sc = gd * gh * gw;
     int sb = grid_chans * gd * gw * gh;
 
-    float out_sum = 0.0f;
+    T out_sum = 0.0f;
     for (int out_c = 0; out_c < output_chans; ++out_c) {
-      float in_sum = 0.0f;
+      T in_sum = 0.0f;
       for (int in_c = 0; in_c < coeff_stride; ++in_c) {
-        float grid_sum = 0.0f;
+        T grid_sum = 0.0f;
         for (int xx = fx; xx < fx + 2; ++xx) {
           int x_ = max(min(xx, gw - 1), 0);
-          float wx = max(1.0f - abs(xx + 0.5 - gx), 0.0f);
+          T wx = max(1.0f - abs(xx + 0.5 - gx), 0.0f);
 
           for (int yy = fy; yy < fy + 2; ++yy) {
             int y_ = max(min(yy, gh - 1), 0);
-            float wy = max(1.0f - abs(yy + 0.5 - gy), 0.0f);
+            T wy = max(1.0f - abs(yy + 0.5 - gy), 0.0f);
 
             for (int zz = fz; zz < fz + 2; ++zz) {
               int z_ = max(min(zz, gd - 1), 0);
-              float dwz = gd * DweightZ(zz + 0.5 - gz);
+              T dwz = gd * DweightZ(zz + 0.5 - gz);
 
               int c_ = coeff_stride * out_c + in_c;
               int grid_idx = x_ + sy * y_ + sz * z_ + sc * c_ + sb * b;
@@ -367,9 +371,9 @@ __global__ void BilateralSliceCudaInputGradKernel(
     int in_c = (idx / (h * w)) % input_chans;
     int b = (idx / (input_chans * w * h));
 
-    float gx = (x + 0.5f) * gw / (1.0f * w);
-    float gy = (y + 0.5f) * gh / (1.0f * h);
-    float gz = guide[x + w * (y + h * b)] * gd;
+    T gx = (x + 0.5f) * gw / (1.0f * w);
+    T gy = (y + 0.5f) * gh / (1.0f * h);
+    T gz = guide[x + w * (y + h * b)] * gd;
 
     int fx = static_cast<int>(floor(gx - 0.5f));
     int fy = static_cast<int>(floor(gy - 0.5f));
@@ -380,22 +384,22 @@ __global__ void BilateralSliceCudaInputGradKernel(
     int sc = gd * gh * gw;
     int sb = grid_chans * gd * gh * gw;
 
-    float value = 0.0f;
+    T value = 0.0f;
     for (int out_c = 0; out_c < output_chans; ++out_c) {
-      float chan_val = 0.0f;
+      T chan_val = 0.0f;
 
       for (int xx = fx; xx < fx + 2; ++xx) {
         int x_ = max(min(xx, gw - 1), 0);
-        float wx = max(1.0f - abs(xx + 0.5 - gx), 0.0f);
+        T wx = max(1.0f - abs(xx + 0.5 - gx), 0.0f);
 
         for (int yy = fy; yy < fy + 2; ++yy) {
           int y_ = max(min(yy, gh - 1), 0);
-          float wy = max(1.0f - abs(yy + 0.5 - gy), 0.0f);
+          T wy = max(1.0f - abs(yy + 0.5 - gy), 0.0f);
 
           for (int zz = fz; zz < fz + 2; ++zz) {
             int z_ = max(min(zz, gd - 1), 0);
 
-            float wz = WeightZ(zz + 0.5 - gz);
+            T wz = WeightZ(zz + 0.5 - gz);
 
             int c_ = coeff_stride * out_c + in_c;
             int grid_idx = x_ + sy * y_ + sz * z_ + sc * c_ + sb * b;
@@ -468,21 +472,21 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
     grid_sizes.input_chans = input_chans;
 
     platform::GpuLaunchConfig config =
-        platform::getGpuLaunchConfig(grid_count, ctx);
+        platform::getGpuLaunchConfig(grid_count, ctx, 512);
 
     BilateralSliceCudaGridGradKernel<T><<<config.blocks, config.threads, 0,
                                           ctx.cuda_device_context().stream()>>>(
         grid_grad_data, output_grad_data, guide_data, input_data, grid_sizes,
         has_offset, grid_count, output_chans);
 
-    config = platform::getGpuLaunchConfig(guide_count, ctx);
+    config = platform::getGpuLaunchConfig(guide_count, ctx, 512);
 
     BilateralSliceCudaGuideGradKernel<T><<<
         config.blocks, config.threads, 0, ctx.cuda_device_context().stream()>>>(
         guide_grad_data, output_grad_data, grid_data, guide_data, input_data,
         grid_sizes, has_offset, guide_count, output_chans);
 
-    config = platform::getGpuLaunchConfig(input_count, ctx);
+    config = platform::getGpuLaunchConfig(input_count, ctx, 512);
 
     BilateralSliceCudaInputGradKernel<T><<<
         config.blocks, config.threads, 0, ctx.cuda_device_context().stream()>>>(
@@ -495,7 +499,8 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(bilateral_slice,
-                        ops::BilateralSliceOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(bilateral_slice, ops::BilateralSliceOpCUDAKernel<float>,
+                        ops::BilateralSliceOpCUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(bilateral_slice_grad,
-                        ops::BilateralSliceGradOpCUDAKernel<float>);
+                        ops::BilateralSliceGradOpCUDAKernel<float>,
+                        ops::BilateralSliceGradOpCUDAKernel<double>);

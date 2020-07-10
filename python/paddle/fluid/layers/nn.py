@@ -12951,11 +12951,11 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
         x(Variable): The input tensor, which is a 4-D tensor with shape
                      [N, C, H, W], N is the batch size, C is the channel
                      number, H and W is the feature height and width.
-                     The data type is float32.
+                     The data type is float32 and float64.
         guide(Variable): Input grid tensor of shape [N, H, W]. The
-                        data type is float32.
+                        data type is float32 and float64.
         grid(Variable): Input grid tensor of shape [N, C, D, H, W]. The
-                        data type is float32.
+                        data type is float32 and float64.
         has_offset(bool): Whether to slice with affine offset.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
@@ -12983,9 +12983,11 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     """
     helper = LayerHelper("bilateral_slice", **locals())
 
-    check_variable_and_dtype(x, 'x', ['float32'], 'bilateral_slice')
-    check_variable_and_dtype(guide, 'guide', ['float32'], 'bilateral_slice')
-    check_variable_and_dtype(grid, 'grid', ['float32'], 'bilateral_slice')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'bilateral_slice')
+    check_variable_and_dtype(guide, 'guide', ['float32', 'float64'],
+                             'bilateral_slice')
+    check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
+                             'bilateral_slice')
 
     out = helper.create_variable_for_type_inference(x.dtype)
     inputs = {'X': x, 'Guide': guide, 'Grid': grid}

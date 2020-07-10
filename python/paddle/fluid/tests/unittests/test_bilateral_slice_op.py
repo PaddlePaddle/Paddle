@@ -81,11 +81,6 @@ def naive_bilateral_slice_forward(output, grid, guide, input, gsz, has_offset,
         fy = int(np.floor(gy - 0.5))
         fz = int(np.floor(gz - 0.5))
 
-        sy = gw
-        sz = gw * gh
-        sc = gd * gw * gh
-        sb = grid_chans * gd * gw * gh
-
         value = 0.0
 
         for in_c in range(0, coeff_stride):
@@ -126,10 +121,7 @@ def naive_bilateral_slice(x, guide, grid, has_offset):
     else:
         output_chans = coeffs_chans // input_chans
 
-    output = np.zeros([bs, int(output_chans), h, w]).astype('float32')
-
-    coeff_stride = input_chans
-    grid_chans = input_chans * output.shape[1]
+    output = np.zeros([bs, int(output_chans), h, w]).astype(x.dtype)
 
     gd = grid.shape[2]
     gh = grid.shape[3]
@@ -163,12 +155,10 @@ class TestBilateralSliceOp(OpTest):
         x = np.random.rand(batch_size, c, h, w).astype(self.data_type)
         guide = np.random.rand(batch_size, h, w).astype(self.data_type)
         grid = np.random.rand(batch_size, gc, gd, gh, gw).astype(self.data_type)
-
         output_np = naive_bilateral_slice(x, guide, grid, self.has_offset)
+
         self.inputs = {'X': x, 'Grid': grid, 'Guide': guide}
-
         self.attrs = {'has_offset': self.has_offset, }
-
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
@@ -177,21 +167,11 @@ class TestBilateralSliceOp(OpTest):
 
     def test_check_grad(self):
         place = paddle.fluid.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
-
-    def test_api(self):
-        x = paddle.fluid.data(
-            name='x', shape=[None, 3, 101, 60], dtype='float32')
-        guide = paddle.fluid.data(
-            name='guide', shape=[None, 101, 60], dtype='float32')
-        grid = paddle.fluid.data(
-            name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
-
-        paddle.fluid.layers.bilateral_slice(x, guide, grid, self.has_offset)
+        self.check_grad_with_place(place, ['X', 'Grid', 'Guide'], 'Out')
 
     def initTestCase(self):
         self.has_offset = False
-        self.data_type = 'float32'
+        self.data_type = 'float64'
 
 
 @unittest.skipIf(not paddle.fluid.is_compiled_with_cuda(),
@@ -200,6 +180,17 @@ class TestBilateralSliceOp1(TestBilateralSliceOp):
     def initTestCase(self):
         self.has_offset = True
         self.data_type = 'float32'
+
+
+class TestBilateralSliceApi(TestBilateralSliceOp):
+    def test_api(self):
+        x = paddle.fluid.data(
+            name='x', shape=[None, 3, 25, 15], dtype='float32')
+        guide = paddle.fluid.data(
+            name='guide', shape=[None, 25, 15], dtype='float32')
+        grid = paddle.fluid.data(
+            name='grid', shape=[None, 12, 8, 5, 3], dtype='float32')
+        paddle.fluid.layers.bilateral_slice(x, guide, grid, self.has_offset)
 
 
 if __name__ == "__main__":
