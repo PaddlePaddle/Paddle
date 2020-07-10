@@ -16,11 +16,11 @@ from __future__ import print_function
 
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-from paddle.fluid.incubate.fleet.ps.ir.program_utils import delete_ops
-from paddle.fluid.incubate.fleet.ps.ir.public import _get_optimize_ops
-from paddle.fluid.incubate.fleet.ps.ir.public import _get_lr_ops
-from paddle.fluid.incubate.fleet.ps.ir.public import get_sparse_tablename
-from paddle.fluid.incubate.fleet.ps.mode import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import delete_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablename
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"

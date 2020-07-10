@@ -20,12 +20,12 @@ import six
 from paddle.fluid import core
 from paddle.fluid.framework import Block
 
-from paddle.fluid.incubate.fleet.ps.ir.public import _get_optimize_ops
-from paddle.fluid.incubate.fleet.ps.ir.public import _orig_varname
-from paddle.fluid.incubate.fleet.ps.ir.public import _get_varname_parts
-from paddle.fluid.incubate.fleet.ps.ir.public import get_sparse_tablename
-from paddle.fluid.incubate.fleet.ps.ir.public import get_all_get_sparse_tablenames
-from paddle.fluid.incubate.fleet.ps.ir.public import _get_lr_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _orig_varname
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablename
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_all_get_sparse_tablenames
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
 
 LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
