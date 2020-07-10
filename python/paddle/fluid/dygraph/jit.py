@@ -766,6 +766,8 @@ def save(layer, model_path, input_spec=None, configs=None):
 @dygraph_only
 def load(model_path, configs=None):
     """
+    :api_attr: imperative
+
     Load model saved by :ref:`api_imperative_jit_save` or :ref:`api_fluid_io_save_inference_model`
     as :ref:`api_imperative_TranslatedLayer`, then performing inference or fine-tune training.
 
