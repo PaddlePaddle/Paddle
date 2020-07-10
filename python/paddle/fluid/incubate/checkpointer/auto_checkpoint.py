@@ -34,6 +34,9 @@ logger = None
 
 generator = unique_name.UniqueNameGenerator()
 
+CONST_CHECKPOINT = "checkpoint"
+CONST_MEMORYINIT = "memory_init"
+
 
 def _get_logger(log_level, name="auto_checkpoint"):
     global logger
@@ -274,10 +277,10 @@ class TrainEpochRange(SerializableBase):
         if self._cper._get_last_checkpoint_no(self._checkpoint_path) > 0:
             self._cper.load_checkpoint(self._checkpoint_path, [self],
                                        self._checker.trainer_id)
-            self._restored_from = "checkpoint"
+            self._restored_from = CONST_CHECKPOINT
             logger.info("load tain_epoch_range checkpoint:{}".format(self))
         else:
-            self._restored_from = "memory_init"
+            self._restored_from = CONST_MEMORYINIT
 
     def _to_dict(self):
         d = {
@@ -425,23 +428,27 @@ def _get_checker():
 
 def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
     if not _get_checker().valid():
+        logger.warning(
+            "auto checkpoint will take effect  automaticly on PaddleCloud")
+
         if max_epoch_num < 0:
             max_epoch_num = sys.maxint
         for i in range(0, max_epoch_num):
             yield i
-        logger.warning("auto checkpoint will take effect on PaddleCloud")
+
         return
 
     global g_train_epoch_range
-    g_train_epoch_range = TrainEpochRange(
-        max_epoch_num,
-        g_checker.generate_program_name(),
-        save_checkpoint_inter=save_checkpoint_inter)
+    try:
+        g_train_epoch_range = TrainEpochRange(
+            max_epoch_num,
+            g_checker.generate_program_name(),
+            save_checkpoint_inter=save_checkpoint_inter)
 
-    for i in g_train_epoch_range.next():
-        yield i
-
-    g_train_epoch_range = None
+        for i in g_train_epoch_range.next():
+            yield i
+    except GeneratorExit:
+        g_train_epoch_range = None
 
 
 def _get_hash(key):
@@ -471,7 +478,7 @@ def _auto_checkpoint(exe, program):
     key = _get_running_key(exe._auto_checkpoint_name,
                            program._auto_checkpoint_name)
 
-    if g_train_epoch_range.is_restored == "checkpoint":
+    if g_train_epoch_range.is_restored == CONST_CHECKPOINT:
         assert key in exe_status, "when restored key:{} must be in train_epoch_range:{}".format(
             key, g_train_epoch_range)
 
@@ -485,7 +492,7 @@ def _auto_checkpoint(exe, program):
                 g_checker.get_exe_checkpoint_path(key), [m],
                 trainer_id=g_checker.trainer_id,
                 checkpoint_no=t._checkpoint_no)
-            t._restored_from = "checkpoint"
+            t._restored_from = CONST_CHECKPOINT
             logger.info("load executor checkpoint {}".format(t))
         t._exe = exe
         t._program = program
@@ -497,7 +504,7 @@ def _auto_checkpoint(exe, program):
         t._epoch_no = g_train_epoch_range.get()
         t._hash_key = key
         t._key = key
-        t._restored_from = "memory_init"
+        t._restored_from = CONST_MEMORYINIT
         t._exe = exe
         t._program = program
         t._exe_name = exe._auto_checkpoint_name
