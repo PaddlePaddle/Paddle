@@ -260,7 +260,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   while (true) {
     GetProcessor* s = new GetProcessor(ch);
     VarHandlePtr h(new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
-    s->Prepare(h, time_out);
+    s->Prepare(h, kPrefetchTimeout);
 
     framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope,
                         p_ctx, s, method, h, table_name_val, this] {
@@ -306,19 +306,52 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
 
 VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
                                                int64_t time_out) {
-  platform::CPUDeviceContext ctx;
-  auto* scope = new framework::Scope();
-  auto h = AsyncDistributeNotify(ep, ctx, *scope, BATCH_BARRIER_MESSAGE);
-  delete scope;
+  const auto ch = GetChannel(ep);
+
+  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+  const std::string method = kBatchBarrierRPC;
+  VarHandlePtr h(
+      new VarHandle(ep, method, BATCH_BARRIER_MESSAGE, nullptr, nullptr));
+  s->Prepare(h, time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(BATCH_BARRIER_MESSAGE);
+
+  platform::RecordRPCEvent record_event(method);
+
+  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+
+  if (UNLIKELY(platform::IsProfileEnabled())) {
+    h->Wait();
+  }
+
   return h;
 }
 
 VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
                                                int64_t time_out) {
-  platform::CPUDeviceContext ctx;
-  auto* scope = new framework::Scope();
-  auto h = AsyncDistributeNotify(ep, ctx, *scope, FETCH_BARRIER_MESSAGE);
-  delete scope;
+  const auto ch = GetChannel(ep);
+  FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
+  const std::string method = kFetchBarrierRPC;
+  VarHandlePtr h(
+      new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
+  s->Prepare(h, time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(FETCH_BARRIER_MESSAGE);
+
+  platform::RecordRPCEvent record_event(method);
+
+  auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+
+  if (UNLIKELY(platform::IsProfileEnabled())) {
+    h->Wait();
+  }
+
   return h;
 }
 
@@ -351,10 +384,27 @@ VarHandlePtr GRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
 
 VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
                                            int64_t time_out) {
-  platform::CPUDeviceContext ctx;
-  auto* scope = new framework::Scope();
-  auto h = AsyncDistributeNotify(ep, ctx, *scope, COMPLETE_MESSAGE);
-  delete scope;
+  const auto ch = GetChannel(ep);
+
+  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+  const std::string method = kSendCompleteRPC;
+  VarHandlePtr h(new VarHandle(ep, method, COMPLETE_MESSAGE, nullptr, nullptr));
+  s->Prepare(h, time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_trainer_id(trainer_id_);
+  req.set_varname(COMPLETE_MESSAGE);
+
+  platform::RecordRPCEvent record_event(method);
+
+  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+
+  if (UNLIKELY(platform::IsProfileEnabled())) {
+    h->Wait();
+  }
+
   return h;
 }
 
@@ -404,21 +454,10 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   s->Prepare(h, time_out);
 
   framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
-    ::grpc::ByteBuffer buf;
+    auto* var = p_scope->FindVar(var_name_val);
 
-    if (var_name_val == BATCH_BARRIER_MESSAGE ||
-        var_name_val == FETCH_BARRIER_MESSAGE ||
-        var_name_val == COMPLETE_MESSAGE) {
-      // prepare input
-      sendrecv::VariableMessage req;
-      req.set_varname(var_name_val);
-      req.set_out_varname(var_name_val);
-      req.set_trainer_id(trainer_id_);
-      RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
-    } else {
-      auto* var = p_scope->FindVar(var_name_val);
-      SerializeToByteBuffer(var_name_val, var, *p_ctx, &buf, "", trainer_id_);
-    }
+    ::grpc::ByteBuffer req;
+    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
 
     VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
@@ -428,7 +467,7 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
     platform::RecordRPCEvent record_event(method);
 
     auto call = s->stub_g_.PrepareUnaryCall(
-        s->context_.get(), "/sendrecv.SendRecvService/DistributeNotify", buf,
+        s->context_.get(), "/sendrecv.SendRecvService/DistributeNotify", req,
         &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
@@ -448,6 +487,18 @@ bool GRPCClient::Wait() {
   return ok_;
 }
 
+inline bool ShouldRetry(const std::string& method, int error_code) {
+  if (method == kPrefetchRPC) {
+    return true;
+  }
+
+  if (error_code == grpc::StatusCode::DEADLINE_EXCEEDED) {
+    return true;
+  }
+
+  return false;
+}
+
 void GRPCClient::Proceed() {
   void* tag = nullptr;
   bool ok = false;
@@ -461,19 +512,9 @@ void GRPCClient::Proceed() {
     if (c->status_.ok()) {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
-    } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      PADDLE_THROW(platform::errors::External(
-          "%s meets grpc error, error_code is %d, error message is %s, error "
-          "details is %s.",
-          c->GetVarHandlePtr()->String(), c->status_.error_code(),
-          c->status_.error_message(), c->status_.error_details()));
-      {
-        std::lock_guard<std::mutex> lk(sync_mutex_);
-        ok_ = false;
-      }
-      c->Finish(false);
-    } else if (c->status_.error_code() == grpc::StatusCode::UNAVAILABLE) {
-      VLOG(3) << c->GetVarHandlePtr()->String()
+    } else if (ShouldRetry(c->GetVarHandlePtr()->method(),
+                           c->status_.error_code())) {
+      VLOG(0) << c->GetVarHandlePtr()->String()
               << " meets grpc error, error_code:" << c->status_.error_code()
               << " error_message:" << c->status_.error_message()
               << " error_details:" << c->status_.error_details()

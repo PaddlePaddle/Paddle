@@ -936,6 +936,7 @@ class TestDistBase(unittest.TestCase):
                          check_error_log=False,
                          need_envs={},
                          log_name=""):
+
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         local_losses \
@@ -975,6 +976,7 @@ class TestDistBase(unittest.TestCase):
                                      check_error_log=False,
                                      need_envs={},
                                      log_name=""):
+
         # need open p2p or shm otherwise multi cards mode will hang
         need_envs.update({"NCCL_P2P_DISABLE": "0", "NCCL_SHM_DISABLE": "0"})
 

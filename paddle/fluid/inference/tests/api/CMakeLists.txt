@@ -20,7 +20,7 @@ function(download_int8_data install_dir data_file)
     endif()
 endfunction()
 
-function(download_qat_data install_dir data_file)
+function(download_quant_data install_dir data_file)
     if (NOT EXISTS ${install_dir}/${data_file})
 	    inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/int8/QAT_models ${data_file})
     endif()
@@ -85,7 +85,7 @@ function(inference_analysis_api_test_with_fake_data_run TARGET_NAME test_binary 
              --disable_mkldnn_fc=${disable_fc}) 
 endfunction()
 
-function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir int8_model_dir data_path)
+function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_model_dir int8_model_dir data_path)
     inference_analysis_test_run(${TARGET_NAME}
     COMMAND ${test_binary}
         ARGS --fp32_model=${fp32_model_dir}
@@ -249,7 +249,7 @@ if(WITH_MKLDNN)
   ## Image classification models
 
   # ImageNet small dataset
-  # May be already downloaded for INT8 QAT unit tests
+  # It may be already downloaded for Quant & INT8 unit tests
   set(IMAGENET_DATA_ARCHIVE "imagenet_val_100_tail.tar.gz")
   set(IMAGENET_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/imagenet")
   set(IMAGENET_DATA_PATH "${IMAGENET_DATA_DIR}/data.bin")
@@ -315,21 +315,21 @@ if(WITH_MKLDNN)
   download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
   inference_analysis_api_object_dection_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
 
-  ### optimized FP32 vs. QAT INT8 tests
+  ### optimized FP32 vs. Quant INT8 tests
   
-  set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/qat")
-  set(QAT_IMG_CLASS_TEST_APP "test_analyzer_qat_image_classification")
-  set(QAT_IMG_CLASS_TEST_APP_SRC "analyzer_qat_image_classification_tester.cc")
+  set(QUANT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant")
+  set(QUANT_IMG_CLASS_TEST_APP "test_analyzer_quant_image_classification")
+  set(QUANT_IMG_CLASS_TEST_APP_SRC "analyzer_quant_image_classification_tester.cc")
 
   # build test binary to be used in subsequent tests
-  inference_analysis_api_test_build(${QAT_IMG_CLASS_TEST_APP} ${QAT_IMG_CLASS_TEST_APP_SRC})
+  inference_analysis_api_test_build(${QUANT_IMG_CLASS_TEST_APP} ${QUANT_IMG_CLASS_TEST_APP_SRC})
 
-  # MobileNet FP32 vs. QAT INT8
-  # The FP32 model should already be downloaded for slim QAT unit tests
-  set(QAT2_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf")
-  set(QAT2_INT8_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf_int8")
-  download_qat_data(${QAT2_INT8_MobileNet_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
-  inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_MobileNet_MODEL_DIR}/MobileNet_qat_perf/float ${QAT2_INT8_MobileNet_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
+  # MobileNetV1 FP32 vs. Quant INT8
+  # The FP32 model should already be downloaded for slim Quant unit tests
+  set(QUANT2_MobileNetV1_MODEL_DIR "${QUANT_DATA_DIR}/MobileNetV1_quant2")
+  set(QUANT2_INT8_MobileNetV1_MODEL_DIR "${QUANT_DATA_DIR}/MobileNetV1_quant2_int8")
+  download_quant_data(${QUANT2_INT8_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
+  inference_analysis_api_quant_test_run(test_analyzer_quant_performance_benchmark ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${QUANT2_INT8_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
 
   ### Other tests
  

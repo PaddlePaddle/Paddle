@@ -172,7 +172,9 @@ class MKLDNNHandlerT {
     const std::string key_fwd_pd = key_common_ + "@forward_pd";
     fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
         dev_ctx_.GetBlob(key_fwd_pd));
-    PADDLE_ENFORCE_NOT_NULL(fwd_pd_);
+    PADDLE_ENFORCE_NOT_NULL(
+        fwd_pd_, platform::errors::Unavailable(
+                     "Get MKLDNN Forward primitive %s failed.", key_fwd_pd));
     const std::string key_pd = key_ + "@backward_pd";
     bwd_pd_ = std::static_pointer_cast<typename TBackward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
@@ -1450,8 +1452,10 @@ static void SetDstMemoryQuantized(
   T* output_data = output->mutable_data<T>(ctx.GetPlace());
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
-  PADDLE_ENFORCE_LE(dst_dims, 5,
-                    "Dst memory for quantization can not have dims > 5");
+  PADDLE_ENFORCE_LE(dst_dims, 5, platform::errors::InvalidArgument(
+                                     "Dst memory for quantization can not have "
+                                     "dims > 5. But received dst_dims is %d.",
+                                     dst_dims));
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
   auto tmp_dst_md = platform::MKLDNNMemDesc(

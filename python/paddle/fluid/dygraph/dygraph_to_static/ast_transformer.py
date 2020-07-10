@@ -21,14 +21,16 @@ from __future__ import print_function
 import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import AssertTransformer
-from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicApiTransformer
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
+from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
+from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import CastTransformer
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import LogicalTransformer
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
 from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import ReturnTransformer
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
@@ -71,6 +73,9 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Transform break/continue in loops
         BreakContinueTransformer(node_wrapper).transform()
 
+        # Transform return in functions
+        ReturnTransformer(node_wrapper).transform()
+
         # Transform logical and/or/not
         LogicalTransformer(node_wrapper).transform()
 
@@ -88,6 +93,9 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
         # Transform call recursively
         CallTransformer(node_wrapper).transform()
+
+        # Transform python type casting statement
+        CastTransformer(node_wrapper).transform()
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:

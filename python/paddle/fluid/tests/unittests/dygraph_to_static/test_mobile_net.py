@@ -407,12 +407,14 @@ def create_optimizer(args, parameter_list):
     return optimizer
 
 
-def fake_data_reader(batch_size, lable_size):
+def fake_data_reader(batch_size, label_size):
+    local_random = np.random.RandomState(SEED)
+
     def reader():
         batch_data = []
         while True:
-            img = np.random.random([3, 224, 224]).astype('float32')
-            label = np.random.randint(0, lable_size, [1]).astype('int64')
+            img = local_random.random_sample([3, 224, 224]).astype('float32')
+            label = local_random.randint(0, label_size, [1]).astype('int64')
             batch_data.append([img, label])
             if len(batch_data) == batch_size:
                 yield batch_data
@@ -517,10 +519,10 @@ class TestMobileNet(unittest.TestCase):
             np.allclose(dy_out, st_out),
             msg="dy_out: {}, st_out: {}".format(dy_out, st_out))
 
-    def test_mobileNetV1(self):
+    def test_mobileNet(self):
+        # MobileNet-V1
         self.assert_same_loss("MobileNetV1")
-
-    def test_mobileNetV2(self):
+        # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
 
 
