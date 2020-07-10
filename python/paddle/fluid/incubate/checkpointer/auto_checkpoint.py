@@ -244,7 +244,7 @@ class ExeTrainStatus(SerializableBase):
 
 
 class TrainEpochRange(SerializableBase):
-    def __init__(self, max_epoch_num, name, save_checkpoint_inter=300):
+    def __init__(self, max_epoch_num, name, save_checkpoint_inter=15 * 60):
         self._max_epoch_num = max_epoch_num
         self._epoch_no = -1  # current epoch_no
         self._last_checkpoint_time = None
