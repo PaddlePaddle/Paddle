@@ -24,6 +24,7 @@ from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 import paddle.fluid.incubate.checkpointer.auto_checkpoint as acp
 from paddle.fluid.incubate.checkpointer.checkpointer import PaddleModel
+from paddle.fluid.framework import program_guard
 
 import numpy as np
 from paddle.io import Dataset, BatchSampler, DataLoader
@@ -38,11 +39,6 @@ USE_GPU = False  # whether use GPU to run model
 places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
 
 logger = None
-
-g_exe = fluid.Executor(places[0])
-g_main = fluid.default_main_program()
-g_startup = fluid.default_startup_program()
-g_compiled = None
 
 
 # define a random dataset
@@ -83,15 +79,16 @@ class AutoCheckpointTest(unittest.TestCase):
         os.environ.clear()
         os.environ.update(self._old_environ)
 
-    def _init_env(self):
+    def _init_env(self, exe, main_prog, startup_prog):
         def simple_net(image, label):
-            fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
-            cross_entropy = fluid.layers.softmax_with_cross_entropy(image,
-                                                                    label)
-            loss = fluid.layers.reduce_mean(cross_entropy)
-            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-            sgd.minimize(loss)
-            return sgd, loss
+            with fluid.program_guard(main_prog, startup_prog):
+                fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
+                cross_entropy = fluid.layers.softmax_with_cross_entropy(image,
+                                                                        label)
+                loss = fluid.layers.reduce_mean(cross_entropy)
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd.minimize(loss)
+                return sgd, loss
 
         image = fluid.data(
             name='image', shape=[None, IMAGE_SIZE], dtype='float32')
@@ -99,9 +96,9 @@ class AutoCheckpointTest(unittest.TestCase):
 
         sgd, loss = simple_net(image, label)
 
-        g_exe.run(g_startup)
+        exe.run(startup_prog)
 
-        g_compiled = fluid.CompiledProgram(g_main).with_data_parallel(
+        compiled = fluid.CompiledProgram(main_prog).with_data_parallel(
             loss_name=loss.name)
 
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
@@ -115,32 +112,48 @@ class AutoCheckpointTest(unittest.TestCase):
             drop_last=True,
             num_workers=2)
 
-        return loader, sgd, loss, image, label
+        return compiled, loader, sgd, loss, image, label
 
     def _run_save_model(self):
+        exe, main_prog, startup_prog = self._generate()
+
         save_dir = "./run_save_model"
         fs = LocalFS()
 
         fs.delete(save_dir)
         print("begin _run_save_model")
 
-        data_loader, optimizer, loss, image, label = self._init_env()
-        m1 = PaddleModel(g_exe, g_compiled)
+        compiled, data_loader, optimizer, loss, image, label = self._init_env(
+            exe, main_prog, startup_prog)
+        for i in range(3):
+            for data in data_loader():
+                fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
+        vars = list(
+            filter(fluid.io.is_persistable, compiled._program.list_vars()))
+        for var in vars:
+            print("var:", var.name)
+
+        m1 = PaddleModel(exe, compiled)
         m1.serialize(save_dir)
 
-        m2 = PaddleModel(g_exe, g_compiled)
+        m2 = PaddleModel(exe, compiled)
         m2.deserialize(save_dir)
 
         print("end _run_save_model")
-        fs.delete(save_dir)
+        #fs.delete(save_dir)
 
     # break at epoch 0: not save epoch
+
     def _run_save_0(self):
         fs = LocalFS()
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        data_loader, optimizer, loss, image, label = self._init_env()
+        exe, main_prog, startup_prog = self._generate()
+
+        compiled, data_loader, optimizer, loss, image, label = \
+            self._init_env(exe, main_prog, startup_prog)
 
         o = None
         i = 0
@@ -151,40 +164,50 @@ class AutoCheckpointTest(unittest.TestCase):
             print("name:", o.name, "epoch_no:", i)
 
             for data in data_loader():
-                fetch = g_exe.run(g_compiled, feed=data, fetch_list=[loss])
+                fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
+            print("run_save_0 begin", i)
+            vars = list(
+                filter(fluid.io.is_persistable, compiled._program.list_vars()))
+            for var in vars:
+                print("var:", var.name)
+            print("run_save_0 end", i)
 
             fluid.io.save_inference_model(
                 save_dir, [image.name, label.name], [loss],
-                g_exe,
-                main_program=g_main)
+                exe,
+                main_program=main_prog)
             assert len(o._exe_status) == 1, "there must be only 1 exestatus"
 
         o = acp._get_train_epoch_range()
         assert o == None, "now train epoch must not exits now"
         self.assertEqual(i, 2)
         fluid.io.save_inference_model(save_dir, [image.name, label.name],
-                                      [loss], g_exe)
+                                      [loss], exe)
 
         fs.delete(save_dir)
         return name
 
-    def _run_load_0(self, load_name):
+    def _run_load_0(self):
+        exe, main_prog, startup_prog = self._generate()
+
         fs = LocalFS()
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        data_loader, optimizer, loss, image, label = self._init_env()
+        compiled, data_loader, optimizer, loss, image, label = self._init_env()
 
         o = None
         i = 0
         for i in acp._run_only_for_inter(load_name, 3, 0):
             o = acp._get_train_epoch_range()
             for data in data_loader():
-                fetch = g_exe.run(g_compiled, feed=data, fetch_list=[loss])
+                fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
             print("name:", o.name, "epoch_no:", i, "exe_status num:",
                   len(o._exe_status))
             fluid.io.save_inference_model(save_dir, [image.name, label.name],
-                                          [loss], g_exe)
+                                          [loss], exe)
             self.assertEqual(len(o._exe_status), 1)
 
         o = acp._get_train_epoch_range()
@@ -192,7 +215,7 @@ class AutoCheckpointTest(unittest.TestCase):
         self.assertEqual(i, 2)
         fluid.io.save_inference_model(
             save_dir, [image.name, label.name], [loss],
-            g_exe,
+            exe,
             main_program=g_main)
 
         fs.delete(save_dir)
@@ -213,22 +236,22 @@ class AutoCheckpointTest(unittest.TestCase):
 
             name1 = acp._get_train_epoch_range().name
             for data in data_loader():
-                fetch = g_exe.run(main_program, feed=data, fetch_list=[loss])
+                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
                 print("fetch:", loss)
 
             for data in data_loader():
-                fetch = g_exe.run(main_program, feed=data, fetch_list=[loss])
+                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
                 print("fetch:", loss)
 
     def _run_save_multi_loop(self, exe, data_loader, main_program):
         for i in acp.train_eoch_range(10):
             name1 = acp._get_train_epoch_range().name
             for data in data_loader():
-                fetch = g_exe.run(main_program, feed=data, fetch_list=[loss])
+                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
                 print("fetch:", loss)
 
             for data in data_loader():
-                fetch = g_exe.run(main_program, feed=data, fetch_list=[loss])
+                fetch = exe.run(main_program, feed=data, fetch_list=[loss])
                 print("fetch:", loss)
 
         assert acp._get_train_epoch_range() == None
@@ -239,9 +262,7 @@ class AutoCheckpointTest(unittest.TestCase):
             name2 = acp._get_train_epoch_range().name
             a.append(i)
             for data in data_loader():
-                fetch = g_exe.run(main_program,
-                                  feed=data,
-                                  fetch_list=[loss.name])
+                fetch = exe.run(main_program, feed=data, fetch_list=[loss.name])
                 print("fetch:", loss)
         assert acp._get_train_epoch_range() == None
 
@@ -256,15 +277,28 @@ class AutoCheckpointTest(unittest.TestCase):
     def _run_load(self, exe, main_program, name1, name2):
         pass
 
+    def _generate(self):
+        main_prog = fluid.default_main_program()
+        startup_prog = fluid.default_startup_program()
+        exe = fluid.Executor(places[0])
+
+        return exe, main_prog, startup_prog
+
     def test_without_fleet(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
         fs.delete(checker.hdfs_checkpoint_path)
 
+        acp._reset_generator()
         self._run_save_model()
 
-        name = self._run_save_0()
+        acp._reset_generator()
+        self._run_save_0()
+
+        acp._reset_generator()
         self._run_load_0(name)
+
+        acp._reset_generator()
         self._run_load_0(name)
 
         fs.delete(checker.hdfs_checkpoint_path)

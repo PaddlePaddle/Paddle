@@ -19,6 +19,7 @@ import json
 import os
 import six
 import time
+import collections
 from threading import Thread, current_thread
 from contextlib import contextmanager
 
@@ -53,6 +54,30 @@ def _get_logger(log_level, name="auto_checkpoint"):
 def _thread_checker():
     assert current_thread().name == "MainThread", \
         "auto checkpoint must run under main thread"
+
+
+class UniqueNameGenerator(unique_name.UniqueNameGenerator):
+    """
+    Generate unique name with prefix.
+
+    Args:
+        prefix(str): The generated name prefix. All generated name will be
+                     started with this prefix.
+    """
+
+    def __init__(self, prefix=None):
+        super(UniqueNameGenerator, self).__init__(prefix)
+
+    def reset(self):
+        for k, v in six.iteritems(self.ids):
+            self.ids[k] = 0
+
+
+g_generator = UniqueNameGenerator()
+
+
+def _reset_generator():
+    g_generator.reset()
 
 
 class AutoCheckpointChecker(object):
@@ -158,15 +183,15 @@ class AutoCheckpointChecker(object):
 
     def generate_range_name(self):
         assert self.valid()
-        return unique_name.generate("_range_")
+        return g_generator("_range_")
 
     def generate_program_name(self):
         assert self.valid()
-        return unique_name.generate("_program_")
+        return g_generator("_program_")
 
     def generate_executor_name(self):
         assert self.valid()
-        return unique_name.generate("_executor_")
+        return g_generator("_executor_")
 
 
 class ExeTrainStatus(SerializableBase):
@@ -395,7 +420,6 @@ def _get_train_epoch_range():
 
 
 def _can_auto_checkpoint(program):
-    print("program auto checkpoint:", program._auto_checkpoint)
     if isinstance(program, compiler.CompiledProgram):
         if not program._auto_checkpoint or program._program._is_distributed:
             return False
@@ -465,6 +489,7 @@ def _auto_checkpoint(exe, program):
     if not _can_auto_checkpoint(program):
         return
 
+    print("program auto checkpoint:", program._auto_checkpoint)
     _initial_names(exe, program)
 
     exe_status = g_train_epoch_range._exe_status
