@@ -167,10 +167,8 @@ void MultiDevSSAGraphBuilderBase::Init() const {
       places_.size(), local_scopes_.size(),
       platform::errors::InvalidArgument(
           "Places size and LocalScopes not equal "
-          "Places size = %d, LocalScopes size = %d "
-          "If use multi devices， Places size must equas to LocalScopes size "
-          "For this fault, you can consult the Paddle technical personnel for "
-          "answer ",
+          "Places size(%d), LocalScopes size(%d) "
+          "If use multi devices， Places size must equas to LocalScopes size.",
           places_.size(), local_scopes_.size()));
 }
 
@@ -510,10 +508,8 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
     auto &vars = result->Get<details::GraphVars>(details::kGraphVars)[i][og];
     PADDLE_ENFORCE_EQ(vars.empty(), false,
                       platform::errors::InvalidArgument(
-                          "Can not find Var(%s) in Place[%s] "
-                          "Paddle Can not add AllReduce OP for Var(%s) "
-                          "For this fault, you can consult the Paddle "
-                          "technical personnel for answer ",
+                          "Can not find Var(%s) in Place[%d] "
+                          "Paddle Can not add AllReduce OP for Var(%s).",
                           og, i, og));
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad);
@@ -582,10 +578,8 @@ details::VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(
     auto &vars = result->Get<details::GraphVars>(details::kGraphVars)[i][og];
     PADDLE_ENFORCE_EQ(vars.empty(), false,
                       platform::errors::InvalidArgument(
-                          "Can not find Var(%s) in Place[%s] "
-                          "Paddle Can not add Reduce OP for Var(%s) "
-                          "For this fault, you can consult the Paddle "
-                          "technical personnel for answer ",
+                          "Can not find Var(%s) in Place[%d] "
+                          "Paddle Can not add Reduce OP for Var(%s).",
                           og, i, og));
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad);
@@ -613,9 +607,7 @@ bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
   PADDLE_ENFORCE_NE(all_vars_.count(og), 0,
                     platform::errors::InvalidArgument(
                         "Can not find Var(%s) in VarDescs "
-                        "Paddle Can not add Collective OP for Var(%s) "
-                        "For this fault, you can consult the Paddle technical "
-                        "personnel for answer ",
+                        "Paddle Can not add Collective OP for Var(%s).",
                         og, og));
   return all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS;
 }
@@ -670,10 +662,8 @@ int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
   PADDLE_ENFORCE_EQ(
       param_grad.size(), 2U,
       platform::errors::InvalidArgument(
-          "In Node %s, The size of attribute %s must be 2, include Parameter "
-          "and Parameter@Grad ",
-          "For this fault, you can consult the Paddle technical personnel for "
-          "answer ",
+          "In Node %s, the size of attribute %s must be 2, include Parameter "
+          "and Parameter@Grad.",
           node->Name(), OpProtoAndCheckerMaker::OpRoleVarAttrName()));
   int dev_id = GetVarDeviceID(param_grad[1]);
   PADDLE_ENFORCE_NE(dev_id, -1, platform::errors::NotFound(
@@ -692,18 +682,15 @@ size_t BalanceVarSSAGraphBuilder::GetAppropriateDeviceID(
   for (auto var_name : var_names) {
     if (all_vars_.find(var_name) == all_vars_.end()) continue;
     auto var_desc = all_vars_.at(var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var_desc,
-        platform::errors::NotFound("Can not find Var(%s) in Var Desc"
-                                   "For this fault, you can consult the Paddle "
-                                   "technical personnel for answer ",
-                                   var_name));
+    PADDLE_ENFORCE_NOT_NULL(var_desc,
+                            platform::errors::NotFound(
+                                "Can not find Var(%s) in Var Desc.", var_name));
     auto dim = framework::make_ddim(var_desc->GetShape());
     int64_t numel = framework::product(dim);
     PADDLE_ENFORCE_GT(numel, 0,
                       platform::errors::InvalidArgument(
                           "The numel of Var(%s) must greater than 0"
-                          "Please check your code，about Var(%s) Shape",
+                          "Please check your code，about Var(%s) Shape.",
                           var_name, var_name));
     numel_sum += numel;
   }
@@ -787,9 +774,7 @@ int ReduceSSAGraphBuilder::GetOpDeviceID(
       param_grad.size(), 2U,
       platform::errors::InvalidArgument(
           "In Node %s, The size of attribute %s must be 2, include Parameter "
-          "and Parameter@Grad ",
-          "For this fault, you can consult the Paddle technical personnel for "
-          "answer ",
+          "and Parameter@Grad.",
           node->Name(), OpProtoAndCheckerMaker::OpRoleVarAttrName()));
   int dev_id = GetVarDeviceID(param_grad[1]);
 
@@ -852,14 +837,12 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
     }
   }
 
-  PADDLE_ENFORCE_EQ(
-      sorted_ops.size(), topo_ops.size(),
-      platform::errors::Fatal("sorted_ops calc error!"
-                              "The result for sorted_ops size(%d) must be "
-                              "equal to topo_ops size(%d)"
-                              "For this fault, you can consult the Paddle "
-                              "technical personnel for answer ",
-                              sorted_ops.size(), topo_ops.size()));
+  PADDLE_ENFORCE_EQ(sorted_ops.size(), topo_ops.size(),
+                    platform::errors::InvalidArgument(
+                        "Sorted ops calc error!"
+                        "The result for sorted ops size(%d) must be "
+                        "equal to topo ops size(%d).",
+                        sorted_ops.size(), topo_ops.size()));
 
   ResetState();
   return sorted_ops;
@@ -881,13 +864,10 @@ bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
   bool insert_op = false;
   if (OpHaveRole(*node, OpRole::kRPC)) {
     int op_dev_id = CreateRPCOp(result, node);
-    PADDLE_ENFORCE_NE(
-        op_dev_id, -1,
-        platform::errors::Fatal(
-            "Can not schedule the RPC operator to the right place. NodeName:%s"
-            "For this fault, you can consult the Paddle technical personnel "
-            "for answer ",
-            node->Name()));
+    PADDLE_ENFORCE_NE(op_dev_id, -1, platform::errors::InvalidArgument(
+                                         "Can not schedule the RPC operator to "
+                                         "the right place. NodeName:%s.",
+                                         node->Name()));
     if (node->Op()->Type() == "recv") {
       auto recv_vars_attr =
           BOOST_GET_CONST(std::vector<std::string>,
@@ -896,10 +876,8 @@ bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
       PADDLE_ENFORCE_EQ(
           recv_vars_attr.size(), 2UL,
           platform::errors::InvalidArgument(
-              "In Node %s, The size of attribute %s must be 2, include "
-              "Parameter and Parameter@Grad ",
-              "For this fault, you can consult the Paddle technical personnel "
-              "for answer ",
+              "In Node %s, the size of attribute %s must be 2, include "
+              "Parameter and Parameter@Grad.",
               node->Name(),
               OpProtoAndCheckerMaker::OpRoleVarAttrName()));  // [parameter,
                                                               // gradient]
@@ -972,10 +950,8 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       PADDLE_ENFORCE_EQ(
           send_param_grad.size(), 2U,
           platform::errors::InvalidArgument(
-              "In Node %s, The size of attribute %s must be 2, include "
-              "Parameter and Parameter@Grad ",
-              "For this fault, you can consult the Paddle technical personnel "
-              "for answer ",
+              "In Node %s, the size of attribute %s must be 2, include "
+              "Parameter and Parameter@Grad.",
               node->Name(), OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       op_dev_id = GetAppropriateDeviceID({send_param_grad[1]});
       VLOG(10) << "send grad " << input_var_names[0] << " origin "
@@ -1011,8 +987,8 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
 
   PADDLE_ENFORCE_NE(
       op_dev_id, -1,
-      platform::errors::Fatal("can not find the right place for rpc op: %s",
-                              node->Op()->Type()));
+      platform::errors::NotFound("Can not find the right place for rpc op: %s.",
+                                 node->Op()->Type()));
   // Create fetch_barrier op handle to enable output on all devices.
   // **NOTE** fetch_barrier should output variables list same as recv op does.
   if (node->Op()->Type() == "fetch_barrier") {
@@ -1041,8 +1017,8 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       if (node->Op()->Type() == "fetch_barrier") {
         outvar_dev_id = GetVarDeviceID(output->Name());
         PADDLE_ENFORCE_NE(outvar_dev_id, -1,
-                          platform::errors::Fatal(
-                              "can not find the right place for the var: %s",
+                          platform::errors::NotFound(
+                              "Can not find the right place for the var: %s.",
                               output->Name()));
       }
       p = places_[outvar_dev_id];
@@ -1094,14 +1070,14 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   } else {
     LOG(ERROR) << "got unexpected dist op: " << node->Op()->Type();
     PADDLE_THROW(
-        platform::errors::Unimplemented("the distribute training related op "
+        platform::errors::Unimplemented("The distribute training related op "
                                         "should be in [split_byref, concat]."));
   }
 
-  PADDLE_ENFORCE_NE(
-      op_dev_id, -1,
-      platform::errors::Fatal("can not find right place for distributed op: %s",
-                              node->Op()->Type()));
+  PADDLE_ENFORCE_NE(op_dev_id, -1,
+                    platform::errors::NotFound(
+                        "Can not find right place for distributed op: %s.",
+                        node->Op()->Type()));
 
   CreateComputationalOp(result, node, op_dev_id);
   return op_dev_id;

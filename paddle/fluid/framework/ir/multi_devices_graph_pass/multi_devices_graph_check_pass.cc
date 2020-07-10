@@ -27,7 +27,7 @@ class SSAGraghBuilderWithChecker : public ir::Pass {
     PADDLE_ENFORCE_EQ(
         IsValidGraph(graph), true,
         platform::errors::InvalidArgument(
-            "In SSAGraghBuilderWithChecker, invalid Graph input"));
+            "In SSAGraghBuilderWithChecker, invalid Graph input."));
   }
 
   bool IsValidGraph(const ir::Graph *graph) const {

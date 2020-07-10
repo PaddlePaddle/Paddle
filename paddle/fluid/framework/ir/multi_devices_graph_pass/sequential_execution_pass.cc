@@ -54,13 +54,16 @@ class SequentialExecutionPass : public ir::Pass {
       if (!node->IsOp()) continue;
       std::unordered_set<ir::Node *> preceding_ops;
       for (auto *in : node->inputs) {
-        PADDLE_ENFORCE_EQ(in->IsVar(), true,
-                          platform::errors::Fatal(
-                              "Preceding Node of Op Nodes must be Var Node"));
+        PADDLE_ENFORCE_EQ(
+            in->IsVar(), true,
+            platform::errors::InvalidArgument(
+                "Preceding Node(%s) of Op Nodes must be Var Node.",
+                in->Name()));
         if (in->inputs.empty()) continue;
-        PADDLE_ENFORCE(in->inputs.size() == 1 && in->inputs[0]->IsOp(),
-                       platform::errors::Fatal(
-                           "Preceding Op Node of Var Node must be unique"));
+        PADDLE_ENFORCE_EQ((in->inputs.size() == 1 && in->inputs[0]->IsOp()),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Preceding Op Node of Var Node must be unique."));
         preceding_ops.insert(in->inputs[0]);
         pending_ops[in->inputs[0]].insert(node);
       }
@@ -76,15 +79,16 @@ class SequentialExecutionPass : public ir::Pass {
         if (IsSameOpDesc(op_desc, node->Op())) {
           PADDLE_ENFORCE_EQ(
               found_node, nullptr,
-              platform::errors::Fatal("Found multiple op_desc in graph: %s",
-                                      op_desc->Type()));
+              platform::errors::InvalidArgument(
+                  "Found multiple op_desc in graph: %s.", op_desc->Type()));
           found_node = node;
         }
       }
 
       PADDLE_ENFORCE_NOT_NULL(
-          found_node, platform::errors::Fatal(
-                          "Cannot find op_desc in graph: %s", op_desc->Type()));
+          found_node,
+          platform::errors::NotFound("Cannot find op_desc in graph: %s.",
+                                     op_desc->Type()));
       for (auto *pending_op : pending_ops[found_node]) {
         if (--op_deps.at(pending_op) == 0) {
           ready_ops.insert(pending_op);
