@@ -9356,36 +9356,34 @@ def relu6(x, threshold=6.0, name=None):
 @templatedoc()
 def pow(x, factor=1.0, name=None):
     """
-    This is Pow activation operator.
+    This is Pow Activation Operator.
 
     :math:`out = x^{factor}`
 
     Args:
-        x(Variable): A ``Variable`` with type ``float32`` or ``float64``.
+        x(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
         factor(float32|Variable, optional): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.  The exponential factor of Pow. Default 1.0.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A ``Variable`` with type same as ``x``.
+        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle
-            import numpy as np
+            import paddle.fluid as fluid
 
-            # use dygraph
-            with paddle.imperative.guard():
-                x_data = np.array([1, 2, 3])
-                factor = 2
-                x = paddle.imperative.to_variable(x_data)
-                res = paddle.pow(x, factor)
-                print(res.numpy()) # [1 4 9]
+            x = fluid.data(name="x", shape=[32,32], dtype="float32")
 
-                factor = paddle.fill_constant(shape=[1], value=2, dtype='float32')
-                res = paddle.pow(x, factor)
-                print(res.numpy()) # [1 4 9]
+            # example 1: argument factor is float
+            y_1 = fluid.layers.pow(x, factor=2.0)
+            # y_1 is x^{2.0}
+
+            # example 2: argument factor is Variable
+            factor_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
+            y_2 = fluid.layers.pow(x, factor=factor_tensor)
+            # y_2 is x^{3.0}
     """
     check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'],
                              'pow')
@@ -12017,14 +12015,14 @@ def logical_and(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            x_data = np.array([True, False]).astype(np.bool)
-            y_data = np.array([True, True]).astype(np.bool)
             # use dygraph
-            with paddle.imperative.guard():
-                x = paddle.imperative.to_variable(x_data)
-                y = paddle.imperative.to_variable(y_data)
-                res = paddle.logical_and(x, y)
-                print(res.numpy()) # [True False]
+            paddle.enable_imperative()
+            x_data = np.array([True, True, False, False]).astype(np.bool)
+            y_data = np.array([True, False, True, False]).astype(np.bool)
+            x = paddle.imperative.to_variable(x_data)
+            y = paddle.imperative.to_variable(y_data)
+            res = paddle.logical_and(x, y)
+            print(res.numpy()) # [True False False False]
     """
 
     return _logical_op(
@@ -12060,14 +12058,14 @@ def logical_or(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            x_data = np.array([True, False]).astype(np.bool)
-            y_data = np.array([True, True]).astype(np.bool)
             # use dygraph
-            with paddle.imperative.guard():
-                x = paddle.imperative.to_variable(x_data)
-                y = paddle.imperative.to_variable(y_data)
-                res = paddle.logical_or(x, y)
-                print(res.numpy()) # [True True]
+            paddle.enable_imperative()
+            x_data = np.array([True, True, False, False]).astype(np.bool)
+            y_data = np.array([True, False, True, False]).astype(np.bool)
+            x = paddle.imperative.to_variable(x_data)
+            y = paddle.imperative.to_variable(y_data)
+            res = paddle.logical_or(x, y)
+            print(res.numpy()) # [True  True  True False]
     """
 
     return _logical_op(
@@ -12103,14 +12101,14 @@ def logical_xor(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            x_data = np.array([True, False]).astype(np.bool)
-            y_data = np.array([True, True]).astype(np.bool)
             # use dygraph
-            with paddle.imperative.guard():
-                x = paddle.imperative.to_variable(x_data)
-                y = paddle.imperative.to_variable(y_data)
-                res = paddle.logical_xor(x, y)
-                print(res.numpy()) # [False True]
+            paddle.enable_imperative()
+            x_data = np.array([True, True, False, False]).astype(np.bool)
+            y_data = np.array([True, False, True, False]).astype(np.bool)
+            x = paddle.imperative.to_variable(x_data)
+            y = paddle.imperative.to_variable(y_data)
+            res = paddle.logical_xor(x, y)
+            print(res.numpy()) # [False  True  True False]
     """
 
     return _logical_op(
@@ -12141,16 +12139,15 @@ def logical_not(x, out=None, name=None):
 
     Examples:
         .. code-block:: python
-
             import paddle
             import numpy as np
 
-            x_data = np.array([True, False]).astype(np.bool)
             # use dygraph
-            with paddle.imperative.guard():
-                x = paddle.imperative.to_variable(x_data)
-                res = paddle.logical_not(x)
-                print(res.numpy()) # [False True]
+            paddle.enable_imperative()
+            x_data = np.array([True, False, True, False]).astype(np.bool)
+            x = paddle.imperative.to_variable(y_data)
+            res = paddle.logical_not(x)
+            print(res.numpy()) # [False  True False  True]
     """
 
     return _logical_op(
