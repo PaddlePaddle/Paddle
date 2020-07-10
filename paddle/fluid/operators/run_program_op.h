@@ -21,8 +21,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include <boost/algorithm/string/predicate.hpp>
-
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -169,7 +167,9 @@ static void AppendSafeEagerDeletionSkipVars(
   std::unordered_set<std::string> grad_op_output;
   std::unordered_set<std::string> grad_op_input;
   for (const framework::OpDesc *op : all_ops) {
-    if (!boost::algorithm::ends_with(op->Type(), "_grad")) {
+    int op_role = BOOST_GET_CONST(
+        int, op->GetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
+    if ((op_role & static_cast<int>(framework::OpRole::kBackward)) == 0) {
       continue;
     }
 
