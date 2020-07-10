@@ -526,7 +526,7 @@ def full(shape, fill_value, dtype=None, name=None):
           data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
-          shape = paddle.fill_constant([1, 2], "int32", 2) # shape=[2,2]
+          shape = paddle.fill_constant([2], "int32", 2) # shape=[2,2]
           data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
           
           # attr value is an Variable Tensor.
