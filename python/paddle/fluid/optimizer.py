@@ -60,7 +60,7 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def __init__(self,
                  learning_rate,
                  parameter_list=None,
@@ -863,7 +863,7 @@ class Optimizer(object):
             if p.trainable:
                 p.clear_gradient()
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -981,7 +981,7 @@ class SGDOptimizer(Optimizer):
             name=name)
         self.type = "sgd"
 
-    @no_grad
+    @no_grad()
     def _append_optimize_op(self, block, param_and_grad):
         lr = self._create_param_lr(param_and_grad)
         if framework.in_dygraph_mode():
@@ -1518,7 +1518,7 @@ class DGCMomentumOptimizer(Optimizer):
         dgc_op._set_attr(op_maker.kOpRoleVarAttrName(),
                          [param_var.name, grad_var.name])
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def apply_gradients(self, params_grads):
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
         params_grads, table_param_and_grad, table_optimize_op = \
