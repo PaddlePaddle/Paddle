@@ -23,6 +23,7 @@ import sys
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 import paddle.fluid.incubate.checkpointer.auto_checkpoint as acp
+from paddle.fluid.incubate.checkpointer.checkpointer import PaddleModel
 
 import numpy as np
 from paddle.io import Dataset, BatchSampler, DataLoader
@@ -116,6 +117,23 @@ class AutoCheckpointTest(unittest.TestCase):
 
         return loader, sgd, loss, image, label
 
+    def _run_save_model(self):
+        save_dir = "./run_save_model"
+        fs = LocalFS()
+
+        fs.delete(save_dir)
+        print("begin _run_save_model")
+
+        data_loader, optimizer, loss, image, label = self._init_env()
+        m1 = PaddleModel(g_exe, g_compiled)
+        m1.serialize(save_dir)
+
+        m2 = PaddleModel(g_exe, g_compiled)
+        m2.deserialize(save_dir)
+
+        print("end _run_save_model")
+        fs.delete(save_dir)
+
     # break at epoch 0: not save epoch
     def _run_save_0(self):
         fs = LocalFS()
@@ -134,6 +152,7 @@ class AutoCheckpointTest(unittest.TestCase):
 
             for data in data_loader():
                 fetch = g_exe.run(g_compiled, feed=data, fetch_list=[loss])
+
             fluid.io.save_inference_model(
                 save_dir, [image.name, label.name], [loss],
                 g_exe,
@@ -241,6 +260,8 @@ class AutoCheckpointTest(unittest.TestCase):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
         fs.delete(checker.hdfs_checkpoint_path)
+
+        self._run_save_model()
 
         name = self._run_save_0()
         self._run_load_0(name)

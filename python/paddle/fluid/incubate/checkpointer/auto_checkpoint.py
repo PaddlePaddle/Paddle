@@ -346,7 +346,7 @@ class TrainEpochRange(SerializableBase):
         self._last_checkpoint_time = time.time()
         start = self._epoch_no + 1
         logger.info("started epoch_no:{} max_epoch_num:{}".format(
-            self._epoch_no, self._max_epoch_num))
+            start, self._max_epoch_num))
         for i in range(start, self._max_epoch_num):
             self._epoch_no = i
             yield i
