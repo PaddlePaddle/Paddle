@@ -24,10 +24,6 @@ https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op_gpu.c
 namespace paddle {
 namespace operators {
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename Dtype>
 __device__ Dtype cuda_sigmoid(const Dtype x) {
   return Dtype(1) / (Dtype(1) + exp(-x));
@@ -42,7 +38,7 @@ template <typename T>
 __global__ void LSTMUnitKernel(const int nthreads, const int dim,
                                const T* C_prev, const T* X, T* C, T* H,
                                const T forget_bias) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
     const int n = index / dim;
     const int d = index % dim;
 
@@ -65,7 +61,7 @@ __global__ void LSTMUnitGradientKernel(const int nthreads, const int dim,
                                        const T* C_diff, const T* H_diff,
                                        T* C_prev_diff, T* X_diff,
                                        const T forget_bias) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
     const int n = index / dim;
     const int d = index % dim;
     const T* X_offset = X + 4 * dim * n;
