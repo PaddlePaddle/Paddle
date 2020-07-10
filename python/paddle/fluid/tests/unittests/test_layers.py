@@ -3389,7 +3389,7 @@ class TestBook(LayerTest):
                 append_batch_size=False,
                 shape=[4, 4, 3],
                 dtype="float32")
-            out = layers.flatten_2d(x, axis=1, name="flatten")
+            out = layers.flatten(x, axis=1, name="flatten")
             return (out)
 
     def test_linspace(self):
