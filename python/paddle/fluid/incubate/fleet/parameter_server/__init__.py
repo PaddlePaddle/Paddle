@@ -14,11 +14,19 @@
 
 from __future__ import print_function
 
-# from paddle.fluid.incubate.fleet.parameter_server.fleet_transpiler import fleet
 # from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig
 # from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import StrategyFactory
 # from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
-#
-# __all__ = [
-#     'TrainerRuntimeConfig', 'StrategyFactory', 'fleet', 'DistributedMode'
-# ]
+
+__all__ = ['fleet', 'StrategyFactory', 'fleet', 'DistributedMode']
+
+
+class PsFleet(object):
+    def init(self, role_maker=None):
+        from paddle.fluid.incubate.fleet.parameter_server.transpiler import fleet as ins
+        global fleet
+        fleet = ins
+        fleet.init(role_maker)
+
+
+fleet = PsFleet()
