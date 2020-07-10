@@ -33,7 +33,7 @@ def sum(input, scope=None):
           input = fluid.layers.cast(some_input, dtype='float32')
           cnt = fluid.layers.reduce_sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp = fluid.layers.elementwise_add(, global_cnt)
+          tmp = fluid.layers.elementwise_add(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)
           
           # in train.py, after train or infer
@@ -67,7 +67,7 @@ def max(input, scope=None):
           input = fluid.layers.cast(some_input, dtype='float32')
           cnt = fluid.layers.reduce_sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp = fluid.layers.elementwise_max(, global_cnt)
+          tmp = fluid.layers.elementwise_max(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
@@ -101,7 +101,7 @@ def min(input, scope=None):
           input = fluid.layers.cast(some_input, dtype='float32')
           cnt = fluid.layers.reduce_sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp = fluid.layers.elementwise_min(, global_cnt)
+          tmp = fluid.layers.elementwise_min(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
@@ -293,7 +293,44 @@ def mse(sqrerr, total_ins_num, scope=None):
     return mse_value
 
 def acc(correct, total, scope=None):
-    pass
-    
+    """
+    distributed accuracy in fleet
+
+    Args:
+        correct(Variable): correct Variable
+        total(Variable): total Variable
+
+    Returns:
+        acc(float): accuracy value
+
+    Example:
+        .. code-block:: python
+
+          # in model.py
+          correct = fluid.layers.create_global_var(dtype='float32', shape=[1], value=0)
+          total = fluid.layers.create_global_var(dtype='float32', shape=[1], value=0)
+          acc = fluid.layers.acc(predict, label, k=1, correct=correct, total=total)
+
+          global_correct = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp1 = fluid.layers.elementwise_min(correct, global_correct)
+          fluid.layers.assign(tmp1, global_correct)
+
+          global_total = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp2 = fluid.layers.elementwise_min(total, global_total)
+          fluid.layers.assign(tmp2, global_total)
+
+          # in train.py, after train or infer
+          print("accuracy: ", paddle.fleet.acc(global_correct, global_total))
+    """
+    if scope is None:
+        scope = fluid.global_scope()
+    fleet._role_maker._barrier_worker()
+    correct_num = np.array(scope.find_var(correct.name).get_tensor())
+    total_num = np.array(scope.find_var(total.name).get_tensor())
+    global_correct_num = np.copy(correct_num) * 0
+    global_total_num = np.copy(total_num) * 0
+    fleet._role_maker._all_reduce(correct_num, global_correct_num)
+    fleet._role_maker._all_reduce(total_num, global_total_num)
+    return float(global_correct_num[0]) / float(global_total_num)
     
 
