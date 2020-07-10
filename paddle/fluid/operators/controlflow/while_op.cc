@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <set>
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -63,8 +64,21 @@ class WhileOp : public framework::OperatorBase {
 
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
-
     auto *program = block->Program();
+
+    std::set<std::string> no_copy_var_names;
+    auto allops = block->AllOps();
+    for (auto *op : allops) {
+      auto &input_var_names = op->Inputs();
+      auto &output_var_names = op->Outputs();
+      for (auto &ipt : input_var_names) {
+        for (auto &var_name : ipt.second) {
+          if (FindVarName(var_name, output_var_names)) {
+            no_copy_var_names.insert(var_name);
+          }
+        }
+      }
+    }
 
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
@@ -87,29 +101,48 @@ class WhileOp : public framework::OperatorBase {
     bool is_test = Attr<bool>("is_test");
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
-
     auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
     if (!is_test) {
       while (cond_data) {
         auto &current_scope = scope.NewScope();
         step_scopes->push_back(&current_scope);
-        executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
-                                    true);
         // Each loop the value of LoDTensor in input would be saved sub_scope to
-        // ensure
-        // that the correct values can be used in the gradient calculation.
+        // ensure that the correct values can be used in the gradient
+        // calculation.
         auto input_names = Inputs(kX);
         for (auto &input_var_name : input_names) {
-          auto *ig_outside_var = scope.FindVar(input_var_name);
-          if (ig_outside_var->IsType<framework::LoDTensor>()) {
-            auto ig_outside_var_tensor = ig_outside_var->Get<LoDTensor>();
-            auto *ig_inside_var_tensor =
-                current_scope.Var(input_var_name)->GetMutable<LoDTensor>();
-            framework::TensorCopy(ig_outside_var_tensor, dev_place,
-                                  ig_inside_var_tensor);
-            ig_inside_var_tensor->set_lod(ig_outside_var_tensor.lod());
+          if (std::find(no_copy_var_names.begin(), no_copy_var_names.end(),
+                        input_var_name) == no_copy_var_names.end()) {
+            auto input_var_rename = input_var_name + "@RENAME";
+            auto *ig_outside_var = scope.FindVar(input_var_name);
+            if (ig_outside_var->IsType<framework::LoDTensor>()) {
+              auto ig_outside_var_tensor = ig_outside_var->Get<LoDTensor>();
+              auto *ig_inside_var_tensor =
+                  current_scope.Var(input_var_rename)->GetMutable<LoDTensor>();
+              framework::TensorCopy(ig_outside_var_tensor, dev_place,
+                                    ig_inside_var_tensor);
+              ig_inside_var_tensor->set_lod(ig_outside_var_tensor.lod());
+            }
           }
         }
+        executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
+                                    true);
+        std::vector<std::string> erase_vars;
+        for (auto &input_var_name : input_names) {
+          auto input_var_rename = input_var_name + "@RENAME";
+          auto *pre_scope_var = current_scope.FindVar(input_var_rename);
+          if ((pre_scope_var != nullptr) &&
+              pre_scope_var->IsType<framework::LoDTensor>()) {
+            erase_vars.push_back(input_var_rename);
+            auto pre_scope_var_tensor = pre_scope_var->Get<LoDTensor>();
+            auto *cur_scope_var_tensor =
+                current_scope.Var(input_var_name)->GetMutable<LoDTensor>();
+            framework::TensorCopy(pre_scope_var_tensor, dev_place,
+                                  cur_scope_var_tensor);
+            cur_scope_var_tensor->set_lod(pre_scope_var_tensor.lod());
+          }
+        }
+        current_scope.EraseVars(erase_vars);
         cond_data =
             GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
       }

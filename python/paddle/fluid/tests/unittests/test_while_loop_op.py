@@ -236,10 +236,10 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
     def test_while_loop_reuse_variables(self):
         def cond(i, x):
-            return layers.less_than(i, five)
+            return layers.less_than(i, three)
 
         def body(i, x):
-            x = x + i
+            x = x * i
             layers.increment(i)
             return i, x
 
@@ -250,7 +250,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             x.stop_gradient = False
             i = fluid.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
-            five = layers.fill_constant(shape=[1], dtype='float32', value=5)
+            three = layers.fill_constant(shape=[1], dtype='float32', value=3)
 
             out = layers.while_loop(cond, body, [i, x])
             mean = layers.mean(x)
@@ -261,10 +261,10 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         exe = fluid.Executor(place)
 
         feed_x = np.ones(1).astype('float32')
-        feed_i = np.zeros(1).astype('float32')
-        x_data = np.asarray([11]).astype('float32')
-        x_grad = np.ones(1).astype('float32')
-        i_grad = np.asarray([5]).astype('float32')
+        feed_i = np.ones(1).astype('float32')
+        x_data = np.asarray([2]).astype('float32')
+        x_grad = np.asarray([2]).astype('float32')
+        i_grad = np.asarray([3]).astype('float32')
 
         res = exe.run(main_program,
                       feed={'x': feed_x,
