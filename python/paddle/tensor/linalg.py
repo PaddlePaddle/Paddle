@@ -589,13 +589,13 @@ def cross(x, y, axis=None, name=None):
 	:alias: paddle.cross,paddle.tensor.cross,paddle.tensor.linalg.cross
 
     Computes the cross product between two tensors along an axis.
-    Inputs must have the same shape, and the size of their axis-th axis should be equal to 3.
-    If `axis` is not given, it defaults to the first axis found with the size 3.
+    Inputs must have the same shape, and the length of their axes should be equal to 3.
+    If `axis` is not given, it defaults to the first axis found with the length 3.
     
     Args:
         x (Variable): The first input tensor variable.
         y (Variable): The second input tensor variable.
-        axis (int, optional): The dimension along which to compute the cross product. It defaults to the first axis found with the size 3.
+        axis (int, optional): The axis along which to compute the cross product. It defaults to the first axis found with the length 3.
         name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
