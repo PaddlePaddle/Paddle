@@ -193,48 +193,50 @@ Examples:
     return func
 
 @templatedoc()
-def pow(input, exponent, out=None, name=None):
+def pow(x, exponent, name=None):
     """
 	:alias_main: paddle.pow
 	:alias: paddle.pow,paddle.tensor.pow,paddle.tensor.math.pow
 
-    This is Pow Activation Operator.
+    This is Pow activation operator.
 
-    :math:`out = input^{exponent}`
+    :math:``out = x^{exponent}``
 
     Args:
-        input(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
-        exponent(float32|Variable): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.
-        out (Variable, optional):  The Variable that stores results of the operation.
-            If out is None, a new Variable will be created to store the results.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.
+        x(Variable): A ``Variable`` with type ``float32`` or ``float64``.
+        exponent(float32|Variable): A scalar with type ``float32`` or a ``Variable`` with shape [1] and type ``float32``.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``input``.
+        Variable: A ``Variable`` with type same as ``x``.
 
     Examples:
 
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-
-            x = fluid.data(name="x", shape=[32,32], dtype="float32")
-
-            # example 1: argument exponent is float
-            res = fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_1 = paddle.pow(x, 2.0, out=res)
-            # y_1 is x^{2.0}
-
-            # example 2: argument exponent is Variable
-            exponent_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
-            res = fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_2 = paddle.pow(x, exponent_tensor, out=res)
-            # y_2 is x^{3.0}
+            import numpy as np
+            # use dygraph
+            paddle.enable_imperative()
+            
+            # example 1: exponent is a float
+            x_data = np.array([1, 2, 3])
+            exponent = 2
+            x = paddle.imperative.to_variable(x_data)
+            res = paddle.pow(x, exponent)
+            print(res.numpy()) # [1 4 9]
+            
+            # example 2: exponent is a Variable
+            exponent = paddle.fill_constant(shape=[1], value=2, dtype='float32')
+            res = paddle.pow(x, exponent)
+            print(res.numpy()) # [1 4 9]
     """
-    helper = LayerHelper('pow', **locals())
-    inputs = {'X': input}
+
+    if in_dygraph_mode():
+        return core.ops.pow(x, 'factor', exponent)
+
+    inputs = {'X': x}
     attrs = {}
     if isinstance(exponent, Variable):
         exponent.stop_gradient = True
@@ -242,27 +244,9 @@ def pow(input, exponent, out=None, name=None):
     else:
         attrs['factor'] = exponent
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    else:
-        check_dtype(
-            out.dtype, out.name,
-            convert_dtype(input.dtype), 'pow',
-            '(The out data type in pow must be the same with input data type.)')
-        if name:
-            warnings.warn(
-                "The output Variable name of the paddle.tensor.pow operation can only be given by parameter out or name. \
-                When parameter out and name are set at the same time, out has a higher priority than name. \
-                Finally, the output Variable name is same as the out name %s"
-                                                                              %
-                out.name,
-                category=UserWarning,
-                stacklevel=2)
-
+    helper = LayerHelper('pow', **locals())
     helper.append_op(
-        type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-    return out
-
+        type='pow', inputs=inputs, outputs={}, attrs=attrs)
 
 __ops__noattr__ = [
     'atan',
