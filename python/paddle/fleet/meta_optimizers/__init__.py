@@ -11,11 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-print("x")
 from .recompute_optimizer import RecomputeOptimizer
-print("y")
 from .graph_execution_optimizer import GraphExecutionOptimizer
-print("z")
 
 __all__ = ['RecomputeOptimizer']
-print("h")
