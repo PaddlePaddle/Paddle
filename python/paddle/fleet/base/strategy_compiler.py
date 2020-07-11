@@ -28,12 +28,14 @@ class StrategyCompiler(StrategyCompilerBase):
     This class is responsible for the executable distributed optimizer
     generation.
     """
-    super(StrategyCompiler, self).__init__()
+
+    def __init__(self):
+        super(StrategyCompiler, self).__init__()
 
     def generate_optimizer(self, loss, role_maker, optimizer,
                            userd_defined_strategy, meta_optimizer_list):
         if len(meta_optimizer_list) == 0:
-            return optimizer
+            return optimizer, None
         else:
             max_idx = 0
             max_len = 0
@@ -51,4 +53,4 @@ class StrategyCompiler(StrategyCompilerBase):
             # rank optimizer candidates
             for idx, opt in enumerate(candidates[max_idx][:-1]):
                 opt._update_inner_optimizer(candidates[max_idx][idx + 1])
-            return candidates[max_idx][0]
+            return candidates[max_idx][0], None

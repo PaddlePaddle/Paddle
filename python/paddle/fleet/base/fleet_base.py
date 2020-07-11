@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
-from paddle.fleet import RoleMakerBase
-from strategy_compiler import StrategyCompiler
-from meta_optimizer import MetaOptimizerFactory
+import paddle
+from .strategy_compiler import StrategyCompiler
+from ..meta_optimizers.meta_optimizer import MetaOptimizerFactory
 
 __all__ = ['Fleet']
 
@@ -27,12 +27,12 @@ class Fleet(object):
     """
 
     def __init__(self):
-        pass
+        self._runtime_handle = None
+        self._util = None
 
     def init(self, role_maker):
         self.role_maker = role_maker
         self.strategy_compiler = StrategyCompiler()
-        self._runtime_handle = None
 
     def is_first_worker(self):
         """
@@ -138,19 +138,19 @@ class Fleet(object):
         #return self._role_maker.is_server()
         return True
 
-    @util.setter
-    def util(self, util):
-        """
-        set util
-        """
-        self._util = util
-
     @property
     def util(self):
         """
         return util
         """
         return self._util
+
+    @util.setter
+    def util(self, util):
+        """
+        set util
+        """
+        self._util = util
 
     def barrier_worker(self):
         """
@@ -177,12 +177,13 @@ class Fleet(object):
     def distributed_optimizer(self, optimizer, strategy):
         self.user_defined_optimizer = optimizer
         self.user_defined_strategy = strategy
+        return self
 
     def minimize(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set):
+                 no_grad_set=None):
         # cache original feed forward program
         self.origin_main_program = loss.block.program
         if startup_program == None:
@@ -205,8 +206,8 @@ class Fleet(object):
         # combine recalled meta optimizers to be a valid meta optimizer
         meta_optimizer, compiled_strategy = \
                 self.strategy_compiler.generate_optimizer(
-                    loss, self.role_maker, self.optimizer,
-                    self.strategy, valid_optimizer_list)
+                    loss, self.role_maker, self.user_defined_optimizer,
+                    self.user_defined_strategy, valid_optimizer_list)
         optimize_ops, params_grads = meta_optimizer.minimize(
             loss,
             startup_program=startup_program,

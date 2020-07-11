@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fleet.collective import RecomputeOptimizer
+#from .recompute_optimizer import RecomputeOptimizer
 
-meta_optimizer_names = ["RecomputeOptimizer"]
+__all__ = ["MetaOptimizerBase"]
+
+#meta_optimizer_names = ["RecomputeOptimizer"]
+meta_optimizer_names = []
 
 
 class MetaOptimizerFactory(object):
@@ -25,6 +28,7 @@ class MetaOptimizerFactory(object):
         opt_list = []
         for opt_name in meta_optimizer_names:
             opt_list.append(globals()[opt_name]())
+        return opt_list
 
 
 class MetaOptimizerBase(object):

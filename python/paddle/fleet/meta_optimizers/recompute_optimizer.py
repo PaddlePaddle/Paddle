@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 
 import paddle.fluid.optimizer.RecomputeOptimizer as RO
+from .meta_optimizer import MetaOptimizerBase
 
 
 class RecomputeOptimizer(MetaOptimizerBase):
