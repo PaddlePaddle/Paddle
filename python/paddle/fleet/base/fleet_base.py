@@ -33,6 +33,7 @@ class Fleet(object):
     def init(self, role_maker):
         self.role_maker = role_maker
         self.strategy_compiler = StrategyCompiler()
+        self._runtime_handle = None
 
     def is_first_worker(self):
         """
@@ -127,10 +128,17 @@ class Fleet(object):
         """
         return self._role_maker.is_server()
 
+    @util.setter
+    def util(self, util):
+        """
+        set util
+        """
+        self._util = util
+
     @property
     def util(self):
         """
-        
+        return util
         """
         return self._util
 
@@ -140,21 +148,21 @@ class Fleet(object):
         """
         self._role_maker.barrier_worker()
 
-    @abc.abstractmethod
     def init_worker(self):
-        pass
+        assert self._runtime_handle is not None
+        self._runtime_handle.init_worker()
 
-    @abc.abstractmethod
     def init_server(self, model_dir=None):
-        pass
+        assert self._runtime_handle is not None
+        self._runtime_handle.init_server()
 
-    @abc.abstractmethod
     def run_server(self):
-        pass
+        assert self._runtime_handle is not None
+        self._runtime_handle.run_server()
 
-    @abc.abstractmethod
     def stop_worker(self):
-        pass
+        assert self._runtime_handle is not None
+        self._runtime_handle.stop_worker()
 
     def distributed_optimizer(self, optimizer, strategy):
         self.user_defined_optimizer = optimizer
@@ -194,5 +202,15 @@ class Fleet(object):
             startup_program=startup_program,
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
+
+        if self._runtime_handle is not None:
+            self._runtime_handle = RuntimeFactory()._create_runtime(
+                final_dist_strategy, self.role_maker, optimize_ops,
+                params_grads)
+
+        if self._util is not None:
+            self._util = UtilFactory()._create_util(final_dist_strategy,
+                                                    self.role_maker,
+                                                    optimize_ops, params_grads)
 
         return optimize_ops, params_grads
