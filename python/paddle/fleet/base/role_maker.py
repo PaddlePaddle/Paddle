@@ -14,3 +14,13 @@
 """Defination of Role Makers."""
 
 # __all__ = ['RoleMakerBase', 'UserDefinedRoleMaker', 'PaddleCloudRoleMaker']
+
+
+class RoleMakerBase(object):
+    def __init__(self):
+        pass
+
+
+class PaddleCloudRoleMaker(object):
+    def __init__(self, is_collective=False):
+        self._is_collective = is_collective

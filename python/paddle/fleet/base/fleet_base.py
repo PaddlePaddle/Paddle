@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 from paddle.fleet import RoleMakerBase
-from . import obj_creator
 from strategy_compiler import StrategyCompiler
 from meta_optimizer import MetaOptimizerFactory
 
@@ -44,7 +43,8 @@ class Fleet(object):
                   False if not.
         
         """
-        return self._role_maker.is_first_worker()
+        #return self._role_maker.is_first_worker()
+        return True
 
     def worker_index(self):
         """
@@ -53,7 +53,8 @@ class Fleet(object):
         Returns:
             int: node id
         """
-        return self._role_maker.worker_index()
+        #return self._role_maker.worker_index()
+        return 0
 
     def worker_num(self):
         """
@@ -62,7 +63,8 @@ class Fleet(object):
         Returns:
             int: worker numbers
         """
-        return self._role_maker.worker_num()
+        #return self._role_maker.worker_num()
+        return 1
 
     def is_worker(self):
         """
@@ -72,7 +74,8 @@ class Fleet(object):
             bool: True if this is a node of worker,
                   False if not.
         """
-        return self._role_maker.is_worker()
+        #return self._role_maker.is_worker()
+        return True
 
     def worker_endpoints(self, to_string=False):
         """
@@ -81,11 +84,13 @@ class Fleet(object):
         Returns:
             list/string: server endpoints
         """
-
+        '''
         if to_string:
             return ",".join(self._role_maker.get_trainer_endpoints())
         else:
             return self._role_maker.get_trainer_endpoints()
+        '''
+        return ["127.0.0.1:1001", "127.0.0.1:1002"]
 
     def server_num(self):
         """
@@ -94,7 +99,8 @@ class Fleet(object):
         Returns:
             int: server number
         """
-        return len(self._role_maker.get_pserver_endpoints())
+        #return len(self._role_maker.get_pserver_endpoints())
+        return 1
 
     def server_index(self):
         """
@@ -103,7 +109,8 @@ class Fleet(object):
         Returns:
             int: node id
         """
-        return self._role_maker.server_index()
+        #return self._role_maker.server_index()
+        return 0
 
     def server_endpoints(self, to_string=False):
         """
@@ -112,11 +119,13 @@ class Fleet(object):
         Returns:
             list/string: server endpoints
         """
-
+        '''
         if to_string:
             return ",".join(self._role_maker.get_pserver_endpoints())
         else:
             return self._role_maker.get_pserver_endpoints()
+        '''
+        return ["127.0.0.1:1001", "127.0.0.1:1002"]
 
     def is_server(self):
         """
@@ -126,7 +135,8 @@ class Fleet(object):
             bool: True if this is a node of server,
                   False if not.
         """
-        return self._role_maker.is_server()
+        #return self._role_maker.is_server()
+        return True
 
     @util.setter
     def util(self, util):

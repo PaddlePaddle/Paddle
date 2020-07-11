@@ -336,6 +336,15 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.auto = "True"
         self.assertEqual(strategy.auto, False)
 
+    def test_sync_nccl_allreduce(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.sync_nccl_allreduce = True
+        self.assertEqual(strategy.sync_nccl_allreduce, True)
+        strategy.sync_nccl_allreduce = False
+        self.assertEqual(strategy.sync_nccl_allreduce, False)
+        strategy.sync_nccl_allreduce = "True"
+        self.assertEqual(strategy.sync_nccl_allreduce, False)
+
 
 if __name__ == '__main__':
     unittest.main()
