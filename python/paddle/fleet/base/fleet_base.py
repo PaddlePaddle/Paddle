@@ -15,7 +15,7 @@
 from __future__ import print_function
 import paddle
 from .strategy_compiler import StrategyCompiler
-from ..meta_optimizers.meta_optimizer import MetaOptimizerFactory
+from .meta_optimizer_factory import MetaOptimizerFactory
 
 __all__ = ['Fleet']
 
@@ -196,12 +196,15 @@ class Fleet(object):
 
         # compile time
         distributed_optimizer_list = \
-            MetaOptimizerFactory()._get_valid_meta_optimizers()
+            MetaOptimizerFactory()._get_valid_meta_optimizers(
+                self.user_defined_optimizer)
         valid_optimizer_list = []
         # recall meta optimizers for ranking
         for opt in distributed_optimizer_list:
-            if opt.can_apply(loss, self.role_maker, self.user_defined_optimizer,
-                             self.user_defined_strategy):
+            opt._set_basic_info(loss, self.role_maker,
+                                self.user_defined_optimizer,
+                                self.user_defined_strategy)
+            if opt._can_apply():
                 valid_optimizer_list.append(opt)
         # combine recalled meta optimizers to be a valid meta optimizer
         meta_optimizer, compiled_strategy = \

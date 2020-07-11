@@ -12,23 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#from .recompute_optimizer import RecomputeOptimizer
-
 __all__ = ["MetaOptimizerBase"]
-
-#meta_optimizer_names = ["RecomputeOptimizer"]
-meta_optimizer_names = []
-
-
-class MetaOptimizerFactory(object):
-    def __init__(self):
-        pass
-
-    def _get_valid_meta_optimizers(self):
-        opt_list = []
-        for opt_name in meta_optimizer_names:
-            opt_list.append(globals()[opt_name]())
-        return opt_list
 
 
 class MetaOptimizerBase(object):

@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import paddle
+from .meta_optimizer_base import MetaOptimizerBase
+
 
 def get_build_strategy(dist_strategy):
     build_strategy = paddle.BuildStrategy()
