@@ -30,7 +30,7 @@ TEST(LiteEngineOp, GetNativePlace) {
   platform::Place GetNativePlace(const TargetType& type, int id = 0);
   EXPECT_TRUE(platform::is_cpu_place(GetNativePlace(TargetType::kHost)));
   EXPECT_TRUE(platform::is_gpu_place(GetNativePlace(TargetType::kCUDA)));
-  ASSERT_DEATH(GetNativePlace(TargetType::kUnk), "");
+  EXPECT_ANY_THROW(GetNativePlace(TargetType::kUnk));
 }
 
 TEST(LiteEngineOp, GetLiteTargetType) {
@@ -48,8 +48,8 @@ TEST(LiteEngineOp, GetLitePrecisionType) {
             PrecisionType::kInt8);
   ASSERT_EQ(GetLitePrecisionType(framework::proto::VarType_Type_INT32),
             PrecisionType::kInt32);
-  ASSERT_DEATH(
-      GetLitePrecisionType(framework::proto::VarType_Type_SELECTED_ROWS), "");
+  EXPECT_ANY_THROW(
+      GetLitePrecisionType(framework::proto::VarType_Type_SELECTED_ROWS));
 }
 
 TEST(LiteEngineOp, GetNativePrecisionType) {
@@ -62,7 +62,7 @@ TEST(LiteEngineOp, GetNativePrecisionType) {
             framework::proto::VarType_Type_INT8);
   ASSERT_EQ(GetNativePrecisionType(PrecisionType::kInt32),
             framework::proto::VarType_Type_INT32);
-  ASSERT_DEATH(GetNativePrecisionType(PrecisionType::kUnk), "");
+  EXPECT_ANY_THROW(GetNativePrecisionType(PrecisionType::kUnk));
 }
 
 TEST(LiteEngineOp, GetNativeLayoutType) {
@@ -70,7 +70,7 @@ TEST(LiteEngineOp, GetNativeLayoutType) {
   framework::DataLayout GetNativeLayoutType(const DataLayoutType& type);
   ASSERT_EQ(GetNativeLayoutType(DataLayoutType::kNCHW),
             framework::DataLayout::kNCHW);
-  ASSERT_DEATH(GetNativeLayoutType(DataLayoutType::kNHWC), "");
+  EXPECT_ANY_THROW(GetNativeLayoutType(DataLayoutType::kNHWC));
 }
 
 void test_tensor_copy(const platform::DeviceContext& ctx) {
