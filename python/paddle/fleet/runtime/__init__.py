@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collective_runtime import CollectiveRuntime
+from .collective_runtime import CollectiveRuntime
 
 __all__ = ["CollectiveRuntime"]

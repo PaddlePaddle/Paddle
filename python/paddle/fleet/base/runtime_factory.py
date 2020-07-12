@@ -11,15 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import collective_runtime
-import parameter_server_runtime
+from ..runtime.collective_runtime import CollectiveRuntime
 
 
 class RuntimeFactory(object):
     def _create_runtime(final_dist_strategy, role_maker, opt_ops, params_grads):
         if role_maker._is_collective:
-            return collective_runtime.CollectiveRuntime(
-                final_dist_strategy, role_maker, opt_ops, params_grads)
-        else:
-            return parameter_server_runtime.PSRuntime(
-                final_dist_strategy, role_maker, opt_ops, params_grads)
+            return CollectiveRuntime(final_dist_strategy, role_maker, opt_ops,
+                                     params_grads)

@@ -184,28 +184,28 @@ class Fleet(object):
         init worker
         """
         assert self._runtime_handle is not None
-        self._runtime_handle.init_worker()
+        self._runtime_handle._init_worker()
 
     def init_server(self, model_dir=None):
         """
         init server
         """
         assert self._runtime_handle is not None
-        self._runtime_handle.init_server()
+        self._runtime_handle._init_server()
 
     def run_server(self):
         """
         run server
         """
         assert self._runtime_handle is not None
-        self._runtime_handle.run_server()
+        self._runtime_handle._run_server()
 
     def stop_worker(self):
         """
         stop worker
         """
         assert self._runtime_handle is not None
-        self._runtime_handle.stop_worker()
+        self._runtime_handle._stop_worker()
 
     def distributed_optimizer(self, optimizer, strategy):
         """
