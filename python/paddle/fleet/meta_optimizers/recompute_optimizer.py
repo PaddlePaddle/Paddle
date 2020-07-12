@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-print("xx")
 from paddle.fluid.optimizer import RecomputeOptimizer as RO
-
-print("yy")
 from .meta_optimizer_base import MetaOptimizerBase
-print("zz")
 
 __all__ = ["RecomputeOptimizer"]
 
