@@ -23,7 +23,33 @@ __all__ = ['Fleet']
 class Fleet(object):
     """
     Unified API for distributed training of PaddlePaddle
-    Fleet is initialized through init function
+    Please reference the https://github.com/PaddlePaddle/Fleet for details
+
+    Returns:
+        Fleet: A Fleet instance
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fleet import fleet
+            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            fleet.init(role)
+            strategy = fleet.DistributedStrategy()
+            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+            if fleet.is_first_worker():
+                print("this is first worker")
+            print("current node index: {}".format(fleet.worker_index()))
+            print("total number of worker num: {}".format(fleet.worker_num()))
+            if fleet.is_worker():
+                print("this is worker")
+            print("worker endpoints: {}".format(fleet.worker_endpoints(to_string=True)))
+            print("server num: {}".format(fleet.server_num()))
+            print("server endpoints: {}".format(fleet.server_endpoints(to_string=True)))
+            if fleet.is_server():
+                print("this is server")
+            fleet.stop_worker()
     """
 
     def __init__(self):
@@ -43,8 +69,7 @@ class Fleet(object):
                   False if not.
         
         """
-        #return self._role_maker.is_first_worker()
-        return True
+        return self._role_maker.is_first_worker()
 
     def worker_index(self):
         """
@@ -53,8 +78,7 @@ class Fleet(object):
         Returns:
             int: node id
         """
-        #return self._role_maker.worker_index()
-        return 0
+        return self._role_maker.worker_index()
 
     def worker_num(self):
         """
@@ -63,8 +87,7 @@ class Fleet(object):
         Returns:
             int: worker numbers
         """
-        #return self._role_maker.worker_num()
-        return 1
+        return self._role_maker.worker_num()
 
     def is_worker(self):
         """
@@ -74,8 +97,7 @@ class Fleet(object):
             bool: True if this is a node of worker,
                   False if not.
         """
-        #return self._role_maker.is_worker()
-        return True
+        return self._role_maker.is_worker()
 
     def worker_endpoints(self, to_string=False):
         """
@@ -99,8 +121,7 @@ class Fleet(object):
         Returns:
             int: server number
         """
-        #return len(self._role_maker.get_pserver_endpoints())
-        return 1
+        return len(self._role_maker.get_pserver_endpoints())
 
     def server_index(self):
         """
@@ -109,8 +130,7 @@ class Fleet(object):
         Returns:
             int: node id
         """
-        #return self._role_maker.server_index()
-        return 0
+        return self._role_maker.server_index()
 
     def server_endpoints(self, to_string=False):
         """
@@ -135,12 +155,12 @@ class Fleet(object):
             bool: True if this is a node of server,
                   False if not.
         """
-        #return self._role_maker.is_server()
-        return True
+        return self._role_maker.is_server()
 
     @property
     def util(self):
         """
+        Utility functions that can be used under certain runtime
         return util
         """
         return self._util
@@ -148,6 +168,7 @@ class Fleet(object):
     @util.setter
     def util(self, util):
         """
+        Set Utility functions for userd-defined runtime
         set util
         """
         self._util = util
@@ -159,22 +180,49 @@ class Fleet(object):
         self._role_maker.barrier_worker()
 
     def init_worker(self):
+        """
+        init worker
+        """
         assert self._runtime_handle is not None
         self._runtime_handle.init_worker()
 
     def init_server(self, model_dir=None):
+        """
+        init server
+        """
         assert self._runtime_handle is not None
         self._runtime_handle.init_server()
 
     def run_server(self):
+        """
+        run server
+        """
         assert self._runtime_handle is not None
         self._runtime_handle.run_server()
 
     def stop_worker(self):
+        """
+        stop worker
+        """
         assert self._runtime_handle is not None
         self._runtime_handle.stop_worker()
 
     def distributed_optimizer(self, optimizer, strategy):
+        """
+        distirbuted_optimizer
+        Returns:
+            Fleet instance with minimize interface like optimizers
+
+        Examples:
+            .. code-block:: python
+            import paddle.fleet import fleet
+            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            fleet.init(role)
+            strategy = fleet.DistributedStrategy()
+            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        """
         self.user_defined_optimizer = optimizer
         self.user_defined_strategy = strategy
         return self
@@ -184,6 +232,49 @@ class Fleet(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
+        """
+        Add distributed operations to minimize ``loss`` by updating ``parameter_list``.
+
+        Args:
+            loss (Variable): A ``Variable`` containing the value to minimize.
+            startup_program (Program, optional): :ref:`api_fluid_Program` for
+                initializing parameters in ``parameter_list``. The default value
+                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+            parameter_list (Iterable, optional): Iterable of ``Variable`` or ``Variable.name`` to update
+                to minimize ``loss``. The default value is None, at this time all parameters
+                will be updated.
+            no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
+                to be updated. The default value is None.
+
+        Returns:
+            tuple: tuple (optimize_ops, params_grads), A list of operators appended
+            by minimize and a list of (param, grad) variable pairs, param is
+            ``Parameter``, grad is the gradient value corresponding to the parameter.
+            The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
+            indicate program pruning. If so, the program will be pruned by ``feed`` and 
+            ``fetch_list`` before run, see details in ``Executor``.
+
+        Examples:
+            import paddle
+            import paddle.fleet import fleet
+            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+
+            fc_1 = paddle.layers.fc(input=input_x, size=hid_dim, act='tanh')
+            fc_2 = paddlen.layers.fc(input=fc_1, size=hid_dim, act='tanh')
+            prediction = paddle.layers.fc(input=[fc_2], size=label_dim, act='softmax')
+            cost = paddle.layers.cross_entropy(input=prediction, label=input_y)
+            avg_cost = paddle.layers.mean(x=cost)
+
+            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            fleet.init(role)
+            strategy = fleet.DistributedStrategy()
+            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+            optimizer.minimize(avg_cost)
+
+            # for more examples, please reference https://github.com/PaddlePaddle/Fleet
+
+        """
         # cache original feed forward program
         self.origin_main_program = loss.block.program
         if startup_program == None:
