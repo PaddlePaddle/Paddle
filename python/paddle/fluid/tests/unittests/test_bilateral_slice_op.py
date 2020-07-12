@@ -82,7 +82,6 @@ def naive_bilateral_slice_forward(output, grid, guide, input, gsz, has_offset,
         fz = int(np.floor(gz - 0.5))
 
         value = 0.0
-
         for in_c in range(0, coeff_stride):
             coeff_sample = 0.0
 
@@ -128,12 +127,9 @@ def naive_bilateral_slice(x, guide, grid, has_offset):
     gw = grid.shape[4]
 
     gsz = Gsz(h, w, gd, gh, gw, input_chans)
-
     total_count = bs * h * w * output.shape[1]
-
     naive_bilateral_slice_forward(output, grid, guide, x, gsz, has_offset,
                                   total_count, output.shape[1])
-
     return output
 
 
@@ -151,7 +147,6 @@ class TestBilateralSliceOp(OpTest):
         gw = 3
         gd = 2
         gc = 2
-
         x = np.random.rand(batch_size, c, h, w).astype(self.data_type)
         guide = np.random.rand(batch_size, h, w).astype(self.data_type)
         grid = np.random.rand(batch_size, gc, gd, gh, gw).astype(self.data_type)
