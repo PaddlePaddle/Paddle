@@ -407,6 +407,10 @@ def _get_train_epoch_range():
 
 
 def _can_auto_checkpoint(program):
+    if not isinstance(program, compiler.CompiledProgram) and \
+            not isinstance(program, fluid.framework.Program):
+        return False
+
     if isinstance(program, compiler.CompiledProgram):
         if not program._auto_checkpoint or program._program._is_distributed:
             return False
