@@ -28,7 +28,7 @@ class UtilFactory(object):
         return util
 
 
-class Util(object):
+class UtilBase(object):
     def __init__(self):
         self.role_maker = None
         self.dist_strategy = None
