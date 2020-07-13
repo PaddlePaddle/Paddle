@@ -25,8 +25,7 @@ template <typename T>
 __global__ void SGDKernel(const T* g, const T* p, const T* learning_rate,
                           const int num, T* p_out) {
   T lr = learning_rate[0];
-  int grid_size = blockDim.x * gridDim.x;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num; i += grid_size) {
+  CUDA_KERNEL_LOOP(i, num) {
     T g_data = g[i];
     T p_data = p[i];
     p_out[i] = p_data - lr * g_data;
