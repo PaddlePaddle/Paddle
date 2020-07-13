@@ -248,10 +248,10 @@ bool MemoryReusePass::IsOutVarReusable(
 
   // out_var must be the first version!!!
   auto out_var_iter = (*all_vars_)[out_var.scope_idx()].find(out_name);
-  PADDLE_ENFORCE(
-      out_var_iter != (*all_vars_)[out_var.scope_idx()].end() &&
-          !out_var_iter->second.empty(),
-      platform::errors::NotFound("Cannot find variable %s.", out_name));
+  PADDLE_ENFORCE_EQ(
+      (out_var_iter != (*all_vars_)[out_var.scope_idx()].end() &&
+       !out_var_iter->second.empty()),
+      true, platform::errors::NotFound("Cannot find variable %s.", out_name));
 
   if (out_var_iter->second[0] != &out_var) {
     return false;

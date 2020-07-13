@@ -115,7 +115,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
         params_and_dense_grads.size(), aux_var_map.at(kGrad).size(),
         platform::errors::InvalidArgument(
             "The number of dense gradients(%d) should be "
-            "little than optimizer ops(%s).",
+            "little than optimizer ops(%d).",
             params_and_dense_grads.size(), aux_var_map.at(kGrad).size()));
 
     std::unordered_set<std::string> opt_grad_set(aux_var_map.at(kGrad).size());
