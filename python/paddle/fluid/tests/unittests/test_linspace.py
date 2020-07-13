@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import core
 
 
 class TestLinspaceOpCommonCase(OpTest):
@@ -71,33 +72,36 @@ class TestLinspaceOpNumOneCase(OpTest):
 
 
 class TestLinspaceAPI(unittest.TestCase):
-    def test_out(self):
-        with program_guard(fluid.Program()):
-            out_1 = fluid.data(name="out_1", shape=[5], dtype="float32")
-            out_2 = paddle.tensor.linspace(0, 10, 5, dtype='float32', out=out_1)
-            exe = fluid.Executor(place=fluid.CPUPlace())
-            ipt = {'out_1': np.random.random([5]).astype('float32')}
-            res_1, res_2 = exe.run(fluid.default_main_program(),
-                                   feed=ipt,
-                                   fetch_list=[out_1, out_2])
-            assert np.array_equal(res_1, res_2)
+    def test_dtype(self):
+        out_1 = paddle.linspace(0, 10, 5, dtype='float32')
+        out_2 = paddle.linspace(0, 10, 5, dtype=np.float32)
+        out_3 = paddle.linspace(0, 10, 5, dtype=core.VarDesc.VarType.FP32)
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
+                                      fetch_list=[out_1, out_2, out_3])
+        assert np.array_equal(res_1, res_2)
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with paddle.program_guard(paddle.Program()):
             out = paddle.linspace(
                 0, 10, 5, dtype='float32', name='linspace_res')
             assert 'linspace_res' in out.name
+
+    def test_imperative(self):
+        with paddle.imperative.guard():
+            out = paddle.linspace(0, 10, 5, dtype='float32')
+            np_out = np.linspace(0, 10, 5, dtype='float32')
+        self.assertEqual((out.numpy() == np_out).all(), True)
 
 
 class TestLinspaceOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # for ci coverage
-            # The device of fill_constant must be in 'cpu', 'gpu' or None
-            def test_device_value():
-                paddle.linspace(0, 10, 1, dtype="float32", device='xxxpu')
 
-            self.assertRaises(ValueError, test_device_value)
+            def test_dtype():
+                fluid.layers.linspace(0, 10, 1, dtype="int32")
+
+            self.assertRaises(TypeError, test_dtype)
 
             def test_start_type():
                 fluid.layers.linspace([0], 10, 1, dtype="float32")

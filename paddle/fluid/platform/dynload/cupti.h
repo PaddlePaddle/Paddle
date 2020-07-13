@@ -36,7 +36,6 @@ extern void *cupti_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#ifdef PADDLE_USE_DSO
 #define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)                            \
   struct DynLoad__##__name {                                               \
     template <typename... Args>                                            \
@@ -50,16 +49,6 @@ extern void *cupti_dso_handle;
     }                                                                      \
   };                                                                       \
   extern DynLoad__##__name __name
-#else
-#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)            \
-  struct DynLoad__##__name {                               \
-    template <typename... Args>                            \
-    inline CUptiResult CUPTIAPI operator()(Args... args) { \
-      return __name(args...);                              \
-    }                                                      \
-  };                                                       \
-  extern DynLoad__##__name __name
-#endif
 
 #define CUPTI_ROUTINE_EACH(__macro)           \
   __macro(cuptiActivityEnable);               \

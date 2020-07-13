@@ -375,17 +375,6 @@ class DistributedStrategy(object):
             print("WARNING: sync should have value of bool type")
 
     @property
-    def async(self):
-        return self.strategy.async
-
-    @async.setter
-    def async(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.async = flag
-        else:
-            print("WARNING: async should have value of bool type")
-
-    @property
     def async_k_step(self):
         return self.strategy.async_k_step
 

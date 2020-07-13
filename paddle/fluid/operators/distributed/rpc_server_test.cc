@@ -1,8 +1,11 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
-#include "paddle/fluid/operators/distributed/barrier_monitor.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
@@ -117,7 +119,6 @@ void StartServer(const std::string& rpc_name) {
   g_rpc_service->RegisterRPC(rpc_name, g_req_handler.get());
 
   distributed::HeartBeatMonitor::Init(2, true, "w@grad");
-  distributed::BarrierMonitor::Init(2);
 
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
@@ -163,9 +164,6 @@ TEST(PREFETCH, CPU) {
     }
   }
 
-  auto* barrier = distributed::BarrierMonitor::GetInstance();
-  barrier->Stop();
-
   g_rpc_service->ShutDown();
   server_thread.join();
   LOG(INFO) << "begin reset";
@@ -176,24 +174,20 @@ TEST(PREFETCH, CPU) {
 TEST(COMPLETE, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  g_req_handler.reset(new distributed::RequestNotifyHandler(
-      distributed::DistributedMode::kSync, -1));
+  g_req_handler.reset(
+      new distributed::RequestSendHandler(distributed::DistributedMode::kSync));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 2));
-
   distributed::RPCClient* client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
   PADDLE_ENFORCE(client != nullptr);
-  std::thread server_thread(StartServer, distributed::kRequestNotify);
+  std::thread server_thread(StartServer, distributed::kRequestSend);
   g_rpc_service->WaitServerReady();
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
   client->AsyncSendComplete(ep);
   client->Wait();
 
-  auto* barrier = distributed::BarrierMonitor::GetInstance();
-  EXPECT_EQ(barrier->GetWorkerNum(), 1);
-
-  barrier->Stop();
+  EXPECT_EQ(g_rpc_service->GetClientNum(), 1);
 
   g_rpc_service->ShutDown();
   server_thread.join();

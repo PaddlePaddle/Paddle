@@ -30,8 +30,6 @@ namespace dynload {
 extern std::once_flag tensorrt_dso_flag;
 extern void* tensorrt_dso_handle;
 
-#ifdef PADDLE_USE_DSO
-
 #define DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP(__name)                      \
   struct DynLoad__##__name {                                            \
     template <typename... Args>                                         \
@@ -48,17 +46,6 @@ extern void* tensorrt_dso_handle;
     }                                                                   \
   };                                                                    \
   extern DynLoad__##__name __name
-
-#else
-#define DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP(__name) \
-  struct DynLoad__##__name {                       \
-    template <typename... Args>                    \
-    tensorrtResult_t operator()(Args... args) {    \
-      return __name(args...);                      \
-    }                                              \
-  };                                               \
-  extern DynLoad__##__name __name
-#endif
 
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
   __macro(createInferBuilder_INTERNAL);     \
