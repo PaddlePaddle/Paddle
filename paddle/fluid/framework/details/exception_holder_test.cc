@@ -24,6 +24,29 @@ namespace details {
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
+TEST(ExceptionHolderTester, TestEnforceNotMetCatch) {
+  ExceptionHolder exception_holder;
+
+  try {
+    throw platform::EnforceNotMet("enforce not met test", "test_file", 0);
+  } catch (...) {
+    exception_holder.Catch(std::current_exception());
+  }
+  ASSERT_TRUE(exception_holder.IsCaught());
+  ASSERT_EQ(exception_holder.Type(), "EnforceNotMet");
+
+  bool catch_enforce_not_met = false;
+  try {
+    exception_holder.ReThrow();
+  } catch (platform::EnforceNotMet& ex) {
+    catch_enforce_not_met = true;
+  } catch (...) {
+    catch_enforce_not_met = false;
+  }
+
+  ASSERT_TRUE(catch_enforce_not_met);
+}
+
 TEST(ExceptionHolderTester, TestBadAllocCatch) {
   ExceptionHolder exception_holder;
 
@@ -70,15 +93,41 @@ TEST(ExceptionHolderTester, TestBaseExpceptionCatch) {
   ASSERT_TRUE(catch_base_exception);
 }
 
-TEST(ExceptionHolderTester, TestBadAllocCatchReplace) {
+TEST(ExceptionHolderTester, TestExceptionReplace) {
   ExceptionHolder exception_holder;
+
+  try {
+    throw platform::EnforceNotMet("enforce not met test", "test_file", 0);
+  } catch (...) {
+    exception_holder.Catch(std::current_exception());
+  }
+  ASSERT_TRUE(exception_holder.IsCaught());
+  ASSERT_EQ(exception_holder.Type(), "EnforceNotMet");
+
   try {
     throw std::exception();
   } catch (...) {
     exception_holder.Catch(std::current_exception());
   }
   ASSERT_TRUE(exception_holder.IsCaught());
-  ASSERT_EQ(exception_holder.Type(), "BaseException");
+  ASSERT_EQ(exception_holder.Type(), "EnforceNotMet");
+
+  try {
+    throw memory::allocation::BadAlloc("bad alloc test", "test_file", 0);
+  } catch (...) {
+    exception_holder.Catch(std::current_exception());
+  }
+  ASSERT_TRUE(exception_holder.IsCaught());
+  ASSERT_EQ(exception_holder.Type(), "EnforceNotMet");
+
+  try {
+    throw platform::EOFException("eof test", "test_file", 0);
+  } catch (...) {
+    exception_holder.Catch(std::current_exception());
+  }
+  ASSERT_EQ(exception_holder.Type(), "EnforceNotMet");
+
+  exception_holder.Clear();
 
   try {
     throw memory::allocation::BadAlloc("bad alloc test", "test_file", 0);
@@ -89,10 +138,11 @@ TEST(ExceptionHolderTester, TestBadAllocCatchReplace) {
   ASSERT_EQ(exception_holder.Type(), "BadAlloc");
 
   try {
-    throw platform::EOFException("eof test", "test_file", 0);
+    throw platform::EnforceNotMet("enforce not met test", "test_file", 0);
   } catch (...) {
     exception_holder.Catch(std::current_exception());
   }
+  ASSERT_TRUE(exception_holder.IsCaught());
   ASSERT_EQ(exception_holder.Type(), "BadAlloc");
 }
 
