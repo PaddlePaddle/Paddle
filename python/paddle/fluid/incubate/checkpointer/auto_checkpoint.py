@@ -458,13 +458,8 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
             yield i
 
         g_train_epoch_range = None
-    except GeneratorExit:
+    finally:
         g_train_epoch_range = None
-        print("in train_epoch_rane 2")
-        raise GeneratorExit
-    except Exception as e:
-        g_train_epoch_range = None
-        raise e
 
 
 def _get_hash(key):
