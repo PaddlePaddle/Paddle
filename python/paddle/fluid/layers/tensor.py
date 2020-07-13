@@ -1587,31 +1587,32 @@ def eye(num_rows,
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return core.ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
-                            num_columns)
+        out = core.ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
+                           num_columns)
 
-    helper = LayerHelper("eye", **locals())
-    check_dtype(dtype, 'dtype',
-                ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
-    if not isinstance(num_rows, int) or num_rows < 0:
-        raise TypeError("num_rows should be a non-negative int")
-    if num_columns is not None:
-        if not isinstance(num_columns, int) or num_columns < 0:
-            raise TypeError("num_columns should be a non-negative int")
     else:
-        num_columns = num_rows
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-    helper.append_op(
-        type='eye',
-        inputs={},
-        outputs={'Out': [out]},
-        attrs={
-            'num_rows': num_rows,
-            'num_columns': num_columns,
-            'dtype': dtype
-        },
-        stop_gradient=True)
-    out.stop_gradient = True
+        helper = LayerHelper("eye", **locals())
+        check_dtype(dtype, 'dtype',
+                    ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
+        if not isinstance(num_rows, int) or num_rows < 0:
+            raise TypeError("num_rows should be a non-negative int")
+        if num_columns is not None:
+            if not isinstance(num_columns, int) or num_columns < 0:
+                raise TypeError("num_columns should be a non-negative int")
+        else:
+            num_columns = num_rows
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+        helper.append_op(
+            type='eye',
+            inputs={},
+            outputs={'Out': [out]},
+            attrs={
+                'num_rows': num_rows,
+                'num_columns': num_columns,
+                'dtype': dtype
+            },
+            stop_gradient=True)
+        out.stop_gradient = True
 
     if batch_shape is not None:
         if not isinstance(batch_shape, list):
@@ -1622,6 +1623,8 @@ def eye(num_rows,
                 raise TypeError("batch_shape should be a positive int list")
             else:
                 stack_vars = [out for _ in numpy.arange(batch_val)]
+                if in_dygraph_mode():
+                    return core.ops.stack(stack_vars, 'axis', 0)
                 out = stack(stack_vars, axis=0)
     return out
 
