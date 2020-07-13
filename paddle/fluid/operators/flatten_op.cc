@@ -358,7 +358,7 @@ class FlattenNewGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
   void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("flatten_new_grad");
+    grad_op->SetType("flatten_contiguous_range_grad");
     grad_op->SetInput("XShape", this->Output("XShape"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -414,11 +414,12 @@ REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
 REGISTER_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
                   ops::FlattenGradInplaceInferer);
 
-REGISTER_OPERATOR(flatten_new, ops::FlattenNewOp, ops::FlattenNewOpMaker,
+REGISTER_OPERATOR(flatten_contiguous_range, ops::FlattenNewOp,
+                  ops::FlattenNewOpMaker,
                   ops::FlattenNewGradOpMaker<paddle::framework::OpDesc>,
                   ops::FlattenNewGradOpMaker<paddle::imperative::OpBase>,
                   ops::FlattenOpInplaceInferer);
-REGISTER_OPERATOR(flatten_new_grad, ops::FlattenNewGradOp,
+REGISTER_OPERATOR(flatten_contiguous_range_grad, ops::FlattenNewGradOp,
                   ops::FlattenGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
@@ -448,14 +449,14 @@ REGISTER_OP_CPU_KERNEL(
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
-    flatten_new,
+    flatten_contiguous_range,
     ops::FlattenNewKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FlattenNewKernel<paddle::platform::CPUDeviceContext, double>,
     ops::FlattenNewKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FlattenNewKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::FlattenNewKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
-    flatten_new_grad,
+    flatten_contiguous_range_grad,
     ops::FlattenNewGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FlattenNewGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::FlattenNewGradKernel<paddle::platform::CPUDeviceContext, int>,

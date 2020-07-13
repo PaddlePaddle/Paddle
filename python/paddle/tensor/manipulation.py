@@ -138,21 +138,21 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             Out.shape = (3 * 100 * 100 * 4)
 
     Args:
-        x (Variable): A tensor of rank >= axis. A tensor with type float32,
+        x (Variable): A tensor of number of dimentions >= axis. A tensor with data type float32,
                       float64, int8, int32, int64.
-        start_axis (int): the first axis to flatten
-        stop_axis (int): the last axis to flatten
+        start_axis (int): the start axis to flatten
+        stop_axis (int): the stop axis to flatten
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
 
     Returns:
         Variable: A tensor with the contents of the input tensor, with input \
                   axes flattened by indicated start axis and end axis. \
-                  A Tensor with type same as input x.
+                  A Tensor with data type same as input x.
 
     Raises:
-        ValueError: If x is not a variable.
-        ValueError: If axis is illegal.
+        ValueError: If x is not a Variable.
+        ValueError: If start_axis or stop_axis is illegal.
 
     Examples:
 
@@ -197,7 +197,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     out = helper.create_variable_for_type_inference(x.dtype)
     x_shape = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
-        type='flatten_new',
+        type='flatten_contiguous_range',
         inputs={"X": x},
         outputs={'Out': out,
                  'XShape': x_shape},

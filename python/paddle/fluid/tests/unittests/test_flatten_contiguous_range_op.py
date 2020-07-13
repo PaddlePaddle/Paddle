@@ -23,7 +23,7 @@ from op_test import OpTest
 
 class TestFlattenOp(OpTest):
     def setUp(self):
-        self.op_type = "flatten_new"
+        self.op_type = "flatten_contiguous_range"
         self.start_axis = 0
         self.stop_axis = -1
         self.init_test_case()
