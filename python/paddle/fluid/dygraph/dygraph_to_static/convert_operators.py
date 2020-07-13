@@ -238,3 +238,24 @@ def cast_bool_if_necessary(var):
     if convert_dtype(var.dtype) not in ['bool']:
         var = cast(var, dtype="bool")
     return var
+
+
+def convert_var_dtype(var, dtype):
+    if isinstance(var, Variable):
+        src_dtype = convert_dtype(var.dtype)
+        assert src_dtype in [
+            'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'
+        ], "The dtype of var {} is {}, which is not supported in the cast op.".format(
+            var.name, src_dtype)
+        assert dtype in [
+            'bool', 'int', 'float'
+        ], "The casted target dtype is {}, which is not supported in type casting.".format(
+            dtype)
+        cast_map = {
+            'bool': 'bool',
+            'int': 'int32',
+            'float': 'float32',
+        }
+        return cast(var, dtype=cast_map[dtype])
+    else:
+        return eval('{}(var)'.format(dtype))

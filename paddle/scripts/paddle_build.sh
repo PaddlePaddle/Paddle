@@ -193,7 +193,6 @@ function cmake_base() {
     Configuring cmake in /paddle/build ...
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
-        -DWITH_DSO=ON
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
@@ -222,7 +221,6 @@ EOF
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
-        -DWITH_DSO=ON \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
@@ -744,6 +742,23 @@ EOF
     fi
 }
 
+failed_test_lists=''
+tmp_dir=`mktemp -d`
+
+function collect_failed_tests() {
+    for file in `ls $tmp_dir`; do
+        exit_code=0
+        grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failed_test_lists="${failed_test_lists}
+            ${failuretest}"
+        fi
+    done
+}
+
 function card_test() {
     set -m
     case_count $1 $2
@@ -766,7 +781,7 @@ function card_test() {
     fi
 
     trap 'caught_error' CHLD
-
+    tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
     for (( i = 0; i < $NUM_PROC; i++ )); do
         # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
@@ -779,21 +794,21 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
+        tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
-            else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+            else  
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
-
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
@@ -804,7 +819,7 @@ function card_test() {
     set +m
 }
 
-function parallel_test_base() {
+function parallel_test_base_gpu() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -878,6 +893,16 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        collect_failed_tests
+        if [ -n "${failed_test_lists}" ];then
+            failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+            echo "========================================"
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failed_test_lists_ult}"
+        fi
+        rm -f $tmp_dir/*
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
@@ -885,11 +910,34 @@ set -ex
     fi
 }
 
+function parallel_test_base_cpu() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit cpu tests ...
+    ========================================
+EOF
+        ut_startTime_s=`date +%s`
+        ctest --output-on-failure -j $1
+        ut_endTime_s=`date +%s`
+        echo "CPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test() {
     ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    parallel_test_base
+    if [ "$WITH_GPU" == "ON" ];then
+        parallel_test_base_gpu
+    else
+        parallel_test_base_cpu ${PROC_RUN:-1}
+    fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
 }

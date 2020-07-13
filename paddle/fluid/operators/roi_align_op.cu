@@ -31,10 +31,6 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <class T>
 __device__ T BilinearInterpolate(const T* input_data, const int height,
                                  const int width, T y, T x) {
@@ -110,7 +106,7 @@ __global__ void GPUROIAlignForward(
     const float spatial_scale, const int channels, const int height,
     const int width, const int pooled_height, const int pooled_width,
     const int sampling_ratio, int* roi_batch_id_data, T* output_data) {
-  CUDA_1D_KERNEL_LOOP(i, nthreads) {
+  CUDA_KERNEL_LOOP(i, nthreads) {
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
     int c = (i / pooled_width / pooled_height) % channels;
@@ -165,7 +161,7 @@ __global__ void GPUROIAlignBackward(const int nthreads, const T* input_rois,
                                     const int pooled_width,
                                     const int sampling_ratio,
                                     int* roi_batch_id_data, T* input_grad) {
-  CUDA_1D_KERNEL_LOOP(i, nthreads) {
+  CUDA_KERNEL_LOOP(i, nthreads) {
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
     int c = (i / pooled_width / pooled_height) % channels;

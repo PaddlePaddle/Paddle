@@ -26,8 +26,7 @@ __global__ void MomentumLarsKernel(const T* p, const T* g, const T* v,
                                    const T* g_norm, T* p_out, T* v_out) {
   T lr = learning_rate[0];
   T local_lr = learning_rate[0];
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, num) {
     if (p_norm[0] > 0 && g_norm[0] > 0) {
       local_lr = lr * lars_coeff * p_norm[0] /
                  (g_norm[0] + lars_weight_decay * p_norm[0]);

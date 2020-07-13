@@ -38,7 +38,27 @@ from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, _set_SIGCH
 MP_INDICES_CHECK_INTERVAL = 5
 
 
-def _default_collate_fn(batch):
+def default_collate_fn(batch):
+    """
+    Default batch collating function for :code:`fluid.io.DataLoader`,
+    batch should be a list of samples, and each sample should be a list
+    of fields as follows:
+    
+    [[filed1, filed2, ...], [filed1, filed2, ...], ...]
+    
+    This default collate function zipped each filed together and stack
+    each filed as the batch field as follows:
+
+    [batch_filed1, batch_filed2, ...]
+
+    Args:  
+        batch(list of list of numpy array): the batch data, each fields
+              should be a numpy array, each sample should be a list of
+              fileds, and batch should be a list of sample.
+    
+    Returns:
+        a list of numpy array: collated batch
+    """
     sample = batch[0]
     # dataset has only 1 field
     if isinstance(sample, np.ndarray):
@@ -82,7 +102,7 @@ class _DataLoaderIterBase(object):
         self._return_list = loader.return_list
         self._batch_sampler = loader.batch_sampler
         self._sampler_iter = iter(loader.batch_sampler)
-        self._collate_fn = loader.collate_fn or _default_collate_fn
+        self._collate_fn = loader.collate_fn or default_collate_fn
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
         self._use_shared_memory = loader.use_shared_memory
@@ -128,8 +148,10 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._need_check_feed = [
             v.desc.need_check_feed() for v in self._feed_list
         ]
+        # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), self._blocking_queue_capacity, True)
+            core.Variable(), self._blocking_queue_capacity,
+            len(self._places) > 1)
         self._reader = core.create_py_reader(
             self._blocking_queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_buffer_reader, True)
@@ -280,8 +302,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._need_check_feed = [
             v.desc.need_check_feed() for v in self._feed_list
         ]
+        # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), self._outstanding_capacity, True)
+            core.Variable(), self._outstanding_capacity, len(self._places) > 1)
         self._reader = core.create_py_reader(
             self._blocking_queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_buffer_reader, True)
@@ -442,6 +465,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 #    get data again
                 data = self._data_queue.get(timeout=self._timeout)
             except Exception as e:
+                # check if thread done event set when waiting data
+                if self._thread_done_event.is_set():
+                    continue
+
+                # check failed workers
                 failed_workers = []
                 for i, w in enumerate(self._workers):
                     if self._worker_status[i] and not w.is_alive():
