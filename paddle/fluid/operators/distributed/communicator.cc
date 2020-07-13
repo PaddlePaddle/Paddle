@@ -151,7 +151,7 @@ void AsyncCommunicator::SendByCommunicator(int batches) {
 void AsyncCommunicator::MainThread() {
   VLOG(3) << "MainThread start and wait";
 
-  while (waiting_) {
+  while (waiting_ && running_) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     VLOG(3) << "wait for running";
   }
