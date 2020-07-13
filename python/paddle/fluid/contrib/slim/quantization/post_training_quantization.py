@@ -342,7 +342,8 @@ class PostTrainingQuantization(object):
             self._executor.run(program=self._program,
                                feed=data,
                                fetch_list=self._fetch_list,
-                               return_numpy=False)
+                               return_numpy=False,
+                               scope=self._scope)
             if self._algo == "KL":
                 self._sample_data(batch_id)
             else:
