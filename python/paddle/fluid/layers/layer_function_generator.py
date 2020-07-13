@@ -288,7 +288,6 @@ Examples:
         import paddle
         import numpy as np
 
-        # use dygraph
         paddle.enable_imperative()
         x_data = np.array([1, 2, 3, 4]).astype(np.float32)
         x = paddle.imperative.to_variable(x_data)
