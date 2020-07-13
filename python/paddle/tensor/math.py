@@ -411,9 +411,6 @@ def _elementwise_op(helper):
 
 def add(x, y, alpha=1, out=None, name=None):
     """
-	:alias_main: paddle.add
-	:alias: paddle.add,paddle.tensor.add,paddle.tensor.math.add
-
 Examples:
 
     .. code-block:: python
@@ -556,9 +553,6 @@ Examples:
 
 def div(x, y, out=None, name=None):
     """
-	:alias_main: paddle.div
-	:alias: paddle.div,paddle.tensor.div,paddle.tensor.math.div
-
 Examples:
 
     .. code-block:: python
@@ -681,7 +675,12 @@ for func in [
     proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
     if func.__name__ in ['add']:
+        alias_main = ':alias_main: paddle.%(func)s' % {'func': func.__name__}
+        alias = ':alias: paddle.%(func)s, paddle.tensor.%(func)s, paddle.tensor.math.%(func)s' % {'func': func.__name__}
+
         additional_args_lines = [
+            alias_main,
+            alias,
             "alpha (int|float, optional): The alpha factor of the input. Default is 1. If alpha is not 1, the equation becomes Out = X + alpha * Y.",
             "out (Variable, optinal): The Variable that stores results of the operation. Default is None. If out is None, \
             a new Variable will be created to store the results."
@@ -692,6 +691,8 @@ for func in [
         ]
     else:
         additional_args_lines = [
+            alias_main,
+            alias,
             "out (Variable, optinal): The Variable that stores results of the operation. If out is None, \
             a new Variable will be created to store the results."
                                                                  ,
