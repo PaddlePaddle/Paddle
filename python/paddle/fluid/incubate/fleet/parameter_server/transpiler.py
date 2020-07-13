@@ -26,8 +26,6 @@ from . import ps_pb2 as pslib
 
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.communicator import Communicator
-from paddle.fluid.communicator import LargeScaleKV
 from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import default_startup_program
 from paddle.fluid.framework import Program
@@ -179,6 +177,7 @@ class FleetTranspiler(Fleet):
         for name, ctx in recv_ctx.items():
             print("name: {}, ctx: {}".format(name, ctx))
 
+        from paddle.fluid.communicator import Communicator
         self._communicator = Communicator(
             trainer_config.mode, kwargs,
             trainer_config.get_communicator_flags())
@@ -507,6 +506,7 @@ class FleetTranspiler(Fleet):
             self.save_persistables(executor, dirname, program)
 
     def _load_sparse_params(self, dirname, varnames):
+        from paddle.fluid.communicator import LargeScaleKV
         scale_kv = LargeScaleKV()
         for varname in varnames:
             origin_varname, _, _ = public._get_varname_parts(varname)
