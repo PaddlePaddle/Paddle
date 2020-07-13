@@ -69,9 +69,9 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         Variable: A Tensor of the specified shape filled with random integers.
 
     Raises:
-        ValueError: Randint's low must less then high.
-        TypeError: shape's type must be list, tuple or Variable.
-        TypeError: dtype must be int32 or int64.
+        TypeError: If shape's type is not list, tuple or Variable.
+        TypeError: If dtype is not int32 or int64.
+        ValueError: If low is not large then high; If low is 0, and high is None.
 
     Examples:
         .. code-block:: python
