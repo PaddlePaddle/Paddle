@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/scan.h>
 #include "paddle/fluid/operators/cum_op.h"
 #include "paddle/fluid/platform/gpu_launch_param_config.h"
 
@@ -251,40 +252,45 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     int axis = context.Attr<int>("axis");
     bool exclusive = context.Attr<bool>("exclusive");
     bool reverse = context.Attr<bool>("reverse");
-    bool flatten = context.Attr<bool>("flatten");
+    auto convert_dims = out->dims();
     auto size = in->numel();
 
-    if (flatten) {
-      paddle::framework::DDim flatten_dims({size});
-      in->Resize(flatten_dims);
-    }
-
-    auto in_dims = in->dims();
-
     if (axis == -1) {
-      axis = in_dims.size() - 1;
+      axis = convert_dims.size() - 1;
     }
     PADDLE_ENFORCE_LT(
-        axis, in_dims.size(),
+        axis, convert_dims.size(),
         platform::errors::InvalidArgument("axis(%d) should be less than the "
                                           "dimension(%d) of the input tensor.",
-                                          axis, in_dims.size()));
+                                          axis, convert_dims.size()));
 
-    int scan_dim_size = in_dims[axis];
-    bool optimize_condition = (axis == (in_dims.size() - 1)) ? true : false;
+    T* out_data = out->mutable_data<T>(context.GetPlace());
+    const T* in_data = in->data<T>();
+
+    if (size == convert_dims[axis] && !reverse) {
+      if (exclusive) {
+        thrust::exclusive_scan(thrust::device, in_data, in_data + size,
+                               out_data);
+      } else {
+        thrust::inclusive_scan(thrust::device, in_data, in_data + size,
+                               out_data);
+      }
+      return;
+    }
+
+    int scan_dim_size = convert_dims[axis];
+    bool optimize_condition =
+        (axis == (convert_dims.size() - 1)) ? true : false;
     int outer_dim_size = 1;
     int inner_dim_size = 1;
     // treat all dim index < axis as outer_dim_size
     for (size_t i = 0; i < axis; i++) {
-      outer_dim_size *= in_dims[i];
+      outer_dim_size *= convert_dims[i];
     }
     // treat all dim index > axis as innner_dim_size
-    for (size_t i = axis + 1; i < in_dims.size(); i++) {
-      inner_dim_size *= in_dims[i];
+    for (size_t i = axis + 1; i < convert_dims.size(); i++) {
+      inner_dim_size *= convert_dims[i];
     }
-
-    T* out_data = out->mutable_data<T>(context.GetPlace());
-    const T* in_data = in->data<T>();
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     if (optimize_condition) {

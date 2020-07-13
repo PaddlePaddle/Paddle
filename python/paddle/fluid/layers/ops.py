@@ -143,12 +143,8 @@ __all__ += ['cumsum']
 _cum_sum_ = generate_layer_fn('cumsum')
 
 
-def cumsum(x, axis=None, dtype=None, name=None):
+def cumsum(x, axis=None, exclusive=None, reverse=None):
     check_type(x, 'x', (Variable), 'cumsum')
-    if axis is None:
-        flatten = True
-    else:
-        flatten = False
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():

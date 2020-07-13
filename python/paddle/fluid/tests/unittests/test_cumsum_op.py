@@ -17,9 +17,44 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+from paddle.imperative import to_variable
+
+
+class TestCumsumOp(unittest.TestCase):
+    def run_cases(self):
+        data_np = np.arange(12).reshape(3, 4)
+        data = to_variable(data_np)
+
+        y = paddle.cumsum(data)
+        z = np.cumsum(data_np)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
+        y = paddle.cumsum(data, axis=0)
+        z = np.cumsum(data_np, axis=0)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
+        y = paddle.cumsum(data, dtype='float64')
+        self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
+
+    def test_cpu(self):
+        with paddle.imperative.guard(paddle.fluid.CPUPlace()):
+            self.run_cases()
+
+    def test_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
+        with paddle.imperative.guard(paddle.fluid.CUDAPlace(0)):
+            self.run_cases()
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = paddle.nn.data('x', [3, 4])
+            y = paddle.cumsum(x, name='out')
+            self.assertTrue('out' in y.name)
 
 
 class TestSumOp1(OpTest):

@@ -36,25 +36,25 @@ class CumKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
     int axis = context.Attr<int>("axis");
     bool exclusive = context.Attr<bool>("exclusive");
     bool reverse = context.Attr<bool>("reverse");
-    auto x_dims = X.dims();
+    auto convert_dims = Out.dims();
     if (axis == -1) {
-      axis = x_dims.size() - 1;
+      axis = convert_dims.size() - 1;
     }
     PADDLE_ENFORCE_LT(
-        axis, x_dims.size(),
+        axis, convert_dims.size(),
         platform::errors::InvalidArgument("axis(%d) should be less than the "
                                           "dimension(%d) of the input tensor.",
-                                          axis, x_dims.size()));
+                                          axis, convert_dims.size()));
     Out.template mutable_data<T>(context.GetPlace());
 
     int pre = 1;
     int post = 1;
-    int mid = x_dims[axis];
+    int mid = convert_dims[axis];
     for (int i = 0; i < axis; ++i) {
-      pre *= x_dims[i];
+      pre *= convert_dims[i];
     }
-    for (int i = axis + 1; i < x_dims.size(); ++i) {
-      post *= x_dims[i];
+    for (int i = axis + 1; i < convert_dims.size(); ++i) {
+      post *= convert_dims[i];
     }
 
     auto x = framework::EigenVector<T>::Flatten(X);
