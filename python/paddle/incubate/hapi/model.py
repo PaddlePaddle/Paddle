@@ -35,7 +35,7 @@ from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
 from paddle.io import DataLoader, Dataset
 
-from .loss import Loss
+#from .loss import Loss
 from .distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from .metrics import Metric
 from .callbacks import config_callbacks
@@ -500,14 +500,14 @@ class DynamicGraphAdapter(object):
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss = self.ddp_model.scale_loss(final_loss)
             final_loss.backward()
             self.ddp_model.apply_collective_grads()
         else:
-            outputs = self.model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
@@ -516,9 +516,9 @@ class DynamicGraphAdapter(object):
         self.model.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
-                labels)))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(
+                to_list(outputs) + to_list(labels)))
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -530,7 +530,7 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = self.model.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.forward(*[to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
         else:
@@ -560,9 +560,9 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
-                labels)))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(
+                to_list(outputs) + to_list(labels)))
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         # To be consistent with static graph
@@ -1101,9 +1101,9 @@ class Model(fluid.dygraph.Layer):
                 but got {}".format(device))
 
         self._optimizer = optimizer
-        if loss_function:
-            if not isinstance(loss_function, Loss):
-                raise TypeError("'loss_function' must be sub classes of 'Loss'")
+        #       if loss_function:
+        #           if not isinstance(loss_function, Loss):
+        #               raise TypeError("'loss_function' must be sub classes of 'Loss'")
         self._loss_function = loss_function
         if not in_dygraph_mode():
             if not isinstance(inputs, (list, dict, Input)):

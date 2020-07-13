@@ -27,7 +27,8 @@ from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
 from paddle.fluid.dygraph.base import to_variable
 
 from paddle.incubate.hapi.model import Model, Input, set_device
-from paddle.incubate.hapi.loss import CrossEntropy
+#from paddle.incubate.hapi.loss import CrossEntropy
+from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.incubate.hapi.metrics import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
 from paddle.incubate.hapi.vision.models import LeNet
@@ -189,12 +190,12 @@ class TestModel(unittest.TestCase):
         fluid.default_startup_program().random_seed = seed
         fluid.default_main_program().random_seed = seed
 
-        model = LeNet()
+        model = LeNet(classifier_activation=None)
         optim_new = fluid.optimizer.Adam(
             learning_rate=0.001, parameter_list=model.parameters())
         model.prepare(
             optim_new,
-            loss_function=CrossEntropy(average=False),
+            loss_function=CrossEntropyLoss(reduction="sum"),
             metrics=Accuracy(),
             inputs=self.inputs,
             labels=self.labels)
@@ -322,7 +323,7 @@ class TestModelFunction(unittest.TestCase):
             labels = [Input([None, 1], 'int64', name='label')]
             model.prepare(
                 optim2,
-                loss_function=CrossEntropy(average=False),
+                loss_function=CrossEntropyLoss(reduction="sum"),
                 inputs=inputs,
                 labels=labels,
                 device=device)
@@ -370,7 +371,7 @@ class TestModelFunction(unittest.TestCase):
             model.prepare(
                 inputs=inputs,
                 optimizer=optim,
-                loss_function=CrossEntropy(average=False),
+                loss_function=CrossEntropyLoss(reduction="sum"),
                 labels=labels)
             model.save(path + '/test')
             model.load(path + '/test')
@@ -390,7 +391,7 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(
             inputs=inputs,
             optimizer=optim,
-            loss_function=CrossEntropy(average=False),
+            loss_function=CrossEntropyLoss(reduction="sum"),
             labels=labels)
         model.save(path + '/test')
         fluid.disable_dygraph()
@@ -402,7 +403,7 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(
             inputs=inputs,
             optimizer=optim,
-            loss_function=CrossEntropy(average=False),
+            loss_function=CrossEntropyLoss(reduction="sum"),
             labels=labels)
         model.load(path + '/test')
         shutil.rmtree(path)
@@ -418,7 +419,7 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(
             inputs=inputs,
             optimizer=optim,
-            loss_function=CrossEntropy(average=False),
+            loss_function=CrossEntropyLoss(reduction="sum"),
             labels=labels)
         model.save(path + '/test')
 
@@ -433,7 +434,7 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(
             inputs=inputs,
             optimizer=optim,
-            loss_function=CrossEntropy(average=False),
+            loss_function=CrossEntropyLoss(reduction="sum"),
             labels=labels)
         model.load(path + '/test')
         shutil.rmtree(path)
