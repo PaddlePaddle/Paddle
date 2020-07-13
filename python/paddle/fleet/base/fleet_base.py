@@ -57,7 +57,7 @@ class Fleet(object):
         self._util = None
 
     def init(self, role_maker):
-        self.role_maker = role_maker
+        self._role_maker = role_maker
         self.strategy_compiler = StrategyCompiler()
 
     def is_first_worker(self):
@@ -292,7 +292,7 @@ class Fleet(object):
         valid_optimizer_list = []
         # recall meta optimizers for ranking
         for opt in distributed_optimizer_list:
-            opt._set_basic_info(loss, self.role_maker,
+            opt._set_basic_info(loss, self._role_maker,
                                 self.user_defined_optimizer,
                                 self.user_defined_strategy)
             if opt._can_apply():
@@ -300,7 +300,7 @@ class Fleet(object):
         # combine recalled meta optimizers to be a valid meta optimizer
         meta_optimizer, compiled_strategy = \
                 self.strategy_compiler.generate_optimizer(
-                    loss, self.role_maker, self.user_defined_optimizer,
+                    loss, self._role_maker, self.user_defined_optimizer,
                     self.user_defined_strategy, valid_optimizer_list)
         optimize_ops, params_grads = meta_optimizer.minimize(
             loss,
@@ -310,12 +310,12 @@ class Fleet(object):
 
         if self._runtime_handle is not None:
             self._runtime_handle = RuntimeFactory()._create_runtime(
-                final_dist_strategy, self.role_maker, optimize_ops,
+                final_dist_strategy, self._role_maker, optimize_ops,
                 params_grads)
 
         if self._util is not None:
             self._util = UtilFactory()._create_util(final_dist_strategy,
-                                                    self.role_maker,
+                                                    self._role_maker,
                                                     optimize_ops, params_grads)
 
         return optimize_ops, params_grads
