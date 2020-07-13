@@ -171,12 +171,12 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
     """
+    if not (isinstance(x, Variable)):
+        raise ValueError("The input x should be a Variable")
+
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
     helper = LayerHelper('flatten', **locals())
-
-    if not (isinstance(x, Variable)):
-        raise ValueError("The input x should be a Variable")
 
     x_dim = len(x.shape)
     if not (isinstance(start_axis, int)) or (
