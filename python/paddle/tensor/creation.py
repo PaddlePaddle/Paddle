@@ -482,6 +482,9 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     
     Return type: Variable
 
+    Raises:
+        TypeError: If dtype is not float32, float64, int32 or int64.
+
     examples:
 
         .. code-block:: python
