@@ -171,7 +171,7 @@ def index_select(x, index, axis=0, name=None):
             data_index = np.array([0, 1, 1]).astype('int32')
 
             x = paddle.imperative.to_variable(data)
-            index = paddle.to_variable(data_index)
+            index = paddle.imperative.to_variable(data_index)
             out_z1 = paddle.index_select(x=x, index=index)
             #[[1. 2. 3. 4.]
             # [5. 6. 7. 8.]
