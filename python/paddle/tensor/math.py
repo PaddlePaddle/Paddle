@@ -217,7 +217,7 @@ def pow(x, exponent, name=None):
 
             import paddle
             import numpy as np
-            # use dygraph
+
             paddle.enable_imperative()
             
             # example 1: exponent is a float
