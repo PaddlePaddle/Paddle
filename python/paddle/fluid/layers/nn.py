@@ -15027,13 +15027,13 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
                                        float(min), 'max',
                                        float(max), 'seed', seed, 'dtype', dtype)
 
-    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random')
+    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
+    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
     utils._get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random')
+        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random/rand')
 
     helper = LayerHelper("uniform_random", **locals())
     out = helper.create_variable_for_type_inference(dtype)

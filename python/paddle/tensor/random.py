@@ -231,8 +231,7 @@ def randn(shape, dtype=None, name=None):
         Random tensor whose data is drawn from a standard normal distribution,
         dtype: flaot32 or float64 as specified.
 
-    Return type:
-        Variable
+    Return type: Variable
 
     Raises:
         TypeError: If the type of `shape` is not Variable, list or tuple.
@@ -272,8 +271,11 @@ def randn(shape, dtype=None, name=None):
     """
     if dtype is None:
         dtype = 'float32'
-    return gaussian_random(
+
+    out = gaussian_random(
         shape=shape, mean=0.0, std=1.0, seed=0, dtype=dtype, name=name)
+    out.stop_gradient = True
+    return out
 
 
 @templatedoc()
@@ -329,6 +331,7 @@ def randperm(n, dtype="int64", name=None):
     attrs = {'n': n, 'dtype': dtype, 'seed': 0}
     helper.append_op(
         type='randperm', inputs={}, outputs={'Out': out}, attrs=attrs)
+    out.stop_gradient = True
     return out
 
 
@@ -399,4 +402,7 @@ def rand(shape, dtype=None, name=None):
     """
     if dtype is None:
         dtype = 'float32'
-    return uniform_random(shape, dtype, min=0.0, max=1.0, name=name)
+
+    out = uniform_random(shape, dtype, min=0.0, max=1.0, name=name)
+    out.stop_gradient = True
+    return out
