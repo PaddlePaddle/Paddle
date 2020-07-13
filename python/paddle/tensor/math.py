@@ -591,7 +591,6 @@ Examples:
 
         import paddle
 
-        # use dygraph
         paddle.enable_imperative()
         x = paddle.rand([2, 3], dtype='float32')
         y = paddle.rand([2, 3], dtype='float32')
@@ -600,7 +599,7 @@ Examples:
 
         x = paddle.rand([2, 3, 2], dtype='float32')
         y = paddle.rand([3], dtype='float32')
-        z = paddle.elementwise_mul(x, y, axis=1)
+        z = paddle.multiply(x, y, axis=1)
         print(x.numpy(), 'X', y.numpy(), '=', z.numpy())
 
 
