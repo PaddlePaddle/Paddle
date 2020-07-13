@@ -29,8 +29,6 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
-from ..incubate.fleet.parameter_server.mode import DistributedMode
-
 import logging
 from ..data_feeder import check_dtype, check_type
 
@@ -233,6 +231,8 @@ class ListenAndServ(object):
         return parent_block
 
     def complete_op(self):
+        from ..incubate.fleet.parameter_server.mode import DistributedMode
+
         main_program = self.helper.main_program
         current_block = main_program.current_block()
         parent_block = self.parent_block()

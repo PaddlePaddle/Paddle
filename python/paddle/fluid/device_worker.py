@@ -15,8 +15,6 @@
 
 from __future__ import print_function
 
-from paddle.fluid.incubate.fleet.parameter_server import version
-
 __all__ = [
     'DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section', 'DownpourSGDOPT'
 ]
@@ -104,6 +102,8 @@ class Hogwild(DeviceWorker):
         # when opt_info is None or empty dict, it should return
         if not opt_info:
             return
+
+        from paddle.fluid.incubate.fleet.parameter_server import version
 
         if version.is_transpiler() and "fleet_desc" not in opt_info:
             return

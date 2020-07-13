@@ -51,9 +51,9 @@ from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import Tr
 from paddle.fluid.incubate.fleet.parameter_server.mode import PSMode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
-import paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass as worker
-import paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass as server
-import paddle.fluid.incubate.fleet.parameter_server.ir.public as public
+from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
+from paddle.fluid.incubate.fleet.parameter_server.ir import pserver_pass as server
+from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
 
 
 class FleetTranspiler(Fleet):
