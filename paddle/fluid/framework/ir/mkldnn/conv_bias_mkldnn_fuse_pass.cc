@@ -26,9 +26,11 @@ namespace ir {
 template <typename BinaryOperation>
 LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
                                BinaryOperation f) {
-  PADDLE_ENFORCE_EQ(
-      vec_a.dims(), vec_b.dims(),
-      platform::errors::Fatal("input tow tensor must have same shape."));
+  PADDLE_ENFORCE_EQ(vec_a.dims(), vec_b.dims(),
+                    platform::errors::InvalidArgument(
+                        "Input two tensors must have same shape, but they are "
+                        "different: %d, %d.",
+                        vec_a.dims().size(), vec_b.dims().size()));
   LoDTensor vec_y;
   vec_y.Resize(vec_a.dims());
   const float* a = vec_a.data<float>();
@@ -41,13 +43,13 @@ LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
 }
 
 void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::Fatal("graph cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE_NOT_NULL(scope,
-                          platform::errors::Fatal("scope cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -72,8 +74,9 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
     // elementwise_add op
     GET_IR_NODE_FROM_SUBGRAPH(eltwise, eltwise, conv_bias_pattern);
 
-    PADDLE_ENFORCE_NE(subgraph.count(conv_input), 0,
-                      platform::errors::Fatal("Detector not find conv_input."));
+    PADDLE_ENFORCE_NE(
+        subgraph.count(conv_input), 0,
+        platform::errors::NotFound("Detector not find conv input."));
 
     // check if fuse can be done and if MKL-DNN should be used
     FuseOptions fuse_option = FindFuseOption(*conv, *eltwise);
@@ -92,13 +95,16 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
       auto conv_bias_names = conv->Op()->Input("Bias");
       // add eltwise bias to existing conv bias
       PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1,
-                        platform::errors::Fatal("can not find var Bias."));
+                        platform::errors::NotFound("Can not find var Bias."));
       auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
       auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
       PADDLE_ENFORCE_EQ(
           conv_bias_tensor->dims(), eltwise_bias_tensor->dims(),
-          platform::errors::Fatal("conv_bias_tensor and eltwise_bias_tensor "
-                                  "must have same shape."));
+          platform::errors::InvalidArgument(
+              "Conv bias tensor and eltwise bias tensor "
+              "must have same shape, but they are different: %d %d.",
+              conv_bias_tensor->dims().size(),
+              eltwise_bias_tensor->dims().size()));
       *conv_bias_tensor = tensor_apply_eltwise(
           *conv_bias_tensor, *eltwise_bias_tensor, std::plus<float>());
 

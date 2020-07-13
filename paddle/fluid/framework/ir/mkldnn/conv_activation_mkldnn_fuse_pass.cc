@@ -22,8 +22,8 @@ namespace framework {
 namespace ir {
 
 void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::Fatal("graph cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("conv_activation_mkldnn_fuse", graph);
 
   GraphPatternDetector gpd;
@@ -75,9 +75,9 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
 
     GraphSafeRemoveNodes(graph, {activation, conv_out});
 
-    PADDLE_ENFORCE_GT(
-        subgraph.count(conv_input), 0UL,
-        platform::errors::Fatal("subgraph has to contain conv_input node."));
+    PADDLE_ENFORCE_GT(subgraph.count(conv_input), 0UL,
+                      platform::errors::InvalidArgument(
+                          "Subgraph has to contain conv input node."));
     IR_NODE_LINK_TO(conv, activation_out);
     found_conv_activation_count++;
   };
