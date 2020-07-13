@@ -88,6 +88,8 @@ class AutoCheckpointChecker(object):
                 "PADDLE_EDL_HDFS_CHECKPOINT_PATH"]
             self._trainer_id = int(os.environ["PADDLE_EDL_TRAINER_ID"])
             self._ce_test = bool(os.environ["PADDLE_EDL_ONLY_FOR_CE_TEST"])
+            self._save_checkpoint_inter = int(
+                os.getenv("PADDLE_EDL_SAVE_CHECKPOINT_INTER", "900"))  #s
 
             if not self._ce_test:
                 assert len(self._hdfs_home) > 3 and \
@@ -108,6 +110,9 @@ class AutoCheckpointChecker(object):
     def get_exe_checkpoint_path(self, name):
         return "{}/{}/exe/{}".format(self.hdfs_checkpoint_path, self.job_id,
                                      name)
+
+    def save_checkpoint_inter(self):
+        return self._save_checkpoint_inter
 
     def valid(self):
         if in_dygraph_mode():
@@ -166,17 +171,21 @@ class AutoCheckpointChecker(object):
     def hdfs_checkpoint_path(self):
         return self._hdfs_checkpoint_path
 
-    def generate_range_name(self):
-        assert self.valid()
+    @staticmethod
+    def generate_range_name():
         return generator("_range_")
 
-    def generate_program_name(self):
-        assert self.valid()
+    @staticmethod
+    def generate_program_name():
         return generator("_program_")
 
-    def generate_executor_name(self):
-        assert self.valid()
+    @staticmethod
+    def generate_executor_name():
         return generator("_executor_")
+
+    @staticmethod
+    def generate_generator_loader_name():
+        return generator("_generator_loader_")
 
 
 class ExeTrainStatus(SerializableBase):
@@ -248,7 +257,11 @@ class ExeTrainStatus(SerializableBase):
 
 
 class TrainEpochRange(SerializableBase):
-    def __init__(self, max_epoch_num, name, save_checkpoint_inter=15 * 60):
+    def __init__(self,
+                 max_epoch_num,
+                 name,
+                 save_checkpoint_inter=15 * 60,
+                 load_last=-1):
         self._max_epoch_num = max_epoch_num
         self._epoch_no = -1  # current epoch_no
         self._last_checkpoint_time = None
@@ -278,9 +291,12 @@ class TrainEpochRange(SerializableBase):
 
         _thread_checker()
 
-        if self._cper._get_last_checkpoint_no(self._checkpoint_path) > 0:
-            self._cper.load_checkpoint(self._checkpoint_path, [self],
-                                       self._checker.trainer_id)
+        cp_nos = self._cper.get_checkpoint_no(self._checkpoint_path)
+        if len(cp_nos) >= 1 and abs(load_last) <= len(cp_nos):
+            self._cper.load_checkpoint(
+                self._checkpoint_path, [self],
+                self._checker.trainer_id,
+                checkpoint_no=cp_nos[load_last])
             self._restored_from = CONST_CHECKPOINT
             logger.info("load tain_epoch_range checkpoint:{}".format(self))
         else:
@@ -323,7 +339,7 @@ class TrainEpochRange(SerializableBase):
         return json.dumps(d)
 
     @property
-    def is_restored(self):
+    def restored_from(self):
         return self._restored_from
 
     def deserialize(self, path):
@@ -482,14 +498,13 @@ def _auto_checkpoint(exe, program):
     if not _can_auto_checkpoint(program):
         return
 
-    #print("program auto checkpoint:", program._auto_checkpoint)
     _initial_names(exe, program)
 
     exe_status = g_train_epoch_range._exe_status
     key = _get_running_key(exe._auto_checkpoint_name,
                            program._auto_checkpoint_name)
 
-    if g_train_epoch_range.is_restored == CONST_CHECKPOINT:
+    if g_train_epoch_range.restored_from == CONST_CHECKPOINT:
         assert key in exe_status, "when restored key:{} must be in train_epoch_range:{}".format(
             key, g_train_epoch_range)
 

@@ -14,34 +14,63 @@
 
 from . import auto_checkpoint as acp
 
+g_train_epoch_ranges = {}
 
-class DACP(object):
-    def __init__(self):
-        pass
-
-    def begin_step(self):
-        pass
-
-    def end_step(self):
-        pass
+CONST_GENERATOR_BEGIN = "begin"
+CONST_GENERATOR_END = "end"
 
 
-g_dacp = None
+class TrainEpochRangeWrapper(object):
+    def __init__(self, name):
+        self._running_status = CONST_GENERATOR_BEGIN
+        self._epoch_no = -1
 
-
-def _get_dacp():
-    if g_dacp is None:
-        g_dacp = DACP()
-
-    return g_dacp
+        self._train_epoch_range = acp.TrainEpochRange(
+            max_epoch_num,
+            name,
+            save_checkpoint_inter=acp.get_checker.save_checkpoint_inter,
+            checkpoint_no=-2)
 
 
 def _begin(name):
-    dacp = _get_dacp()
+    checker = acp._get_checker()
+    if not checker.valid():
+        return False
+
+    t = None
+    if name not in g_train_epoch_ranges:
+        g_train_epoch_ranges[name] = TrainEpochRangeWrapper(name)
+    t = g_train_epoch_ranges[name]
+
+    assert acp.g_train_epoch_range == None, "internal error: g_train_epoch_range can't be valid now."
+    acp.g_train_epoch_range = t
+
+    if t._train_epoch_range.restord_from != acp.CONST_CHECKPOINT:
+        return True
+
+    if t._epoch_no < t._train_epoch_range.epoch_no:
+        raise fluid.core.EOFException
+
+    return True
+
+
+def _auto_checkpoint(exe, program):
+    return acp._auto_checkpoint(exe, program)
 
 
 def _end(name):
-    dacp = g_dacp
-    assert dacp is not None, "Internal fatal error: g_dacp must not None"
+    checker = acp._get_checker()
+    if not checker.valid():
+        return False
 
-    dacp.end_step(name)
+    assert name in g_train_epoch_ranges, \
+        "internal error: g_train_epoch_ranges must contain the name:{}, now:{}".format(name, g_train_epoch_ranges.keys())
+
+    t = g_train_epoch_ranges[name]
+    t._runing_status = CONST_GENERATOR_END
+
+    assert t == acp.g_train_epoch_range, "interal error, current running range must equal"
+
+    acp.g_train_epoch_range.save_checkpoint()
+    acp.g_train_epoch_range = None
+    return True

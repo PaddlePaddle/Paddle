@@ -15,4 +15,30 @@
 from . import auto_checkpoint as acp
 from . import dataloader_auto_checkpoint as dacp
 
-g_
+CONST_DACP_TYPE = "dacp"
+CONST_ACP_TYPE = "acp"
+g_acp_type = None
+
+logger = acp._get_logger(20)
+
+
+def _auto_checkpoint(exe, program):
+    if not acp._can_auto_checkpoint(program):
+        return False
+
+    if g_acp_type is None:
+        if len(dacp.g_train_epoch_ranges) > 1:
+            g_acp_type = CONST_DACP_TYPE
+            _auto_checkpoint(exe, program)
+        elif acp.g_train_epoch_range is not None:
+            g_acp_type = CONST_ACP_TYPE
+            _auto_checkpoint(exe, program)
+
+        assert False, "internal error: check acp_type error"
+
+    logger.info("enter auto_checkpoint type{}:".format(g_acp_type))
+
+    if g_acp_type == CONST_DACP_TYPE:
+        return dacp._auto_checkpoint(exe, program)
+
+    acp._auto_checkpoint(exe, program)

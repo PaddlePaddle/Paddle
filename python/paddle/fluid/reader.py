@@ -984,6 +984,9 @@ class GeneratorLoader(DataLoaderBase):
         if not self._iterable:
             self._init_non_iterable()
 
+        self._auto_checkpoint_name = acp._get_checker(
+        ).generate_generator_loader_name()
+
     def _wait_thread_ends(self):
         # Get self._thread first to prevent data race, because __thread_main__
         # would set self._thread be None at the end
@@ -1110,6 +1113,7 @@ class GeneratorLoader(DataLoaderBase):
             else:
                 return self._reader.read_next()
         except StopIteration:
+            dacp._end(self._auto_checkpoint_name)
             self._queue.close()
             self._reset()
             six.reraise(*sys.exc_info())
@@ -1158,7 +1162,7 @@ class GeneratorLoader(DataLoaderBase):
         self._thread.start()
 
     def _reset(self):
-        dacp._end(self._auto_checkpont_name)
+        dacp._end(self._auto_checkpoint_name)
 
         self._queue.close()
         self._exited = True
