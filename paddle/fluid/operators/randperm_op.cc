@@ -92,4 +92,5 @@ template <typename T>
 using kernel =
     paddle::operators::RandpermKernel<paddle::platform::CPUDeviceContext, T>;
 
-REGISTER_OP_CPU_KERNEL(randperm, kernel<int64_t>, kernel<int>);
+REGISTER_OP_CPU_KERNEL(randperm, kernel<int64_t>, kernel<int>, kernel<float>,
+                       kernel<double>);
