@@ -89,6 +89,8 @@
 
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+# including io directory for inference lib paddle_api.h
+include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 
 if(NOT APPLE)
   find_package(Threads REQUIRED)

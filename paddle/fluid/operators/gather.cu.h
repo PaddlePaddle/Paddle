@@ -27,15 +27,11 @@ namespace operators {
 using framework::Tensor;
 using platform::DeviceContext;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T, typename IndexT = int>
 __global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
                                  T* output, size_t index_size,
                                  size_t slice_size) {
-  CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
+  CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT gather_i = indices[indices_i];
@@ -49,7 +45,7 @@ __global__ void GatherNdCUDAKernel(const T* input, const int* input_dims,
                                    const IndexT* indices, T* output,
                                    size_t remain_size, size_t slice_size,
                                    size_t end_size) {
-  CUDA_1D_KERNEL_LOOP(i, remain_size * slice_size) {
+  CUDA_KERNEL_LOOP(i, remain_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT gather_i = 0;

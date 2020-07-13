@@ -278,8 +278,9 @@ class ConcreteProgram(object):
                 with param_guard(func_spec.parameters(False)), param_guard(
                         func_spec.buffers(False)):
                     outputs = static_func(*inputs)
-                if not isinstance(outputs, (tuple, list)):
-                    outputs = [outputs] if outputs else []
+                if not isinstance(outputs,
+                                  (tuple, list)) and outputs is not None:
+                    outputs = [outputs]
 
         return ConcreteProgram(
             inputs=inputs,

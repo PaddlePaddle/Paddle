@@ -53,12 +53,14 @@ from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 # from .layer.activation import PReLU        #DEFINE_ALIAS
 from .layer.activation import ReLU  #DEFINE_ALIAS
+from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
 # from .layer.activation import Softmax        #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import HSigmoid  #DEFINE_ALIAS
 from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pool2D  #DEFINE_ALIAS
+from .layer.common import Pad2D  #DEFINE_ALIAS
 from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import UpSample  #DEFINE_ALIAS

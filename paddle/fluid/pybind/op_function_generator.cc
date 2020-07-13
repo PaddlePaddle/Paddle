@@ -34,6 +34,7 @@
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_ins_map = {
     {"layer_norm", {"X", "Scale", "Bias"}},
+    {"instance_norm", {"X", "Scale", "Bias"}},
     {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
     {"label_smooth", {"X", "PriorDist"}},
     {"assign", {"X"}},
@@ -79,6 +80,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"matmul", {"Out"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
+    {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
     {"amp_check_finite_and_scale", {"Out", "FoundInfinite"}},
 };
 
