@@ -23,9 +23,6 @@
 
 namespace paddle {
 namespace framework {
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 
 template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM>
 __global__ void PullCopy(
