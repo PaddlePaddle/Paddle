@@ -33,7 +33,7 @@ class RollOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Output(Out) of RollOp should not be null."));
 
-    auto dims = ctx->Attrs().Get<std::vector<int64_t>>("dims");
+    auto dims = ctx->Attrs().Get<std::vector<int64_t>>("axis");
     auto shifts = ctx->Attrs().Get<std::vector<int64_t>>("shifts");
 
     PADDLE_ENFORCE_EQ(dims.size(), shifts.size(),
@@ -92,7 +92,7 @@ class RollOpMaker : public framework::OpProtoAndCheckerMaker {
                                   "of the tensor are shifted.")
         .SetDefault({});
     AddAttr<std::vector<int64_t>>(
-        "dims",
+        "axis",
         "Axis along which to roll. It must have the same size "
         "with shifts.")
         .SetDefault({});

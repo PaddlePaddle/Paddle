@@ -31,10 +31,6 @@ using LoDTensor = framework::LoDTensor;
 static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 int const BBoxSize = 4;
 
 static inline int NumBlocks(const int N) {
@@ -48,7 +44,7 @@ __global__ void GPUDistFpnProposalsHelper(
     const int refer_level, const int refer_scale, const int max_level,
     const int min_level, int* roi_batch_id_data, int* sub_lod_list,
     int* target_lvls) {
-  CUDA_1D_KERNEL_LOOP(i, nthreads) {
+  CUDA_KERNEL_LOOP(i, nthreads) {
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
