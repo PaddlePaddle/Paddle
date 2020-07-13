@@ -359,10 +359,6 @@ class DataLoader(object):
                 shuffle=shuffle,
                 drop_last=drop_last)
 
-        self._auto_checkpoint = False
-        self._auto_checkpoint_Name = unique_name.generate(
-            "_paddle_datalaoder_auto_checkpoint_")
-
     def __len__(self):
         return len(self.batch_sampler)
 

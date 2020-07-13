@@ -48,7 +48,10 @@ def _begin(name):
     if t._train_epoch_range.restord_from != acp.CONST_CHECKPOINT:
         return True
 
-    if t._epoch_no < t._train_epoch_range.epoch_no:
+    logger.info("begin generator epoch_no:{} checkpoint_epoch_no:{}",
+                t._epoch_no, t._train_epoch_range.get())
+
+    if t._epoch_no <= t._train_epoch_range.epoch_no:
         raise fluid.core.EOFException
 
     return True
@@ -71,6 +74,10 @@ def _end(name):
 
     assert t == acp.g_train_epoch_range, "interal error, current running range must equal"
 
+    t._epoch_no += 1
     acp.g_train_epoch_range.save_checkpoint()
     acp.g_train_epoch_range = None
+
+    logger.info("end generator epoch_no:{} checkpoint_epoch_no:{}", t._epoch_no,
+                t._train_epoch_range.get())
     return True

@@ -26,6 +26,7 @@ def _auto_checkpoint(exe, program):
     if not acp._can_auto_checkpoint(program):
         return False
 
+    global g_acp_type
     if g_acp_type is None:
         if len(dacp.g_train_epoch_ranges) > 1:
             g_acp_type = CONST_DACP_TYPE

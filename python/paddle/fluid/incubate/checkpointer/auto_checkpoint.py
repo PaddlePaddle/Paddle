@@ -26,7 +26,7 @@ from contextlib import contextmanager
 from paddle.fluid import unique_name, compiler
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 from .checkpointer import SerializableBase, Checkpointer, PaddleModel
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, Program
 
 g_train_epoch_range = None
 g_checker = None
@@ -424,7 +424,7 @@ def _get_train_epoch_range():
 
 def _can_auto_checkpoint(program):
     if not isinstance(program, compiler.CompiledProgram) and \
-            not isinstance(program, fluid.framework.Program):
+            not isinstance(program, Program):
         return False
 
     if isinstance(program, compiler.CompiledProgram):
