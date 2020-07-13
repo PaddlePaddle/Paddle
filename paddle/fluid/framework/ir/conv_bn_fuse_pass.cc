@@ -63,8 +63,9 @@ void recompute_bias_and_weights(const Scope* scope,
   // Re-compute bias of conv2d from BN
   PADDLE_ENFORCE_EQ(
       eltwise_y_in_tensor->dims(), bn_bias_tensor.dims(),
-      platform::errors::Fatal(
-          "eltwise_y_in_tensor and bn_bias_tensor must have same dims."));
+      platform::errors::InvalidArgument(
+          "Tensor eltwise y(%d) and bn bias(%d) must have same dims.",
+          eltwise_y_in_tensor->dims().size(), bn_bias_tensor.dims().size()));
 
   auto* scale_tensor = scope->FindVar(bn_scale.Name())->GetMutable<LoDTensor>();
   auto* variance_tensor =
@@ -119,13 +120,13 @@ void recompute_bias_and_weights(const Scope* scope,
 }
 
 void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::Fatal("graph cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE_NOT_NULL(scope,
-                          platform::errors::Fatal("scope cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -193,13 +194,15 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
         auto conv_bias_names = conv->Op()->Input("Bias");
         PADDLE_ENFORCE_EQ(
             conv_bias_names.size(), 1UL,
-            platform::errors::Fatal("find input var Bais error."));
+            platform::errors::InvalidArgument("Find input var Bais error."));
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
         auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
-        PADDLE_ENFORCE_EQ(
-            conv_bias_tensor->dims(), eltwise_y_in_tensor->dims(),
-            platform::errors::Fatal("conv_bias_tensor and eltwise_y_in_tensor "
-                                    "must have same dims."));
+        PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(), eltwise_y_in_tensor->dims(),
+                          platform::errors::InvalidArgument(
+                              "Tensor conv bias(%d) and eltwise y(%d) "
+                              "must have same dims.",
+                              conv_bias_tensor->dims().size(),
+                              eltwise_y_in_tensor->dims().size()));
 
         auto eigen_conv_bias = EigenVector<float>::From(*conv_bias_tensor);
         eigen_conv_bias += EigenVector<float>::From(*eltwise_y_in_tensor);
@@ -245,13 +248,13 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 }
 
 void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::Fatal("graph cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE_NOT_NULL(scope,
-                          platform::errors::Fatal("scope cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =

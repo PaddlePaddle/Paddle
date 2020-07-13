@@ -52,8 +52,9 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   // Re-compute bias of conv2d from AffineChannel
   PADDLE_ENFORCE_EQ(
       eltwise_y_in_tensor->dims(), ac_bias_tensor.dims(),
-      platform::errors::Fatal(
-          "eltwise_y_in_tensor and ac_bias_tensor must have same dims."));
+      platform::errors::InvalidArgument(
+          "Tensor eltwise y(%d) and ac bias(%d) must have same dims.",
+          eltwise_y_in_tensor->dims().size(), ac_bias_tensor.dims().size()));
 
   auto* scale_tensor = scope->FindVar(ac_scale.Name())->GetMutable<LoDTensor>();
 
@@ -81,13 +82,13 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
 }
 
 void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::Fatal("graph cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE_NOT_NULL(scope,
-                          platform::errors::Fatal("scope cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -157,13 +158,13 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 }
 
 void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::Fatal("graph cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE_NOT_NULL(scope,
-                          platform::errors::Fatal("scope cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
