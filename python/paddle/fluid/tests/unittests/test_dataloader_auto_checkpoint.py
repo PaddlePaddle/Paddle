@@ -30,7 +30,8 @@ from paddle.fluid import unique_name
 import numpy as np
 from paddle.io import Dataset, BatchSampler, DataLoader
 
-from .auto_checkpoint_utils import AutoCheckpointBase, logger
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
+logger = get_logger()
 
 
 class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
