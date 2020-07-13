@@ -65,7 +65,7 @@ class Checkpointer(object):
         if not self._fs.is_exist(path):
             self._fs.mkdirs(path)
         else:
-            assert self._fs.is_dir(path), "path:%s must be a directory".format(
+            assert self._fs.is_dir(path), "path:{} must be a directory".format(
                 path)
 
         max_no = self._get_last_checkpoint_no(path)
