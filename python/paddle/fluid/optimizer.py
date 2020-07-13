@@ -2893,7 +2893,7 @@ class FtrlOptimizer(Optimizer):
                 "LinearAccumOut": linear_acc
             },
             attrs={"l1": self._l1,
-                   "l2": self._l1,
+                   "l2": self._l2,
                    "lr_power": self._lr_power},
             stop_gradient=True)
 
