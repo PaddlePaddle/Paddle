@@ -241,13 +241,14 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
   }
 };
 
-class FlattenNewOp : public framework::OperatorWithKernel {
+class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FlattenNew");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FlattenNew");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FlattenContiguousRange");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FlattenContiguousRange");
     const auto &start_axis = ctx->Attrs().Get<int>("start_axis");
     const auto &stop_axis = ctx->Attrs().Get<int>("stop_axis");
     const auto &in_dims = ctx->GetInputDim("X");
@@ -306,7 +307,7 @@ class FlattenNewOp : public framework::OperatorWithKernel {
   }
 };
 
-class FlattenNewOpMaker : public FlattenOpMaker {
+class FlattenContiguousRangeOpMaker : public FlattenOpMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) A tensor of rank >= axis.");
@@ -353,7 +354,8 @@ Case 2:
 };
 
 template <typename T>
-class FlattenNewGradOpMaker : public framework::SingleGradOpMaker<T> {
+class FlattenContiguousRangeGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -366,15 +368,15 @@ class FlattenNewGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class FlattenNewGradOp : public framework::OperatorWithKernel {
+class FlattenContiguousRangeGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(context->HasInput("XShape"), "Input", "XShape",
-                   "FlattenNewGrad");
+                   "FlattenContiguousRangeGrad");
     OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "FlattenNewGrad");
+                   framework::GradVarName("Out"), "FlattenContiguousRangeGrad");
     auto xshape_dims = context->GetInputDim("XShape");
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -414,12 +416,14 @@ REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
 REGISTER_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
                   ops::FlattenGradInplaceInferer);
 
-REGISTER_OPERATOR(flatten_contiguous_range, ops::FlattenNewOp,
-                  ops::FlattenNewOpMaker,
-                  ops::FlattenNewGradOpMaker<paddle::framework::OpDesc>,
-                  ops::FlattenNewGradOpMaker<paddle::imperative::OpBase>,
-                  ops::FlattenOpInplaceInferer);
-REGISTER_OPERATOR(flatten_contiguous_range_grad, ops::FlattenNewGradOp,
+REGISTER_OPERATOR(
+    flatten_contiguous_range, ops::FlattenContiguousRangeOp,
+    ops::FlattenContiguousRangeOpMaker,
+    ops::FlattenContiguousRangeGradOpMaker<paddle::framework::OpDesc>,
+    ops::FlattenContiguousRangeGradOpMaker<paddle::imperative::OpBase>,
+    ops::FlattenOpInplaceInferer);
+REGISTER_OPERATOR(flatten_contiguous_range_grad,
+                  ops::FlattenContiguousRangeGradOp,
                   ops::FlattenGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
@@ -450,15 +454,24 @@ REGISTER_OP_CPU_KERNEL(
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     flatten_contiguous_range,
-    ops::FlattenNewKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FlattenNewKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FlattenNewKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FlattenNewKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::FlattenNewKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
+                                      float>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
+                                      double>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
+                                      int8_t>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
+                                      int64_t>);
 REGISTER_OP_CPU_KERNEL(
     flatten_contiguous_range_grad,
-    ops::FlattenNewGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FlattenNewGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FlattenNewGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FlattenNewGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::FlattenNewGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          float>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          double>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          int>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          int8_t>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          int64_t>);

@@ -44,15 +44,24 @@ REGISTER_OP_CUDA_KERNEL(
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     flatten_contiguous_range,
-    ops::FlattenNewKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FlattenNewKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FlattenNewKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FlattenNewKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::FlattenNewKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
+                                      float>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
+                                      double>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
+                                      int8_t>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CUDADeviceContext,
+                                      int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     flatten_contiguous_range_grad,
-    ops::FlattenNewGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FlattenNewGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FlattenNewGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FlattenNewGradKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::FlattenNewGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
+                                          float>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
+                                          double>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
+                                          int>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
+                                          int8_t>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CUDADeviceContext,
+                                          int64_t>);

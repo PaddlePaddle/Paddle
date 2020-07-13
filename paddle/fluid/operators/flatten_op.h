@@ -113,7 +113,7 @@ class Flatten2GradKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class FlattenNewKernel : public framework::OpKernel<T> {
+class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto &start_axis = context.Attr<int>("start_axis");
@@ -164,7 +164,7 @@ class FlattenNewKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class FlattenNewGradKernel : public framework::OpKernel<T> {
+class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
