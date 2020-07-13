@@ -66,7 +66,8 @@ __device__ __forceinline__ float2 ToFloat2<float2>(float2 a) {
 }
 
 template <>
-__device__ __forceinline__ float2 FloatsToPair(const float a, const float b) {
+__device__ __forceinline__ float2 FloatsToPair<float2>(const float a,
+                                                       const float b) {
   return make_float2(a, b);
 }
 
@@ -86,7 +87,8 @@ __device__ __forceinline__ float2 ToFloat2<__half2>(__half2 a) {
 }
 
 template <>
-__device__ __forceinline__ __half2 FloatsToPair(const float a, const float b) {
+__device__ __forceinline__ __half2 FloatsToPair<__half2>(const float a,
+                                                         const float b) {
   return __floats2half2_rn(a, b);
 }
 #endif
