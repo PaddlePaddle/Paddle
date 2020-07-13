@@ -29,6 +29,8 @@ from .unique_name import UniqueNameGenerator
 import logging
 import warnings
 from .dataset import DatasetBase, InMemoryDataset
+from .incubate.checkpointer import dataloader_auto_checkpoint as dacp
+from .incubate.checkpointer import auto_checkpoint as acp
 
 ### Dygraph DataLoader configs ###
 import os
@@ -356,6 +358,10 @@ class DataLoader(object):
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last)
+
+        self._auto_checkpoint = False
+        self._auto_checkpoint_Name = unique_name.generate(
+            "_paddle_datalaoder_auto_checkpoint_")
 
     def __len__(self):
         return len(self.batch_sampler)
@@ -1145,11 +1151,15 @@ class GeneratorLoader(DataLoaderBase):
                 logging.warn('Your reader has raised an exception!')
                 six.reraise(*sys.exc_info())
 
+        dacp._begin(self._auto_checkpoint_name)
+
         self._thread = threading.Thread(target=__thread_main__)
         self._thread.daemon = True
         self._thread.start()
 
     def _reset(self):
+        dacp._end(self._auto_checkpont_name)
+
         self._queue.close()
         self._exited = True
         thread = self._thread

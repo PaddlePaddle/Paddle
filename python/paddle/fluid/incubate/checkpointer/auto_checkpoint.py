@@ -26,6 +26,7 @@ from contextlib import contextmanager
 from paddle.fluid import unique_name, compiler
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 from .checkpointer import SerializableBase, Checkpointer, PaddleModel
+from paddle.fluid.framework import in_dygraph_mode
 
 g_train_epoch_range = None
 g_checker = None
@@ -109,6 +110,9 @@ class AutoCheckpointChecker(object):
                                      name)
 
     def valid(self):
+        if in_dygraph_mode():
+            return False
+
         return  self._run_env is not None and \
             self._platform is not None and \
             self._job_id is not None and \
