@@ -12145,7 +12145,7 @@ def logical_not(x, out=None, name=None):
             # use dygraph
             paddle.enable_imperative()
             x_data = np.array([True, False, True, False]).astype(np.bool)
-            x = paddle.imperative.to_variable(y_data)
+            x = paddle.imperative.to_variable(x_data)
             res = paddle.logical_not(x)
             print(res.numpy()) # [False  True False  True]
     """
