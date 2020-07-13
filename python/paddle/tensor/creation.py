@@ -107,7 +107,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         attrs={'value': fill_value,
                "dtype": dtype},
         outputs={'Out': [out]})
-
+    out.stop_gradient = True
     return out
 
 
@@ -257,7 +257,7 @@ def zeros(shape, dtype=None, name=None):
 def zeros_like(x, dtype=None, name=None):
     """
 	:alias_main: paddle.zeros_like
-	:alias: paddle.zeros_like,paddle.tensor.zeros_like,paddle.tensor.creation.zeros_like
+	:alias: paddle.zeros_like, paddle.tensor.zeros_like, paddle.tensor.creation.zeros_like
 
     This function creates a zeros tensor which has identical shape and dtype 
     with `input`.
@@ -274,6 +274,9 @@ def zeros_like(x, dtype=None, name=None):
 
     Returns:
         out(Variable): The tensor variable storing the output.
+
+    Raise:
+        TypeError: If dtype is not bool, float16, float32, float64, int32 or int64.
 
     Examples:
         .. code-block:: python
