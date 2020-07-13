@@ -57,6 +57,11 @@ class DistributedStrategy(object):
     def __init__(self):
         self.strategy = distributed_strategy_pb2.DistributedStrategy()
 
+    def load_from_prototxt(self, pb_file):
+        f = open(pb_file, 'r')
+        self.strategy = google.protobuf.text_format.Merge(
+            str(f.read()), self.strategy)
+
     @property
     def amp(self):
         return self.strategy.amp
