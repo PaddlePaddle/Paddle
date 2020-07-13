@@ -320,7 +320,7 @@ def randn(shape,
 def randperm(n, dtype="int64", name=None):
     """
 	:alias_main: paddle.randperm
-	:alias: paddle.randperm,paddle.tensor.randperm,paddle.tensor.random.randperm
+	:alias: paddle.randperm, paddle.tensor.randperm, paddle.tensor.random.randperm
 
     ${comment}
 
@@ -338,6 +338,10 @@ def randperm(n, dtype="int64", name=None):
 
     Return Type:
         ${out_type}
+
+    Raises:
+        ValueError: If n is not greater than 0.
+        TypeError: If dtype is not int32, int64, float32 or float64.
 
     Examples:
         .. code-block:: python
