@@ -42,6 +42,7 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
 
 bool GetCondData(const framework::LoDTensor &cond);
 
-bool FindVarName(const std::string &, const framework::VariableNameMap &);
+bool StrInVaraiableNameMap(const std::string &,
+                           const framework::VariableNameMap &);
 }  // namespace operators
 }  // namespace paddle

@@ -232,8 +232,8 @@ bool GetCondData(const framework::LoDTensor &cond) {
   return cpu_cond->data<bool>()[0];
 }
 
-bool FindVarName(const std::string &name,
-                 const framework::VariableNameMap &var_names) {
+bool StrInVaraiableNameMap(const std::string &name,
+                           const framework::VariableNameMap &var_names) {
   for (auto &ipt : var_names) {
     if (std::find(ipt.second.begin(), ipt.second.end(), name) !=
         ipt.second.end()) {

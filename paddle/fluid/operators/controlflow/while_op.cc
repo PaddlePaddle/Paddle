@@ -67,13 +67,13 @@ class WhileOp : public framework::OperatorBase {
     auto *program = block->Program();
 
     std::set<std::string> no_copy_var_names;
-    auto allops = block->AllOps();
-    for (auto *op : allops) {
-      auto &input_var_names = op->Inputs();
-      auto &output_var_names = op->Outputs();
+    const std::vector<framework::OpDesc *> &all_ops = block->AllOps();
+    for (const framework::OpDesc *op : all_ops) {
+      const framework::VariableNameMap &input_var_names = op->Inputs();
+      const framework::VariableNameMap &output_var_names = op->Outputs();
       for (auto &ipt : input_var_names) {
-        for (auto &var_name : ipt.second) {
-          if (FindVarName(var_name, output_var_names)) {
+        for (const std::string &var_name : ipt.second) {
+          if (StrInVaraiableNameMap(var_name, output_var_names)) {
             no_copy_var_names.insert(var_name);
           }
         }
@@ -106,43 +106,33 @@ class WhileOp : public framework::OperatorBase {
       while (cond_data) {
         auto &current_scope = scope.NewScope();
         step_scopes->push_back(&current_scope);
-        // Each loop the value of LoDTensor in input would be saved sub_scope to
-        // ensure that the correct values can be used in the gradient
-        // calculation.
-        auto input_names = Inputs(kX);
-        for (auto &input_var_name : input_names) {
-          if (std::find(no_copy_var_names.begin(), no_copy_var_names.end(),
-                        input_var_name) == no_copy_var_names.end()) {
-            auto input_var_rename = input_var_name + "@RENAME";
-            auto *ig_outside_var = scope.FindVar(input_var_name);
-            if (ig_outside_var->IsType<framework::LoDTensor>()) {
-              auto ig_outside_var_tensor = ig_outside_var->Get<LoDTensor>();
-              auto *ig_inside_var_tensor =
+
+        const std::string suffix = "@TMP_COPY";
+        std::vector<std::string> rename_vars;
+        for (const std::string &input_var_name : Inputs(kX)) {
+          if (no_copy_var_names.find(input_var_name) ==
+              no_copy_var_names.end()) {
+            std::string input_var_rename = input_var_name + suffix;
+            framework::Variable *input_var = scope.FindVar(input_var_name);
+            if (input_var->IsType<framework::LoDTensor>()) {
+              rename_vars.push_back(input_var_rename);
+              auto input_var_tensor = input_var->Get<LoDTensor>();
+              auto *rename_input_var_tensor =
                   current_scope.Var(input_var_rename)->GetMutable<LoDTensor>();
-              framework::TensorCopy(ig_outside_var_tensor, dev_place,
-                                    ig_inside_var_tensor);
-              ig_inside_var_tensor->set_lod(ig_outside_var_tensor.lod());
+              framework::TensorCopy(input_var_tensor, dev_place,
+                                    rename_input_var_tensor);
+              rename_input_var_tensor->set_lod(input_var_tensor.lod());
             }
           }
         }
         executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
                                     true);
-        std::vector<std::string> erase_vars;
-        for (auto &input_var_name : input_names) {
-          auto input_var_rename = input_var_name + "@RENAME";
-          auto *pre_scope_var = current_scope.FindVar(input_var_rename);
-          if ((pre_scope_var != nullptr) &&
-              pre_scope_var->IsType<framework::LoDTensor>()) {
-            erase_vars.push_back(input_var_rename);
-            auto pre_scope_var_tensor = pre_scope_var->Get<LoDTensor>();
-            auto *cur_scope_var_tensor =
-                current_scope.Var(input_var_name)->GetMutable<LoDTensor>();
-            framework::TensorCopy(pre_scope_var_tensor, dev_place,
-                                  cur_scope_var_tensor);
-            cur_scope_var_tensor->set_lod(pre_scope_var_tensor.lod());
-          }
+
+        for (auto &var_rename : rename_vars) {
+          std::string input_var_name =
+              var_rename.substr(0, var_rename.size() - suffix.size());
+          current_scope.Rename(var_rename, input_var_name);
         }
-        current_scope.EraseVars(erase_vars);
         cond_data =
             GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
       }
