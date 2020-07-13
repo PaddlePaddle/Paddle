@@ -12015,7 +12015,6 @@ def logical_and(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            # use dygraph
             paddle.enable_imperative()
             x_data = np.array([True, True, False, False]).astype(np.bool)
             y_data = np.array([True, False, True, False]).astype(np.bool)
@@ -12058,7 +12057,6 @@ def logical_or(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            # use dygraph
             paddle.enable_imperative()
             x_data = np.array([True, True, False, False]).astype(np.bool)
             y_data = np.array([True, False, True, False]).astype(np.bool)
@@ -12101,7 +12099,6 @@ def logical_xor(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            # use dygraph
             paddle.enable_imperative()
             x_data = np.array([True, True, False, False]).astype(np.bool)
             y_data = np.array([True, False, True, False]).astype(np.bool)
@@ -12142,7 +12139,6 @@ def logical_not(x, out=None, name=None):
             import paddle
             import numpy as np
 
-            # use dygraph
             paddle.enable_imperative()
             x_data = np.array([True, False, True, False]).astype(np.bool)
             x = paddle.imperative.to_variable(x_data)
