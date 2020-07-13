@@ -80,7 +80,7 @@ class AutoCheckpointTest(unittest.TestCase):
         os.environ.clear()
         os.environ.update(self._old_environ)
 
-    def _init_env(self, exe, main_prog, startup_prog):
+    def _init_env(self, exe, main_prog, startup_prog, minimize=True):
         def simple_net():
             image = fluid.data(
                 name='image', shape=[-1, 16, 16], dtype='float32')
@@ -91,14 +91,18 @@ class AutoCheckpointTest(unittest.TestCase):
                                                                     label)
             loss = fluid.layers.reduce_mean(cross_entropy)
             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-            sgd.minimize(loss)
+            if minimize:
+                sgd.minimize(loss)
             return sgd, loss, image, label
 
         with program_guard(main_prog, startup_prog):
             sgd, loss, image, label = simple_net()
 
-            compiled = fluid.CompiledProgram(main_prog).with_data_parallel(
-                loss_name=loss.name)
+            if minimize:
+                compiled = fluid.CompiledProgram(main_prog).with_data_parallel(
+                    loss_name=loss.name)
+            else:
+                compiled = None
 
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
             loader = DataLoader(
@@ -110,7 +114,8 @@ class AutoCheckpointTest(unittest.TestCase):
                 drop_last=True,
                 num_workers=2)
 
-        exe.run(startup_prog)
+        if minimize:
+            exe.run(startup_prog)
 
         return compiled, loader, sgd, loss, image, label
 
@@ -306,8 +311,19 @@ class AutoCheckpointTest(unittest.TestCase):
         fs.delete(save_dir)
         logger.info("end test_multiple")
 
-    """
     def test_distributed_basic(self):
+        logger.info("begin test_multiple")
+        fs = LocalFS()
+        save_dir = "./run_save_0"
+        fs.delete(save_dir)
+
+        #basic
+        exe, main_prog, startup_prog = self._generate()
+
+        compiled, data_loader, optimizer, loss, image, label = \
+            self._init_env(exe, main_prog, startup_prog, minimize=False)
+
+        #fleet
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:6070"
@@ -315,13 +331,36 @@ class AutoCheckpointTest(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
 
-        exe, optimizer, avg_loss, main_program = self._init_model()
+        with fluid.program_guard(main_prog, startup_prog):
+            dist_optimizer = fleet.distributed_optimizer(optimizer)
+            dist_optimizer.minimize(loss)
 
-        dist_optimizer = fleet.distributed_optimizer(optimizer)
-        dist_optimizer.minimize(avg_loss)
+        exe.run(startup_prog)
 
-        self._run(exe, fleet.main_program)
-    """
+        o = None
+        i = 0
+        name = None
+        for i in acp.train_epoch_range(3, 0):
+            o = acp._get_train_epoch_range()
+            name = o.name
+            print("_run_save_0 name:", o.name, "epoch_no:", i)
+
+            for data in data_loader():
+                fetch = exe.run(fleet.main_program,
+                                feed=data,
+                                fetch_list=[loss])
+
+            fluid.io.save_inference_model(
+                save_dir, [image.name, label.name], [loss],
+                exe,
+                main_program=main_prog)
+            self.assertEqual(len(o._exe_status), 1)
+
+        o = acp._get_train_epoch_range()
+        assert o == None, "now train epoch must not exits now"
+        self.assertEqual(i, 2)
+
+        fs.delete(save_dir)
 
 
 if __name__ == '__main__':
