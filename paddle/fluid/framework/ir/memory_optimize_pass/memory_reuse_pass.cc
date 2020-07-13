@@ -95,8 +95,8 @@ VarDesc *MemoryReusePass::GetVarDesc(const details::VarHandle &var) const {
   size_t scope_idx = var.scope_idx();
   auto iter = var_descs_[scope_idx].find(var_name);
   if (iter == var_descs_[scope_idx].end()) {
-    PADDLE_ENFORCE(
-        (*all_vars_)[scope_idx].count(var_name),
+    PADDLE_ENFORCE_NE(
+        (*all_vars_)[scope_idx].count(var_name), 0,
         platform::errors::NotFound("Variable %s not found.", var_name));
     auto *desc = TryGetLatestVarDesc((*all_vars_)[scope_idx].at(var_name));
     PADDLE_ENFORCE_NOT_NULL(
