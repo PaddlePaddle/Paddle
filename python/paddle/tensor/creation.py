@@ -135,7 +135,7 @@ def ones(shape, dtype=None, name=None):
           
           paddle.enable_imperative()
           data = paddle.ones(shape=[3, 2], dtype='float32') # [[1., 1.], [1., 1.], [1., 1.]]
-          data = paddle.ones(shape=[2, 2], dtype='float32', device='cpu') # [[1., 1.], [1., 1.]]
+          data = paddle.ones(shape=[2, 2], dtype='int32', name="ones") # [[1, 1], [1, 1]]
     """
     if dtype is None:
         dtype = 'float32'
