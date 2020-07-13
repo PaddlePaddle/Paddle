@@ -45,7 +45,8 @@ inline DataLayout StringToDataLayout(const std::string& str) {
   } else if (s == "MKLDNNLAYOUT") {
     return DataLayout::kMKLDNN;
   } else {
-    PADDLE_THROW("Unknown storage order string: %s", s);
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unknown data layout type string: %s.", s));
   }
 }
 
@@ -60,7 +61,8 @@ inline std::string DataLayoutToString(const DataLayout& data_layout) {
     case DataLayout::kMKLDNN:
       return "MKLDNNLAYOUT";
     default:
-      PADDLE_THROW("unknown DataLayout %d", data_layout);
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unknown Data Layout type %d.", data_layout));
   }
 }
 
