@@ -176,7 +176,7 @@ def index_select(x, index, axis=0, name=None):
             #[[1. 2. 3. 4.]
             # [5. 6. 7. 8.]
             # [5. 6. 7. 8.]]
-            out_z2 = paddle.index_select(x=x, index=index, dim=1)
+            out_z2 = paddle.index_select(x=x, index=index, axis=1)
             #[[ 1.  2.  2.]
             # [ 5.  6.  6.]
             # [ 9. 10. 10.]]
