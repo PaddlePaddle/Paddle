@@ -943,7 +943,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const std::string key = platform::CreateKey(
         src_tz, ctx.InputName("Input") + ctx.InputName("Filter"));
 
-    const std::string key_conv_pd = key + "@forward_pd";
+    const std::string key_conv_pd = key + "@fwd_pd";
     std::vector<primitive> pipeline;
 
     // Create user memory descriptors
