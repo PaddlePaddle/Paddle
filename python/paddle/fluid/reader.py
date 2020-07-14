@@ -1104,7 +1104,6 @@ class GeneratorLoader(DataLoaderBase):
 
     def __next__(self):
         try:
-            print("use __next__")
             dacp._begin(self._auto_checkpoint_name)
             if self._return_list:
                 return self._reader.read_next_list()

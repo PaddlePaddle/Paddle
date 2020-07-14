@@ -442,7 +442,7 @@ def _can_auto_checkpoint(program):
             return False
 
     _get_checker()
-    logger.info("_can_auto_checkpoint:{}".format(g_train_epoch_range))
+    #logger.info("_can_auto_checkpoint:{}".format(g_train_epoch_range))
     return g_checker.valid() and g_train_epoch_range is not None
 
 
@@ -497,8 +497,6 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
 
         for i in g_train_epoch_range.next():
             yield i
-
-        g_train_epoch_range = None
     finally:
         g_train_epoch_range = None
 

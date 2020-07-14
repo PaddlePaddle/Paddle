@@ -75,17 +75,10 @@ class AutoCheckpointTest(AutoCheckpointBase):
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        logger.info("ids 0:{} epoch_range:{}".format(
-            acp.generator.ids, acp._get_train_epoch_range()))
         exe, main_prog, startup_prog = self._generate()
-        logger.info("ids 1:{} epoch_range:{}".format(
-            acp.generator.ids, acp._get_train_epoch_range()))
 
         compiled, data_loader, optimizer, loss, image, label = \
             self._init_env(exe, main_prog, startup_prog)
-
-        logger.info("ids 2:{}".format(acp.generator.ids))
-        logger.info("ids 2:{}".format(acp.generator.ids))
 
         o = None
         i = 0
@@ -93,14 +86,9 @@ class AutoCheckpointTest(AutoCheckpointBase):
         for i in acp.train_epoch_range(3, 0):
             o = acp._get_train_epoch_range()
             name = o.name
-            print("_run_save_0 name:", o.name, "epoch_no:", i)
 
             for data in data_loader():
-                print("_run_save_0 name 1:", o.name, "epoch_no:", i,
-                      "compiled:", compiled._auto_checkpoint_name)
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
-
-            print("_run_save_0 name 2:", o.name, "epoch_no:", i)
 
             fluid.io.save_inference_model(
                 save_dir, [image.name, label.name], [loss],
@@ -124,18 +112,14 @@ class AutoCheckpointTest(AutoCheckpointBase):
 
     def _run_load_0(self, started_epoch_no=None):
         print("begin _run_load_0")
-        logger.info("ids load 0:{}".format(acp.generator.ids))
         exe, main_prog, startup_prog = self._generate()
-        logger.info("ids load 1:{}".format(acp.generator.ids))
 
         fs = LocalFS()
         save_dir = "./run_load_0"
         fs.delete(save_dir)
 
-        logger.info("ids load 2:{}".format(acp.generator.ids))
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
             exe, main_prog, startup_prog)
-        logger.info("ids load 3:{}".format(acp.generator.ids))
 
         o = None
         i = 0
@@ -178,14 +162,8 @@ class AutoCheckpointTest(AutoCheckpointBase):
         self._reset_generator()
         self._run_save_model()
 
-        logger.info("ids b 0:{} epoch_range:{}".format(
-            acp.generator.ids, acp._get_train_epoch_range()))
         fs.delete(checker.hdfs_checkpoint_path)
-        logger.info("ids b 1:{} epoch_range:{}".format(
-            acp.generator.ids, acp._get_train_epoch_range()))
         self._reset_generator()
-        logger.info("ids b 2:{} epoch_range:{}".format(
-            acp.generator.ids, acp._get_train_epoch_range()))
         self._run_save_0()
 
         self._reset_generator()
@@ -196,7 +174,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
 
         logger.info("end test_basic")
 
-    def _test_corner_epoch_no(self):
+    def test_corner_epoch_no(self):
         logger.info("begin test_corener_epoch_no")
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
@@ -218,7 +196,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(checker.hdfs_checkpoint_path)
         logger.info("end test_corener_epoch_no")
 
-    def _test_multiple(self):
+    def test_multiple(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
         fs.delete(checker.hdfs_checkpoint_path)
@@ -256,7 +234,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(save_dir)
         logger.info("end test_multiple")
 
-    def _test_distributed_basic(self):
+    def test_distributed_basic(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
         fs.delete(checker.hdfs_checkpoint_path)
@@ -285,7 +263,6 @@ class AutoCheckpointTest(AutoCheckpointBase):
             dist_optimizer = fleet.distributed_optimizer(optimizer)
             dist_optimizer.minimize(loss)
 
-        logger.info("run startup_prog")
         exe.run(startup_prog)
 
         o = None

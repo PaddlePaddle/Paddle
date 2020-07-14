@@ -87,7 +87,6 @@ def _current(name):
 
 def _begin(name):
     if not _check_env():
-        logger.info("can't use _begin")
         return False
 
     t, init = _current(name)
@@ -106,12 +105,10 @@ def _begin(name):
 
 
 def _end(name):
-    try:
-        if not _check_env():
-            logger.info("can't use _end")
-            return False
+    if not _check_env():
+        return False
 
-        logger.info("begin to use _end")
+    try:
         # check
         assert name in g_ranges, \
             "internal error: g_ranges must contain the name:{}, now:{}".format(name, g_ranges.keys())
@@ -127,8 +124,6 @@ def _end(name):
         else:
             logger.info("end generator epoch_no:{} checkpoint_epoch_no:{}".
                         format(t._epoch_no, t._checkpoint_epoch_no))
-
-        acp.g_train_epoch_range = None
     finally:
         # important
         acp.g_train_epoch_range = None
