@@ -38,6 +38,7 @@ logger = get_logger()
 
 class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
     def _run_complex(self):
+        logger.info("enter _run_complex")
         exe, main_prog, startup_prog = self._generate()
 
         compiled, data_loader, optimizer, loss, image, label = \
@@ -45,14 +46,16 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         # use two
         for i in acp.train_epoch_range(3):
-            print("epoch:", i)
             for data in data_loader():
                 name = acp.g_train_epoch_range.name
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
-            self.assertTrue(acp.g_acp_type, acp.CONST_ACP_TYPE)
+        self.assertTrue(acp.g_acp_type, acp.CONST_ACP_TYPE)
+        self.assertTrue(i, 2)
+        logger.info("exit _run_complex")
 
     def _run_try_catch(self, break_epoch_no=None):
+        logger.info("enter _run_try_catch")
         exe, main_prog, startup_prog = self._generate()
 
         compiled, data_loader, optimizer, loss, image, label = \
@@ -64,23 +67,27 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         for i in range(3):
             try:
                 data_loader.start()
-
-                name = acp.g_train_epoch_range.name
-                fetch = exe.run(compiled, fetch_list=[loss])
+                while True:
+                    name = acp.g_train_epoch_range.name
+                    fetch = exe.run(compiled, fetch_list=[loss])
 
                 if break_epoch_no is not None:
                     if i == break_epoch_no:
                         break
-            finally:
+            except fluid.core.EOFException:
                 logger.info("complete one epoch")
+            finally:
+                data_loader.reset()
 
-        self.assertTrue(acp.g_acp_type, acp.CONST_DACP_TYPE)
+        self.assertTrue(acp.g_acp_type, None)
         self.assertTrue(
             len(dacp.g_train_epoch_ranges), 1, "There must be one element")
         self.assertTrue(dacp.g_train_epoch_ranges[name], None,
                         "Running must be None")
+        logger.info("exit _run_try_catch")
 
     def _run_save_basic(self, break_epoch_no=None):
+        logger.info("enter _run_save_basic")
         exe, main_prog, startup_prog = self._generate()
 
         compiled, data_loader, optimizer, loss, image, label = \
@@ -90,23 +97,23 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         name = None
         for i in range(3):
             for data in data_loader():
-                name = acp.g_train_epoch_range.name
+                print("loader:", data_loader._auto_checkpoint_name)
+                name = data_loader._auto_checkpoint_name
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
             if break_epoch_no is not None:
                 if i == break_epoch_no:
                     break
 
-        self.assertTrue(acp.g_acp_type, acp.CONST_DACP_TYPE)
-        self.assertTrue(
+        self.assertEqual(acp.g_acp_type, None)
+        self.assertEqual(
             len(dacp.g_train_epoch_ranges), 1, "There must be one element")
-        self.assertTrue(dacp.g_train_epoch_ranges[name], None,
-                        "Running must be None")
 
         if break_epoch_no is None:
             self.assertEqual(i, 2)
         else:
             self.assertEqual(i, break_epoch_no)
+        logger.info("leave _run_save_basic")
 
     """
     def _run_load_try_catch(self):
@@ -149,9 +156,22 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
     """
 
     def test_basic(self):
+        checker = acp._get_checker()
+        fs = HDFSClient(checker.hdfs_home, None)
+
+        fs.delete(checker.hdfs_checkpoint_path)
+        self._reset_generator()
         self._run_complex()
+
+        fs.delete(checker.hdfs_checkpoint_path)
+        self._reset_generator()
         self._run_save_basic()
+
+        fs.delete(checker.hdfs_checkpoint_path)
+        self._reset_generator()
         self._run_try_catch()
+
+        fs.delete(checker.hdfs_checkpoint_path)
 
     def test_coreno_epoch(self):
         pass

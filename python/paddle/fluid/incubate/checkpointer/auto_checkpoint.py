@@ -268,11 +268,11 @@ class TrainEpochRange(SerializableBase):
                  load_last=-1):
         self._max_epoch_num = max_epoch_num
         self._epoch_no = -1  # current epoch_no
-        self._last_checkpoint_time = None
         self._name = name
         self._restored_from = None
         self._exe_status = {}
         self._save_checkpoint_inter = save_checkpoint_inter
+        self._last_checkpoint_time = time.time()
 
         self._checker = g_checker
         if not self._checker.valid():
