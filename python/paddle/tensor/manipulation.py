@@ -299,7 +299,7 @@ def split(x, num_or_sections, axis=0, name=None):
 
     Split the input tensor into multiple sub-Tensors.
     Args:
-        axis (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
+        x (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
         num_or_sections (int|list|tuple): If :attr:`num_or_sections` is an integer,
             then the integer indicates the number of equal sized sub-Tensors
             that the Tensor will be divided into. If :attr:`num_or_sections`
@@ -322,7 +322,7 @@ def split(x, num_or_sections, axis=0, name=None):
             paddle.enable_imperative()
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
-            input = fluid.imperative.to_variable(input_1)
+            input = paddle.imperative.to_variable(input_1)
 
             x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
             # x0.shape [4, 2, 6]
