@@ -128,49 +128,6 @@ void StartServer(const std::string& rpc_name) {
   server_thread.join();
 }
 
-TEST(PREFETCH, CPU) {
-  setenv("http_proxy", "", 1);
-  setenv("https_proxy", "", 1);
-  g_req_handler.reset(new distributed::RequestPrefetchHandler(
-      distributed::DistributedMode::kSync));
-  g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
-  distributed::RPCClient* client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
-
-  std::thread server_thread(StartServer, distributed::kRequestPrefetch);
-  g_rpc_service->WaitServerReady();
-
-  int port = g_rpc_service->GetSelectedPort();
-  std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
-
-  framework::Scope scope;
-  platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
-  {
-    // create var on local scope
-    int64_t rows_numel = 5;
-    InitTensorsOnClient(&scope, &place, rows_numel);
-    std::string in_var_name("ids");
-    std::string out_var_name("out");
-
-    client->AsyncPrefetchVar(ep, ctx, scope, in_var_name, out_var_name);
-    client->Wait();
-    auto var = scope.Var(out_var_name);
-    auto value = var->GetMutable<framework::LoDTensor>();
-    auto ptr = value->mutable_data<float>(place);
-
-    for (int64_t i = 0; i < rows_numel; ++i) {
-      EXPECT_EQ(ptr[0 + i * value->dims()[1]], static_cast<float>(i * 2));
-    }
-  }
-
-  g_rpc_service->ShutDown();
-  server_thread.join();
-  LOG(INFO) << "begin reset";
-  g_rpc_service.reset(nullptr);
-  g_req_handler.reset(nullptr);
-}
-
 TEST(COMPLETE, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
