@@ -118,6 +118,7 @@ class API_TestTensorEye(unittest.TestCase):
                 result = tmp_result
                 expected_result.append(result)
 
+        self.assertEqual(out.numpy().shape == expected_result.shape, True)
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
         with paddle.imperative.guard():
@@ -134,6 +135,7 @@ class API_TestTensorEye(unittest.TestCase):
                     tmp_result.append(result)
                 result = tmp_result
                 expected_result = np.stack(result, axis=0)
+        self.assertEqual(out.numpy().shape == expected_result.shape, True)
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
     def test_errors(self):

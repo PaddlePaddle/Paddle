@@ -1612,20 +1612,26 @@ def eye(num_rows,
                 'dtype': dtype
             },
             stop_gradient=True)
-        out.stop_gradient = True
 
     if batch_shape is not None:
+        re_shape = [1] * len(batch_shape)
+        re_shape = re_shape + [num_rows, num_columns]
+        expand_times = batch_shape + [1, 1]
+        if in_dygraph_mode():
+            out = core.ops.reshape(out, 'shape', re_shape)
+            return core.ops.expand(out, 'expand_times', expand_times)
+
         if not isinstance(batch_shape, list):
             raise TypeError("batch_shape should be a list")
-        from .nn import stack
-        for batch_val in reversed(batch_shape):
+        for batch_val in (batch_shape):
             if batch_val <= 0:
                 raise TypeError("batch_shape should be a positive int list")
-            else:
-                stack_vars = [out for _ in numpy.arange(batch_val)]
-                if in_dygraph_mode():
-                    return core.ops.stack(stack_vars, 'axis', 0)
-                out = stack(stack_vars, axis=0)
+
+        from .nn import reshape, expand
+        out = reshape(x=out, shape=re_shape)
+        out = expand(x=out, expand_times=expand_times)
+
+    out.stop_gradient = True
     return out
 
 
