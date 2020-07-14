@@ -47,6 +47,24 @@ class TestVarBase(unittest.TestCase):
                 linear = fluid.dygraph.Linear(32, 64)
                 var = linear._helper.to_variable("test", name="abc")
 
+    def test_list_to_variable(self):
+        with fluid.dygraph.guard():
+            array = [[[1, 2], [1, 2], [1.0, 2]], [[1, 2], [1, 2], [1, 2]]]
+            var = fluid.dygraph.to_variable(array, dtype='int32')
+            self.assertTrue(np.array_equal(var.numpy(), array))
+            self.assertEqual(var.shape, [2, 3, 2])
+            self.assertEqual(var.dtype, core.VarDesc.VarType.INT32)
+            self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
+
+    def test_tuple_to_variable(self):
+        with fluid.dygraph.guard():
+            array = (((1, 2), (1, 2), (1, 2)), ((1, 2), (1, 2), (1, 2)))
+            var = fluid.dygraph.to_variable(array, dtype='float32')
+            self.assertTrue(np.array_equal(var.numpy(), array))
+            self.assertEqual(var.shape, [2, 3, 2])
+            self.assertEqual(var.dtype, core.VarDesc.VarType.FP32)
+            self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
+
     def test_tensor_to_variable(self):
         with fluid.dygraph.guard():
             t = fluid.Tensor()
@@ -84,7 +102,7 @@ class TestVarBase(unittest.TestCase):
     def test_to_string(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
-            self.assertTrue(isinstance(str(var.to_string(True)), str))
+            self.assertTrue(isinstance(str(var), str))
 
     def test_backward(self):
         with fluid.dygraph.guard():

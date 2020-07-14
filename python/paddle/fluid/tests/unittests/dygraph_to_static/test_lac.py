@@ -513,8 +513,8 @@ class TestLACModel(unittest.TestCase):
         return out
 
     def test_train(self):
-        dy_out = self.train(to_static=False)
         st_out = self.train(to_static=True)
+        dy_out = self.train(to_static=False)
         self.assertTrue(
             np.allclose(dy_out, st_out),
             msg="dygraph output:\n{},\nstatic output:\n {}.".format(dy_out,

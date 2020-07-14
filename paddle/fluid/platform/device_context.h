@@ -515,7 +515,9 @@ class DeviceContextPool {
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
   static DeviceContextPool& Instance() {
-    PADDLE_ENFORCE_NOT_NULL(pool, "Need to Create DeviceContextPool first!");
+    PADDLE_ENFORCE_NOT_NULL(pool,
+                            platform::errors::PreconditionNotMet(
+                                "Need to Create DeviceContextPool firstly!"));
     return *pool;
   }
 

@@ -23,10 +23,6 @@ namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void CountCUDAKernel(const int num_classes, const int count,
                                 const T* predictions, const T* labels,
@@ -42,7 +38,7 @@ __global__ void CountCUDAKernel(const int num_classes, const int count,
 
   T pred;
   T label;
-  CUDA_1D_KERNEL_LOOP(i, count) {
+  CUDA_KERNEL_LOOP(i, count) {
     pred = predictions[i];
     label = labels[i];
     if (pred == label) {
@@ -68,7 +64,7 @@ __global__ void ComputeIoUCUDAKernel(const int num_classes, int* wrong,
     valid_count_c = 0;
   }
   __syncthreads();
-  CUDA_1D_KERNEL_LOOP(i, num_classes) {
+  CUDA_KERNEL_LOOP(i, num_classes) {
     int wrong_n = wrong[i];
     int correct_n = correct[i];
     int denominator = wrong_n + correct_n;

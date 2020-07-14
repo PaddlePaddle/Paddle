@@ -26,7 +26,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 from paddle.fluid import compiler
-from paddle.distributed.fs_wrapper import LocalFS, BDFS
+from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 
 import os
 import sys
@@ -70,7 +70,7 @@ class Collective(Fleet):
         self._origin_program = None
         self._transpiled_program = None
         self.main_program = None
-        self._checkoint_prefix = "__paddle_fleet_checkpoint__"
+        self._checkpoint_prefix = "__paddle_fleet_checkpoint__"
         self._param_file_name = "_paddle_fleet_param__"
 
     def init_worker(self):
@@ -186,8 +186,8 @@ class Collective(Fleet):
         max_no = -1
         d = {}
         dirs = fs.list_dirs(root_path)
-        for dir in dirs:
-            g = dir.split(".")
+        for d in dirs:
+            g = d.split(".")
             if len(g) != 2:
                 continue
 
@@ -203,10 +203,10 @@ class Collective(Fleet):
 
         return max_no
 
-    def clean_redundant_check_points(self,
-                                     root_path,
-                                     fs=LocalFS(),
-                                     checkpoint_num=1):
+    def clean_redundant_checkpoints(self,
+                                    root_path,
+                                    fs=LocalFS(),
+                                    checkpoint_num=1):
         max_no = self._get_last_checkpoint_no(root_path, fs)
         if max_no < 0:
             return
@@ -215,32 +215,32 @@ class Collective(Fleet):
             checkpoint_num = 1
 
         dirs = fs.list_dirs(root_path)
-        for dir in dirs:
-            g = dir.split(".")
+        for d in dirs:
+            g = d.split(".")
             if len(g) != 2:
                 continue
 
-            if g[0] != self._checkoint_prefix:
+            if g[0] != self._checkpoint_prefix:
                 continue
 
             try:
                 n = int(g[1])
                 if n <= max_no - checkpoint_num:
-                    path = "{}/{}.{}".format(root_path, self._checkoint_prefix,
+                    path = "{}/{}.{}".format(root_path, self._checkpoint_prefix,
                                              n)
-                    fs.rmr(path)
+                    fs.delete(path)
             except Exception as e:
                 print(e)
                 continue
 
-    def save_check_point(self,
-                         executor,
-                         path,
-                         train_status,
-                         main_program=None,
-                         fs=LocalFS(),
-                         local_cache_path=".cache",
-                         remain_all_checkpoint=True):
+    def save_checkpoint(self,
+                        executor,
+                        path,
+                        train_status,
+                        main_program=None,
+                        fs=LocalFS(),
+                        local_cache_path=".cache",
+                        remain_all_checkpoint=True):
         """
         This function save persistables and current epoch num to path.
         """
@@ -248,14 +248,16 @@ class Collective(Fleet):
         if main_program == None:
             main_program = self._transpiled_program
 
-        if not fs.stat(path):
-            fs.mkdir(path)
+        if not fs.is_exist(path):
+            fs.mkdirs(path)
+        else:
+            assert fs.is_dir(path), "path:%s must be a directory".format(path)
 
         max_no = self._get_last_checkpoint_no(path, fs=fs)
         if max_no < 0:
             max_no = -1
 
-        real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no + 1)
+        real_path = "{}/{}.{}".format(path, self._checkpoint_prefix, max_no + 1)
         tmp_path = "{}.tmp".format(real_path)
         saved_path = tmp_path
 
@@ -264,9 +266,14 @@ class Collective(Fleet):
         cache_path = None
         if fs.need_upload_download():
             cache_path = "{}/{}.{}.saved_cache".format(
-                local_cache_path, self._checkoint_prefix, max_no + 1)
-            if not local_fs.stat(cache_path):
-                local_fs.mkdir(cache_path)
+                local_cache_path, self._checkpoint_prefix, max_no + 1)
+            if not local_fs.is_exist(cache_path):
+                local_fs.mkdirs(cache_path)
+            else:
+                assert fs.is_dir(
+                    path), "cache path:{} must be a directory".format(
+                        cache_path)
+
             saved_path = cache_path
 
         self.save_persistables(
@@ -282,16 +289,16 @@ class Collective(Fleet):
         fs.mv(tmp_path, real_path)
 
         if not remain_all_checkpoint:
-            self.clean_redundant_check_points(path)
+            self.clean_redundant_checkpoints(path)
 
-    def load_check_point(self,
-                         executor,
-                         path,
-                         trainer_id,
-                         main_program=None,
-                         fs=LocalFS(),
-                         local_cache_path=".cache",
-                         ignore_empty=True):
+    def load_checkpoint(self,
+                        executor,
+                        path,
+                        trainer_id,
+                        main_program=None,
+                        fs=LocalFS(),
+                        local_cache_path=".cache",
+                        ignore_empty=True):
         """
         This function load persistables and current epoch num from path.
         """
@@ -306,11 +313,13 @@ class Collective(Fleet):
         local_fs = LocalFS()
         if fs.need_upload_download():
             cache_path = "{}/{}.{}.load_cache.{}".format(
-                local_cache_path, self._checkoint_prefix, max_no, trainer_id)
-            if local_fs.stat(cache_path):
+                local_cache_path, self._checkpoint_prefix, max_no, trainer_id)
+            if not local_fs.is_exist(local_cache_path):
+                local_fs.mkdirs(local_cache_path)
+            if local_fs.is_exist(cache_path):
                 local_fs.delete(cache_path)
 
-        real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
+        real_path = "{}/{}.{}".format(path, self._checkpoint_prefix, max_no)
         load_path = real_path
         if fs.need_upload_download():
             fs.download(real_path, cache_path)

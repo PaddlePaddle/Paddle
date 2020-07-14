@@ -261,8 +261,12 @@ TEST(float16, typeid) {
   int b(0);
 
   // compile time assert
-  PADDLE_ENFORCE_EQ(functor(a), true);
-  PADDLE_ENFORCE_EQ(functor2(b), false);
+  PADDLE_ENFORCE_EQ(
+      functor(a), true,
+      platform::errors::Unavailable("The float16 support in GPU failed."));
+  PADDLE_ENFORCE_EQ(
+      functor2(b), false,
+      platform::errors::Unavailable("The float16 support in GPU failed."));
 }
 
 // GPU test

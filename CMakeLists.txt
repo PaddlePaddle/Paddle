@@ -79,7 +79,6 @@ find_package(Threads REQUIRED)
 include(simd)
 
 ################################ Exposed Configurations #######################################
-option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
