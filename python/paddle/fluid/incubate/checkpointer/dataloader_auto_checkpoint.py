@@ -61,7 +61,7 @@ class TrainEpochRangeWrapper(object):
 logger = acp._get_logger(20)
 
 
-def _check():
+def _check_env():
     checker = acp._get_checker()
     if not checker.valid():
         return False
@@ -83,7 +83,7 @@ def _current(name):
 
 
 def _begin(name):
-    if not _check():
+    if not _check_env():
         return False
 
     t = _current(name)
@@ -101,7 +101,7 @@ def _begin(name):
 
 
 def _end(name):
-    if not _check():
+    if not _check_env():
         return False
 
     # check

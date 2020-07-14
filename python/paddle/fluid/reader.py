@@ -1100,6 +1100,7 @@ class GeneratorLoader(DataLoaderBase):
 
         self._init_iterable()
         self._start()
+        dacp._begin(self._auto_checkpoint_name)
         return self
 
     def __next__(self):
@@ -1109,6 +1110,7 @@ class GeneratorLoader(DataLoaderBase):
             else:
                 return self._reader.read_next()
         except StopIteration:
+            dacp._end(self._auto_checkpoint_name)
             self._queue.close()
             self._reset()
             six.reraise(*sys.exc_info())
@@ -1150,15 +1152,11 @@ class GeneratorLoader(DataLoaderBase):
                 logging.warn('Your reader has raised an exception!')
                 six.reraise(*sys.exc_info())
 
-        dacp._begin(self._auto_checkpoint_name)
-
         self._thread = threading.Thread(target=__thread_main__)
         self._thread.daemon = True
         self._thread.start()
 
     def _reset(self):
-        dacp._end(self._auto_checkpoint_name)
-
         self._queue.close()
         self._exited = True
         thread = self._thread
