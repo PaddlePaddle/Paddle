@@ -327,11 +327,17 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def test_error(self):
-        def test_var_type():
+        def test_fluid_var_type():
             with fluid.program_guard(fluid.Program()):
                 x = [1]
                 output = fluid.layers.argsort(input=x)
-            self.assertRaises(TypeError, test_var_type)
+            self.assertRaises(TypeError, test_fluid_var_type)
+
+        def test_paddle_var_type():
+            with fluid.program_guard(fluid.Program()):
+                x = [1]
+                output = paddle.argsort(input=x)
+            self.assertRaises(TypeError, test_paddle_var_type)
 
 
 class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
@@ -340,6 +346,33 @@ class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
             self.place = core.CUDAPlace(0)
         else:
             self.place = core.CPUPlace()
+
+
+class TestArgsort(unittest.TestCase):
+    def setUp(self):
+        self.place = core.CPUPlace()
+        self.data = np.array(
+            [[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
+             [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]]],
+            dtype='float32')
+
+    def test_api_0(self):
+        with fluid.program_guard(fluid.Program()):
+            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
+            output = paddle.argsort(x=input)
+            exe = fluid.Executor(self.place)
+            result, = exe.run(feed={'input': self.data}, fetch_list=[output[0]])
+            np_result = np.argsort(result)
+            self.assertEqual((result == np_result).all(), True)
+
+    def test_api_1(self):
+        with fluid.program_guard(fluid.Program()):
+            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
+            output = paddle.argsort(x=input, axis=1)
+            exe = fluid.Executor(self.place)
+            result, = exe.run(feed={'input': self.data}, fetch_list=[output[0]])
+            np_result = np.argsort(result, axis=1)
+            self.assertEqual((result == np_result).all(), True)
 
 
 class TestArgsortDygraph(unittest.TestCase):
