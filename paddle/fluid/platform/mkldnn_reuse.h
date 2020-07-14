@@ -487,7 +487,7 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
             dev_ctx.AreLongerKeys()
-                ? platform::CreateKey(framework::vectorize(input->dims()),
+                ? platform::CreateKey(framework::vectorize(x->dims()),
                                       static_cast<int>(T), uniq_name)
                 : platform::CreateKey(framework::vectorize(input->dims()),
                                       uniq_name)) {
