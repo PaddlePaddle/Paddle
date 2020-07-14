@@ -242,7 +242,7 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-        -DLITE_GIT_TAG=develop
+        -DLITE_GIT_TAG=develop \
         -DWITH_LITE=${WITH_LITE:-ON};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
