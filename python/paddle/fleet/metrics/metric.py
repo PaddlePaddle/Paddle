@@ -11,17 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Fleet Metrics"""
 
+import paddle.fluid as fluid
+import math
 import numpy as np
 from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet
 
-def sum(input, scope=None):
+
+def sum(input):
     """
     distributed sum in fleet
 
     Args:
-        input(Variable): output of a layer
-        scope(Scope): specific scope, default is None
+        input(numpy.array): output of a layer
 
     Returns:
         global_metric(numpy.array): sum array
@@ -37,25 +40,23 @@ def sum(input, scope=None):
           fluid.layers.assign(tmp, global_cnt)
           
           # in train.py, after train or infer
-          print("sum array: ", paddle.fleet.sum(global_cnt))
+          res = np.array(scope.find_var(global_cnt.name).get_tensor())
+          print("sum array: ", paddle.fleet.sum(res))
     """
-    if scope is None:
-        scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
-    input = np.array(scope.find_var(input.name).get_tensor())
     old_shape = np.array(input.shape)
     output = np.copy(input) * 0
     fleet._role_maker._all_reduce(input, output, mode="sum")
     output = output.reshape(old_shape)
     return output
 
-def max(input, scope=None):
+
+def max(input):
     """
     distributed max in fleet
 
     Args:
-        input(Variable): output of a layer
-        scope(Scope): specific scope, default is None
+        input(numpy.array): output of a layer
 
     Returns:
         global_metric(numpy.array): max array
@@ -71,25 +72,23 @@ def max(input, scope=None):
           fluid.layers.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
-          print("max array: ", paddle.fleet.max(global_cnt))
+          res = np.array(scope.find_var(global_cnt.name).get_tensor())
+          print("max array: ", paddle.fleet.max(res))
     """
-    if scope is None:
-        scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
-    input = np.array(scope.find_var(input.name).get_tensor())
     old_shape = np.array(input.shape)
     output = np.copy(input) * 0
     fleet._role_maker._all_reduce(input, output, mode="max")
     output = output.reshape(old_shape)
     return output
 
-def min(input, scope=None):
+
+def min(input):
     """
     distributed min in fleet
 
     Args:
-        input(Variable): output of a layer
-        scope(Scope): specific scope, default is None
+        input(numpy.array): output of a layer
 
     Returns:
         global_metric(numpy.array): min array
@@ -105,26 +104,24 @@ def min(input, scope=None):
           fluid.layers.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
-          print("min array: ", paddle.fleet.min(global_cnt))
+          res = np.array(scope.find_var(global_cnt.name).get_tensor())
+          print("min array: ", paddle.fleet.min(res))
     """
-    if scope is None:
-        scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
-    input = np.array(scope.find_var(input.name).get_tensor())
     old_shape = np.array(input.shape)
     output = np.copy(input) * 0
     fleet._role_maker._all_reduce(input, output, mode="min")
     output = output.reshape(old_shape)
     return output
 
-def auc(stat_pos, stat_neg, scope=None):
+
+def auc(stat_pos, stat_neg):
     """
     distributed auc in fleet
 
     Args:
-        stat_pos(Variable): stat_pos in output of fluid.layers.auc
-        stat_neg(Variable): stat_neg in output of fluid.layers.auc
-        scope(Scope): specific scope, default is None
+        stat_pos(numpy.array): stat_pos in output of fluid.layers.auc
+        stat_neg(numpy.array): stat_neg in output of fluid.layers.auc
 
     Returns:
         auc_value(float): auc value
@@ -140,29 +137,26 @@ def auc(stat_pos, stat_neg, scope=None):
               fluid.layers.auc(input=binary_predict, label=label, curve='ROC', num_thresholds=4096)
 
           # in train.py, after train or infer
-          print("auc: ", paddle.fleet.auc(stat_pos, stat_neg))
+          pos = np.array(scope.find_var(stat_pos.name).get_tensor())
+          neg = np.array(scope.find_var(stat_neg.name).get_tensor())
+          print("auc: ", paddle.fleet.auc(pos, neg))
     """
-    if scope is None:
-        scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
-    # auc pos bucket
-    pos = np.array(scope.find_var(stat_pos.name).get_tensor())
     # auc pos bucket shape
-    old_pos_shape = np.array(pos.shape)
+    old_pos_shape = np.array(stat_pos.shape)
     # reshape to one dim
-    pos = pos.reshape(-1)
-    global_pos = np.copy(pos) * 0
+    stat_pos = stat_pos.reshape(-1)
+    global_pos = np.copy(stat_pos) * 0
     # mpi allreduce
-    fleet._role_maker._all_reduce(pos, global_pos)
+    fleet._role_maker._all_reduce(stat_pos, global_pos)
     # reshape to its original shape
     global_pos = global_pos.reshape(old_pos_shape)
 
     # auc neg bucket
-    neg = np.array(scope.find_var(stat_neg.name).get_tensor())
-    old_neg_shape = np.array(neg.shape)
-    neg = neg.reshape(-1)
-    global_neg = np.copy(neg) * 0
-    fleet._role_maker._all_reduce(neg, global_neg)
+    old_neg_shape = np.array(stat_neg.shape)
+    stat_neg = stat_neg.reshape(-1)
+    global_neg = np.copy(stat_neg) * 0
+    fleet._role_maker._all_reduce(stat_neg, global_neg)
     global_neg = global_neg.reshape(old_neg_shape)
 
     # calculate auc
@@ -192,14 +186,14 @@ def auc(stat_pos, stat_neg, scope=None):
     fleet._role_maker._barrier_worker()
     return auc_value
 
-def mae(abserr, total_ins_num, scope=None):
+
+def mae(abserr, total_ins_num):
     """
     distributed mae in fleet
 
     Args:
-        abserr(Variable): abserr in output of fluid.contrib.layers.ctr_metric_bundle
+        abserr(numpy.array): abserr in output of fluid.contrib.layers.ctr_metric_bundle
         total_ins_num(int|float): total train/infer instance count
-        scope(Scope): specific scope, default is None
 
     Returns:
         mae(float): mae value
@@ -211,29 +205,27 @@ def mae(abserr, total_ins_num, scope=None):
           sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
 
           # in train.py, after train or infer
-          print("mae: ", paddle.fleet.mae(abserr, total_ins_num))
+          res = np.array(scope.find_var(abserr.name).get_tensor())
+          print("mae: ", paddle.fleet.mae(res, total_ins_num))
     """
 
-    if scope is None:
-        scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
-    metric = np.array(scope.find_var(abserr.name).get_tensor())
-    old_metric_shape = np.array(metric.shape)
-    metric = metric.reshape(-1)
-    global_metric = np.copy(metric) * 0
-    fleet._role_maker._all_reduce(metric, global_metric)
+    old_metric_shape = np.array(abserr.shape)
+    abserr = abserr.reshape(-1)
+    global_metric = np.copy(abserr) * 0
+    fleet._role_maker._all_reduce(abserr, global_metric)
     global_metric = global_metric.reshape(old_metric_shape)
-    mae_value = global_abserr[0] / total_ins_num
+    mae_value = global_metric[0] / total_ins_num
     return mae_value
 
-def rmse(sqrerr, total_ins_num, scope=None):
+
+def rmse(sqrerr, total_ins_num):
     """
     distributed rmse in fleet
 
     Args:
-        sqrerr(Variable): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
+        sqrerr(numpy.array): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
         total_ins_num(int|float): total train/infer instance count
-        scope(Scope): specific scope, default is None
 
     Returns:
         rmse(float): rmse value
@@ -245,28 +237,26 @@ def rmse(sqrerr, total_ins_num, scope=None):
           sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
 
           # in train.py, after train or infer
-          print("rmse: ", paddle.fleet.rmse(sqrerr, total_ins_num))
+          res = np.array(scope.find_var(sqrerr.name).get_tensor())
+          print("rmse: ", paddle.fleet.rmse(res, total_ins_num))
     """
-    if scope is None:
-        scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
-    metric = np.array(scope.find_var(sqrerr.name).get_tensor())
-    old_metric_shape = np.array(metric.shape)
-    metric = metric.reshape(-1)
-    global_metric = np.copy(metric) * 0
-    fleet._role_maker._all_reduce(metric, global_metric)
+    old_metric_shape = np.array(sqrerr.shape)
+    sqrerr = sqrerr.reshape(-1)
+    global_metric = np.copy(sqrerr) * 0
+    fleet._role_maker._all_reduce(sqrerr, global_metric)
     global_metric = global_metric.reshape(old_metric_shape)
-    rmse_value = math.sqrt(global_abserr[0] / total_ins_num)
+    rmse_value = math.sqrt(global_metric[0] / total_ins_num)
     return rmse_value
 
-def mse(sqrerr, total_ins_num, scope=None):
+
+def mse(sqrerr, total_ins_num):
     """
     distributed mse in fleet
 
     Args:
-        sqrerr(Variable): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
+        sqrerr(numpy.array): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
         total_ins_num(int|float): total train/infer instance count
-        scope(Scope): specific scope, default is None
 
     Returns:
         mse(float): mse value
@@ -278,27 +268,26 @@ def mse(sqrerr, total_ins_num, scope=None):
           sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
 
           # in train.py, after train or infer
-          print("mse: ", paddle.fleet.mse(sqrerr, total_ins_num))
+          metric = np.array(scope.find_var(sqrerr.name).get_tensor())
+          print("mse: ", paddle.fleet.mse(metric, total_ins_num))
     """
-    if scope is None:
-        scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
-    metric = np.array(scope.find_var(sqrerr.name).get_tensor())
-    old_metric_shape = np.array(metric.shape)
-    metric = metric.reshape(-1)
-    global_metric = np.copy(metric) * 0
-    fleet._role_maker._all_reduce(metric, global_metric)
+    old_metric_shape = np.array(sqrerr.shape)
+    sqrerr = sqrerr.reshape(-1)
+    global_metric = np.copy(sqrerr) * 0
+    fleet._role_maker._all_reduce(sqrerr, global_metric)
     global_metric = global_metric.reshape(old_metric_shape)
-    mse_value = global_abserr[0] / total_ins_num
+    mse_value = global_metric[0] / total_ins_num
     return mse_value
 
-def acc(correct, total, scope=None):
+
+def acc(correct, total):
     """
     distributed accuracy in fleet
 
     Args:
-        correct(Variable): correct Variable
-        total(Variable): total Variable
+        correct(numpy.array): correct Variable
+        total(numpy.array): total Variable
 
     Returns:
         acc(float): accuracy value
@@ -320,17 +309,13 @@ def acc(correct, total, scope=None):
           fluid.layers.assign(tmp2, global_total)
 
           # in train.py, after train or infer
-          print("accuracy: ", paddle.fleet.acc(global_correct, global_total))
+          correct_num = np.array(scope.find_var(correct.name).get_tensor())
+          total_num = np.array(scope.find_var(total.name).get_tensor())
+          print("accuracy: ", paddle.fleet.acc(correct_num, total_num))
     """
-    if scope is None:
-        scope = fluid.global_scope()
     fleet._role_maker._barrier_worker()
-    correct_num = np.array(scope.find_var(correct.name).get_tensor())
-    total_num = np.array(scope.find_var(total.name).get_tensor())
-    global_correct_num = np.copy(correct_num) * 0
-    global_total_num = np.copy(total_num) * 0
-    fleet._role_maker._all_reduce(correct_num, global_correct_num)
-    fleet._role_maker._all_reduce(total_num, global_total_num)
-    return float(global_correct_num[0]) / float(global_total_num)
-    
-
+    global_correct_num = np.copy(correct) * 0
+    global_total_num = np.copy(total) * 0
+    fleet._role_maker._all_reduce(correct, global_correct_num)
+    fleet._role_maker._all_reduce(total, global_total_num)
+    return float(global_correct_num[0]) / float(global_total_num[0])
