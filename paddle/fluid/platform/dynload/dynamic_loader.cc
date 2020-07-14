@@ -172,23 +172,28 @@ static inline void* GetDsoHandleFromSearchPath(
   // 5. [If Failed] logging or throw error info
   if (nullptr == dso_handle) {
     auto error_msg =
-        "Failed to find dynamic library: %s ( %s ) \n"
-        "Please specify its path correctly using following ways: \n"
-        "  set environment variable LD_LIBRARY_PATH on Linux or "
-        "DYLD_LIBRARY_PATH on Mac OS. \n"
-        "  For instance, issue command: export LD_LIBRARY_PATH=... \n"
-        "  Note: After Mac OS 10.11, using the DYLD_LIBRARY_PATH is "
-        "impossible unless System Integrity Protection (SIP) is disabled.";
+        "The third-party library (%s) that Paddle depends on is not "
+        "configured correctly. Failed to find dynamic library: %s ( %s )\n"
+        "  Suggestions:\n"
+        "  1. Check if the third-party library is installed correctly.\n"
+        "  2. Configure third-party library environment variables:\n"
+        "  - Linux: set LD_LIBRARY_PATH by `export LD_LIBRARY_PATH=...`\n"
+        "  - Windows: set PATH by `set PATH=XXX;%PATH%`"
+        "  - Mac: set  DYLD_LIBRARY_PATH by `export DYLD_LIBRARY_PATH=...` "
+        "[Note: After Mac OS 10.11, using the DYLD_LIBRARY_PATH is "
+        "impossible unless System Integrity Protection (SIP) is disabled.]";
 #if !defined(_WIN32)
     auto errorno = dlerror();
 #else
     auto errorno = GetLastError();
 #endif  // !_WIN32
+    lib_name = dso_name.substr(0, dso_name.rfind("."));
     if (throw_on_error) {
       // NOTE: Special error report case, no need to change its format
-      PADDLE_THROW(platform::errors::NotFound(error_msg, dso_name, errorno));
+      PADDLE_THROW(platform::errors::PreconditionNotMet(error_msg, lib_name,
+                                                        dso_name, errorno));
     } else {
-      LOG(WARNING) << string::Sprintf(error_msg, dso_name, errorno);
+      LOG(WARNING) << string::Sprintf(error_msg, lib_name, dso_name, errorno);
     }
   }
 
