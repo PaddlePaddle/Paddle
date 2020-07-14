@@ -50,6 +50,8 @@ framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
   op->SetInput("W", {"w"});
   op->SetInput("Ids", {"ids"});
   op->SetOutput("Out", {"out"});
+  op->SetAttr("tablename", {"w"});
+  op->SetAttr("value_names", {"Param"});
 
   auto& out = *root_block->Var("out");
   out.SetType(framework::proto::VarType::LOD_TENSOR);

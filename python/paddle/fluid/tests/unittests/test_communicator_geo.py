@@ -88,7 +88,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             role=role_maker.Role.WORKER
             if training_role == "TRAINER" else role_maker.Role.SERVER,
             worker_num=1,
-            server_endpoints=["127.0.0.1:6002"])
+            server_endpoints=["127.0.0.1:8099"])
 
         strategy = StrategyFactory.create_geo_strategy(10)
 
