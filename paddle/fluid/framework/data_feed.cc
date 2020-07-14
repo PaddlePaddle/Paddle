@@ -1192,8 +1192,8 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
   finish_set_filelist_ = false;
   finish_start_ = false;
 
-  PADDLE_ENFORCE(
-      data_feed_desc.has_multi_slot_desc(),
+  PADDLE_ENFORCE_EQ(
+      data_feed_desc.has_multi_slot_desc(), true,
       platform::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in PrivateInstantDataFeed."));
   paddle::framework::MultiSlotDesc multi_slot_desc =
