@@ -44,7 +44,9 @@ class TestLookupSpraseTable(unittest.TestCase):
             "lookup_sparse_table_grad_split",
             Grad='W',
             Row={'Ids'},
-            Value={'W'})
+            Value={'W'},
+            is_entry=False,
+            tablename="sparse")
         lookup_table.run(scope, place)
 
         # get result from Out

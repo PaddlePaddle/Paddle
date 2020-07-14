@@ -26,9 +26,9 @@ import sys
 from op_test import OpTest
 from paddle.fluid.trainer_desc import DistMultiTrainer
 from paddle.fluid.device_worker import DownpourSGD, DownpourSGDOPT
-from paddle.fluid.incubate.fleet.parameter_server.pslib.node import DownpourWorker, DownpourServer
+from paddle.fluid.incubate.fleet.parameter_server.node import DownpourWorker, DownpourServer
 from google.protobuf import text_format
-import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
+import paddle.fluid.incubate.fleet.parameter_server.ps_pb2 as pslib
 from paddle.fluid.trainer_factory import TrainerFactory
 
 cache_path = os.path.expanduser('~/.cache/paddle/dataset')

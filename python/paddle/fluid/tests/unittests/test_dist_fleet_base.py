@@ -16,22 +16,17 @@ from __future__ import print_function
 """
     high level unit test for distribute fleet.
 """
-import argparse
-import os
-import pickle
-import subprocess
-import sys
-import time
-import traceback
-import math
-import collections
-import socket
-from contextlib import closing
 
-import six
-import unittest
-import numpy as np
+import os
+import sys
+import subprocess
+
+import argparse
+from contextlib import closing
+import socket
+import time
 import tempfile
+import unittest
 
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker

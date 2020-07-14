@@ -201,8 +201,11 @@ class TestCreateDefaultStrategy(unittest.TestCase):
             server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
         fleet.init(role)
 
-        optimizer = fluid.optimizer.SGD(0.0001)
-        optimizer = fleet.distributed_optimizer(optimizer)
+        def type_error_optimizer():
+            optimizer = fluid.optimizer.SGD(0.0001)
+            optimizer = fleet.distributed_optimizer(optimizer)
+
+        self.assertRaises(TypeError, type_error_optimizer)
 
 
 class TestHalfAsyncStrategy(unittest.TestCase):
