@@ -319,7 +319,7 @@ def split(x, num_or_sections, axis=0, name=None):
             import numpy as np
             import paddle
             
-            paddle.enbale_imperative()
+            paddle.enable_imperative()
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = fluid.imperative.to_variable(input_1)
