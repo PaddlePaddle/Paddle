@@ -190,4 +190,5 @@ REGISTER_OPERATOR(bilateral_slice, ops::BilateralSliceOp,
                   ops::BilateralSliceGradMaker<paddle::framework::OpDesc>,
                   ops::BilateralSliceGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilateral_slice_grad, ops::BilateralSliceOpGrad);
-REGISTER_OP_CPU_KERNEL(bilateral_slice, ops::BilateralSliceKernel<float>);
+REGISTER_OP_CPU_KERNEL(bilateral_slice, ops::BilateralSliceKernel<float>,
+                       ops::BilateralSliceKernel<double>);

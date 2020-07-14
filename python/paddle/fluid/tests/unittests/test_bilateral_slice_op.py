@@ -159,10 +159,11 @@ class TestBilateralSliceOp(OpTest):
     def test_check_output(self):
         place = paddle.fluid.CUDAPlace(0)
         self.check_output_with_place(place, atol=1e-5)
+        self.check_output
 
     def test_check_grad(self):
         place = paddle.fluid.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X', 'Grid', 'Guide'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out')
 
     def initTestCase(self):
         self.has_offset = False
@@ -185,7 +186,8 @@ class TestBilateralSliceApi(TestBilateralSliceOp):
             name='guide', shape=[None, 25, 15], dtype='float32')
         grid = paddle.fluid.data(
             name='grid', shape=[None, 12, 8, 5, 3], dtype='float32')
-        paddle.fluid.layers.bilateral_slice(x, guide, grid, self.has_offset)
+        paddle.fluid.contrib.layers.bilateral_slice(x, guide, grid,
+                                                    self.has_offset)
 
 
 if __name__ == "__main__":
