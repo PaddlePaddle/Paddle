@@ -59,12 +59,25 @@ TEST(SimplifyWithBasicOpsPass, dropout) {
       int num_scale_nodes_after = GetNumOpNodes(graph, "scale");
       VLOG(3) << DebugString(graph);
 
-      PADDLE_ENFORCE_EQ(num_dropout_nodes_after, 0);
+      PADDLE_ENFORCE_EQ(
+          num_dropout_nodes_after, 0,
+          platform::errors::InvalidArgument("num_dropout_nodes_after = %d.",
+                                            num_dropout_nodes_after));
       if (dropout_implementation == "downgrade_in_infer") {
-        PADDLE_ENFORCE_EQ(num_dropout_nodes_before,
-                          num_scale_nodes_after - num_scale_nodes_before);
+        PADDLE_ENFORCE_EQ(
+            num_dropout_nodes_before,
+            num_scale_nodes_after - num_scale_nodes_before,
+            platform::errors::InvalidArgument(
+                "num_dropout_nodes_before = %d, num_scale_nodes_after = %d, "
+                "num_scale_nodes_before = %d.",
+                num_dropout_nodes_before, num_scale_nodes_after,
+                num_scale_nodes_before));
       } else {
-        PADDLE_ENFORCE_EQ(num_scale_nodes_after - num_scale_nodes_before, 0);
+        PADDLE_ENFORCE_EQ(
+            num_scale_nodes_after - num_scale_nodes_before, 0,
+            platform::errors::InvalidArgument(
+                "num_scale_nodes_after = %d, num_scale_nodes_before = %d.",
+                num_scale_nodes_after, num_scale_nodes_before));
       }
     }
   }
