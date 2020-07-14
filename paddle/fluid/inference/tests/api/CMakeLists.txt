@@ -20,6 +20,12 @@ function(download_int8_data install_dir data_file)
     endif()
 endfunction()
 
+function(download_GRU_data install_dir data_file)
+    if (NOT EXISTS ${install_dir}/${data_file})
+        inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/gru ${data_file})
+    endif()
+endfunction()
+
 function(download_quant_data install_dir data_file)
     if (NOT EXISTS ${install_dir}/${data_file})
 	    inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/int8/QAT_models ${data_file})
@@ -327,18 +333,19 @@ if(WITH_MKLDNN)
   download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
   inference_analysis_api_object_dection_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
 
-  ### Lexcial analysis
-  set(LEXICAL_DATA_MODEL "/home/li/repo/models/PaddleNLP/lexical_analysis")
-  set(XNLI_DATA_PATH "${LEXICAL_DATA_MODEL}/test_eval_0708.bin")
-  set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis_xnli")
-  set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_xnli_tester.cc")
+  ### Lexcial analysis GRU model
+  set(GRU_PATH "${INFERENCE_DEMO_INSTALL_DIR}/gru")
+  download_GRU_data("${GRU_PATH}" "GRU_eval_data.tar.gz")
+  download_GRU_data("${GRU_PATH}" "gru_eval_fp32.tar.gz")
+  set(GRU_DATA_PATH "${GRU_PATH}/GRU_eval_data.bin")
+  set(GRU_MODEL_PATH "${GRU_PATH}/gru_eval_fp32")
+  set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis")
+  set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_gru_tester.cc")
 
   # build test binary to be used in subsequent tests
   inference_analysis_api_test_build(${LEXICAL_TEST_APP} ${LEXICAL_TEST_APP_SRC})
-
-  # Lexcial analysis test
-  set(LEXICAL_MODEL_DIR "${LEXICAL_DATA_MODEL}/GRU_eval_model")
-  inference_analysis_api_lexical_test_run(test_analyzer_lexical_GRU ${LEXICAL_TEST_APP} ${LEXICAL_MODEL_DIR} ${XNLI_DATA_PATH})
+  # run lexcial analysis test
+  inference_analysis_api_lexical_test_run(test_analyzer_lexical_gru ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH} ${GRU_DATA_PATH})
 
   ### optimized FP32 vs. Quant INT8 tests
   
