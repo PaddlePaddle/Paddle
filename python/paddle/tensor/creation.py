@@ -454,18 +454,20 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     Values are generated into the half-open interval [start, stop) with the step.
     (the interval including start but excluding stop).
 
+    If dtype is float32 or float64, we advise adding a small epsilon to end to
+    avoid floating point rounding errors when comparing against end.
+
     Parameters:
         start(float|int|Variable): Start of interval. The interval includes
             this value. If end is None, the half-open interval is [0, start).
             If start is Variable, it is a 1-D Tensor with shape [1], and it's
             data type should be one of int32, int64, float32, float64. Default
             is 0.
-        end(float|int|Variable|None, optional): End of interval. The interval
-            does not include this value, except in some cases where step is not
-            an integer and floating point round-off affects the length of out.
-            When end is Variable, it is a 1-D Tensor with shape [1], and it's
-            data type should be one of int32, int64, float32, float64. If end
-            is None, the half-open interval is [0, start). Default is None.
+        end(float|int|Variable, optional): End of interval. The interval does
+            not include this value. When end is Variable, it is a 1-D Tensor
+            with shape [1], and it's data type should be one of int32, int64,
+            float32, float64. If end is None, the half-open interval is [0, start).
+            Default is None.
         step(float|int|Variable, optional): Spacing between values. For any
             out, this is the istance between two adjacent values, out[i+1] - out[i].
             When end is Variable, it is a 1-D Tensor with shape [1], and it's
@@ -500,7 +502,8 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         out2 = paddle.arange(3, 9, 2.0)
         # [3, 5, 7]
 
-        out3 = paddle.arange(5, dtype='float32')
+        # use 4.999 instead of 5.0 to avoid floating point rounding errors
+        out3 = paddle.arange(4.999, dtype='float32')
         # [0., 1., 2., 3., 4.]
 
         start_var = paddle.imperative.to_variable(np.array([3]))

@@ -1326,18 +1326,19 @@ def range(start, end, step, dtype, name=None):
     """
     Return evenly spaced values within a given interval.
 
-    Values are generated within the half-open interval [start, stop) (in other words,
-    the interval including start but excluding stop).
+    Values are generated within the half-open interval [start, stop) (in other
+    words, the interval including start but excluding stop).
+
+    If dtype is float32 or float64, we advise adding a small epsilon to end to
+    avoid floating point rounding errors when comparing against end.
 
     Parameters:
         start(float|int|Variable): Start of interval. The interval includes
             this value. If start is Variable, it is a 1-D Tensor with shape [1],
             and it's data type should be one of int32, int64, float32, float64.
         end(float|int|Variable): End of interval. The interval does not include
-            this value, except in some cases where step is not an integer and
-            floating point round-off affects the length of out. When end is
-            Variable, it is a 1-D Tensor with shape [1], and it's data type
-            should be one of int32, int64, float32, float64.
+            this value. When end is Variable, it is a 1-D Tensor with shape [1],
+            and it's data type should be int32, int64, float32, float64.
         step(float|int|Variable): Spacing between values. For any out, this is
             the istance between two adjacent values, out[i+1] - out[i].
             When end is Variable, it is a 1-D Tensor with shape [1], and it's
