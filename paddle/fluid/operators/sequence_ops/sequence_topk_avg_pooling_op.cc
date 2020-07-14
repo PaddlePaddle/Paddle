@@ -29,9 +29,9 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
                    "SequenceTopkAvgPooling");
     OP_INOUT_CHECK(ctx->HasInput("COLUMN"), "Input", "COLUMN",
                    "SequenceTopkAvgPooling");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Output", "Out",
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
                    "SequenceTopkAvgPooling");
-    OP_INOUT_CHECK(ctx->HasInput("pos"), "Output", "pos",
+    OP_INOUT_CHECK(ctx->HasOutput("pos"), "Output", "pos",
                    "SequenceTopkAvgPooling");
 
     auto attr = ctx->Attrs();

@@ -50,7 +50,7 @@ static void get_topk_pos(const T* data, int length, int k, int* pos) {
     }
     VLOG(3) << "top" << id_k + 1 << " index is : " << max_pos;
     PADDLE_ENFORCE_GE(max_pos, 0,
-                      framework::platform::errors::PreconditionNotMet(
+                      platform::errors::PreconditionNotMet(
                           "Expected max_pos >= 0, but received -1. Probably "
                           "because the input data contains `Nan`."));
 
