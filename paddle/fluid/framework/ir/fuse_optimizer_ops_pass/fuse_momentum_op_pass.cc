@@ -39,7 +39,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
       const std::vector<ir::Node *> &momentum_ops, ir::Graph *graph) const {
     PADDLE_ENFORCE_GT(
         momentum_ops.size(), static_cast<size_t>(0),
-        platform::errors::InvalidArgument("Momentum ops must not empyt."));
+        platform::errors::InvalidArgument("Momentum ops must not be empyt."));
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
@@ -55,6 +55,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
           mu, BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu")),
           platform::errors::InvalidArgument(
               "All momentum Op's attr(mu) must be same, but there are two "
+              "different "
               "value: %f, %f.",
               mu, BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu"))));
       PADDLE_ENFORCE_EQ(
@@ -62,7 +63,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
           BOOST_GET_CONST(bool, momentum_op->Op()->GetAttr("use_nesterov")),
           platform::errors::InvalidArgument(
               "All momentum Op's attr(use_nesterov) must be same, but there "
-              "are two value: %d, %d.",
+              "are two different value: %d, %d.",
               use_nesterov, BOOST_GET_CONST(bool, momentum_op->Op()->GetAttr(
                                                       "use_nesterov"))));
       PADDLE_ENFORCE_EQ(
@@ -71,6 +72,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
                                    OpProtoAndCheckerMaker::OpRoleAttrName())),
           platform::errors::InvalidArgument(
               "All momentum Op's attr(op_role) must be same, but there are two "
+              "different "
               "value: %d, %d.",
               op_role,
               BOOST_GET_CONST(int,

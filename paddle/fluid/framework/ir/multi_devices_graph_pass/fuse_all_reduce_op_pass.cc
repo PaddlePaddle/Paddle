@@ -83,7 +83,7 @@ class FuseAllReduceOpPass : public ir::Pass {
       PADDLE_ENFORCE_GT(
           group_size, static_cast<size_t>(0),
           platform::errors::InvalidArgument(
-              "Parameter and Parameter@grad in one group, must not empty."));
+              "Parameter and Parameter@grad in one group, must not be empty."));
       std::vector<ir::Node *> group_all_reduce_ops;
       group_all_reduce_ops.reserve(group_size);
       for (auto &p_g : group_p_g) {

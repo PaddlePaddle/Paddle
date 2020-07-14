@@ -549,7 +549,7 @@ void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(
                               &fused_opt_node](ir::Node *ctr_var_node) {
     PADDLE_ENFORCE_EQ(ctr_var_node->inputs.size(), 1,
                       platform::errors::InvalidArgument(
-                          "The control var(%s) node has nultiple inputs.",
+                          "The control var(%s) node has multiple inputs.",
                           ctr_var_node->Name()));
     if (ctr_var_node->inputs.front() == fused_opt_node) {
       PADDLE_ENFORCE_GT(

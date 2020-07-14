@@ -37,7 +37,7 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
       const std::vector<ir::Node *> &sgd_ops, ir::Graph *graph) const {
     PADDLE_ENFORCE_GT(
         sgd_ops.size(), static_cast<size_t>(0),
-        platform::errors::InvalidArgument("SGD ops must not empyt."));
+        platform::errors::InvalidArgument("SGD ops must not be empyt."));
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.

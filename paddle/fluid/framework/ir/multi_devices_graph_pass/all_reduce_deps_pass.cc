@@ -99,7 +99,7 @@ class AllReduceDepsPass : public ir::Pass {
 
       PADDLE_ENFORCE_NE(
           next_ready_ops.size(), 0,
-          platform::errors::InvalidArgument("There maybe have a cycle."));
+          platform::errors::InvalidArgument("There may be a cycle."));
       ready_ops.clear();
       std::swap(ready_ops, next_ready_ops);
       GetSortedAllReduceOps(ready_ops, &all_reduce_op_handles);

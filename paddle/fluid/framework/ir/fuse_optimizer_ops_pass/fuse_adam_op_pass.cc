@@ -113,26 +113,30 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           beta1, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1")),
           platform::errors::PreconditionNotMet(
-              "All adam Op's attr(beta1) must be same, but threa are two "
+              "All adam Op's attr(beta1) must be same, but there are two "
+              "different "
               "value: %f, %f.",
               beta1, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1"))));
       PADDLE_ENFORCE_EQ(
           beta2, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2")),
           platform::errors::PreconditionNotMet(
-              "All adam Op's attr(beta2) must be same, but threa are two "
+              "All adam Op's attr(beta2) must be same, but there are two "
+              "different "
               "value: %f, %f.",
               beta2, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2"))));
       PADDLE_ENFORCE_EQ(
           epsilon, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon")),
           platform::errors::PreconditionNotMet(
-              "All adam Op's attr(epsilon) must be same, but threa are two "
+              "All adam Op's attr(epsilon) must be same, but there are two "
+              "different "
               "value: %f, %f.",
               epsilon,
               BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon"))));
       PADDLE_ENFORCE_EQ(
           lazy_mode, BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode")),
           platform::errors::PreconditionNotMet(
-              "All adam Op's attr(lazy_mode) must be same, but threa are two "
+              "All adam Op's attr(lazy_mode) must be same, but there are two "
+              "different "
               "value: %d, %d.",
               lazy_mode,
               BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode"))));
@@ -142,7 +146,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
                                        "min_row_size_to_use_multithread")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(min_row_size_to_use_multithread) must be "
-              "same, but threa are two value: %I64, %I64.",
+              "same, but there are two different value: %I64, %I64.",
               min_row_size_to_use_multithread,
               BOOST_GET_CONST(
                   int64_t,
@@ -152,7 +156,8 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
           BOOST_GET_CONST(int, adam_op->Op()->GetAttr(
                                    OpProtoAndCheckerMaker::OpRoleAttrName())),
           platform::errors::PreconditionNotMet(
-              "All adam Op's attr(op_role) must be same, but threa are two "
+              "All adam Op's attr(op_role) must be same, but there are two "
+              "different "
               "value: %d, %d.",
               op_role,
               BOOST_GET_CONST(int,
@@ -247,21 +252,23 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           scale, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale")),
           platform::errors::PreconditionNotMet(
-              "All scale Op's attr(scale) must be same, but threa are two "
+              "All scale Op's attr(scale) must be same, but there are two "
+              "different "
               "value: %f, %f.",
               scale, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale"))));
       PADDLE_ENFORCE_EQ(
           bias, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias")),
           platform::errors::PreconditionNotMet(
-              "All scale Op's attr(bias) must be same, but threa are two "
+              "All scale Op's attr(bias) must be same, but there are two "
+              "different "
               "value: %f, %f.",
               bias, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias"))));
       PADDLE_ENFORCE_EQ(
           bias_after_scale,
           BOOST_GET_CONST(bool, scale_op->Op()->GetAttr("bias_after_scale")),
           platform::errors::PreconditionNotMet(
-              "All scale Op's attr(bias_after_scale) must be same, but threa "
-              "are two value: %d, %d.",
+              "All scale Op's attr(bias_after_scale) must be same, but there "
+              "are two different value: %d, %d.",
               bias_after_scale,
               BOOST_GET_CONST(bool,
                               scale_op->Op()->GetAttr("bias_after_scale"))));
@@ -270,7 +277,8 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
           BOOST_GET_CONST(int, scale_op->Op()->GetAttr(
                                    OpProtoAndCheckerMaker::OpRoleAttrName())),
           platform::errors::PreconditionNotMet(
-              "All scale Op's attr(op_role) must be same, but threa are two "
+              "All scale Op's attr(op_role) must be same, but there are two "
+              "different "
               "value: %d, %d.",
               op_role,
               BOOST_GET_CONST(int,

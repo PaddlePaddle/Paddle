@@ -399,7 +399,7 @@ size_t BufferSharedCrossOpMemoryReusePass::OpIndex(
   auto iter = op_to_idx_[op->GetScopeIdx()].find(op);
   PADDLE_ENFORCE_NE(iter, op_to_idx_[op->GetScopeIdx()].end(),
                     platform::errors::NotFound(
-                        "Can not find op(%s) in op to index.", op->Name()));
+                        "Can not find op(%s) in op_to_idx_.", op->Name()));
   return iter->second;
 }
 
@@ -423,7 +423,7 @@ void BufferSharedCrossOpMemoryReusePass::SetOpDep(
     PADDLE_ENFORCE_EQ(
         dep, NodeDependency::kSame,
         platform::errors::InvalidArgument(
-            "Set Same Op(%s) Dep, dep must be kSame.", op1->Name()));
+            "Set Same Op(%s) Dep, dep must be kSame type.", op1->Name()));
     auto idx = OpIndex(op1);
     deps_[op1->GetScopeIdx()][idx][idx] = NodeDependency::kSame;
   } else {
@@ -432,7 +432,7 @@ void BufferSharedCrossOpMemoryReusePass::SetOpDep(
     PADDLE_ENFORCE_EQ((dep != NodeDependency::kSame && idx1 != idx2), true,
                       platform::errors::InvalidArgument(
                           "Op(%s) and Op(%s) should not have same "
-                          "index(%d), and dep should not kSame.",
+                          "index(%d), and dep should not kSame type.",
                           op1->Name(), op2->Name(), idx1));
     deps_[op1->GetScopeIdx()][idx1][idx2] = dep;
     deps_[op1->GetScopeIdx()][idx2][idx1] = ReverseNodeDependency(dep);
