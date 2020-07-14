@@ -442,6 +442,8 @@ void BindAnalysisConfig(py::module *m) {
 #ifdef PADDLE_WITH_MKLDNN
       .def("quantizer_config", &AnalysisConfig::mkldnn_quantizer_config,
            py::return_value_policy::reference)
+      .def("set_mkldnn_cache_capacity", &AnalysisConfig::SetMkldnnCacheCapacity,
+           py::arg("capacity") = 0)
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
