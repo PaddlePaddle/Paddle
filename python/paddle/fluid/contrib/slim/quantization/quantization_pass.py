@@ -1483,6 +1483,10 @@ class OutScaleForTrainingPass(object):
         for op in target_ops:
             for output_var_name in _get_op_output_var_names(op):
                 in_node = graph._find_node_by_name(op.outputs, output_var_name)
+                if in_node.dtype() not in \
+                    [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]:
+                    continue
+
                 scale_node = graph.create_persistable_node(
                     name=self._scale_name(in_node.name()),
                     var_type=core.VarDesc.VarType.LOD_TENSOR,
@@ -1585,17 +1589,26 @@ class OutScaleForInferencePass(object):
             if op_node.name() in self._teller_set:
                 var_names = _get_op_output_var_names(op_node)
                 for var_name in var_names:
-                    # For compatibility, we save output threshold by two methods.
+                    in_node = graph._find_node_by_name(op_node.outputs,
+                                                       var_name)
+                    if in_node.dtype() not in \
+                        [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]:
+                        continue
+
                     scale_name = self._scale_name(var_name)
-                    scale_v = np.array(
-                        self._scope.find_var(scale_name).get_tensor())[0]
-                    op_node.op()._set_attr("out_threshold", float(scale_v))
+                    scale_var = self._scope.find_var(scale_name)
+                    assert scale_var is not None, \
+                        "Can not find {} variable in the scope".format(scale_name)
+                    scale_value = np.array(scale_var.get_tensor())[0]
+
+                    # For compatibility, we save output threshold by two methods.
+                    op_node.op()._set_attr("out_threshold", float(scale_value))
 
                     argname_index = _get_output_name_index(op_node, var_name)
                     assert argname_index is not None, \
                         var_name + " is not the output of the op"
                     op_node.op()._set_attr(argname_index[0] + str(argname_index[1]) \
-                        + "_threshold", float(scale_v))
+                        + "_threshold", float(scale_value))
         graph.resolve_hazard()
         return graph
 
