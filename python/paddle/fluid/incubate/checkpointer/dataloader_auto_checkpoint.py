@@ -84,8 +84,10 @@ def _current(name):
 
 def _begin(name):
     if not _check_env():
+        logger.info("can't use _begin")
         return False
 
+    logger.info("begin to use _begin")
     t = _current(name)
     if not t.is_restored():
         logger.info("begin dataloader epoch_no:{}".format(t._epoch_no + 1))
@@ -102,8 +104,10 @@ def _begin(name):
 
 def _end(name):
     if not _check_env():
+        logger.info("can't use _end")
         return False
 
+    logger.info("begin to use _end")
     # check
     assert name in g_train_epoch_ranges, \
         "internal error: g_train_epoch_ranges must contain the name:{}, now:{}".format(name, g_train_epoch_ranges.keys())

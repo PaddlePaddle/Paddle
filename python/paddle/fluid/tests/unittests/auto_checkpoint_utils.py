@@ -128,7 +128,9 @@ class AutoCheckpointBase(unittest.TestCase):
             return sgd, loss, image, label
 
         with program_guard(main_prog, startup_prog):
+            print("ids init_env 0:", acp.generator.ids)
             sgd, loss, image, label = simple_net()
+            print("ids init_env 1:", acp.generator.ids)
 
             if minimize:
                 compiled = fluid.CompiledProgram(main_prog).with_data_parallel(
@@ -146,17 +148,22 @@ class AutoCheckpointBase(unittest.TestCase):
                 drop_last=True,
                 num_workers=2)
             """
+            print("ids init_env 2:", acp.generator.ids)
             loader = fluid.io.DataLoader.from_generator(
                 feed_list=[image, label],
                 capacity=64,
                 use_double_buffer=True,
                 iterable=iterable)
 
+            print("ids init_env 3:", acp.generator.ids)
             loader.set_sample_list_generator(sample_list_generator_creator(),
                                              places[0])
+            print("ids init_env 4:", acp.generator.ids)
 
         if minimize:
+            print("ids init_env 5:", acp.generator.ids)
             exe.run(startup_prog)
+            print("ids init_env 6:", acp.generator.ids)
 
         return compiled, loader, sgd, loss, image, label
 

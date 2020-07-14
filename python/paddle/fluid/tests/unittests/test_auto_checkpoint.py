@@ -70,14 +70,19 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(save_dir)
 
     def _run_save_0(self, break_epoch_no=None):
+        print("begin _run_save_0")
         fs = LocalFS()
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
+        print("ids 0:", acp.generator.ids)
         exe, main_prog, startup_prog = self._generate()
+        print("ids 1:", acp.generator.ids)
 
         compiled, data_loader, optimizer, loss, image, label = \
             self._init_env(exe, main_prog, startup_prog)
+
+        print("ids 2:", acp.generator.ids)
 
         o = None
         i = 0
@@ -88,7 +93,11 @@ class AutoCheckpointTest(AutoCheckpointBase):
             print("_run_save_0 name:", o.name, "epoch_no:", i)
 
             for data in data_loader():
+                print("_run_save_0 name 1:", o.name, "epoch_no:", i,
+                      "compiled:", compiled._auto_checkpoint_name)
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
+            print("_run_save_0 name 2:", o.name, "epoch_no:", i)
 
             fluid.io.save_inference_model(
                 save_dir, [image.name, label.name], [loss],
@@ -108,8 +117,10 @@ class AutoCheckpointTest(AutoCheckpointBase):
             self.assertEqual(i, break_epoch_no)
 
         fs.delete(save_dir)
+        print("end _run_save_0")
 
     def _run_load_0(self, started_epoch_no=None):
+        print("begin _run_load_0")
         exe, main_prog, startup_prog = self._generate()
 
         fs = LocalFS()
@@ -148,17 +159,23 @@ class AutoCheckpointTest(AutoCheckpointBase):
             main_program=compiled)
 
         fs.delete(save_dir)
+        print("begin _run_load_0")
 
     def test_basic(self):
         logger.info("begin test_basic")
         checker = acp._get_checker()
-        fs = HDFSClient(checker.hdfs_home, None)
-        fs.delete(checker.hdfs_checkpoint_path)
 
+        fs = HDFSClient(checker.hdfs_home, None)
+
+        fs.delete(checker.hdfs_checkpoint_path)
         self._reset_generator()
         self._run_save_model()
 
+        print("ids b 0:", acp.generator.ids)
+        fs.delete(checker.hdfs_checkpoint_path)
+        print("ids b 1:", acp.generator.ids)
         self._reset_generator()
+        print("ids b 2:", acp.generator.ids)
         self._run_save_0()
 
         self._reset_generator()
@@ -167,10 +184,9 @@ class AutoCheckpointTest(AutoCheckpointBase):
         self._reset_generator()
         self._run_load_0()
 
-        fs.delete(checker.hdfs_checkpoint_path)
         logger.info("end test_basic")
 
-    def test_corner_epoch_no(self):
+    def _test_corner_epoch_no(self):
         logger.info("begin test_corener_epoch_no")
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
@@ -192,7 +208,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(checker.hdfs_checkpoint_path)
         logger.info("end test_corener_epoch_no")
 
-    def test_multiple(self):
+    def _test_multiple(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
         fs.delete(checker.hdfs_checkpoint_path)
@@ -230,7 +246,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(save_dir)
         logger.info("end test_multiple")
 
-    def test_distributed_basic(self):
+    def _test_distributed_basic(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
         fs.delete(checker.hdfs_checkpoint_path)
