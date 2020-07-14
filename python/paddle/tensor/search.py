@@ -41,17 +41,16 @@ __all__ = [
 from paddle.common_ops_import import *
 
 
-def argsort(input, axis=-1, descending=False, name=None):
+def argsort(x, axis=-1, descending=False, name=None):
     """
 	:alias_main: paddle.argsort
 	:alias: paddle.argsort,paddle.tensor.argsort,paddle.tensor.search.argsort
 
     This OP sorts the input along the given axis, and returns sorted output
-    data Varibale and its corresponding index Variable with the same shape as
-    :attr:`input`.
+    data Varibale and its corresponding index Variable with the same shape as ``x``.
 
     Args:
-        input(Variable): An input N-D Tensor with type float32, float64, int16,
+        x(Variable): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -64,7 +63,7 @@ def argsort(input, axis=-1, descending=False, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: sorted indices(with the same shape as input's
+        Variable: sorted indices(with the same shape as ``x``
         and with data type int64).
 
     Examples:
@@ -81,9 +80,9 @@ def argsort(input, axis=-1, descending=False, name=None):
                             [4,7,7,9],
                             [1,7,0,6]]]).astype(np.float32)
             x = imperative.to_variable(input_array)
-            out1 = paddle.argsort(input=x, axis=-1)
-            out2 = paddle.argsort(input=x, axis=0)
-            out3 = paddle.argsort(input=x, axis=1)
+            out1 = paddle.argsort(x=x, axis=-1)
+            out2 = paddle.argsort(x=x, axis=0)
+            out3 = paddle.argsort(x=x, axis=1)
             print(out1.numpy())
 	    #[[[0 3 1 2]
 	    #  [0 1 2 3]
@@ -107,20 +106,20 @@ def argsort(input, axis=-1, descending=False, name=None):
 	    #  [0 2 1 1]]]
     """
     if in_dygraph_mode():
-        _, ids = core.ops.argsort(input, 'axis', axis, 'descending', descending)
+        _, ids = core.ops.argsort(x, 'axis', axis, 'descending', descending)
         return ids
     check_variable_and_dtype(
-        input, 'input',
-        ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'], 'argsort')
+        x, 'x', ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
+        'argsort')
 
     helper = LayerHelper("argsort", **locals())
     out = helper.create_variable_for_type_inference(
-        dtype=input.dtype, stop_gradient=True)
+        dtype=x.dtype, stop_gradient=True)
     ids = helper.create_variable_for_type_inference(
         VarDesc.VarType.INT64, stop_gradient=True)
     helper.append_op(
         type='argsort',
-        inputs={'X': input},
+        inputs={'X': x},
         outputs={'Out': out,
                  'Indices': ids},
         attrs={'axis': axis,
@@ -372,19 +371,16 @@ def nonzero(input, as_tuple=False):
         return tuple(list_out)
 
 
-def sort(input, axis=-1, descending=False, name=None):
+def sort(x, axis=-1, descending=False, name=None):
     """
 	:alias_main: paddle.sort
 	:alias: paddle.sort,paddle.tensor.sort,paddle.tensor.search.sort
 
     This OP sorts the input along the given axis, and returns sorted output
-    data Varibale and its corresponding index Variable with the same shape as
-    :attr:`input`.
+    data Varibale and its corresponding index Variable with the same shape as ``x``.
 
-    **NOTICE**: The Variable in the output of this OP has gradient. You could\
-        set Variable :attr:`stop_gradient`.
     Args:
-        input(Variable): An input N-D Tensor with type float32, float64, int16,
+        x(Variable): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -397,7 +393,7 @@ def sort(input, axis=-1, descending=False, name=None):
             refer to :ref:`api_guide_Name`.
     Returns:
         tuple: A tuple of sorted data Variable(with the same shape and data
-        type as input) and the sorted indices(with the same shape as input's
+        type as ``x``) and the sorted indices(with the same shape as ``x``
         and with data type int64).
     Examples:
         .. code-block:: python
@@ -446,17 +442,16 @@ def sort(input, axis=-1, descending=False, name=None):
 	    #  [5. 7. 7. 9.]]]
     """
     if in_dygraph_mode():
-        out, ids = core.ops.argsort(input, 'axis', axis, 'descending',
-                                    descending)
+        out, ids = core.ops.argsort(x, 'axis', axis, 'descending', descending)
         return out, ids
     helper = LayerHelper("sort", **locals())
     out = helper.create_variable_for_type_inference(
-        dtype=input.dtype, stop_gradient=False)
+        dtype=x.dtype, stop_gradient=False)
     ids = helper.create_variable_for_type_inference(
         VarDesc.VarType.INT64, stop_gradient=True)
     helper.append_op(
         type='argsort',
-        inputs={'X': input},
+        inputs={'X': x},
         outputs={'Out': out,
                  'Indices': ids},
         attrs={'axis': axis,
