@@ -54,42 +54,6 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self.assertTrue(i, 2)
         logger.info("exit _run_complex")
 
-    """
-    def _run_try_catch(self, break_epoch_no=None):
-        logger.info("enter _run_try_catch")
-        exe, main_prog, startup_prog = self._generate()
-
-        compiled, data_loader, optimizer, loss, image, label = \
-            self._init_env(exe, main_prog, startup_prog, iterable=False)
-
-        # use two
-        i = 0
-        name = None
-        for i in range(3):
-            try:
-                data_loader.start()
-                print("data_loader iterable:", data_loader.iterable)
-                name = acp.g_train_epoch_range.name
-                while True:
-                    print("loader:", data_loader._auto_checkpoint_name)
-                    fetch = exe.run(compiled, fetch_list=[loss])
-
-                if break_epoch_no is not None:
-                    if i == break_epoch_no:
-                        break
-            except fluid.core.EOFException:
-                logger.info("complete one epoch")
-            finally:
-                data_loader.reset()
-
-        self.assertTrue(acp.g_acp_type, None)
-        self.assertTrue(
-            len(dacp.g_train_epoch_ranges), 1, "There must be one element")
-        self.assertTrue(dacp.g_train_epoch_ranges[name], None,
-                        "Running must be None")
-        logger.info("exit _run_try_catch")
-    """
-
     def _run_save_basic(self, break_epoch_no=None):
         logger.info("enter _run_save_basic")
         exe, main_prog, startup_prog = self._generate()
@@ -119,45 +83,34 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self.assertEqual(i, break_epoch_no)
         logger.info("leave _run_save_basic")
 
-    """
-    def _run_load_try_catch(self):
+    def _run_load_basic(self):
+        logger.info("enter _run_load_basic")
         exe, main_prog, startup_prog = self._generate()
 
-        fs = LocalFS()
-        save_dir = "./run_load_0"
-        fs.delete(save_dir)
+        compiled, data_loader, optimizer, loss, image, label = \
+            self._init_env(exe, main_prog, startup_prog)
 
-        compiled, data_loader, optimizer, loss, image, label = self._init_env(
-            exe, main_prog, startup_prog)
-
-        o = None
         i = 0
-        check = False
-        for i in acp.train_epoch_range(3, 0):
-            print("_run_load_0 name:", o.name, "epoch_no:", i)
-            if started_epoch_no is not None and not check:
-                self.assertEqual(o.get(), started_epoch_no)
-                check = True
-
+        name = None
+        for i in range(3):
             for data in data_loader():
+                print("loader:", data_loader._auto_checkpoint_name)
+                name = data_loader._auto_checkpoint_name
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
-            fluid.io.save_inference_model(
-                save_dir, [image.name, label.name], [loss],
-                exe,
-                main_program=main_prog)
-            self.assertEqual(len(o._exe_status), 1)
+            if break_epoch_no is not None:
+                if i == break_epoch_no:
+                    break
 
-        o = acp._get_train_epoch_range()
-        self.assertTrue(o == None, "now train epoch must not exits now")
-        self.assertEqual(i, 2)
-        fluid.io.save_inference_model(
-            save_dir, [image.name, label.name], [loss],
-            exe,
-            main_program=compiled)
+        self.assertEqual(acp.g_acp_type, None)
+        self.assertEqual(
+            len(dacp.g_train_epoch_ranges), 1, "There must be one element")
 
-        fs.delete(save_dir)
-    """
+        if break_epoch_no is None:
+            self.assertEqual(i, 2)
+        else:
+            self.assertEqual(i, break_epoch_no)
+        logger.info("leave _run_load_basic")
 
     def test_basic(self):
         checker = acp._get_checker()
@@ -171,20 +124,19 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self._reset_generator()
         self._run_save_basic()
 
-        #fs.delete(checker.hdfs_checkpoint_path)
-        #self._reset_generator()
-        #self._run_try_catch()
-
         fs.delete(checker.hdfs_checkpoint_path)
 
     def test_coreno_epoch(self):
-        pass
+        checker = acp._get_checker()
+        fs = HDFSClient(checker.hdfs_home, None)
 
-    def test_distributed_basic(self):
-        pass
+        fs.delete(checker.hdfs_checkpoint_path)
+        self._reset_generator()
+        self._run_save_basic()
 
-    def test_multiple(self):
-        pass
+        self._reset_generator()
+        self._run_load_basic()
+        fs.delete(checker.hdfs_checkpoint_path)
 
 
 if __name__ == '__main__':

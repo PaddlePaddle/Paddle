@@ -393,7 +393,7 @@ class TrainEpochRange(SerializableBase):
         if self._checker.trainer_id == 0 and self._epoch_no != self._max_epoch_num - 1:
             if time.time() - self._last_checkpoint_time >= self._save_checkpoint_inter or \
                     (self._epoch_no >= self._max_epoch_num and self._max_epoch_num >=0):
-                self.save_checkpoint()
+                self._save_checkpoint()
             self._last_checkpoint_time = time.time()
 
     def _save_checkpoint(self):

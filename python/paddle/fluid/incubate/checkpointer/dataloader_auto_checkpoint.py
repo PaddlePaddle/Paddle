@@ -95,7 +95,7 @@ def _begin(name):
                 t._epoch_no + 1, t._checkpoint_epoch_no)
 
     if not t.beyond_restored():
-        raise fluid.core.EOFException
+        raise StopIteration
 
     return True
 
