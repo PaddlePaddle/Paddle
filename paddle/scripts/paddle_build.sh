@@ -212,8 +212,8 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
-        -DWITH_LITE=${WITH_LITE:-OFF}
         -DTHIRD_PARTY_PATH=${THIRD_PARTY_PATH}
+        -DWITH_LITE=${WITH_LITE:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -242,8 +242,8 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$? \
-        -DTHIRD_PARTY_PATH=${THIRD_PARTY_PATH:-}
+        -DTHIRD_PARTY_PATH=${THIRD_PARTY_PATH:-} \
+        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -252,9 +252,6 @@ EOF
 function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    if [ ! "${THIRD_PARTY_PATH}" ];then
-        THIRD_PARTY_PATH=${PADDLE_ROOT}/build
-    fi
     cmake_base $1
 }
 
