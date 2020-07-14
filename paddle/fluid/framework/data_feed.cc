@@ -1155,8 +1155,8 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
           total_dims, total_instance,
           platform::errors::InvalidArgument(
               "The actual data size of slot[%s] doesn't match its declaration. "
-              "The actual data size of slot is %" PRId64
-              ", and its declaration is %" PRId64 ".",
+              "The actual data size of slot is %lld"
+              ", and its declaration is %lld.",
               use_slots_[i].c_str(), total_dims, total_instance));
       feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
