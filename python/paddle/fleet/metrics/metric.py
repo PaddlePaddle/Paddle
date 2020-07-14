@@ -167,7 +167,7 @@ def auc(stat_pos, stat_neg):
     new_pos = 0.0
     new_neg = 0.0
     total_ins_num = 0
-    for i in xrange(num_bucket):
+    for i in range(num_bucket):
         index = num_bucket - 1 - i
         new_pos = pos + global_pos[0][index]
         total_ins_num += global_pos[0][index]

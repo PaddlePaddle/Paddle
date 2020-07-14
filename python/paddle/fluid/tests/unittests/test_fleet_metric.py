@@ -23,6 +23,7 @@ import paddle.fleet.metrics.metric as metric
 from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
 from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet
 
+
 class TestFleetMetric(unittest.TestCase):
     """
     Test cases for fleet metric.
@@ -30,8 +31,10 @@ class TestFleetMetric(unittest.TestCase):
 
     def setUp(self):
         """Set up, set envs."""
+
         class FakeFleet:
             """fake fleet only for test"""
+
             def __init__(self):
                 """Init."""
                 self.gloo = fluid.core.Gloo()
@@ -41,32 +44,35 @@ class TestFleetMetric(unittest.TestCase):
                 self.gloo.set_iface("lo")
                 self.gloo.set_hdfs_store("./tmp_test_metric", "", "")
                 self.gloo.init()
+            
             def _all_reduce(self, input, output, mode="sum"):
                 """all reduce using gloo"""
                 input_list = [i for i in input]
                 ans = self.gloo.all_reduce(input_list, mode)
                 for i in range(len(ans)):
                     output[i] = 1
+
             def _barrier_worker(self):
                 """fake barrier worker, do nothing"""
                 pass
+
         self.fleet = FakeFleet()
         fleet._role_maker = self.fleet
 
     def test_metric_1(self):
-       """test cases for metrics"""
-       arr = np.array([1,2,3,4])
-       metric.sum(arr)
-       metric.max(arr)
-       metric.min(arr)
-       arr1 = np.array([[1,2,3,4]])
-       arr2 = np.array([[1,2,3,4]])
-       arr3 = np.array([1,2,3,4])
-       metric.auc(arr1, arr2)
-       metric.mae(arr, 3)
-       metric.rmse(arr, 3)
-       metric.mse(arr, 3)
-       metric.acc(arr, arr3)
+        """test cases for metrics"""
+        arr = np.array([1,2,3,4])
+        metric.sum(arr)
+        metric.max(arr)
+        metric.min(arr)
+        arr1 = np.array([[1,2,3,4]])
+        arr2 = np.array([[1,2,3,4]])
+        arr3 = np.array([1,2,3,4])
+        metric.auc(arr1, arr2)
+        metric.mae(arr, 3)
+        metric.rmse(arr, 3)
+        metric.mse(arr, 3)
+        metric.acc(arr, arr3)
 
 
 if __name__ == "__main__":
