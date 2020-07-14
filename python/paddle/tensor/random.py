@@ -328,7 +328,7 @@ def randperm(n, dtype="int64", name=None):
         n(int): The upper bound (exclusive), and it should be greater than 0.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the 
             output Tensor. Supported data types: int32, int64, float32, float64.
-            Default: int32.
+            Default: int64.
         name(str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
             Default is None.
