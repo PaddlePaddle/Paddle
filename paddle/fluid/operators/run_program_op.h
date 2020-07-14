@@ -49,13 +49,13 @@ static void CheckInputVarStatus(const Variable &var,
       var.IsType<LoDTensor>(), true,
       platform::errors::InvalidArgument(
           "The input variable %s of "
-          "RunProgram(Grad)Op(StaticModelRunner) holds "
+          "RunProgram(Grad)Op holds "
           "wrong type. Expect type is LoDTensor, but receive type is %s.",
           var_name, platform::demangle(framework::ToTypeName(var.Type()))));
   PADDLE_ENFORCE_EQ(
       var.Get<LoDTensor>().IsInitialized(), true,
       platform::errors::InvalidArgument("The tensor in input variable %s of "
-                                        "RunProgram(Grad)Op(StaticModelRunner) "
+                                        "RunProgram(Grad)Op "
                                         "is not initialized.",
                                         var_name));
 }
@@ -68,14 +68,14 @@ static void CheckOutputVarStatus(const Variable &src_var,
         src_var.IsType<LoDTensor>(), true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
-            "RunProgram(Grad)Op(StaticModelRunner)'s internal scope holds "
+            "RunProgram(Grad)Op's internal scope holds "
             "wrong type. Expect type is LoDTensor, but receive type is %s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<LoDTensor>().IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
-                          "RunProgram(Grad)Op(StaticModelRunner)'s internal "
+                          "RunProgram(Grad)Op's internal "
                           "scope is not initialized.",
                           var_name));
   } else if (dst_var.IsType<SelectedRows>()) {
@@ -83,20 +83,20 @@ static void CheckOutputVarStatus(const Variable &src_var,
         src_var.IsType<SelectedRows>(), true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
-            "RunProgram(Grad)Op(StaticModelRunner)'s internal scope holds "
+            "RunProgram(Grad)Op's internal scope holds "
             "wrong type. Expect type is SelectedRows, but receive type is %s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<SelectedRows>().value().IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
-                          "RunProgram(Grad)Op(StaticModelRunner)'s "
+                          "RunProgram(Grad)Op's "
                           "internal scope is not initialized.",
                           var_name));
 
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The RunProgram(Grad)Op(StaticModelRunner) only support output "
+        "The RunProgram(Grad)Op only support output "
         "variable of type LoDTensor or SelectedRows, "
         "but received variable %s's type is %s",
         var_name, platform::demangle(framework::ToTypeName(dst_var.Type()))));
@@ -143,7 +143,7 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
     auto *var = scope->FindVar(var_names[i]);
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("The output variable %s is not in "
-                                        "RunProgram(Grad)Op(StaticModelRunner)'"
+                                        "RunProgram(Grad)Op'"
                                         "s internal scope.",
                                         var_names[i]));
     CheckOutputVarStatus(*var, *vars[i], var_names[i]);
