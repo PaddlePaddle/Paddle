@@ -442,6 +442,7 @@ def _can_auto_checkpoint(program):
             return False
 
     _get_checker()
+    logger.info("_can_auto_checkpoint:{}".format(g_train_epoch_range))
     return g_checker.valid() and g_train_epoch_range is not None
 
 
@@ -458,20 +459,34 @@ def _get_checker():
     return g_checker
 
 
+def _normal_yield(max_epoch_num):
+    if max_epoch_num < 0:
+        max_epoch_num = sys.maxint
+    for i in range(0, max_epoch_num):
+        yield i
+
+    return
+
+
 def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
+    global g_acp_type
+    logger.info("acp_type:{}".format(g_acp_type))
     if not _get_checker().valid():
         logger.warning(
             "auto checkpoint will take effect  automaticly on PaddleCloud")
-
-        if max_epoch_num < 0:
-            max_epoch_num = sys.maxint
-        for i in range(0, max_epoch_num):
+        for i in _normal_yield(max_epoch_num):
             yield i
 
         return
 
-    global g_acp_type
+    if g_acp_type == CONST_DACP_TYPE:
+        for i in _normal_yield(max_epoch_num):
+            yield i
+
+        return
+
     g_acp_type = CONST_ACP_TYPE
+    logger.info("acp_type 2:{}".format(g_acp_type))
 
     global g_train_epoch_range
     try:

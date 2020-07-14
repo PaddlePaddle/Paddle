@@ -75,14 +75,17 @@ class AutoCheckpointTest(AutoCheckpointBase):
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        print("ids 0:", acp.generator.ids)
+        logger.info("ids 0:{} epoch_range:{}".format(
+            acp.generator.ids, acp._get_train_epoch_range()))
         exe, main_prog, startup_prog = self._generate()
-        print("ids 1:", acp.generator.ids)
+        logger.info("ids 1:{} epoch_range:{}".format(
+            acp.generator.ids, acp._get_train_epoch_range()))
 
         compiled, data_loader, optimizer, loss, image, label = \
             self._init_env(exe, main_prog, startup_prog)
 
-        print("ids 2:", acp.generator.ids)
+        logger.info("ids 2:{}".format(acp.generator.ids))
+        logger.info("ids 2:{}".format(acp.generator.ids))
 
         o = None
         i = 0
@@ -121,14 +124,18 @@ class AutoCheckpointTest(AutoCheckpointBase):
 
     def _run_load_0(self, started_epoch_no=None):
         print("begin _run_load_0")
+        logger.info("ids load 0:{}".format(acp.generator.ids))
         exe, main_prog, startup_prog = self._generate()
+        logger.info("ids load 1:{}".format(acp.generator.ids))
 
         fs = LocalFS()
         save_dir = "./run_load_0"
         fs.delete(save_dir)
 
+        logger.info("ids load 2:{}".format(acp.generator.ids))
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
             exe, main_prog, startup_prog)
+        logger.info("ids load 3:{}".format(acp.generator.ids))
 
         o = None
         i = 0
@@ -171,11 +178,14 @@ class AutoCheckpointTest(AutoCheckpointBase):
         self._reset_generator()
         self._run_save_model()
 
-        print("ids b 0:", acp.generator.ids)
+        logger.info("ids b 0:{} epoch_range:{}".format(
+            acp.generator.ids, acp._get_train_epoch_range()))
         fs.delete(checker.hdfs_checkpoint_path)
-        print("ids b 1:", acp.generator.ids)
+        logger.info("ids b 1:{} epoch_range:{}".format(
+            acp.generator.ids, acp._get_train_epoch_range()))
         self._reset_generator()
-        print("ids b 2:", acp.generator.ids)
+        logger.info("ids b 2:{} epoch_range:{}".format(
+            acp.generator.ids, acp._get_train_epoch_range()))
         self._run_save_0()
 
         self._reset_generator()
@@ -275,6 +285,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
             dist_optimizer = fleet.distributed_optimizer(optimizer)
             dist_optimizer.minimize(loss)
 
+        logger.info("run startup_prog")
         exe.run(startup_prog)
 
         o = None

@@ -14,7 +14,7 @@
 
 from . import auto_checkpoint as acp
 
-g_train_epoch_ranges = {}
+g_ranges = {}
 
 CONST_GENERATOR_BEGIN = "begin"
 CONST_GENERATOR_END = "end"
@@ -73,13 +73,16 @@ def _check_env():
 
 
 def _current(name):
-    if name not in g_train_epoch_ranges:
-        g_train_epoch_ranges[name] = TrainEpochRangeWrapper(name)
-    t = g_train_epoch_ranges[name]
+    init = False
+    if name not in g_ranges:
+        g_ranges[name] = TrainEpochRangeWrapper(name)
+        init = True
+    t = g_ranges[name]
     t.check()
     acp.g_train_epoch_range = t._train_epoch_range
+    acp.g_acp_type = acp.CONST_DACP_TYPE
 
-    return t
+    return t, init
 
 
 def _begin(name):
@@ -87,14 +90,14 @@ def _begin(name):
         logger.info("can't use _begin")
         return False
 
-    logger.info("begin to use _begin")
-    t = _current(name)
+    t, init = _current(name)
     if not t.is_restored():
         logger.info("begin dataloader epoch_no:{}".format(t._epoch_no + 1))
         return True
 
-    logger.info("begin dataloader epoch_no:{} checkpoint_epoch_no:{}",
-                t._epoch_no + 1, t._checkpoint_epoch_no)
+    if init:
+        logger.info("begin dataloader epoch_no:{} checkpoint_epoch_no:{}",
+                    t._epoch_no + 1, t._checkpoint_epoch_no)
 
     if not t.beyond_restored():
         raise StopIteration
@@ -103,25 +106,31 @@ def _begin(name):
 
 
 def _end(name):
-    if not _check_env():
-        logger.info("can't use _end")
-        return False
+    try:
+        if not _check_env():
+            logger.info("can't use _end")
+            return False
 
-    logger.info("begin to use _end")
-    # check
-    assert name in g_train_epoch_ranges, \
-        "internal error: g_train_epoch_ranges must contain the name:{}, now:{}".format(name, g_train_epoch_ranges.keys())
-    t = g_train_epoch_ranges[name]
-    t._runing_status = CONST_GENERATOR_END
-    assert t._train_epoch_range == acp.g_train_epoch_range, "interal error, current running range must equal"
+        logger.info("begin to use _end")
+        # check
+        assert name in g_ranges, \
+            "internal error: g_ranges must contain the name:{}, now:{}".format(name, g_ranges.keys())
+        t = g_ranges[name]
+        t._runing_status = CONST_GENERATOR_END
+        assert t._train_epoch_range == acp.g_train_epoch_range, "interal error, current running range must equal"
 
-    t.increment_epoch_no()
-    t.save_checkpoint()
+        t.increment_epoch_no()
+        t.save_checkpoint()
 
-    if not t.is_restored():
-        logger.info("end dataloader epoch_no:{}".format(t._epoch_no))
-    else:
-        logger.info("end generator epoch_no:{} checkpoint_epoch_no:{}".format(
-            t._epoch_no, t._checkpoint_epoch_no))
+        if not t.is_restored():
+            logger.info("end dataloader epoch_no:{}".format(t._epoch_no))
+        else:
+            logger.info("end generator epoch_no:{} checkpoint_epoch_no:{}".
+                        format(t._epoch_no, t._checkpoint_epoch_no))
+
+        acp.g_train_epoch_range = None
+    finally:
+        # important
+        acp.g_train_epoch_range = None
 
     return True

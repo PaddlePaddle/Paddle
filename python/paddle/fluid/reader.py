@@ -1100,17 +1100,19 @@ class GeneratorLoader(DataLoaderBase):
 
         self._init_iterable()
         self._start()
-        dacp._begin(self._auto_checkpoint_name)
         return self
 
     def __next__(self):
         try:
+            print("use __next__")
+            dacp._begin(self._auto_checkpoint_name)
             if self._return_list:
                 return self._reader.read_next_list()
             else:
                 return self._reader.read_next()
         except StopIteration:
             dacp._end(self._auto_checkpoint_name)
+
             self._queue.close()
             self._reset()
             six.reraise(*sys.exc_info())
