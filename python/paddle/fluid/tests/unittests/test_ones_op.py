@@ -37,7 +37,7 @@ class ApiOnesTest(unittest.TestCase):
 
         with paddle.program_guard(paddle.Program()):
             ones = paddle.ones(shape=[10], dtype="float64")
-            place = paddle.CUDAPlace(0)
+            place = paddle.CPUPlace()
             exe = paddle.Executor(place)
             result, = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="float64")
