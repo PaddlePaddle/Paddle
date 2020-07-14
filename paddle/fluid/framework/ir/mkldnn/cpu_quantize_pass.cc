@@ -112,13 +112,14 @@ void CPUQuantizePass::QuantizeInputs(Graph* g, Node* op, std::string input_name,
                                      std::string scale_attr_name) const {
   auto inputs = op->inputs;
   auto output = op->outputs[0];
-  PADDLE_ENFORCE_GE(inputs.size(), 1, platform::errors::InvalidArgument(
-                                          "OP(%s)'s inputs(%d) must >= 1.",
-                                          op->Name(), inputs.size()));
-  PADDLE_ENFORCE_EQ(
-      op->outputs.size(), 1,
-      platform::errors::InvalidArgument("OP(%s)'s outputs(%d) must == 1.",
-                                        op->Name(), op->outputs.size()));
+  PADDLE_ENFORCE_GE(inputs.size(), 1,
+                    platform::errors::InvalidArgument(
+                        "OP(%s)'s inputs(%d) must be equal or greater than 1.",
+                        op->Name(), inputs.size()));
+  PADDLE_ENFORCE_EQ(op->outputs.size(), 1,
+                    platform::errors::InvalidArgument(
+                        "OP(%s)'s outputs(%d) must be equal to 1.", op->Name(),
+                        op->outputs.size()));
 
   // create a quantize op desc prototype
   OpDesc q_desc;
@@ -681,12 +682,12 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     bool is_x_unsigned{false}, is_y_unsigned{false};
     auto input_x_scale = GetScaleValueForNode(matmul_in_x, &is_x_unsigned);
     auto input_y_scale = GetScaleValueForNode(matmul_in_y, &is_y_unsigned);
-    PADDLE_ENFORCE_EQ(
-        is_x_unsigned, is_y_unsigned,
-        platform::errors::InvalidArgument("Matmul inputs should have the same "
-                                          "attr of signed/unsigned, but they "
-                                          "are different: x(%d), y(%d).",
-                                          is_x_unsigned, is_y_unsigned));
+    PADDLE_ENFORCE_EQ(is_x_unsigned, is_y_unsigned,
+                      platform::errors::InvalidArgument(
+                          "Matmul inputs should have the same "
+                          "attribute of signed/unsigned, but they "
+                          "are different: x(%d), y(%d).",
+                          is_x_unsigned, is_y_unsigned));
     QuantizeInput(g, matmul_op, matmul_in_x, "X", input_x_scale, is_x_unsigned,
                   "Scale_x");
     QuantizeInput(g, matmul_op, matmul_in_y, "Y", input_y_scale, is_y_unsigned,

@@ -29,8 +29,8 @@ LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
   PADDLE_ENFORCE_EQ(vec_a.dims(), vec_b.dims(),
                     platform::errors::InvalidArgument(
                         "Input two tensors must have same shape, but they are "
-                        "different: %d, %d.",
-                        vec_a.dims().size(), vec_b.dims().size()));
+                        "different: %s, %s.",
+                        vec_a.dims(), vec_b.dims()));
   LoDTensor vec_y;
   vec_y.Resize(vec_a.dims());
   const float* a = vec_a.data<float>();
@@ -76,7 +76,7 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
 
     PADDLE_ENFORCE_NE(
         subgraph.count(conv_input), 0,
-        platform::errors::NotFound("Detector not find conv input."));
+        platform::errors::NotFound("Detector did not find conv input."));
 
     // check if fuse can be done and if MKL-DNN should be used
     FuseOptions fuse_option = FindFuseOption(*conv, *eltwise);
@@ -102,9 +102,8 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
           conv_bias_tensor->dims(), eltwise_bias_tensor->dims(),
           platform::errors::InvalidArgument(
               "Conv bias tensor and eltwise bias tensor "
-              "must have same shape, but they are different: %d %d.",
-              conv_bias_tensor->dims().size(),
-              eltwise_bias_tensor->dims().size()));
+              "must have same shape, but they are different: %s, %s.",
+              conv_bias_tensor->dims(), eltwise_bias_tensor->dims()));
       *conv_bias_tensor = tensor_apply_eltwise(
           *conv_bias_tensor, *eltwise_bias_tensor, std::plus<float>());
 
