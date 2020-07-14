@@ -23,10 +23,6 @@ namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 using framework::Tensor;
 
 template <typename T>
@@ -36,7 +32,7 @@ __global__ void Pad2DConstNCHW(const int nthreads, const T* in_data,
                                const int out_height, const int out_width,
                                const int pad_top, const int pad_left, T value,
                                T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
     int nc = index / out_width;
     const int out_w = index % out_width;
     const int out_h = nc % out_height;
@@ -57,7 +53,7 @@ __global__ void Pad2DConstNHWC(const int nthreads, const T* in_data,
                                const int out_height, const int out_width,
                                const int pad_top, const int pad_left, T value,
                                T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
     int n = index / channels;
     const int c = index % channels;
     const int out_w = n % out_width;
@@ -81,7 +77,7 @@ __global__ void Pad2DReflectNCHW(const int nthreads, const T* in_data,
                                  const int out_height, const int out_width,
                                  const int pad_top, const int pad_left,
                                  T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
     int nc = index / out_width;
     const int out_w = index % out_width;
     const int out_h = nc % out_height;
@@ -103,7 +99,7 @@ __global__ void Pad2DReflectNHWC(const int nthreads, const T* in_data,
                                  const int out_height, const int out_width,
                                  const int pad_top, const int pad_left,
                                  T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
     int n = index / channels;
     const int c = index % channels;
     const int out_w = n % out_width;
@@ -128,7 +124,7 @@ __global__ void Pad2DEdgeNCHW(const int nthreads, const T* in_data,
                               const int out_height, const int out_width,
                               const int pad_top, const int pad_left,
                               T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
     int nc = index / out_width;
     const int out_w = index % out_width;
     const int out_h = nc % out_height;
@@ -146,7 +142,7 @@ __global__ void Pad2DEdgeNHWC(const int nthreads, const T* in_data,
                               const int out_height, const int out_width,
                               const int pad_top, const int pad_left,
                               T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
     int n = index / channels;
     const int c = index % channels;
     const int out_w = n % out_width;
@@ -167,7 +163,7 @@ __global__ void Pad2DGradConstNCHW(const int in_size, T* d_in_data,
                                    const int out_height, const int out_width,
                                    const int pad_top, const int pad_left,
                                    const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(in_index, in_size) {
+  CUDA_KERNEL_LOOP(in_index, in_size) {
     int nc = in_index / in_width;
     const int out_w = in_index % in_width + pad_left;
     const int out_h = nc % in_height + pad_top;
@@ -184,7 +180,7 @@ __global__ void Pad2DGradConstNHWC(const int in_size, T* d_in_data,
                                    const int out_height, const int out_width,
                                    const int pad_top, const int pad_left,
                                    const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(in_index, in_size) {
+  CUDA_KERNEL_LOOP(in_index, in_size) {
     int n = in_index / channels;
     const int c = in_index % channels;
     const int out_w = n % in_width + pad_left;
@@ -204,7 +200,7 @@ __global__ void Pad2DGradReflectNCHW(const int out_size, T* d_in_data,
                                      const int out_height, const int out_width,
                                      const int pad_top, const int pad_left,
                                      const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(out_index, out_size) {
+  CUDA_KERNEL_LOOP(out_index, out_size) {
     int nc = out_index / out_width;
     const int out_w = out_index % out_width;
     const int out_h = nc % out_height;
@@ -228,7 +224,7 @@ __global__ void Pad2DGradReflectNHWC(const int out_size, T* d_in_data,
                                      const int out_height, const int out_width,
                                      const int pad_top, const int pad_left,
                                      const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(out_index, out_size) {
+  CUDA_KERNEL_LOOP(out_index, out_size) {
     const int c = out_index % channels;
     int n = out_index / channels;
     const int out_w = n % out_width;
@@ -254,7 +250,7 @@ __global__ void Pad2DGradEdgeNCHW(const int out_size, T* d_in_data,
                                   const int out_height, const int out_width,
                                   const int pad_top, const int pad_left,
                                   const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(out_index, out_size) {
+  CUDA_KERNEL_LOOP(out_index, out_size) {
     int nc = out_index / out_width;
     const int out_w = out_index % out_width;
     const int out_h = nc % out_height;
@@ -274,7 +270,7 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size, T* d_in_data,
                                   const int out_height, const int out_width,
                                   const int pad_top, const int pad_left,
                                   const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(out_index, out_size) {
+  CUDA_KERNEL_LOOP(out_index, out_size) {
     const int c = out_index % channels;
     int n = out_index / channels;
     const int out_w = n % out_width;

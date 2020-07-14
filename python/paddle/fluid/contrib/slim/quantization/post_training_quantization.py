@@ -342,7 +342,8 @@ class PostTrainingQuantization(object):
             self._executor.run(program=self._program,
                                feed=data,
                                fetch_list=self._fetch_list,
-                               return_numpy=False)
+                               return_numpy=False,
+                               scope=self._scope)
             if self._algo == "KL":
                 self._sample_data(batch_id)
             else:
@@ -562,8 +563,9 @@ class PostTrainingQuantization(object):
             for var_name in self._quantized_act_var_name:
                 var_tensor = _load_variable_data(self._scope, var_name)
                 var_tensor = var_tensor.ravel()
-                save_path = os.path.join(self._cache_dir,
-                                         var_name + "_" + str(iter) + ".npy")
+                save_path = os.path.join(
+                    self._cache_dir,
+                    var_name.replace("/", ".") + "_" + str(iter) + ".npy")
                 np.save(save_path, var_tensor)
         else:
             for var_name in self._quantized_act_var_name:
@@ -598,7 +600,7 @@ class PostTrainingQuantization(object):
             for var_name in self._quantized_act_var_name:
                 sampling_data = []
                 filenames = [f for f in os.listdir(self._cache_dir) \
-                    if re.match(var_name + '_[0-9]+.npy', f)]
+                    if re.match(var_name.replace("/", ".")  + '_[0-9]+.npy', f)]
                 for filename in filenames:
                     file_path = os.path.join(self._cache_dir, filename)
                     sampling_data.append(np.load(file_path))
