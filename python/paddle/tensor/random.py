@@ -102,7 +102,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         # [-2 2 3]
 
         # example 4:
-        # date type is int32
+        # data type is int32
         result_4 = paddle.randint(low=-5, high=5, shape=[3], dtype='int32')
         # [-5 4 -4]
 
