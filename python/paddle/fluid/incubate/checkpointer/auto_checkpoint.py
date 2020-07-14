@@ -38,6 +38,10 @@ generator = unique_name.UniqueNameGenerator()
 CONST_CHECKPOINT = "checkpoint"
 CONST_MEMORYINIT = "memory_init"
 
+CONST_DACP_TYPE = "dacp"
+CONST_ACP_TYPE = "acp"
+g_acp_type = None
+
 
 def _get_logger(log_level, name="auto_checkpoint"):
     global logger
@@ -379,17 +383,20 @@ class TrainEpochRange(SerializableBase):
             self._epoch_no = i
             yield i
 
-            # not save last one because exe and program can't be restored.
-            if self._checker.trainer_id == 0 and i != self._max_epoch_num - 1:
-                if time.time() - self._last_checkpoint_time >= self._save_checkpoint_inter or \
-                        i >= self._max_epoch_num:
-                    self.save_checkpoint()
-                self._last_checkpoint_time = time.time()
+            self.save_checkpoint()
 
     def get(self):
         return self._epoch_no
 
     def save_checkpoint(self):
+        # not save last one because exe and program can't be restored.
+        if self._checker.trainer_id == 0 and self._epoch_no != self._max_epoch_num - 1:
+            if time.time() - self._last_checkpoint_time >= self._save_checkpoint_inter or \
+                    (self._epoch_no >= self._max_epoch_num and self._max_epoch_num >=0):
+                self.save_checkpoint()
+            self._last_checkpoint_time = time.time()
+
+    def _save_checkpoint(self):
         """
         status => /jobid/xxx_range_xx/range/
         model =>                       /exe/
@@ -462,6 +469,9 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
             yield i
 
         return
+
+    global g_acp_type
+    g_acp_type = CONST_ACP_TYPE
 
     global g_train_epoch_range
     try:

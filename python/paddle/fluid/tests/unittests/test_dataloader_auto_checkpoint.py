@@ -23,6 +23,8 @@ import sys
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 import paddle.fluid.incubate.checkpointer.auto_checkpoint as acp
+import paddle.fluid.incubate.checkpointer.dataloader_auto_checkpoint as dacp
+import paddle.fluid.incubate.checkpointer.auto_checkpoint as acp
 from paddle.fluid.incubate.checkpointer.checkpointer import PaddleModel
 from paddle.fluid.framework import program_guard
 from paddle.fluid import unique_name
@@ -35,14 +37,121 @@ logger = get_logger()
 
 
 class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
-    def _run_save_0(self):
-        pass
+    def _run_complex(self):
+        exe, main_prog, startup_prog = self._generate()
 
-    def _run_load_0(self):
-        pass
+        compiled, data_loader, optimizer, loss, image, label = \
+            self._init_env(exe, main_prog, startup_prog, iterable=True)
+
+        # use two
+        for i in acp.train_epoch_range(3):
+            print("epoch:", i)
+            for data in data_loader():
+                name = acp.g_train_epoch_range.name
+                fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
+            self.assertTrue(acp.g_acp_type, acp.CONST_ACP_TYPE)
+
+    def _run_try_catch(self, break_epoch_no=None):
+        exe, main_prog, startup_prog = self._generate()
+
+        compiled, data_loader, optimizer, loss, image, label = \
+            self._init_env(exe, main_prog, startup_prog, iterable=False)
+
+        # use two
+        i = 0
+        name = None
+        for i in range(3):
+            try:
+                data_loader.start()
+
+                name = acp.g_train_epoch_range.name
+                fetch = exe.run(compiled, fetch_list=[loss])
+
+                if break_epoch_no is not None:
+                    if i == break_epoch_no:
+                        break
+            finally:
+                logger.info("complete one epoch")
+
+        self.assertTrue(acp.g_acp_type, acp.CONST_DACP_TYPE)
+        self.assertTrue(
+            len(dacp.g_train_epoch_ranges), 1, "There must be one element")
+        self.assertTrue(dacp.g_train_epoch_ranges[name], None,
+                        "Running must be None")
+
+    def _run_save_basic(self, break_epoch_no=None):
+        exe, main_prog, startup_prog = self._generate()
+
+        compiled, data_loader, optimizer, loss, image, label = \
+            self._init_env(exe, main_prog, startup_prog)
+
+        i = 0
+        name = None
+        for i in range(3):
+            for data in data_loader():
+                name = acp.g_train_epoch_range.name
+                fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
+            if break_epoch_no is not None:
+                if i == break_epoch_no:
+                    break
+
+        self.assertTrue(acp.g_acp_type, acp.CONST_DACP_TYPE)
+        self.assertTrue(
+            len(dacp.g_train_epoch_ranges), 1, "There must be one element")
+        self.assertTrue(dacp.g_train_epoch_ranges[name], None,
+                        "Running must be None")
+
+        if break_epoch_no is None:
+            self.assertEqual(i, 2)
+        else:
+            self.assertEqual(i, break_epoch_no)
+
+    """
+    def _run_load_try_catch(self):
+        exe, main_prog, startup_prog = self._generate()
+
+        fs = LocalFS()
+        save_dir = "./run_load_0"
+        fs.delete(save_dir)
+
+        compiled, data_loader, optimizer, loss, image, label = self._init_env(
+            exe, main_prog, startup_prog)
+
+        o = None
+        i = 0
+        check = False
+        for i in acp.train_epoch_range(3, 0):
+            print("_run_load_0 name:", o.name, "epoch_no:", i)
+            if started_epoch_no is not None and not check:
+                self.assertEqual(o.get(), started_epoch_no)
+                check = True
+
+            for data in data_loader():
+                fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
+            fluid.io.save_inference_model(
+                save_dir, [image.name, label.name], [loss],
+                exe,
+                main_program=main_prog)
+            self.assertEqual(len(o._exe_status), 1)
+
+        o = acp._get_train_epoch_range()
+        self.assertTrue(o == None, "now train epoch must not exits now")
+        self.assertEqual(i, 2)
+        fluid.io.save_inference_model(
+            save_dir, [image.name, label.name], [loss],
+            exe,
+            main_program=compiled)
+
+        fs.delete(save_dir)
+    """
 
     def test_basic(self):
-        pass
+        self._run_complex()
+        self._run_save_basic()
+        self._run_try_catch()
 
     def test_coreno_epoch(self):
         pass

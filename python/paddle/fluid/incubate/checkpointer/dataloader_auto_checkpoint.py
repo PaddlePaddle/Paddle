@@ -26,15 +26,26 @@ class TrainEpochRangeWrapper(object):
         self._epoch_no = -1
 
         self._train_epoch_range = acp.TrainEpochRange(
-            max_epoch_num,
+            -1,
             name,
-            save_checkpoint_inter=acp.get_checker.save_checkpoint_inter,
-            checkpoint_no=-2)
+            save_checkpoint_inter=acp._get_checker().save_checkpoint_inter,
+            load_last=-2)
+
+
+logger = acp._get_logger(20)
+
+
+def _check():
+    checker = acp._get_checker()
+    if not checker.valid():
+        return False
+
+    if acp.g_acp_type == acp.CONST_ACP_TYPE:
+        return
 
 
 def _begin(name):
-    checker = acp._get_checker()
-    if not checker.valid():
+    if not _check():
         return False
 
     t = None
@@ -42,7 +53,6 @@ def _begin(name):
         g_train_epoch_ranges[name] = TrainEpochRangeWrapper(name)
     t = g_train_epoch_ranges[name]
 
-    assert acp.g_train_epoch_range == None, "internal error: g_train_epoch_range can't be valid now."
     acp.g_train_epoch_range = t
 
     if t._train_epoch_range.restord_from != acp.CONST_CHECKPOINT:
@@ -57,13 +67,8 @@ def _begin(name):
     return True
 
 
-def _auto_checkpoint(exe, program):
-    return acp._auto_checkpoint(exe, program)
-
-
 def _end(name):
-    checker = acp._get_checker()
-    if not checker.valid():
+    if not _check():
         return False
 
     assert name in g_train_epoch_ranges, \
@@ -75,6 +80,7 @@ def _end(name):
     assert t == acp.g_train_epoch_range, "interal error, current running range must equal"
 
     t._epoch_no += 1
+
     acp.g_train_epoch_range.save_checkpoint()
     acp.g_train_epoch_range = None
 

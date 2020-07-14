@@ -30,7 +30,7 @@ from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
-from .incubate.checkpointer import selector as acp_selector
+from .incubate.checkpointer import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -1158,7 +1158,7 @@ class Executor(object):
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
-        acp_selector._auto_checkpoint(self, program)
+        acp._auto_checkpoint(self, program)
 
         # For backward compatibility, run directly.
         if not compiled:

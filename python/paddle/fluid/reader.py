@@ -1109,7 +1109,6 @@ class GeneratorLoader(DataLoaderBase):
             else:
                 return self._reader.read_next()
         except StopIteration:
-            dacp._end(self._auto_checkpoint_name)
             self._queue.close()
             self._reset()
             six.reraise(*sys.exc_info())

@@ -14,7 +14,7 @@
 
 from . import auto_checkpoint as acp
 from . import dataloader_auto_checkpoint as dacp
-
+"""
 CONST_DACP_TYPE = "dacp"
 CONST_ACP_TYPE = "acp"
 g_acp_type = None
@@ -45,3 +45,4 @@ def _auto_checkpoint(exe, program):
         return dacp._auto_checkpoint(exe, program)
 
     return acp._auto_checkpoint(exe, program)
+"""

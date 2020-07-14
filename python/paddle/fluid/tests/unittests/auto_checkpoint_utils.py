@@ -48,6 +48,7 @@ def get_logger():
     return logger
 
 
+"""
 # define a random dataset
 class RandomDataset(Dataset):
     def __init__(self, num_samples):
@@ -60,6 +61,26 @@ class RandomDataset(Dataset):
 
     def __len__(self):
         return self.num_samples
+"""
+
+
+def get_random_images_and_labels(image_shape, label_shape):
+    image = np.random.random(size=image_shape).astype('float32')
+    label = np.random.random(size=label_shape).astype('int64')
+    return image, label
+
+
+def sample_list_generator_creator():
+    def __reader__():
+        for _ in range(BATCH_NUM):
+            sample_list = []
+            for _ in range(BATCH_SIZE):
+                image, label = get_random_images_and_labels([16, 16], [1])
+                sample_list.append([image, label])
+
+            yield sample_list
+
+    return __reader__
 
 
 class AutoCheckpointBase(unittest.TestCase):
@@ -85,7 +106,12 @@ class AutoCheckpointBase(unittest.TestCase):
         os.environ.clear()
         os.environ.update(self._old_environ)
 
-    def _init_env(self, exe, main_prog, startup_prog, minimize=True):
+    def _init_env(self,
+                  exe,
+                  main_prog,
+                  startup_prog,
+                  minimize=True,
+                  iterable=True):
         def simple_net():
             image = fluid.data(
                 name='image', shape=[-1, 16, 16], dtype='float32')
@@ -108,7 +134,7 @@ class AutoCheckpointBase(unittest.TestCase):
                     loss_name=loss.name)
             else:
                 compiled = None
-
+            """
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
             loader = DataLoader(
                 dataset,
@@ -118,6 +144,15 @@ class AutoCheckpointBase(unittest.TestCase):
                 shuffle=True,
                 drop_last=True,
                 num_workers=2)
+            """
+            loader = fluid.io.DataLoader.from_generator(
+                feed_list=[image, label],
+                capacity=64,
+                use_double_buffer=True,
+                iterable=iterable)
+
+            loader.set_sample_list_generator(sample_list_generator_creator(),
+                                             places[0])
 
         if minimize:
             exe.run(startup_prog)
