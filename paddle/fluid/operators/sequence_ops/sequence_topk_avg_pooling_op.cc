@@ -24,16 +24,15 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("ROW"), true,
-                      "Input(ROW) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("COLUMN"), true,
-                      "Input(COLUMN) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("pos"), true,
-                      "pos(out) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(ctx->HasInput("ROW"), "Input", "ROW",
+                   "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(ctx->HasInput("COLUMN"), "Input", "COLUMN",
+                   "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Output", "Out",
+                   "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(ctx->HasInput("pos"), "Output", "pos",
+                   "SequenceTopkAvgPooling");
 
     auto attr = ctx->Attrs();
     auto channel_num = attr.Get<int>("channel_num");
@@ -49,7 +48,7 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
     vec_out_shape.push_back(channel_num * num_k);
 
     ctx->SetOutputDim("Out", framework::make_ddim(vec_out_shape));
-    ctx->ShareLoD("X", "Out");
+    ctx->ShareLoD("ROW", "Out");
   }
 };
 
@@ -78,10 +77,10 @@ class SequenceTopkAvgPoolingGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Gradient of Out should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "The input X should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "SequenceTopkAvgPoolingGrad");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "SequenceTopkAvgPoolingGrad");
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
     ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));

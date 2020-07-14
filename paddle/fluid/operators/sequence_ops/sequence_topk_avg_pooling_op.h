@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <limits>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -23,34 +24,36 @@ limitations under the License. */
 template <typename T>
 void get_topk_pos(const T* data, int length, int k, int* pos) {
   size_t real_k = k < length ? k : length;
+  VLOG(3) << "length: " << length << " , k : " << k;
 
-  std::vector<T> v(data, data + length);
-
-  std::vector<int> topk_pos;
+  std::unordered_set<int> topk_idx_set;
   T min_val = std::numeric_limits<T>::lowest();
-  while (topk_pos.size() < real_k) {
+
+  for (size_t id_k = 0; id_k < real_k; id_k++) {
     T max_val = min_val;
     int max_pos = -1;
+
     for (int i = 0; i < length; ++i) {
-      if (v[i] > max_val) {
+      if (topk_idx_set.find(i) != topk_idx_set.end()) continue;
+
+      if (data[i] > max_val) {
         max_pos = i;
-        max_val = v[i];
+        max_val = data[i];
       }
     }
+    VLOG(3) << "top" << id_k + 1 << " index is : " << max_pos;
+    PADDLE_ENFORCE_GE(max_pos, 0,
+                      platform::errors::PreconditionNotMet(
+                          "Expected max_pos >= 0, but received -1. Probably "
+                          "because the input data contains `Nan`."));
 
-    assert(max_pos >= 0);
-
-    topk_pos.push_back(max_pos);
-    v[max_pos] = min_val;
+    pos[id_k] = max_pos;
+    topk_idx_set.emplace(max_pos);
   }
 
-  assert(topk_pos.size() > 0);
-  while (topk_pos.size() < (size_t)k) {
-    topk_pos.push_back(-1);
-  }
-
-  for (size_t i = 0; i < topk_pos.size(); ++i) {
-    pos[i] = topk_pos[i];
+  VLOG(3) << "fill last " << k - real_k << " with -1";
+  for (int i = real_k; i < k; i++) {
+    pos[i] = -1;
   }
 }
 
@@ -70,15 +73,21 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
     auto* out = context.Output<LoDTensor>("Out");
     auto* pos = context.Output<Tensor>("pos");
 
-    PADDLE_ENFORCE_EQ(in->lod().empty(), false,
-                      "Input(X) Tensor of SequenceTopkAvgPoolingOp does not "
-                      "contain LoD information.");
-    PADDLE_ENFORCE_EQ(row->lod().empty(), false,
-                      "Input(ROW) Tensor of SequenceTopkAvgPoolingOp does not "
-                      "contain LoD information.");
-    PADDLE_ENFORCE_EQ(col->lod().empty(), false,
-                      "Input(COLUMN) Tensor of SequenceTopkAvgPoolingOp does "
-                      "not contain LoD information.");
+    PADDLE_ENFORCE_EQ(
+        in->lod().empty(), false,
+        platform::errors::InvalidArgument(
+            "Input(X) Tensor of SequenceTopkAvgPoolingOp does not "
+            "contain LoD information."));
+    PADDLE_ENFORCE_EQ(
+        row->lod().empty(), false,
+        platform::errors::InvalidArgument(
+            "Input(ROW) Tensor of SequenceTopkAvgPoolingOp does not "
+            "contain LoD information."));
+    PADDLE_ENFORCE_EQ(
+        col->lod().empty(), false,
+        platform::errors::InvalidArgument(
+            "Input(COLUMN) Tensor of SequenceTopkAvgPoolingOp does "
+            "not contain LoD information."));
 
     auto channel_num = context.Attr<int>("channel_num");
     auto topks = context.Attr<std::vector<int>>("topks");
@@ -116,7 +125,10 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
       int row_size = row_lod[i + 1] - row_lod[i];
       int col_size = col_lod[i + 1] - col_lod[i];
       PADDLE_ENFORCE_EQ(total_size, channel_num * row_size * col_size,
-                        "size wrong in sequence_topk_avg_pooling_op!");
+                        platform::errors::PreconditionNotMet(
+                            "Expected total_size == channel_num * row_size * "
+                            "col_size, but got %d != %d.",
+                            total_size, channel_num * row_size * col_size));
 
       int feature_num = row_size * col_size;
       for (int j = 0; j < channel_num; ++j) {
