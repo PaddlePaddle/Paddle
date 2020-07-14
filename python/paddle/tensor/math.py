@@ -592,16 +592,19 @@ Examples:
         import paddle
 
         paddle.enable_imperative()
-        x = paddle.rand([2, 3], dtype='float32')
-        y = paddle.rand([2, 3], dtype='float32')
-        z = paddle.multiply(x, y)
-        print(x.numpy(), 'X', y.numpy(), '=', z.numpy())
+        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
+        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.multiply(x, y)
+        print(res.numpy()) # [[5, 12], [21, 32]]
 
-        x = paddle.rand([2, 3, 2], dtype='float32')
-        y = paddle.rand([3], dtype='float32')
-        z = paddle.multiply(x, y, axis=1)
-        print(x.numpy(), 'X', y.numpy(), '=', z.numpy())
-
+        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
+        y_data = np.array([1, 2], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.multiply(x, y, axis=1)
+        print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
 
     """
     op_type = 'elementwise_mul'
