@@ -6143,8 +6143,78 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     return helper.append_activation(out)
 
 
-def squeeze(x, axis=None, name=None):
-    return paddle.tensor.manipulation.squeeze(x, axis, name)
+def squeeze(input, axes, name=None):
+    """
+    This OP will squeeze single-dimensional entries of input tensor's shape. If axes is provided, will
+    remove the dims by axes, the dims selected by axes should be one. If not provide axes, all dims equal
+    to one will be deleted.
+
+
+    .. code-block:: text
+
+        Case1:
+
+          Input:
+            X.shape = (1, 3, 1, 5)
+            axes = [0]
+          Output:
+            Out.shape = (3, 1, 5)
+
+        Case2:
+
+          Input:
+            X.shape = (1, 3, 1, 5)
+            axes = []
+          Output:
+            Out.shape = (3, 5)
+
+        Case3:
+
+          Input:
+            X.shape = [1,3,1,5]
+            axes = [-2]
+          Output:
+            Out.shape = [1,3,5]
+
+    Args:
+        input (Variable): The input Tensor. Support data type: float16, float32, float64, int8, int32, int64.
+                          axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
+                          Axes range is :math:`[-rank(input), rank(input))`.
+                          If axes is negative, :math:`axes=axes+rank(input)`.
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
+
+    Returns:
+        Variable: Output squeezed Tensor. Data type is same as input Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            # set batch size=None
+            x = fluid.data(name='x', shape=[None, 5, 1, 10])
+            y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
+
+    """
+    if in_dygraph_mode():
+        out, _ = core.ops.squeeze2(input, 'axes', axes)
+        return out
+
+    helper = LayerHelper("squeeze", **locals())
+    check_variable_and_dtype(
+        input, 'input',
+        ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
+    check_type(axes, 'axes', list, 'squeeze')
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type="squeeze2",
+        inputs={"X": input},
+        attrs={"axes": axes},
+        outputs={"Out": out,
+                 "XShape": x_shape})
+
+    return out
 
 
 def unsqueeze(input, axes, name=None):

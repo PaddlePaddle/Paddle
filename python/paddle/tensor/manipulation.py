@@ -41,6 +41,7 @@ from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
 from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
 from ..fluid.layers import shard_index  #DEFINE_ALIAS
 from ..fluid.layers import unique_with_counts  #DEFINE_ALIAS
+from ..fluid import layers
 
 __all__ = [
     'cast', 'concat', 'expand', 'expand_as', 'flatten', 'gather', 'gather_nd',
@@ -486,17 +487,13 @@ def squeeze(x, axis=None, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
-            with fluid.dygraph.guard():
-                x_np = np.random.random([5, 1, 10]).astype("int32")
-                # x is a variable of shape [5, 1, 10]
-                x = fluid.dygraph.to_variable(input_1)
-
-                output = paddle.squeeze(x, axes=1)
-                # output.shape [5, 10]
+            paddle.enable_imperative()
+            
+            x = paddle.rand([5, 1, 10])
+            output = paddle.squeeze(x, axis=1)
+            # output.shape [5, 10]
 
     """
     if axis is None:
@@ -504,24 +501,7 @@ def squeeze(x, axis=None, name=None):
     elif isinstance(axis, int):
         axis = [axis]
 
-    if in_dygraph_mode():
-        out, _ = core.ops.squeeze2(x, 'axes', axis)
-        return out
-
-    helper = LayerHelper("squeeze", **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
-    check_type(axis, 'axis', (int, list, type(None)), 'squeeze')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="squeeze2",
-        inputs={"X": x},
-        attrs={"axes": axis},
-        outputs={"Out": out,
-                 "XShape": x_shape})
-
-    return out
+    return layers.squeeze(x, axis, name)
 
 
 def unsqueeze(input, axes, out=None, name=None):
