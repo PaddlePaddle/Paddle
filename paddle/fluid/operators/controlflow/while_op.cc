@@ -111,7 +111,7 @@ class WhileOp : public framework::OperatorBase {
         for (const std::string &input_var_name : Inputs(kX)) {
           if (no_copy_var_names.find(input_var_name) ==
               no_copy_var_names.end()) {
-            std::string input_var_rename = input_var_name + SUFFIX;
+            std::string input_var_rename = input_var_name + kSuffix;
             framework::Variable *input_var = scope.FindVar(input_var_name);
             if (input_var->IsType<framework::LoDTensor>()) {
               rename_vars.push_back(input_var_rename);
@@ -129,7 +129,7 @@ class WhileOp : public framework::OperatorBase {
 
         for (auto &var_rename : rename_vars) {
           std::string input_var_name =
-              var_rename.substr(0, var_rename.size() - sizeof(SUFFIX) + 1);
+              var_rename.substr(0, var_rename.size() - strlen(kSuffix));
           current_scope.Rename(var_rename, input_var_name);
         }
         cond_data =

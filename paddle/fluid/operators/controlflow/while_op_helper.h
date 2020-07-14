@@ -30,7 +30,7 @@ static constexpr char kX[] = "X";
 static constexpr char kXGRAD[] = "X@GRAD";
 static constexpr char kOutputs[] = "Out";
 static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
-static constexpr char SUFFIX[] = "@TMP_COPY";
+static constexpr char kSuffix[] = "@TMP_COPY";
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const framework::ProgramDesc &program, int block_id,

@@ -281,7 +281,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
         def body(i, x):
             x = x * i
-            layers.increment(i)
+            i = i + 1
             return i, x
 
         main_program = Program()
