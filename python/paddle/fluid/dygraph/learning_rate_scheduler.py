@@ -67,6 +67,8 @@ class LearningRateDecay(object):
             persistable=False)
         return lr
 
+    # Note: If you want to change what optimizer.state_dict stores, just overwrite this functions, 
+    # "self.step_num" will be stored by default.
     def state_dict(self):
         """
         Returns the state of the scheduler as a :class:`dict`.
@@ -859,6 +861,7 @@ class ReduceLROnPlateau(LearningRateDecay):
         self.num_bad_epochs = 0
         self.epoch_num = 0
 
+    # "cooldown_counter / best_loss / num_bad_epochs / epoch_num / learning_rate" will be stored.
     def _state_keys(self):
         self.keys = [
             'cooldown_counter', 'best_loss', 'num_bad_epochs', 'epoch_num',
@@ -961,6 +964,8 @@ class _LearningRateEpochDecay(LearningRateDecay):
 
         self.epoch()
 
+    # For those subclass who overload _LearningRateEpochDecay, "self.epoch_num/learning_rate" will be stored by default.
+    # you can change it for your subclass.
     def _state_keys(self):
         self.keys = ['epoch_num', 'learning_rate']
 
