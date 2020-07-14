@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <functional>
 #include <limits>
+#include <queue>
 #include <string>
-#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -28,38 +30,35 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 namespace details {
+
 template <typename T>
 static void get_topk_pos(const T* data, int length, int k, int* pos) {
-  size_t real_k = k < length ? k : length;
   VLOG(3) << "length: " << length << " , k : " << k;
 
-  std::unordered_set<int> topk_idx_set;
-  T min_val = std::numeric_limits<T>::lowest();
+  std::priority_queue<std::pair<T, size_t>, std::vector<std::pair<T, size_t>>,
+                      std::greater<std::pair<T, size_t>>>
+      topk_queue;
 
-  for (size_t id_k = 0; id_k < real_k; id_k++) {
-    T max_val = min_val;
-    int max_pos = -1;
-
-    for (int i = 0; i < length; ++i) {
-      if (topk_idx_set.find(i) != topk_idx_set.end()) continue;
-
-      if (data[i] > max_val) {
-        max_pos = i;
-        max_val = data[i];
+  for (size_t i = 0; i < static_cast<size_t>(k); id++) {
+    T elem = data[i];
+    if (topk_queue.size() < k) {
+      topk_queue.emplace(elem, i);
+    } else {
+      if (elem >= queue.top().first) {
+        // replace top node if found a bigger value
+        topk_queue.pop();
+        topk_queue.emplace(elem, i);
       }
     }
-    VLOG(3) << "top" << id_k + 1 << " index is : " << max_pos;
-    PADDLE_ENFORCE_GE(max_pos, 0,
-                      platform::errors::PreconditionNotMet(
-                          "Expected max_pos >= 0, but received -1. Probably "
-                          "because the input data contains `Nan`."));
-
-    pos[id_k] = max_pos;
-    topk_idx_set.emplace(max_pos);
   }
-
-  VLOG(3) << "fill last " << k - real_k << " with -1";
-  for (int i = real_k; i < k; i++) {
+  // reversely assign value
+  int real_k = queue.size();
+  for (int i = real_k - 1; i >= 0; i--) {
+    pos[i] = queue.top().second;
+    queue.pop();
+  }
+  // fill -1 if needed
+  for (size_t i = real_k; i < k; i++) {
     pos[i] = -1;
   }
 }
