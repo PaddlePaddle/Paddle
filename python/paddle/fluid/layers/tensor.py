@@ -1585,6 +1585,11 @@ def eye(num_rows,
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
+    if num_columns is not None:
+        if not isinstance(num_columns, int) or num_columns < 0:
+            raise TypeError("num_columns should be a non-negative int")
+    else:
+        num_columns = num_rows
 
     if in_dygraph_mode():
         out = core.ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
@@ -1596,11 +1601,6 @@ def eye(num_rows,
                     ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
         if not isinstance(num_rows, int) or num_rows < 0:
             raise TypeError("num_rows should be a non-negative int")
-        if num_columns is not None:
-            if not isinstance(num_columns, int) or num_columns < 0:
-                raise TypeError("num_columns should be a non-negative int")
-        else:
-            num_columns = num_rows
         out = helper.create_variable_for_type_inference(dtype=dtype)
         helper.append_op(
             type='eye',
