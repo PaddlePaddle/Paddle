@@ -27,6 +27,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+from functools import reduce
 
 import collections
 import math
