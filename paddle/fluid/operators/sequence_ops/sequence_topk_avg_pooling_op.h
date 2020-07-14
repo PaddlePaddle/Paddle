@@ -21,8 +21,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
+namespace paddle {
+namespace operators {
+
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+namespace details {
 template <typename T>
-void get_topk_pos(const T* data, int length, int k, int* pos) {
+static void get_topk_pos(const T* data, int length, int k, int* pos) {
   size_t real_k = k < length ? k : length;
   VLOG(3) << "length: " << length << " , k : " << k;
 
@@ -43,7 +50,7 @@ void get_topk_pos(const T* data, int length, int k, int* pos) {
     }
     VLOG(3) << "top" << id_k + 1 << " index is : " << max_pos;
     PADDLE_ENFORCE_GE(max_pos, 0,
-                      platform::errors::PreconditionNotMet(
+                      framework::platform::errors::PreconditionNotMet(
                           "Expected max_pos >= 0, but received -1. Probably "
                           "because the input data contains `Nan`."));
 
@@ -56,12 +63,7 @@ void get_topk_pos(const T* data, int length, int k, int* pos) {
     pos[i] = -1;
   }
 }
-
-namespace paddle {
-namespace operators {
-
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+}  // namespace details
 
 template <typename DeviceContext, typename T>
 class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
@@ -142,7 +144,7 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
           auto out_slice_data = dout_data + row_lod[i] * channel_num * k_num +
                                 r * channel_num * k_num + j * k_num;
 
-          get_topk_pos<T>(row_data, col_size, max_k, pos_slice_data);
+          details::get_topk_pos<T>(row_data, col_size, max_k, pos_slice_data);
           if (pos_slice_data[0] == -1) {
             sum_data[0] = 0.0;
           } else {
