@@ -47,7 +47,11 @@ class LookupSparseTableGradSplitKernel : public framework::OpKernel<T> {
                &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
 
-    auto in_rows = grad_merge_ptr->rows();
+    std::vector<int64_t> in_rows;
+    in_rows.reserve(grad_merge_ptr->rows().size());
+    std::copy(grad_merge_ptr->rows().begin(), grad_merge_ptr->rows().end(),
+              std::back_inserter(in_rows));
+
     auto* out_row = context.Output<Tensor>("Row");
     out_row->Resize(
         framework::make_ddim({static_cast<int64_t>(in_rows.size()), 1}));
