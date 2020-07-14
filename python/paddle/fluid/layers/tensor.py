@@ -1331,19 +1331,25 @@ def range(start, end, step, dtype, name=None):
 
     Parameters:
         start(float|int|Variable): Start of interval. The interval includes
-            this value.
-        end(float|int|Variable|None, optional): End of interval. The interval
-            does not include this value, except in some cases where step is not
-            an integer and floating point round-off affects the length of out.
-        step(float|int|Variable, optional): Spacing between values. For any
-            out, this is the istance between two adjacent values, out[i+1] - out[i].
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
-            the output tensor, can be float32, float64, int32, int64.
+            this value. If start is Variable, it is a 1-D Tensor with shape [1],
+            and it's data type should be one of int32, int64, float32, float64.
+        end(float|int|Variable): End of interval. The interval does not include
+            this value, except in some cases where step is not an integer and
+            floating point round-off affects the length of out. When end is
+            Variable, it is a 1-D Tensor with shape [1], and it's data type
+            should be one of int32, int64, float32, float64.
+        step(float|int|Variable): Spacing between values. For any out, this is
+            the istance between two adjacent values, out[i+1] - out[i].
+            When end is Variable, it is a 1-D Tensor with shape [1], and it's
+            data type should be one of int32, int64, float32, float64.
+        dtype(str|np.dtype|core.VarDesc.VarType): The data type of the output
+            tensor, can be float32, float64, int32, int64.
         name(str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
             Default is None.
 
-    Returns: a 1-D Tensor which is evenly spaced values within a given interval. Its data type is set by dtype.
+    Returns: a 1-D Tensor which is evenly spaced values within a given interval.
+        Its data type is set by dtype.
     
     Return type: Variable
 
@@ -1352,8 +1358,13 @@ def range(start, end, step, dtype, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.range(0, 10, 2, 'int32')
+
+            out1 = fluid.layers.range(0, 10, 2, 'int32')
             # [0, 2, 4, 6, 8]
+
+            start_var = fluid.layers.fill_constant([1], 'int64', 3)
+            out2 = paddle.arange(start_var, 7, 1, 'int64)
+            # [3, 4, 5, 6]
 
     """
     if not isinstance(dtype, core.VarDesc.VarType):

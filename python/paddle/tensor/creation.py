@@ -469,9 +469,9 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         step(float|int|Variable, optional): Spacing between values. For any
             out, this is the istance between two adjacent values, out[i+1] - out[i].
             When end is Variable, it is a 1-D Tensor with shape [1], and it's
-            data type should be one of int32, int64, float32, float64.
+            data type should be one of int32, int64, float32, float64. Default is 1.
         dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
-            the output tensor, can be float32, float64, int32, int64. if dtype
+            the output tensor, can be float32, float64, int32, int64. If dtype
             is `None` , the data type of out tensor is `int64` . Defaule is None
         name(str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
@@ -490,8 +490,9 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
-        enable_impeartive()
+        paddle.enable_impeartive()
 
         out1 = paddle.arange(5)
         # [0, 1, 2, 3, 4]
@@ -499,8 +500,12 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         out2 = paddle.arange(3, 9, 2.0)
         # [3, 5, 7]
 
-        out2 = paddle.arange(5, dtype='float32')
+        out3 = paddle.arange(5, dtype='float32')
         # [0., 1., 2., 3., 4.]
+
+        start_var = paddle.imperative.to_variable(np.array([3]))
+        out4 = paddle.arange(start_var, 7)
+        # [3, 4, 5, 6]
              
     """
     if dtype is None:
