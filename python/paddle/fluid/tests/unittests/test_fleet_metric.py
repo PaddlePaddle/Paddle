@@ -44,7 +44,7 @@ class TestFleetMetric(unittest.TestCase):
                 self.gloo.set_iface("lo")
                 self.gloo.set_hdfs_store("./tmp_test_metric", "", "")
                 self.gloo.init()
-            
+
             def _all_reduce(self, input, output, mode="sum"):
                 """all reduce using gloo"""
                 input_list = [i for i in input]
@@ -61,13 +61,13 @@ class TestFleetMetric(unittest.TestCase):
 
     def test_metric_1(self):
         """test cases for metrics"""
-        arr = np.array([1,2,3,4])
+        arr = np.array([1, 2, 3, 4])
         metric.sum(arr)
         metric.max(arr)
         metric.min(arr)
-        arr1 = np.array([[1,2,3,4]])
-        arr2 = np.array([[1,2,3,4]])
-        arr3 = np.array([1,2,3,4])
+        arr1 = np.array([[1, 2, 3, 4]])
+        arr2 = np.array([[1, 2, 3, 4]])
+        arr3 = np.array([1, 2, 3, 4])
         metric.auc(arr1, arr2)
         metric.mae(arr, 3)
         metric.rmse(arr, 3)
