@@ -17,10 +17,12 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -47,13 +49,13 @@ static void CheckInputVarStatus(const Variable &var,
       var.IsType<LoDTensor>(), true,
       platform::errors::InvalidArgument(
           "The input variable %s of "
-          "RunProgram(Grad)Op(StaticModelRunner) holds "
+          "RunProgram(Grad)Op holds "
           "wrong type. Expect type is LoDTensor, but receive type is %s.",
           var_name, platform::demangle(framework::ToTypeName(var.Type()))));
   PADDLE_ENFORCE_EQ(
       var.Get<LoDTensor>().IsInitialized(), true,
       platform::errors::InvalidArgument("The tensor in input variable %s of "
-                                        "RunProgram(Grad)Op(StaticModelRunner) "
+                                        "RunProgram(Grad)Op "
                                         "is not initialized.",
                                         var_name));
 }
@@ -66,14 +68,14 @@ static void CheckOutputVarStatus(const Variable &src_var,
         src_var.IsType<LoDTensor>(), true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
-            "RunProgram(Grad)Op(StaticModelRunner)'s internal scope holds "
+            "RunProgram(Grad)Op's internal scope holds "
             "wrong type. Expect type is LoDTensor, but receive type is %s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<LoDTensor>().IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
-                          "RunProgram(Grad)Op(StaticModelRunner)'s internal "
+                          "RunProgram(Grad)Op's internal "
                           "scope is not initialized.",
                           var_name));
   } else if (dst_var.IsType<SelectedRows>()) {
@@ -81,20 +83,20 @@ static void CheckOutputVarStatus(const Variable &src_var,
         src_var.IsType<SelectedRows>(), true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
-            "RunProgram(Grad)Op(StaticModelRunner)'s internal scope holds "
+            "RunProgram(Grad)Op's internal scope holds "
             "wrong type. Expect type is SelectedRows, but receive type is %s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<SelectedRows>().value().IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
-                          "RunProgram(Grad)Op(StaticModelRunner)'s "
+                          "RunProgram(Grad)Op's "
                           "internal scope is not initialized.",
                           var_name));
 
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The RunProgram(Grad)Op(StaticModelRunner) only support output "
+        "The RunProgram(Grad)Op only support output "
         "variable of type LoDTensor or SelectedRows, "
         "but received variable %s's type is %s",
         var_name, platform::demangle(framework::ToTypeName(dst_var.Type()))));
@@ -141,7 +143,7 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
     auto *var = scope->FindVar(var_names[i]);
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("The output variable %s is not in "
-                                        "RunProgram(Grad)Op(StaticModelRunner)'"
+                                        "RunProgram(Grad)Op'"
                                         "s internal scope.",
                                         var_names[i]));
     CheckOutputVarStatus(*var, *vars[i], var_names[i]);
@@ -149,11 +151,43 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
   }
 }
 
-static void AppendSkipDeletionVars(
-    std::vector<std::string> *all_vars,
-    const std::vector<std::string> &append_vars) {
+static void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
+                                   std::vector<std::string> *all_vars) {
   for (auto &var : append_vars) {
     all_vars->emplace_back(var);
+  }
+}
+
+static void AppendSafeEagerDeletionSkipVars(
+    const framework::ProgramDesc &program,
+    std::vector<std::string> *skip_vars) {
+  const framework::BlockDesc &block = program.Block(0);
+  const std::vector<framework::OpDesc *> &all_ops = block.AllOps();
+
+  std::unordered_set<std::string> grad_op_output;
+  std::unordered_set<std::string> grad_op_input;
+  for (const framework::OpDesc *op : all_ops) {
+    int op_role = BOOST_GET_CONST(
+        int, op->GetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
+    if ((op_role & static_cast<int>(framework::OpRole::kBackward)) == 0) {
+      continue;
+    }
+
+    for (const std::string &in_arg_name : op->InputArgumentNames()) {
+      grad_op_input.emplace(in_arg_name);
+    }
+    for (const std::string &out_arg_name : op->OutputArgumentNames()) {
+      grad_op_output.emplace(out_arg_name);
+    }
+  }
+
+  // For the grad op input variables, if it is not output of grad_op, it may
+  // be output of forward op and we should set the variables as skip_var to
+  // prevent it being deleted when grad op is called multiple times.
+  for (const std::string &var_name : grad_op_input) {
+    if (grad_op_output.find(var_name) == grad_op_output.end()) {
+      skip_vars->emplace_back(var_name);
+    }
   }
 }
 
@@ -192,7 +226,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     // skip delete vars
     std::vector<std::string> skip_vars;
-    details::AppendSkipDeletionVars(&skip_vars, output_var_names);
+    details::AppendSkipDeletionVars(output_var_names, &skip_vars);
     VLOG(2) << "Prepare to skip " << skip_vars.size()
             << " var(s): " << string::join_strings(skip_vars, ' ');
 
@@ -261,20 +295,21 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
         out_scope_vec->size(), 1,
         platform::errors::InvalidArgument(
             "The OutScope of RunProgramGradOp should only hold one scope."));
+    auto &scope = *(out_scope_vec->front());
 
     // Step 2. prepare executor and scope
     framework::Executor exe(ctx.GetPlace());
 
     // skip delete vars
     std::vector<std::string> skip_vars;
-    details::AppendSkipDeletionVars(&skip_vars, input_grad_var_names);
-    details::AppendSkipDeletionVars(&skip_vars, param_grad_names);
+    details::AppendSkipDeletionVars(input_grad_var_names, &skip_vars);
+    details::AppendSkipDeletionVars(param_grad_names, &skip_vars);
+    details::AppendSafeEagerDeletionSkipVars(*program, &skip_vars);
     VLOG(2) << "Prepare to skip " << skip_vars.size()
             << " var(s): " << string::join_strings(skip_vars, ' ');
 
     auto exe_ctx = exe.Prepare(*program, 0, skip_vars);
 
-    auto &scope = *(out_scope_vec->front());
     details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
                                 &scope);
 

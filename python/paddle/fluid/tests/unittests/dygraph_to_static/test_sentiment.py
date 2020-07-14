@@ -248,13 +248,15 @@ class BiGRU(fluid.dygraph.Layer):
 
 
 def fake_data_reader(class_num, vocab_size, batch_size, padding_size):
+    local_random = np.random.RandomState(SEED)
+
     def reader():
         batch_data = []
         while True:
-            label = np.random.randint(0, class_num)
-            seq_len = np.random.randint(padding_size // 2,
-                                        int(padding_size * 1.2))
-            word_ids = np.random.randint(0, vocab_size, [seq_len]).tolist()
+            label = local_random.randint(0, class_num)
+            seq_len = local_random.randint(padding_size // 2,
+                                           int(padding_size * 1.2))
+            word_ids = local_random.randint(0, vocab_size, [seq_len]).tolist()
             word_ids = word_ids[:padding_size] + [vocab_size] * (padding_size -
                                                                  seq_len)
             batch_data.append((word_ids, [label], seq_len))
