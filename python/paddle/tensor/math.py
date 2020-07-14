@@ -679,8 +679,6 @@ for func in [
         alias = ':alias: paddle.%(func)s, paddle.tensor.%(func)s, paddle.tensor.math.%(func)s' % {'func': func.__name__}
 
         additional_args_lines = [
-            alias_main,
-            alias,
             "alpha (int|float, optional): The alpha factor of the input. Default is 1. If alpha is not 1, the equation becomes Out = X + alpha * Y.",
             "out (Variable, optinal): The Variable that stores results of the operation. Default is None. If out is None, \
             a new Variable will be created to store the results."
@@ -691,8 +689,6 @@ for func in [
         ]
     else:
         additional_args_lines = [
-            alias_main,
-            alias,
             "out (Variable, optinal): The Variable that stores results of the operation. If out is None, \
             a new Variable will be created to store the results."
                                                                  ,
@@ -701,7 +697,7 @@ for func in [
             :ref:`api_guide_Name` "
         ]
 
-    func.__doc__ = _generate_doc_string_(
+    func.__doc__ = alias_main + """\n""" + alias + """\n""" + _generate_doc_string_(
         op_proto,
         additional_args_lines=additional_args_lines,
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
