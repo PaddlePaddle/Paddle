@@ -148,7 +148,7 @@ def index_select(x, index, axis=0, name=None):
     Args:
         x (Variable): The input tensor variable.The dtype of x can be one of float32, float64, int32, int64.
         index (Variable): The 1-D tensor containing the indices to index.the dtype of index can be int32 or int64.
-        axis (int, optional): The dimension in which we index.
+        axis (int, optional): The dimension in which we index. Default: if None, the axis is 0.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
