@@ -17,12 +17,10 @@ from __future__ import print_function
 import os
 import paddle.fluid as fluid
 import unittest
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-from paddle.fluid.incubate.fleet.parameter_server.pslib import \
+from paddle.fluid.incubate.fleet.parameter_server import fleet
+from paddle.fluid.incubate.fleet.parameter_server import \
     fleet_embedding, _prepare_params, _fleet_embedding, \
     _fleet_embedding_v2, FLEET_GLOBAL_DICT
-from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
 
 
 class TestFleet2(unittest.TestCase):

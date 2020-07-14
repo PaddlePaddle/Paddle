@@ -31,8 +31,8 @@ class TestFleet2(unittest.TestCase):
     def test_pslib_1(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import \
+        from paddle.fluid.incubate.fleet.parameter_server import fleet
+        from paddle.fluid.incubate.fleet.parameter_server import \
             fleet_embedding, _prepare_params, _fleet_embedding, \
             _fleet_embedding_v2, FLEET_GLOBAL_DICT
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
