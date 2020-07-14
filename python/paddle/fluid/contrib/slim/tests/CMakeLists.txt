@@ -298,6 +298,7 @@ list(REMOVE_ITEM TEST_OPS
 #TODO(wanghaoshuang): Fix this unitest failed on GCC8.
 LIST(REMOVE_ITEM TEST_OPS test_auto_pruning)
 LIST(REMOVE_ITEM TEST_OPS test_filter_pruning)
+LIST(REMOVE_ITEM TEST_OPS test_user_defined_quantization)
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()

@@ -108,7 +108,7 @@ from .tensor.manipulation import flatten  #DEFINE_ALIAS
 from .tensor.manipulation import gather  #DEFINE_ALIAS
 from .tensor.manipulation import gather_nd  #DEFINE_ALIAS
 from .tensor.manipulation import reshape  #DEFINE_ALIAS
-from .tensor.manipulation import reverse  #DEFINE_ALIAS
+from .tensor.manipulation import flip as reverse  #DEFINE_ALIAS
 from .tensor.manipulation import scatter  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd_add  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd  #DEFINE_ALIAS

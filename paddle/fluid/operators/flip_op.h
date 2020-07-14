@@ -41,7 +41,7 @@ class FlipKernel<platform::CPUDeviceContext, T>
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* x = ctx.Input<Tensor>("X");
     Tensor* out = ctx.Output<Tensor>("Out");
-    auto flip_dims = ctx.template Attr<std::vector<int>>("dims");
+    auto flip_dims = ctx.template Attr<std::vector<int>>("axis");
 
     auto x_dims = x->dims();
     const int total_dims = x_dims.size();

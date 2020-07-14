@@ -329,8 +329,8 @@ class BaseModel(fluid.dygraph.Layer):
 
         # beam search
         batch_beam_shape = (self.batch_size, self.beam_size)
-        vocab_size_tensor = to_variable(
-            np.full((1), self.tar_vocab_size).astype("int64"))
+        vocab_size_tensor = to_variable(np.full((
+            1), self.tar_vocab_size)).astype("int64")
         start_token_tensor = to_variable(
             np.full(
                 batch_beam_shape, self.beam_start_token, dtype='int64'))
@@ -448,3 +448,293 @@ class BaseModel(fluid.dygraph.Layer):
         predicted_ids = fluid.layers.gather_tree(predicted_ids, parent_ids)
         predicted_ids = self._transpose_batch_time(predicted_ids)
         return predicted_ids
+
+
+class AttentionModel(fluid.dygraph.Layer):
+    def __init__(self,
+                 hidden_size,
+                 src_vocab_size,
+                 tar_vocab_size,
+                 batch_size,
+                 num_layers=1,
+                 init_scale=0.1,
+                 dropout=None,
+                 beam_size=1,
+                 beam_start_token=1,
+                 beam_end_token=2,
+                 beam_max_step_num=2,
+                 mode='train'):
+        super(AttentionModel, self).__init__()
+        self.hidden_size = hidden_size
+        self.src_vocab_size = src_vocab_size
+        self.tar_vocab_size = tar_vocab_size
+        self.batch_size = batch_size
+        self.num_layers = num_layers
+        self.init_scale = init_scale
+        self.dropout = dropout
+        self.beam_size = beam_size
+        self.beam_start_token = beam_start_token
+        self.beam_end_token = beam_end_token
+        self.beam_max_step_num = beam_max_step_num
+        self.mode = mode
+        self.kinf = 1e9
+
+        param_attr = ParamAttr(initializer=uniform_initializer(self.init_scale))
+        bias_attr = ParamAttr(initializer=zero_constant)
+        forget_bias = 1.0
+
+        self.src_embeder = Embedding(
+            size=[self.src_vocab_size, self.hidden_size],
+            param_attr=fluid.ParamAttr(
+                name='source_embedding',
+                initializer=uniform_initializer(init_scale)))
+
+        self.tar_embeder = Embedding(
+            size=[self.tar_vocab_size, self.hidden_size],
+            is_sparse=False,
+            param_attr=fluid.ParamAttr(
+                name='target_embedding',
+                initializer=uniform_initializer(init_scale)))
+
+        self.enc_units = []
+        for i in range(num_layers):
+            self.enc_units.append(
+                self.add_sublayer(
+                    "enc_units_%d" % i,
+                    BasicLSTMUnit(
+                        hidden_size=self.hidden_size,
+                        input_size=self.hidden_size,
+                        param_attr=param_attr,
+                        bias_attr=bias_attr,
+                        forget_bias=forget_bias)))
+
+        self.dec_units = []
+        for i in range(num_layers):
+            if i == 0:
+                self.dec_units.append(
+                    self.add_sublayer(
+                        "dec_units_%d" % i,
+                        BasicLSTMUnit(
+                            hidden_size=self.hidden_size,
+                            input_size=self.hidden_size * 2,
+                            param_attr=ParamAttr(
+                                name="dec_units_%d" % i,
+                                initializer=uniform_initializer(
+                                    self.init_scale)),
+                            bias_attr=bias_attr,
+                            forget_bias=forget_bias)))
+            else:
+                self.dec_units.append(
+                    self.add_sublayer(
+                        "dec_units_%d" % i,
+                        BasicLSTMUnit(
+                            hidden_size=self.hidden_size,
+                            input_size=self.hidden_size,
+                            param_attr=ParamAttr(
+                                name="dec_units_%d" % i,
+                                initializer=uniform_initializer(
+                                    self.init_scale)),
+                            bias_attr=bias_attr,
+                            forget_bias=forget_bias)))
+
+        self.attn_fc = fluid.dygraph.nn.Linear(
+            self.hidden_size,
+            self.hidden_size,
+            param_attr=ParamAttr(
+                name="self_attn_fc",
+                initializer=uniform_initializer(self.init_scale)),
+            bias_attr=False)
+
+        self.concat_fc = fluid.dygraph.nn.Linear(
+            2 * self.hidden_size,
+            self.hidden_size,
+            param_attr=ParamAttr(
+                name="self_concat_fc",
+                initializer=uniform_initializer(self.init_scale)),
+            bias_attr=False)
+
+        self.fc = fluid.dygraph.nn.Linear(
+            self.hidden_size,
+            self.tar_vocab_size,
+            param_attr=ParamAttr(
+                name="self_fc",
+                initializer=uniform_initializer(self.init_scale)),
+            bias_attr=False)
+
+    def _transpose_batch_time(self, x):
+        return fluid.layers.transpose(x, [1, 0] + list(range(2, len(x.shape))))
+
+    def _merge_batch_beams(self, x):
+        return fluid.layers.reshape(x, shape=(-1, x.shape[2]))
+
+    def tile_beam_merge_with_batch(self, x):
+        x = fluid.layers.unsqueeze(x, [1])  # [batch_size, 1, ...]
+        expand_times = [1] * len(x.shape)
+        expand_times[1] = self.beam_size
+        x = fluid.layers.expand(x, expand_times)  # [batch_size, beam_size, ...]
+        x = fluid.layers.transpose(x, list(range(2, len(x.shape))) +
+                                   [0, 1])  # [..., batch_size, beam_size]
+        # use 0 to copy to avoid wrong shape
+        x = fluid.layers.reshape(
+            x, shape=[0] *
+            (len(x.shape) - 2) + [-1])  # [..., batch_size * beam_size]
+        x = fluid.layers.transpose(
+            x, [len(x.shape) - 1] +
+            list(range(0, len(x.shape) - 1)))  # [batch_size * beam_size, ...]
+        return x
+
+    def _split_batch_beams(self, x):
+        return fluid.layers.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
+
+    def _expand_to_beam_size(self, x):
+        x = fluid.layers.unsqueeze(x, [1])
+        expand_times = [1] * len(x.shape)
+        expand_times[1] = self.beam_size
+        x = fluid.layers.expand(x, expand_times)
+        return x
+
+    def _real_state(self, state, new_state, step_mask):
+        new_state = fluid.layers.elementwise_mul(new_state, step_mask, axis=0) - \
+                    fluid.layers.elementwise_mul(state, (step_mask - 1), axis=0)
+        return new_state
+
+    def _gather(self, x, indices, batch_pos):
+        topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
+        return fluid.layers.gather_nd(x, topk_coordinates)
+
+    def attention(self, query, enc_output, mask=None):
+        query = fluid.layers.unsqueeze(query, [1])
+        memory = self.attn_fc(enc_output)
+        attn = fluid.layers.matmul(query, memory, transpose_y=True)
+
+        if mask is not None:
+            attn = fluid.layers.transpose(attn, [1, 0, 2])
+            attn = fluid.layers.elementwise_add(attn, mask * 1000000000, -1)
+            attn = fluid.layers.transpose(attn, [1, 0, 2])
+        weight = fluid.layers.softmax(attn)
+        weight_memory = fluid.layers.matmul(weight, memory)
+
+        return weight_memory
+
+    def _change_size_for_array(self, func, array):
+        print(" ^" * 10, "_change_size_for_array")
+        print("array : ", array)
+        for i, state in enumerate(array):
+            fluid.layers.array_write(func(state), i, array)
+
+        return array
+
+    @declarative
+    def forward(self, inputs):
+        src, tar, label, src_sequence_length, tar_sequence_length = inputs
+        if src.shape[0] < self.batch_size:
+            self.batch_size = src.shape[0]
+
+        src_emb = self.src_embeder(self._transpose_batch_time(src))
+
+        # NOTE: modify model code about `enc_hidden` and `enc_cell` to transforme dygraph code successfully.
+        # Because nested list can't be transformed now.
+        enc_hidden_0 = to_variable(
+            np.zeros(
+                (self.batch_size, self.hidden_size), dtype='float32'))
+        enc_hidden_0.stop_gradient = True
+        enc_cell_0 = to_variable(
+            np.zeros(
+                (self.batch_size, self.hidden_size), dtype='float32'))
+        enc_hidden_0.stop_gradient = True
+        zero = fluid.layers.zeros(shape=[1], dtype="int64")
+        enc_hidden = fluid.layers.create_array(dtype="float32")
+        enc_cell = fluid.layers.create_array(dtype="float32")
+        for i in range(self.num_layers):
+            index = zero + i
+            enc_hidden = fluid.layers.array_write(
+                enc_hidden_0, index, array=enc_hidden)
+            enc_cell = fluid.layers.array_write(
+                enc_cell_0, index, array=enc_cell)
+
+        max_seq_len = src_emb.shape[0]
+
+        enc_len_mask = fluid.layers.sequence_mask(
+            src_sequence_length, maxlen=max_seq_len, dtype="float32")
+        enc_padding_mask = (enc_len_mask - 1.0)
+        enc_len_mask = fluid.layers.transpose(enc_len_mask, [1, 0])
+
+        enc_outputs = []
+        # TODO: Because diff exits if call while_loop in static graph.
+        # In while block, a Variable created in parent block participates in the calculation of gradient,
+        # the gradient is wrong because each step scope always returns the same value generated by last step.
+        for p in range(max_seq_len):
+            k = 0 + p
+            enc_step_input = src_emb[k]
+            step_mask = enc_len_mask[k]
+            new_enc_hidden, new_enc_cell = [], []
+            for i in range(self.num_layers):
+                enc_new_hidden, enc_new_cell = self.enc_units[i](
+                    enc_step_input, enc_hidden[i], enc_cell[i])
+                if self.dropout != None and self.dropout > 0.0:
+                    enc_step_input = fluid.layers.dropout(
+                        enc_new_hidden,
+                        dropout_prob=self.dropout,
+                        dropout_implementation='upscale_in_train')
+                else:
+                    enc_step_input = enc_new_hidden
+
+                new_enc_hidden.append(
+                    self._real_state(enc_hidden[i], enc_new_hidden, step_mask))
+                new_enc_cell.append(
+                    self._real_state(enc_cell[i], enc_new_cell, step_mask))
+            enc_outputs.append(enc_step_input)
+            enc_hidden, enc_cell = new_enc_hidden, new_enc_cell
+
+        enc_outputs = fluid.layers.stack(enc_outputs)
+        enc_outputs = self._transpose_batch_time(enc_outputs)
+
+        # train
+        input_feed = to_variable(
+            np.zeros(
+                (self.batch_size, self.hidden_size), dtype='float32'))
+        # NOTE: set stop_gradient here, otherwise grad var is null
+        input_feed.stop_gradient = True
+        dec_hidden, dec_cell = enc_hidden, enc_cell
+        tar_emb = self.tar_embeder(self._transpose_batch_time(tar))
+        max_seq_len = tar_emb.shape[0]
+        dec_output = []
+
+        for step_idx in range(max_seq_len):
+            j = step_idx + 0
+            step_input = tar_emb[j]
+            step_input = fluid.layers.concat([step_input, input_feed], 1)
+            new_dec_hidden, new_dec_cell = [], []
+            for i in range(self.num_layers):
+                new_hidden, new_cell = self.dec_units[i](
+                    step_input, dec_hidden[i], dec_cell[i])
+                new_dec_hidden.append(new_hidden)
+                new_dec_cell.append(new_cell)
+                if self.dropout != None and self.dropout > 0.0:
+                    step_input = fluid.layers.dropout(
+                        new_hidden,
+                        dropout_prob=self.dropout,
+                        dropout_implementation='upscale_in_train')
+                else:
+                    step_input = new_hidden
+            dec_att = self.attention(step_input, enc_outputs, enc_padding_mask)
+            dec_att = fluid.layers.squeeze(dec_att, [1])
+            concat_att_out = fluid.layers.concat([dec_att, step_input], 1)
+            out = self.concat_fc(concat_att_out)
+            input_feed = out
+            dec_output.append(out)
+            dec_hidden, dec_cell = new_dec_hidden, new_dec_cell
+
+        dec_output = fluid.layers.stack(dec_output)
+        dec_output = self.fc(self._transpose_batch_time(dec_output))
+        loss = fluid.layers.softmax_with_cross_entropy(
+            logits=dec_output, label=label, soft_label=False)
+        loss = fluid.layers.squeeze(loss, axes=[2])
+        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        tar_mask = fluid.layers.sequence_mask(
+            tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32')
+        loss = loss * tar_mask
+        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = fluid.layers.reduce_sum(loss)
+
+        return loss

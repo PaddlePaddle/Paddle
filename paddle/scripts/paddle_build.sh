@@ -218,6 +218,7 @@ EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
+    set +e
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
@@ -240,8 +241,10 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-        -DWITH_LITE=${WITH_LITE:-OFF}
-
+        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
 }
 
 function cmake_gen() {
@@ -293,6 +296,7 @@ function check_style() {
 #=================================================
 
 function build_base() {
+    set +e
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
@@ -310,7 +314,10 @@ function build_base() {
         make clean
     fi
 
-    make install -j ${parallel_number}
+    make install -j ${parallel_number};build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
 }
 
 function build_size() {
@@ -655,9 +662,9 @@ EOF
 
 
 function assert_api_spec_approvals() {
-    /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh
-    if [ "$?" != 0 ];then
-       exit 1
+    /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh;approval_error=$?
+    if [ "$approval_error" != 0 ];then
+       exit 6
     fi
 }
 
@@ -742,6 +749,23 @@ EOF
     fi
 }
 
+failed_test_lists=''
+tmp_dir=`mktemp -d`
+
+function collect_failed_tests() {
+    for file in `ls $tmp_dir`; do
+        exit_code=0
+        grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failed_test_lists="${failed_test_lists}
+            ${failuretest}"
+        fi
+    done
+}
+
 function card_test() {
     set -m
     case_count $1 $2
@@ -764,7 +788,7 @@ function card_test() {
     fi
 
     trap 'caught_error' CHLD
-
+    tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
     for (( i = 0; i < $NUM_PROC; i++ )); do
         # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
@@ -777,21 +801,21 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
+        tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
-            else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+            else  
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
-
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
@@ -876,6 +900,16 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        collect_failed_tests
+        if [ -n "${failed_test_lists}" ];then
+            failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+            echo "========================================"
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failed_test_lists_ult}"
+        fi
+        rm -f $tmp_dir/*
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
@@ -1170,11 +1204,14 @@ EOF
     if [[ "$1" != "" ]]; then
       parallel_number=$1
     fi
-    startTime_s=`date +%s` 
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto}
-
-    make -j ${parallel_number} fluid_lib_dist
-    make -j ${parallel_number} inference_lib_dist
+    startTime_s=`date +%s`
+    set +e
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
+    make -j ${parallel_number} fluid_lib_dist;build_error=$?
+    make -j ${parallel_number} inference_lib_dist;build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     build_size "fluid_inference"

@@ -234,6 +234,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
+list(REMOVE_ITEM TEST_OPS test_pipeline)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -323,6 +324,7 @@ if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
 
     #not need
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
