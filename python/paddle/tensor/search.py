@@ -63,9 +63,9 @@ def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result. Defalut is None.
         keepdims(bool, optional): Keep the axis that do the select max.
-        name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
-            Default value is None, the framework set the name of output variable.  
-
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: A Tensor with data type int64.
@@ -147,10 +147,11 @@ def index_select(x, index, axis=0, name=None):
 
     Args:
         x (Variable): The input tensor variable.The dtype of x can be one of float32, float64, int32, int64.
-        index (Variable): The 1-D tensor containing the indices to index.
-        axis (int32|int64): The dimension in which we index.
-        name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
-            Default value is None, the framework set the name of output variable.  
+        index (Variable): The 1-D tensor containing the indices to index.the dtype of index can be int32 or int64.
+        axis (int32|int64, optional): The dimension in which we index.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: A Tensor with same data type as `input`.
