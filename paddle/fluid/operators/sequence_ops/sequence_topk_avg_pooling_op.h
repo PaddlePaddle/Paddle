@@ -35,16 +35,16 @@ template <typename T>
 static void get_topk_pos(const T* data, int length, int k, int* pos) {
   VLOG(3) << "length: " << length << " , k : " << k;
 
-  std::priority_queue<std::pair<T, size_t>, std::vector<std::pair<T, size_t>>,
-                      std::greater<std::pair<T, size_t>>>
+  std::priority_queue<std::pair<T, int>, std::vector<std::pair<T, int>>,
+                      std::greater<std::pair<T, int>>>
       topk_queue;
 
-  for (size_t i = 0; i < static_cast<size_t>(k); id++) {
+  for (int i = 0; i < length; i++) {
     T elem = data[i];
-    if (topk_queue.size() < k) {
+    if (topk_queue.size() < static_cast<size_t>(k)) {
       topk_queue.emplace(elem, i);
     } else {
-      if (elem >= queue.top().first) {
+      if (elem >= topk_queue.top().first) {
         // replace top node if found a bigger value
         topk_queue.pop();
         topk_queue.emplace(elem, i);
@@ -52,13 +52,13 @@ static void get_topk_pos(const T* data, int length, int k, int* pos) {
     }
   }
   // reversely assign value
-  int real_k = queue.size();
+  int real_k = topk_queue.size();
   for (int i = real_k - 1; i >= 0; i--) {
-    pos[i] = queue.top().second;
-    queue.pop();
+    pos[i] = topk_queue.top().second;
+    topk_queue.pop();
   }
   // fill -1 if needed
-  for (size_t i = real_k; i < k; i++) {
+  for (int i = real_k; i < k; i++) {
     pos[i] = -1;
   }
 }
@@ -94,6 +94,9 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
     auto topks = context.Attr<std::vector<int>>("topks");
     auto k_num = topks.size();
     auto max_k = topks[topks.size() - 1];
+    PADDLE_ENFORCE_GE(max_k, 0,
+                      platform::errors::InvalidArgument(
+                          "Expected max_k >= 0, but received %d.", max_k));
     std::vector<int> vec_pos_shape;
     auto in_lod = in->lod()[0];
 
