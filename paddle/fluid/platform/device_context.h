@@ -497,7 +497,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
   void SetLongerKeys(bool should_enable) { this->longer_keys_ = should_enable; }
 
-  bool AreLongerKeys(void) { return longer_keys_; }
+  bool AreLongerKeys(void) const { return longer_keys_; }
 
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
