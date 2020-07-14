@@ -105,8 +105,11 @@ class TestDnnlMatMulOpInt8NoScales(TestDnnlMatMulOp):
 
 
 class TestDnnlMatMulOpInt8(TestDnnlMatMulOp):
+    # Due to limitation in int8 matmul implementation
+    # on older platforms (BDW, SKX) we needed to reduce
+    # range from [-127, 127] to [-63, 63]
     def quantize(self, tensor):
-        scale = 127. / np.abs(np.amax(tensor))
+        scale = 63. / np.abs(np.amax(tensor))
         quantized = np.round(scale * tensor).astype("int8")
         return scale, quantized
 
