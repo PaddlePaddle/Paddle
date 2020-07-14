@@ -213,6 +213,7 @@ function cmake_base() {
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
+        -DTHIRD_PARTY_PATH=${THIRD_PARTY_PATH}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -241,7 +242,8 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
+        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$? \
+        -DTHIRD_PARTY_PATH=${THIRD_PARTY_PATH}
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
