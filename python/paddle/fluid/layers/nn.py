@@ -12016,8 +12016,8 @@ def logical_and(x, y, out=None, name=None):
             import numpy as np
 
             paddle.enable_imperative()
-            x_data = np.array([True, True, False, False]).astype(np.bool)
-            y_data = np.array([True, False, True, False]).astype(np.bool)
+            x_data = np.array([True, True, False, False], dtype=np.bool)
+            y_data = np.array([True, False, True, False], dtype=np.bool)
             x = paddle.imperative.to_variable(x_data)
             y = paddle.imperative.to_variable(y_data)
             res = paddle.logical_and(x, y)
@@ -12058,8 +12058,8 @@ def logical_or(x, y, out=None, name=None):
             import numpy as np
 
             paddle.enable_imperative()
-            x_data = np.array([True, True, False, False]).astype(np.bool)
-            y_data = np.array([True, False, True, False]).astype(np.bool)
+            x_data = np.array([True, True, False, False], dtype=np.bool)
+            y_data = np.array([True, False, True, False], dtype=np.bool)
             x = paddle.imperative.to_variable(x_data)
             y = paddle.imperative.to_variable(y_data)
             res = paddle.logical_or(x, y)
@@ -12100,8 +12100,8 @@ def logical_xor(x, y, out=None, name=None):
             import numpy as np
 
             paddle.enable_imperative()
-            x_data = np.array([True, True, False, False]).astype(np.bool)
-            y_data = np.array([True, False, True, False]).astype(np.bool)
+            x_data = np.array([True, True, False, False], dtype=np.bool)
+            y_data = np.array([True, False, True, False], dtype=np.bool)
             x = paddle.imperative.to_variable(x_data)
             y = paddle.imperative.to_variable(y_data)
             res = paddle.logical_xor(x, y)
@@ -12140,7 +12140,7 @@ def logical_not(x, out=None, name=None):
             import numpy as np
 
             paddle.enable_imperative()
-            x_data = np.array([True, False, True, False]).astype(np.bool)
+            x_data = np.array([True, False, True, False], dtype=np.bool)
             x = paddle.imperative.to_variable(x_data)
             res = paddle.logical_not(x)
             print(res.numpy()) # [False  True False  True]
