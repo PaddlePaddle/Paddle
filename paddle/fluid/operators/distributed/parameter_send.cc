@@ -64,11 +64,9 @@ inline EP_SPLIT_TABLE_PAIRS GetMultiFieldCommContext(
         }
       }
     }
-
-  } else if (send_var->IsType<framework::LoDTensor>()) {
-    PADDLE_THROW("GetMultiFieldCommContext can not support LoDTensor current!");
   } else {
-    PADDLE_THROW("GetMultiFieldCommContext unsupported var type!");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "GetMultiFieldCommContext unsupported LoDTensor current!"));
   }
 
   return table_pairs;

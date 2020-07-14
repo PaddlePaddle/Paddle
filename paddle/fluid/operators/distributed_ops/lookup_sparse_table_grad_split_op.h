@@ -74,7 +74,8 @@ class LookupSparseTableGradSplitKernel : public framework::OpKernel<T> {
       for (auto& id : ids) {
         auto it = std::find(in_rows.begin(), in_rows.end(), id);
         if (it == in_rows.end()) {
-          PADDLE_THROW(platform::errors::OutOfRange("id %s not in table", id));
+          PADDLE_THROW(platform::errors::OutOfRange(
+              "the input key should be exists. But received %d.", id));
         }
 
         auto distance =

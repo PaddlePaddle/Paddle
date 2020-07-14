@@ -98,9 +98,10 @@ class LookupTableKernel : public framework::OpKernel<T> {
         } else {
           PADDLE_ENFORCE_GE(
               ids[i], 0,
-              "Variable value (input) of OP(fluid.layers.embedding) "
-              "expected >= 0. But received %ld",
-              ids[i]);
+              platform::errors::InvalidArgument(
+                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "expected >= 0. But received %ld",
+                  ids[i]));
           if (is_test) {
             auto id_index = table_t.GetIndexFromId(ids[i]);
 
@@ -192,11 +193,12 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       auto d_output_dims_2d =
           framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
-                        "ShapeError: The shape of lookup_table@Grad and "
-                        "output@Grad should be same. "
-                        "But received lookup_table@Grad's shape = [%s], "
-                        "output@Grad's shape = [%s].",
-                        d_table_value->dims(), d_output_dims_2d);
+                        platform::errors::InvalidArgument(
+                            "ShapeError: The shape of lookup_table@Grad and "
+                            "output@Grad should be same. "
+                            "But received lookup_table@Grad's shape = [%s], "
+                            "output@Grad's shape = [%s].",
+                            d_table_value->dims(), d_output_dims_2d));
       memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
     } else {
       auto *ids = context.Input<LoDTensor>("Ids");

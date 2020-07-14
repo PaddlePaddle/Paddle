@@ -22,17 +22,22 @@ class LookupSparseTableMergeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("X"),
-                   "Input(X) of LookupSparseTableMergeOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInputs("X"),
+        platform::errors::InvalidArgument(
+            "Input(X) of LookupSparseTableMergeOp should not be null."));
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
-        "Output(Out) of LookupSparseTableMergeOp should not be null.");
+        platform::errors::InvalidArgument(
+            "Output(Out) of LookupSparseTableMergeOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X").front(),
                       framework::proto::VarType::SELECTED_ROWS,
-                      "Input X only should be SelectedRows.");
+                      platform::errors::InvalidArgument(
+                          "Input X only should be SelectedRows."));
     PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front(),
                       framework::proto::VarType::SELECTED_ROWS,
-                      "Output Y only should be SelectedRows.");
+                      platform::errors::InvalidArgument(
+                          "Output Y only should be SelectedRows."));
 
     ctx->ShareDim("X", /*->*/ "Out");
   }

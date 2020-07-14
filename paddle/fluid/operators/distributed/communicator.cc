@@ -297,7 +297,8 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
               << queue->Size();
       queue->Push(tmp_var);
     } else {
-      PADDLE_THROW("unknown var type to copy");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "unknown var type to copy, only support LoDTensor/SelectedRows"));
     }
   }
 }
@@ -479,7 +480,8 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
         platform::errors::InvalidArgument("grad var should be inited"));
 
     if (!var->IsType<framework::SelectedRows>()) {
-      PADDLE_THROW("can only supported selected rows only");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only LodTensor can be send in GeoCommunicator::Send"));
     }
 
     std::vector<int64_t> ids;

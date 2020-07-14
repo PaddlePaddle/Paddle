@@ -55,8 +55,10 @@ void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
   for (auto attrs : kv_attrs) {
     std::vector<std::string> pieces;
     split(attrs, ':', &pieces);
-    PADDLE_ENFORCE_EQ(pieces.size(), 8,
-                      "param, names, dims, mode, grad, cached_var, init_attrs");
+    PADDLE_ENFORCE_EQ(
+        pieces.size(), 8,
+        platform::errors::InvalidArgument(
+            "param, names, dims, mode, grad, cached_var, init_attrs"));
 
     std::string name;
     std::string grad_name;

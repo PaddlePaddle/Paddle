@@ -62,7 +62,10 @@ static void SplitIdsIntoMultipleVarsBySection(
     const std::vector<std::string>& in_var_names, const int pserver_nums,
     const std::vector<std::vector<int64_t>>& splited_ids,
     framework::Scope* scope) {
-  PADDLE_ENFORCE_EQ(in_var_names.size(), pserver_nums, "");
+  PADDLE_ENFORCE_EQ(in_var_names.size(), pserver_nums,
+                    platform::errors::OutOfRange(
+                        "send varnames size: %d not equal %d, internal error",
+                        in_var_names.size(), pserver_nums));
 
   auto place = platform::CPUPlace();
 

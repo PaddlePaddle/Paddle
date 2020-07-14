@@ -585,7 +585,9 @@ class SparseVariable {
       bool is_equal = std::equal(rows_0.begin(), rows_0.end(), rows_i.begin());
 
       if (!is_equal) {
-        PADDLE_THROW(platform::errors::InvalidArgument("load error"));
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s and %s are not equal, can not be load rightly", filenames[0],
+            filenames[i]));
       }
     }
 
