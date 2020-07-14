@@ -301,6 +301,7 @@ endif()
 
 if (WITH_LITE)
     include(external/lite)
+    list(APPEND third_party_deps extern_lite)
 endif (WITH_LITE)
 
 if (WITH_CRYPTO)
