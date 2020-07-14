@@ -4859,10 +4859,10 @@ def split(input, num_or_sections, dim=-1, name=None):
         elif isinstance(num_or_sections, (list, tuple)):
             num = len(num_or_sections)
             if utils._contain_var(num_or_sections):
-                raise TypeError(
-                    "The type of 'num_or_sections' in split must be int or list[int] or tuple[int] in Dygraph mode, but "
-                    "received %s, which contains Variable." %
-                    (type(num_or_sections)))
+                for index, item in enumerate(num_or_sections):
+                    if isinstance(item, Variable):
+                        num_or_sections[index] = num_or_section[index].numpy()[
+                            0]
             else:
                 attrs += ('sections', list(num_or_sections))
         else:
