@@ -590,6 +590,7 @@ Examples:
     .. code-block:: python
 
         import paddle
+        import numpy as np
 
         paddle.enable_imperative()
         x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
