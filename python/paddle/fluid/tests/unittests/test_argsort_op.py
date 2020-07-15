@@ -354,17 +354,14 @@ class TestArgsort(unittest.TestCase):
             self.place = core.CUDAPlace(0)
         else:
             self.place = core.CPUPlace()
-        self.data = np.array(
-            [[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
-             [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]]],
-            dtype='float32')
+        self.data = np.random.rand(2, 3, 4).astype("float32")
 
     def test_api_0(self):
         with fluid.program_guard(fluid.Program()):
             input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
             output = paddle.argsort(x=input)
             exe = fluid.Executor(self.place)
-            result, = exe.run(feed={'input': self.data}, fetch_list=[output[0]])
+            result, = exe.run(feed={'input': self.data}, fetch_list=[output])
             np_result = np.argsort(self.data)
             self.assertEqual((result == np_result).all(), True)
 
@@ -373,7 +370,7 @@ class TestArgsort(unittest.TestCase):
             input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
             output = paddle.argsort(x=input, axis=1)
             exe = fluid.Executor(self.place)
-            result, = exe.run(feed={'input': self.data}, fetch_list=[output[0]])
+            result, = exe.run(feed={'input': self.data}, fetch_list=[output])
             np_result = np.argsort(self.data, axis=1)
             self.assertEqual((result == np_result).all(), True)
 
