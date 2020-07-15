@@ -126,7 +126,8 @@ class TestStaticDataLoader(unittest.TestCase):
             step_list = []
             loss_list = []
             start_t = time.time()
-            for _ in six.moves.range(EPOCH_NUM):
+            for i in six.moves.range(EPOCH_NUM):
+                print("epoch ", i, "enterxxxxxxxxxx")
                 step = 0
                 for d in dataloader:
                     assert len(d) == len(places), "{} != {}".format(

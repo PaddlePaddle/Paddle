@@ -188,6 +188,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
             self._blocking_queue.close()
             self._thread = None
+        except StopIteration:
+            self._blocking_queue.close()
         except Exception:
             self._blocking_queue.kill()
             self._thread = None
@@ -380,13 +382,20 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             parent_watch_dog = ParentWatchDog()
 
             while parent_watch_dog.is_alive():
+                print("enterrrrrrrrr")
+                import sys
+                sys.stdout.flush()
                 try:
                     data = indices_queue.get(MP_INDICES_CHECK_INTERVAL)
                 except queue.Empty:
                     continue
 
+                print("worker data", data)
+                sys.stdout.flush()
+
                 # None as poison piil, so worker event should be set
                 if data is None:
+                    print("worker {} get None to exit".format(worker_id))
                     assert done_event.is_set() or iterator_drained, \
                             "get None when worker done_event set"
                     break
@@ -404,14 +413,19 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         # batch = [dataset[i] for i in indices]
                         # if self._collate_fn is not None:
                         #     batch = self._collate_fn(batch)
+                        print("indices", indices)
+                        sys.stdout.flush()
                         batch = fetcher.fetch(indices)
+                        print("batch", batch)
+                        sys.stdout.flush()
                 except Exception as e:
                     if isinstance(
                             e,
                             StopIteration) and dataset_kind == _DatasetKind.ITER:
                         out_queue.put(_IterableDatasetStopIteration(worker_id))
                         iterator_drained = True
-                    out_queue.put((idx, e))
+                    else:
+                        out_queue.put((idx, e))
                 else:
                     if self._use_shared_memory:
                         tensor_list = core._convert_to_tensor_list(batch)
