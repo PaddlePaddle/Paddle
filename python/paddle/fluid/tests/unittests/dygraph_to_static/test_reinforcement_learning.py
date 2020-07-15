@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import gym
 import math
 import itertools
 import numpy as np
@@ -22,23 +23,8 @@ from paddle.fluid.dygraph import declarative, ProgramTranslator
 
 import unittest
 
-# Note: Packages gym is not in requirements.txt, and it shall not. 
-# Because it's only needed in this unittest, so we try to call
-# `pip install --user gym` to solve this dependency.
-# try:
-import gym
-# except ImportError:
-#     try:
-#         from pip import main as  pipmain
-#     except ImportError:
-#         from pip._internal import main as pipmain
-#     pipmain(['install', '--user', 'gym'])
-#     import gym
-
 SEED = 2020
 program_translator = ProgramTranslator()
-# TODO(Aurelius84): Remove it after we support multiple backward for same program.
-fluid.set_flags({'FLAGS_eager_delete_tensor_gb': -1.0})
 
 
 class Policy(Layer):
@@ -51,7 +37,6 @@ class Policy(Layer):
 
         self.saved_log_probs = []
         self.rewards = []
-        self.debug = []
 
     @declarative
     def forward(self, x):
@@ -127,7 +112,6 @@ def train(args, place, to_static):
             state = to_variable(state)
             state.stop_gradient = True
             loss_probs = policy(state)
-            policy.debug.append(loss_probs)
             # print(loss_probs.name)
             probs = loss_probs.numpy()
 
@@ -171,12 +155,8 @@ def train(args, place, to_static):
 
             policy_loss.backward()
             optimizer.minimize(policy_loss)
-            # for param in policy.parameters():
-            #     print(param.name, param.gradient())
-            # print(policy.debug[0].gradient())
-            # print(policy.debug[1].gradient())
-            # exit()
             policy.clear_gradients()
+
             del policy.rewards[:]
             del policy.saved_log_probs[:]
 
@@ -187,9 +167,9 @@ def train(args, place, to_static):
         for i_episode in itertools.count(1):
             state, ep_reward = env.reset(), 0
             # TODO(Aurelius84): In RL, we continuously select actions with multiple steps, 
-            # then accumulate loss to apply optimization. But currently some vars will be desconstructed
-            # in the first step. Set FLAGS_eager_delete_tensor_gb=-1 temporarily.
-            for t in range(1, 1000):
+            # then accumulate loss to apply optimization. But currently all vars shared with 
+            # the same inner scope, which has problem in backward. I will fix it in next PR.
+            for t in range(1, 2):  # default 1000
                 state = np.array(state).astype("float32")
                 action, loss = select_action(state)
                 state, reward, done, _ = env.step(action)
@@ -223,6 +203,7 @@ class TestDeclarative(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
             else fluid.CPUPlace()
+
         self.args = Args()
 
     def test_train(self):
