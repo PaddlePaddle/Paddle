@@ -65,16 +65,24 @@ class WhileOp : public framework::OperatorBase {
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
+    bool is_test = Attr<bool>("is_test");
 
     std::set<std::string> no_copy_var_names;
-    const std::vector<framework::OpDesc *> &all_ops = block->AllOps();
-    for (const framework::OpDesc *op : all_ops) {
-      const framework::VariableNameMap &input_var_names = op->Inputs();
-      const framework::VariableNameMap &output_var_names = op->Outputs();
-      for (auto &ipt : input_var_names) {
-        for (const std::string &var_name : ipt.second) {
-          if (StrInVaraiableNameMap(var_name, output_var_names)) {
-            no_copy_var_names.insert(var_name);
+    if (!is_test) {
+      const std::vector<framework::OpDesc *> &all_ops = block->AllOps();
+      for (const framework::OpDesc *op : all_ops) {
+        if (op->Type() == "while") {
+          continue;
+        }
+        const framework::VariableNameMap &input_var_names = op->Inputs();
+        const framework::VariableNameMap &output_var_names = op->Outputs();
+        for (auto &ipt : input_var_names) {
+          for (const std::string &var_name : ipt.second) {
+            if (StrInVaraiableNameMap(var_name, output_var_names)) {
+              no_copy_var_names.insert(var_name);
+              std::cout << "1111111 In block " << block->ID() << ", "
+                        << var_name << "didn't need copy\n";
+            }
           }
         }
       }
@@ -98,7 +106,6 @@ class WhileOp : public framework::OperatorBase {
                           "The Output(StepScope) of WhileOp should be empty."));
 
     bool cond_data = GetCondData(cond);
-    bool is_test = Attr<bool>("is_test");
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
     auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
@@ -112,7 +119,8 @@ class WhileOp : public framework::OperatorBase {
           if (no_copy_var_names.find(input_var_name) ==
               no_copy_var_names.end()) {
             std::string input_var_rename = input_var_name + kSuffix;
-            framework::Variable *input_var = scope.FindVar(input_var_name);
+            framework::Variable *input_var =
+                current_scope.FindVar(input_var_name);
             if (input_var->IsType<framework::LoDTensor>()) {
               rename_vars.push_back(input_var_rename);
               auto input_var_tensor = input_var->Get<LoDTensor>();

@@ -178,7 +178,6 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 
             data = np.random.rand(3, 3).astype('float32')
             data_sums = np.zeros([3, 3]).astype('float32')
-
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -238,10 +237,10 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
     def test_while_loop_backward2(self):
         def cond(i, x):
-            return i < 5
+            return i < 3
 
         def body(i, x):
-            x = x + i
+            x = x * i
             i = i + 1
             return [i, x]
 
@@ -263,25 +262,38 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
         feed_i = np.ones(1).astype('float32')
         feed_x = np.ones(1).astype('float32')
-        data = np.asarray([11]).astype('float32')
-        i_grad = np.asarray([4]).astype('float32')
+        data = np.asarray([2]).astype('float32')
+        x_grad = np.asarray([2]).astype('float32')
+        i_grad = np.asarray([3]).astype('float32')
 
         res = exe.run(main_program,
                       feed={'i': feed_i,
                             'x': feed_x},
-                      fetch_list=[mean.name, i.grad_name])
+                      fetch_list=[mean.name, x.grad_name, i.grad_name])
         self.assertTrue(np.allclose(np.asarray(res[0]), data))
         self.assertTrue(
-            np.allclose(np.asarray(res[1]), i_grad),
-            msg=" \nres = \n{} \n\n ans = \n{}".format(res[1], i_grad))
+            np.allclose(np.asarray(res[1]), x_grad),
+            msg=" \nres = \n{} \n\n ans = \n{}".format(res[1], x_grad))
+        self.assertTrue(
+            np.allclose(np.asarray(res[2]), i_grad),
+            msg=" \nres = \n{} \n\n ans = \n{}".format(res[2], i_grad))
 
-    def test_while_loop_reuse_variables(self):
-        def cond(i, x):
+    def test_nested_with_reuse_variables(self):
+        def external_cond(i, x):
             return layers.less_than(i, three)
 
-        def body(i, x):
+        def external_body(i, x):
+            def internel_cond(i, x):
+                return i < 2
+
+            def internel_body(i, x):
+                x = x * i
+                i = i + 1
+                return i, x
+
+            i, x = layers.while_loop(internel_cond, internel_body, [i, x])
             x = x * i
-            i = i + 1
+            layers.increment(i)
             return i, x
 
         main_program = Program()
@@ -293,7 +305,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             i.stop_gradient = False
             three = layers.fill_constant(shape=[1], dtype='float32', value=3)
 
-            out = layers.while_loop(cond, body, [i, x])
+            out = layers.while_loop(external_cond, external_body, [i, x])
             mean = layers.mean(x)
             append_backward(mean)
 
