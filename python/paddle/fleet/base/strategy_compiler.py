@@ -28,9 +28,6 @@ def maximum_path_len_algo(optimizer_list):
         candidates.append(local_buffer)
     if len(candidates) == 0:
         return None
-    print(candidates)
-    print(max_idx)
-    print(max_len)
     for idx, opt in enumerate(candidates[max_idx][:-1]):
         opt._update_inner_optimizer(candidates[max_idx][idx + 1])
     return candidates[max_idx][0]

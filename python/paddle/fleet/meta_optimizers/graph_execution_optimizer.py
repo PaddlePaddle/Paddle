@@ -65,7 +65,6 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         """
         Basically, this is PE, and almost all programs can be executed here
         """
-        print("hahahah")
         return True
 
     def backward(self,
