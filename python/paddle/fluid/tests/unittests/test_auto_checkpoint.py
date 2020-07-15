@@ -57,6 +57,8 @@ class AutoCheckpointTest(AutoCheckpointBase):
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
             exe, main_prog, startup_prog)
         for i in range(3):
+            self.assertEqual(acp._get_train_epoch_range(), None)
+            self.assertEqual(acp.g_acp_type, None)
             for data in data_loader():
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
@@ -174,9 +176,6 @@ class AutoCheckpointTest(AutoCheckpointBase):
         self._reset_generator()
         self._run_load_0()
 
-        self._reset_generator()
-        self._run_load_0()
-
         logger.info("end test_basic")
 
     def test_corner_epoch_no(self):
@@ -184,23 +183,12 @@ class AutoCheckpointTest(AutoCheckpointBase):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
 
-        fs.delete(checker.hdfs_checkpoint_path)
-        self._reset_generator()
-        self._run_save_0(break_epoch_no=0)
-        self._reset_generator()
-        self._run_load_0(started_epoch_no=0)
-
-        fs.delete(checker.hdfs_checkpoint_path)
-        self._reset_generator()
-        self._run_save_0(break_epoch_no=1)
-        self._reset_generator()
-        self._run_load_0(started_epoch_no=1)
-
-        fs.delete(checker.hdfs_checkpoint_path)
-        self._reset_generator()
-        self._run_save_0(break_epoch_no=2)
-        self._reset_generator()
-        self._run_load_0(started_epoch_no=2)
+        for i in range(3):
+            fs.delete(checker.hdfs_checkpoint_path)
+            self._reset_generator()
+            self._run_save_0(break_epoch_no=0)
+            self._reset_generator()
+            self._run_load_0(started_epoch_no=0)
 
         fs.delete(checker.hdfs_checkpoint_path)
         logger.info("end test_corener_epoch_no")

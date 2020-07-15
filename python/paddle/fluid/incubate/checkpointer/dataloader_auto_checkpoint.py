@@ -33,7 +33,7 @@ class TrainEpochRangeWrapper(object):
             load_last=-2)
 
         if self._train_epoch_range.restored_from == acp.CONST_CHECKPOINT:
-            self._checkpoint_epoch_no = self._train_epoch_range._epoch_no
+            self._checkpoint_epoch_no = self._train_epoch_range._checkpoint_epoch_no
 
     def save_checkpoint(self):
         logger.info(self)

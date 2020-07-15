@@ -273,10 +273,14 @@ class TrainEpochRange(SerializableBase):
         self._restored_from = None
         self._exe_status = {}
         self._save_checkpoint_inter = checkpoint_inter
+        assert checkpoint_inter >= 0, "checkpointer:{} must >=0".format(
+            checkpointer)
         self._last_checkpoint_time = time.time()
 
         self._load_cp_nos = None
         self._load_last = load_last
+        assert load_last <= -1, "load_last:{} must be negtive".format(load_last)
+        self._checkpoint_epoch_no = None
 
         self._checker = g_checker
         if not self._checker.valid():
@@ -302,13 +306,18 @@ class TrainEpochRange(SerializableBase):
         self._load_cp_nos = self._cper.get_checkpoint_no(self._checkpoint_path)
         logger.info("checkpoint nos:{} load_last:{}".format(self._load_cp_nos,
                                                             load_last))
-        if len(self._load_cp_nos) >= 1 and abs(load_last) <= len(
-                self._load_cp_nos):
+        if len(self._load_cp_nos) >= 1:
             self._cper.load_checkpoint(
                 self._checkpoint_path, [self],
                 self._checker.trainer_id,
-                checkpoint_no=self._load_cp_nos[load_last])
+                checkpoint_no=self._load_cp_nos[-1])
             self._restored_from = CONST_CHECKPOINT
+
+            self._epoch_no += load_last
+            if self._epoch_no < 0:
+                self._epoch_no = -1
+            self._checkpoint_epoch_no = self._epoch_no
+
             logger.info("load tain_epoch_range checkpoint:{}".format(self))
         else:
             self._restored_from = CONST_MEMORYINIT
@@ -319,7 +328,9 @@ class TrainEpochRange(SerializableBase):
             "epoch_no": self._epoch_no,
             "name": self._name,
             "checkpoint_path": self._checkpoint_path,
-            "restored_from": self._restored_from
+            "restored_from": self._restored_from,
+            "checkpoint_epoch_no": self._checkpoint_epoch_no,
+            "load_last": self._load_last,
         }
         return d
 
@@ -336,7 +347,9 @@ class TrainEpochRange(SerializableBase):
             s = self._serialize()
             f.write(s)
 
-    def _serialize(self, pop_keys=["restored_from"]):
+    def _serialize(
+            self,
+            pop_keys=["restored_from", "checkpoint_epoch_no", "load_last"]):
         # self
         d = self._to_dict()
         for k in pop_keys:

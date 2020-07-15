@@ -154,16 +154,19 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
                 if started_epoch_no is not None and not check:
-                    o = acp._get_train_epoch_range()
-                    self.assertEqual(
-                        o._load_cp_nos,
-                        [i for i in range(0, started_epoch_no - 1)])
-                    self.assertEqual(o._load_last, -2)
+                    o = dacp.g_ranges(name)
+                    self.assertEqual(o._checkpoint_epoch_no,
+                                     setarted_epoch_no - 1)
+                    self.assertEqual(o._load_cp_nos,
+                                     [i for i in range(0, started_epoch_no)])
+                    self.assertEqual(o._load_last, -1)
                     check = True
 
                 if started_epoch_no is None:
                     o = acp._get_train_epoch_range()
+                    self.assertEqual(o._checkpoint_epoch_no, None)
                     self.assertEqual(self._load_cp_nos, [i for i in range(3)])
+                    self.assertEqual(o._load_last, -1)
 
         self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
