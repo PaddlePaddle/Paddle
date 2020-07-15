@@ -805,16 +805,16 @@ class ColorJitter(object):
 
 class RandomCrop(object):
     """Crop the given CV Image at a random location.
+
     Args:
         size (sequence|int): Desired output size of the crop. If size is an
             int instead of sequence like (h, w), a square crop (size, size) is
             made.
-        padding (int|sequence, optional): Optional padding on each border
-            of the image. Default is 0, i.e no padding. If a sequence of length
-            4 is provided, it is used to pad left, top, right, bottom borders
-            respectively.
-        pad_if_needed (boolean): It will pad the image if smaller than the
-            desired size to avoid raising an exception.
+        padding (int|sequence|optional): Optional padding on each border
+            of the image. If a sequence of length 4 is provided, it is used to pad left, 
+            top, right, bottom borders respectively. Default: 0.
+        pad_if_needed (boolean|optional): It will pad the image if smaller than the
+            desired size to avoid raising an exception. Default: False.
     
     Examples:
     
@@ -842,11 +842,14 @@ class RandomCrop(object):
 
     def _get_params(self, img, output_size):
         """Get parameters for ``crop`` for a random crop.
+
         Args:
             img (numpy.ndarray): Image to be cropped.
             output_size (tuple): Expected output size of the crop.
+
         Returns:
             tuple: params (i, j, h, w) to be passed to ``crop`` for random crop.
+
         """
         h, w, _ = img.shape
         th, tw = output_size
@@ -865,10 +868,12 @@ class RandomCrop(object):
 
     def __call__(self, img):
         """
+
         Args:
             img (numpy.ndarray): Image to be cropped.
         Returns:
             numpy.ndarray: Cropped image.
+
         """
         if self.padding > 0:
             img = F.pad(img, self.padding)
@@ -886,17 +891,17 @@ class RandomCrop(object):
 
 
 class RandomErasing(object):
-    """ Randomly selects a rectangle region in an image and erases its pixels.
-        'Random Erasing Data Augmentation' by Zhong et al.
-        See https://arxiv.org/pdf/1708.04896.pdf
+    """Randomly selects a rectangle region in an image and erases its pixels.
+    ``Random Erasing Data Augmentation`` by Zhong et al.
+    See https://arxiv.org/pdf/1708.04896.pdf
+
     Args:
          prob (float): probability that the random erasing operation will be performed.
          scale (tuple): range of proportion of erased area against input image. Should be (min, max).
          ratio (float): range of aspect ratio of erased area.
-         value (float|list|tuple): erasing value. Default is 0. If a single int, it is used to
+         value (float|list|tuple): erasing value. If a single int, it is used to
             erase all pixels. If a tuple of length 3, it is used to erase
-            R, G, B channels respectively.
-            If a str of 'random', erasing each pixel with random values.
+            R, G, B channels respectively. Default: 0. 
 
     Examples:
     
@@ -956,7 +961,7 @@ class RandomErasing(object):
                     img[x1:x1 + h, y1:y1 + w, 1] = self.value[1]
                     img[x1:x1 + h, y1:y1 + w, 2] = self.value[2]
                 else:
-                    img[0, x1:x1 + h, y1:y1 + w] = self.value[1]
+                    img[x1:x1 + h, y1:y1 + w] = self.value[1]
                 return img
 
         return img
@@ -964,6 +969,7 @@ class RandomErasing(object):
 
 class Pad(object):
     """Pad the given CV Image on all sides with the given "pad" value.
+
     Args:
         padding (int|list|tuple): Padding on each border. If a single int is provided this
             is used to pad all borders. If tuple of length 2 is provided this is the padding
@@ -974,14 +980,14 @@ class Pad(object):
             length 3, it is used to fill R, G, B channels respectively.
             This value is only used when the padding_mode is constant
         padding_mode (str): Type of padding. Should be: constant, edge, reflect or symmetric. Default is constant.
-            constant: pads with a constant value, this value is specified with fill
-            edge: pads with the last value at the edge of the image
-            reflect: pads with reflection of image (without repeating the last value on the edge)
-                padding [1, 2, 3, 4] with 2 elements on both sides in reflect mode
-                will result in [3, 2, 1, 2, 3, 4, 3, 2]
-            symmetric: pads with reflection of image (repeating the last value on the edge)
-                padding [1, 2, 3, 4] with 2 elements on both sides in symmetric mode
-                will result in [2, 1, 1, 2, 3, 4, 4, 3]
+            ``constant`` means pads with a constant value, this value is specified with fill. 
+            ``edge`` means pads with the last value at the edge of the image. 
+            ``reflect`` means pads with reflection of image (without repeating the last value on the edge) 
+            padding ``[1, 2, 3, 4]`` with 2 elements on both sides in reflect mode 
+            will result in ``[3, 2, 1, 2, 3, 4, 3, 2]``
+            ``symmetric`` menas pads with reflection of image (repeating the last value on the edge)
+            padding ``[1, 2, 3, 4]`` with 2 elements on both sides in symmetric mode 
+            will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``
 
     Examples:
     
@@ -1025,16 +1031,17 @@ class Pad(object):
 
 class RandomRotate(object):
     """Rotate the image by angle.
+
     Args:
         degrees (sequence or float or int): Range of degrees to select from.
             If degrees is a number instead of sequence like (min, max), the range of degrees
             will be (-degrees, +degrees) clockwise order.
-        interpolation (int): Interpolation mode of resize. Default: cv2.INTER_LINEAR.
-        expand (bool, optional): Optional expansion flag.
+        interpolation (int|optional): Interpolation mode of resize. Default: cv2.INTER_LINEAR.
+        expand (bool|optional): Optional expansion flag. Default: False.
             If true, expands the output to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.
             Note that the expand flag assumes rotation around the center and no translation.
-        center (2-tuple, optional): Optional center of rotation.
+        center (2-tuple|optional): Optional center of rotation.
             Origin is the upper left corner.
             Default is the center of the image.
     
@@ -1098,6 +1105,7 @@ class RandomRotate(object):
 
 class Grayscale(object):
     """Convert image to grayscale.
+
     Args:
         output_channels (int): (1 or 3) number of channels desired for output image
     Returns:

@@ -28,7 +28,7 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
-__all__ = ['flip', 'resize']
+__all__ = ['flip', 'resize', 'pad', 'rotate', 'to_grayscale']
 
 
 def flip(image, code):
@@ -105,6 +105,7 @@ def resize(img, size, interpolation=cv2.INTER_LINEAR):
 
 def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
     """Pad the given CV Image on all sides with speficified padding mode and fill value.
+
     Args:
         img (np.ndarray): Image to be padded.
         padding (int|tuple): Padding on each border. If a single int is provided this
@@ -116,17 +117,31 @@ def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
             length 3, it is used to fill R, G, B channels respectively.
             This value is only used when the padding_mode is constant
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default is constant.
-            constant: pads with a constant value, this value is specified with fill
-            edge: pads with the last value on the edge of the image
-            reflect: pads with reflection of image (without repeating the last value on the edge)
-                padding [1, 2, 3, 4] with 2 elements on both sides in reflect mode
-                will result in [3, 2, 1, 2, 3, 4, 3, 2]
-            symmetric: pads with reflection of image (repeating the last value on the edge)
-                padding [1, 2, 3, 4] with 2 elements on both sides in symmetric mode
-                will result in [2, 1, 1, 2, 3, 4, 4, 3]
+            ``constant`` means pads with a constant value, this value is specified with fill. 
+            ``edge`` means pads with the last value at the edge of the image. 
+            ``reflect`` means pads with reflection of image (without repeating the last value on the edge) 
+            padding ``[1, 2, 3, 4]`` with 2 elements on both sides in reflect mode 
+            will result in ``[3, 2, 1, 2, 3, 4, 3, 2]``
+            ``symmetric`` menas pads with reflection of image (repeating the last value on the edge)
+            padding ``[1, 2, 3, 4]`` with 2 elements on both sides in symmetric mode 
+            will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``
 
     Returns:
-        numpy ndarray: Paded image.
+        numpy ndarray: Padded image.
+
+    Examples:
+    
+        .. code-block:: python
+
+            import numpy as np
+
+            from paddle.incubate.hapi.vision.transforms.functional import pad
+
+            fake_img = np.random.rand(500, 500, 3).astype('float32')
+
+            fake_img = pad(fake_img, 2)
+            print(fake_img.shape)
+
     """
 
     if not isinstance(padding, (numbers.Number, list, tuple)):
@@ -184,23 +199,35 @@ def rotate(img,
            expand=False,
            center=None):
     """Rotate the image by angle.
+
     Args:
         img (numpy.ndarray): Image to be rotated.
-        angle ({float, int}): In degrees clockwise order.
-        resample ({NEAREST, BILINEAR, BICUBIC}, optional):
-            An optional resampling filter.
-            See http://pillow.readthedocs.io/en/3.4.x/handbook/concepts.html#filters
-            If omitted, or if the image has mode "1" or "P", it is set to PIL.Image.NEAREST.
-        expand (bool, optional): Optional expansion flag.
+        angle (float|int): In degrees clockwise order.
+        interpolation (int, optional):
+            interpolation: Interpolation method.
+        expand (bool|optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.
             Note that the expand flag assumes rotation around the center and no translation.
-        center (2-tuple, optional): Optional center of rotation.
+        center (2-tuple|optional): Optional center of rotation.
             Origin is the upper left corner.
             Default is the center of the image.
 
     Returns:
         numpy ndarray: Rotated image.
+
+    Examples:
+    
+        .. code-block:: python
+
+            import numpy as np
+
+            from paddle.incubate.hapi.vision.transforms.functional import rotate
+
+            fake_img = np.random.rand(500, 500, 3).astype('float32')
+
+            fake_img = rotate(fake_img, 10)
+            print(fake_img.shape)
     """
     dtype = img.dtype
 
@@ -213,15 +240,12 @@ def rotate(img,
             cos = np.abs(M[0, 0])
             sin = np.abs(M[0, 1])
 
-            # compute the new bounding dimensions of the image
             nW = int((h * sin) + (w * cos))
             nH = int((h * cos) + (w * sin))
 
-            # adjust the rotation matrix to take into account translation
             M[0, 2] += (nW / 2) - point[0]
             M[1, 2] += (nH / 2) - point[1]
 
-            # perform the actual rotation and return the image
             dst = cv2.warpAffine(img, M, (nW, nH))
         else:
             xx = []
@@ -233,7 +257,7 @@ def rotate(img,
                 yy.append(target[1])
             nh = int(math.ceil(max(yy)) - math.floor(min(yy)))
             nw = int(math.ceil(max(xx)) - math.floor(min(xx)))
-            # adjust the rotation matrix to take into account translation
+
             M[0, 2] += (nw - w) / 2
             M[1, 2] += (nh - h) / 2
             dst = cv2.warpAffine(img, M, (nw, nh), flags=interpolation)
@@ -244,12 +268,27 @@ def rotate(img,
 
 def to_grayscale(img, num_output_channels=1):
     """Convert image to grayscale version of image.
+
     Args:
         img (numpy.ndarray): Image to be converted to grayscale.
+
     Returns:
         numpy.ndarray:  Grayscale version of the image.
-                        if num_output_channels == 1 : returned image is single channel
-                        if num_output_channels == 3 : returned image is 3 channel with r == g == b
+                        if num_output_channels == 1, returned image is single channel
+                        if num_output_channels == 3, returned image is 3 channel with r == g == b
+    
+    Examples:
+    
+        .. code-block:: python
+
+            import numpy as np
+
+            from paddle.incubate.hapi.vision.transforms.functional import to_grayscale
+
+            fake_img = np.random.rand(500, 500, 3).astype('float32')
+
+            fake_img = to_grayscale(fake_img)
+            print(fake_img.shape)
     """
 
     if num_output_channels == 1:
