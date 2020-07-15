@@ -22,6 +22,7 @@ import itertools
 import threading
 import numpy as np
 import multiprocessing
+from collections import namedtuple
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:
@@ -32,10 +33,14 @@ else:
 from .. import core
 from ..framework import in_dygraph_mode
 from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, _set_SIGCHLD_handler
+from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 
 # multi-process worker check indices queue interval, avoid
 # hanging in subprocess data loading
 MP_INDICES_CHECK_INTERVAL = 5
+
+_IterableDatasetStopIteration = namedtuple('_IterableDatasetStopIteration',
+                                           ['worker_id'])
 
 
 def _default_collate_fn(batch):
@@ -53,6 +58,20 @@ def _default_collate_fn(batch):
             else:
                 slots[i].append(item)
     return [np.stack(slot, axis=0) for slot in slots]
+
+
+class _DatasetKind(object):
+    MAP = 0
+    ITER = 1
+
+    @staticmethod
+    def create_fetcher(kind, dataset, collate_fn, drop_last):
+        if kind == _DatasetKind.MAP:
+            return _MapDatasetFetcher(dataset, collate_fn, drop_last)
+        elif kind == _DatasetKind.ITER:
+            return _IterableDatasetFetcher(dataset, collate_fn, drop_last)
+        else:
+            raise NotImplementedError("unknown Dataset kind {}".format(kind))
 
 
 class ParentWatchDog(object):
@@ -88,6 +107,7 @@ class _DataLoaderIterBase(object):
         self._use_shared_memory = loader.use_shared_memory
         self._timeout = loader.timeout if loader.timeout > 0 else MP_INDICES_CHECK_INTERVAL
         self._worker_init_fn = loader.worker_init_fn
+        self._dataset_kind = loader.dataset_kind
 
         # LoDTensorBlockingQueue instance for create_py_reader and a thread
         # to put mini-batch data to self._blocking_queue, mini-batch data
@@ -113,6 +133,9 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
     def __init__(self, loader):
         super(_DataLoaderIterSingleProcess, self).__init__(loader)
+
+        self._dataset_fetcher = _DatasetKind.create_fetcher(
+            self._dataset_kind, self._dataset, self._collate_fn, True)
 
         # NOTE: len(self._places) batch data compose as an output
         # iteration, set blocking_queue can cache 2 iteration datas
@@ -143,10 +166,11 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def _thread_loop(self):
         try:
             for indices in self._sampler_iter:
-                # read data from dataset in mini-batch
-                batch = [self._dataset[i] for i in indices]
-                if self._collate_fn is not None:
-                    batch = self._collate_fn(batch)
+                # # read data from dataset in mini-batch
+                # batch = [self._dataset[i] for i in indices]
+                # if self._collate_fn is not None:
+                #     batch = self._collate_fn(batch)
+                batch = self._dataset_fetcher.fetch(indices)
 
                 # pack as LoDTensorArray
                 array = core.LoDTensorArray()
@@ -346,10 +370,13 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             if init_fn is not None:
                 try:
                     init_fn(worker_id)
+                    fetcher = _DatasetKind.create_fetcher(dataset_kind, dataset,
+                                                          collate_fn, True)
                 except:
                     init_exception = Exception("init_fn failed in worker {}: " \
                                          "{}".format(worker_id, sys.exc_info()))
 
+            iterator_drained = False
             parent_watch_dog = ParentWatchDog()
 
             while parent_watch_dog.is_alive():
@@ -360,12 +387,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
                 # None as poison piil, so worker event should be set
                 if data is None:
-                    assert done_event.is_set(
-                    ), "get None when worker done_event set"
+                    assert done_event.is_set() or iterator_drained, \
+                            "get None when worker done_event set"
                     break
                 # If worker done event is set but get still get data in
                 # indices_queue, remaining data should be get and skipped.
-                if done_event.is_set():
+                if done_event.is_set() or iterator_drained:
                     continue
 
                 idx, indices = data
@@ -374,10 +401,16 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         batch = init_exception
                         init_exception = None
                     else:
-                        batch = [dataset[i] for i in indices]
-                        if self._collate_fn is not None:
-                            batch = self._collate_fn(batch)
+                        # batch = [dataset[i] for i in indices]
+                        # if self._collate_fn is not None:
+                        #     batch = self._collate_fn(batch)
+                        batch = fetcher.fetch(indices)
                 except Exception as e:
+                    if isinstance(
+                            e,
+                            StopIteration) and dataset_kind == _DatasetKind.ITER:
+                        out_queue.put(_IterableDatasetStopIteration(worker_id))
+                        iterator_drained = True
                     out_queue.put((idx, e))
                 else:
                     if self._use_shared_memory:
@@ -471,6 +504,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                               "workers' result queue.".format(e))
                 six.reraise(*sys.exc_info())
             else:
+                if self._dataset_kind == _DatasetKind.ITER and isinstance(
+                        data, _IterableDatasetStopIteration):
+                    self._shutdown_worker(data.worker_id)
+                    self._try_put_indices()
+                    continue
+
                 idx, batch = data
                 if idx == self._rcvd_idx:
                     return batch

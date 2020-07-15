@@ -22,8 +22,9 @@ from .framework import Program, Variable, program_guard, default_main_program, d
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
-from .dataloader import BatchSampler, Dataset
-from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess
+from .dataloader import BatchSampler, Dataset, IterableDataset
+from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess, _DatasetKind
+from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
@@ -339,6 +340,18 @@ class DataLoader(object):
         assert timeout >= 0, "timeout should be a non-negative value"
         self.timeout = timeout
 
+        if isinstance(dataset, IterableDataset):
+            self.dataset_kind = _DatasetKind.ITER
+            if shuffle:
+                raise ValueError(
+                    "IterableDataset not support shuffle, but got shuffle={}".
+                    format(shuffle))
+            if batch_sampler is not None:
+                raise ValueError(
+                    "IterableDataset expect unspecified batch_sample")
+        else:
+            self.dataset_kind = _DatasetKind.MAP
+
         if batch_sampler is not None:
             assert isinstance(batch_sampler, BatchSampler), \
                 "batch_sampler should be None or subclass instance " \
@@ -351,11 +364,15 @@ class DataLoader(object):
             assert batch_size is not None and batch_size > 0, \
                 "batch_size should be a positive value when " \
                 "batch_sampler is not given"
-            self.batch_sampler = BatchSampler(
-                dataset=dataset,
-                batch_size=batch_size,
-                shuffle=shuffle,
-                drop_last=drop_last)
+            if isinstance(dataset, IterableDataset):
+                self.batch_sampler = _InfiniteIterableSampler(dataset,
+                                                              batch_size)
+            else:
+                self.batch_sampler = BatchSampler(
+                    dataset=dataset,
+                    batch_size=batch_size,
+                    shuffle=shuffle,
+                    drop_last=drop_last)
 
     def __len__(self):
         return len(self.batch_sampler)

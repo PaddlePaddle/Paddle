@@ -15,6 +15,7 @@
 # TODO: define all functions about input & output in this directory 
 __all__ = [
     'Dataset',
+    'IterableDataset',
     'BatchSampler',
     #            'Transform',
     'DataLoader',
@@ -36,7 +37,7 @@ __all__ = [
 ]
 
 from ..fluid.io import DataLoader
-from ..fluid.dataloader import Dataset, BatchSampler
+from ..fluid.dataloader import Dataset, IterableDataset, BatchSampler
 from ..fluid.io import load, save, load_program_state, set_program_state, \
         load_inference_model, save_inference_model, batch
 from ..reader import shuffle, buffered, cache, chain, firstn, compose, map_readers, xmap_readers

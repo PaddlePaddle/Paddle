@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import paddle.dataset.common
 
-__all__ = ["Dataset"]
+__all__ = ["Dataset", "IterableDataset"]
 
 
 class Dataset(object):
@@ -70,4 +70,57 @@ class Dataset(object):
 
     def __len__(self):
         raise NotImplementedError("'{}' not implement in class "\
+                "{}".format('__len__', self.__class__.__name__))
+
+
+class IterableDataset(Dataset):
+    """
+    An abstract class to encapsulates methods and behaviors of iterable datasets.
+
+    All datasets in iterable-style(can only get sample one by one sequentially, like
+    a python iterater) should be a subclass of `paddle.io.IterableDataset`. All subclasses should
+    implement following methods:
+
+    :code:`__iter__`: yield sample sequentially. This method is required by
+                      reading dataset sample in :code:`paddle.io.DataLoader`.
+
+    see :code:`paddle.io.DataLoader`.
+
+    Examples:
+        
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.io import Dataset
+            
+            # define a random dataset
+            class RandomDataset(Dataset):
+                def __init__(self, num_samples):
+                    self.num_samples = num_samples
+            
+                def __iter__(self, idx):
+                    for i in range(self.num_samples)
+                        image = np.random.random([784]).astype('float32')
+                        label = np.random.randint(0, 9, (1, )).astype('int64')
+                        yield image, label
+            
+            dataset = RandomDataset(10)
+            for img, lbl in iter(dataset):
+                print(img, lbl)
+
+    """
+
+    def __init__(self):
+        pass
+
+    def __iter__(self):
+        raise NotImplementedError("'{}' not implement in class "\
+                "{}".format('__iter__', self.__class__.__name__))
+
+    def __getitem__(self, idx):
+        raise RuntimeError("'{}' should not be called for IterableDataset" \
+                "{}".format('__getitem__', self.__class__.__name__))
+
+    def __len__(self):
+        raise RuntimeError("'{}' should not be called for IterableDataset" \
                 "{}".format('__len__', self.__class__.__name__))
