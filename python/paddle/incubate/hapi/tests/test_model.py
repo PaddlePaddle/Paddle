@@ -32,7 +32,7 @@ from paddle.incubate.hapi.metrics import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
 from paddle.incubate.hapi.vision.models import LeNet
 from paddle.incubate.hapi.distributed import DistributedBatchSampler, prepare_distributed_context
-
+from paddle.fluid.dygraph.jit import declarative
 
 class LeNetDygraph(fluid.dygraph.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
