@@ -795,7 +795,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
 
             # training/infer
             mode = "0"
-            ids_name = "kSparseIDs@{}".format(grad.name)
+            ids_name = "kSparseIDs@{}".format(param)
             names_str = ",".join(value_names)
             dims_str = ",".join([str(dim) for dim in value_dims])
             cached_str = ",".join(acture_names + [ids_name])
