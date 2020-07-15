@@ -181,7 +181,7 @@ class AttrReader {
   inline const T& Get(const std::string& name) const {
     PADDLE_ENFORCE_NE(attrs_.count(name), 0,
                       platform::errors::NotFound(
-                          "Attribute (%s) should be in AttributeMap", name));
+                          "Attribute (%s) should be in AttributeMap.", name));
 
     Attribute& attr = const_cast<Attribute&>(attrs_.at(name));
     ExtractAttribute<T> extract_attr(name);
@@ -245,7 +245,7 @@ class EnumInContainer {
   void operator()(const T& val) const {
     PADDLE_ENFORCE_NE(
         container_.find(val), container_.end(),
-        platform::errors::NotFound("Value %s is not in enum container %s", val,
+        platform::errors::NotFound("Value %s is not in enum container %s.", val,
                                    ContainerDebugString()));
   }
 

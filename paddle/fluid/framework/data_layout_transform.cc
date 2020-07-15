@@ -73,9 +73,11 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
       platform::errors::PreconditionNotMet(
           "TransDataLayout only support DataLayout transform on same place."));
 
-  PADDLE_ENFORCE_EQ(arity(in.dims()), 4,
-                    platform::errors::InvalidArgument(
-                        "Input dimension arity only can be 4."));
+  PADDLE_ENFORCE_EQ(
+      arity(in.dims()), 4,
+      platform::errors::InvalidArgument(
+          "Input dimension arity only can be 4, the input dimension is %s.",
+          in.dims()));
 
   auto& pool = platform::DeviceContextPool::Instance();
 
@@ -165,7 +167,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   memory::data_type in_type = ToMKLDNNDataType(in.type());
   PADDLE_ENFORCE_NE(in_type, memory::data_type::undef,
                     platform::errors::InvalidArgument(
-                        "Input tensor type (%s) is not supported.", in.type()));
+                        "Input tensor type (%s) is not supported.",
+                        DataTypeToString(in.type())));
 
   auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
   auto out_format =

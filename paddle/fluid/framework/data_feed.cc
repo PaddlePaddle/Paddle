@@ -1252,7 +1252,7 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   PADDLE_ENFORCE_NE(
       buffer_, MAP_FAILED,
       platform::errors::Unavailable(
-          "Memory map failed when create shared memory, error number is %d.",
+          "Memory map failed when create shared memory, error number is %s.",
           strerror(errno)));
 
   offset_ = 0;

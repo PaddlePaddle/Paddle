@@ -80,7 +80,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
         var_desc, platform::errors::NotFound(
                       "Variable %s is not found in main program.", var_name));
     auto shapes = var_desc->GetShape();
-    PADDLE_ENFORCE(shapes[shapes.size() - 1] == 1,
+    PADDLE_ENFORCE_EQ(shapes[shapes.size() - 1], 1,
         platform::errors::InvalidArgument(
                    "Fetched variable %s has wrong shape, "
                    "only variables whose last dimension is 1 are supported",
