@@ -186,9 +186,9 @@ class AutoCheckpointTest(AutoCheckpointBase):
         for i in range(3):
             fs.delete(checker.hdfs_checkpoint_path)
             self._reset_generator()
-            self._run_save_0(break_epoch_no=0)
+            self._run_save_0(break_epoch_no=i)
             self._reset_generator()
-            self._run_load_0(started_epoch_no=0)
+            self._run_load_0(started_epoch_no=i)
 
         fs.delete(checker.hdfs_checkpoint_path)
         logger.info("end test_corener_epoch_no")

@@ -48,7 +48,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self._init_env(exe, main_prog, startup_prog, iterable=True)
 
         # use two
-        for i in acp.train_epoch_range(3):
+        for i in acp.train_epoch_range(1):
             for data in data_loader():
                 name = acp.g_train_epoch_range.name
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
@@ -58,7 +58,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self.assertEqual(i, 2)
 
         # use two
-        for i in range(3):
+        for i in range(1):
             for data in data_loader():
                 self.assertEqual(acp.g_acp_type, acp.CONST_ACP_TYPE)
 
@@ -80,7 +80,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self._init_env(exe, main_prog, startup_prog, iterable=True)
 
         # use two
-        for i in range(3):
+        for i in range(1):
             for data in data_loader():
                 name = acp.g_train_epoch_range.name
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
@@ -90,7 +90,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self.assertEqual(i, 2)
 
         # use two
-        for i in acp.train_epoch_range(3):
+        for i in acp.train_epoch_range(1):
             self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
             self.assertEqual(acp.g_train_epoch_range, None)
             for data in data_loader():
