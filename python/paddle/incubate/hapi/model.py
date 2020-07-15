@@ -1557,7 +1557,7 @@ class Model(fluid.dygraph.Layer):
                              params_filename=None,
                              model_only=False):
         """
-        Save inference model can be in static or static mode.
+        Save inference model can be in static or dynamic mode.
 
         Args:
             save_dir (str): The directory path to save the inference model.
