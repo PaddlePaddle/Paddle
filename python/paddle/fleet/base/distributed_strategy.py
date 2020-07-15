@@ -57,6 +57,10 @@ class DistributedStrategy(object):
     def __init__(self):
         self.strategy = distributed_strategy_pb2.DistributedStrategy()
 
+    def save_to_prototxt(self, output):
+        with open(output, "w") as fout:
+            fout.write(str(self.strategy))
+
     def load_from_prototxt(self, pb_file):
         f = open(pb_file, 'r')
         self.strategy = google.protobuf.text_format.Merge(
@@ -195,6 +199,19 @@ class DistributedStrategy(object):
                 "WARNING: hierachical_allreduce should have value of bool type")
 
     @property
+    def hierachical_allreduce_inter_ranks(self):
+        return self.strategy.hierachical_allreduce_inter_ranks
+
+    @hierachical_allreduce_inter_ranks.setter
+    def hierachical_allreduce_inter_ranks(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.hierachical_allreduce_inter_ranks = flag
+        else:
+            print(
+                "WARNING: hierachical_allreduce_inter_ranks should have value of bool type"
+            )
+
+    @property
     def nccl_comm_num(self):
         return self.strategy.nccl_comm_num
 
@@ -322,6 +339,17 @@ class DistributedStrategy(object):
             )
 
     @property
+    def fuse_broadcast_ops(self):
+        return self.strategy.fuse_broadcast_ops
+
+    @fuse_broadcast_ops.setter
+    def fuse_broadcast_ops(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.fuse_broadcast_ops = flag
+        else:
+            print("WARNING: fuse_broadcast_ops should have value of bool type")
+
+    @property
     def enable_inplace(self):
         return self.strategy.enable_inplace
 
@@ -355,6 +383,18 @@ class DistributedStrategy(object):
             print(
                 "WARNING: num_iteration_per_drop_scope should have value of int type"
             )
+
+    @property
+    def num_iteration_per_run(self):
+        return self.strategy.num_iteration_per_run
+
+    @num_iteration_per_run.setter
+    def num_iteration_per_run(self, value):
+        if isinstance(value, int):
+            self.strategy.num_iteration_per_run = flag
+        else:
+            print(
+                "WARNING: num_iteration_per_run should have value of int type")
 
     @property
     def sync_batch_norm(self):
@@ -514,6 +554,17 @@ class DistributedStrategy(object):
             self.strategy.elastic = flag
         else:
             print("WARNING: elastic should have value of bool type")
+
+    @property
+    def num_threads(self):
+        return self.strategy.num_threads
+
+    @num_threads.setter
+    def num_threads(self, threads):
+        if isinstance(value, int):
+            self.strategy.num_threads = threads
+        else:
+            print("WARNING: num_threads should have value of int type")
 
     @property
     def auto(self):

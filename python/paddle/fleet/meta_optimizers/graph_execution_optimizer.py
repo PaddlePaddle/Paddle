@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 
 import paddle
+from paddle.fluid.framework import core
+from paddle.fluid import compiler
 from .meta_optimizer_base import MetaOptimizerBase
+from ..base.private_helper_function import wait_server_ready
 
 
 def get_build_strategy(dist_strategy):
     build_strategy = paddle.BuildStrategy()
     build_strategy.enable_sequential_execution = \
-        dist_strategy.enable_sequential_execution
+        dist_strategy.sequential_execution
     build_strategy.remove_unnecessary_lock = True
     build_strategy.fuse_elewise_add_act_ops = \
         dist_strategy.fuse_elewise_add_act_ops
@@ -28,7 +31,7 @@ def get_build_strategy(dist_strategy):
         dist_strategy.enable_auto_fusion
     build_strategy.fuse_relu_depthwise_conv = \
         dist_strategy.fuse_relu_depthwise_conv
-    build_strategy.fuse_broadcase_ops = \
+    build_strategy.fuse_broadcast_ops = \
         dist_strategy.fuse_broadcast_ops
     build_strategy.sync_batch_norm = \
         dist_strategy.sync_batch_norm
@@ -45,8 +48,6 @@ def get_execution_strategy(dist_strategy):
         dist_strategy.num_iteration_per_run
     execution_strategy.use_thread_barrier = \
         dist_strategy.use_thread_barrier
-    execution_strategy.enable_sequential_execution = \
-        dist_strategy.sequential_execution
     return execution_strategy
 
 
@@ -64,6 +65,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         """
         Basically, this is PE, and almost all programs can be executed here
         """
+        print("hahahah")
         return True
 
     def backward(self,
@@ -74,25 +76,27 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                  callbacks=None):
         pass
 
+    # should fix the variable 
     def _setup_nccl_op(self, startup_program, main_program):
-        worker_endpoints = self.role_maker.worker_endpoints()
+        trainer_endpoints = self.role_maker.get_trainer_endpoints()
+        trainers = trainer_endpoints
         trainer_id = self.role_maker.worker_index()
-        current_endpoint = self.role_maker.worker_endpoints()[trainer_id]
-        worker_endpoints_env = ",".join(worker_endpoints)
+        current_endpoint = self.role_maker.get_trainer_endpoints()[trainer_id]
+        trainer_endpoints_env = ",".join(trainer_endpoints)
         trainers_num = self.role_maker.worker_num()
-        worker_endpoints.remove(current_endpoint)
-        if trainer_id == 0 and wait_port:
-            wait_server_ready(worker_endpoints)
+        trainer_endpoints.remove(current_endpoint)
+        if trainer_id == 0:
+            wait_server_ready(trainer_endpoints)
         nccl_id_var = startup_program.global_block().create_var(
             name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
-        for i in range(1, self.dist_strategy.nccl_comm_num):
+        for i in range(1, self.user_defined_strategy.nccl_comm_num):
             startup_program.global_block().create_var(
                 name="NCCLID_{}".format(i),
                 persistable=True,
                 type=core.VarDesc.VarType.RAW)
 
-        if self.dist_strategy.use_hierarchical_allreduce:
-            for i in range(0, self.dist_strategy.nccl_comm_num):
+        if self.user_defined_strategy.hierachical_allreduce:
+            for i in range(0, self.user_defined_strategy.nccl_comm_num):
                 startup_program.global_block().create_var(
                     name="Hierarchical_inter_NCCLID_{}".format(i),
                     persistable=True,
@@ -107,54 +111,54 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             inputs={},
             outputs={"NCCLID": nccl_id_var},
             attrs={
-                "trainers": trainers.split(","),
+                "trainers": trainers,
                 "trainer_id": trainer_id,
-                "nccl_comm_num": self.dist_strategy.nccl_comm_num,
+                "nccl_comm_num": self.user_defined_strategy.nccl_comm_num,
                 "use_hierarchical_allreduce":
-                self.dist_strategy.use_hierarchical_allreduce,
-                "hierarchical_allreduce_inter_nranks":
-                self.dist_strategy.hierarchical_allreduce_inter_nranks
+                self.user_defined_strategy.hierachical_allreduce,
+                "hierarchical_allreduce_inter_ranks":
+                self.user_defined_strategy.hierachical_allreduce_inter_ranks
             })
 
-    def _try_to_compile(self, startup_program, main_program):
-        build_strategy = get_build_strategy(self.dist_strategy)
-        exe_strategy = get_execution_strategy(self.dist_strategy)
+    def _try_to_compile(self, startup_program, main_program, loss):
+        build_strategy = get_build_strategy(self.user_defined_strategy)
+        exe_strategy = get_execution_strategy(self.user_defined_strategy)
         node_num = self.role_maker.worker_num()
         if self.role_maker._is_collective:
             assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
 
         if node_num <= 1:
             # local mode
-            if self.dist_strategy.nccl_comm_num > 1:
+            if self.user_defined_strategy.nccl_comm_num > 1:
                 logging.warn("set nccl_comm_num=1 since you only have 1 node.")
-            self.dist_strategy.nccl_comm_num = 1
+            self.user_defined_strategy.nccl_comm_num = 1
 
-            if self.dist_strategy.use_hierarchical_allreduce:
+            if self.user_defined_strategy.hierachical_allreduce:
                 logging.warn(
-                    "set use_hierarchical_allreduce=False since you only have 1 node."
+                    "set hierachical_allreduce=False since you only have 1 node."
                 )
-            self.dist_strategy.use_hierarchical_allreduce = False
+            self.user_defined_strategy.hierachical_allreduce = False
 
-        sync_allreduce = self.dist_strategy.sync_nccl_allreduce
+        sync_allreduce = self.user_defined_strategy.sync_nccl_allreduce
         if sync_allreduce:
-            exe_strategy.num_threads = self.dist_strategy.nccl_comm_num + 1
-            if self.dist_strategy.use_hierarchical_allreduce:
-                exe_strategy.num_threads = 2 * self.dist_strategy.nccl_comm_num + 1
+            exe_strategy.num_threads = self.user_defined_strategy.nccl_comm_num + 1
+            if self.user_defined_strategy.hierachical_allreduce:
+                exe_strategy.num_threads = 2 * self.user_defined_strategy.nccl_comm_num + 1
             if exe_strategy.num_threads > 4:
                 logging.warn(
-                    "if you use use_hierarchical_allreduce or "
+                    "if you use hierachical_allreduce or "
                     "with multi nccl comm, please export FLAGS_sync_nccl_allreduce = 0"
                 )
 
         # TODO(guru4elephant): should be an independent optimizer
-        sync_batch_norm = self.dist_strategy.sync_batch_norm
+        sync_batch_norm = self.user_defined_strategy.sync_batch_norm
         if sync_batch_norm:
-            self.dist_strategy.nccl_comm_num = 1
-            self.dist_strategy.use_hierarchical_allreduce = False
+            self.user_defined_strategy.nccl_comm_num = 1
+            self.user_defined_strategy.hierachical_allreduce = False
             exe_strategy.num_threads = 1
             logging.warn(
                 "use sync_batch_norm will hang when set num_threads > 1, so "
-                "set num_threads=1, nccl_comm_num=1, use_hierarchical_allreduce=False."
+                "set num_threads=1, nccl_comm_num=1, hierachical_allreduce=False."
             )
 
         # TODO(guru4elephant): should be an independent optimizer
@@ -162,29 +166,30 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
 
         build_strategy.num_trainers = self.role_maker.worker_num()
         build_strategy.trainer_id = self.role_maker.worker_index()
-        build_strategy.trainers_endpoints = self.role_maker.worker_endpoints()
+        build_strategy.trainers_endpoints = self.role_maker.get_trainer_endpoints(
+        )
         build_strategy.enable_backward_optimizer_op_deps = True
 
         self._compiled_program = compiler.CompiledProgram(main_program)
 
         self._compiled_program.with_data_parallel(
-            loss_name=self._loss.name,
+            loss_name=loss.name,
             build_strategy=build_strategy,
-            exe_strategy=exe_strategy,
+            exec_strategy=exe_strategy,
             share_vars_from=None)
 
         return self._compiled_program
 
-    def minimize_impl(self,
-                      loss,
-                      startup_program=None,
-                      parameter_list=None,
-                      no_grad_set=None):
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
         if startup_program == None:
             startup_program = paddle.default_startup_program()
         compiled_program = self._try_to_compile(startup_program,
-                                                loss.block.program)
+                                                loss.block.program, loss)
         loss.block.program.graph = compiled_program
 
         # just return self.optimizer_ops and self.param_grads
-        return self.optimize_ops, self.param_grads
+        return None, None

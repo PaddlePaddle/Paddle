@@ -39,6 +39,7 @@ class UtilBase(object):
     def _set_role_maker(self, role_maker):
         self.role_maker = role_maker
 
+    '''
     def set_file_system(self, fs_client):
         self.fs_client = fs_client
 
@@ -77,3 +78,4 @@ class UtilBase(object):
 
     def print_on_rank(self):
         pass
+    '''

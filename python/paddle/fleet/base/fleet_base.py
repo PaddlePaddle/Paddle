@@ -16,6 +16,8 @@ from __future__ import print_function
 import paddle
 from .strategy_compiler import StrategyCompiler
 from .meta_optimizer_factory import MetaOptimizerFactory
+from .runtime_factory import RuntimeFactory
+from .util_factory import UtilFactory
 
 __all__ = ['Fleet']
 
@@ -290,30 +292,48 @@ class Fleet(object):
             MetaOptimizerFactory()._get_valid_meta_optimizers(
                 self.user_defined_optimizer)
         valid_optimizer_list = []
+        valid_graph_optimizer_list = []
         # recall meta optimizers for ranking
         for opt in distributed_optimizer_list:
             opt._set_basic_info(loss, self._role_maker,
                                 self.user_defined_optimizer,
                                 self.user_defined_strategy)
-            if opt._can_apply():
+            if opt._can_apply() and not opt._is_graph_out():
                 valid_optimizer_list.append(opt)
+            if opt._can_apply() and opt._is_graph_out():
+                valid_graph_optimizer_list.append(opt)
         # combine recalled meta optimizers to be a valid meta optimizer
-        meta_optimizer, compiled_strategy = \
+        meta_optimizer, graph_optimizer, final_dist_strategy = \
                 self.strategy_compiler.generate_optimizer(
                     loss, self._role_maker, self.user_defined_optimizer,
-                    self.user_defined_strategy, valid_optimizer_list)
-        optimize_ops, params_grads = meta_optimizer.minimize(
-            loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set)
+                    self.user_defined_strategy, valid_optimizer_list,
+                    valid_graph_optimizer_list)
+        optimize_ops = []
+        params_grads = []
+        if meta_optimizer:
+            optimize_ops, params_grads = meta_optimizer.minimize(
+                loss,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set)
 
-        if self._runtime_handle is not None:
+        if graph_optimizer:
+            optimizer_ops, params_grads = graph_optimizer.minimize(
+                loss,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set)
+            # since we do not encourage users to use graph operations
+            # if a graph optimizer takes effect, mostly
+            # optimizers_ops and params_grads are None
+            # i.e. users can not modify current computation graph anymore
+
+        if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(
                 final_dist_strategy, self._role_maker, optimize_ops,
                 params_grads)
 
-        if self._util is not None:
+        if self._util is None:
             self._util = UtilFactory()._create_util(final_dist_strategy,
                                                     self._role_maker,
                                                     optimize_ops, params_grads)

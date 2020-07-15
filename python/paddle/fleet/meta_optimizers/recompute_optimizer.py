@@ -28,9 +28,7 @@ class RecomputeOptimizer(MetaOptimizerBase):
 
     def _can_apply(self):
         if self.user_defined_strategy.recompute == True:
-            if self.userd_defined_strategy.auto == True:
-                return True
-            elif len(self.user_defined_strategy.checkpoints) == 0:
+            if len(self.user_defined_strategy.recompute_checkpoints) == 0:
                 return False
             else:
                 return True

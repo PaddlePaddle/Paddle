@@ -15,7 +15,13 @@ from ..runtime.collective_runtime import CollectiveRuntime
 
 
 class RuntimeFactory(object):
-    def _create_runtime(final_dist_strategy, role_maker, opt_ops, params_grads):
+    def __init__(self):
+        pass
+
+    def _create_runtime(self, final_dist_strategy, role_maker, opt_ops,
+                        params_grads):
         if role_maker._is_collective:
-            return CollectiveRuntime(final_dist_strategy, role_maker, opt_ops,
-                                     params_grads)
+            collective_runtime = CollectiveRuntime()
+            collective_runtime._set_basic_info(final_dist_strategy, role_maker,
+                                               opt_ops, params_grads)
+            return collective_runtime

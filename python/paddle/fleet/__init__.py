@@ -15,9 +15,11 @@
 # TODO: define distributed api under this directory, 
 from .base.distributed_strategy import DistributedStrategy
 from .base.fleet_base import Fleet
+from .base.util_factory import UtilBase
+
 #from .base.role_maker import PaddleCloudRoleMaker
 
-__all__ = ["DistributedStrategy"]
+__all__ = ["DistributedStrategy", "UtilBase"]
 
 fleet = Fleet()
 init = fleet.init

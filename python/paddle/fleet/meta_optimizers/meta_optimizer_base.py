@@ -29,6 +29,9 @@ class MetaOptimizerBase(object):
     def _update_inner_optimier(self, optimizer):
         self.inner_opt = optimizer
 
+    def _can_apply(self):
+        return False
+
     def _can_update(self, optimizer):
         if str(optimizer.__class__.__name__) in self.meta_optimizers_white_list:
             return True

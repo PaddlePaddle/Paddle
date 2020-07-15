@@ -25,7 +25,7 @@ def wait_server_ready(endpoints):
 
          wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
     """
-    assert not isinstance(endpoints, string_types)
+    assert not isinstance(endpoints, str)
     while True:
         all_ok = True
         not_ready_endpoints = []
