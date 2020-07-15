@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 
 framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
-                               const framework::DDim &in_dims);
+                               const framework::DDim &in_dims, bool is_runtime);
 
 template <typename DeviceContext, typename T>
 class SqueezeKernel : public framework::OpKernel<T> {
@@ -37,7 +37,7 @@ class SqueezeKernel : public framework::OpKernel<T> {
 
     auto &axes = context.Attr<std::vector<int>>("axes");
     auto x_dims = in->dims();
-    auto out_dims = GetOutputShape(axes, x_dims);
+    auto out_dims = GetOutputShape(axes, x_dims, true);
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
@@ -72,7 +72,7 @@ class Squeeze2Kernel : public framework::OpKernel<T> {
     auto &axes = context.Attr<std::vector<int>>("axes");
 
     auto x_dims = in->dims();
-    auto out_dims = GetOutputShape(axes, x_dims);
+    auto out_dims = GetOutputShape(axes, x_dims, true);
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(

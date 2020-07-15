@@ -25,7 +25,8 @@ namespace paddle {
 namespace operators {
 
 framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
-                               const framework::DDim &in_dims) {
+                               const framework::DDim &in_dims,
+                               bool is_runtime) {
   size_t num_squeeze_dims = squeeze_dims.size();
   std::vector<bool> should_squeeze(in_dims.size(), false);
 
@@ -54,8 +55,18 @@ framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
               "But current axis is:%d, input tensor's shape = [%s].",
               -in_dims.size(), in_dims.size() - 1, current, in_dims));
 
-      if (in_dims[current] == 1 && !should_squeeze[current]) {
-        should_squeeze[current] = true;
+      if (!should_squeeze[current]) {
+        if (is_runtime) {
+          // At run time, dim of 1 is allowed to squeeze
+          if (in_dims[current] == 1) {
+            should_squeeze[current] = true;
+          }
+        } else {
+          // At compile time, dim of -1 or 1 is allowed to squeeze
+          if (in_dims[current] == 1 || in_dims[current] == -1) {
+            should_squeeze[current] = true;
+          }
+        }
       }
     }
   }
@@ -87,7 +98,7 @@ class SqueezeOp : public framework::OperatorWithKernel {
                           x_dims.size(), x_dims));
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
-    auto out_dims = GetOutputShape(axes, x_dims);
+    auto out_dims = GetOutputShape(axes, x_dims, false);
     ctx->SetOutputDim("Out", out_dims);
     if (x_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
@@ -180,7 +191,7 @@ class Squeeze2Op : public framework::OperatorWithKernel {
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
 
-    auto out_dims = GetOutputShape(axes, x_dims);
+    auto out_dims = GetOutputShape(axes, x_dims, false);
     ctx->SetOutputDim("Out", out_dims);
     if (x_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
