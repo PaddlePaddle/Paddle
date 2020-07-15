@@ -6269,6 +6269,10 @@ def unsqueeze(input, axes, name=None):
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
+    if in_dygraph_mode():
+        out, _ = core.ops.unsqueeze2(x, 'axis', axis)
+        return out
+
     if not isinstance(axes, (int, list, tuple, Variable)):
         raise TypeError(
             "The type of 'axes' in unsqueeze must be int, list, tuple or Variable, but "

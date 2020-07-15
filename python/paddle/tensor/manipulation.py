@@ -633,53 +633,7 @@ def unsqueeze(x, axis, name=None):
     elif isinstance(axis):
         axis = [axis]
 
-    if in_dygraph_mode():
-        out, _ = core.ops.unsqueeze2(x, 'axis', axis)
-        return out
-
-    if not isinstance(axes, (int, list, tuple, Variable)):
-        raise TypeError(
-            "The type of 'axis' in unsqueeze must be int, list, tuple or Variable, but "
-            "received %s." % (type(axis)))
-    helper = LayerHelper("unsqueeze2", **locals())
-    inputs = {"X": input}
-    attrs = {}
-
-    def _to_Variable_list(one_list):
-        Variable_list = []
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                ele.stop_gradient = True
-                Variable_list.append(ele)
-            else:
-                assert (isinstance(ele, int))
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
-                Variable_list.append(temp_out)
-        return Variable_list
-
-    if isinstance(axes, int):
-        axes = [axes]
-    if isinstance(axes, Variable):
-        axes.stop_gradient = True
-        inputs["AxesTensor"] = axes
-    elif isinstance(axes, (list, tuple)):
-        contain_var = not all(not isinstance(ele, Variable) for ele in axes)
-        if contain_var:
-            inputs["AxesTensorList"] = _to_Variable_list(axes)
-        else:
-            attrs["axes"] = axes
-
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type="unsqueeze2",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Out": out,
-                 "XShape": x_shape})
-
-    return out
+    return layers.unsqueeze(x, axis, name)
 
 
 def gather(input, index, overwrite=True):
