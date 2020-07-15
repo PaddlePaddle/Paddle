@@ -447,7 +447,7 @@ def full(shape, fill_value, dtype=None, name=None):
 def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
 	:alias_main: paddle.arange
-	:alias: paddle.arange, paddle.tensor.arange, paddle.tensor.creation.arange
+	:alias: paddle.arange,paddle.tensor.arange,paddle.tensor.creation.arange
 
     Return evenly spaced values within a given interval.
 
@@ -494,7 +494,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_impeartive()
+        paddle.enable_imperative()
 
         out1 = paddle.arange(5)
         # [0, 1, 2, 3, 4]
