@@ -11998,7 +11998,7 @@ def logical_and(x, y, out=None, name=None):
 
     .. math::
 
-        out = x && y
+        out = x \&\& y
 
     Args:
         x(${x_type}): ${x_comment}.
@@ -12082,7 +12082,7 @@ def logical_xor(x, y, out=None, name=None):
 
     .. math::
 
-        out = (x || y) && !(x && y)
+        out = (x || y) \&\& !(x \&\& y)
 
     Args:
         x(${x_type}): ${x_comment}.
