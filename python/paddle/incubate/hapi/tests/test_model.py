@@ -282,7 +282,7 @@ class MyModel(Model):
 
 class LeNetDeclarative(Model):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
-        super(LeNet, self).__init__()
+        super(LeNetDeclarative, self).__init__()
         self.num_classes = num_classes
         self.features = Sequential(
             Conv2D(
@@ -480,9 +480,10 @@ class TestModelFunction(unittest.TestCase):
             fluid.disable_dygraph() if dynamic else None
 
     def test_export_deploy_model(self):
-        model = LeNet()
         for dynamic in [True, False]:
-            fluid.enable_dygraph(dynamic)
+            device = set_device('cpu')
+            model = LeNet()
+            fluid.enable_dygraph(device) if dynamic else None
             if dynamic:
                 model = LeNetDeclarative()
             inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
