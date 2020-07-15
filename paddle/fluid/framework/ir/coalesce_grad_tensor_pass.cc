@@ -122,7 +122,7 @@ class CoalesceGradTensorPass : public ir::Pass {
     PADDLE_ENFORCE_EQ(p_g_dense_grad.size(), num_of_p_g_dense_grad,
                       platform::errors::InvalidArgument(
                           "The number of dense grads is not consistent with "
-                          "before: before(%d), now(%d).",
+                          "previous. Previous(%d), now(%d).",
                           p_g_dense_grad.size(), num_of_p_g_dense_grad));
 
     auto &pinned_var_set =
@@ -135,8 +135,9 @@ class CoalesceGradTensorPass : public ir::Pass {
         RecordGradients(p_g_dense_grad, vars_info, &pinned_var_set);
         PADDLE_ENFORCE_EQ(
             IsUnifiedDtype(sub_param_grad, vars_info), true,
-            platform::errors::InvalidArgument(
-                "The data type of the same group is not consistent."));
+            platform::errors::InvalidArgument("All gradient variable in "
+                                              "kGroupParamsAndDenseGrads, must "
+                                              "have same type."));
         CoalesceTensors(vars_info, sub_param_grad, &result);
       }
     }
@@ -149,10 +150,9 @@ class CoalesceGradTensorPass : public ir::Pass {
     // The Gradients should not be reused during memory optimization.
     for (auto &p_g : sub_param_grad) {
       auto iter = vars_info.find(p_g.second);
-      PADDLE_ENFORCE_EQ(
-          iter != vars_info.end(), true,
-          platform::errors::NotFound("Parameter@Grad %s is not found varinfo.",
-                                     p_g.second));
+      PADDLE_ENFORCE_EQ(iter != vars_info.end(), true,
+                        platform::errors::NotFound(
+                            "Parameter@Grad %s is not found.", p_g.second));
       PADDLE_ENFORCE_EQ(
           !iter->second.empty(), true,
           platform::errors::InvalidArgument(
@@ -161,7 +161,8 @@ class CoalesceGradTensorPass : public ir::Pass {
         PADDLE_ENFORCE_NOT_NULL(
             it->Var(),
             platform::errors::InvalidArgument(
-                "A node of Parameter@Grad %s have no var.", p_g.second));
+                "A node of Parameter@Grad %s does not hold variable.",
+                p_g.second));
         pinned_var_set->insert(it->Var()->Name());
       }
       PADDLE_ENFORCE_EQ(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
@@ -438,13 +439,14 @@ class CoalesceGradTensorPass : public ir::Pass {
     auto grad_iter = vars_info.find(var_name);
     PADDLE_ENFORCE_EQ(
         grad_iter != vars_info.end(), true,
-        platform::errors::NotFound("Var %s is not found varinfo.", var_name));
+        platform::errors::NotFound("Var %s is not found.", var_name));
     PADDLE_ENFORCE_EQ(!grad_iter->second.empty(), true,
                       platform::errors::InvalidArgument(
                           "Var %s's var node is empty.", var_name));
-    PADDLE_ENFORCE_NOT_NULL(grad_iter->second.front()->Var(),
-                            platform::errors::InvalidArgument(
-                                "A node of %s have no var.", var_name));
+    PADDLE_ENFORCE_NOT_NULL(
+        grad_iter->second.front()->Var(),
+        platform::errors::InvalidArgument(
+            "A node of %s does not hold variable.", var_name));
     return grad_iter->second.front()->Var();
   }
 
@@ -484,11 +486,12 @@ class CoalesceGradTensorPass : public ir::Pass {
       params_name.emplace_back(p_g.first);
       grads_name.emplace_back(p_g.second);
       auto next_dtype = GetDtypeOfVar(vars_info, p_g.second);
-      PADDLE_ENFORCE_EQ(next_dtype, dtype,
-                        platform::errors::InvalidArgument(
-                            "All Parameter@Grad should have same dtype, but "
-                            "there are two different type: %d %d.",
-                            next_dtype, dtype));
+      PADDLE_ENFORCE_EQ(
+          next_dtype, dtype,
+          platform::errors::InvalidArgument(
+              "All Parameter@Grad should have same dtype, but "
+              "there are two different type: %s, %s.",
+              DataTypeToString(next_dtype), DataTypeToString(dtype)));
     }
 
     result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();

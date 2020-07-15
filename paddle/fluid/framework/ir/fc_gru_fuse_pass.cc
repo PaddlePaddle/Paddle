@@ -77,9 +77,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       auto* fusion_bias_var = scope.Var(NEW_NAME(bias) + bias->Name());
       auto* out_bias_tensor =
           fusion_bias_var->GetMutable<framework::LoDTensor>();
-      PADDLE_ENFORCE_NOT_NULL(fusion_bias_var,
-                              platform::errors::InvalidArgument(
-                                  "Fusion bias var ptr cannot be nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(
+          fusion_bias_var,
+          platform::errors::InvalidArgument(
+              "Fusion bias variable's pointer cannot be nullptr."));
       auto* gru_bias_var = scope.FindVar(bias->Name());
       auto* fc_bias_var = scope.FindVar(fc_bias->Name());
       PADDLE_ENFORCE_NOT_NULL(gru_bias_var,

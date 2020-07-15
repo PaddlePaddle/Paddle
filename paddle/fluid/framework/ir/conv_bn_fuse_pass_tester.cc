@@ -74,11 +74,13 @@ void TestMain(const std::string& conv_type) {
   PADDLE_ENFORCE_EQ(
       num_bn_nodes_before, 1,
       platform::errors::InvalidArgument(
-          "Node num before(%d) batch norm must 1.", num_bn_nodes_before));
+          "Before conv_bn_fuse_pass, number of batch norm op(%d) must be 1.",
+          num_bn_nodes_before));
   PADDLE_ENFORCE_EQ(
       num_bn_nodes_after, 0,
-      platform::errors::InvalidArgument("Node num after(%d) batch norm must 0.",
-                                        num_bn_nodes_after));
+      platform::errors::InvalidArgument(
+          "After conv_bn_fuse_pass, number of batch norm op(%d) must be 0.",
+          num_bn_nodes_after));
 }
 
 TEST(ConvBNFusePass, conv2d) { TestMain("conv"); }

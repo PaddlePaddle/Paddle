@@ -53,7 +53,8 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   PADDLE_ENFORCE_EQ(
       eltwise_y_in_tensor->dims(), ac_bias_tensor.dims(),
       platform::errors::InvalidArgument(
-          "Tensor eltwise y(%d) and ac bias(%d) must have same dims.",
+          "Tensor elementwise y(%d) and activation bias(%d) must have same "
+          "dimension.",
           eltwise_y_in_tensor->dims().size(), ac_bias_tensor.dims().size()));
 
   auto* scale_tensor = scope->FindVar(ac_scale.Name())->GetMutable<LoDTensor>();

@@ -68,7 +68,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     // Link inputs and outputs.
     PADDLE_ENFORCE_NE(
         subgraph.count(x), 0,
-        platform::errors::NotFound("Detector not find input x of conv2d."));
+        platform::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 
     IR_NODE_LINK_TO(conv_in_node, new_conv_op);          // Input

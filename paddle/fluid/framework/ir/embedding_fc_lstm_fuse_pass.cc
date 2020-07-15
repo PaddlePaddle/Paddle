@@ -68,18 +68,19 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
     const std::string& embeddings = patterns::UniqueKey("Embeddings");
     auto* embeddings_var = scope->Var(embeddings);
-    PADDLE_ENFORCE_NOT_NULL(embeddings_var,
-                            platform::errors::InvalidArgument(
-                                "Embeddings var ptr cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        embeddings_var,
+        platform::errors::InvalidArgument(
+            "Embeddings variable's pointer cannot be nullptr."));
     auto* embeddings_tensor =
         embeddings_var->GetMutable<framework::LoDTensor>();
     // Get WeightX size: [single_embedding, fc_size]
     // and embedding size: [dict_size, single_embedding]
     // and create new size of embeddings eg. [dict_size , hidden_size]
     auto* embedding_var = scope->FindVar(W->Name());
-    PADDLE_ENFORCE_NOT_NULL(embedding_var,
-                            platform::errors::InvalidArgument(
-                                "Embedding var ptr cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        embedding_var, platform::errors::InvalidArgument(
+                           "Embedding variable's pointer cannot be nullptr."));
     const auto& embedding_tensor = embedding_var->Get<framework::LoDTensor>();
 
     const auto& weightx_tensor =
