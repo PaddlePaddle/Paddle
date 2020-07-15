@@ -435,7 +435,9 @@ def _can_auto_checkpoint(program):
         return False
 
     if isinstance(program, compiler.CompiledProgram):
-        if not program._auto_checkpoint or program._program._is_distributed:
+        if not program._auto_checkpoint or \
+                program._program is None or \
+                program._program._is_distributed:
             return False
     else:
         if not program._auto_checkpoint or program._is_distributed:
