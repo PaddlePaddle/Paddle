@@ -115,6 +115,7 @@ class AutoCheckpointChecker(object):
         return "{}/{}/exe/{}".format(self.hdfs_checkpoint_path, self.job_id,
                                      name)
 
+    @property
     def save_checkpoint_inter(self):
         return self._save_checkpoint_inter
 
@@ -264,14 +265,14 @@ class TrainEpochRange(SerializableBase):
     def __init__(self,
                  max_epoch_num,
                  name,
-                 save_checkpoint_inter=15 * 60,
+                 checkpoint_inter=15 * 60,
                  load_last=-1):
         self._max_epoch_num = max_epoch_num
         self._epoch_no = -1  # current epoch_no
         self._name = name
         self._restored_from = None
         self._exe_status = {}
-        self._save_checkpoint_inter = save_checkpoint_inter
+        self._save_checkpoint_inter = checkpoint_inter
         self._last_checkpoint_time = time.time()
 
         self._checker = g_checker
@@ -296,6 +297,7 @@ class TrainEpochRange(SerializableBase):
         _thread_checker()
 
         cp_nos = self._cper.get_checkpoint_no(self._checkpoint_path)
+        logger.info("checkpoint nos:{} load_last:{}".format(cp_nos, load_last))
         if len(cp_nos) >= 1 and abs(load_last) <= len(cp_nos):
             self._cper.load_checkpoint(
                 self._checkpoint_path, [self],
@@ -472,7 +474,6 @@ def _normal_yield(max_epoch_num):
 
 def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
     global g_acp_type
-    logger.info("acp_type:{}".format(g_acp_type))
     if not _get_checker().valid():
         logger.warning(
             "auto checkpoint will take effect  automaticly on PaddleCloud")
@@ -488,14 +489,14 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
         return
 
     g_acp_type = CONST_ACP_TYPE
-    logger.info("acp_type 2:{}".format(g_acp_type))
+    logger.info("acp_type:{}".format(g_acp_type))
 
     global g_train_epoch_range
     try:
         g_train_epoch_range = TrainEpochRange(
             max_epoch_num,
             g_checker.generate_range_name(),
-            save_checkpoint_inter=save_checkpoint_inter)
+            checkpoint_inter=save_checkpoint_inter)
 
         for i in g_train_epoch_range.next():
             yield i

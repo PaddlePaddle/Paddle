@@ -29,15 +29,20 @@ class TrainEpochRangeWrapper(object):
         self._train_epoch_range = acp.TrainEpochRange(
             -1,
             name,
-            save_checkpoint_inter=acp._get_checker().save_checkpoint_inter,
+            checkpoint_inter=acp._get_checker().save_checkpoint_inter,
             load_last=-2)
 
         if self._train_epoch_range.restored_from == acp.CONST_CHECKPOINT:
             self._checkpoint_epoch_no = self._train_epoch_range._epoch_no
 
     def save_checkpoint(self):
+        logger.info(self)
         if self.beyond_restored():
             self._train_epoch_range.save_checkpoint()
+
+    def __str__(self):
+        return "epoch_no:{} checkpoint_epoch_no:{} running_status:{}".format(
+            self._epoch_no, self._checkpoint_epoch_no, self._running_status)
 
     def increment_epoch_no(self):
         self._epoch_no += 1
@@ -50,7 +55,7 @@ class TrainEpochRangeWrapper(object):
 
     def beyond_restored(self):
         if self.is_restored():
-            return t._epoch_no > t._checkpoint_epoch_no
+            return self._epoch_no > self._checkpoint_epoch_no
 
         return True
 
@@ -90,13 +95,14 @@ def _begin(name):
         return False
 
     t, init = _current(name)
-    if not t.is_restored():
-        logger.info("begin dataloader epoch_no:{}".format(t._epoch_no + 1))
-        return True
-
     if init:
-        logger.info("begin dataloader epoch_no:{} checkpoint_epoch_no:{}",
-                    t._epoch_no + 1, t._checkpoint_epoch_no)
+        logger.info("acp_type:{}".format(acp.g_acp_type))
+        if t.is_restored:
+            logger.info("begin dataloader epoch_no:{} checkpoint_epoch_no:{}".
+                        format(t._epoch_no + 1, t._checkpoint_epoch_no))
+        else:
+            logger.info("begin dataloader epoch_no:{}".format(t._epoch_no + 1))
+            return True
 
     if not t.beyond_restored():
         raise StopIteration

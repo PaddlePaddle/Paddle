@@ -99,7 +99,8 @@ class AutoCheckpointBase(unittest.TestCase):
             "PADDLE_EDL_HDFS_NAME": "",
             "PADDLE_EDL_HDFS_UGI": "",
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "checkpoint",
-            "PADDLE_EDL_ONLY_FOR_CE_TEST": "1"
+            "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
         }
         os.environ.update(proc_env)
 
@@ -135,17 +136,6 @@ class AutoCheckpointBase(unittest.TestCase):
                     loss_name=loss.name)
             else:
                 compiled = None
-            """
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            loader = DataLoader(
-                dataset,
-                feed_list=[image, label],
-                places=places,
-                batch_size=BATCH_SIZE,
-                shuffle=True,
-                drop_last=True,
-                num_workers=2)
-            """
             loader = fluid.io.DataLoader.from_generator(
                 feed_list=[image, label],
                 capacity=64,
@@ -171,4 +161,4 @@ class AutoCheckpointBase(unittest.TestCase):
         unique_name.generator = fluid.unique_name.UniqueNameGenerator()
         acp.generator = fluid.unique_name.UniqueNameGenerator()
         acp.g_acp_type = None
-        dacp.g_train_epoch_ranges = {}
+        dacp.g_ranges = {}
