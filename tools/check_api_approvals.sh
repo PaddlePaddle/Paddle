@@ -285,28 +285,13 @@ RUNTYPE_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH|gre
 if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for CMAKELISTS_FILE in ${RUNTYPE_FILE_CHANGED};
     do
-        RUNTYPE_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "^+" |grep -E "RUN_TYPE=EXCLUSIVE|RUN_TYPE=DIST" || true`
+        RUNTYPE_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "^+" |grep -E "RUN_TYPE=EXCLUSIVE|RUN_TYPE=DIST|PROPERTIES[[:space:]]+TIMEOUT" || true`
 	if [[ ${RUNTYPE_ADD} != "" ]];then
 	    RUNTYPE_ADD_LINES="${RUNTYPE_ADD_LINES}\n${CMAKELISTS_FILE}\n${RUNTYPE_ADD}\n"
 	fi
     done
     if [[ ${RUNTYPE_ADD_LINES} != "" ]];then
-        echo_line="You must have one RD (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE to EXCLUSIVE or DIST.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\n"
-	check_approval 1 32428676 45041955
-    fi
-fi
-
-RUNTIME_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH|grep -E "CMakeLists.txt"||true`
-if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    for CMAKELISTS_FILE in ${RUNTIME_FILE_CHANGED};
-    do
-        TIMEOUT_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "^+" |grep -E "PROPERTIES[[:space:]]\+TIMEOUT" || true`
-		if [[ ${TIMEOUT_ADD} != "" ]];then
-			TIMEOUT_ADD_LINES="${TIMEOUT_ADD_LINES}\n${CMAKELISTS_FILE}\n${TIMEOUT_ADD}\n"
-		fi
-    done
-    if [[ ${TIMEOUT_ADD_LINES} != "" ]];then
-        echo_line="You must have one RD (XieYunshen(Recommend) or chalsliu) approval for setting TIMEOUT properties.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\n"
+        echo_line="You must have one QA (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE to EXCLUSIVE or DIST, or setting TIMEOUT properties.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\n"
 	check_approval 1 32428676 45041955
     fi
 fi
