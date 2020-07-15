@@ -74,7 +74,8 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'transpose2', \
     'trilinear_interp', \
     'var_conv_2d', \
-    'warpctc'
+    'warpctc', \
+    'bilateral_slice'
 ]
 
 NO_FP16_CHECK_GRAD_OP_LIST = [
