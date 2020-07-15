@@ -36,23 +36,14 @@ logger = get_logger()
 
 
 class AutoCheckpointTest(AutoCheckpointBase):
-    """
-    def setUp(self):
-        super(AutoCheckpointTest, self).setUp()
-
-    def tearDown(self):
-        super(AutoCheckpointTest, self).tearDown()
-    """
-
     def _run_save_model(self):
         exe, main_prog, startup_prog = self._generate()
-        #print("default main prog:", main_prog)
 
         save_dir = "./run_save_model"
         fs = LocalFS()
 
         fs.delete(save_dir)
-        print("begin _run_save_model")
+        logger.info("begin _run_save_model")
 
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
             exe, main_prog, startup_prog)
@@ -68,11 +59,11 @@ class AutoCheckpointTest(AutoCheckpointBase):
         m2 = PaddleModel(exe, compiled)
         m2.deserialize(save_dir)
 
-        print("end _run_save_model")
+        logger.info("end _run_save_model")
         fs.delete(save_dir)
 
     def _run_save_0(self, break_epoch_no=None):
-        print("begin _run_save_0")
+        logger.info("begin _run_save_0")
         fs = LocalFS()
         save_dir = "./run_save_0"
         fs.delete(save_dir)
@@ -110,10 +101,10 @@ class AutoCheckpointTest(AutoCheckpointBase):
             self.assertEqual(i, break_epoch_no)
 
         fs.delete(save_dir)
-        print("end _run_save_0")
+        logger.info("end _run_save_0")
 
     def _run_load_0(self, started_epoch_no=None):
-        print("begin _run_load_0")
+        logger.info("begin _run_load_0")
         exe, main_prog, startup_prog = self._generate()
 
         fs = LocalFS()
@@ -129,7 +120,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         for i in acp.train_epoch_range(3, 0):
             o = acp._get_train_epoch_range()
 
-            print("_run_load_0 name:", o.name, "epoch_no:", i)
+            logger.info("_run_load_0 name:{} epoch_no:{}".format(o.name, i))
             if started_epoch_no is not None and not check:
                 self.assertEqual(o.get(), started_epoch_no)
                 self.assertEqual(o._load_cp_nos,
@@ -155,7 +146,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
             main_program=compiled)
 
         fs.delete(save_dir)
-        print("begin _run_load_0")
+        logger.info("begin _run_load_0")
 
     def test_basic(self):
         logger.info("begin test_basic")
@@ -268,7 +259,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         for i in acp.train_epoch_range(3, 0):
             o = acp._get_train_epoch_range()
             name = o.name
-            print("_run_save_0 name:", o.name, "epoch_no:", i)
+            logger.info("_run_save_0 name:{} epoch_no:{}".format(o.name, i))
 
             for data in data_loader():
                 fetch = exe.run(fleet.main_program,

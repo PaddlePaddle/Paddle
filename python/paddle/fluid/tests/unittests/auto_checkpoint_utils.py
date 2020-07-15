@@ -49,22 +49,6 @@ def get_logger():
     return logger
 
 
-"""
-# define a random dataset
-class RandomDataset(Dataset):
-    def __init__(self, num_samples):
-        self.num_samples = num_samples
-
-    def __getitem__(self, idx):
-        image = np.random.random([16, 16]).astype('float32')
-        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-        return image, label
-
-    def __len__(self):
-        return self.num_samples
-"""
-
-
 def get_random_images_and_labels(image_shape, label_shape):
     image = np.random.random(size=image_shape).astype('float32')
     label = np.random.random(size=label_shape).astype('int64')

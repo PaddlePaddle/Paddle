@@ -1158,8 +1158,6 @@ class Executor(object):
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
-        #print("program._auto_checkpoint:", program._auto_checkpoint,
-        #      "program._auto_checkpoint_name:", program._auto_checkpoint_name)
         acp._auto_checkpoint(self, program)
 
         # For backward compatibility, run directly.
