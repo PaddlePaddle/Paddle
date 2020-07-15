@@ -17,6 +17,7 @@ Distribute CTR model for test fleet api
 
 from __future__ import print_function
 
+import os
 import shutil
 import tempfile
 import time
@@ -87,13 +88,23 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 use_double_buffer=False)
 
         # build dnn model
+        initializer = int(os.getenv("INITIALIZER", "0"))
+
+        if initializer == 0:
+            init = fluid.initializer.Constant(value=0.01)
+        elif initializer == 1:
+            init = fluid.initializer.Uniform()
+        elif initializer == 2:
+            init = fluid.initializer.Normal()
+        else:
+            raise ValueError("error initializer code: {}".format(initializer))
+
         dnn_layer_dims = [128, 64, 32]
         dnn_embedding = fluid.contrib.layers.sparse_embedding(
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
-                name="deep_embedding",
-                initializer=fluid.initializer.Constant(value=0.01)))
+                name="deep_embedding", initializer=init))
         dnn_pool = fluid.layers.sequence_pool(
             input=dnn_embedding, pool_type="sum")
         dnn_out = dnn_pool
@@ -108,14 +119,12 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        lr_embbding = fluid.layers.embedding(
-            is_distributed=False,
+        lr_embbding = fluid.contrib.layers.sparse_embedding(
             input=lr_data,
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
+                initializer=fluid.initializer.Constant(value=0.01)))
 
         lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
