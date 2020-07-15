@@ -411,9 +411,6 @@ def _elementwise_op(helper):
 
 def add(x, y, alpha=1, out=None, name=None):
     """
-	:alias_main: paddle.add
-	:alias: paddle.add,paddle.tensor.add,paddle.tensor.math.add
-
 Examples:
 
     .. code-block:: python
@@ -556,9 +553,6 @@ Examples:
 
 def div(x, y, out=None, name=None):
     """
-	:alias_main: paddle.div
-	:alias: paddle.div,paddle.tensor.div,paddle.tensor.math.div
-
 Examples:
 
     .. code-block:: python
@@ -681,6 +675,9 @@ for func in [
     proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
     if func.__name__ in ['add']:
+        alias_main = ':alias_main: paddle.%(func)s' % {'func': func.__name__}
+        alias = ':alias: paddle.%(func)s, paddle.tensor.%(func)s, paddle.tensor.math.%(func)s' % {'func': func.__name__}
+
         additional_args_lines = [
             "alpha (int|float, optional): The alpha factor of the input. Default is 1. If alpha is not 1, the equation becomes Out = X + alpha * Y.",
             "out (Variable, optinal): The Variable that stores results of the operation. Default is None. If out is None, \
@@ -700,7 +697,7 @@ for func in [
             :ref:`api_guide_Name` "
         ]
 
-    func.__doc__ = _generate_doc_string_(
+    func.__doc__ = alias_main + """\n""" + alias + """\n""" + _generate_doc_string_(
         op_proto,
         additional_args_lines=additional_args_lines,
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
