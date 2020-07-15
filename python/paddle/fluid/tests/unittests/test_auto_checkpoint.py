@@ -130,6 +130,9 @@ class AutoCheckpointTest(AutoCheckpointBase):
             print("_run_load_0 name:", o.name, "epoch_no:", i)
             if started_epoch_no is not None and not check:
                 self.assertEqual(o.get(), started_epoch_no)
+                self.assertEqual(o._load_cp_nos,
+                                 [i for i in range(started_epoch_no)])
+                self.assertEqual(o._load_last, -1)
                 check = True
 
             for data in data_loader():
@@ -188,10 +191,14 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(checker.hdfs_checkpoint_path)
         self._reset_generator()
         self._run_save_0(break_epoch_no=1)
+        self._reset_generator()
+        self._run_load_0(started_epoch_no=1)
 
         fs.delete(checker.hdfs_checkpoint_path)
         self._reset_generator()
         self._run_save_0(break_epoch_no=2)
+        self._reset_generator()
+        self._run_load_0(started_epoch_no=2)
 
         fs.delete(checker.hdfs_checkpoint_path)
         logger.info("end test_corener_epoch_no")

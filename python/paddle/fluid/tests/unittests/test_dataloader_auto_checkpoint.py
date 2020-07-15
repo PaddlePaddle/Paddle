@@ -146,13 +146,26 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         i = 0
         name = None
+        check = False
         for i in range(3):
             for data in data_loader():
                 self.assertLessEqual(1, i)  # load from checkpoint
                 name = data_loader._auto_checkpoint_name
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
-        self.assertEqual(acp.g_acp_type, None)
+                if started_epoch_no is not None and not check:
+                    o = acp._get_train_epoch_range()
+                    self.assertEqual(
+                        o._load_cp_nos,
+                        [i for i in range(0, started_epoch_no - 1)])
+                    self.assertEqual(o._load_last, -2)
+                    check = True
+
+                if started_epoch_no is None:
+                    o = acp._get_train_epoch_range()
+                    self.assertEqual(self._load_cp_nos, [i for i in range(3)])
+
+        self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
 
         if break_epoch_no is None:
@@ -179,16 +192,17 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         fs.delete(checker.hdfs_checkpoint_path)
 
-    def _test_coreno_epoch(self):
+    def test_coreno_epoch(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
 
-        fs.delete(checker.hdfs_checkpoint_path)
-        self._reset_generator()
-        self._run_save_basic()
+        for i in range(3):
+            fs.delete(checker.hdfs_checkpoint_path)
+            self._reset_generator()
+            self._run_save_basic(break_epoch_no=i)
+            self._reset_generator()
+            self._run_load_basic(started_epoch_no=i)
 
-        self._reset_generator()
-        self._run_load_basic()
         fs.delete(checker.hdfs_checkpoint_path)
 
 

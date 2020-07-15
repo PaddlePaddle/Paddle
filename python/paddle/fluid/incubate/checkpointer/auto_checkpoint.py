@@ -275,6 +275,9 @@ class TrainEpochRange(SerializableBase):
         self._save_checkpoint_inter = checkpoint_inter
         self._last_checkpoint_time = time.time()
 
+        self._load_cp_nos = None
+        self._load_last = load_last
+
         self._checker = g_checker
         if not self._checker.valid():
             return
@@ -296,13 +299,15 @@ class TrainEpochRange(SerializableBase):
 
         _thread_checker()
 
-        cp_nos = self._cper.get_checkpoint_no(self._checkpoint_path)
-        logger.info("checkpoint nos:{} load_last:{}".format(cp_nos, load_last))
-        if len(cp_nos) >= 1 and abs(load_last) <= len(cp_nos):
+        self._load_cp_nos = self._cper.get_checkpoint_no(self._checkpoint_path)
+        logger.info("checkpoint nos:{} load_last:{}".format(self._load_cp_nos,
+                                                            load_last))
+        if len(self._load_cp_nos) >= 1 and abs(load_last) <= len(
+                self._load_cp_nos):
             self._cper.load_checkpoint(
                 self._checkpoint_path, [self],
                 self._checker.trainer_id,
-                checkpoint_no=cp_nos[load_last])
+                checkpoint_no=self._load_cp_nos[load_last])
             self._restored_from = CONST_CHECKPOINT
             logger.info("load tain_epoch_range checkpoint:{}".format(self))
         else:
