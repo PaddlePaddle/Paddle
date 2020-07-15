@@ -143,9 +143,9 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
                      Graph* g) {
     PADDLE_ENFORCE_EQ(
         subgraph.count(quantized_op_input), true,
-        platform::errors::NotFound(
-            "Quantized op input node(%s) not found in QuantDequantFuse pass.",
-            quantized_op_input->name()));
+        platform::errors::NotFound("Quantized op input node(%s) did not find "
+                                   "in QuantDequantFuse pass.",
+                                   quantized_op_input->name()));
     Node* quantized_op_input_node = subgraph.at(quantized_op_input);
     Node* quantized_op_weight_node =
         subgraph.at(pattern.GetPDNode("quantized_op_weight"));
@@ -199,7 +199,7 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
     PADDLE_ENFORCE_EQ(
         valid_scale_size, true,
         platform::errors::InvalidArgument(
-            "TRT int8 quant: Invalid scale size(%d).", weight_scale.size()));
+            "TRT int8 quant: invalid scale size(%d).", weight_scale.size()));
     float* quantized_weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
     for (int j = 0; j < weight_tensor->numel(); j++) {

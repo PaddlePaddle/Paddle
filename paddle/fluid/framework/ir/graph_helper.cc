@@ -369,10 +369,10 @@ size_t GraphNum(const Graph &graph) {
       }
       std::unique_ptr<std::ostream> fout(
           new std::ofstream(FLAGS_print_sub_graph_dir));
-      PADDLE_ENFORCE_EQ(
-          fout->good(), true,
-          platform::errors::Unavailable("Can not open file %s to print graph.",
-                                        FLAGS_print_sub_graph_dir));
+      PADDLE_ENFORCE_EQ(fout->good(), true,
+                        platform::errors::Unavailable(
+                            "Can not open file %s for printing the graph.",
+                            FLAGS_print_sub_graph_dir));
       *fout << out.str();
     }
   }

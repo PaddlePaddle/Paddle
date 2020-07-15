@@ -69,7 +69,7 @@ class Node {
     PADDLE_ENFORCE_EQ(IsVar(), true,
                       platform::errors::InvalidArgument(
                           "Node(%s) must be kVariable type, but not %d.", name_,
-                          static_cast<int> type_));
+                          static_cast<int>(type_)));
     return var_desc_.get();
   }
 
@@ -77,7 +77,7 @@ class Node {
     PADDLE_ENFORCE_EQ(IsOp(), true,
                       platform::errors::InvalidArgument(
                           "Node(%s) must be kOperation type, but not %d.",
-                          name_, static_cast<int> type_));
+                          name_, static_cast<int>(type_)));
     return op_desc_.get();
   }
 
@@ -123,7 +123,7 @@ class Node {
   void RenameVar(const std::string& new_name) {
     PADDLE_ENFORCE_EQ(
         type_ == Type::kVariable && var_desc_, true,
-        platform::errors::InvalidArgument("Must be type of variable."));
+        platform::errors::InvalidArgument("Node must be type of variable."));
     name_ = new_name;
     var_desc_->SetName(new_name);
   }

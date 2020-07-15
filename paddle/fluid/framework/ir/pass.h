@@ -57,7 +57,7 @@ class Pass {
   AttrType &Get(const std::string &attr_name) const {
     PADDLE_ENFORCE_NE(attrs_.find(attr_name), attrs_.end(),
                       platform::errors::InvalidArgument(
-                          "Attr %s not registered for pass.", attr_name));
+                          "Attribute %s not registered for pass.", attr_name));
     try {
       return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
     } catch (boost::bad_any_cast &) {
@@ -123,7 +123,7 @@ class Pass {
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
     PADDLE_ENFORCE_EQ(attrs_.count(attr_name), 0,
                       platform::errors::AlreadyExists(
-                          "Attr %s already set in the pass.", attr_name));
+                          "Attribute %s already set in the pass.", attr_name));
     attrs_[attr_name] = attr;
   }
 

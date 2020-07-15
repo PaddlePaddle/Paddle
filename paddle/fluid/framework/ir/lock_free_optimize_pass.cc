@@ -180,8 +180,8 @@ ir::Node* LockFreeOptimizePass::CreateNewSGDNode(
       grad_node = node;
     }
   }
-  PADDLE_ENFORCE_NOT_NULL(
-      grad_node, platform::errors::NotFound("Can not find control dep var."));
+  PADDLE_ENFORCE_NOT_NULL(grad_node, platform::errors::NotFound(
+                                         "Can not find control dep variable."));
 
   // create a new SGD node
   OpDesc* old_desc = optimize_node->Op();

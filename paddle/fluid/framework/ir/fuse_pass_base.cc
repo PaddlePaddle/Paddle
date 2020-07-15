@@ -27,7 +27,7 @@ void FusePassBase::Init(const std::string& repr, Graph* graph) const {
 Scope* FusePassBase::param_scope() const {
   PADDLE_ENFORCE_EQ(graph_->Has(kParamScopeAttr), true,
                     platform::errors::InvalidArgument(
-                        "Graph must have attr kParamScopeAttr."));
+                        "Graph must have kParamScopeAttr attribute."));
   auto& scope = graph_->Get<framework::Scope>(kParamScopeAttr);
   return &scope;
 }
