@@ -194,6 +194,7 @@ void BasicEngine::Execute() {
           if (!var) {
             continue;
           }
+
           auto iter = accumulators_.find(var.get());
           PADDLE_ENFORCE_EQ(
               iter != accumulators_.end(), true,
