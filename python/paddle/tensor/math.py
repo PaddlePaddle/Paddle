@@ -31,6 +31,8 @@ from ..fluid.layers import acos    #DEFINE_ALIAS
 from ..fluid.layers import asin    #DEFINE_ALIAS
 from ..fluid.layers import ceil    #DEFINE_ALIAS
 from ..fluid.layers import cos    #DEFINE_ALIAS
+from ..fluid.layers import sinh    #DEFINE_ALIAS
+from ..fluid.layers import cosh    #DEFINE_ALIAS
 from ..fluid.layers import cumsum    #DEFINE_ALIAS
 from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
 from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
@@ -69,6 +71,7 @@ __all__ = [
         'atan',
         'ceil',
         'cos',
+        'cosh',
         'cumsum',
         'elementwise_add',
         'elementwise_div',
@@ -96,6 +99,7 @@ __all__ = [
         'scale',
         'sign',
         'sin',
+        'sinh',
         'sqrt',
         'square',
         'stanh',
@@ -353,6 +357,8 @@ __ops__noattr__ = [
     'sin',
     'sqrt',
     'tanh',
+    'sinh',
+    'cosh',
 ]
 
 for _OP in set(__ops__noattr__):
