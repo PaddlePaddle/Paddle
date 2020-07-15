@@ -186,7 +186,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                                     k - 1]] = out[k]
 
                 self.assertTrue(
-                    np.array_equal(static_loss_value, dy_loss_value))
+                    np.allclose(
+                        static_loss_value, dy_loss_value, rtol=1e-3))
                 for key, value in six.iteritems(static_param_init):
                     self.assertTrue(np.array_equal(value, dy_param_init[key]))
                 for key, value in six.iteritems(static_param_updated):
