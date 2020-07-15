@@ -1557,7 +1557,7 @@ class Model(fluid.dygraph.Layer):
                              params_filename=None,
                              model_only=False):
         """
-        Save inference model must in static mode.
+        Save inference model can be in static or dynamic mode.
 
         Args:
             save_dir (str): The directory path to save the inference model.
@@ -1573,27 +1573,29 @@ class Model(fluid.dygraph.Layer):
         Returns:
             list: The fetch variables' name list
         """
-        assert not fluid.in_dygraph_mode(
-        ), 'Save inference model must in static mode!'
+        if fluid.in_dygraph_mode():
+            from paddle.fluid.dygraph import ProgramTranslator
+            prog_trans = ProgramTranslator()
+            prog_trans.save_inference_model(dirname)
+        else:
+            prog = self._adapter._progs.get('test', None)
+            assert prog, \
+                "Model is not ready, please call `model.prepare()` first"
 
-        prog = self._adapter._progs.get('test', None)
-        assert prog, \
-            "Model is not ready, please call `model.prepare()` first"
+            infer_prog = prog.clone(for_test=True)
 
-        infer_prog = prog.clone(for_test=True)
+            input_names = [v.name for v in self._adapter._input_vars['test']]
+            endpoints = self._adapter._endpoints['test']['output']
 
-        input_names = [v.name for v in self._adapter._input_vars['test']]
-        endpoints = self._adapter._endpoints['test']['output']
-
-        return fluid.io.save_inference_model(
-            save_dir,
-            input_names,
-            endpoints,
-            self._adapter._executor,
-            main_program=infer_prog,
-            model_filename=model_filename,
-            params_filename=params_filename,
-            program_only=model_only)
+            return fluid.io.save_inference_model(
+                save_dir,
+                input_names,
+                endpoints,
+                self._adapter._executor,
+                main_program=infer_prog,
+                model_filename=model_filename,
+                params_filename=params_filename,
+                program_only=model_only)
 
     def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
         outputs = []
