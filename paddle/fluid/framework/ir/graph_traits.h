@@ -69,11 +69,11 @@ struct NodesTSIterator
     : public std::iterator<std::forward_iterator_tag, Node *> {
   NodesTSIterator() = default;
   explicit NodesTSIterator(const std::vector<Node *> &source);
-  explicit NodesTSIterator(NodesTSIterator &&other)
+  NodesTSIterator(NodesTSIterator &&other)
       : sorted_(std::move(other.sorted_)), cursor_(other.cursor_) {
     other.cursor_ = 0;
   }
-  explicit NodesTSIterator(const NodesTSIterator &other);
+  NodesTSIterator(const NodesTSIterator &other);
 
   Node &operator*();
   NodesTSIterator &operator++();
