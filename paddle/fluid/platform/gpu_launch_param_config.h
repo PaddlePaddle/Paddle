@@ -39,7 +39,7 @@ inline GpuLaunchParamConfig GetGpuLaunchConfig1D(
     const platform::CUDADeviceContext& context, int element_count) {
   PADDLE_ENFORCE_GT(element_count, 0, platform::errors::InvalidArgument(
                                           "element count should greater than 0,"
-                                          " but received value is:%d",
+                                          " but received value is %d.",
                                           element_count));
 
   const int theory_thread_count = element_count;
