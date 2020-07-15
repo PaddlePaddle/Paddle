@@ -1573,10 +1573,24 @@ class Model(fluid.dygraph.Layer):
         Returns:
             list: The fetch variables' name list
         """
+        def get_feed_fetch(var_list):
+            from paddle.fluid import framework
+            vars = [var for var in var_list if isinstance(var, framework.Variable)]
+            var_name_list = [var.name for var in vars]
+
+            return var_name_list
+
         if fluid.in_dygraph_mode():
             from paddle.fluid.dygraph import ProgramTranslator
             prog_trans = ProgramTranslator()
+
+            func_spec, (concrete_program,
+                    partial_layer) = prog_trans._program_cache.last()
             prog_trans.save_inference_model(save_dir)
+            
+            fetch_var_name_list = get_feed_fetch(concrete_program.outputs)
+            return fetch_var_name_list
+
         else:
             prog = self._adapter._progs.get('test', None)
             assert prog, \
@@ -1587,7 +1601,7 @@ class Model(fluid.dygraph.Layer):
             input_names = [v.name for v in self._adapter._input_vars['test']]
             endpoints = self._adapter._endpoints['test']['output']
 
-            fluid.io.save_inference_model(
+            return fluid.io.save_inference_model(
                 save_dir,
                 input_names,
                 endpoints,
