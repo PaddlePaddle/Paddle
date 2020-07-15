@@ -100,7 +100,16 @@ class FleetDistRunnerBase(object):
                 fluid.clip.set_gradient_clip(
                     clip=fluid.clip.GradientClipByGlobalNorm(2.0))
 
-        optimizer = fluid.optimizer.SGD(LEARNING_RATE)
+        use_decay = int(os.getenv("DECAY", "0"))
+        if use_decay:
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=fluid.layers.exponential_decay(
+                    learning_rate=LEARNING_RATE,
+                    decay_steps=500,
+                    decay_rate=0.969,
+                    staircase=True))
+        else:
+            optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
@@ -260,6 +269,12 @@ class TestFleetBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0.communicate()
         tr1_out, tr1_err = tr1.communicate()
+
+        tr0_ret = tr0.returncode
+        tr1_ret = tr0.returncode
+
+        self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
+        self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")
 
         # close trainer file
         tr0_pipe.close()
