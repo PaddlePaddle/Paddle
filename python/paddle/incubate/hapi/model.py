@@ -1576,7 +1576,7 @@ class Model(fluid.dygraph.Layer):
         if fluid.in_dygraph_mode():
             from paddle.fluid.dygraph import ProgramTranslator
             prog_trans = ProgramTranslator()
-            prog_trans.save_inference_model(dirname)
+            prog_trans.save_inference_model(save_dir)
         else:
             prog = self._adapter._progs.get('test', None)
             assert prog, \
