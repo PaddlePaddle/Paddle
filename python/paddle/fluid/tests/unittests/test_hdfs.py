@@ -59,6 +59,12 @@ class FSTest(unittest.TestCase):
         fs.delete(dir_path)
         self.assertTrue(not fs.is_exist(dir_path))
 
+        fs.mkdir(dir_path)
+        fs.mkdir(new_dir_path)
+        fs.mv(dir_path, new_dir_path, overwrite=True)
+        self.assertTrue(not fs.is_exist(dir_path))
+        self.assertTrue(not fs.is_exist(new_dir_path))
+
     def _test_touch_file(self, fs):
         file_path = os.path.abspath("./test_file")
 

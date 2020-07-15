@@ -102,7 +102,7 @@ class Checkpointer(object):
         if self._fs.need_upload_download():
             self._fs.delete(tmp_path)
             self._fs.upload(cache_path, tmp_path)
-        self._fs.mv(tmp_path, real_path)
+        self._fs.mv(tmp_path, real_path, overwrite=True)
 
         return real_path, max_no
 
