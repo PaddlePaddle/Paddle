@@ -55,7 +55,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         self.assertEqual(acp.g_acp_type, acp.CONST_ACP_TYPE)
         self.assertEqual(acp.g_train_epoch_range, None)
-        self.assertEqual(i, 2)
+        self.assertEqual(i, 1)
 
         # use two
         for i in range(1):
@@ -66,7 +66,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         self.assertEqual(acp.g_acp_type, acp.CONST_ACP_TYPE)
         self.assertEqual(acp.g_train_epoch_range, None)
-        self.assertEqual(i, 2)
+        self.assertEqual(i, 1)
         logger.info("exit _run_acp")
 
     def _run_must_dacp(self):
@@ -87,7 +87,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
         self.assertEqual(acp.g_train_epoch_range, None)
-        self.assertEqual(i, 2)
+        self.assertEqual(i, 1)
 
         # use two
         for i in acp.train_epoch_range(1):
@@ -99,7 +99,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
         self.assertEqual(acp.g_train_epoch_range, None)
-        self.assertEqual(i, 2)
+        self.assertEqual(i, 1)
         logger.info("exit _run_must_dacp")
 
     def _run_save_basic(self, break_epoch_no=None):
