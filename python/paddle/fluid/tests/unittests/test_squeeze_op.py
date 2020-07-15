@@ -70,6 +70,14 @@ class TestSqueezeOp3(TestSqueezeOp):
         self.new_shape = (6, 5, 1, 4)
 
 
+# Correct: The demension of axis is not of size 1 remains unchanged.
+class TestSqueezeOp4(TestSqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (6, 1, 5, 1, 4, 1)
+        self.axes = (1, 2)
+        self.new_shape = (6, 5, 1, 4, 1)
+
+
 class TestSqueezeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
@@ -106,6 +114,24 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             input_1 = np.random.random([5, 1, 10]).astype("int32")
             input = fluid.dygraph.to_variable(input_1)
             output = paddle.squeeze(input, axis=[1])
+            out_np = output.numpy()
+            expected_out = np.squeeze(input_1, axis=1)
+            self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_axis_not_list(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("int32")
+            input = fluid.dygraph.to_variable(input_1)
+            output = paddle.squeeze(input, axis=1)
+            out_np = output.numpy()
+            expected_out = np.squeeze(input_1, axis=1)
+            self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_dimension_not_1(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("int32")
+            input = fluid.dygraph.to_variable(input_1)
+            output = paddle.squeeze(input, axis=(1, 2))
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
             self.assertTrue(np.allclose(expected_out, out_np))

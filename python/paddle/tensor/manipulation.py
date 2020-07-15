@@ -436,9 +436,11 @@ def squeeze(x, axis=None, name=None):
 	:alias_main: paddle.squeeze
 	:alias: paddle.squeeze,paddle.tensor.squeeze,paddle.tensor.manipulation.squeeze
 
-    This OP will squeeze entries of size 1 of input tensor's shape. If axis is provided, will
-    remove the dim(s) by axis that of size 1. If axis is not provided, all dims equal of size 1
-    will be removed.
+    This OP will squeeze the dimension(s) of size 1 of input tensor's shape. 
+
+    If axis is provided, it will remove the dimension(s) by given axis that of size 1. 
+    If the dimension of given axis is not of size 1, the dimension remain unchanged. 
+    If axis is not provided, all dims equal of size 1 will be removed.
 
     .. code-block:: text
 
@@ -462,7 +464,7 @@ def squeeze(x, axis=None, name=None):
 
           Input:
             x.shape = [1, 3, 1, 5]
-            axis = [-2]
+            axis = [-1, -2]
           Output:
             out.shape = [1, 3, 5]
 
