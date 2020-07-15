@@ -46,7 +46,8 @@ class ConvElementwiseAddActFusePassTest(InferencePassTest):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            self.check_output_with_option([True])
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
 
 
 if __name__ == "__main__":

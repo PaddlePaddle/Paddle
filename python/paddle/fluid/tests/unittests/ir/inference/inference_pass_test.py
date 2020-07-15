@@ -78,7 +78,12 @@ class InferencePassTest(unittest.TestCase):
             shape = tensor_shapes[name]
             shape[0] = 1
             tensor = predictor.get_input_tensor(name)
-            tensor.copy_from_cpu(list(self.feeds.values())[i])
+            feed_data = list(self.feeds.values())[i]
+            if type(feed_data) == fluid.LoDTensor:
+                tensor.copy_from_cpu(np.array(feed_data))
+                tensor.set_lod(feed_data.lod())
+            else:
+                tensor.copy_from_cpu(feed_data)
 
         predictor.zero_copy_run()
 
