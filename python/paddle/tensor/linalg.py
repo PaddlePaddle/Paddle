@@ -461,12 +461,12 @@ def dot(x, y, name=None):
        Only support 1-d Tensor(vector).
 
     Parameters:
-        x(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
-        y(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        x(Variable): 1-D ``Tensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
+        y(Variable): 1-D ``Tensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
-        Variable: the calculated result Tensor/LoDTensor.
+        Variable: the calculated result Tensor.
 
     Examples:
 
@@ -476,13 +476,13 @@ def dot(x, y, name=None):
         import paddle.fluid as fluid
         import numpy as np
         
-        with fluid.dygraph.guard():
-          x = fluid.dygraph.to_variable(np.random.uniform(0.1, 1, [10]).astype(np.float32))
-          # [0.94936 0.119406 0.696538 0.611788 0.864026 0.858593 0.198292 0.782601 0.370953 0.97247]
-          y = fluid.dygraph.to_variable(np.random.uniform(1, 3, [10]).astype(np.float32))
-          # [2.94794 1.24812 1.91361 2.56719 2.92583 1.83007 1.23439 2.70771 2.04935 2.66508]
-          z = paddle.dot(x, y)
-          # [15.666201]
+        paddle.enable_imperative()
+        x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
+        y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        z = paddle.dot(x, y)
+        print(z.numpy())
 
     """
     op_type = 'dot'
@@ -682,20 +682,16 @@ def cholesky(x, upper=False, name=None):
             import paddle.fluid as fluid
             import numpy as np
 
-            with fluid.dygraph.guard():
-                a = np.random.rand(3, 3)
-                print(a)
-                # [[0.10548146 0.44426157 0.85944377]
-                #  [0.84469568 0.72855948 0.44987977]
-                #  [0.34449094 0.89552855 0.79255662]]
-                a_t = np.transpose(a, [1, 0])
-                x = np.matmul(a, a_t) + 1e-03 * np.eye(3)
-                x = fluid.dygraph.to_variable(x)
-                out = paddle.cholesky(x, upper=False)
-                # [[0.97372392 0.         0.        ]
-                #  [0.82098946 0.87958958 0.        ]
-                #  [1.1454419  0.40882168 0.26574251]]
-
+            paddle.enable_imperative()
+            a = np.random.rand(3, 3)
+            a_t = np.transpose(a, [1, 0])
+            x_data = np.matmul(a, a_t) + 1e-03
+            x = paddle.imperative.to_variable(x_data)
+            out = paddle.cholesky(x, upper=False)
+            print(out.numpy())
+            # [[1.190523   0.         0.        ]
+            #  [0.9906703  0.27676893 0.        ]
+            #  [1.25450498 0.05600871 0.06400121]]
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
