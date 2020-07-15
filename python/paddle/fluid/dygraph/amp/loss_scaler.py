@@ -15,7 +15,7 @@
 from __future__ import print_function
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _varbase_creator
+from paddle.fluid.framework import _varbase_creator, _dygraph_tracer, dygraph_only
 from paddle.fluid.data_feeder import check_type
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import warnings
@@ -25,6 +25,7 @@ __all__ = ['AmpScaler']
 
 
 class AmpScaler(object):
+    @dygraph_only
     def __init__(
             self,
             enable=True,
@@ -58,13 +59,18 @@ class AmpScaler(object):
             decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n 
                                         accumulated steps with nan or inf gradients. Default is 2.
         """
-        if enable and not core.is_compiled_with_cuda():
+        tracer = _dygraph_tracer()
+        if not tracer:
+            raise Exception(
+                "current_tracer is None, maybe it is not in imperative mode.")
+
+        if enable and not tracer._expected_place.is_gpu_place():
             warnings.warn(
-                'Auto Mixed Precision can only be enabled with Paddle compiled with CUDA.'
-            )
-            self._enable = False
-        else:
-            self._enable = enable
+                'AmpScaler can only be enabled on CUDAPlace, current place is %s, so it makes no effect.'
+                % tracer._expected_place)
+            enable = False
+
+        self._enable = enable
 
         if self._enable:
             assert incr_ratio > 1.0, "The incr_ratio must be > 1.0."
@@ -109,17 +115,13 @@ class AmpScaler(object):
         Args:
             optimizer(Optimizer):  The optimizer used to update parameters.
         """
-        optimize_ops = None
-        params_grads = None
-
         if not self._enable:
-            return optimize_ops, params_grads
+            return optimizer.minimize(*args, **kwargs)
 
         #  unscale the grad
         self._unscale(optimizer)
 
-        optimize_ops = None
-        params_grads = None
+        optimize_ops, params_grads = (None, None)
 
         if self._found_inf:
             self._cache_founf_inf = True

@@ -144,9 +144,9 @@ class TestAmpScaler(unittest.TestCase):
         outs_no_scaler = run_simple_conv(use_scaler=False)
 
         self.assertEqual(outs_with_scaler[0],
-                         [])  # optimize_ops is [] in dygraoh mode
+                         [])  # optimize_ops is [] in dygraph mode
         self.assertEqual(outs_no_scaler[0],
-                         [])  # optimize_ops is [] in dygraoh mode
+                         [])  # optimize_ops is [] in dygraph mode
         for i in range(len(outs_with_scaler[1])):
             # check each grad
             self.assertEqual(

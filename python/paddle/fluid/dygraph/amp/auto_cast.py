@@ -82,7 +82,6 @@ def _update_list(custom_white_list, custom_black_list):
             if op_name in _white_list:
                 _white_list.remove(op_name)
             _black_list.add(op_name)
-    print(_white_list, _black_list)
     return _white_list, _black_list
 
 
@@ -123,16 +122,16 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
                 print(conv.dtype) # FP32
 
     """
-
-    if enable and not core.is_compiled_with_cuda():
-        warnings.warn(
-            'Auto Mixed Precision can only be enabled with Paddle compiled with CUDA.'
-        )
-        enable = False
     tracer = _dygraph_tracer()
     if not tracer:
         raise Exception(
             "current_tracer is None, maybe it is not in imperative mode.")
+
+    if enable and not tracer._expected_place.is_gpu_place():
+        warnings.warn(
+            'amp_guard can only be enabled on CUDAPlace, current place is %s, so it makes no effect.'
+            % tracer._expected_place)
+        enable = False
 
     # use default white_list and black_list if no custom lists provided
     _white_list = WHITE_LIST
