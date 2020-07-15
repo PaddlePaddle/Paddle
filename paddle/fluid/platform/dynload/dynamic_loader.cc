@@ -187,7 +187,7 @@ static inline void* GetDsoHandleFromSearchPath(
 #else
     auto errorno = GetLastError();
 #endif  // !_WIN32
-    lib_name = dso_name.substr(0, dso_name.rfind("."));
+    std::string lib_name = dso_name.substr(0, dso_name.rfind("."));
     if (throw_on_error) {
       // NOTE: Special error report case, no need to change its format
       PADDLE_THROW(platform::errors::PreconditionNotMet(error_msg, lib_name,
