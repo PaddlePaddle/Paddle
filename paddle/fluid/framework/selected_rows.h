@@ -120,9 +120,9 @@ class SelectedRows {
   int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
 
   /*
-   * @brief Get the index of the key from id_to_index_ map
+   * @brief Get the index of the key from id_to_index_ map.
    */
-  inline int64_t GetIndexFromId(int64_t key) const {
+  inline int64_t GetIndexFromId(int64_t key) {
     auto iter = id_to_index_.find(key);
     if (iter == id_to_index_.end()) {
       return -1;
