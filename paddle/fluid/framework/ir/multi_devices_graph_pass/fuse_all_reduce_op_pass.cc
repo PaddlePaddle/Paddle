@@ -64,9 +64,10 @@ class FuseAllReduceOpPass : public ir::Pass {
     PADDLE_ENFORCE_EQ(
         all_reduce_ops.size(), grads.size(),
         platform::errors::Unimplemented(
-            "The number of all_reduce OpHandle is not equal to the "
-            "number of grads. Maybe some gradients are sparse type, "
-            "it is not supported currently."));
+            "The number of all_reduce OpHandle(%d) is not equal to the "
+            "number of grads(%d). Maybe some gradients are sparse type, "
+            "it is not supported currently.",
+            all_reduce_ops.size(), grads.size()));
 
     auto &group_params_grads = graph->Get<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads);
@@ -79,7 +80,10 @@ class FuseAllReduceOpPass : public ir::Pass {
 
     for (auto &group_p_g : group_params_grads) {
       size_t group_size = group_p_g.size();
-      PADDLE_ENFORCE_GT(group_size, static_cast<size_t>(0));
+      PADDLE_ENFORCE_GT(
+          group_size, static_cast<size_t>(0),
+          platform::errors::InvalidArgument(
+              "Parameter and Parameter@grad in one group, must not be empty."));
       std::vector<ir::Node *> group_all_reduce_ops;
       group_all_reduce_ops.reserve(group_size);
       for (auto &p_g : group_p_g) {
@@ -103,26 +107,40 @@ class FuseAllReduceOpPass : public ir::Pass {
     all_reduce_ops.reserve(grads.size());
     for (auto &node : result.Nodes()) {
       if (node->IsOp()) {
-        PADDLE_ENFORCE(node->IsWrappedBy<details::OpHandleBase>());
+        PADDLE_ENFORCE_EQ(
+            node->IsWrappedBy<details::OpHandleBase>(), true,
+            platform::errors::InvalidArgument(
+                "Op Node(%s) should Wrapped by OpHandleBase.", node->Name()));
         auto *all_reduce_op_handle = dynamic_cast<details::AllReduceOpHandle *>(
             &node->Wrapper<details::OpHandleBase>());
         if (all_reduce_op_handle) {
 #if defined(PADDLE_WITH_DGC)
           PADDLE_ENFORCE_NE(
               all_reduce_op_handle->Name(), "sparse_all_reduce",
-              "DGC doesn't support fuse for now, if you want to use DGC "
-              "you need set strategy.fuse_all_reduce_ops = False.");
+              platform::errors::InvalidArgument(
+                  "DGC doesn't support fuse for now, if you want to use DGC "
+                  "you need set strategy.fuse_all_reduce_ops = False."));
 #endif
           auto inputs = details::DynamicCast<details::VarHandle>(
               all_reduce_op_handle->Inputs());
-          PADDLE_ENFORCE_EQ(inputs.size(), num_place);
+          PADDLE_ENFORCE_EQ(inputs.size(), num_place,
+                            platform::errors::InvalidArgument(
+                                "The input size(%d) of all reduce op must "
+                                "equal to place cnt(%d)!",
+                                inputs.size(), num_place));
           // The inputs' name should be the same.
           auto &grad_name = inputs[0]->name();
           for (size_t i = 1; i < inputs.size(); ++i) {
-            PADDLE_ENFORCE_EQ(inputs[i]->name(), grad_name,
-                              "The input name should be the same.");
+            PADDLE_ENFORCE_EQ(
+                inputs[i]->name(), grad_name,
+                platform::errors::InvalidArgument(
+                    "The input name should be the same.diff name: %s %s.",
+                    inputs[i]->name(), grad_name));
           }
-          PADDLE_ENFORCE_NE(grads.count(grad_name), static_cast<size_t>(0));
+          PADDLE_ENFORCE_NE(
+              grads.count(grad_name), static_cast<size_t>(0),
+              platform::errors::InvalidArgument(
+                  "Parameter@grad(%s) must in grad set.", grad_name));
           all_reduce_ops.emplace(grad_name, node);
         }
       }

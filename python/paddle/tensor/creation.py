@@ -98,7 +98,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     helper = LayerHelper("full_like", **locals())
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full_like')
+                'full_like/zeros_like')
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
@@ -107,7 +107,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         attrs={'value': fill_value,
                "dtype": dtype},
         outputs={'Out': [out]})
-
+    out.stop_gradient = True
     return out
 
 
@@ -254,74 +254,44 @@ def zeros(shape, dtype=None, name=None):
     return fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
 
 
-def zeros_like(input, dtype=None, device=None, name=None):
+def zeros_like(x, dtype=None, name=None):
     """
 	:alias_main: paddle.zeros_like
-	:alias: paddle.zeros_like,paddle.tensor.zeros_like,paddle.tensor.creation.zeros_like
+	:alias: paddle.zeros_like, paddle.tensor.zeros_like, paddle.tensor.creation.zeros_like
 
     This function creates a zeros tensor which has identical shape and dtype 
     with `input`.
 
     Args:
-        input(Variable): The input tensor which specifies shape and dtype.The dtype of input can be 
-            bool, float32, float64, int32, int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set bool, float32, float64, int32, int64. 
-            The default value is None, the dtype is the same as input.
-        device(str, optional): Which device to run the operator. The :attr:`device` must be
-            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default value is None.
-        name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
-            Default value is None, the framework set the name of output variable.  
+        x(Variable): The input tensor which specifies shape and dtype. The
+            dtype of input can be bool, float16, float32, float64, int32, int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can
+            be set bool, float16, float32, float64, int32, int64. The default
+            value is None, the dtype is the same as input.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         out(Variable): The tensor variable storing the output.
 
+    Raise:
+        TypeError: If dtype is not bool, float16, float32, float64, int32 or int64.
+
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.fluid as fluid
+        import paddle
+        import numpy as np
 
-          x = fluid.data(name='x', dtype='float32', shape=[3])
-          data = paddle.ones_like(x) # data=[1.0, 1.0, 1.0]
-          data1 = paddle.ones_like(input=x, device="gpu") #data1=[1.0, 1.0. 1.0]
+        paddle.enable_imperative()
+
+        x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
+        out1 = paddle.zeros_like(x) # [1.0, 1.0, 1.0]
+        out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
 
     """
-
-    helper = LayerHelper("zeros_like", **locals())
-
-    attrs = {"value": 0.0}
-    var_dtype = None
-    if dtype is not None:
-        check_dtype(dtype, 'create data type',
-                    ['bool', 'float32', 'float64', 'int32', 'int64'],
-                    'zeros_like')
-        var_dtype = convert_np_dtype_to_dtype_(dtype)
-        attrs["dtype"] = var_dtype
-    else:
-        var_dtype = input.dtype
-
-    out = helper.create_variable_for_type_inference(dtype=var_dtype)
-
-    if device is not None:
-        if device not in ['cpu', 'gpu']:
-            raise ValueError(
-                "The value of 'device' in zeros_op must be cpu or gpu, but received %s."
-                % (device))
-        with fluid.device_guard(device):
-            helper.append_op(
-                type='fill_any_like',
-                inputs={'X': [input]},
-                attrs=attrs,
-                outputs={'Out': [out]})
-            return out
-    helper.append_op(
-        type='fill_any_like',
-        inputs={'X': [input]},
-        attrs=attrs,
-        outputs={'Out': [out]})
-    out.stop_gradient = True
-    return out
+    return full_like(x=x, fill_value=0, dtype=dtype, name=name)
 
 
 def eye(num_rows,
@@ -704,18 +674,19 @@ def triu(input, diagonal=0, name=None):
     return _tril_triu_op(LayerHelper('triu', **locals()))
 
 
-def meshgrid(input, name=None):
+def meshgrid(*args, **kwargs):
     """
 	:alias_main: paddle.meshgrid
 	:alias: paddle.meshgrid,paddle.tensor.meshgrid,paddle.tensor.creation.meshgrid
 
-    This op takes a list of N tensors as input, each of which is 1-dimensional 
+    This op takes a list of N tensors as input *args, each of which is 1-dimensional 
     vector, and creates N-dimensional grids.
     
     Args:
-        input(Variable) : tensors (list of tensor): the shapes of input k tensors are (N1,), 
+        *args(Variable|list of Variable) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
             (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
-        name (str, optional): The default value is None. Normally there is no need for
+        **kwargs (optional): Currently, we only accept name in **kwargs 
+            The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
  
     Returns:
@@ -735,7 +706,7 @@ def meshgrid(input, name=None):
           input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
 
           exe = fluid.Executor(place=fluid.CPUPlace())
-          grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+          grid_x, grid_y = paddle.tensor.meshgrid(x, y)
           res_1, res_2 = exe.run(fluid.default_main_program(),
                                  feed={'x': input_1,
                                        'y': input_2},
@@ -749,41 +720,45 @@ def meshgrid(input, name=None):
           #example 2: in dygraph mode
 
           import paddle
-          import paddle.fluid as fluid
           import numpy as np
+          
+          paddle.enable_imperative()
 
           input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
           input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          with fluid.dygraph.guard():
-              tensor_3 = fluid.dygraph.to_variable(input_3)
-              tensor_4 = fluid.dygraph.to_variable(input_4)
-              grid_x, grid_y = paddle.tensor.meshgrid([tensor_3, tensor_4])
+          tensor_3 = paddle.imperative.to_variable(input_3)
+          tensor_4 = paddle.imperative.to_variable(input_4)
+          grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
           #the shape of grid_x is (100, 200)
           #the shape of grid_y is (100, 200)
 
     """
 
+    if len(args) == 1 and isinstance(args[0], (list, tuple)):
+        args = args[0]
     if in_dygraph_mode():
-        num = len(input)
-        out = core.ops.meshgrid(input, num)
+        num = len(args)
+        out = core.ops.meshgrid(list(args), num)
         return out
 
+    name = kwargs.get("name", None)
     helper = LayerHelper('meshgrid', **locals())
 
-    if not isinstance(input, list):
-        raise TypeError("The type of input in meshgrid should be list.")
+    if not isinstance(args, (list, tuple)):
+        raise TypeError("The type of input args in meshgrid should be list.")
 
-    for id, input_ in enumerate(input):
+    for id, input_ in enumerate(args):
         check_dtype(input_.dtype, 'create data type',
                     ['float16', 'float32', 'float64', 'int32', 'int64'],
                     'meshgrid')
 
-    num = len(input)
+    num = len(args)
     out = [
-        helper.create_variable_for_type_inference(dtype=input[i].dtype)
+        helper.create_variable_for_type_inference(dtype=args[i].dtype)
         for i in range(num)
     ]
-    helper.append_op(type='meshgrid', inputs={'X': input}, outputs={'Out': out})
+    helper.append_op(
+        type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out})
 
     return out
