@@ -36,11 +36,18 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
 
     auto attr = ctx->Attrs();
     auto channel_num = attr.Get<int>("channel_num");
+    PADDLE_ENFORCE_GT(
+        channel_num, 0,
+        platform::errors::InvalidArgument(
+            "Expected channel_num > 0, but received %d.", channel_num));
+
     auto topks = attr.Get<std::vector<int>>("topks");
+    auto num_k = topks.size();
+    PADDLE_ENFORCE_GT(
+        num_k, 0, platform::errors::InvalidArgument(
+                      "Expected topks.size() > 0, but received %zu.", num_k));
 
     auto row_dim = ctx->GetInputDim("ROW");
-
-    auto num_k = topks.size();
     auto row_shape_0 = row_dim[0];
 
     std::vector<int> vec_out_shape;
