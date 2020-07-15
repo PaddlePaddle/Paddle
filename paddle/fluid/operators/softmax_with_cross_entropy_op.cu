@@ -27,9 +27,11 @@ __global__ void CrossEntropyGrad(T* logit_grad, const int64_t* labels,
   CUDA_KERNEL_LOOP(index, n * remain) {
     int idx_n = index / remain;
     int idx_remain = index % remain;
-    int idx = idx_n * d + labels[index] * remain + idx_remain;
-    logit_grad[idx] -=
-        ignore_index == labels[index] ? static_cast<T>(0.) : static_cast<T>(1.);
+    int tmp = labels[index];
+    if (ignore_index != tmp) {
+      int idx = idx_n * d + tmp * remain + idx_remain;
+      logit_grad[idx] -= static_cast<T>(1.);
+    }
   }
 }
 
