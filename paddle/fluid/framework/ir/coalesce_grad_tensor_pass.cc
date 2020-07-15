@@ -439,10 +439,10 @@ class CoalesceGradTensorPass : public ir::Pass {
     auto grad_iter = vars_info.find(var_name);
     PADDLE_ENFORCE_EQ(
         grad_iter != vars_info.end(), true,
-        platform::errors::NotFound("Var %s is not found.", var_name));
+        platform::errors::NotFound("Variable %s is not found.", var_name));
     PADDLE_ENFORCE_EQ(!grad_iter->second.empty(), true,
                       platform::errors::InvalidArgument(
-                          "Var %s's var node is empty.", var_name));
+                          "Variable %s's node is empty.", var_name));
     PADDLE_ENFORCE_NOT_NULL(
         grad_iter->second.front()->Var(),
         platform::errors::InvalidArgument(
