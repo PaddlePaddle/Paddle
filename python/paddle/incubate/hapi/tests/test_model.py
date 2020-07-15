@@ -405,7 +405,7 @@ class TestModelFunction(unittest.TestCase):
             shutil.rmtree(path)
             fluid.disable_dygraph() if dynamic else None
 
-    def test_dynamic_save_static_load(self):
+    def test_dynamic_save_static_load1(self):
         path = tempfile.mkdtemp()
         # for dynamic in [True, False]:
         device = set_device('cpu')
@@ -483,12 +483,14 @@ class TestModelFunction(unittest.TestCase):
         for dynamic in [True, False]:
             device = set_device('cpu')
             model = LeNet()
+            save_dir = 'test_static_tmp_model'
             fluid.enable_dygraph(device) if dynamic else None
             if dynamic:
                 model = LeNetDeclarative()
+                save_dir = 'test_dynamic_tmp_model'
+                # save_dir = self.save_dir_dynamic
             inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
             model.prepare(inputs=inputs)
-            save_dir = tempfile.mkdtemp()
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
 
@@ -497,6 +499,7 @@ class TestModelFunction(unittest.TestCase):
             ori_results = model.test_batch(tensor_img)
 
             model.save_inference_model(save_dir)
+            fluid.disable_dygraph() if dynamic else None
 
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
