@@ -191,7 +191,7 @@ def roll(x, shifts, axis=None, name=None):
     return out
 
 
-def stack(x, axis=0, out=None, name=None):
+def stack(x, axis=0, name=None):
     """
 	:alias_main: paddle.stack
 	:alias: paddle.stack,paddle.tensor.stack,paddle.tensor.manipulation.stack
@@ -275,33 +275,7 @@ def stack(x, axis=0, out=None, name=None):
                 #                [[3.0, 4.0]],
                 #                [[5.0, 6.0]]]
     """
-
-    helper = LayerHelper('stack', **locals())
-    axis = 0 if axis is None else axis
-
-    if not isinstance(x, list) and not isinstance(x, tuple):
-        x = [x]
-    out = helper.create_variable_for_type_inference(x[0].dtype)
-    if not in_dygraph_mode() and \
-            x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-        assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
-                            "number of the elements must be 1, but received %s." % len(x)
-        out_index = helper.create_variable_for_type_inference(dtype="int32")
-        helper.append_op(
-            type='tensor_array_to_tensor',
-            inputs={'X': x[0]},
-            outputs={'Out': [out],
-                     'OutIndex': [out_index]},
-            attrs={'axis': axis,
-                   'use_stack': True})
-    else:
-        helper.append_op(
-            type='stack',
-            inputs={'X': x},
-            outputs={'Y': out},
-            attrs={'axis': axis})
-
-    return out
+    return layers.stack(x, axis, name)
 
 
 def split(input, num_or_sections, dim=-1, name=None):
