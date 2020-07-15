@@ -119,7 +119,7 @@ def ones(shape, dtype=None, name=None):
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
 
     Args:
-        shape(tuple|list|Variable): Shape of output tensor, the data type of shape is int32 or int64.
+        shape(tuple|list|Variable): Shape of output tensor, the data type of shape is int31 or int64.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the data type is 'float32'.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
@@ -133,10 +133,17 @@ def ones(shape, dtype=None, name=None):
           import paddle
           
           paddle.enable_imperative()
-          data1 = paddle.ones(shape=[3, 2]) # [[1., 1.], [1., 1.], [1., 1.]]
-          data2 = paddle.ones(shape=[2, 2], dtype='int32') # [[1, 1], [1, 1]]
+          data1 = paddle.ones(shape=[3, 2]) 
+          # [[1. 1.]
+          #  [1. 1.]
+          #  [1. 1.]]
+          data2 = paddle.ones(shape=[2, 2], dtype='int32') 
+          # [[1 1]
+          #  [1 1]]
           shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
-          data3 = paddle.ones(shape=shape, dtype='int32') # [[1, 1], [1, 1]]
+          data3 = paddle.ones(shape=shape, dtype='int32') 
+          # [[1 1]
+          #  [1 1]]
     """
     if dtype is None:
         dtype = 'float32'
