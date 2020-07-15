@@ -163,7 +163,9 @@ class AutoCheckpointTest(AutoCheckpointBase):
 
         fs.delete(checker.hdfs_checkpoint_path)
         self._reset_generator()
+        self._clear_envs()
         self._run_save_model()
+        self._readd_envs()
 
         fs.delete(checker.hdfs_checkpoint_path)
         self._reset_generator()

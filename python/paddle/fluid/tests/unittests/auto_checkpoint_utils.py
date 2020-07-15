@@ -162,3 +162,9 @@ class AutoCheckpointBase(unittest.TestCase):
         acp.generator = fluid.unique_name.UniqueNameGenerator()
         acp.g_acp_type = None
         dacp.g_ranges = {}
+
+    def _clear_envs(self):
+        os.environ.pop("PADDLE_RUNNING_ENV", None)
+
+    def _readd_envs(self):
+        os.environ["PADDLE_RUNNING_ENV"] = "PADDLE_EDL_AUTO_CHECKPOINT"
