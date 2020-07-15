@@ -242,7 +242,7 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-        -DTHIRD_PARTY_PATH=${THIRD_PARTY_PATH:-build/third_party} \
+        -DTHIRD_PARTY_PATH=${THIRD_PARTY_PATH} \
         -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -252,6 +252,9 @@ EOF
 function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
+    if [ !{PADDLE_ROOT} ];then
+      export THIRD_PARTY_PATH=${PADDLE_ROOT}/build/third_party
+    fi 
     cmake_base $1
 }
 
