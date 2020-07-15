@@ -44,8 +44,8 @@ void SetNumThreads(int num_threads) {
   omp_set_num_threads(real_num_threads);
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
-      "The library (except OPENBLAS, MKLML) is to be implemented, thus "
-      "number of threads can not be set."));
+      "This library (except OPENBLAS, MKLML) is not supported yet, so the"
+      "number of threads cannot be set."));
 #endif
 }
 
