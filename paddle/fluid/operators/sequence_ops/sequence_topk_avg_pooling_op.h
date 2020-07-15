@@ -28,6 +28,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
+static constexpr int TopKPosPaddingId = -1;
 
 namespace details {
 
@@ -39,7 +40,7 @@ static void get_topk_pos(const T* data, int length, int k, int* pos) {
                       std::greater<std::pair<T, int>>>
       topk_queue;
 
-  for (int i = 0; i < length; i++) {
+  for (int i = 0; i < length; ++i) {
     T elem = data[i];
     if (topk_queue.size() < static_cast<size_t>(k)) {
       topk_queue.emplace(elem, i);
@@ -53,13 +54,13 @@ static void get_topk_pos(const T* data, int length, int k, int* pos) {
   }
   // reversely assign value
   int real_k = topk_queue.size();
-  for (int i = real_k - 1; i >= 0; i--) {
+  for (int i = real_k - 1; i >= 0; --i) {
     pos[i] = topk_queue.top().second;
     topk_queue.pop();
   }
-  // fill -1 if needed
-  for (int i = real_k; i < k; i++) {
-    pos[i] = -1;
+  // if length of data is less than k, fill TopKPosPaddingId at the end of pos.
+  for (int i = real_k; i < k; ++i) {
+    pos[i] = TopKPosPaddingId;
   }
 }
 }  // namespace details
@@ -147,13 +148,13 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
                                 r * channel_num * k_num + j * k_num;
 
           details::get_topk_pos<T>(row_data, col_size, max_k, pos_slice_data);
-          if (pos_slice_data[0] == -1) {
+          if (pos_slice_data[0] == TopKPosPaddingId) {
             sum_data[0] = 0.0;
           } else {
             sum_data[0] = row_data[pos_slice_data[0]];
           }
           for (int k = 1; k < max_k; ++k) {
-            if (pos_slice_data[k] == -1) {
+            if (pos_slice_data[k] == TopKPosPaddingId) {
               sum_data[k] = sum_data[k - 1];
             } else {
               sum_data[k] = sum_data[k - 1] + row_data[pos_slice_data[k]];
@@ -222,7 +223,7 @@ class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
 
           for (size_t m = 0; m < k_num; ++m) {
             for (int k = 0; k < topks[m]; ++k) {
-              if (pos_slice_data[k] == -1) {
+              if (pos_slice_data[k] == TopKPosPaddingId) {
                 break;
               } else {
                 in_slice_data[pos_slice_data[k]] += row_data[m] / topks[m];
