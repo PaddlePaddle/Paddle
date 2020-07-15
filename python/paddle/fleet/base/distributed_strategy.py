@@ -14,6 +14,7 @@
 
 from paddle.fleet.proto import distributed_strategy_pb2
 from paddle.fluid.framework import Variable
+import google.protobuf.text_format
 
 
 class DistributedJobInfo(object):
@@ -391,7 +392,7 @@ class DistributedStrategy(object):
     @num_iteration_per_run.setter
     def num_iteration_per_run(self, value):
         if isinstance(value, int):
-            self.strategy.num_iteration_per_run = flag
+            self.strategy.num_iteration_per_run = value
         else:
             print(
                 "WARNING: num_iteration_per_run should have value of int type")
@@ -560,9 +561,9 @@ class DistributedStrategy(object):
         return self.strategy.num_threads
 
     @num_threads.setter
-    def num_threads(self, threads):
+    def num_threads(self, value):
         if isinstance(value, int):
-            self.strategy.num_threads = threads
+            self.strategy.num_threads = value
         else:
             print("WARNING: num_threads should have value of int type")
 
