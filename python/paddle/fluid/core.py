@@ -169,13 +169,13 @@ def run_shell_command(cmd):
     if err:
         return None
     else:
-        return out.decode('utf-8')
+        return out.decode('utf-8').strip()
 
 
 def get_dso_path(core_so, dso_name):
     if core_so and dso_name:
         return run_shell_command("ldd %s|grep %s|awk '{print $3}'" %
-                                 (core_so, dso_name)).strip()
+                                 (core_so, dso_name))
     else:
         return None
 
@@ -225,7 +225,11 @@ def less_than_ver(a, b):
 # The final solution is to upgrade glibc to > 2.22 on the target system.
 if platform.system().lower() == 'linux' and less_than_ver(get_glibc_ver(),
                                                           '2.23'):
-    pre_load('libgomp')
+    try:
+        pre_load('libgomp')
+    except Exception as e:
+        # NOTE(zhiqiu): do not abort if failed, since it may success when import core_avx.so
+        sys.stderr.write('Error: Can not preload libgomp.so')
 
 load_noavx = False
 
