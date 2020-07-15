@@ -174,10 +174,6 @@ void prefetchs(const std::vector<std::string>& id_var_names,
                const std::vector<std::string>& endpoints,
                const framework::ExecutionContext& context,
                const framework::Scope& scope) {
-  PADDLE_ENFORCE_GT(id_var_names.size(), 0, "");
-  PADDLE_ENFORCE_EQ(id_var_names.size(), out_var_names.size(), "");
-  PADDLE_ENFORCE_EQ(table_names.size(), endpoints.size(), "");
-
   auto vec_dim_1 = 0;
   framework::Variable* var = scope.FindVar(persistable_var_name);
 
@@ -214,10 +210,10 @@ void prefetchs(const std::vector<std::string>& id_var_names,
 
     for (int64_t i = 0; i < id_tensor->numel(); ++i) {
       if (id_data[i] < 0) {
-        PADDLE_THROW(
+        PADDLE_THROW(platform::errors::OutOfRange(
             "Variable value (input) of OP(embedding) "
             "expected in [0, int64], but got %ld. Please check input value.",
-            ids[i]);
+            ids[i]));
       }
       ids.push_back(id_data[i]);
       ids_union.push_back(id_data[i]);

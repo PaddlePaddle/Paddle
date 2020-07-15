@@ -22,14 +22,11 @@ class LookupSparseTableMergeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInputs("X"),
-        platform::errors::InvalidArgument(
-            "Input(X) of LookupSparseTableMergeOp should not be null."));
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        platform::errors::InvalidArgument(
-            "Output(Out) of LookupSparseTableMergeOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
+                      "Input(X) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) should not be null.");
+
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X").front(),
                       framework::proto::VarType::SELECTED_ROWS,
                       platform::errors::InvalidArgument(
