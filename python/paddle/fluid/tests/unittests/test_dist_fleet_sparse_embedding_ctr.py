@@ -19,7 +19,6 @@ import unittest
 from test_dist_fleet_base import TestFleetBase
 
 
-@unittest.skip(reason="Skip unstable ut")
 class TestDistMnistSync2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "sync"
@@ -158,7 +157,6 @@ class TestDistMnistAsync2x2WithUnifrom(TestFleetBase):
             check_error_log=True)
 
 
-@unittest.skip(reason="Skip unstable ut")
 class TestDistMnistAsync2x2WithGauss(TestFleetBase):
     def _setup_config(self):
         self._mode = "async"

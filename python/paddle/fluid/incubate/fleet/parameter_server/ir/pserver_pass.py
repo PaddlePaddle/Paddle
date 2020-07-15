@@ -718,7 +718,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
     def add_large_scale_op(block, global_block, table_name, value_names,
                            acture_names, grad, is_entry, opt_idx):
         ids = global_block.create_var(
-            name="kSparseIDs",
+            name="kSparseIDs@{}".format(table_name),
             persistable=False,
             dtype="int64",
             shape=[1, 1],

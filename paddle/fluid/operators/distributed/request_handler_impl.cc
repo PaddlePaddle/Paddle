@@ -38,7 +38,6 @@ namespace distributed {
 // define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
 // to directory specified.
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
-constexpr char SPARSE_IDS[] = "kSparseIDs";
 
 bool RequestSendHandler::Handle(const std::string& varname,
                                 framework::Scope* scope,

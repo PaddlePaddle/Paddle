@@ -137,17 +137,18 @@ class GaussianInitializer : public Initializer {
       seed_ = std::random_device()();
     }
 
-    random_engine_->seed(seed_);
-    dist_ = std::make_shared<std::normal_distribution<float>>(mean_, std_);
+    random_engine_.seed(seed_);
+    dist_ = std::normal_distribution<float>(mean_, std_);
   }
 
-  float GetValue() override { return (*dist_)(*random_engine_); }
+  float GetValue() override { return dist_(random_engine_); }
 
  private:
   float std_;
   float mean_;
-  std::shared_ptr<std::minstd_rand> random_engine_;
-  std::shared_ptr<std::normal_distribution<float>> dist_;
+
+  std::minstd_rand random_engine_;
+  std::normal_distribution<float> dist_;
 };
 
 class FillConstantInitializer : public Initializer {
