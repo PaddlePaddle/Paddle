@@ -1587,7 +1587,7 @@ class Model(fluid.dygraph.Layer):
             input_names = [v.name for v in self._adapter._input_vars['test']]
             endpoints = self._adapter._endpoints['test']['output']
 
-            return fluid.io.save_inference_model(
+            fluid.io.save_inference_model(
                 save_dir,
                 input_names,
                 endpoints,
