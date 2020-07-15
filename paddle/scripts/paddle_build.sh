@@ -212,7 +212,7 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
-        -DWITH_LITE=${WITH_LITE:-ON}
+        -DWITH_LITE=${WITH_LITE:-OFF}
         -DLITE_GIT_TAG=develop
     ========================================
 EOF
@@ -243,7 +243,7 @@ EOF
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
         -DLITE_GIT_TAG=develop \
-        -DWITH_LITE=${WITH_LITE:-ON};build_error=$?
+        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
