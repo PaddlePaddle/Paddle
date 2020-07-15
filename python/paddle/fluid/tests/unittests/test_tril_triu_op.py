@@ -63,7 +63,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
         "diagonal: TypeError":
         "diagonal in {} must be a python Int".format(op_type),
         "input: ValueError":
-        "input shape in {} must be at least 2-D".format(op_type),
+        "x shape in {} must be at least 2-D".format(op_type),
     }
 
     class FailureCase(unittest.TestCase):
@@ -71,7 +71,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
             data = fluid.data(shape=Xshape, dtype='float64', name=cls_name)
             with self.assertRaisesRegexp(
                     eval(expected.split(':')[-1]), errmsg[expected]):
-                getattr(tensor, op_type)(input=data, diagonal=diagonal)
+                getattr(tensor, op_type)(x=data, diagonal=diagonal)
 
     class SuccessCase(TrilTriuOpDefaultTest):
         def initTestCase(self):
