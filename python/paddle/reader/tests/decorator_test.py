@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import time
 import unittest
 import functools
@@ -171,8 +172,9 @@ class TestMultiProcessReader(unittest.TestCase):
         self.assertEqual(sorted(self.samples), sorted(results))
 
     def test_distributed_batch_reader(self):
-        self.reader_test(use_pipe=False)
-        self.reader_test(use_pipe=True)
+        if sys.platform != 'win32':
+            self.reader_test(use_pipe=False)
+            self.reader_test(use_pipe=True)
 
 
 if __name__ == '__main__':

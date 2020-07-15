@@ -620,7 +620,7 @@ def assign(input, output=None):
     return output
 
 
-def fill_constant(shape, dtype, value, force_cpu=False, out=None):
+def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     """
 	:alias_main: paddle.fill_constant
 	:alias: paddle.fill_constant,paddle.tensor.fill_constant,paddle.tensor.creation.fill_constant
@@ -638,12 +638,14 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
-        value(float16|float32|float64|int32|int64|Variable): The constant value used to initialize 
+        value(bool|float|int|Variable): The constant value used to initialize 
             the Tensor to be created. If value is an Variable, it should be an 1-D Tensor.
         force_cpu(bool): data should be on CPU if it's true, default value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: Tensor which is created according to shape and dtype.
@@ -666,19 +668,16 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
-          shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
+          shape = fluid.layers.fill_constant([2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
           
           # attr value is an Variable Tensor.
           val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
           data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
-    inputs = {}
+
     attrs = {'force_cpu': force_cpu}
-    if isinstance(value, Variable):
-        inputs['ValueTensor'] = value
-    else:
-        attrs['value'] = float(value)
+    if not isinstance(value, Variable):
         if convert_dtype(dtype) in ['int64', 'int32']:
             attrs['str_value'] = str(int(value))
         else:
@@ -702,13 +701,19 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         out.stop_gradient = True
         return out
 
+    helper = LayerHelper("fill_constant", **locals())
+    inputs = {}
+    if isinstance(value, Variable):
+        inputs['ValueTensor'] = value
+
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
+
     if isinstance(shape, Variable):
-        check_variable_and_dtype(shape, 'shape', ['int32', 'int64'],
-                                 'fill_constant')
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
+
     if out is not None:
         check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
                                  'fill_constant')
@@ -1048,7 +1053,7 @@ def ones(shape, dtype, force_cpu=False):
     return fill_constant(value=1.0, **locals())
 
 
-def zeros(shape, dtype, force_cpu=False):
+def zeros(shape, dtype, force_cpu=False, name=None):
     """
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
     Its :attr:`stop_gradient` will be set to True to stop gradient computation.
@@ -1060,6 +1065,8 @@ def zeros(shape, dtype, force_cpu=False):
         force_cpu (bool, optional): Whether force to store the output tensor in CPU memory.
             If :attr:`force_cpu` is False, the output tensor will be stored in running device memory.
             Default: False.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
@@ -1070,10 +1077,6 @@ def zeros(shape, dtype, force_cpu=False):
           import paddle.fluid as fluid
           data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
     """
-    check_type(shape, 'shape', (list, tuple), 'zeros')
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'zeros')
     return fill_constant(value=0.0, **locals())
 
 
@@ -1387,7 +1390,7 @@ def range(start, end, step, dtype):
     return out
 
 
-def linspace(start, stop, num, dtype):
+def linspace(start, stop, num, dtype=None, name=None):
     """
     This OP return fixed number of evenly spaced values within a given interval.
 
@@ -1398,7 +1401,10 @@ def linspace(start, stop, num, dtype):
             or a tensor of shape [1] with input data type float32, float64.
         num(int|Variable): The input :attr:`num` is given num of the sequence. It is an int scalar, \
             or a tensor of shape [1] with type int32.
-        dtype(string): The data type of output tensor, it could be 'float32' and 'float64'.
+        dtype(np.dtype|core.VarDesc.VarType|str): The data type of output tensor, it could be 'float32' and 'float64'.
+            Default: if None, the data type is `float32`.
+        name(str, optional): Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name`.Default: None.
 
     Returns:
         Variable, the output data type will be float32, float64.: The 1-D tensor with fixed number of evenly spaced values, \
@@ -1413,27 +1419,23 @@ def linspace(start, stop, num, dtype):
              data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
 
     """
-    helper = LayerHelper("linspace", **locals())
-
-    check_type(start, 'start', (Variable, float, int), linspace)
-    check_type(stop, 'stop', (Variable, float, int), linspace)
-    check_type(num, 'num', (Variable, float, int), linspace)
-
+    if dtype is None:
+        dtype = 'float32'
     if not isinstance(start, Variable):
         start = fill_constant([1], dtype, start)
-    else:
-        check_variable_and_dtype(start, "start", ["float32", "float64"],
-                                 "linspace")
-
     if not isinstance(stop, Variable):
         stop = fill_constant([1], dtype, stop)
-    else:
-        check_variable_and_dtype(stop, "stop", ["float32", "float64"],
-                                 "linspace")
     if not isinstance(num, Variable):
         num = fill_constant([1], 'int32', num)
-    else:
-        check_variable_and_dtype(num, "num", ["int32"], "linspace")
+    if in_dygraph_mode():
+        return core.ops.linspace(start, stop, num)
+
+    helper = LayerHelper("linspace", **locals())
+
+    check_dtype(start.dtype, 'start', ['float32', 'float64'], 'linspace')
+    check_dtype(stop.dtype, 'stop', ['float32', 'float64'], 'linspace')
+    check_dtype(num.dtype, 'num', ['int32', 'int64'], 'linspace')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'linspace')
 
     out = helper.create_variable_for_type_inference(dtype=start.dtype)
 
@@ -1452,14 +1454,17 @@ def zeros_like(x, out=None):
     with `x`.
 
     Args:
-        x(Variable): The input tensor which specifies shape and dtype, the input data dtype could be bool, float32, float64, int32, int64.
-        out(Variable, optional): If is :attr:`None` , the op will create the variable as output, the data type and shape of \
-            this variable will be same as input :attr:`x`. If is a tensor, the data type and shape need to be same as input :attr:`x`. 
-            The default value is :attr:`None` .
+        x(Variable): The input tensor which specifies shape and dtype, the
+            input data dtype could be bool, float32, float64, int32, int64.
+        out(Variable, optional): If is :attr:`None` , the op will create the
+            variable as output, the data type and shape of this variable will
+            be same as input :attr:`x`. If is a tensor, the data type and shape
+            need to be same as input :attr:`x`. The default value is :attr:`None` .
 
     Returns:
-        Variable: The N-D tensor, the element in tensor is related to input data type, if the input data type is bool, \
-            the output value is False, otherwise is zero. The output shape is the same as the input.
+        Variable: The N-D tensor, the element in tensor is related to input
+            data type, if the input data type is bool, the output value is
+            False, otherwise is zero. The output shape is the same as the input.
 
     Examples:
         .. code-block:: python
@@ -1478,7 +1483,7 @@ def zeros_like(x, out=None):
     else:
         check_variable_and_dtype(
             out, "out", ['bool', 'float32', 'float64', 'int32', 'int64'],
-            'ones_like')
+            'zeros_like')
 
     helper.append_op(
         type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})

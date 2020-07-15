@@ -96,8 +96,9 @@ struct NCCLContextMap {
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
                           size_t num_trainers = 1, size_t trainer_id = 0) {
-    PADDLE_ENFORCE_EQ(!places.empty(), true, platform::errors::InvalidArgument(
-                                                 "The NCCL place is empty."));
+    PADDLE_ENFORCE_EQ(!places.empty(), true,
+                      platform::errors::InvalidArgument(
+                          "The NCCL place should not be empty."));
     order_.reserve(places.size());
     for (auto &p : places) {
       int dev_id = BOOST_GET_CONST(CUDAPlace, p).device;
@@ -276,8 +277,9 @@ class NCCLCommunicator {
 
     PADDLE_ENFORCE_GT(
         inter_trainers_num, 1,
-        platform::errors::InvalidArgument("inter_trainers_num:%llu must > 1",
-                                          inter_trainers_num));
+        platform::errors::InvalidArgument(
+            "The inter_trainers_num:%llu should be larger than 1.",
+            inter_trainers_num));
 
     int inter_trainer_id = trainer_id % inter_trainers_num;
     for (size_t i = 0; i < inter_nccl_ids.size(); i++) {

@@ -33,7 +33,7 @@ from .layers import ops
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
 from .dygraph import no_grad
-from .dygraph.learning_rate_scheduler import LearningRateDecay
+from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpochDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -149,17 +149,17 @@ class Optimizer(object):
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
         if isinstance(self._learning_rate, LearningRateDecay):
-            var_tmp = None
-            if framework.in_dygraph_mode():
+            state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
+
+            if not isinstance(self._learning_rate, _LearningRateEpochDecay):
+                var_tmp = None
                 var_temp = framework._varbase_creator(
                     None, name='global_step', dtype='int32')
-            else:
-                var_temp = Variable(None, name='global_step', dtype='int32')
 
-            tensor.fill_constant(
-                [1], "int32", self._learning_rate.step_num, out=var_temp)
+                tensor.fill_constant(
+                    [1], "int32", self._learning_rate.step_num, out=var_temp)
 
-            state_dict['global_step'] = var_temp
+                state_dict['global_step'] = var_temp
         return state_dict
 
     @framework.dygraph_only
@@ -193,30 +193,28 @@ class Optimizer(object):
         '''
 
         if isinstance(self._learning_rate, LearningRateDecay):
-            assert 'global_step' in state_dict, \
-                    'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
-            global_step = state_dict['global_step']
+            self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
-            if isinstance(global_step, core.VarBase):
-                step_np = global_step
-                step_np = np.array(step_np.value().get_tensor())
-                assert step_np.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( step_np.shape )
+            if not isinstance(self._learning_rate, _LearningRateEpochDecay):
+                assert 'global_step' in state_dict, \
+                        'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
+                global_step = state_dict['global_step']
 
-                self._learning_rate.step_num = int(step_np[0])
-            elif isinstance(global_step, Variable):
-                step_np = global_step.numpy()
-                assert step_np.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( step_np.shape )
-                self._learning_rate.step_num = step_np[0]
-            elif isinstance(global_step, np.ndarray):
-                assert global_step.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( global_step.shape )
-                self._learning_rate.step_num = global_step[0]
-            else:
-                raise RuntimeError(
-                    "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
-                    type(global_step))
+                if isinstance(global_step, Variable):
+                    step_np = global_step
+                    step_np = np.array(step_np.value().get_tensor())
+                    assert step_np.shape == (1,),  \
+                            "global step shape is (1,), the shape is {}".format( step_np.shape )
+
+                    self._learning_rate.step_num = int(step_np[0])
+                elif isinstance(global_step, np.ndarray):
+                    assert global_step.shape == (1,),  \
+                            "global step shape is (1,), the shape is {}".format( global_step.shape )
+                    self._learning_rate.step_num = global_step[0]
+                else:
+                    raise RuntimeError(
+                        "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
+                        type(global_step))
 
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
@@ -423,11 +421,14 @@ class Optimizer(object):
 
         """
         current_lr = self._global_learning_rate()
-        if current_lr:
+        if isinstance(current_lr, framework.Variable):
             return self._global_learning_rate().numpy()[0]
 
         if isinstance(self._learning_rate, float):
             return self._learning_rate
+        elif isinstance(self._learning_rate, _LearningRateEpochDecay):
+            step_lr = self._learning_rate()
+            return step_lr.numpy()[0]
         else:
             step_lr = self._learning_rate.step()
             if isinstance(step_lr, (float, int)):
@@ -2892,7 +2893,7 @@ class FtrlOptimizer(Optimizer):
                 "LinearAccumOut": linear_acc
             },
             attrs={"l1": self._l1,
-                   "l2": self._l1,
+                   "l2": self._l2,
                    "lr_power": self._lr_power},
             stop_gradient=True)
 
