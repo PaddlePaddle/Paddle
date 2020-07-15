@@ -31,9 +31,10 @@ struct GpuLaunchConfig {
 };
 
 inline GpuLaunchConfig getGpuLaunchConfig(
-    const int N, const framework::ExecutionContext& ctx) {
+    const int N, const framework::ExecutionContext& ctx,
+    int max_threads = 1024) {
   int threads =
-      std::min(1024, ctx.cuda_device_context().GetMaxThreadsPerBlock());
+      std::min(max_threads, ctx.cuda_device_context().GetMaxThreadsPerBlock());
   int physical_thread_count =
       std::min(ctx.cuda_device_context().GetMaxPhysicalThreadCount(), N);
   int blocks = std::min((physical_thread_count + threads - 1) / threads,
