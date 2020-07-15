@@ -35,7 +35,7 @@ __all__ = [
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
     'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler', 'batch_fc',
-    '_pull_box_extended_sparse'
+    '_pull_box_extended_sparse', 'bilateral_slice'
 ]
 
 
@@ -1409,3 +1409,65 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
     if len(outs) == 1:
         return outs[0], outs_extend[0]
     return outs, outs_extend
+
+
+def bilateral_slice(x, guide, grid, has_offset, name=None):
+    """
+    :alias_main: paddle.nn.functional.bilateral_slice
+	:alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
+	:old_api: paddle.fluid.layers.bilateral_slice
+
+    This operation implements bilateral slicing on the input according to the guide map.
+    For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_
+
+    Args:
+        x(Variable): The input tensor, which is a 4-D tensor with shape
+                     [N, C, H, W], N is the batch size, C is the channel
+                     number, H and W is the feature height and width.
+                     The data type is float32 and float64.
+        guide(Variable): Input grid tensor of shape [N, H, W]. The
+                        data type is float32 and float64.
+        grid(Variable): Input grid tensor of shape [N, C, D, H, W]. The
+                        data type is float32 and float64.
+        has_offset(bool): Whether to slice with affine offset.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Variable: Output of shape [N, C, H, W]. The data type is same as input tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x = fluid.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
+            guide = fluid.data(name='guide', shape=[None, 101, 60], dtype='float32')
+            grid = fluid.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
+
+            # without offset
+            output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=False)
+            
+            # has offset
+            output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=True)
+
+    """
+    helper = LayerHelper("bilateral_slice", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'bilateral_slice')
+    check_variable_and_dtype(guide, 'guide', ['float32', 'float64'],
+                             'bilateral_slice')
+    check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
+                             'bilateral_slice')
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    inputs = {'X': x, 'Guide': guide, 'Grid': grid}
+
+    helper.append_op(
+        type='bilateral_slice',
+        inputs=inputs,
+        attrs={'has_offset': has_offset},
+        outputs={'Out': out})
+    return out

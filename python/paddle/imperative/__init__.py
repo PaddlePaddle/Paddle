@@ -16,7 +16,7 @@
 __all__ = [
     'BackwardStrategy', 'enabled', 'grad', 'guard', 'LayerList', 'load', 'save',
     'prepare_context', 'to_variable', 'TracedLayer', 'no_grad', 'ParallelEnv',
-    'ProgramTranslator', 'declarative', 'DataParallel'
+    'ProgramTranslator', 'declarative', 'DataParallel', 'TranslatedLayer', 'jit'
 ]
 
 __all__ += [
@@ -31,6 +31,7 @@ from ..fluid.dygraph.checkpoint import save_dygraph as save
 from ..fluid.dygraph.parallel import prepare_context, ParallelEnv, DataParallel
 from ..fluid.dygraph.jit import TracedLayer, declarative
 from ..fluid.dygraph import ProgramTranslator
+from . import jit
 
 from ..fluid.dygraph.learning_rate_scheduler import NoamDecay, PiecewiseDecay, NaturalExpDecay, ExponentialDecay, \
         InverseTimeDecay, PolynomialDecay, CosineDecay

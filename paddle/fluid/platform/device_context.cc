@@ -103,9 +103,9 @@ DeviceContextPool::DeviceContextPool(
 #ifdef PADDLE_WITH_CUDA
       EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_, p);
 #else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "'CUDAPlace is not supported. Please re-compile with WITH_GPU."
-          "option"));
+      PADDLE_THROW(
+          platform::errors::Unimplemented("CUDAPlace is not supported. Please "
+                                          "re-compile with WITH_GPU option."));
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
 #ifdef PADDLE_WITH_CUDA
@@ -113,8 +113,8 @@ DeviceContextPool::DeviceContextPool(
           &device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
-          "'CUDAPlace' is not supported. Please re-compile with WITH_GPU."
-          "option"));
+          "CUDAPlace is not supported. Please re-compile with WITH_GPU "
+          "option."));
 #endif
     }
   }
