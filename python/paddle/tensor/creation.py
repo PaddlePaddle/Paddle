@@ -83,7 +83,8 @@ def full_like(x, fill_value, dtype=None, name=None):
           paddle.enable_imperative()  # Now we are in imperative mode 
           input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
           output = paddle.full_like(input, 2.0)
-          #output result : [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
+          # [[2. 2. 2.]
+          #  [2. 2. 2.]]
     """
 
     if dtype is None:
@@ -387,19 +388,26 @@ def full(shape, fill_value, dtype=None, name=None):
           import paddle
 
           paddle.enable_imperative()  # Now we are in imperative mode
-          data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') # data1=[[0],[0]]
+          data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
+          #[[0]
+          # [0]]
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = paddle.fill_constant([1], "int32", 2)
-          data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[1.5, 1.5]
+          data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5)
+          # [1.5 1.5]
 
           # attr shape is an Variable Tensor.
-          shape = paddle.fill_constant([2], "int32", 2) # shape=[2,2]
-          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
+          shape = paddle.fill_constant([2], "int32", 2)
+          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
+          # [[True True] 
+          #  [True True]]
           
           # attr value is an Variable Tensor.
-          val = paddle.fill_constant([1], "float32", 2.0) # val=[2.0]
-          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32') #data5=[[2.0],[2.0]]
+          val = paddle.fill_constant([1], "float32", 2.0)
+          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32') i
+          # [[2.0] 
+          #  [2.0]]
     """
 
     helper = LayerHelper("full", **locals())
