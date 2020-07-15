@@ -15,7 +15,7 @@
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
 from paddle.fluid.framework import Variable, core
-from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
+from paddle.fluid.layers import Assert, cast, control_flow, logical_and, logical_not, logical_or, nn
 
 
 def convert_while_loop(cond, body, loop_vars):
@@ -259,3 +259,15 @@ def convert_var_dtype(var, dtype):
         return cast(var, dtype=cast_map[dtype])
     else:
         return eval('{}(var)'.format(dtype))
+
+
+def convert_assert(cond, message=""):
+    """
+    A function representation of a Python ``assert`` statement.
+    """
+    if isinstance(cond, Variable):
+        cond = cast(cond, "bool")
+        # NOTE: message is not used because Paddle Assert has no corresponding parameter to use.
+        return Assert(cond)
+    else:
+        assert cond, message
