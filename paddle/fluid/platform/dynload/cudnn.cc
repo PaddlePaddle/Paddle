@@ -50,7 +50,6 @@ CUDNN_DNN_ROUTINE_EACH_R7(DEFINE_WRAP);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DEFINE_WRAP);
 #endif
 
-#ifdef PADDLE_USE_DSO
 bool HasCUDNN() {
   std::call_once(cudnn_dso_flag,
                  []() { cudnn_dso_handle = GetCUDNNDsoHandle(); });
@@ -64,9 +63,6 @@ void EnforceCUDNNLoaded(const char* fn_name) {
           "Cannot load cudnn shared library. Cannot invoke method %s.",
           fn_name));
 }
-#else
-bool HasCUDNN() { return true; }
-#endif
 
 }  // namespace dynload
 }  // namespace platform

@@ -30,9 +30,9 @@ class TestFlipOp_API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            dims = [0]
+            axis = [0]
             input = fluid.data(name='input', dtype='float32', shape=[2, 3])
-            output = paddle.flip(input, dims)
+            output = paddle.flip(input, axis)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
@@ -68,7 +68,7 @@ class TestFlipOp(OpTest):
         self.outputs = {'Out': self.calc_ref_res()}
 
     def init_attrs(self):
-        self.attrs = {"dims": self.dims}
+        self.attrs = {"axis": self.axis}
 
     def test_check_output(self):
         self.check_output()
@@ -78,11 +78,11 @@ class TestFlipOp(OpTest):
 
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 3)
-        self.dims = [0, 1]
+        self.axis = [0, 1]
 
     def calc_ref_res(self):
         res = self.inputs['X']
-        for axis in self.dims:
+        for axis in self.axis:
             res = np.flip(res, axis)
         return res
 
@@ -90,25 +90,37 @@ class TestFlipOp(OpTest):
 class TestFlipOpAxis1(TestFlipOp):
     def init_test_case(self):
         self.in_shape = (2, 4, 4)
-        self.dims = [0]
+        self.axis = [0]
 
 
 class TestFlipOpAxis2(TestFlipOp):
     def init_test_case(self):
         self.in_shape = (4, 4, 6, 3)
-        self.dims = [0, 2]
+        self.axis = [0, 2]
 
 
 class TestFlipOpAxis3(TestFlipOp):
     def init_test_case(self):
         self.in_shape = (4, 3, 1)
-        self.dims = [0, 1, 2]
+        self.axis = [0, 1, 2]
 
 
 class TestFlipOpAxis4(TestFlipOp):
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
-        self.dims = [0, 1, 2, 3]
+        self.axis = [0, 1, 2, 3]
+
+
+class TestFlipOpEmptyAxis(TestFlipOp):
+    def init_test_case(self):
+        self.in_shape = (6, 4, 2, 2)
+        self.axis = []
+
+
+class TestFlipOpNegAxis(TestFlipOp):
+    def init_test_case(self):
+        self.in_shape = (6, 4, 2, 2)
+        self.axis = [-1]
 
 
 if __name__ == "__main__":

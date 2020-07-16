@@ -16,10 +16,6 @@ if(NOT WITH_PYTHON)
     add_definitions(-DPADDLE_NO_PYTHON)
 endif(NOT WITH_PYTHON)
 
-if(WITH_DSO)
-    add_definitions(-DPADDLE_USE_DSO)
-endif(WITH_DSO)
-
 if(WITH_TESTING)
     add_definitions(-DPADDLE_WITH_TESTING)
 endif(WITH_TESTING)

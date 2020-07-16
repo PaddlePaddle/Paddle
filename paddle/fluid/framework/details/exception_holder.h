@@ -107,21 +107,31 @@ class ExceptionHolder {
     type_ = kNone;
   }
 
+  // NOTE: currently in PE, multiple exceptions may occured  in multiple
+  // threads, and the exception that occur later will overwrite that
+  // occur earlier, but what we want should be the first triggered exception.
+  // However, EOF exception is lower priority exception and can be overwritten,
+  // but other exceptions should not be prioritized.
   void Catch(const platform::EnforceNotMet& exp) {
     std::lock_guard<std::mutex> lock(mu_);
-    exception_.reset(new platform::EnforceNotMet(exp));
-    type_ = kEnforceNotMet;
+    if (exception_.get() == nullptr || type_ == kEOF) {
+      exception_.reset(new platform::EnforceNotMet(exp));
+      type_ = kEnforceNotMet;
+    } else {
+      VLOG(2) << "Non-first exception is discarded, the error message is"
+              << exception_->what();
+    }
   }
 
   void Catch(const memory::allocation::BadAlloc& exp) {
     std::lock_guard<std::mutex> lock(mu_);
-    // BadAlloc have the highest priority
-    if (exception_.get() != nullptr) {
-      VLOG(2) << "exception is reset by BadAlloc, the original error message is"
+    if (exception_.get() == nullptr || type_ == kEOF) {
+      exception_.reset(new paddle::memory::allocation::BadAlloc(exp));
+      type_ = kBadAlloc;
+    } else {
+      VLOG(2) << "Non-first exception is discarded, the error message is"
               << exception_->what();
     }
-    exception_.reset(new paddle::memory::allocation::BadAlloc(exp));
-    type_ = kBadAlloc;
   }
 
   void Catch(const platform::EOFException& exp) {
@@ -138,10 +148,12 @@ class ExceptionHolder {
 
   void Catch(const std::exception& exp) {
     std::lock_guard<std::mutex> lock(mu_);
-    // std::exception will not cover anything
-    if (exception_.get() == nullptr) {
+    if (exception_.get() == nullptr || type_ == kEOF) {
       exception_.reset(new std::exception(exp));
       type_ = kBaseException;
+    } else {
+      VLOG(2) << "Non-first exception is discarded, the error message is"
+              << exception_->what();
     }
   }
 

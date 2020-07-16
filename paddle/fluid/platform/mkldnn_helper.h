@@ -178,6 +178,9 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3]) {
         return mkldnn::memory::format_tag::nchw;
+      } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
+                 strides[1] >= strides[0]) {
+        return mkldnn::memory::format_tag::cdba;
       } else {
         return mkldnn::memory::format_tag::nhwc;
       }

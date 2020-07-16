@@ -127,7 +127,7 @@ for API_FILE in ${API_FILES[*]}; do
           check_approval 1 45189361 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py" ];then
           echo_line="You must have one RD (cryoco (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py, which manages the white list of setting no_check_set of check_output. \n"
-          check_approval 1 12407750 26615455 6836917
+          check_approval 1 12407750 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py" ]; then
           echo_line="You must have one RD (JepsonWong (Recommend), luotao1, phlrain) approval for the ${API_FILE}, which manages the white list of instance size 0 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-instance_size=0-in-sequence-OP-test]. \n"
           check_approval 1 16509038 6836917 43953930
