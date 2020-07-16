@@ -21,7 +21,6 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.container import Sequential
 
-#from ...model import Model
 from ...download import get_weights_path_from_url
 
 __all__ = [

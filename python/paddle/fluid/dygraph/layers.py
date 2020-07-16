@@ -29,7 +29,6 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
-from ..framework import in_dygraph_mode
 
 __all__ = ['Layer']
 

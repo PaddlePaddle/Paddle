@@ -123,9 +123,9 @@ class BatchCompose(object):
         .. code-block:: python
 
             import numpy as np
-            import paddle
             from paddle.io import DataLoader
 
+            from paddle.incubate.hapi import set_device
             from paddle.incubate.hapi.datasets import Flowers
             from paddle.incubate.hapi.vision.transforms import Compose, BatchCompose, Resize
 
@@ -166,7 +166,7 @@ class BatchCompose(object):
             transform = Compose([Resize((500, 500))])
             flowers_dataset = Flowers(mode='test', transform=transform)
 
-            device = paddle.set_device('cpu')
+            device = set_device('cpu')
 
             collate_fn = BatchCompose([NormalizeBatch()])
             loader = DataLoader(

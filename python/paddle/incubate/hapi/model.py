@@ -732,7 +732,7 @@ class Model(object):
             
               import numpy as np
               import paddle.fluid as fluid
-              from paddle.incubate.hapi import Model, Input
+              import paddle.fluid.hapi as hapi
 
               class MyModel(fluid.dygraph.Layer):
                   def __init__(self):
@@ -742,12 +742,12 @@ class Model(object):
                       y = self._fc(x)
                       return y
 
-              device = paddle.set_device('gpu')
+              device = hapi.set_device('gpu')
               fluid.enable_dygraph(device)
 
-              inputs = [Input([None, 784], 'float32', name='x')]
-              labels = [Input([None, 1], 'int64', name='label')]
-              model = Model(MyModel(), inputs, labels)
+              inputs = [hapi.Input([None, 784], 'float32', name='x')]
+              labels = [hapi.Input([None, 1], 'int64', name='label')]
+              model = hapi.Model(MyModel(), inputs, labels)
               optim = fluid.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim, CrossEntropy(average=True))
@@ -779,7 +779,7 @@ class Model(object):
             
               import numpy as np
               import paddle.fluid as fluid
-              from paddle.incubate.hapi import Model, Input
+              import paddle.incubate.hapi as hapi
 
               class MyModel(fluid.dygraph.Layer):
                   def __init__(self):
@@ -789,12 +789,12 @@ class Model(object):
                       y = self._fc(x)
                       return y
 
-              device = paddle.set_device('gpu')
+              device = hapi.set_device('gpu')
               fluid.enable_dygraph(device)
 
-              inputs = [Input([None, 784], 'float32', name='x')]
-              labels = [Input([None, 1], 'int64', name='label')]
-              model = Model(MyModel(), inputs, labels)
+              inputs = [hapi.Input([None, 784], 'float32', name='x')]
+              labels = [hapi.Input([None, 1], 'int64', name='label')]
+              model = hapi.Model(MyModel(), inputs, labels)
               optim = fluid.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim,
@@ -824,7 +824,7 @@ class Model(object):
             
               import numpy as np
               import paddle.fluid as fluid
-              from paddle.incubate.hapi import Model, Input
+              import paddle.incubate.hapi as hapi
 
               class MyModel(fluid.dygraph.Layer):
                   def __init__(self):
@@ -834,10 +834,10 @@ class Model(object):
                       y = self._fc(x)
                       return y
 
-              device = paddle.set_device('gpu')
+              device = hapi.set_device('gpu')
               fluid.enable_dygraph(device)
 
-              model = Model(MyModel())
+              model = hapi.Model(MyModel())
               model.prepare()
               data = np.random.random(size=(4,784)).astype(np.float32)
               out = model.eval_batch([data])
@@ -872,7 +872,7 @@ class Model(object):
             .. code-block:: python
             
               import paddle.fluid as fluid
-              from paddle.incubate.hapi import Model
+              import paddle.incubate.hapi as hapi
               
               class MyModel(fluid.dygraph.Layer):
                   def __init__(self):
@@ -882,9 +882,9 @@ class Model(object):
                       y = self._fc(x)
                       return y
               
-              device = paddle.set_device('cpu')
+              device = hapi.set_device('cpu')
               fluid.enable_dygraph(device)
-              model = MyModel()
+              model = hapi.Model(MyModel())
               model.save('checkpoint/test')
         """
         if ParallelEnv().local_rank == 0:
@@ -924,7 +924,7 @@ class Model(object):
             .. code-block:: python
             
               import paddle.fluid as fluid
-              from paddle.incubate.hapi import Model
+              import paddle.incubate.hapi as hapi
               
               class MyModel(fluid.dygraph.Layer):
                   def __init__(self):
@@ -934,9 +934,9 @@ class Model(object):
                       y = self._fc(x)
                       return y
               
-              device = paddle.set_device('cpu')
+              device = hapi.set_device('cpu')
               fluid.enable_dygraph(device)
-              model = MyModel()
+              model = hapi.Model(MyModel())
               model.load('checkpoint/test')
         """
 
@@ -1140,14 +1140,14 @@ class Model(object):
 
             .. code-block:: python
 
-              from paddle.incubate.hapi import Model, Input
+              from paddle.incubate.hapi import Model, Input, set_device
               from paddle.incubate.hapi.loss import CrossEntropy
               from paddle.incubate.hapi.metrics import Accuracy
               from paddle.incubate.hapi.datasets import MNIST
               from paddle.incubate.hapi.vision.models import LeNet
 
               dynamic = True
-              device = paddle.set_device(FLAGS.device)
+              device = set_device(FLAGS.device)
               fluid.enable_dygraph(device) if dynamic else None
            
               train_dataset = MNIST(mode='train')
@@ -1174,15 +1174,14 @@ class Model(object):
 
             .. code-block:: python
 
-              import paddle
-              from paddle.incubate.hapi import Model, Input
+              from paddle.incubate.hapi import Model, Input, set_device
               from paddle.incubate.hapi.loss import CrossEntropy
               from paddle.incubate.hapi.metrics import Accuracy
               from paddle.incubate.hapi.datasets import MNIST
               from paddle.incubate.hapi.vision.models import LeNet
 
               dynamic = True
-              device = paddle.set_device(FLAGS.device)
+              device = set_device(FLAGS.device)
               fluid.enable_dygraph(device) if dynamic else None
            
               train_dataset = MNIST(mode='train')
@@ -1314,11 +1313,10 @@ class Model(object):
         .. code-block:: python
 
             # declarative mode
-            import paddle
             from paddle.incubate.hapi.metrics import Accuracy
             from paddle.incubate.hapi.datasets import MNIST
             from paddle.incubate.hapi.vision.models import LeNet
-            from paddle.incubate.hapi import Model, Input
+            from paddle.incubate.hapi import Model, Input, set_device
 
             val_dataset = MNIST(mode='test')
 
@@ -1332,7 +1330,7 @@ class Model(object):
 
             # imperative mode
             import paddle.fluid.dygraph as dg
-            place = paddle.set_device('cpu')
+            place = set_device('cpu')
             fluid.enable_dygraph(device)
             model = Model(LeNet())
             model.prepare(metrics=Accuracy())
@@ -1412,10 +1410,10 @@ class Model(object):
 
             # declarative mode
             import numpy as np
+            from paddle.incubate.hapi import Model, Input, set_device
             from paddle.incubate.hapi.metrics import Accuracy
             from paddle.incubate.hapi.datasets import MNIST
             from paddle.incubate.hapi.vision.models import LeNet
-            from paddle.incubate.hapi import Model, Input
 
             class MnistDataset(MNIST):
                 def __init__(self, mode, return_label=True):
@@ -1441,7 +1439,7 @@ class Model(object):
             print(result)
 
             # imperative mode
-            device = paddle.set_device('cpu')
+            device = set_device('cpu')
             fluid.enable_dygraph(device)
             model = Model(LeNet())
             model.prepare()
