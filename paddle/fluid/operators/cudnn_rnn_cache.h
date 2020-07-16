@@ -57,7 +57,7 @@ struct CudnnRNNCache {
   size_t workspace_size_;
   framework::Tensor workspace_data_;
 
-  size_t max_length_;
+  size_t seq_length_;
 
   float dropout_prob_;
   bool is_bidirec_;
@@ -68,12 +68,12 @@ struct CudnnRNNCache {
   int num_layers_;
   int seed_;
 
-  void init(cudnnHandle_t handle, const platform::Place &place, size_t max_len,
+  void init(cudnnHandle_t handle, const platform::Place &place, size_t seq_len,
             int batch_size, int input_size, int hidden_size, int num_layers,
             float dropout_prob, bool is_bidirec, int seed, int weight_numel,
             size_t *reserve_size_, framework::Tensor *dropout_state_,
             bool initialized) {
-    max_length_ = max_len;
+    seq_length_ = seq_len;
     batch_size_ = batch_size;
     input_size_ = input_size;
     hidden_size_ = hidden_size;
@@ -82,14 +82,14 @@ struct CudnnRNNCache {
     is_bidirec_ = is_bidirec;
     seed_ = seed;
 
-    x_desc_ = new cudnnTensorDescriptor_t[max_length_];
-    y_desc_ = new cudnnTensorDescriptor_t[max_length_];
-    dx_desc_ = new cudnnTensorDescriptor_t[max_length_];
-    dy_desc_ = new cudnnTensorDescriptor_t[max_length_];
+    x_desc_ = new cudnnTensorDescriptor_t[seq_length_];
+    y_desc_ = new cudnnTensorDescriptor_t[seq_length_];
+    dx_desc_ = new cudnnTensorDescriptor_t[seq_length_];
+    dy_desc_ = new cudnnTensorDescriptor_t[seq_length_];
     int dim_a[3];
     int stride_a[3];
 
-    for (size_t i = 0; i < max_length_; ++i) {
+    for (size_t i = 0; i < seq_length_; ++i) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&x_desc_[i]));
       PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -224,17 +224,17 @@ struct CudnnRNNCache {
         dw_desc_, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 3, dim_w));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
-        handle, rnn_desc_, max_length_, x_desc_, &workspace_size_));
+        handle, rnn_desc_, seq_length_, x_desc_, &workspace_size_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnGetRNNTrainingReserveSize(
-            handle, rnn_desc_, max_length_, x_desc_, reserve_size_));
+            handle, rnn_desc_, seq_length_, x_desc_, reserve_size_));
 
     workspace_data_.Resize({static_cast<int64_t>(workspace_size_)});
     workspace_data_.mutable_data<uint8_t>(place);
   }
 
   void release() {
-    for (size_t i = 0; i < max_length_; ++i) {
+    for (size_t i = 0; i < seq_length_; ++i) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(x_desc_[i]));
       PADDLE_ENFORCE_CUDA_SUCCESS(

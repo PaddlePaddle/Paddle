@@ -119,10 +119,6 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "is_bidirec is False"
               "and When is_bidirect is True, the shape will be (num_layers*2 x "
               "batch_size x hidden_size*2)");
-    AddAttr<int>("max_len",
-                 "max length of the LSTM op"
-                 "the first dim of the Input can NOT be greater than max_len")
-        .SetDefault(20);
     AddAttr<float>(
         "dropout_prob",
         "dropout prob of the dropout op"

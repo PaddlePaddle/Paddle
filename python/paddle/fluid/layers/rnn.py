@@ -2160,7 +2160,6 @@ def dynamic_lstm(input,
 def lstm(input,
          init_h,
          init_c,
-         max_len,
          hidden_size,
          num_layers,
          dropout_prob=0.0,
@@ -2214,7 +2213,6 @@ def lstm(input,
                        If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
         init_c( :ref:`api_guide_Variable_en` ): The initial cell state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
                        If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
-        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len.
         hidden_size (int): hidden size of the LSTM.
         num_layers (int): total layers number of the LSTM.
         dropout_prob(float, optional): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
@@ -2255,7 +2253,6 @@ def lstm(input,
             data = fluid.data(name='x', shape=[None, 100], dtype='int64')
             emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
-            max_len = 100
             dropout_prob = 0.2
             input_size = 100
             hidden_size = 150
@@ -2263,7 +2260,7 @@ def lstm(input,
             init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
             init_c = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
             rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
-                    max_len, hidden_size, num_layers, \
+                    hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
             rnn_out.shape  # (-1, 100, 150)
             last_h.shape  # (1, 20, 150)
@@ -2274,7 +2271,6 @@ def lstm(input,
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'lstm')
     check_variable_and_dtype(init_h, 'init_h', ['float32', 'float64'], 'lstm')
     check_variable_and_dtype(init_c, 'init_c', ['float32', 'float64'], 'lstm')
-    check_type(max_len, 'max_len', (int), 'lstm')
     check_type(hidden_size, 'hidden_size', (int), 'lstm')
     check_type(num_layers, 'num_layers', (int), 'lstm')
     dtype = input.dtype
@@ -2332,7 +2328,6 @@ def lstm(input,
             'StateOut': state_out,
         },
         attrs={
-            'max_len': max_len,
             'is_bidirec': is_bidirec,
             'input_size': input_size,
             'hidden_size': hidden_size,

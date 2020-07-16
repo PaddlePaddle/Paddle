@@ -127,7 +127,7 @@ class TestCUDNNLstmOp(OpTest):
         self.op_type = "cudnn_lstm"
         self.dtype = np.float32
 
-        num_steps = 20
+        seq_length = 20
         batch_size = 5
         hidden_size = 20
 
@@ -137,7 +137,7 @@ class TestCUDNNLstmOp(OpTest):
         weight_size += hidden_size * 8
 
         input = np.random.uniform(
-            low=-0.1, high=0.1, size=(num_steps, batch_size,
+            low=-0.1, high=0.1, size=(seq_length, batch_size,
                                       hidden_size)).astype(self.dtype)
         flat_w = np.random.uniform(
             low=-0.1, high=0.1, size=(weight_size)).astype(self.dtype)
@@ -156,7 +156,6 @@ class TestCUDNNLstmOp(OpTest):
             'State': state
         }
         self.attrs = {
-            'max_len': num_steps,
             'dropout_prob': 0.0,
             'is_bidirec': False,
             'input_size': hidden_size,
@@ -193,25 +192,24 @@ class TestCUDNNLstmOp(OpTest):
                  "core is not compiled with CUDA")
 class TestCUDNNlstmAPI(unittest.TestCase):
     def test_lstm(self):
-        max_len = 20
+        seq_len = 20
         batch_size = 5
         hidden_size = 20
         dropout_prob = 0.0
         num_layers = 1
         input = fluid.data(
             name='input',
-            shape=[max_len, batch_size, hidden_size],
+            shape=[seq_len, batch_size, hidden_size],
             dtype='float32')
         init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
                                       'float32', 0.0)
         init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
                                       'float32', 0.0)
-        rnn_out, last_h, last_c = layers.lstm( input, init_h, init_c, \
-                        max_len, hidden_size, num_layers, dropout_prob)
+        rnn_out, last_h, last_c = layers.lstm( input, init_h, init_c, hidden_size, num_layers, dropout_prob)
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         input_i = np.random.uniform(
-            low=-0.1, high=0.1, size=(max_len, batch_size,
+            low=-0.1, high=0.1, size=(seq_len, batch_size,
                                       hidden_size)).astype("float32")
         out = exe.run(fluid.default_main_program(),
                       feed={'input': input_i},

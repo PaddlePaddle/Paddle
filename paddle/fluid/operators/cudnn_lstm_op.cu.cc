@@ -48,7 +48,6 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     T *last_h_data = last_h->mutable_data<T>(ctx.GetPlace());
     T *last_c_data = last_c->mutable_data<T>(ctx.GetPlace());
 
-    size_t max_len = ctx.Attr<int>("max_len");
     float dropout_prob = ctx.Attr<float>("dropout_prob");
     bool is_bidirec = ctx.Attr<bool>("is_bidirec");
     int input_size = ctx.Attr<int>("input_size");
@@ -63,22 +62,22 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     CudnnRNNCache *cudnn_rnn_cache = new CudnnRNNCache();
 
     auto input_w_numel = w->numel();
+    auto seq_len = x->dims()[0];
     auto batch_size = x->dims()[1];
     size_t reserve_size;
     bool state_initialized = state_out->IsInitialized() ? true : false;
-    cudnn_rnn_cache->init(handle, ctx.GetPlace(), max_len, batch_size,
+    cudnn_rnn_cache->init(handle, ctx.GetPlace(), seq_len, batch_size,
                           input_size, hidden_size, num_layers, dropout_prob,
                           is_bidirec, seed, input_w_numel, &reserve_size,
                           state_out, state_initialized);
 
-    auto run_seq_len = x->dims()[0];
     auto *reserve_data = reserve->mutable_data<uint8_t>(
         {static_cast<int64_t>(reserve_size)}, ctx.GetPlace());
 
     if (is_test) {
       // for inference
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInference(
-          handle, cudnn_rnn_cache->rnn_desc_, run_seq_len,
+          handle, cudnn_rnn_cache->rnn_desc_, seq_len,
           cudnn_rnn_cache->x_desc_, x_data, cudnn_rnn_cache->hx_desc_,
           init_h_data, cudnn_rnn_cache->cx_desc_, init_c_data,
           cudnn_rnn_cache->w_desc_, w_data, cudnn_rnn_cache->y_desc_, out_data,
@@ -88,7 +87,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     } else {
       // for train
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardTraining(
-          handle, cudnn_rnn_cache->rnn_desc_, run_seq_len,
+          handle, cudnn_rnn_cache->rnn_desc_, seq_len,
           cudnn_rnn_cache->x_desc_, x_data, cudnn_rnn_cache->hx_desc_,
           init_h_data, cudnn_rnn_cache->cx_desc_, init_c_data,
           cudnn_rnn_cache->w_desc_, w_data, cudnn_rnn_cache->y_desc_, out_data,
@@ -202,7 +201,6 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto init_c_data = init_c->data<T>();
     auto in_grad_data = in_grad->data<T>();
 
-    size_t max_len = ctx.Attr<int>("max_len");
     float dropout_prob = ctx.Attr<float>("dropout_prob");
     bool is_bidirec = ctx.Attr<bool>("is_bidirec");
     int input_size = ctx.Attr<int>("input_size");
@@ -213,9 +211,10 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     CudnnRNNCache *cudnn_rnn_cache = new CudnnRNNCache();
 
     auto input_w_numel = weight->numel();
+    auto seq_len = input_dims[0];
     auto batch_size = input->dims()[1];
     size_t reserve_size;
-    cudnn_rnn_cache->init(handle, ctx.GetPlace(), max_len, batch_size,
+    cudnn_rnn_cache->init(handle, ctx.GetPlace(), seq_len, batch_size,
                           input_size, hidden_size, num_layers, dropout_prob,
                           is_bidirec, seed, input_w_numel, &reserve_size,
                           const_cast<Tensor *>(state), true);
@@ -223,11 +222,10 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto work_data = cudnn_rnn_cache->workspace_data_.data<uint8_t>();
     const uint8_t *reserve_data = reserve->data<uint8_t>();
 
-    auto run_seq_len = input_dims[0];
-    PADDLE_ENFORCE_LE((size_t)run_seq_len, cudnn_rnn_cache->max_length_,
-                      "cudnn running seq_len CAN not greater max_lengh");
+    PADDLE_ENFORCE_LE((size_t)seq_len, cudnn_rnn_cache->seq_length_,
+                      "cudnn running seq_len CAN not greater seq_lengh");
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardData(
-        handle, cudnn_rnn_cache->rnn_desc_, run_seq_len,
+        handle, cudnn_rnn_cache->rnn_desc_, seq_len,
         cudnn_rnn_cache->y_desc_, out_data, cudnn_rnn_cache->dy_desc_,
         out_grad_data, cudnn_rnn_cache->dhy_desc_, last_h_grad_data,
         cudnn_rnn_cache->dcy_desc_, last_c_grad_data, cudnn_rnn_cache->w_desc_,
@@ -239,7 +237,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
         reserve_size));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeights(
-        handle, cudnn_rnn_cache->rnn_desc_, run_seq_len,
+        handle, cudnn_rnn_cache->rnn_desc_, seq_len,
         cudnn_rnn_cache->x_desc_, input->data<T>(), cudnn_rnn_cache->hx_desc_,
         init_h->data<T>(), cudnn_rnn_cache->y_desc_, out->data<T>(),
         cudnn_rnn_cache->workspace_data_.data<uint8_t>(),
