@@ -1386,7 +1386,7 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
     return out
 
 
-def log1p(x, out=None, name=None):
+def log1p(x, name=None):
     """
 	:alias_main: paddle.log1p
 	:alias: paddle.log1p,paddle.tensor.log1p,paddle.tensor.math.log1p
@@ -1396,9 +1396,6 @@ def log1p(x, out=None, name=None):
         Out = \\ln(x+1)
     Args:
         x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
-        out(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
@@ -1427,10 +1424,10 @@ def log1p(x, out=None, name=None):
     inputs = {'X': [x]}
     helper = LayerHelper('log1p', **locals())
     dtype = helper.input_dtype(input_param_name='x')
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
     return out
+
 
 def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
     """
