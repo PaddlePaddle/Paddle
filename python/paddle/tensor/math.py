@@ -671,6 +671,85 @@ Examples:
             stacklevel=2)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
+def maximum(x, y, axis=-1, name=None):
+    """
+	:alias_main: paddle.maximum
+	:alias: paddle.maximum,paddle.tensor.maximum,paddle.tensor.math.maximum
+
+Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import paddle.imperative as imperative
+        import numpy as np
+        paddle.enable_imperative()
+  
+        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
+        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
+        x = imperative.to_variable(x_data)
+        y = imperative.to_variable(y_data)
+        res = paddle.maximum(x, y)
+        print(res.numpy())
+        #[[5. 6.]
+        # [7. 8.]]
+
+        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
+        y_data = np.array([1, 2], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.maximum(x, y, axis=1)
+        print(res.numpy())
+        #[[[1. 2. 3.]
+        #  [2. 2. 3.]]]
+
+    """
+    op_type = 'elementwise_max'
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+def minimum(x, y, axis=-1, name=None):
+    """
+	:alias_main: paddle.minimum
+	:alias: paddle.minimum,paddle.tensor.minimum,paddle.tensor.math.minimum
+
+Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import paddle.imperative as imperative
+        import numpy as np
+        paddle.enable_imperative()
+  
+        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
+        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
+        x = imperative.to_variable(x_data)
+        y = imperative.to_variable(y_data)
+        res = paddle.minimum(x, y)
+        print(res.numpy())
+        #[[1. 2.]
+        # [3. 4.]]
+
+        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
+        y_data = np.array([1, 2], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.minimum(x, y, axis=1)
+        print(res.numpy())
+        #[[[1. 1. 1.]
+        #  [2. 2. 2.]]]
+
+    """
+    op_type = 'elementwise_min'
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
 
 for func in [
         add,
@@ -1753,83 +1832,3 @@ ${comment}
         check_variable_and_dtype(out, 'out', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
     helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})
     return out
-
-def maximum(x, y, axis=-1, name=None):
-    """
-	:alias_main: paddle.maximum
-	:alias: paddle.maximum,paddle.tensor.maximum,paddle.tensor.math.maximum
-
-Examples:
-
-    .. code-block:: python
-
-        import paddle
-        import paddle.imperative as imperative
-        import numpy as np
-        paddle.enable_imperative()
-  
-        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
-        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = imperative.to_variable(x_data)
-        y = imperative.to_variable(y_data)
-        res = paddle.maximum(x, y)
-        print(res.numpy()) 
-        #[[5. 6.]
-        # [7. 8.]]
-
-        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
-        y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
-        res = paddle.maximum(x, y, axis=1)
-        print(res.numpy()) 
-        #[[[1. 2. 3.]
-        #  [2. 2. 3.]]]
-
-    """
-    op_type = 'elementwise_max'
-    act = None
-    if in_dygraph_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
-    return _elementwise_op(LayerHelper(op_type, **locals()))
-
-def minimum(x, y, axis=-1, name=None):
-    """
-	:alias_main: paddle.minimum
-	:alias: paddle.minimum,paddle.tensor.minimum,paddle.tensor.math.minimum
-
-Examples:
-
-    .. code-block:: python
-
-        import paddle
-        import paddle.imperative as imperative
-        import numpy as np
-        paddle.enable_imperative()
-  
-        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
-        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = imperative.to_variable(x_data)
-        y = imperative.to_variable(y_data)
-        res = paddle.minimum(x, y)
-        print(res.numpy()) 
-        #[[1. 2.]
-        # [3. 4.]]
-
-        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
-        y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
-        res = paddle.minimum(x, y, axis=1)
-        print(res.numpy()) 
-        # [[[1. 1. 1.]
-        #   [2. 2. 2.]]]
-
-    """
-    op_type = 'elementwise_min'
-    act = None
-    if in_dygraph_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
-    return _elementwise_op(LayerHelper(op_type, **locals()))
