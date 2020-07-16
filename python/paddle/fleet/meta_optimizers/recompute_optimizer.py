@@ -26,6 +26,12 @@ class RecomputeOptimizer(MetaOptimizerBase):
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
 
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(RecomputeOptimizer, self)._set_basic_info(
+            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        self.wrapped_opt._set_checkpoints([])
+
     def _can_apply(self):
         if self.user_defined_strategy.recompute == True:
             if len(self.user_defined_strategy.recompute_checkpoints) == 0:
@@ -42,11 +48,11 @@ class RecomputeOptimizer(MetaOptimizerBase):
         return self.wrapped_opt.backward(loss, startup_program, parameter_list,
                                          no_grad_set, callbacks)
 
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None):
+    def minimize_impl(self,
+                      loss,
+                      startup_program=None,
+                      parameter_list=None,
+                      no_grad_set=None):
         optimize_ops, params_grads = \
             self.wrapped_opt.minimize(loss, startup_program,
                                       parameter_list, no_grad_set)

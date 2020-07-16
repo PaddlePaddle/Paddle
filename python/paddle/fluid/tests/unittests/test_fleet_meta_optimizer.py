@@ -65,6 +65,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
         strategy = paddle.fleet.DistributedStrategy()
         strategy.recompute = True
+        strategy.recompute_checkpoints = [fc_2]
 
         optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)

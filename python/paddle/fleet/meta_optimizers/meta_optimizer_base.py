@@ -32,6 +32,9 @@ class MetaOptimizerBase(object):
     def _can_apply(self):
         return False
 
+    def _is_graph_out(self):
+        return False
+
     def _can_update(self, optimizer):
         if str(optimizer.__class__.__name__) in self.meta_optimizers_white_list:
             return True
@@ -50,7 +53,4 @@ class MetaOptimizerBase(object):
                  no_grad_set=None):
         optimize_ops, params_grads = self.minimize_impl(
             loss, startup_program, parameter_list, no_grad_set)
-
-        if isinstance(self.inner_opt, MetaOptimizerBase):
-            self.inner_opt.optimize_ops = optimize_ops
-            self.inner_opt.params_grads = params_grads
+        return optimize_ops, params_grads
