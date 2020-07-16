@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,19 +22,26 @@ import unittest
 
 
 class TestMultiplyAPI(unittest.TestCase):
+    """TestMultiplyAPI."""
+
     def __test_case(self, x_data, y_data, axis=None):
         with program_guard(Program(), Program()):
             x = paddle.nn.data(name='x', shape=x_data.shape, dtype='float32')
             y = paddle.nn.data(name='y', shape=y_data.shape, dtype='float32')
             res = tensor.multiply(x, y, axis=axis)
-    
-            place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+
+            place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
             exe = fluid.Executor(place)
-            outs = exe.run(fluid.default_main_program(), feed={'x':x_data, 'y':y_data}, fetch_list=[res])
+            outs = exe.run(fluid.default_main_program(),
+                           feed={'x': x_data,
+                                 'y': y_data},
+                           fetch_list=[res])
             res = outs[0]
             return res
-    
+
     def test_multiply(self):
+        """test_multiply."""
         # test static computation graph: 1-d array
         x_data = np.array([1, 2, 3], dtype=np.float32)
         y_data = np.array([4, 5, 6], dtype=np.float32)
@@ -98,10 +105,14 @@ class TestMultiplyAPI(unittest.TestCase):
         expected = np.array([[1, 2, 3], [8, 10, 12]], dtype=np.float32)
         self.assertTrue(np.allclose(res.numpy(), expected))
 
+
 class TestMultiplyError(unittest.TestCase):
+    """TestMultiplyError."""
+
     def test_errors(self):
+        """test_errors."""
         paddle.enable_imperative()
-        
+
         # dtype can not be int8
         x_data = np.array([1, 2, 3], dtype=np.int8)
         y_data = np.array([1, 2, 3], dtype=np.int8)
