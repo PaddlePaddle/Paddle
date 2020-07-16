@@ -36,6 +36,7 @@ import paddle.distributed
 import paddle.sysconfig
 import paddle.tensor
 import paddle.nn
+import paddle.fleet
 import paddle.framework
 import paddle.imperative
 import paddle.optimizer
@@ -107,7 +108,7 @@ from .tensor.manipulation import flatten  #DEFINE_ALIAS
 from .tensor.manipulation import gather  #DEFINE_ALIAS
 from .tensor.manipulation import gather_nd  #DEFINE_ALIAS
 from .tensor.manipulation import reshape  #DEFINE_ALIAS
-from .tensor.manipulation import reverse  #DEFINE_ALIAS
+from .tensor.manipulation import flip as reverse  #DEFINE_ALIAS
 from .tensor.manipulation import scatter  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd_add  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd  #DEFINE_ALIAS

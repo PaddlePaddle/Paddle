@@ -81,7 +81,7 @@ from .manipulation import flatten  #DEFINE_ALIAS
 from .manipulation import gather  #DEFINE_ALIAS
 from .manipulation import gather_nd  #DEFINE_ALIAS
 from .manipulation import reshape  #DEFINE_ALIAS
-from .manipulation import reverse  #DEFINE_ALIAS
+from .manipulation import flip as reverse  #DEFINE_ALIAS
 from .manipulation import scatter  #DEFINE_ALIAS
 from .manipulation import scatter_nd_add  #DEFINE_ALIAS
 from .manipulation import scatter_nd  #DEFINE_ALIAS

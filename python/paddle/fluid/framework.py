@@ -5110,7 +5110,8 @@ class ParamBase(core.VarBase):
                                         list(shape) if shape else [], name,
                                         core.VarDesc.VarType.LOD_TENSOR, True)
 
-        self.trainable = kwargs.get('trainable', True)
+        trainable = kwargs.get('trainable', True)
+        self.stop_gradient = not trainable
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
@@ -5119,36 +5120,42 @@ class ParamBase(core.VarBase):
         self.do_model_average = kwargs.get('do_model_average', None)
 
         self.is_distributed = False
-
         # self.block = default_main_program().global_block()
 
+    @property
+    def trainable(self):
+        return not self.stop_gradient
+
+    @trainable.setter
+    def trainable(self, trainable):
+        if isinstance(trainable, bool):
+            self.stop_gradient = not trainable
+        else:
+            raise ValueError(
+                "The type of trainable MUST be bool, but the type is ",
+                type(trainable))
+
     def __str__(self):
-        return self.to_string(True)
-
-    def to_string(self, throw_on_error, with_details=False):
         """
-        To debug string.
+        Convert a ParamBase object to a readable string.
 
-        Args:
-            throw_on_error(bool): raise exception when self is not initialized
-                when throw_on_error is True
-            with_details(bool): more details about variables and parameters
-                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
-
-        Returns(str): The debug string.
+        Returns(str): A readable string.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                rlt = fluid.layers.data("fake_data", shape=[1,1], dtype='float32')
-                debug_str = prog.to_string(throw_on_error=True, with_details=False)
-                print(debug_str)
+                import paddle
+                paddle.enable_imperative()
+                conv = paddle.nn.Conv2D(3, 3, 5)
+                print(conv.weight)
+                # Parameter: conv2d_0.w_0
+                #   - place: CUDAPlace(0)
+                #   - shape: [3, 3, 5, 5]
+                #   - layout: NCHW
+                #   - dtype: float
+                #   - data: [...] 
+                paddle.disable_imperative()
         """
-        assert isinstance(throw_on_error, bool) and isinstance(with_details,
-                                                               bool)
         tensor = self.value().get_tensor()
         if tensor._is_initialized():
             return 'Parameter: %s\n%s' % (self.name, str(tensor))

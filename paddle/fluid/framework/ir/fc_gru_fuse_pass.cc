@@ -68,18 +68,27 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 #undef SET_IMTERMEDIATE_OUT
 
     auto* op = graph->CreateOpNode(&op_desc);
-    PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
+    PADDLE_ENFORCE_EQ(graph->Has(kParamScopeAttr), true,
+                      platform::errors::InvalidArgument(
+                          "Graph have no attr kParamScopeAttr."));
     auto& scope = graph->Get<Scope>(kParamScopeAttr);
     if (with_fc_bias) {
       // Fusion GRU bias = fcbias + grubias
       auto* fusion_bias_var = scope.Var(NEW_NAME(bias) + bias->Name());
       auto* out_bias_tensor =
           fusion_bias_var->GetMutable<framework::LoDTensor>();
-      PADDLE_ENFORCE(fusion_bias_var);
+      PADDLE_ENFORCE_NOT_NULL(
+          fusion_bias_var,
+          platform::errors::InvalidArgument(
+              "Fusion bias variable's pointer cannot be nullptr."));
       auto* gru_bias_var = scope.FindVar(bias->Name());
       auto* fc_bias_var = scope.FindVar(fc_bias->Name());
-      PADDLE_ENFORCE(gru_bias_var);
-      PADDLE_ENFORCE(fc_bias_var);
+      PADDLE_ENFORCE_NOT_NULL(gru_bias_var,
+                              platform::errors::InvalidArgument(
+                                  "Gru bias var ptr cannot be nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(fc_bias_var,
+                              platform::errors::InvalidArgument(
+                                  "Fc bias var ptr cannot be nullptr."));
       const auto& gru_bias_tenosr = gru_bias_var->Get<framework::LoDTensor>();
       const auto& fc_bias_tensor = fc_bias_var->Get<framework::LoDTensor>();
       // new bias = fc bias + gru bias

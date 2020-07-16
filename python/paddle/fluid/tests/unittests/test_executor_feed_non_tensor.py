@@ -84,6 +84,28 @@ class TestExecutor(unittest.TestCase):
             self.assertEqual(_lr._dtype(), fluid.core.VarDesc.VarType.FP32)
             self.assertEqual(type(a), int)
 
+    def test_program_feed_list(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        scope = fluid.Scope()
+        with fluid.program_guard(main_program, startup_program):
+            with fluid.scope_guard(scope):
+                cpu = fluid.CPUPlace()
+                exe = fluid.Executor(cpu)
+                lr, cost = self.net()
+                exe.run(startup_program)
+                train_data = [[1.0], [2.0], [3.0], [4.0]]
+                y_true = [[2.0], [4.0], [6.0], [8.0]]
+                a = 0
+                _lr, _ = exe.run(feed={'x': train_data,
+                                       'y': y_true,
+                                       'lr': a},
+                                 fetch_list=[lr, cost],
+                                 return_numpy=False)
+            self.assertEqual(_lr._dtype(), lr.dtype)
+            self.assertEqual(_lr._dtype(), fluid.core.VarDesc.VarType.FP32)
+            self.assertEqual(type(y_true), list)
+
     def test_compiled_program_feed_scalar(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -125,9 +147,31 @@ class TestAsLodTensor(unittest.TestCase):
                                               fluid.core.VarDesc.VarType.FP64)
         self.assertEqual(tensor._dtype(), fluid.core.VarDesc.VarType.FP64)
 
-    def test_as_lodtensor_error(self):
+    def test_as_lodtensor_assertion_error(self):
         cpu = fluid.CPUPlace()
         self.assertRaises(AssertionError, fluid.executor._as_lodtensor, 1, cpu)
+
+    def test_as_lodtensor_type_error(self):
+        cpu = fluid.CPUPlace()
+        self.assertRaises(TypeError, fluid.executor._as_lodtensor, {"a": 1},
+                          cpu, fluid.core.VarDesc.VarType.INT32)
+
+    def test_as_lodtensor_list(self):
+        cpu = fluid.CPUPlace()
+        tensor = fluid.executor._as_lodtensor([1, 2], cpu,
+                                              fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(tensor._dtype(), fluid.core.VarDesc.VarType.FP64)
+
+    def test_as_lodtensor_tuple(self):
+        cpu = fluid.CPUPlace()
+        tensor = fluid.executor._as_lodtensor((1, 2), cpu,
+                                              fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(tensor._dtype(), fluid.core.VarDesc.VarType.FP64)
+
+    def test_as_lodtensor_nested_list(self):
+        cpu = fluid.CPUPlace()
+        self.assertRaises(TypeError, fluid.executor._as_lodtensor,
+                          [[1], [1, 2]], cpu, fluid.core.VarDesc.VarType.INT32)
 
 
 if __name__ == '__main__':

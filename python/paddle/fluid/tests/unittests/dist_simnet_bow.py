@@ -92,8 +92,8 @@ def train_network(batch_size,
     # query
     q = fluid.layers.data(
         name="query_ids", shape=[1], dtype="int64", lod_level=1)
-    ## embedding
-    q_emb = fluid.layers.embedding(
+    # embedding
+    q_emb = fluid.embedding(
         input=q,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
@@ -104,10 +104,11 @@ def train_network(batch_size,
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__"),
         is_sparse=is_sparse)
-    ## vsum
+    q_emb = fluid.layers.reshape(q_emb, [-1, emb_dim])
+    # vsum
     q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
     q_ss = fluid.layers.softsign(q_sum)
-    ## fc layer after conv
+    # fc layer after conv
     q_fc = fluid.layers.fc(
         input=q_ss,
         size=hid_dim,
@@ -120,8 +121,8 @@ def train_network(batch_size,
     # pt
     pt = fluid.layers.data(
         name="pos_title_ids", shape=[1], dtype="int64", lod_level=1)
-    ## embedding
-    pt_emb = fluid.layers.embedding(
+    # embedding
+    pt_emb = fluid.embedding(
         input=pt,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
@@ -132,10 +133,11 @@ def train_network(batch_size,
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__"),
         is_sparse=is_sparse)
-    ## vsum
+    pt_emb = fluid.layers.reshape(pt_emb, [-1, emb_dim])
+    # vsum
     pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
     pt_ss = fluid.layers.softsign(pt_sum)
-    ## fc layer
+    # fc layer
     pt_fc = fluid.layers.fc(
         input=pt_ss,
         size=hid_dim,
@@ -147,8 +149,8 @@ def train_network(batch_size,
     # nt
     nt = fluid.layers.data(
         name="neg_title_ids", shape=[1], dtype="int64", lod_level=1)
-    ## embedding
-    nt_emb = fluid.layers.embedding(
+    # embedding
+    nt_emb = fluid.embedding(
         input=nt,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
@@ -159,10 +161,11 @@ def train_network(batch_size,
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__"),
         is_sparse=is_sparse)
-    ## vsum
+    nt_emb = fluid.layers.reshape(nt_emb, [-1, emb_dim])
+    # vsum
     nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
     nt_ss = fluid.layers.softsign(nt_sum)
-    ## fc layer
+    # fc layer
     nt_fc = fluid.layers.fc(
         input=nt_ss,
         size=hid_dim,
