@@ -34,6 +34,7 @@ from paddle.incubate.hapi.vision.models import LeNet
 from paddle.incubate.hapi.distributed import DistributedBatchSampler, prepare_distributed_context
 from paddle.fluid.dygraph.jit import declarative
 
+
 class LeNetDygraph(fluid.dygraph.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
         super(LeNetDygraph, self).__init__()
@@ -280,6 +281,7 @@ class MyModel(Model):
         y = self._fc(x)
         return y
 
+
 class LeNetDeclarative(Model):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
         super(LeNetDeclarative, self).__init__()
@@ -300,6 +302,7 @@ class LeNetDeclarative(Model):
                 Linear(120, 84),
                 Linear(
                     84, 10, act=classifier_activation))
+
     @declarative
     def forward(self, inputs):
         x = self.features(inputs)
@@ -308,6 +311,7 @@ class LeNetDeclarative(Model):
             x = fluid.layers.flatten(x, 1)
             x = self.fc(x)
         return x
+
 
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
@@ -483,12 +487,10 @@ class TestModelFunction(unittest.TestCase):
         for dynamic in [True, False]:
             device = set_device('cpu')
             model = LeNet()
-            save_dir = 'test_static_tmp_model'
+            save_dir = tempfile.mkdtemp()
             fluid.enable_dygraph(device) if dynamic else None
             if dynamic:
                 model = LeNetDeclarative()
-                save_dir = 'test_dynamic_tmp_model'
-                # save_dir = self.save_dir_dynamic
             inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
             model.prepare(inputs=inputs)
             if not os.path.exists(save_dir):
