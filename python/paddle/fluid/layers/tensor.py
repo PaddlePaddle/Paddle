@@ -1454,14 +1454,17 @@ def zeros_like(x, out=None):
     with `x`.
 
     Args:
-        x(Variable): The input tensor which specifies shape and dtype, the input data dtype could be bool, float32, float64, int32, int64.
-        out(Variable, optional): If is :attr:`None` , the op will create the variable as output, the data type and shape of \
-            this variable will be same as input :attr:`x`. If is a tensor, the data type and shape need to be same as input :attr:`x`. 
-            The default value is :attr:`None` .
+        x(Variable): The input tensor which specifies shape and dtype, the
+            input data dtype could be bool, float32, float64, int32, int64.
+        out(Variable, optional): If is :attr:`None` , the op will create the
+            variable as output, the data type and shape of this variable will
+            be same as input :attr:`x`. If is a tensor, the data type and shape
+            need to be same as input :attr:`x`. The default value is :attr:`None` .
 
     Returns:
-        Variable: The N-D tensor, the element in tensor is related to input data type, if the input data type is bool, \
-            the output value is False, otherwise is zero. The output shape is the same as the input.
+        Variable: The N-D tensor, the element in tensor is related to input
+            data type, if the input data type is bool, the output value is
+            False, otherwise is zero. The output shape is the same as the input.
 
     Examples:
         .. code-block:: python
@@ -1480,7 +1483,7 @@ def zeros_like(x, out=None):
     else:
         check_variable_and_dtype(
             out, "out", ['bool', 'float32', 'float64', 'int32', 'int64'],
-            'ones_like')
+            'zeros_like')
 
     helper.append_op(
         type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})

@@ -68,10 +68,10 @@ void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
   auto inputs = op->Op()->InputNames();
   bool name_found =
       std::find(inputs.begin(), inputs.end(), input_name) != inputs.end();
-  PADDLE_ENFORCE_EQ(
-      name_found, true,
-      platform::errors::InvalidArgument("%s isn't the input of the %s operator",
-                                        input_name, op->Op()->Type()));
+  PADDLE_ENFORCE_EQ(name_found, true,
+                    platform::errors::InvalidArgument(
+                        "Var(%s) isn't the input of the %s operator.",
+                        input_name, op->Op()->Type()));
   unsigned max = is_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_to_one * max;
 
@@ -110,8 +110,14 @@ void CPUQuantizePass::QuantizeInputs(Graph* g, Node* op, std::string input_name,
                                      std::string scale_attr_name) const {
   auto inputs = op->inputs;
   auto output = op->outputs[0];
-  PADDLE_ENFORCE_GE(inputs.size(), 1);
-  PADDLE_ENFORCE_EQ(op->outputs.size(), 1);
+  PADDLE_ENFORCE_GE(inputs.size(), 1,
+                    platform::errors::InvalidArgument(
+                        "OP(%s)'s inputs(%d) must be equal or greater than 1.",
+                        op->Name(), inputs.size()));
+  PADDLE_ENFORCE_EQ(op->outputs.size(), 1,
+                    platform::errors::InvalidArgument(
+                        "OP(%s)'s outputs(%d) must be equal to 1.", op->Name(),
+                        op->outputs.size()));
 
   // create a quantize op desc prototype
   OpDesc q_desc;
@@ -159,8 +165,8 @@ void CPUQuantizePass::DequantizeOutput(Graph* g, Node* op, Node* output,
       std::find(outputs.begin(), outputs.end(), output_name) != outputs.end();
   PADDLE_ENFORCE_EQ(name_found, true,
                     platform::errors::InvalidArgument(
-                        "%s isn't the output of the %s operator", output_name,
-                        op->Op()->Type()));
+                        "Var(%s) isn't the output of the %s operator.",
+                        output_name, op->Op()->Type()));
   unsigned max = is_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_to_one * max;
 
@@ -682,10 +688,12 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     bool is_x_unsigned{false}, is_y_unsigned{false};
     auto input_x_scale = GetScaleValueForNode(matmul_in_x, &is_x_unsigned);
     auto input_y_scale = GetScaleValueForNode(matmul_in_y, &is_y_unsigned);
-    PADDLE_ENFORCE_EQ(
-        is_x_unsigned, is_y_unsigned,
-        platform::errors::InvalidArgument(
-            "Matmul inputs should have the same value of is_unsigned"));
+    PADDLE_ENFORCE_EQ(is_x_unsigned, is_y_unsigned,
+                      platform::errors::InvalidArgument(
+                          "Matmul inputs should have the same "
+                          "attribute of signed/unsigned, but they "
+                          "are different: x(%d), y(%d).",
+                          is_x_unsigned, is_y_unsigned));
     QuantizeInput(g, matmul_op, matmul_in_x, "X", input_x_scale, is_x_unsigned,
                   "Scale_x");
     QuantizeInput(g, matmul_op, matmul_in_y, "Y", input_y_scale, is_y_unsigned,
@@ -785,10 +793,12 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
 
 void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
-  PADDLE_ENFORCE(param_scope());
+  PADDLE_ENFORCE_NOT_NULL(param_scope(), platform::errors::InvalidArgument(
+                                             "Scope cannot be nullptr."));
 
   QuantizeConv(graph, false /* with_residual_data */);
   QuantizeConv(graph, true /* with_residual_data */);
