@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .runtime_base import RuntimeBase
+import logging
 
 
 class CollectiveRuntime(RuntimeBase):
