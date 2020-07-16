@@ -207,48 +207,6 @@ class TestSinh(TestActivation, TestParameter):
             z_expected = np.sinh(np_x)
             self.assertTrue(np.allclose(z, z_expected))
 
-    def test_api(self):
-        test_data_shape = [11, 17]
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = np.random.uniform(0.1, 1,
-                                        test_data_shape).astype("float64")
-            data_x = fluid.layers.data(
-                name="data_x",
-                shape=test_data_shape,
-                append_batch_size=False,
-                dtype="float64")
-            pd_sinh_out2 = fluid.layers.data(
-                name="res_sinh",
-                shape=test_data_shape,
-                append_batch_size=False,
-                dtype="float64")
-
-            pd_sinh_out1 = paddle.sinh(data_x)
-            pd_tmp = paddle.sinh(data_x, out=pd_sinh_out2)
-
-            exe = fluid.Executor(place=fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-            np_sinh_res1, np_sinh_res2 = exe.run(
-                fluid.default_main_program(),
-                feed={"data_x": input_x},
-                fetch_list=[pd_sinh_out1, pd_sinh_out2])
-        expected_res = np.sinh(input_x)
-
-        self.assertTrue(np.allclose(np_sinh_res1, expected_res))
-        self.assertTrue(np.allclose(np_sinh_res2, expected_res))
-
-    def test_backforward(self):
-        test_data_shape = [11, 17]
-        with fluid.dygraph.guard():
-            input_x = np.random.uniform(0.1, 1,
-                                        test_data_shape).astype("float64")
-            var = fluid.dygraph.to_variable(input_x)
-            var.stop_gradient = False
-            loss = paddle.sinh(var)
-            loss.backward()
-            grad_var = var.gradient()
-            self.assertEqual(grad_var.shape, input_x.shape)
-
 
 class TestSinhOpError(unittest.TestCase):
     def test_errors(self):
@@ -286,49 +244,6 @@ class TestCosh(TestActivation, TestParameter):
             z = fluid.layers.cosh(x).numpy()
             z_expected = np.cosh(np_x)
             self.assertTrue(np.allclose(z, z_expected))
-
-    def test_api(self):
-        test_data_shape = [11, 17]
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = np.random.uniform(0.1, 1,
-                                        test_data_shape).astype("float64")
-            data_x = fluid.layers.data(
-                name="data_x",
-                shape=test_data_shape,
-                append_batch_size=False,
-                dtype="float64")
-            pd_cosh_out2 = fluid.layers.data(
-                name="res_cosh",
-                shape=test_data_shape,
-                append_batch_size=False,
-                dtype="float64")
-
-            pd_cosh_out1 = paddle.cosh(data_x)
-            pd_tmp = paddle.cosh(data_x, out=pd_cosh_out2)
-
-            exe = fluid.Executor(place=fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-            np_cosh_res1, np_cosh_res2 = exe.run(
-                fluid.default_main_program(),
-                feed={"data_x": input_x},
-                fetch_list=[pd_cosh_out1, pd_cosh_out2])
-        expected_res = np.cosh(input_x)
-
-        self.assertTrue(np.allclose(np_cosh_res1, expected_res))
-        self.assertTrue(np.allclose(np_cosh_res2, expected_res))
-
-    def test_backforward(self):
-        test_data_shape = [11, 17]
-
-        with fluid.dygraph.guard():
-            input_x = np.random.uniform(0.1, 1,
-                                        test_data_shape).astype("float64")
-            var = fluid.dygraph.to_variable(input_x)
-            var.stop_gradient = False
-            loss = paddle.cosh(var)
-            loss.backward()
-            grad_var = var.gradient()
-            self.assertEqual(grad_var.shape, input_x.shape)
 
 
 class TestCoshOpError(unittest.TestCase):
