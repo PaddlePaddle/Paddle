@@ -21,9 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
-#ifdef PADDLE_WITH_BOX_PS
-#include "paddle/fluid/framework/fleet/box_wrapper.h"
-#endif
+
 namespace paddle {
 namespace framework {
 
@@ -109,7 +107,7 @@ void SectionWorker::Initialize(const TrainerDesc& desc) {
 
 void SectionWorker::AutoSetCPUAffinity(bool reuse) {
 #ifdef PADDLE_WITH_BOX_PS
-  std::vector<int> &train_cores = boxps::get_train_cores();
+  std::vector<int>& train_cores = boxps::get_train_cores();
   if (train_cores.empty()) {
     LOG(WARNING) << "not found binding train cores";
     return;
@@ -121,7 +119,7 @@ void SectionWorker::AutoSetCPUAffinity(bool reuse) {
   CPU_SET(cpuid, &mask);
   pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask);
 
-  //VLOG(0) << "binding card = " << pipeline_id_ << ", cpuid = " << cpuid;
+// VLOG(0) << "binding card = " << pipeline_id_ << ", cpuid = " << cpuid;
 #else
   int thread_cpu_id = cpu_id_.fetch_add(1);
 
@@ -133,8 +131,8 @@ void SectionWorker::AutoSetCPUAffinity(bool reuse) {
       proc %= concurrency_cap;
     } else {
       LOG(INFO) << "All " << concurrency_cap
-          << " CPUs have been set affinities. Fail to set " << thread_cpu_id
-          << "th thread";
+                << " CPUs have been set affinities. Fail to set "
+                << thread_cpu_id << "th thread";
       return;
     }
   }
@@ -460,8 +458,9 @@ void SectionWorker::TrainFilesWithProfiler() {
              << " main_time:" << main_timer.ElapsedUS()
              << " outer_time:" << outer_timer.ElapsedUS();
   for (size_t i = 0; i < ops_.size(); ++i) {
-    LOG(ERROR) << "op: " << op_name[i]
-               << ", mean time: " << op_total_time[i] / accum_num;
+    LOG(ERROR) << "card:" << pipeline_id_ << ", op: " << op_name[i]
+               << ", mean time: " << op_total_time[i] / accum_num
+               << "us, sum:" << op_total_time[i] / 1000000.0 << "sec";
   }
 }
 }  // namespace framework

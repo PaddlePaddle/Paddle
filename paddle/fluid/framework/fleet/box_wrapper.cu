@@ -32,7 +32,7 @@ __global__ void PullCopy(
     float** dest,
     const boxps::FeatureValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>* src,
     const int64_t* len, int hidden, int expand_dim, int slot_num, int total_len,
-    uint64_t** keys) {
+    uint64_t** keys, int* total_dims) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -55,10 +55,12 @@ __global__ void PullCopy(
       *(dest[x] + y * hidden + 2) = (src + i)->embed_w;
     }
     if ((src + i)->embedding_size == 0 || *(keys[x] + y) == 0) {
+      total_dims[i] = 0x00;
       for (int j = 0; j < hidden - 3; j++) {
         *(dest[x] + y * hidden + 3 + j) = 0;
       }
     } else {
+      total_dims[i] = 0x01;
       for (int j = 0; j < hidden - 3; j++) {
         *(dest[x] + y * hidden + 3 + j) = (src + i)->embedx[1 + j];
       }
@@ -71,6 +73,7 @@ __global__ void PullCopy(
           *(dest[z] + y * expand_dim + j) = 0;
         }
       } else {
+        total_dims[i] |= 0x02;
         for (int j = 0; j < expand_dim; j++) {
           *(dest[z] + y * expand_dim + j) = (src + i)->embed_expand[1 + j];
         }
@@ -102,7 +105,7 @@ template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM>
 __global__ void PushCopy(
     boxps::FeaturePushValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>* dest, float** src,
     int64_t* len, int hidden, int expand_dim, int slot_num, int total_len,
-    int bs, int* slot_vector) {
+    int bs, int* slot_vector, int* total_dims) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -119,14 +122,26 @@ __global__ void PushCopy(
     (dest + i)->show = *(src[x] + y * hidden);
     (dest + i)->clk = *(src[x] + y * hidden + 1);
     (dest + i)->embed_g = *(src[x] + y * hidden + 2) * -1. * bs;
-    for (int j = 0; j < hidden - 3; j++) {
-      (dest + i)->embedx_g[j] = *(src[x] + y * hidden + 3 + j) * -1. * bs;
+    if (total_dims[i] & 0x01) {
+      for (int j = 0; j < hidden - 3; j++) {
+        (dest + i)->embedx_g[j] = *(src[x] + y * hidden + 3 + j) * -1. * bs;
+      }
+    } else {
+      for (int j = 0; j < hidden - 3; j++) {
+        (dest + i)->embedx_g[j] = 0;
+      }
     }
     if (expand_dim > 0) {
       int z = x + slot_num;
-      for (int j = 0; j < expand_dim; j++) {
-        (dest + i)->embed_expand_g[j] =
-            *(src[z] + y * expand_dim + j) * -1. * bs;
+      if (total_dims[i] & 0x02) {
+        for (int j = 0; j < expand_dim; j++) {
+          (dest + i)->embed_expand_g[j] =
+              *(src[z] + y * expand_dim + j) * -1. * bs;
+        }
+      } else {
+        for (int j = 0; j < expand_dim; j++) {
+          (dest + i)->embed_expand_g[j] = 0;
+        }
       }
     }
   }
@@ -162,7 +177,7 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
                              void* total_values_gpu, const int64_t* gpu_len,
                              const int slot_num, const int hidden_size,
                              const int expand_embed_dim,
-                             const int64_t total_length) {
+                             const int64_t total_length, int* total_dims) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
                         BOOST_GET_CONST(platform::CUDAPlace, place)))
@@ -191,7 +206,7 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
         reinterpret_cast<boxps::FeatureValueGpu<EmbedxDim, ExpandDim>*>(     \
             total_values_gpu),                                               \
         gpu_len, hidden_size, expand_embed_dim, slot_num, total_length,      \
-        gpu_keys);                                                           \
+        gpu_keys, total_dims);                                               \
   } break
 
   switch (hidden_size - 3) {
@@ -225,7 +240,8 @@ void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
                              void* total_grad_values_gpu,
                              const std::vector<int64_t>& slot_lengths,
                              const int hidden_size, const int expand_embed_dim,
-                             const int64_t total_length, const int batch_size) {
+                             const int64_t total_length, const int batch_size,
+                             int* total_dims) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
                         BOOST_GET_CONST(platform::CUDAPlace, place)))
@@ -271,7 +287,8 @@ void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
         reinterpret_cast<boxps::FeaturePushValueGpu<EmbedxDim, ExpandDim>*>( \
             total_grad_values_gpu),                                          \
         gpu_values, gpu_len, hidden_size, expand_embed_dim,                  \
-        slot_lengths.size(), total_length, batch_size, d_slot_vector);       \
+        slot_lengths.size(), total_length, batch_size, d_slot_vector,        \
+        total_dims);                                                         \
   } break
 
   switch (hidden_size - 3) {

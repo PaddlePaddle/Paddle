@@ -132,6 +132,12 @@ class BoxWrapper {
       delete p_agent_;
       p_agent_ = nullptr;
     }
+    if (all_pull_timers_ != nullptr) {
+      delete[] all_pull_timers_;
+      delete[] boxps_pull_timers_;
+      delete[] all_push_timers_;
+      delete[] boxps_push_timers_;
+    }
   }
   BoxWrapper() {
     fprintf(stdout, "init box wrapper\n");
@@ -177,14 +183,15 @@ class BoxWrapper {
                    const std::vector<float*>& values, void* total_values_gpu,
                    const int64_t* gpu_len, const int slot_num,
                    const int hidden_size, const int expand_embed_dim,
-                   const int64_t total_length);
+                   const int64_t total_length, int* total_dims);
 
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
                    void* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
                    const int hidden_size, const int expand_embed_dim,
-                   const int64_t total_length, const int batch_size);
+                   const int64_t total_length, const int batch_size,
+                   int* total_dims);
 
   void CopyKeys(const paddle::platform::Place& place, uint64_t** origin_keys,
                 uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
@@ -219,7 +226,15 @@ class BoxWrapper {
         slot_name_omited_in_feedpass_.insert(slot_name);
       }
       slot_vector_ = slot_vector;
-      keys_tensor.resize(platform::GetCUDADeviceCount());
+
+      int gpu_num = platform::GetCUDADeviceCount();
+      keys_tensor.resize(gpu_num);
+      dims_tensor.resize(gpu_num);
+
+      all_pull_timers_ = new platform::Timer[gpu_num];
+      boxps_pull_timers_ = new platform::Timer[gpu_num];
+      all_push_timers_ = new platform::Timer[gpu_num];
+      boxps_push_timers_ = new platform::Timer[gpu_num];
     }
   }
 
@@ -707,9 +722,14 @@ class BoxWrapper {
   std::vector<std::string> metric_name_list_;
   std::vector<int> slot_vector_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
+  std::vector<LoDTensor> dims_tensor;
   bool use_afs_api_ = false;
-
   std::shared_ptr<boxps::PaddleFileMgr> file_manager_ = nullptr;
+
+  platform::Timer* all_pull_timers_ = nullptr;
+  platform::Timer* boxps_pull_timers_ = nullptr;
+  platform::Timer* all_push_timers_ = nullptr;
+  platform::Timer* boxps_push_timers_ = nullptr;
 
  public:
   static std::shared_ptr<boxps::PaddleShuffler> data_shuffle_;

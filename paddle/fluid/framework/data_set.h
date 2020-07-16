@@ -376,6 +376,7 @@ class PadBoxSlotDataset : public DatasetImpl<SlotRecord> {
   int shuffle_thread_num_ = FLAGS_padbox_dataset_shuffle_thread_num;
   std::atomic<int> shuffle_counter_{0};
   void* data_consumer_ = nullptr;
+  std::atomic<int> receiver_cnt_{0};
 };
 #endif
 

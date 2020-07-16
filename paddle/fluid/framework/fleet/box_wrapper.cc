@@ -431,6 +431,13 @@ void BoxWrapper::EndFeedPass(boxps::PSAgentBase* agent) const {
 }
 
 void BoxWrapper::BeginPass() const {
+  int gpu_num = platform::GetCUDADeviceCount();
+  for (int i = 0; i < gpu_num; ++i) {
+    all_pull_timers_[i].Reset();
+    boxps_pull_timers_[i].Reset();
+    all_push_timers_[i].Reset();
+    boxps_push_timers_[i].Reset();
+  }
   int ret = boxps_ptr_->BeginPass();
   PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                 "BeginPass failed in BoxPS."));
@@ -444,6 +451,14 @@ void BoxWrapper::EndPass(bool need_save_delta) const {
   int ret = boxps_ptr_->EndPass(need_save_delta);
   PADDLE_ENFORCE_EQ(
       ret, 0, platform::errors::PreconditionNotMet("EndPass failed in BoxPS."));
+  int gpu_num = platform::GetCUDADeviceCount();
+  for (int i = 0; i < gpu_num; ++i) {
+    LOG(WARNING) << "gpu[" << i
+                 << "] sparse pull span: " << all_pull_timers_[i].ElapsedSec()
+                 << ", boxps span: " << boxps_pull_timers_[i].ElapsedSec()
+                 << ", push span: " << all_push_timers_[i].ElapsedSec()
+                 << ", boxps span:" << boxps_push_timers_[i].ElapsedSec();
+  }
 }
 
 void BoxWrapper::GetRandomReplace(const std::vector<Record>& pass_data) {

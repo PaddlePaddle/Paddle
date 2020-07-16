@@ -25,10 +25,16 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
                                 const std::vector<int64_t>& slot_lengths,
                                 const int hidden_size,
                                 const int expand_embed_dim) {
-  VLOG(3) << "Begin PullSparse";
+//  VLOG(3) << "Begin PullSparse";
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+  platform::Timer& all_timer = all_pull_timers_[device_id];
+  platform::Timer& pull_boxps_timer = boxps_pull_timers_[device_id];
+#else
   platform::Timer all_timer;
   platform::Timer pull_boxps_timer;
-  all_timer.Start();
+#endif
+  all_timer.Resume();
 
   int64_t total_length =
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
@@ -44,12 +50,14 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
         "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+    //    VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
+    //    int device_id = BOOST_GET_CONST(platform::CUDAPlace,
+    //    place).GetDeviceId();
     LoDTensor& total_keys_tensor = keys_tensor[device_id];
     uint64_t* total_keys = reinterpret_cast<uint64_t*>(
         total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
-
+    int* total_dims = reinterpret_cast<int*>(
+        dims_tensor[device_id].mutable_data<int>({total_length, 1}, place));
     // construct slot_level lod info
     auto slot_lengths_lod = slot_lengths;
     for (size_t i = 1; i < slot_lengths_lod.size(); i++) {
@@ -68,8 +76,8 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
     this->CopyKeys(place, gpu_keys, total_keys, gpu_len,
                    static_cast<int>(slot_lengths.size()),
                    static_cast<int>(total_length));
-    VLOG(3) << "Begin call PullSparseGPU in BoxPS";
-    pull_boxps_timer.Start();
+    //    VLOG(3) << "Begin call PullSparseGPU in BoxPS";
+    pull_boxps_timer.Resume();
     int ret = boxps_ptr_->PullSparseGPU(
         total_keys, reinterpret_cast<void*>(total_values_gpu),
         static_cast<int>(total_length), device_id);
@@ -77,12 +85,12 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
                                   "PullSparseGPU failed in BoxPS."));
     pull_boxps_timer.Pause();
 
-    VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
-            << "]";
+    //    VLOG(3) << "Begin Copy result to tensor, total_length[" <<
+    //    total_length << "]";
     this->CopyForPull(place, gpu_keys, values,
                       reinterpret_cast<void*>(total_values_gpu), gpu_len,
                       static_cast<int>(slot_lengths.size()), hidden_size,
-                      expand_embed_dim, total_length);
+                      expand_embed_dim, total_length, total_dims);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Please compile WITH_GPU option, because NCCL doesn't support "
@@ -93,10 +101,10 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
         "PaddleBox: PullSparse Only Support CPUPlace or CUDAPlace Now."));
   }
   all_timer.Pause();
-  VLOG(1) << "PullSparse total costs: " << all_timer.ElapsedSec()
-          << " s, of which BoxPS costs: " << pull_boxps_timer.ElapsedSec()
-          << " s";
-  VLOG(3) << "End PullSparse";
+  //  VLOG(1) << "PullSparse total costs: " << all_timer.ElapsedSec()
+  //          << " s, of which BoxPS costs: " << pull_boxps_timer.ElapsedSec()
+  //          << " s";
+  //  VLOG(3) << "End PullSparse";
 }
 
 template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM>
@@ -106,10 +114,17 @@ void BoxWrapper::PushSparseGradCase(
     const std::vector<const float*>& grad_values,
     const std::vector<int64_t>& slot_lengths, const int hidden_size,
     const int expand_embed_dim, const int batch_size) {
-  VLOG(3) << "Begin PushSparseGrad";
+//  VLOG(3) << "Begin PushSparseGrad";
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+  platform::Timer& all_timer = all_push_timers_[device_id];
+  platform::Timer& push_boxps_timer = boxps_push_timers_[device_id];
+#else
   platform::Timer all_timer;
   platform::Timer push_boxps_timer;
-  all_timer.Start();
+#endif
+  all_timer.Resume();
+
   int64_t total_length =
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
   auto buf = memory::AllocShared(
@@ -125,16 +140,20 @@ void BoxWrapper::PushSparseGradCase(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+    //    int device_id = BOOST_GET_CONST(platform::CUDAPlace,
+    //    place).GetDeviceId();
     LoDTensor& cached_total_keys_tensor = keys_tensor[device_id];
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(cached_total_keys_tensor.data<int64_t>());
-    VLOG(3) << "Begin copy grad tensor to boxps struct";
+    int* total_dims =
+        reinterpret_cast<int*>(dims_tensor[device_id].data<int>());
+    //    VLOG(3) << "Begin copy grad tensor to boxps struct";
     this->CopyForPush(place, grad_values, total_grad_values_gpu, slot_lengths,
-                      hidden_size, expand_embed_dim, total_length, batch_size);
+                      hidden_size, expand_embed_dim, total_length, batch_size,
+                      total_dims);
 
-    VLOG(3) << "Begin call PushSparseGPU in BoxPS";
-    push_boxps_timer.Start();
+    //    VLOG(3) << "Begin call PushSparseGPU in BoxPS";
+    push_boxps_timer.Resume();
     int ret = boxps_ptr_->PushSparseGPU(
         total_keys, reinterpret_cast<void*>(total_grad_values_gpu),
         static_cast<int>(total_length),
@@ -152,10 +171,10 @@ void BoxWrapper::PushSparseGradCase(
         "PaddleBox: PushSparseGrad Only Support CPUPlace or CUDAPlace Now."));
   }
   all_timer.Pause();
-  VLOG(1) << "PushSparseGrad total cost: " << all_timer.ElapsedSec()
-          << " s, of which BoxPS cost: " << push_boxps_timer.ElapsedSec()
-          << " s";
-  VLOG(3) << "End PushSparseGrad";
+  //  VLOG(1) << "PushSparseGrad total cost: " << all_timer.ElapsedSec()
+  //          << " s, of which BoxPS cost: " << push_boxps_timer.ElapsedSec()
+  //          << " s";
+  //  VLOG(3) << "End PushSparseGrad";
 }
 
 }  // namespace framework
