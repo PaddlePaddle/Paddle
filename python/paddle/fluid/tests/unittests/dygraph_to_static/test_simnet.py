@@ -28,7 +28,7 @@ random.seed(SEED)
 
 def create_conf_dict():
     conf_dict = {}
-    conf_dict["task_mode"] = "train"
+    conf_dict["task_mode"] = "pairwise"
     conf_dict["net"] = {"emb_dim": 128, "bow_dim": 128, "hidden_dim": 128}
     conf_dict["loss"] = {"margin": 0.1}
     return conf_dict
