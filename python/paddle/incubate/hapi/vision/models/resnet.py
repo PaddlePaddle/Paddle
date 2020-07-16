@@ -277,8 +277,8 @@ def _resnet(arch, Block, depth, pretrained, **kwargs):
                                                 model_urls[arch][1])
         assert weight_path.endswith(
             '.pdparams'), "suffix of weight must be .pdparams"
-        para_state_dict, _ = fluid.load_dygraph(weight_path)
-        model.set_dict(para_state_dict)
+        param, _ = fluid.load_dygraph(weight_path)
+        model.set_dict(param)
 
     return model
 

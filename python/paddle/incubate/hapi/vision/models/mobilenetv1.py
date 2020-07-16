@@ -275,8 +275,8 @@ def _mobilenet(arch, pretrained=False, **kwargs):
                                                 model_urls[arch][1])
         assert weight_path.endswith(
             '.pdparams'), "suffix of weight must be .pdparams"
-        para, _ = fluid.load_dygraph(weight_path)
-        model.load_dict(para)
+        param, _ = fluid.load_dygraph(weight_path)
+        model.load_dict(param)
 
     return model
 

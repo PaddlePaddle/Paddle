@@ -190,7 +190,6 @@ class TestModel(unittest.TestCase):
         fluid.default_startup_program().random_seed = seed
         fluid.default_main_program().random_seed = seed
 
-        # model = LeNet()
         net = LeNet()
         optim_new = fluid.optimizer.Adam(
             learning_rate=0.001, parameter_list=net.parameters())
