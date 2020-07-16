@@ -208,13 +208,6 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
   };
 
   if (should_inplace(graph)) gpd(graph, handler);
-
-  // Pass through MKLDNNDeviceContext an information if
-  // inplace pass was applied to eventually extend keys
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::MKLDNNDeviceContext* dev_ctx =
-      (platform::MKLDNNDeviceContext*)pool.Get(paddle::platform::CPUPlace());
-  dev_ctx->SetLongerKeys(found_inplace_count > 0);
 }
 
 }  // namespace ir

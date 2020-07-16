@@ -495,10 +495,6 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Set data to blob (i.e. name/data pair). Create blob if not existing
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
-  void SetLongerKeys(bool should_enable) { this->longer_keys_ = should_enable; }
-
-  bool AreLongerKeys(void) const { return longer_keys_; }
-
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
 
@@ -507,7 +503,6 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   }
 
  private:
-  bool longer_keys_{false};
   mkldnn::engine engine_;
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;

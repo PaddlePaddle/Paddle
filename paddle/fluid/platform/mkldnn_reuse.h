@@ -486,14 +486,12 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
                       const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
-            dev_ctx.AreLongerKeys()
-                ? platform::CreateKey(framework::vectorize(x->dims()),
-                                      static_cast<int>(algo), uniq_name)
-                : platform::CreateKey(framework::vectorize(x->dims()),
-                                      uniq_name)) {
+            platform::CreateKey(
+                framework::vectorize(x->dims()),
+                uniq_name + (algo == dnnl::algorithm::binary_mul ? "M" : ""))) {
     // bradcasting combined with in-place may require
     auto rankdiff = x->dims().size() - y->dims().size();
-    if (dev_ctx.AreLongerKeys() && rankdiff > 0) {
+    if (rankdiff > 0) {
       auto suffix = std::to_string(rankdiff);
       this->key_ += suffix;
       this->key_common_ += suffix;
