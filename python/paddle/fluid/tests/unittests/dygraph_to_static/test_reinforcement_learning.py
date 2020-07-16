@@ -166,10 +166,7 @@ def train(args, place, to_static):
         running_reward = 10
         for i_episode in itertools.count(1):
             state, ep_reward = env.reset(), 0
-            # TODO(Aurelius84): In RL, we continuously select actions with multiple steps, 
-            # then accumulate loss to apply optimization. But currently all vars shared with 
-            # the same inner scope, which has problem in backward. I will fix it in next PR.
-            for t in range(1, 2):  # default 1000
+            for t in range(1, 1000):  # default 1000
                 state = np.array(state).astype("float32")
                 action, loss = select_action(state)
                 state, reward, done, _ = env.step(action)
@@ -203,7 +200,6 @@ class TestDeclarative(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
             else fluid.CPUPlace()
-
         self.args = Args()
 
     def test_train(self):
