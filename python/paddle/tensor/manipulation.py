@@ -28,7 +28,6 @@ from ..fluid.layers import expand  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import flatten  #DEFINE_ALIAS
 from ..fluid.layers import reshape  #DEFINE_ALIAS
-from ..fluid.layers import reverse  #DEFINE_ALIAS
 from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
@@ -51,46 +50,47 @@ __all__ = [
 ]
 
 
-def flip(input, dims, name=None):
+def flip(x, axis, name=None):
     """
 	:alias_main: paddle.flip
 	:alias: paddle.flip,paddle.tensor.flip,paddle.tensor.manipulation.flip
 
 
-    Reverse the order of a n-D tensor along given axis in dims.
+    Reverse the order of a n-D tensor along given axis in axis.
 
     Args:
-        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+        x (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
-        dims (list): The axis to flip on.
+        axis (list): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: Tensor or LoDTensor calculated by flip layer. The data type is same with input.
+        Variable: Tensor or LoDTensor calculated by flip layer. The data type is same with input x.
 
     Examples:
         .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
           import numpy as np
-          input = fluid.data(name="x", shape=[-1, 2, 2], dtype='float32')
-          output = paddle.flip(input, dims=[0, 1])
-          exe = fluid.Executor(fluid.CPUPlace())
-          exe.run(fluid.default_startup_program())
-          img = np.arange(12).reshape((3,2,2)).astype(np.float32)
-          res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-          print(res) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
+
+          paddle.enable_imperative()
+
+          image_shape=(3, 2, 2)
+          x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
+          x = x.astype('float32')
+          img = paddle.imperative.to_variable(x)
+          out = paddle.flip(img, [0,1])
+
+          print(out) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
     """
     helper = LayerHelper("flip", **locals())
-    check_type(input, 'X', (Variable), 'flip')
-    dtype = helper.input_dtype()
+    check_type(x, 'X', (Variable), 'flip')
+    dtype = helper.input_dtype('x')
     check_dtype(dtype, 'X',
                 ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
                 'flip')
-    check_type(dims, 'dims', (list, tuple), 'flip')
-    assert len(dims) > 0, 'len(dims) must be greater than 0.'
+    check_type(axis, 'axis', (list, tuple), 'flip')
     if name is None:
         out = helper.create_variable_for_type_inference(dtype)
     else:
@@ -98,29 +98,33 @@ def flip(input, dims, name=None):
 
     helper.append_op(
         type="flip",
-        inputs={"X": input},
+        inputs={"X": x},
         outputs={"Out": out},
-        attrs={"dims": dims})
+        attrs={"axis": axis})
     return out
 
 
-def roll(input, shifts, dims=None):
+reverse = flip  #DEFINE_ALIAS
+
+
+def roll(x, shifts, axis=None, name=None):
     """
 	:alias_main: paddle.roll
 	:alias: paddle.roll,paddle.tensor.roll,paddle.tensor.manipulation.roll
 
-    Roll the `input` tensor along the given dimension(s). Elements that are shifted beyond 
-    the last position are re-introduced at the first position. If a dimension is not specified, 
+    Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that 
+    roll beyond the last position are re-introduced at the first according to 'shifts'. 
+    If a axis is not specified, 
     the tensor will be flattened before rolling and then restored to the original shape.
 
     Args:
-        input (Variable): The input tensor variable.
+        x (Variable): The x tensor variable as input.
         shifts (int|list|tuple): The number of places by which the elements
-                           of the `input` tensor are shifted.
-        dims (int|list|tuple|None): Dimentions along which to roll.
+                           of the `x` tensor are shifted.
+        axis (int|list|tuple|None): axis(axes) along which to roll.
 
     Returns:
-        Variable: A Tensor with same data type as `input`.
+        Variable: A Tensor with same data type as `x`.
 
     Examples:
         .. code-block:: python
@@ -131,48 +135,56 @@ def roll(input, shifts, dims=None):
             data = np.array([[1.0, 2.0, 3.0],
                              [4.0, 5.0, 6.0],
                              [7.0, 8.0, 9.0]])
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(data)
-                out_z1 = paddle.roll(x, shifts=1)
-                print(out_z1.numpy())
-                #[[9. 1. 2.]
-                # [3. 4. 5.]
-                # [6. 7. 8.]]
-                out_z2 = paddle.roll(x, shifts=1, dims=0)
-                print(out_z2.numpy())
-                #[[7. 8. 9.]
-                # [1. 2. 3.]
-                # [4. 5. 6.]]
+            paddle.enable_imperative()
+            x = paddle.imperative.to_variable(data)
+            out_z1 = paddle.roll(x, shifts=1)
+            print(out_z1.numpy())
+            #[[9. 1. 2.]
+            # [3. 4. 5.]
+            # [6. 7. 8.]]
+            out_z2 = paddle.roll(x, shifts=1, axis=0)
+            print(out_z2.numpy())
+            #[[7. 8. 9.]
+            # [1. 2. 3.]
+            # [4. 5. 6.]]
     """
     helper = LayerHelper("roll", **locals())
-    origin_shape = input.shape
+    origin_shape = x.shape
     if type(shifts) == int:
         shifts = [shifts]
-    if type(dims) == int:
-        dims = [dims]
+    if type(axis) == int:
+        axis = [axis]
 
-    if dims:
-        check_type(dims, 'dims', (list, tuple), 'roll')
+    len_origin_shape = len(origin_shape)
+    if axis:
+        for i in range(len(axis)):
+            if axis[i] >= len_origin_shape or axis[i] < -len_origin_shape:
+                raise ValueError(
+                    "axis is out of range, it should be in range [{}, {}), but received {}".
+                    format(-len_origin_shape, len_origin_shape, axis))
+
+    if axis:
+        check_type(axis, 'axis', (list, tuple), 'roll')
     check_type(shifts, 'shifts', (list, tuple), 'roll')
 
     if in_dygraph_mode():
-        if dims is None:
-            input = core.ops.reshape(input, 'shape', [-1, 1])
-            dims = [0]
-        out = core.ops.roll(input, 'dims', dims, 'shifts', shifts)
+        if axis is None:
+            x = core.ops.reshape(x, 'shape', [-1, 1])
+            axis = [0]
+        out = core.ops.roll(x, 'axis', axis, 'shifts', shifts)
         return core.ops.reshape(out, 'shape', origin_shape)
 
-    out = helper.create_variable_for_type_inference(input.dtype)
+    out = helper.create_variable_for_type_inference(x.dtype)
 
-    if dims is None:
-        input = reshape(input, shape=[-1, 1])
-        dims = [0]
+    if axis is None:
+        x = reshape(x, shape=[-1, 1])
+        axis = [0]
 
     helper.append_op(
         type='roll',
-        inputs={'X': input},
+        inputs={'X': x},
         outputs={'Out': out},
-        attrs={'dims': dims,
+        attrs={'axis': axis,
                'shifts': shifts})
     out = reshape(out, shape=origin_shape, inplace=True)
     return out

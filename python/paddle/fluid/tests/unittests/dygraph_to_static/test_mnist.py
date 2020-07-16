@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 
 SEED = 2020
@@ -201,6 +202,9 @@ class TestMNISTWithDeclarative(TestMNIST):
                         self.check_save_inference_model([dy_x_data, y_data],
                                                         prog_trans, to_static,
                                                         prediction)
+                        # new save load check
+                        self.check_jit_save_load(mnist, [dy_x_data], [img],
+                                                 to_static, prediction)
                         break
         return loss_data
 
@@ -223,6 +227,45 @@ class TestMNISTWithDeclarative(TestMNIST):
                           fetch_list=fetch_targets)
 
         return np.array(results[0])
+
+    def check_jit_save_load(self, model, inputs, input_spec, to_static, gt_out):
+        if to_static:
+            infer_model_path = "./test_mnist_inference_model_by_jit_save"
+            configs = fluid.dygraph.jit.SaveLoadConfig()
+            configs.output_spec = [gt_out]
+            fluid.dygraph.jit.save(
+                layer=model,
+                model_path=infer_model_path,
+                input_spec=input_spec,
+                configs=configs)
+            # load in static mode
+            static_infer_out = self.jit_load_and_run_inference_static(
+                infer_model_path, inputs)
+            self.assertTrue(np.allclose(gt_out.numpy(), static_infer_out))
+            # load in dygraph mode
+            dygraph_infer_out = self.jit_load_and_run_inference_dygraph(
+                infer_model_path, inputs)
+            self.assertTrue(np.allclose(gt_out.numpy(), dygraph_infer_out))
+
+    @switch_to_static_graph
+    def jit_load_and_run_inference_static(self, model_path, inputs):
+        exe = fluid.Executor(self.place)
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(
+             dirname=model_path,
+             executor=exe,
+             params_filename=VARIABLE_FILENAME)
+        assert len(inputs) == len(feed_target_names)
+        results = exe.run(inference_program,
+                          feed=dict(zip(feed_target_names, inputs)),
+                          fetch_list=fetch_targets)
+
+        return np.array(results[0])
+
+    def jit_load_and_run_inference_dygraph(self, model_path, inputs):
+        infer_net = fluid.dygraph.jit.load(model_path)
+        pred = infer_net(inputs[0])
+        return pred.numpy()
 
 
 if __name__ == "__main__":

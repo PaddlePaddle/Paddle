@@ -51,10 +51,6 @@ bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
-#define SEC_LOG                                                              \
-  VLOG(3) << "[s" << section_id_ << "p" << pipeline_id_ << "t" << thread_id_ \
-          << "]: "
-
 class PullDenseWorker {
  public:
   virtual ~PullDenseWorker() {}
@@ -311,40 +307,9 @@ class DownpourWorkerOpt : public DownpourWorker {
 };
 
 #if defined(PADDLE_WITH_NCCL)
-using ScopeQueue = operators::reader::BlockingQueue<Scope*>;
-
-class SyncFunctor {
- public:
-  SyncFunctor(int rank_id, int rank_num, int sync_steps);
-  virtual ~SyncFunctor() {}
-
-  void SetSyncParam(const std::vector<std::string>& sync_param) {
-    sync_param_ = &sync_param;
-  }
-  void SetNcclCtxMap(platform::NCCLContextMap* nccl_ctx_map) {
-    nccl_ctx_map_ = nccl_ctx_map;
-  }
-
-  int operator()(Scope* scope);
-  static std::vector<Scope*> pipeline_scopes_;
-  static uint64_t sync_flag_;
-
- protected:
-  const int rank_id_;
-  const int rank_num_;
-  const std::vector<std::string>* sync_param_ = nullptr;
-  platform::NCCLContextMap* nccl_ctx_map_ = nullptr;
-
-  uint64_t sync_signal_;
-  const int sync_steps_;
-  int counter_;
-
-  void Synchronize();
-};
-
 class SectionWorker : public DeviceWorker {
  public:
-  SectionWorker() {}
+  SectionWorker() { local_batch_id_ = 0; }
   ~SectionWorker() override {}
 
   void Initialize(const TrainerDesc& desc) override;
@@ -360,50 +325,39 @@ class SectionWorker : public DeviceWorker {
   const platform::Place& place() const { return place_; }
 
   void SetSectionIndex(int section_id) { section_id_ = section_id; }
-  void SetDeviceIndex(int tid) override { pipeline_id_ = tid; }
+  void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
-  void SetVarNames(const std::vector<std::string>& in_var_names,
-                   const std::vector<std::string>& out_var_names) {
-    in_var_names_ = &in_var_names;
-    out_var_names_ = &out_var_names;
+  void SetMicrobatchNum(int num) { num_microbatches_ = num; }
+  void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
+    microbatch_scopes_ = scope;
   }
-  void SetScopeQueue(ScopeQueue* in_scope_queue, ScopeQueue* out_scope_queue) {
-    in_scope_queue_ = in_scope_queue;
-    out_scope_queue_ = out_scope_queue;
+  void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
+  void SetSkipVars(const std::vector<std::string>& skip_vars) {
+    skip_vars_ = skip_vars;
   }
-  void SetCountMutex(std::mutex* mutex) { worker_count_mutex_ = mutex; }
-  void SetWorkerCount(int* worker_count) { worker_count_ = worker_count; }
-  void SetSectionNum(int section_num) { section_num_ = section_num; }
-  void SetPipelineNum(int pipeline_num) { pipeline_num_ = pipeline_num; }
-  void SetNextSectionPlace(const paddle::platform::Place& place) {
-    next_section_place_ = place;
-  }
-  SyncFunctor* sync_func_ = nullptr;
-  void SetSyncFunctor(SyncFunctor* sync_func) { sync_func_ = sync_func; }
 
   static std::atomic<int> cpu_id_;
 
  protected:
   void AutoSetCPUAffinity(bool reuse);
   int section_id_;
-  int pipeline_id_;
-  int section_num_;
-  int pipeline_num_;
   int thread_id_;
-  // This worker will consume scope from in_scope_queue_
-  // and produce scope to out_scope_queue_
-  ScopeQueue* in_scope_queue_ = nullptr;
-  ScopeQueue* out_scope_queue_ = nullptr;
-  const std::vector<std::string>* in_var_names_ = nullptr;
-  const std::vector<std::string>* out_var_names_ = nullptr;
-  std::mutex* worker_count_mutex_ = nullptr;
-  int* worker_count_ = nullptr;
-  paddle::platform::Place next_section_place_;
+  int num_microbatches_;
+  std::vector<Scope*> microbatch_scopes_;
+  std::vector<std::string> skip_vars_;
+  const Scope* minibatch_scope_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+  static std::mutex thread_mutex;
+  static std::condition_variable thread_condition;
+  static bool threads_completed;
+  std::shared_ptr<framework::ProgramDesc> program_;
+  static uint64_t batch_id_;
+  uint64_t local_batch_id_;
 
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 #endif
+
 }  // namespace framework
 }  // namespace paddle

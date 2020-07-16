@@ -58,12 +58,16 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
     list(REMOVE_ITEM TEST_OPS test_desc_clone)
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
-    list(REMOVE_ITEM TEST_OPS test_hsigmoid_op)
     list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
     list(REMOVE_ITEM TEST_OPS test_split_ids_op)
     list(REMOVE_ITEM TEST_OPS test_program_code)
     LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
     LIST(REMOVE_ITEM TEST_OPS test_math_op_patch_var_base)
+endif()
+
+if(APPLE OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_hdfs)
+    LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
 endif()
 
 if (NOT ${WITH_GPU})
@@ -230,6 +234,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
+list(REMOVE_ITEM TEST_OPS test_pipeline)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -319,6 +324,7 @@ if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
 
     #not need
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
@@ -352,7 +358,7 @@ if(WITH_DISTRIBUTE)
         endif()
         bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
-        set(dist_ut_port 1000)
+        set(dist_ut_port 20001)
         foreach(TEST_OP ${DIST_TEST_OPS})
             bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
             MATH(EXPR dist_ut_port "${dist_ut_port}+50")

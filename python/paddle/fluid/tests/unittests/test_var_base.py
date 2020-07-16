@@ -102,7 +102,7 @@ class TestVarBase(unittest.TestCase):
     def test_to_string(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
-            self.assertTrue(isinstance(str(var.to_string(True)), str))
+            self.assertTrue(isinstance(str(var), str))
 
     def test_backward(self):
         with fluid.dygraph.guard():

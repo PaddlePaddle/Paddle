@@ -98,9 +98,8 @@ void InitP2P(std::vector<int> devices) {
       for (int j = 0; j < count; ++j) {
         if (devices[i] == devices[j]) continue;
         int can_acess = -1;
-        PADDLE_ENFORCE(
-            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]),
-            "Failed to test P2P access.");
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]));
         if (can_acess != 1) {
           LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
                        << " to " << devices[j];
@@ -118,14 +117,18 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                 \
-  {                                                               \
-    PADDLE_ENFORCE(!platform::dynload::cuptiActivityGetAttribute( \
-        attr, &attrValueSize, &attrValue));                       \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
-    PADDLE_ENFORCE(!platform::dynload::cuptiActivitySetAttribute( \
-        attr, &attrValueSize, &attrValue));                       \
+#define MULTIPLY_ATTR_VALUE(attr)                                            \
+  {                                                                          \
+    PADDLE_ENFORCE_EQ(                                                       \
+        !platform::dynload::cuptiActivityGetAttribute(attr, &attrValueSize,  \
+                                                      &attrValue),           \
+        true, platform::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                        \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";                \
+    PADDLE_ENFORCE_EQ(                                                       \
+        !platform::dynload::cuptiActivitySetAttribute(attr, &attrValueSize,  \
+                                                      &attrValue),           \
+        true, platform::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);

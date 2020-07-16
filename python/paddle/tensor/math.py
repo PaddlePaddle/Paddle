@@ -417,9 +417,6 @@ def _elementwise_op(helper):
 
 def add(x, y, alpha=1, out=None, name=None):
     """
-	:alias_main: paddle.add
-	:alias: paddle.add,paddle.tensor.add,paddle.tensor.math.add
-
 Examples:
 
     .. code-block:: python
@@ -562,9 +559,6 @@ Examples:
 
 def div(x, y, out=None, name=None):
     """
-	:alias_main: paddle.div
-	:alias: paddle.div,paddle.tensor.div,paddle.tensor.math.div
-
 Examples:
 
     .. code-block:: python
@@ -687,6 +681,9 @@ for func in [
     proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
     if func.__name__ in ['add']:
+        alias_main = ':alias_main: paddle.%(func)s' % {'func': func.__name__}
+        alias = ':alias: paddle.%(func)s, paddle.tensor.%(func)s, paddle.tensor.math.%(func)s' % {'func': func.__name__}
+
         additional_args_lines = [
             "alpha (int|float, optional): The alpha factor of the input. Default is 1. If alpha is not 1, the equation becomes Out = X + alpha * Y.",
             "out (Variable, optinal): The Variable that stores results of the operation. Default is None. If out is None, \
@@ -706,7 +703,7 @@ for func in [
             :ref:`api_guide_Name` "
         ]
 
-    func.__doc__ = _generate_doc_string_(
+    func.__doc__ = alias_main + """\n""" + alias + """\n""" + _generate_doc_string_(
         op_proto,
         additional_args_lines=additional_args_lines,
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
@@ -1578,30 +1575,30 @@ def clamp(input, min=None, max=None, output=None, name=None):
 
     return output
 
-def trace(input, offset=0, dim1=0, dim2=1, out=None, name=None):
+def trace(x, offset=0, axis1=0, axis2=1, name=None):
     """
 	:alias_main: paddle.trace
 	:alias: paddle.trace,paddle.tensor.trace,paddle.tensor.math.trace
 
-    This OP computes the sum along diagonals of the input tensor.
+    This OP computes the sum along diagonals of the input tensor x.
     
-    If ``input`` is 2D, returns the sum of diagonal. 
+    If ``x`` is 2D, returns the sum of diagonal. 
 
-    If ``input`` has larger dimensions, then returns an tensor of diagonals sum, diagonals be taken from
-    the 2D planes specified by dim1 and dim2. By default, the 2D planes formed by the first and second dimensions 
-    of the input tensor.
+    If ``x`` has larger dimensions, then returns an tensor of diagonals sum, diagonals be taken from
+    the 2D planes specified by axis1 and axis2. By default, the 2D planes formed by the first and second axes 
+    of the input tensor x.
 
-    The argument ``offset`` determines where diagonals are taken from input tensor:
+    The argument ``offset`` determines where diagonals are taken from input tensor x:
 
     - If offset = 0, it is the main diagonal.
     - If offset > 0, it is above the main diagonal.
     - If offset < 0, it is below the main diagonal.
     
     Args:
-        input(Variable): The input tensor. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
-        offset(int, optional): Which diagonals in input tensor will be taken. Default: 0 (main diagonals).
-        dim1(int, optional): The first dimension with respect to take diagonal. Default: 0.
-        dim2(int, optional): The second dimension with respect to take diagonal. Default: 1.
+        x(Variable): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
+        offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
+        axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
+        axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
         name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
@@ -1611,66 +1608,63 @@ def trace(input, offset=0, dim1=0, dim2=1, out=None, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid.dygraph as dg
             import numpy as np
             
             case1 = np.random.randn(2, 3).astype('float32')
             case2 = np.random.randn(3, 10, 10).astype('float32')
             case3 = np.random.randn(3, 10, 5, 10).astype('float32')
             
-            with dg.guard():
-                case1 = dg.to_variable(case1)
-                case2 = dg.to_variable(case2)
-                case3 = dg.to_variable(case3)
-                data1 = paddle.trace(case1) # data1.shape = [1]
-                data2 = paddle.trace(case2, offset=1, dim1=1, dim2=2) # data2.shape = [3]
-                data3 = paddle.trace(case3, offset=-3, dim1=1, dim2=-1) # data2.shape = [3, 5]
+            paddle.enable_imperative()
+
+            case1 = paddle.imperative.to_variable(case1)
+            case2 = paddle.imperative.to_variable(case2)
+            case3 = paddle.imperative.to_variable(case3)
+            data1 = paddle.trace(case1) # data1.shape = [1]
+            data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
+            data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
     """
-    inputs = {'Input': [input]}
-    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
+    inputs = {'Input': [x]}
+    attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
 
     def __check_input(input, offset, dim1, dim2):
-        check_dtype(input.dtype, 'Input',
+        check_dtype(x.dtype, 'Input',
                     ['int32', 'int64', 'float16', 'float32', 'float64'],
                     'trace')
 
-        input_shape = list(input.shape)
+        input_shape = list(x.shape)
         assert len(input_shape) >= 2,                     \
-                "The input must be at least 2-dimensional, "   \
-                "But received Input's dimensional: %s.\n" %  \
+                "The x must be at least 2-dimensional, "   \
+                "But received Input x's dimensional: %s.\n" %  \
                 len(input_shape)
 
-        dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1
-        dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2
+        axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
+        axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
 
-        assert dim1_ < len(input_shape),     \
-            "The argument dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
-            % (-(len(input_shape)), len(input_shape) - 1, dim1)
+        assert axis1_ < len(input_shape),     \
+            "The argument axis1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
+            % (-(len(input_shape)), len(input_shape) - 1, axis1)
 
-        assert dim2_ < len(input_shape),   \
-            "The argument dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
-            % (-(len(input_shape)), len(input_shape) - 1, dim2)
+        assert axis2_ < len(input_shape),   \
+            "The argument axis2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
+            % (-(len(input_shape)), len(input_shape) - 1, axis2)
 
 
-        assert  dim1_ != dim2_,   \
-               "dim1 and dim2 cannot be the same dimension." \
-                "But received dim1 = %d, dim2 = %d\n"%(dim1, dim2)
+        assert  axis1_ != axis2_,   \
+               "axis1 and axis2 cannot be the same axis." \
+                "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
     if not in_dygraph_mode():
-        __check_input(input, offset, dim1, dim2)
+        __check_input(input, offset, axis1, axis2)
     helper = LayerHelper('trace', **locals())
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    else:
-        check_variable_and_dtype(out, 'out', ['float16', 'float32', 'float64', 'int32', 'int64'], 'trace')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type='trace',
-        inputs={'Input': [input]},
+        inputs={'Input': [x]},
         attrs={'offset': offset,
-               'dim1': dim1,
-               'dim2': dim2},
+               'axis1': axis1,
+               'axis2': axis2},
         outputs={'Out': [out]})
     return out
 

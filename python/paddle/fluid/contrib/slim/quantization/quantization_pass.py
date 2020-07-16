@@ -127,6 +127,22 @@ def _get_op_output_var_names(op):
     return var_names
 
 
+def _get_output_name_index(op, output_var_name):
+    """Get the output name and index of the var_name in the op"""
+    assert isinstance(op, (IrNode, Operator)), \
+        "The input op should be IrNode or Operator."
+    op_name = op.name() if isinstance(op, IrNode) \
+        else op.type
+    name_list = _op_real_in_out_name[op_name][1]
+    res = None
+    for name in name_list:
+        var_name = op.output(name)
+        for index, val in enumerate(var_name):
+            if val == output_var_name:
+                res = (name, index)
+    return res
+
+
 def _init_var_node(var_node, value, scope, place):
     assert isinstance(value,
                       np.ndarray), 'The type of value should be numpy array.'
@@ -1528,13 +1544,19 @@ class OutScaleForInferencePass(object):
         op_nodes = graph.all_op_nodes()
         for op_node in op_nodes:
             if op_node.name() in self._teller_set:
-                output_var_name = _get_op_output_var_names(op_node)
-                assert len(output_var_name) == 1, "Only support collecting " \
-                    "output for op that only has an activation output for now."
-                scale_name = self._scale_name(output_var_name[0])
-                scale_v = np.array(
-                    self._scope.find_var(scale_name).get_tensor())[0]
-                op_node.op()._set_attr("out_threshold", float(scale_v))
+                var_names = _get_op_output_var_names(op_node)
+                for var_name in var_names:
+                    # For compatibility, we save output threshold by two methods.
+                    scale_name = self._scale_name(var_name)
+                    scale_v = np.array(
+                        self._scope.find_var(scale_name).get_tensor())[0]
+                    op_node.op()._set_attr("out_threshold", float(scale_v))
+
+                    argname_index = _get_output_name_index(op_node, var_name)
+                    assert argname_index is not None, \
+                        var_name + " is not the output of the op"
+                    op_node.op()._set_attr(argname_index[0] + str(argname_index[1]) \
+                        + "_threshold", float(scale_v))
         graph.resolve_hazard()
         return graph
 

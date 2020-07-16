@@ -75,8 +75,7 @@ template <typename T>
 __global__ void RowwiseAddKernel(const T* a, const T* b, T* c, int width,
                                  int num) {
   T tmp = 1.0 / width;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, num) {
     int h = i * tmp;
     int w = i - h * width;
     c[i] = a[i] + b[w];

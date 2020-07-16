@@ -100,7 +100,7 @@ def build_network(input, layers=50, class_dim=1000):
             pool_type='max')
     if layers >= 50:
         for block in range(len(depth)):
-            with fluid.device_guard("cpu"):
+            with fluid.device_guard("gpu:0"):
                 for i in range(depth[block]):
                     conv = bottleneck_block(
                         input=conv,
@@ -118,7 +118,7 @@ def build_network(input, layers=50, class_dim=1000):
                     initializer=fluid.initializer.Uniform(-stdv, stdv)))
     else:
         for block in range(len(depth)):
-            with fluid.device_guard("cpu"):
+            with fluid.device_guard("gpu:0"):
                 for i in range(depth[block]):
                     conv = basic_block(
                         input=conv,
@@ -140,38 +140,68 @@ def build_network(input, layers=50, class_dim=1000):
 class TestPipeline(unittest.TestCase):
     """  TestCases for Pipeline Training. """
 
-    def test_pipeline(self):
-        with fluid.device_guard("cpu"):
-            image = fluid.layers.data(
-                name="image", shape=[3, 224, 224], dtype="float32")
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            data_loader = fluid.io.DataLoader.from_generator(
-                feed_list=[image, label],
-                capacity=64,
-                use_double_buffer=True,
-                iterable=False)
-            fc = build_network(image, layers=50)
-        with fluid.device_guard("gpu:0"):
-            out, prob = fluid.layers.softmax_with_cross_entropy(
-                logits=fc, label=label, return_softmax=True)
-            loss = fluid.layers.mean(out)
-            acc_top1 = fluid.layers.accuracy(input=prob, label=label, k=1)
-            acc_top5 = fluid.layers.accuracy(input=prob, label=label, k=5)
+    def _run(self, debug):
+        main_prog = fluid.Program()
+        startup_prog = fluid.Program()
+        with fluid.program_guard(main_prog, startup_prog):
+            with fluid.device_guard("cpu"):
+                image = fluid.layers.data(
+                    name="image", shape=[3, 224, 224], dtype="float32")
+                label = fluid.layers.data(
+                    name="label", shape=[1], dtype="int64")
+                data_loader = fluid.io.DataLoader.from_generator(
+                    feed_list=[image, label],
+                    capacity=64,
+                    use_double_buffer=True,
+                    iterable=False)
+                fc = build_network(image, layers=50)
+            with fluid.device_guard("gpu:0"):
+                out, prob = fluid.layers.softmax_with_cross_entropy(
+                    logits=fc, label=label, return_softmax=True)
+                loss = fluid.layers.mean(out)
+                acc_top1 = fluid.layers.accuracy(input=prob, label=label, k=1)
+                acc_top5 = fluid.layers.accuracy(input=prob, label=label, k=5)
 
-        base_lr = 0.1
-        passes = [30, 60, 80, 90]
-        total_images = 1281167
-        steps_per_pass = total_images // 128
-        bd = [steps_per_pass * p for p in passes]
-        lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        lr_val = fluid.layers.piecewise_decay(boundaries=bd, values=lr)
-        optimizer = fluid.optimizer.Momentum(
-            lr_val,
-            momentum=0.9,
-            regularization=fluid.regularizer.L2Decay(1e-4))
-        optimizer = fluid.optimizer.PipelineOptimizer(
-            optimizer, num_microbatches=2)
-        optimizer.minimize(loss)
+            base_lr = 0.1
+            passes = [30, 60, 80, 90]
+            total_images = 1281167
+            steps_per_pass = total_images // 128
+            bd = [steps_per_pass * p for p in passes]
+            lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
+            lr_val = fluid.layers.piecewise_decay(boundaries=bd, values=lr)
+            optimizer = fluid.optimizer.MomentumOptimizer(
+                lr_val,
+                momentum=0.9,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            optimizer = fluid.optimizer.PipelineOptimizer(
+                optimizer, num_microbatches=2)
+            optimizer.minimize(loss)
+
+        def train_reader():
+            for _ in range(4):
+                img = np.random.random(size=[3, 224, 224]).astype('float32')
+                label = np.random.random(size=[1]).astype('int64')
+                yield img, label
+
+        data_loader.set_sample_generator(train_reader, batch_size=1)
+        place = fluid.CPUPlace()
+
+        # The following dataset is only used for the 
+        # interface 'train_from_dataset'.
+        # And it has no actual meaning.
+        dataset = fluid.DatasetFactory().create_dataset('FileInstantDataset')
+        dataset.set_batch_size(1)
+        dataset.set_thread(1)
+        dataset.set_filelist(['/tmp/tmp_2.txt'])
+        dataset.set_use_var([image, label])
+        exe = fluid.Executor(place)
+        exe.run(startup_prog)
+        data_loader.start()
+        exe.train_from_dataset(main_prog, dataset, debug=debug)
+
+    def test_pipeline(self):
+        self._run(False)
+        self._run(True)
 
     def test_pipeline_noneoptimizer(self):
         with fluid.device_guard("gpu:0"):
