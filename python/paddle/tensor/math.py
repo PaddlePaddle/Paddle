@@ -579,9 +579,6 @@ Examples:
 
 def maximum(x, y, axis=-1, name=None):
     """
-	:alias_main: paddle.maximum
-	:alias: paddle.maximum,paddle.tensor.maximum,paddle.tensor.math.maximum
-
 Examples:
 
     .. code-block:: python
@@ -619,9 +616,6 @@ Examples:
 
 def minimum(x, y, axis=-1, name=None):
     """
-	:alias_main: paddle.minimum
-	:alias: paddle.minimum,paddle.tensor.minimum,paddle.tensor.math.minimum
-
 Examples:
 
     .. code-block:: python
