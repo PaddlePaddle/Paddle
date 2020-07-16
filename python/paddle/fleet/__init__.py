@@ -14,10 +14,6 @@
 
 # TODO: define distributed api under this directory, 
 from .base.distributed_strategy import DistributedStrategy
-#from .base.role_maker import PaddleCloudRoleMaker, UserDefinedRoleMaker
-#from .base.fleet_base import Fleet
+from .dataset import DatasetFactory
 
-#__all__ = [
-#    "DistributedStrategy", "PaddleCloudRoleMaker", "UserDefinedRoleMaker"
-#]
-__all__ = ['DistributedStrategy']
+__all__ = ['DistributedStrategy', 'DatasetFactory']
