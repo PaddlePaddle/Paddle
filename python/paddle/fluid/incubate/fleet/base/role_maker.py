@@ -488,7 +488,113 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def generate_role(self):
         """Generate role."""
         if not self._role_is_generated:
-            if not self._is_collective:
+            eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
+            training_role = os.environ["TRAINING_ROLE"]
+            worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(",")
+            trainers_num = len(worker_endpoints)
+            if training_role not in ["TRAINER", "PSERVER"]:
+                raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
+            self._is_barrier_all = 1
+            if "PADDLE_IS_BARRIER_ALL_ROLE" in os.environ:
+                self._is_barrier_all = int(os.environ[
+                    "PADDLE_IS_BARRIER_ALL_ROLE"])
+            if training_role == "TRAINER":
+                role = Role.WORKER
+                current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                if current_id == 0 and len(self._http_ip_port) != 0:
+                    size_d = {
+                        "trainer": len(worker_endpoints),
+                        "pserver": len(eplist),
+                        "all": len(worker_endpoints) + len(eplist)
+                    }
+                    # child process for http server
+                    self._http_server = Process(
+                        target=self.__start_kv_server,
+                        args=(self._http_server_d, size_d))
+                    self._http_server.daemon = True
+                    # set running status to True
+                    self._http_server_d["running"] = True
+                    # start child process
+                    self._http_server.start()
+                self._node_type = 1
+                self._cur_endpoint = worker_endpoints[current_id]
+                if self._is_barrier_all:
+                    gloo = fluid.core.Gloo()
+                    gloo.set_rank(current_id)
+                    gloo.set_size(len(worker_endpoints))
+                    gloo.set_prefix(self._prefix)
+                    gloo.set_iface(self._iface)
+                    gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                             self._run_timeout_seconds)
+                    if len(self._http_ip_port) != 0:
+                        gloo.set_http_store(self._http_ip_port[0],
+                                            int(self._http_ip_port[1]),
+                                            "trainer")
+                    else:
+                        gloo.set_hdfs_store(self._hdfs_path + "/trainer",
+                                            self._hdfs_name, self._hdfs_ugi)
+                    gloo.init()
+                    self._node_type_comm = gloo
+                else:
+                    self._all_comm = MockBarrier()
+            elif training_role == "PSERVER":
+                role = Role.SERVER
+                if os.environ.get("PADDLE_PSERVER_ID") is not None:
+                    current_id = int(os.environ["PADDLE_PSERVER_ID"])
+                    cur_endpoint = eplist[current_id]
+                else:
+                    # this is for compatible with paddlecloud
+                    cur_ip = os.environ["POD_IP"]
+                    cur_port = os.environ["PADDLE_PORT"]
+                    cur_endpoint = ":".join([cur_ip, cur_port])
+                    current_id = eplist.index(cur_endpoint)
+                self._node_type = 0
+                self._cur_endpoint = cur_endpoint
+                gloo = fluid.core.Gloo()
+                gloo.set_rank(current_id)
+                gloo.set_size(len(eplist))
+                gloo.set_prefix(self._prefix)
+                gloo.set_iface(self._iface)
+                gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                         self._run_timeout_seconds)
+                if len(self._http_ip_port) != 0:
+                    gloo.set_http_store(self._http_ip_port[0],
+                                        int(self._http_ip_port[1]), "pserver")
+                else:
+                    gloo.set_hdfs_store(self._hdfs_path + "/pserver",
+                                        self._hdfs_name, self._hdfs_ugi)
+                gloo.init()
+                self._node_type_comm = gloo
+                gloo = fluid.core.Gloo()
+                all_list = worker_endpoints + eplist
+                gloo.set_rank(all_list.index(self._cur_endpoint))
+                gloo.set_size(len(all_list))
+                gloo.set_prefix(self._prefix)
+                gloo.set_iface(self._iface)
+                gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                         self._run_timeout_seconds)
+                if len(self._http_ip_port) != 0:
+                    gloo.set_http_store(self._http_ip_port[0],
+                                        int(self._http_ip_port[1]), "all")
+                else:
+                    gloo.set_hdfs_store(self._hdfs_path + "/all",
+                                        self._hdfs_name, self._hdfs_ugi)
+                gloo.init()
+                self._all_comm = gloo
+                self._trainers_num = trainers_num
+                self._server_endpoints = eplist
+                self._role = role
+                self._current_id = current_id
+                self._rank = all_list.index(self._cur_endpoint)
+                self._size = len(all_list)
+                self._worker_endpoints = worker_endpoints
+                if self._http_server is not None:
+                    # set running status to False
+                    self._http_server_d["running"] = False
+                    # wait until child process exits
+                    self._http_server.join()
+                self._role_is_generated = True
+            '''if not self._is_collective:
                 try:
                     # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
                     # format: string(ip:port), eg. 127.0.0.1:6001
@@ -537,7 +643,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 self._worker_endpoints = self._worker_endpoints.split(",")
                 self._trainers_num = len(self._worker_endpoints)
 
-            self._role_is_generated = True
+            self._role_is_generated = True'''
 
     def get_pserver_endpoints(self):
         if not self._role_is_generated:
@@ -569,10 +675,270 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._current_id
 
+    '''def worker_num(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._trainers_num'''
+
+    def all_gather(self, input):
+        """
+        all gather between trainers and pservers
+
+        Args:
+            input(int|float): input value
+
+        Returns:
+            return a list of values
+        """
+        return self._all_gather(input)
+
+    def all_reduce_worker(self, input, output, mode="sum"):
+        """
+        all reduce between trainers if current role is TRAINER,
+        only support array of one dim.
+
+        Args:
+            input(list/numpy.array): array of one dim
+            output(list/numpy.array): array of one dim
+            mode(str): "sum" or "min" or "max"
+        """
+        if not self.is_worker():
+            return
+        self._all_reduce(input, output, mode)
+
+    def barrier_worker(self):
+        """
+        barrier between trainers if current role is TRAINER
+        """
+        self._barrier_worker()
+
+    def barrier_all(self):
+        """
+        barrier between trainers if current role is PSERVER
+        """
+        self._barrier_all()
+
+    def get_local_endpoint(self):
+        """
+        get local endpoint of current process
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._cur_endpoint
+
+    def get_trainer_endpoints(self):
+        """
+        get endpoint of all trainers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._worker_endpoints
+
+    def get_pserver_endpoints(self):
+        """
+        get endpoint of all pservers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._server_endpoints
+
+    def is_worker(self):
+        """
+        whether current process is worker
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.WORKER
+
+    def is_server(self):
+        """
+        whether current process is server
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.SERVER
+
+    def is_first_worker(self):
+        """
+        whether current process is worker of rank 0
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.WORKER and self._current_id == 0
+
+    def worker_index(self):
+        """
+        get index of current worker
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._current_id
+
+    def server_index(self):
+        """
+        get index of current server
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._current_id
+
     def worker_num(self):
+        """
+        retrun the current number of worker
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._worker_num()
+
+    def server_num(self):
+        """
+        return the current number of server
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._server_num()
+
+    def _barrier_worker(self):
+        """
+        barrier all workers in current distributed job
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if self.is_worker():
+            self._node_type_comm.barrier()
+
+    def _barrier_all(self):
+        """
+        barrier all workers and servers in current distributed job
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        self._all_comm.barrier()
+
+    def _barrier_server(self):
+        """
+        barrier all servers in current distributed job
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if self.is_server():
+            self._node_type_comm.barrier()
+
+    def _worker_num(self):
+        """
+        return the current number of worker
+        """
         if not self._role_is_generated:
             self.generate_role()
         return self._trainers_num
+
+    def _server_num(self):
+        """
+        return the current number of server
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return len(self._server_endpoints)
+
+    def _finalize(self):
+        """Default do nothing."""
+        pass
+
+    def _all_reduce(self, input, output, mode="sum"):
+        """
+        all reduce between all workers
+
+        Args:
+            input(list|numpy.array): array of one dim
+            output(list|numpy.array): array of one dim
+            mode(str): "sum" or "min" or "max"
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        input_list = [i for i in input]
+        ans = self._node_type_comm.all_reduce(input_list, mode)
+        for i in range(len(ans)):
+            output[i] = ans[i]
+
+    def _all_gather(self, obj):
+        """
+        gather between all workers and pservers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        self._barrier_all()
+        return self._all_comm.all_gather(obj)
+
+    def _worker_gather(self, obj):
+        """
+        gather between all workers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if not self.is_worker():
+            return None
+        self._barrier_worker()
+        return self._node_type_comm.all_gather(obj)
+
+    def _get_rank(self):
+        """
+        get current rank in all workers and pservers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._rank
+
+    def _get_size(self):
+        """
+        get total num of all workers and pservers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._size
+
+    def __get_default_iface(self):
+        """
+        get default physical interface
+        """
+        default1 = self.__get_default_iface_from_gateway()
+        default2 = self.__get_default_iface_from_interfaces()
+        return default2 if default1 == "lo" else default1
+
+    def __get_default_iface_from_gateway(self):
+        """
+        get default physical interface
+        """
+        import netifaces
+        gateways = netifaces.gateways()
+        if gateways.get(netifaces.AF_INET) != None:
+            gateway = gateways[netifaces.AF_INET]
+            if len(gateway) > 0 and len(gateway[0]) > 1:
+                return gateway[0][1]
+        return "lo"
+
+    def __get_default_iface_from_interfaces(self):
+        """
+        get default physical interface
+        """
+        import netifaces
+        for intf_name in netifaces.interfaces():
+            addresses = netifaces.ifaddresses(intf_name)
+            if netifaces.AF_INET in addresses:
+                ipv4_addresses = addresses[netifaces.AF_INET]
+                for ipv4_address in ipv4_addresses:
+                    if 'broadcast' in ipv4_address:
+                        return intf_name
+        return "lo"
+
+    def __start_kv_server(self, http_server_d, size_d):
+        from paddle.fluid.incubate.fleet.utils.http_server import KVServer
+        http_server = KVServer(int(self._http_ip_port[1]), size_d)
+        http_server.start()
+        wait_seconds = 5
+        while http_server_d.get("running",
+                                False) and not http_server.shoud_stop():
+            time.sleep(wait_seconds)
+        http_server.stop()
 
 
 class GeneralRoleMaker(RoleMakerBase):
