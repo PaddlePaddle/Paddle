@@ -44,7 +44,7 @@ Graph* Pass::Apply(Graph* graph) const {
   PADDLE_ENFORCE_EQ(
       HasCircle(*graph), false,
       platform::errors::InvalidArgument(
-          "Illegal pass %s. Generated graph shouldn't have cycle.", Type()));
+          "Illegal pass %s. Generated graph shouldn't contain cycle.", Type()));
   PADDLE_ENFORCE_EQ(
       VarDescIsConsistency(*graph), true,
       platform::errors::InvalidArgument(

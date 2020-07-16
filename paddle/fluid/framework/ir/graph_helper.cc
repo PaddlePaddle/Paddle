@@ -138,7 +138,7 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
       adj_list = BuildOperationAdjList(graph);
   PADDLE_ENFORCE_EQ(HasCircleInternal(adj_list, nullptr), false,
                     platform::errors::InvalidArgument(
-                        "Generated graph shouldn't have cycle."));
+                        "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
   for (auto adj : adj_list) {

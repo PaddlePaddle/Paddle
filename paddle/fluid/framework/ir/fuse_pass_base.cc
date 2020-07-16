@@ -35,9 +35,9 @@ Scope* FusePassBase::param_scope() const {
 void FusePassBase::AddStatis(int count_of_fused) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph_, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  PADDLE_ENFORCE_EQ(
-      repr_.empty(), false,
-      platform::errors::InvalidArgument("Fuse pass must init with a name."));
+  PADDLE_ENFORCE_EQ(repr_.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "Fuse pass must be initialized with a name."));
   if (!graph_->Has(kFuseStatisAttr)) {
     graph_->Set(kFuseStatisAttr, new std::unordered_map<std::string, int>);
   }
