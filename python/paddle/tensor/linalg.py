@@ -453,7 +453,7 @@ def dist(x, y, p=2):
 def dot(x, y, name=None):
     """
 	:alias_main: paddle.dot
-	:alias: paddle.dot,paddle.tensor.dot,paddle.tensor.linalg.dot
+	:alias: paddle.dot, paddle.tensor.dot, paddle.tensor.linalg.dot
 
     This operator calculates inner product for vectors.
    
@@ -473,7 +473,6 @@ def dot(x, y, name=None):
     .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import numpy as np
         
         paddle.enable_imperative()
@@ -653,7 +652,7 @@ def cross(input, other, dim=None):
 def cholesky(x, upper=False, name=None):
     """
 	:alias_main: paddle.cholesky
-	:alias: paddle.cholesky,paddle.tensor.cholesky,paddle.tensor.linalg.cholesky
+	:alias: paddle.cholesky, paddle.tensor.cholesky, paddle.tensor.linalg.cholesky
 
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrice. 
