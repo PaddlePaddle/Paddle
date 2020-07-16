@@ -27,7 +27,7 @@ from dist_simnet_bow import train_network
 class TestDistGeoCtr_2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "geo"
-        self._reader = "dataset"
+        self._reader = "pyreader"
         self._geo_sgd_need_push_nums = 5
 
     def check_with_place(self,

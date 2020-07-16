@@ -540,6 +540,11 @@ void GeoCommunicator::SendSparse(const std::string &varname, int batches) {
   VLOG(1) << "SendSparse receive var: " << varname << " unset: " << size
           << " set: " << ids.size();
 
+  if (ids.empty()) {
+    LOG(WARNING) << "WARNING: GEO has nothing to send, return directly ";
+    return;
+  }
+
   auto *var_latest = recv_scope_->FindVar(varname);
 
   PADDLE_ENFORCE_EQ(var_latest->IsInitialized(), true,
