@@ -15,6 +15,7 @@
 
 from __future__ import print_function
 import os
+import paddle
 import paddle.fluid as fluid
 import unittest
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
@@ -81,7 +82,7 @@ class TestFleet2(unittest.TestCase):
             print("do not support pslib test, skip")
             return
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
         dataset.set_batch_size(1)
         dataset.set_thread(2)
         dataset.set_filelist([

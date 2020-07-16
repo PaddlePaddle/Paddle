@@ -211,7 +211,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             filelist.append(train_file_path)
 
         # config dataset
-        dataset = fluid.DatasetFactory().create_dataset()
+        dataset = paddle.fleet.DatasetFactory().create_dataset()
         dataset.set_batch_size(batch_size)
         dataset.set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
