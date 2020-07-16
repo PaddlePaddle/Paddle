@@ -42,9 +42,7 @@ RUN wget -q https://paddle-docker-tar.bj.bcebos.com/home/users/tianshuo/bce-pyth
 
 ENV PATH=/usr/local/gcc-8.2/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/gcc-8.2/lib64:$LD_LIBRARY_PATH
-RUN rm -rf /temp_gcc82 && rm -rf /gcc-8.2.0.tar.xz && rm -rf /gcc-8.2.0 && \
-    ln -s /usr/lib64/libz.so /usr/local/lib/libz.so && \
-    ln -s /usr/local/lib/libnccl.so /usr/local/cuda/lib64/
+RUN rm -rf /temp_gcc82 && rm -rf /gcc-8.2.0.tar.xz && rm -rf /gcc-8.2.0
 
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
