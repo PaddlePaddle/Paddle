@@ -176,6 +176,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void DisableGpu();
+
+  void EnableXpu(int l3_workspace_size = 0xfffc00);
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -583,6 +585,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool lite_zero_copy_;
 
   bool thread_local_stream_{false};
+  bool use_xpu_{false};
+  int xpu_l3_workspace_size_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};

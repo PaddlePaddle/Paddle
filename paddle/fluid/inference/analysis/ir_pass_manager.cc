@@ -147,6 +147,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("zero_copy", new bool(argument->lite_zero_copy()));
+      pass->Set("use_xpu", new bool(argument->use_xpu()));
+      pass->Set("xpu_l3_workspace_size",
+                new int(argument->xpu_l3_workspace_size()));
     }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {

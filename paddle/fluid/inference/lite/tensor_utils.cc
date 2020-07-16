@@ -48,6 +48,9 @@ platform::Place GetNativePlace(const TargetType& type, int id = 0) {
       return platform::CPUPlace();
     case TargetType::kCUDA:
       return platform::CUDAPlace(id);
+    case TargetType::kXPU:
+      LOG(ERROR) << "No corresponding device for XPU yet.";
+      return platform::Place();
     default:
       PADDLE_THROW(
           platform::errors::Unavailable("Unsupported target type. Now only "

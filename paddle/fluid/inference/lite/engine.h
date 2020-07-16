@@ -24,6 +24,7 @@
 #pragma GCC diagnostic ignored "-Wall"
 #include "lite/api/cxx_api.h"
 #include "lite/api/paddle_place.h"
+#include "lite/backends/xpu/target_wrapper.h"
 #include "lite/core/context.h"
 #include "lite/core/device_info.h"
 #include "lite/core/op_registry.h"
@@ -42,6 +43,7 @@ struct EngineConfig {
   std::vector<std::string> neglected_passes;
   lite_api::LiteModelType model_type{lite_api::LiteModelType::kProtobuf};
   bool model_from_memory{true};
+  size_t xpu_l3_workspace_size;
 };
 
 class EngineManager {
