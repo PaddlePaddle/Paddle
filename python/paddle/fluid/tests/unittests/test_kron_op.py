@@ -83,25 +83,6 @@ class TestKronLayer(unittest.TestCase):
             c_var = paddle.kron(a_var, b_var)
             np.testing.assert_allclose(c_var.numpy(), np.kron(a, b))
 
-    def test_case_with_output(self):
-        a = np.random.randn(10, 10).astype(np.float64)
-        b = np.random.randn(10, 10).astype(np.float64)
-
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
-                a_var = fluid.data("a", [-1, -1], dtype="float64")
-                b_var = fluid.data("b", [-1, -1], dtype="float64")
-                out_var = fluid.layers.create_tensor("float64", "c")
-                paddle.kron(a_var, b_var, out=out_var)
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(start)
-        c, = exe.run(main, feed={'a': a, 'b': b}, fetch_list=[out_var])
-        np.testing.assert_allclose(c, np.kron(a, b))
-
 
 if __name__ == '__main__':
     unittest.main()
