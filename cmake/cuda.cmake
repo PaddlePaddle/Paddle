@@ -188,12 +188,6 @@ endif()
 
 add_definitions("-DPADDLE_CUDA_BINVER=\"${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}\"")
 
-if(NOT WITH_DSO)
-    if(WIN32)
-      set_property(GLOBAL PROPERTY CUDA_MODULES ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusolver_LIBRARY})
-    endif(WIN32)
-endif(NOT WITH_DSO)
-
 # setting nvcc arch flags
 select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")

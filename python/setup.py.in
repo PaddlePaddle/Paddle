@@ -168,6 +168,7 @@ packages=['paddle',
           'paddle.fluid.contrib.slim.graph',
           'paddle.fluid.contrib.slim.prune',
           'paddle.fluid.contrib.slim.quantization',
+          'paddle.fluid.contrib.slim.quantization.imperative',
           'paddle.fluid.contrib.slim.distillation',
           'paddle.fluid.contrib.slim.nas',
           'paddle.fluid.contrib.slim.searcher',
@@ -201,6 +202,7 @@ packages=['paddle',
           'paddle.nn.initializer',
           'paddle.metric',
           'paddle.imperative',
+          'paddle.imperative.jit',
           'paddle.tensor',
           ]
 
@@ -269,6 +271,10 @@ else:
         # copy the openblas.dll
         shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
+
+if '${WITH_LITE}' == 'ON':
+    shutil.copy('${LITE_SHARED_LIB}', libs_path)
+    package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)

@@ -27,8 +27,8 @@ from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
 from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import eye  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
-
 from ..fluid.layers import create_tensor  #DEFINE_ALIAS
+from ..fluid.layers import linspace  #DEFINE_ALIAS
 
 __all__ = [
     'create_tensor',
@@ -65,8 +65,7 @@ def full_like(x, fill_value, dtype=None, name=None):
 
     Args:
         x(Variable): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
-        fill_value(bool|float|int|Variable): The value to fill the tensor with. Default value is 0. 
-            Note: this value shouldn't exceed the range of the output data type.
+        fill_value(bool|float|int|Variable): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The data type can be one
             of bool, float16, float32, float64, int32, int64. The default value is None, which means the output 
             data type is the same as input.
@@ -99,7 +98,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     helper = LayerHelper("full_like", **locals())
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full_like')
+                'full_like/zeros_like')
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
@@ -108,96 +107,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         attrs={'value': fill_value,
                "dtype": dtype},
         outputs={'Out': [out]})
-
-    return out
-
-
-def linspace(start, stop, num, dtype, out=None, device=None, name=None):
-    """
-	:alias_main: paddle.linspace
-	:alias: paddle.linspace,paddle.tensor.linspace,paddle.tensor.creation.linspace
-
-    This OP return fixed number of evenly spaced values within a given interval.
-    
-    **NOTICE**: The output of this OP has no gradient.
-
-    Args:
-        start(float|Variable): The input :attr:`start` is start variable of range. It is a float scalar, \
-            or a tensor of shape [1] with input data type float32, float64.
-        stop(float|Variable): The input :attr:`stop` is start variable of range. It is a float scalar, \
-            or a tensor of shape [1] with input data type float32, float64.
-        num(int|Variable): The input :attr:`num` is given num of the sequence. It is an int scalar, \
-            or a tensor of shape [1] with type int32.
-        dtype(string): The data type of output tensor, it could be 'float32' and 'float64'.
-        out (Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result. Default: None.
-        device (string, optional): Which device to run the operator. The :attr:`device` must be
-            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default: None.
-        name(str, optional): Normally there is no need for user to set this property. 
-            For more information, please refer to :ref:`api_guide_Name`.Default: None.
-
-    Returns:
-        Variable, the output data type will be float32, float64.: The 1-D tensor with fixed number of evenly spaced values, \
-        the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
-        the value with input :attr:`start`. 
-
-    Examples:
-        .. code-block:: python
-
-             import paddle
-             data = paddle.linspace(0, 10, 5, dtype='float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
-             data = paddle.linspace(0, 10, 1, dtype='float32') # [0.0]
-
-    """
-    helper = LayerHelper("linspace", **locals())
-
-    if not isinstance(start, Variable):
-        start = fill_constant([1], dtype, start)
-    if not isinstance(stop, Variable):
-        stop = fill_constant([1], dtype, stop)
-    if not isinstance(num, Variable):
-        num = fill_constant([1], 'int32', num)
-
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=start.dtype)
-    else:
-        check_dtype(
-            out.dtype, out.name,
-            convert_dtype(start.dtype), 'linspace',
-            "The out data type '%s' in linspace must be the same with '%s' seted by parameter 'dtype'."
-            % (out.dtype, dtype))
-        if name:
-            warning.warn(
-                "The output Variable name of the paddle.tensor.linspace operation can only be given by parameter out or name.\
-                When parameter out and name are set at the same time, out has a higher priority than name. \
-                Finally, the output Variable name is same as the out name %s." %
-                out.name,
-                category=UserWarning,
-                stacklevel=2)
-
-    if device is not None:
-        if device not in ['cpu', 'gpu']:
-            raise ValueError(
-                "The value of 'device' in linspace operation must be cpu or gpu, but received %s."
-                % (device))
-        else:
-            with device_guard(device):
-                helper.append_op(
-                    type='linspace',
-                    inputs={'Start': start,
-                            'Stop': stop,
-                            'Num': num},
-                    outputs={'Out': [out]})
-    else:
-        helper.append_op(
-            type='linspace',
-            inputs={'Start': start,
-                    'Stop': stop,
-                    'Num': num},
-            outputs={'Out': [out]})
-
+    out.stop_gradient = True
     return out
 
 
@@ -313,7 +223,7 @@ def ones_like(input, dtype=None, device=None, name=None):
     return out
 
 
-def zeros(shape, dtype, out=None, device=None):
+def zeros(shape, dtype=None, name=None):
     """
 	:alias_main: paddle.zeros
 	:alias: paddle.zeros,paddle.tensor.zeros,paddle.tensor.creation.zeros
@@ -322,14 +232,10 @@ def zeros(shape, dtype, out=None, device=None):
 
     Args:
         shape(tuple|list): Shape of output tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
-            bool, float16, float32, float64, int32 and int64.
-        out(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
-        device(str, optional): Which device to run the operator. The :attr:`device` must be
-            None,'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default value is False.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
@@ -338,91 +244,54 @@ def zeros(shape, dtype, out=None, device=None):
         .. code-block:: python
 
           import paddle
+          
+          paddle.enable_imperative()  # Now we are in imperative mode
           data = paddle.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
-          data = paddle.zeros(shape=[2, 2], dtype='float32', device='cpu') # [[0., 0.], [0., 0.]]
+          data = paddle.zeros(shape=[2, 2], dtype='int32', name='zeros') # [[0, 0], [0, 0]]
     """
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'zeros')
-    if device is not None:
-        if device not in ['cpu', 'gpu']:
-            raise ValueError(
-                "The value of 'device' in zeros_op must be cpu or gpu, but received %s."
-                % (device))
-        with fluid.device_guard(device):
-            return fill_constant(value=0.0, shape=shape, dtype=dtype, out=out)
-
-    return fill_constant(value=0.0, shape=shape, dtype=dtype, out=out)
+    if dtype is None:
+        dtype = 'float32'
+    return fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
 
 
-def zeros_like(input, dtype=None, device=None, name=None):
+def zeros_like(x, dtype=None, name=None):
     """
 	:alias_main: paddle.zeros_like
-	:alias: paddle.zeros_like,paddle.tensor.zeros_like,paddle.tensor.creation.zeros_like
+	:alias: paddle.zeros_like, paddle.tensor.zeros_like, paddle.tensor.creation.zeros_like
 
     This function creates a zeros tensor which has identical shape and dtype 
     with `input`.
 
     Args:
-        input(Variable): The input tensor which specifies shape and dtype.The dtype of input can be 
-            bool, float32, float64, int32, int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set bool, float32, float64, int32, int64. 
-            The default value is None, the dtype is the same as input.
-        device(str, optional): Which device to run the operator. The :attr:`device` must be
-            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default value is None.
-        name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
-            Default value is None, the framework set the name of output variable.  
+        x(Variable): The input tensor which specifies shape and dtype. The
+            dtype of input can be bool, float16, float32, float64, int32, int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can
+            be set bool, float16, float32, float64, int32, int64. The default
+            value is None, the dtype is the same as input.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         out(Variable): The tensor variable storing the output.
 
+    Raise:
+        TypeError: If dtype is not bool, float16, float32, float64, int32 or int64.
+
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.fluid as fluid
+        import paddle
+        import numpy as np
 
-          x = fluid.data(name='x', dtype='float32', shape=[3])
-          data = paddle.ones_like(x) # data=[1.0, 1.0, 1.0]
-          data1 = paddle.ones_like(input=x, device="gpu") #data1=[1.0, 1.0. 1.0]
+        paddle.enable_imperative()
+
+        x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
+        out1 = paddle.zeros_like(x) # [1.0, 1.0, 1.0]
+        out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
 
     """
-
-    helper = LayerHelper("zeros_like", **locals())
-
-    attrs = {"value": 0.0}
-    var_dtype = None
-    if dtype is not None:
-        check_dtype(dtype, 'create data type',
-                    ['bool', 'float32', 'float64', 'int32', 'int64'],
-                    'zeros_like')
-        var_dtype = convert_np_dtype_to_dtype_(dtype)
-        attrs["dtype"] = var_dtype
-    else:
-        var_dtype = input.dtype
-
-    out = helper.create_variable_for_type_inference(dtype=var_dtype)
-
-    if device is not None:
-        if device not in ['cpu', 'gpu']:
-            raise ValueError(
-                "The value of 'device' in zeros_op must be cpu or gpu, but received %s."
-                % (device))
-        with fluid.device_guard(device):
-            helper.append_op(
-                type='fill_any_like',
-                inputs={'X': [input]},
-                attrs=attrs,
-                outputs={'Out': [out]})
-            return out
-    helper.append_op(
-        type='fill_any_like',
-        inputs={'X': [input]},
-        attrs=attrs,
-        outputs={'Out': [out]})
-    out.stop_gradient = True
-    return out
+    return full_like(x=x, fill_value=0, dtype=dtype, name=name)
 
 
 def eye(num_rows,
@@ -488,13 +357,7 @@ def eye(num_rows,
     return out
 
 
-def full(shape,
-         fill_value,
-         out=None,
-         dtype=None,
-         device=None,
-         stop_gradient=True,
-         name=None):
+def full(shape, fill_value, dtype=None, name=None):
     """
 	:alias_main: paddle.full
 	:alias: paddle.full,paddle.tensor.full,paddle.tensor.creation.full
@@ -508,17 +371,9 @@ def full(shape,
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
         fill_value(bool|float16|float32|float64|int32|int64|Variable): The constant value
             used to initialize the Tensor to be created. If fill_value is an Variable, it must be an 1-D Tensor.
-        out(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created tensor is `float32`
-        device(str, optional): On which device to run this Op. The :attr:`device` must be
-            None, 'cpu' or 'gpu'. If :attr:`device` is None, the device that the user set in 
-            the paddle program will be chosen. Default value is None.
-        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
-            default value is True.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
     
@@ -527,28 +382,26 @@ def full(shape,
 
     Raises:
         TypeError: The `dtype` must be one of None, bool, float16, float32, float64, int32 and int64.
-        TypeError: The `out` must be a Variable.
         TypeError: The `shape` must be one of Variable, list tuple.
     
     Examples:
         .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
 
+          paddle.enable_imperative()  # Now we are in imperative mode
           data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') # data1=[[0],[0]]
-          data2 = paddle.full(shape=[2,1], fill_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
 
           # attr shape is a list which contains Variable Tensor.
-          positive_2 = fluid.layers.fill_constant([1], "int32", 2)
+          positive_2 = paddle.fill_constant([1], "int32", 2)
           data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
-          shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
+          shape = paddle.fill_constant([2], "int32", 2) # shape=[2,2]
           data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
           
           # attr value is an Variable Tensor.
-          val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
+          val = paddle.fill_constant([1], "float32", 2.0) # val=[2.0]
           data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
 
@@ -557,21 +410,7 @@ def full(shape,
     if dtype is None:
         dtype = 'float32'
 
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full')
-    check_type(shape, 'shape', (Variable, list, tuple), 'full')
-    if out is not None:
-        check_type(out, 'out', (Variable), 'full')
-
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    out.stop_gradient = stop_gradient
-
-    with device_guard(device):
-        out = fill_constant(shape=shape, dtype=dtype, value=fill_value, out=out)
-    return out
+    return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
 
 def arange(start, end, step=1, dtype=None, name=None):
@@ -835,18 +674,19 @@ def triu(input, diagonal=0, name=None):
     return _tril_triu_op(LayerHelper('triu', **locals()))
 
 
-def meshgrid(input, name=None):
+def meshgrid(*args, **kwargs):
     """
 	:alias_main: paddle.meshgrid
 	:alias: paddle.meshgrid,paddle.tensor.meshgrid,paddle.tensor.creation.meshgrid
 
-    This op takes a list of N tensors as input, each of which is 1-dimensional 
+    This op takes a list of N tensors as input *args, each of which is 1-dimensional 
     vector, and creates N-dimensional grids.
     
     Args:
-        input(Variable) : tensors (list of tensor): the shapes of input k tensors are (N1,), 
+        *args(Variable|list of Variable) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
             (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
-        name (str, optional): The default value is None. Normally there is no need for
+        **kwargs (optional): Currently, we only accept name in **kwargs 
+            The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
  
     Returns:
@@ -866,7 +706,7 @@ def meshgrid(input, name=None):
           input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
 
           exe = fluid.Executor(place=fluid.CPUPlace())
-          grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+          grid_x, grid_y = paddle.tensor.meshgrid(x, y)
           res_1, res_2 = exe.run(fluid.default_main_program(),
                                  feed={'x': input_1,
                                        'y': input_2},
@@ -880,41 +720,45 @@ def meshgrid(input, name=None):
           #example 2: in dygraph mode
 
           import paddle
-          import paddle.fluid as fluid
           import numpy as np
+          
+          paddle.enable_imperative()
 
           input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
           input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          with fluid.dygraph.guard():
-              tensor_3 = fluid.dygraph.to_variable(input_3)
-              tensor_4 = fluid.dygraph.to_variable(input_4)
-              grid_x, grid_y = paddle.tensor.meshgrid([tensor_3, tensor_4])
+          tensor_3 = paddle.imperative.to_variable(input_3)
+          tensor_4 = paddle.imperative.to_variable(input_4)
+          grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
           #the shape of grid_x is (100, 200)
           #the shape of grid_y is (100, 200)
 
     """
 
+    if len(args) == 1 and isinstance(args[0], (list, tuple)):
+        args = args[0]
     if in_dygraph_mode():
-        num = len(input)
-        out = core.ops.meshgrid(input, num)
+        num = len(args)
+        out = core.ops.meshgrid(list(args), num)
         return out
 
+    name = kwargs.get("name", None)
     helper = LayerHelper('meshgrid', **locals())
 
-    if not isinstance(input, list):
-        raise TypeError("The type of input in meshgrid should be list.")
+    if not isinstance(args, (list, tuple)):
+        raise TypeError("The type of input args in meshgrid should be list.")
 
-    for id, input_ in enumerate(input):
+    for id, input_ in enumerate(args):
         check_dtype(input_.dtype, 'create data type',
                     ['float16', 'float32', 'float64', 'int32', 'int64'],
                     'meshgrid')
 
-    num = len(input)
+    num = len(args)
     out = [
-        helper.create_variable_for_type_inference(dtype=input[i].dtype)
+        helper.create_variable_for_type_inference(dtype=args[i].dtype)
         for i in range(num)
     ]
-    helper.append_op(type='meshgrid', inputs={'X': input}, outputs={'Out': out})
+    helper.append_op(
+        type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out})
 
     return out
