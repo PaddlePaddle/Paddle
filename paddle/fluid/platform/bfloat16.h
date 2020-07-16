@@ -22,6 +22,7 @@
 #define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
+#include <cstring>
 #include "paddle/fluid/platform/hostdevice.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
