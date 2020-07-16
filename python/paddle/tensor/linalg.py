@@ -678,7 +678,6 @@ def cholesky(x, upper=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
             paddle.enable_imperative()
