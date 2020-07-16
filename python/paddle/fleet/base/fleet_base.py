@@ -27,6 +27,7 @@ class Fleet(object):
     Unified API for distributed training of PaddlePaddle
     Please reference the https://github.com/PaddlePaddle/Fleet for details
 
+
     Returns:
         Fleet: A Fleet instance
 
