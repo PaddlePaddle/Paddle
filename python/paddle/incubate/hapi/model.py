@@ -500,14 +500,14 @@ class DynamicGraphAdapter(object):
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss = self.ddp_model.scale_loss(final_loss)
             final_loss.backward()
             self.ddp_model.apply_collective_grads()
         else:
-            outputs = self.model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
@@ -516,9 +516,9 @@ class DynamicGraphAdapter(object):
         self.model.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
-                labels)))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(
+                to_list(outputs) + to_list(labels)))
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -530,7 +530,7 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = self.model.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.forward(*[to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
         else:
@@ -560,9 +560,9 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
-                labels)))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(
+                to_list(outputs) + to_list(labels)))
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         # To be consistent with static graph
@@ -1573,27 +1573,45 @@ class Model(fluid.dygraph.Layer):
         Returns:
             list: The fetch variables' name list
         """
-        assert not fluid.in_dygraph_mode(
-        ), 'Save inference model must in static mode!'
 
-        prog = self._adapter._progs.get('test', None)
-        assert prog, \
-            "Model is not ready, please call `model.prepare()` first"
+        def get_feed_fetch(var_list):
+            from paddle.fluid import framework
+            vars = [
+                var for var in var_list if isinstance(var, framework.Variable)
+            ]
+            var_name_list = [var.name for var in vars]
 
-        infer_prog = prog.clone(for_test=True)
+            return var_name_list
 
-        input_names = [v.name for v in self._adapter._input_vars['test']]
-        endpoints = self._adapter._endpoints['test']['output']
+        if fluid.in_dygraph_mode():
+            from paddle.fluid.dygraph import ProgramTranslator
+            prog_trans = ProgramTranslator()
 
-        return fluid.io.save_inference_model(
-            save_dir,
-            input_names,
-            endpoints,
-            self._adapter._executor,
-            main_program=infer_prog,
-            model_filename=model_filename,
-            params_filename=params_filename,
-            program_only=model_only)
+            func_spec, (concrete_program,
+                        partial_layer) = prog_trans._program_cache.last()
+            prog_trans.save_inference_model(save_dir)
+
+            fetch_var_name_list = get_feed_fetch(concrete_program.outputs)
+            return fetch_var_name_list
+
+        else:
+            prog = self._adapter._progs.get('test', None)
+            assert prog, \
+                "Model is not ready, please call `model.prepare()` first"
+            infer_prog = prog.clone(for_test=True)
+
+            input_names = [v.name for v in self._adapter._input_vars['test']]
+            endpoints = self._adapter._endpoints['test']['output']
+
+            return fluid.io.save_inference_model(
+                save_dir,
+                input_names,
+                endpoints,
+                self._adapter._executor,
+                main_program=infer_prog,
+                model_filename=model_filename,
+                params_filename=params_filename,
+                program_only=model_only)
 
     def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
         outputs = []

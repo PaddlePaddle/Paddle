@@ -32,6 +32,7 @@ from paddle.incubate.hapi.metrics import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
 from paddle.incubate.hapi.vision.models import LeNet
 from paddle.incubate.hapi.distributed import DistributedBatchSampler, prepare_distributed_context
+from paddle.fluid.dygraph.jit import declarative
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
@@ -281,6 +282,37 @@ class MyModel(Model):
         return y
 
 
+class LeNetDeclarative(Model):
+    def __init__(self, num_classes=10, classifier_activation='softmax'):
+        super(LeNetDeclarative, self).__init__()
+        self.num_classes = num_classes
+        self.features = Sequential(
+            Conv2D(
+                1, 6, 3, stride=1, padding=1),
+            ReLU(),
+            Pool2D(2, 'max', 2),
+            Conv2D(
+                6, 16, 5, stride=1, padding=0),
+            ReLU(),
+            Pool2D(2, 'max', 2))
+
+        if num_classes > 0:
+            self.fc = Sequential(
+                Linear(400, 120),
+                Linear(120, 84),
+                Linear(
+                    84, 10, act=classifier_activation))
+
+    @declarative
+    def forward(self, inputs):
+        x = self.features(inputs)
+
+        if self.num_classes > 0:
+            x = fluid.layers.flatten(x, 1)
+            x = self.fc(x)
+        return x
+
+
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
         fluid.default_startup_program().random_seed = seed
@@ -452,32 +484,37 @@ class TestModelFunction(unittest.TestCase):
             fluid.disable_dygraph() if dynamic else None
 
     def test_export_deploy_model(self):
-        model = LeNet()
-        inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
-        model.prepare(inputs=inputs)
-        save_dir = tempfile.mkdtemp()
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+        for dynamic in [False, True]:
+            device = set_device('cpu')
+            model = LeNet()
+            save_dir = tempfile.mkdtemp()
+            fluid.enable_dygraph(device) if dynamic else None
+            if dynamic:
+                model = LeNetDeclarative()
+            inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
+            model.prepare(inputs=inputs)
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+            tensor_img = np.array(
+                np.random.random((1, 1, 28, 28)), dtype=np.float32)
+            ori_results = model.test_batch(tensor_img)
 
-        tensor_img = np.array(
-            np.random.random((1, 1, 28, 28)), dtype=np.float32)
-        ori_results = model.test_batch(tensor_img)
+            model.save_inference_model(save_dir)
+            fluid.disable_dygraph() if dynamic else None
 
-        model.save_inference_model(save_dir)
+            place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            [inference_program, feed_target_names, fetch_targets] = (
+                fluid.io.load_inference_model(
+                    dirname=save_dir, executor=exe))
 
-        place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        [inference_program, feed_target_names, fetch_targets] = (
-            fluid.io.load_inference_model(
-                dirname=save_dir, executor=exe))
+            results = exe.run(inference_program,
+                              feed={feed_target_names[0]: tensor_img},
+                              fetch_list=fetch_targets)
 
-        results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
-
-        np.testing.assert_allclose(results, ori_results)
-        shutil.rmtree(save_dir)
+            np.testing.assert_allclose(results, ori_results, 1e-6, 1e-7)
+            shutil.rmtree(save_dir)
 
 
 if __name__ == '__main__':
