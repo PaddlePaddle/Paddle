@@ -31,7 +31,12 @@ static bool IsMatchedConditionalBlockOpAndConditionalBlockGradOp(
 static void FindAllConditionalBlockAndConditionalBlockGradOp(
     const framework::ProgramDesc &program, std::vector<OpVariant> *fwd_ops,
     std::vector<OpVariant> *bwd_ops) {
-  PADDLE_ENFORCE_GE(fwd_ops->size(), bwd_ops->size());
+  PADDLE_ENFORCE_GE(
+      fwd_ops->size(), bwd_ops->size(),
+      platform::errors::InvalidArgument(
+          "Size of forward ops must be greater or equal to backward ops. The "
+          "number of forward ops is %d and the number of backward ops is %d",
+          fwd_ops->size(), bwd_ops->size()));
 
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
@@ -47,7 +52,11 @@ static void FindAllConditionalBlockAndConditionalBlockGradOp(
 
   PADDLE_ENFORCE_GE(
       fwd_ops->size(), bwd_ops->size(),
-      "There are extra conditional_block_grad ops in the graph or program");
+      platform::errors::InvalidArgument(
+          "There are more conditional_block_grad ops than "
+          "conditional_block ops in the graph or program. The number of "
+          "forward ops is %d and the number of backward ops is %d",
+          fwd_ops->size(), bwd_ops->size()));
 }
 
 static void SetSkipVarsForConditionalBlockOp(OpVariant *fwd_op,
@@ -102,14 +111,17 @@ static void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
     for (auto &fwd_op : ifelse_op_set) {
       if (IsMatchedConditionalBlockOpAndConditionalBlockGradOp(fwd_op,
                                                                bwd_op)) {
-        PADDLE_ENFORCE(matched_fwd_op == nullptr,
-                       "Found multiple matched conditional_block ops");
+        PADDLE_ENFORCE_EQ(matched_fwd_op, nullptr,
+                          platform::errors::PreconditionNotMet(
+                              "Found multiple matched conditional_block ops."));
         matched_fwd_op = &fwd_op;
       }
     }
 
-    PADDLE_ENFORCE_NOT_NULL(matched_fwd_op,
-                            "Cannot find matched forward conditional_block op");
+    PADDLE_ENFORCE_NOT_NULL(
+        matched_fwd_op,
+        platform::errors::PreconditionNotMet(
+            "Cannot find matched forward conditional_block op."));
 
     SetSkipVarsForConditionalBlockOp(const_cast<OpVariant *>(matched_fwd_op),
                                      &bwd_op);

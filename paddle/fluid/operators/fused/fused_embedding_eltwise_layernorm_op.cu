@@ -19,7 +19,6 @@
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/operators/math/blas.h"
 

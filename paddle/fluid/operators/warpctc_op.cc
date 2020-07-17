@@ -28,14 +28,11 @@ class WarpCTCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Logits"),
-                   "Input(Logits) of WarpCTCOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input(Label) of WarpCTCOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("WarpCTCGrad"),
-                   "Output(WarpCTCGrad) of WarpCTCOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Loss"),
-                   "Output(Loss) of WarpCTCOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Logits"), "Input", "Logits", "WarpCTC");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "WarpCTC");
+    OP_INOUT_CHECK(ctx->HasOutput("WarpCTCGrad"), "Output", "WarpCTCGrad",
+                   "WarpCTC");
+    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "WarpCTC");
 
     auto logits_dims = ctx->GetInputDim("Logits");
     int blank = ctx->Attrs().Get<int>("blank");
@@ -47,9 +44,18 @@ class WarpCTCOp : public framework::OperatorWithKernel {
       sequence_width =
           static_cast<int>(framework::product(logits_dims) / logits_dims[0]);
     }
-    PADDLE_ENFORCE((blank >= 0) && (blank < sequence_width),
-                   "The value of Attr(blank) should be in interval [0, %d).",
-                   sequence_width);
+
+    PADDLE_ENFORCE_GE(
+        blank, 0, platform::errors::InvalidArgument(
+                      "The value of Attr(blank) should be in interval [0, %d), "
+                      "but received %d",
+                      blank));
+    PADDLE_ENFORCE_LT(
+        blank, sequence_width,
+        platform::errors::InvalidArgument(
+            "The value of Attr(blank) should be in interval [0, %d), "
+            "but received %d",
+            blank));
 
     // TODO(liuyiqun): it is tricky to set the wrong dimension here.
     ctx->SetOutputDim("Loss", {-1, 1});
@@ -61,8 +67,8 @@ class WarpCTCOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
-        ctx.device_context(), layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 
@@ -160,10 +166,10 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("WarpCTCGrad"),
-                   "Input(WarpCTCGrad) of WarpCTCGradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
-                   "Output(Logits@GRAD) of WarpCTCGradOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("WarpCTCGrad"), "Input", "WarpCTCGrad",
+                   "WarpCTCGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
+                   framework::GradVarName("Logits"), "WarpCTCGrad");
     ctx->SetOutputDim(framework::GradVarName("Logits"),
                       ctx->GetInputDim("Logits"));
     ctx->ShareLoD("Logits", /*->*/ framework::GradVarName("Logits"));
@@ -174,11 +180,11 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Loss")),
-                                   ctx.device_context());
+                                   ctx.GetPlace());
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(WarpCTCGradOpNoNeedBufferVarInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(WarpCTCGradOpNoNeedBufferVarInferer,
                                     "Logits");
 
 }  // namespace operators
@@ -189,7 +195,7 @@ REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
                   ops::WarpCTCGradOpMaker<paddle::framework::OpDesc>,
                   ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp,
-                  ops::WarpCTCGradOpNoNeedBufferVarInference);
+                  ops::WarpCTCGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

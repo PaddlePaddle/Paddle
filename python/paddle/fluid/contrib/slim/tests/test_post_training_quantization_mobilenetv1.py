@@ -140,9 +140,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         self.batch_size = 1 if os.environ.get('DATASET') == 'full' else 50
         self.sample_iterations = 50 if os.environ.get(
-            'DATASET') == 'full' else 1
+            'DATASET') == 'full' else 2
         self.infer_iterations = 50000 if os.environ.get(
-            'DATASET') == 'full' else 1
+            'DATASET') == 'full' else 2
 
         self.timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
         self.int8_model = os.path.join(os.getcwd(),
@@ -239,7 +239,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                  quantizable_op_type,
                                  algo="KL",
                                  is_full_quantize=False,
-                                 is_use_cache_file=False):
+                                 is_use_cache_file=False,
+                                 is_optimize_model=False):
         try:
             os.system("mkdir " + self.int8_model)
         except Exception as e:
@@ -259,12 +260,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
             algo=algo,
             quantizable_op_type=quantizable_op_type,
             is_full_quantize=is_full_quantize,
+            optimize_model=is_optimize_model,
             is_use_cache_file=is_use_cache_file)
         ptq.quantize()
         ptq.save_quantized_model(self.int8_model)
 
     def run_test(self, model, algo, data_urls, data_md5s, quantizable_op_type,
-                 is_full_quantize, is_use_cache_file, diff_threshold):
+                 is_full_quantize, is_use_cache_file, is_optimize_model,
+                 diff_threshold):
         infer_iterations = self.infer_iterations
         batch_size = self.batch_size
         sample_iterations = self.sample_iterations
@@ -278,20 +281,21 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
-        self.generate_quantized_model(model_cache_folder + "/model",
-                                      quantizable_op_type, algo,
-                                      is_full_quantize, is_use_cache_file)
+        self.generate_quantized_model(
+            model_cache_folder + "/model", quantizable_op_type, algo,
+            is_full_quantize, is_use_cache_file, is_optimize_model)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
         (int8_throughput, int8_latency, int8_acc1) = self.run_program(
             self.int8_model, batch_size, infer_iterations)
 
+        print("---Post training quantization of {} method---".format(algo))
         print(
-            "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}".
+            "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.".
             format(model, batch_size, fp32_throughput, fp32_latency, fp32_acc1))
         print(
-            "INT8 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}".
+            "INT8 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.\n".
             format(model, batch_size, int8_throughput, int8_latency, int8_acc1))
         sys.stdout.flush()
 
@@ -308,13 +312,18 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
         ]
         data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
         quantizable_op_type = [
-            "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
+            "conv2d",
+            "depthwise_conv2d",
+            "mul",
+            "pool2d",
         ]
         is_full_quantize = False
         is_use_cache_file = False
+        is_optimize_model = True
         diff_threshold = 0.025
         self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
-                      is_full_quantize, is_use_cache_file, diff_threshold)
+                      is_full_quantize, is_use_cache_file, is_optimize_model,
+                      diff_threshold)
 
 
 class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
@@ -326,13 +335,17 @@ class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
         ]
         data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
         quantizable_op_type = [
-            "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
+            "conv2d",
+            "mul",
         ]
         is_full_quantize = False
         is_use_cache_file = False
+        is_optimize_model = False
+        # The accuracy diff of post-traing quantization (abs_max) maybe bigger
         diff_threshold = 0.05
         self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
-                      is_full_quantize, is_use_cache_file, diff_threshold)
+                      is_full_quantize, is_use_cache_file, is_optimize_model,
+                      diff_threshold)
 
 
 if __name__ == '__main__':

@@ -16,7 +16,8 @@ from __future__ import print_function
 import os
 from .layer_function_generator import generate_layer_fn, generate_activation_fn
 from .. import core
-from ..framework import convert_np_dtype_to_dtype_
+from ..framework import convert_np_dtype_to_dtype_, Variable
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __activations_noattr__ = [
     'sigmoid',
@@ -64,6 +65,9 @@ _softshrink_ = generate_layer_fn('softshrink')
 
 
 def softshrink(x, alpha=None):
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'softshrink')
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -76,6 +80,10 @@ def softshrink(x, alpha=None):
 
 
 softshrink.__doc__ = """
+	:alias_main: paddle.nn.functional.softshrink
+	:alias: paddle.nn.functional.softshrink,paddle.nn.functional.activation.softshrink
+	:old_api: paddle.fluid.layers.softshrink
+
 :strong:`Softshrink Activation Operator`
 
 ..  math::
@@ -107,6 +115,9 @@ _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
 def hard_shrink(x, threshold=None):
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hard_shrink')
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -116,6 +127,10 @@ def hard_shrink(x, threshold=None):
 
 
 hard_shrink.__doc__ = _hard_shrink_.__doc__ + """
+	:alias_main: paddle.nn.functional.hard_shrink
+	:alias: paddle.nn.functional.hard_shrink,paddle.nn.functional.activation.hard_shrink
+	:old_api: paddle.fluid.layers.hard_shrink
+
 Examples:
 
     >>> import paddle.fluid as fluid
@@ -129,6 +144,7 @@ _cum_sum_ = generate_layer_fn('cumsum')
 
 
 def cumsum(x, axis=None, exclusive=None, reverse=None):
+    check_type(x, 'x', (Variable), 'cumsum')
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -138,6 +154,10 @@ def cumsum(x, axis=None, exclusive=None, reverse=None):
 
 
 cumsum.__doc__ = """
+	:alias_main: paddle.cumsum
+	:alias: paddle.cumsum,paddle.tensor.cumsum,paddle.tensor.math.cumsum
+	:old_api: paddle.fluid.layers.cumsum
+
 The cumulative sum of the elements along a given axis. By default, the first element of the result is the same of the first element of the input. If exlusive is true, the first element of the result is 0.
 
 Args:
@@ -163,6 +183,9 @@ _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
 
 def thresholded_relu(x, threshold=None):
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'thresholded_relu')
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -173,6 +196,10 @@ def thresholded_relu(x, threshold=None):
 
 
 thresholded_relu.__doc__ = """
+	:alias_main: paddle.nn.functional.thresholded_relu
+	:alias: paddle.nn.functional.thresholded_relu,paddle.nn.functional.activation.thresholded_relu
+	:old_api: paddle.fluid.layers.thresholded_relu
+
 :strong:`Thresholded ReLU Activation Operator`
 
 Equation:
@@ -255,6 +282,10 @@ def gelu(x, approximate=False):
 
 
 gelu.__doc__ = """
+	:alias_main: paddle.nn.functional.gelu
+	:alias: paddle.nn.functional.gelu,paddle.nn.functional.activation.gelu
+	:old_api: paddle.fluid.layers.gelu
+
 :strong:`GeLU Activation Operator`
 For more details, see [Gaussian Error Linear Units](https://arxiv.org/abs/1606.08415).
 
@@ -339,6 +370,10 @@ def erf(x):
 
 
 erf.__doc__ = """
+	:alias_main: paddle.erf
+	:alias: paddle.erf,paddle.tensor.erf,paddle.tensor.math.erf,paddle.nn.functional.erf,paddle.nn.functional.activation.erf
+	:old_api: paddle.fluid.layers.erf
+
 :strong:`Erf Operator`
 For more details, see [Error function](https://en.wikipedia.org/wiki/Error_function).
 

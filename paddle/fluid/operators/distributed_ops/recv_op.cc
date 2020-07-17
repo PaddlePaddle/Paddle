@@ -84,7 +84,9 @@ class RecvOp : public framework::OperatorBase {
       }
       for (size_t i = 0; i < rets.size(); i++) {
         VLOG(7) << "before sync_recv " << outs[i] << "from " << epmap[i];
-        PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+        PADDLE_ENFORCE_NE(
+            rets[i]->Wait(), 0U,
+            platform::errors::ExecutionTimeout("internal error in RPCClient"));
         VLOG(7) << "after sync_recv " << outs[i] << "from " << epmap[i];
       }
     }

@@ -33,7 +33,11 @@ class BoxClipKernel : public framework::OpKernel<T> {
     output_box->mutable_data<T>(context.GetPlace());
     if (input_box->lod().size()) {
       PADDLE_ENFORCE_EQ(input_box->lod().size(), 1UL,
-                        "Only support 1 level of LoD.");
+                        platform::errors::InvalidArgument(
+                            "Input(Input) of BoxClip only supports 1 level "
+                            "of LoD. But received the "
+                            "level = %d",
+                            input_box->lod().size()));
     }
     auto box_lod = input_box->lod().back();
     int64_t n = static_cast<int64_t>(box_lod.size() - 1);

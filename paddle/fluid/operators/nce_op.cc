@@ -28,33 +28,39 @@ class NCEOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true);
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true);
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Weight"), true);
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Cost"), true);
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("SampleLogits"), true);
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("SampleLabels"), true);
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "nce");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "nce");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "nce");
+
+    OP_INOUT_CHECK(ctx->HasOutput("Cost"), "Output", "Cost", "nce");
+    OP_INOUT_CHECK(ctx->HasOutput("SampleLogits"), "Output", "SampleLogits",
+                   "nce");
+    OP_INOUT_CHECK(ctx->HasOutput("SampleLabels"), "Output", "SampleLabels",
+                   "nce");
 
     auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
     if (ctx->IsRuntime() || (x_dims[0] > 0 && label_dims[0] > 0)) {
       PADDLE_ENFORCE_EQ(
           x_dims[0], label_dims[0],
-          "ShapeError: the first dimension of Input(Input) and Input(Label) "
-          "should be equal in runtime. But received: Input(Input)'s shape = "
-          "[%s] with 1st dim =  %d, Input(Label)'s shape = [%s] with 1st "
-          "dim = %d.",
-          x_dims, x_dims[0], label_dims, label_dims[0]);
+          platform::errors::InvalidArgument(
+              "The first dimension of Input(Input) and Input(Label) should be "
+              "equal in runtime. But received: Input(Input)'s shape = [%s] "
+              "with 1st dim =  %d, Input(Label)'s shape = [%s] with 1st dim = "
+              "%d.",
+              x_dims, x_dims[0], label_dims, label_dims[0]));
     }
     int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
     if (ctx->HasInput("Bias")) {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Weight")[0], ctx->GetInputDim("Bias")[0],
-          "ShapeError: the first dimension of Input(Weight) and Input(Bias) "
-          "should be equal. But received: Input(Weight)'s shape = [%s] with "
-          "1st dim = %d, Input(Bias)'s shape = [%s] with 1st dim = %d.",
-          ctx->GetInputDim("Weight"), ctx->GetInputDim("Weight")[0],
-          ctx->GetInputDim("Bias"), ctx->GetInputDim("Bias")[0]);
+          platform::errors::InvalidArgument(
+              "The first dimension of Input(Weight) and Input(Bias) "
+              "should be equal. But received: Input(Weight)'s shape = [%s] "
+              "with 1st dim = %d, and Input(Bias)'s shape = [%s] with 1st dim "
+              "= %d.",
+              ctx->GetInputDim("Weight"), ctx->GetInputDim("Weight")[0],
+              ctx->GetInputDim("Bias"), ctx->GetInputDim("Bias")[0]));
     }
     auto num_neg_samples = ctx->Attrs().Get<int>("num_neg_samples");
     auto num_total_classes = ctx->Attrs().Get<int>("num_total_classes");
@@ -62,18 +68,20 @@ class NCEOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<std::vector<int>>("custom_neg_classes");
     PADDLE_ENFORCE_EQ(
         num_total_classes, ctx->GetInputDim("Weight")[0],
-        "ShapeError: the number of total classes should be equal to the first "
-        "dimension of Input(Weight). But received: Attr(num_total_classes) = "
-        "%d, Input(Weight)'s shape = [%s] with 1st dim = %d.",
-        num_total_classes, ctx->GetInputDim("Weight"),
-        ctx->GetInputDim("Weight")[0]);
+        platform::errors::InvalidArgument(
+            "The number of total classes should be equal to the first "
+            "dimension of Input(Weight). But received: Attr(num_total_classes) "
+            "= %d, Input(Weight)'s shape = [%s] with 1st dim = %d.",
+            num_total_classes, ctx->GetInputDim("Weight"),
+            ctx->GetInputDim("Weight")[0]));
     if (custom_neg_classes.size() > 0) {
       PADDLE_ENFORCE_EQ(
           custom_neg_classes.size(), static_cast<size_t>(num_neg_samples),
-          "ShapeError: the size of Attr(custom_neg_classes) should be equal "
-          "to the number of negative samples. But received: "
-          "custom_neg_classes.size() = %d, num_neg_samples = %d.",
-          custom_neg_classes.size(), num_neg_samples);
+          platform::errors::InvalidArgument(
+              "The size of Attr(custom_neg_classes) should be equal "
+              "to the number of negative samples. But received: "
+              "custom_neg_classes.size() = %d, num_neg_samples = %d.",
+              custom_neg_classes.size(), num_neg_samples));
     }
     // set dims of output(Out)
     std::vector<int64_t> out_dims;
@@ -242,12 +250,14 @@ class NCEOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"));
-    PADDLE_ENFORCE(ctx->HasInput("Weight"));
-    PADDLE_ENFORCE(ctx->HasInput("SampleLogits"));
-    PADDLE_ENFORCE(ctx->HasInput("SampleLabels"));
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Cost")),
-                   "The input(Out@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "nce_grad");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "nce_grad");
+    OP_INOUT_CHECK(ctx->HasInput("SampleLogits"), "Input", "SampleLogits",
+                   "nce_grad");
+    OP_INOUT_CHECK(ctx->HasInput("SampleLabels"), "Input", "SampleLabels",
+                   "nce_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Cost")), "Input",
+                   framework::GradVarName("Cost"), "nce_grad");
 
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");
@@ -280,24 +290,24 @@ class NCEOpGrad : public framework::OperatorWithKernel {
 class NCEOpGradVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto weight_grad = ctx->Output(framework::GradVarName("Weight")).front();
+    auto weight_grad = framework::GradVarName("Weight");
 
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = boost::get<bool>(attr);
+    bool is_sparse = BOOST_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "nce_op_grad op " << weight_grad << " and "
               << " is set to SelectedRows";
-      ctx->SetType(weight_grad, framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetOutputType(weight_grad, framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "nce_op_grad op " << weight_grad << " and "
               << " is set to LoDTensor";
-      ctx->SetType(weight_grad, framework::proto::VarType::LOD_TENSOR);
+      ctx->SetOutputType(weight_grad, framework::proto::VarType::LOD_TENSOR);
     }
-    ctx->SetDataType(weight_grad, ctx->GetDataType(ctx->Input("Input")[0]));
+    ctx->SetOutputDataType(weight_grad, ctx->GetInputDataType("Input"));
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(NCEGradOpNoNeedBufferVarInference, "Bias");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(NCEGradOpNoNeedBufferVarInferer, "Bias");
 
 }  // namespace operators
 }  // namespace paddle
@@ -307,7 +317,7 @@ REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker,
                   ops::NCEGradOpMaker<paddle::framework::OpDesc>,
                   ops::NCEGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference,
-                  ops::NCEGradOpNoNeedBufferVarInference);
+                  ops::NCEGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(nce_grad,

@@ -17,6 +17,8 @@ from __future__ import print_function
 import op_test
 import unittest
 import numpy
+import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -33,6 +35,23 @@ def create_test_class(op_type, typename, callback):
 
         def test_output(self):
             self.check_output()
+
+        def test_errors(self):
+            with program_guard(Program(), Program()):
+                x = fluid.layers.data(name='x', shape=[2], dtype='int32')
+                y = fluid.layers.data(name='y', shape=[2], dtype='int32')
+                a = fluid.layers.data(name='a', shape=[2], dtype='int16')
+                if self.op_type == "less_than":
+                    self.assertRaises(
+                        TypeError,
+                        fluid.layers.less_than,
+                        x=x,
+                        y=y,
+                        force_cpu=1)
+                op = eval("fluid.layers.%s" % self.op_type)
+                self.assertRaises(TypeError, op, x=x, y=y, cond=1)
+                self.assertRaises(TypeError, op, x=x, y=a)
+                self.assertRaises(TypeError, op, x=a, y=y)
 
     cls_name = "{0}_{1}".format(op_type, typename)
     Cls.__name__ = cls_name
@@ -56,6 +75,27 @@ class TestCompareOpError(unittest.TestCase):
             y = fluid.create_lod_tensor(
                 numpy.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.greater_equal, x, y)
+
+
+class API_TestElementwise_Equal(unittest.TestCase):
+    def test_api(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+            limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
+            out = paddle.elementwise_equal(x=label, y=limit)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            res, = exe.run(fetch_list=[out])
+        self.assertEqual((res == np.array([True, False])).all(), True)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+            limit = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+            out = paddle.elementwise_equal(x=label, y=limit)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            res, = exe.run(fetch_list=[out])
+        self.assertEqual((res == np.array([True, True])).all(), True)
 
 
 if __name__ == '__main__':

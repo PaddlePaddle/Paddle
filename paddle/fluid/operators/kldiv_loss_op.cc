@@ -23,30 +23,36 @@ class KLDivLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of KLDivLossOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Target"),
-                   "Input(Target) of KLDivLossOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Loss"),
-                   "Output(Loss) of KLDivLossOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "KLDivLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Target"), "Input", "Target", "KLDivLoss");
+    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "KLDivLoss");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_target = ctx->GetInputDim("Target");
     PADDLE_ENFORCE_EQ(dim_x.size(), dim_target.size(),
-                      "Input(X) rank and Input(Target) rank should be same.");
+                      platform::errors::InvalidArgument(
+                          "Input(X) rank and Input(Target) rank should be "
+                          "same, but received X rank(%d) != Target rank(%d)",
+                          dim_x.size(), dim_target.size()));
     for (int i = 0; i < dim_x.size(); i++) {
       if (ctx->IsRuntime() || (dim_x[i] > 0 && dim_target[i] > 0)) {
-        PADDLE_ENFORCE_EQ(dim_x[i], dim_target[i],
-                          "Input(X) and Input(Target) should in same shape.");
+        PADDLE_ENFORCE_EQ(
+            dim_x[i], dim_target[i],
+            platform::errors::InvalidArgument(
+                "Input(X) and Input(Target) should in same shape. but received "
+                "X dimension[%d](%d) != Target dimension[%d](%d)",
+                i, dim_x[i], i, dim_target[i]));
       }
     }
 
     auto reduction = ctx->Attrs().Get<std::string>("reduction");
 
-    PADDLE_ENFORCE(
-        "mean" == reduction || "sum" == reduction || "batchmean" == reduction ||
-            "none" == reduction,
-        "Attr(reduction) can only be 'none'|'batchmean'|'sum'|'mean'.");
+    auto reduction_valid = "mean" == reduction || "sum" == reduction ||
+                           "batchmean" == reduction || "none" == reduction;
+    PADDLE_ENFORCE_EQ(
+        reduction_valid, true,
+        platform::errors::InvalidArgument(
+            "Attr(reduction) can only be 'none'|'batchmean'|'sum'|'mean'."));
 
     if ("none" == reduction) {
       ctx->SetOutputDim("Loss", dim_x);
@@ -123,10 +129,10 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Target"), "Input(Target) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "KLDivLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Target"), "Input", "Target", "KLDivLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
+                   "Loss@GRAD", "KLDivLossGrad");
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);
@@ -160,7 +166,7 @@ class KLDivLossOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(KLDivLossGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(KLDivLossGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -170,7 +176,7 @@ REGISTER_OPERATOR(kldiv_loss, ops::KLDivLossOp, ops::KLDivLossOpMaker,
                   ops::KLDivLossOpGradMaker<paddle::framework::OpDesc>,
                   ops::KLDivLossOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(kldiv_loss_grad, ops::KLDivLossOpGrad,
-                  ops::KLDivLossGradNoNeedBufferVarInference);
+                  ops::KLDivLossGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     kldiv_loss, ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, float>,
     ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, double>);

@@ -81,43 +81,57 @@ class PSROIPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of PSROIPoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ROIs"),
-                   "Input(ROIs) of PSROIPoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PSROIPoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of PSROIPoolOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("ROIs"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(ROIs) of PSROIPoolOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of PSROIPoolOp should not be null."));
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
-    PADDLE_ENFORCE(input_dims.size() == 4,
-                   "The format of input tensor is NCHW");
-    PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-                   "given as [(x1, y1, x2, y2), ...]");
-    PADDLE_ENFORCE(rois_dims[1] == 4,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-                   "given as [(x1, y1, x2, y2), ...]");
+    PADDLE_ENFORCE_EQ(input_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "The format of input tensor is NCHW"));
+    PADDLE_ENFORCE_EQ(
+        rois_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "given as [(x1, y1, x2, y2), ...]"));
+    PADDLE_ENFORCE_EQ(
+        rois_dims[1], 4,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "given as [(x1, y1, x2, y2), ...]"));
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
     int output_channels = ctx->Attrs().Get<int>("output_channels");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
 
-    PADDLE_ENFORCE(
-        input_dims[1] == output_channels * pooled_height * pooled_width,
-        "the channel of X(%d) should be equal to the product of "
-        "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
-        input_dims[1], output_channels, pooled_height, pooled_width);
+    PADDLE_ENFORCE_EQ(
+        input_dims[1], output_channels * pooled_height * pooled_width,
+        platform::errors::InvalidArgument(
+            "the channel of X(%d) "
+            "should be equal to the product of "
+            "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
+            input_dims[1], output_channels, pooled_height, pooled_width));
 
     PADDLE_ENFORCE_GT(pooled_height, 0,
-                      "The pooled output height must be greater than 0");
+                      platform::errors::InvalidArgument(
+                          "The pooled output height must be greater than 0"));
     PADDLE_ENFORCE_GT(pooled_width, 0,
-                      "The pooled output width must be greater than 0");
+                      platform::errors::InvalidArgument(
+                          "The pooled output width must be greater than 0"));
     PADDLE_ENFORCE_GT(output_channels, 1,
-                      "The pooled output channels must greater than 1");
+                      platform::errors::InvalidArgument(
+                          "The pooled output channels must greater than 1"));
     PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
-                      "The spatial scale must greater than 0.");
+                      platform::errors::InvalidArgument(
+                          "The spatial scale must greater than 0."));
 
     auto out_dims = input_dims;
     out_dims[0] = rois_dims[0];
@@ -142,10 +156,12 @@ class PSROIPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "The gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "The gradient of X should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::InvalidArgument(
+                          "The gradient of Out should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      platform::errors::InvalidArgument(
+                          "The gradient of X should not be null."));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 

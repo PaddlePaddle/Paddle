@@ -26,14 +26,20 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of Im2SequenceOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of Im2SequenceOp op should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "The input 'X' of Im2SequenceOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::NotFound(
+                          "The output 'Out' of Im2SequenceOp is not found."));
     auto in_dim = ctx->GetInputDim("X");
 
-    PADDLE_ENFORCE_EQ(in_dim.size(), 4,
-                      "Input(X) format must be 4D tensor, eg., NCHW.");
+    PADDLE_ENFORCE_EQ(
+        in_dim.size(), 4,
+        platform::errors::InvalidArgument(
+            "The dimesions size of input 'X' in Im2SequenceOp should be 4. But "
+            "received dimesions size=[%d], dimesions=[%s].",
+            in_dim.size(), in_dim));
     auto img_channels = in_dim[1];
 
     auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
@@ -42,7 +48,7 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     if (!ctx->IsRuntime()) {
       // set lod level for compile-time
       framework::VarDesc* out_desc =
-          boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+          BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
       out_desc->SetLoDLevel(1);
     }
 
@@ -146,9 +152,13 @@ class Im2SequenceGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) shouldn't be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "The input 'X' of Im2SequenceGradOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::NotFound(
+                          "The input %s of Im2SequenceGradOp is not found.",
+                          framework::GradVarName("Out")));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

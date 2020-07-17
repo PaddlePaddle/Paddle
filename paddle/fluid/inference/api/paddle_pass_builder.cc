@@ -143,10 +143,6 @@ void GpuPassStrategy::EnableMkldnnQuantizer() {
   LOG(ERROR) << "GPU not support MKL-DNN quantization";
 }
 
-void GpuPassStrategy::EnableNgraph() {
-  LOG(ERROR) << "GPU not support Ngraph yet";
-}
-
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
@@ -195,12 +191,17 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_concat_relu_mkldnn_fuse_pass",
-             "conv_relu_mkldnn_fuse_pass",        //
-             "conv_leaky_relu_mkldnn_fuse_pass",  //
-             "conv_relu6_mkldnn_fuse_pass",       //
-             "conv_swish_mkldnn_fuse_pass",       //
+             "conv_relu_mkldnn_fuse_pass",                 //
+             "conv_leaky_relu_mkldnn_fuse_pass",           //
+             "conv_relu6_mkldnn_fuse_pass",                //
+             "conv_swish_mkldnn_fuse_pass",                //
+             "scale_matmul_fuse_pass",                     //
+             "reshape_transpose_matmul_mkldnn_fuse_pass",  //
+             "matmul_transpose_reshape_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
-             // "fc_mkldnn_pass"
+             // "fc_mkldnn_pass",
+             "mkldnn_inplace_pass",  // This pass should be activated after
+                                     // fuses
          })) {
       passes_.push_back(pass);
     }
@@ -222,14 +223,4 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 #endif
 }
 
-void CpuPassStrategy::EnableNgraph() {
-#ifdef PADDLE_WITH_NGRAPH
-  if (!use_ngraph_) {
-    passes_.insert(passes_.begin(), "ngraph_subgraph_pass");
-  }
-  use_ngraph_ = true;
-#else
-  use_ngraph_ = false;
-#endif
-}
 }  // namespace paddle

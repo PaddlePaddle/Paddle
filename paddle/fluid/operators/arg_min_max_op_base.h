@@ -38,26 +38,36 @@ struct ArgMinMaxFunctor {};
   struct ArgMinMaxFunctor<DeviceContext, T, Tout, Rank,                       \
                           enum_argminmax_value> {                             \
     void operator()(const DeviceContext& ctx, const framework::LoDTensor& in, \
-                    framework::LoDTensor* out, int64_t axis) {                \
+                    framework::LoDTensor* out, int64_t axis, bool keepdims) { \
       auto in_eigen = framework::EigenTensor<T, Rank>::From(in);              \
-      auto out_eigen = framework::EigenTensor<Tout, Rank - 1>::From(*out);    \
-      out_eigen.device(*(ctx.eigen_device())) =                               \
-          in_eigen.eigen_op_type(axis).template cast<Tout>();                 \
+      if (keepdims) {                                                         \
+        auto out_eigen = framework::EigenTensor<Tout, Rank>::From(*out);      \
+        out_eigen.device(*(ctx.eigen_device())) =                             \
+            in_eigen.eigen_op_type(axis).template cast<Tout>();               \
+      } else {                                                                \
+        auto out_eigen = framework::EigenTensor<Tout, Rank - 1>::From(*out);  \
+        out_eigen.device(*(ctx.eigen_device())) =                             \
+            in_eigen.eigen_op_type(axis).template cast<Tout>();               \
+      }                                                                       \
     }                                                                         \
   }
 
 DECLARE_ARG_MIN_MAX_FUNCTOR(argmin, ArgMinMaxType::kArgMin);
 DECLARE_ARG_MIN_MAX_FUNCTOR(argmax, ArgMinMaxType::kArgMax);
 
-template <typename DeviceContext, typename T, typename Tout,
-          ArgMinMaxType EnumArgMinMaxValue>
-class ArgMinMaxKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+template <typename DeviceContext, typename T, ArgMinMaxType EnumArgMinMaxValue>
+struct VisitDataArgMinMaxFunctor {
+  const framework::ExecutionContext& ctx;
+
+  explicit VisitDataArgMinMaxFunctor(const framework::ExecutionContext& ctx)
+      : ctx(ctx) {}
+  template <typename Tout>
+  void apply() const {
     auto& x = *(ctx.Input<framework::LoDTensor>("X"));
     auto& out = *(ctx.Output<framework::LoDTensor>("Out"));
-    out.mutable_data<Tout>(ctx.GetPlace());
+    out.template mutable_data<Tout>(ctx.GetPlace());
     auto axis = ctx.Attr<int64_t>("axis");
+    auto keepdims = ctx.Attr<bool>("keepdims");
     auto x_rank = x.dims().size();
     if (axis < 0) axis += x_rank;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -65,7 +75,7 @@ class ArgMinMaxKernel : public framework::OpKernel<T> {
 #define CALL_ARG_MINMAX_FUNCTOR(rank)                                \
   ArgMinMaxFunctor<DeviceContext, T, Tout, rank, EnumArgMinMaxValue> \
       functor##rank;                                                 \
-  functor##rank(dev_ctx, x, &out, axis)
+  functor##rank(dev_ctx, x, &out, axis, keepdims)
 
     switch (x.dims().size()) {
       case 1:
@@ -97,31 +107,58 @@ class ArgMinMaxKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
-using ArgMinKernel =
-    ArgMinMaxKernel<DeviceContext, T, int64_t, ArgMinMaxType::kArgMin>;
+template <typename DeviceContext, typename T, ArgMinMaxType EnumArgMinMaxValue>
+class ArgMinMaxKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& dtype = ctx.Attr<int>("dtype");
+    if (dtype < 0) {
+      framework::VisitDataType(
+          static_cast<framework::proto::VarType::Type>(
+              framework::proto::VarType::INT64),
+          VisitDataArgMinMaxFunctor<DeviceContext, T, EnumArgMinMaxValue>(ctx));
+      return;
+    }
+    framework::VisitDataType(
+        static_cast<framework::proto::VarType::Type>(dtype),
+        VisitDataArgMinMaxFunctor<DeviceContext, T, EnumArgMinMaxValue>(ctx));
+  }
+};
 
 template <typename DeviceContext, typename T>
-using ArgMaxKernel =
-    ArgMinMaxKernel<DeviceContext, T, int64_t, ArgMinMaxType::kArgMax>;
+using ArgMinKernel = ArgMinMaxKernel<DeviceContext, T, ArgMinMaxType::kArgMin>;
+
+template <typename DeviceContext, typename T>
+using ArgMaxKernel = ArgMinMaxKernel<DeviceContext, T, ArgMinMaxType::kArgMax>;
 
 class ArgMinMaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "arg_min_max");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "arg_min_max");
     const auto& x_dims = ctx->GetInputDim("X");
     int64_t axis = ctx->Attrs().Get<int64_t>("axis");
-    PADDLE_ENFORCE(axis >= -x_dims.size() && axis < x_dims.size(),
-                   "'axis' must be inside [-Rank(X), Rank(X))");
+    bool keepdims = ctx->Attrs().Get<bool>("keepdims");
+
+    PADDLE_ENFORCE_GE(axis, -x_dims.size(),
+                      platform::errors::InvalidArgument(
+                          "'axis'(%d) must be greater than or equal to"
+                          " -Rank(X)(%d).",
+                          axis, -x_dims.size()));
+    PADDLE_ENFORCE_LT(
+        axis, x_dims.size(),
+        platform::errors::InvalidArgument(
+            "'axis'(%d) must be less than Rank(X)(%d).", axis, x_dims.size()));
 
     auto x_rank = x_dims.size();
     if (axis < 0) axis += x_rank;
-
     std::vector<int64_t> vec;
     for (int64_t i = 0; i < axis; i++) vec.push_back(x_dims[i]);
+    if (keepdims) {
+      vec.push_back(static_cast<int64_t>(1));
+    }
     for (int64_t i = axis + 1; i < x_rank; i++) vec.push_back(x_dims[i]);
     ctx->SetOutputDim("Out", framework::make_ddim(vec));
   }
@@ -137,6 +174,8 @@ class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input tensor.");
     AddOutput("Out", "Output tensor.");
     AddAttr<int64_t>("axis", "The axis in which to compute the arg indics.");
+    AddAttr<bool>("keepdims", "Keep the dim that to reduce.").SetDefault(false);
+    AddAttr<int>("dtype", "Keep the dim that to reduce.").SetDefault(-1);
     AddComment(string::Sprintf(R"DOC(
       %s Operator.
 

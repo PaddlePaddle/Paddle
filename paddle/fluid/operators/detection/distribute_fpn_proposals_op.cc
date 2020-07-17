@@ -22,15 +22,22 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("FpnRois"),
-                   "Input(FpnRois) shouldn't be null");
-    PADDLE_ENFORCE_GE(
-        ctx->Outputs("MultiFpnRois").size(), 1UL,
-        "Outputs(MultiFpnRois) of DistributeOp should not be empty");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("FpnRois"), true,
+        platform::errors::NotFound("Input(FpnRois) of DistributeFpnProposalsOp"
+                                   " is not found"));
+    PADDLE_ENFORCE_GE(ctx->Outputs("MultiFpnRois").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "Outputs(MultiFpnRois) of "
+                          "DistributeFpnProposalsOp should not be empty"));
     size_t min_level = static_cast<size_t>(ctx->Attrs().Get<int>("min_level"));
     size_t max_level = static_cast<size_t>(ctx->Attrs().Get<int>("max_level"));
-    PADDLE_ENFORCE_GE(max_level, min_level,
-                      "max_level must not lower than min_level");
+    PADDLE_ENFORCE_GE(
+        max_level, min_level,
+        platform::errors::InvalidArgument(
+            "max_level must not lower than "
+            "min_level. But received max_level = %d, min_level = %d",
+            max_level, min_level));
     // Set the output shape
     size_t num_out_rois = max_level - min_level + 1;
     std::vector<framework::DDim> outs_dims;

@@ -89,6 +89,8 @@
 
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+# including io directory for inference lib paddle_api.h
+include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 
 if(NOT APPLE)
   find_package(Threads REQUIRED)
@@ -185,9 +187,9 @@ function(merge_static_libs TARGET_NAME)
       COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
       DEPENDS ${libs})
 
-    # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    # Generate dummy static lib
+    generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:merge_static_libs")
+
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
     foreach(lib ${libs})
@@ -227,8 +229,8 @@ function(merge_static_libs TARGET_NAME)
       DEPENDS ${libs} ${target_OBJS})
 
     # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:merge_static_libs")
+
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
     # Get the file name of the generated library
@@ -246,10 +248,9 @@ function(merge_static_libs TARGET_NAME)
     add_custom_command(OUTPUT ${target_SRCS}
       COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
       DEPENDS ${libs})
-
     # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:merge_static_libs")
+
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
     foreach(lib ${libs})
@@ -278,9 +279,7 @@ function(cc_library TARGET_NAME)
       if(cc_library_SHARED OR cc_library_shared) # build *.so
         add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
       elseif(cc_library_INTERFACE OR cc_library_interface)
-        set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
-        file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-        add_library(${TARGET_NAME} STATIC ${target_SRCS})
+        generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:cc_library")
       else()
         add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
         find_fluid_modules(${TARGET_NAME})
@@ -329,9 +328,9 @@ function(cc_library TARGET_NAME)
   else(cc_library_SRCS)
     if(cc_library_DEPS)
       list(REMOVE_DUPLICATES cc_library_DEPS)
-      set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
-      file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-      add_library(${TARGET_NAME} STATIC ${target_SRCS})
+
+      generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:cc_library")
+
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     else()
       message(FATAL_ERROR "Please specify source files or libraries in cc_library(${TARGET_NAME} ...).")
@@ -380,8 +379,7 @@ function(cc_test_run TARGET_NAME)
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-	    COMMAND ${cc_test_COMMAND}
-	    ARGS ${cc_test_ARGS}
+	    COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
@@ -412,10 +410,14 @@ function(nv_library TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     if(nv_library_SRCS)
+      # Attention:
+      # 1. cuda_add_library is deprecated after cmake v3.10, use add_library for CUDA please.
+      # 2. cuda_add_library does not support ccache.
+      # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
       if (nv_library_SHARED OR nv_library_shared) # build *.so
-        cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
+        add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
       else()
-        cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+        add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
         find_fluid_modules(${TARGET_NAME})
       endif()
       if (nv_library_DEPS)
@@ -432,9 +434,8 @@ function(nv_library TARGET_NAME)
     else(nv_library_SRCS)
       if (nv_library_DEPS)
         list(REMOVE_DUPLICATES nv_library_DEPS)
-        set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
-        file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-        add_library(${TARGET_NAME} STATIC ${target_SRCS})
+        generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:nv_library")
+
         target_link_libraries(${TARGET_NAME} ${nv_library_DEPS})
         add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
       else()
@@ -450,7 +451,7 @@ function(nv_binary TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${nv_binary_SRCS})
+    add_executable(${TARGET_NAME} ${nv_binary_SRCS})
     if(nv_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
       add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
@@ -464,7 +465,11 @@ function(nv_test TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    # Attention:
+    # 1. cuda_add_executable is deprecated after cmake v3.10, use cuda_add_executable for CUDA please.
+    # 2. cuda_add_executable does not support ccache.
+    # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
+    add_executable(${TARGET_NAME} ${nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog ${os_dependency_modules})
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
@@ -813,3 +818,52 @@ function(brpc_library TARGET_NAME)
   cc_library("${TARGET_NAME}_proto" SRCS "${brpc_proto_srcs}")
   cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()
+
+# copy_if_different from src_file to dst_file before barrier_target.
+function(copy_if_different src_file dst_file barrier_target)
+  # this is a dummy target, should always be run to update ${dst_file}
+  add_custom_target(before_${barrier_target} ALL
+      DEPENDS before_${barrier_target}_custom_command
+  )
+  add_dependencies(${barrier_target} before_${barrier_target})
+
+  add_custom_command(
+      OUTPUT before_${barrier_target}_custom_command
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${src_file} ${dst_file}
+      COMMENT "copy_if_different ${dst_file}"
+      VERBATIM
+  )
+endfunction()
+
+# create a dummy source file, then create a static library.
+# LIB_NAME should be the static lib name.
+# FILE_PATH should be the dummy source file path.
+# GENERATOR should be the file name invoke this function.
+# CONTENT should be some helpful info.
+# example: generate_dummy_static_lib(mylib FILE_PATH /path/to/dummy.c GENERATOR mylib.cmake CONTENT "helpful info")
+function(generate_dummy_static_lib)
+  set(options "")
+  set(oneValueArgs LIB_NAME FILE_PATH GENERATOR CONTENT)
+  set(multiValueArgs "")
+  cmake_parse_arguments(dummy "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if(NOT dummy_LIB_NAME)
+    message(FATAL_ERROR "You must provide a static lib name.")
+  endif()
+  if(NOT dummy_FILE_PATH)
+    set(dummy_FILE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${dummy_LIB_NAME}_dummy.c")
+  endif()
+  if(NOT dummy_GENERATOR)
+    message(FATAL_ERROR "You must provide a generator file name.")
+  endif()
+  # if ${dummy_GENERATOR} contains "/", it may be a file path
+  if(NOT ${dummy_GENERATOR} MATCHES ".*/.*")
+    set(dummy_GENERATOR "${CMAKE_CURRENT_LIST_DIR}/${dummy_GENERATOR}")
+  endif()
+  if(NOT dummy_CONTENT)
+    set(dummy_CONTENT "${dummy_FILE_PATH} for lib ${dummy_LIB_NAME}")
+  endif()
+
+  configure_file(${PROJECT_SOURCE_DIR}/cmake/dummy.c.in ${dummy_FILE_PATH} @ONLY)
+  add_library(${dummy_LIB_NAME} STATIC ${dummy_FILE_PATH})
+endfunction()
+

@@ -32,7 +32,8 @@ class SeqPoolJitCode : public JitCode {
       : JitCode(code_size, code_ptr), w_(attr.w), type_(attr.type) {
     if (!(type_ == SeqPoolType::kSum || type_ == SeqPoolType::kAvg ||
           type_ == SeqPoolType::kSqrt)) {
-      LOG(FATAL) << "Only supported pool type: sum, avg and sqrt.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Only supports sum, average and sqrt pool type."));
     }
     fp_h_[0] = 1.f;
     this->genCode();

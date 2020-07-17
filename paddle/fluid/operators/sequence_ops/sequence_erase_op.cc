@@ -23,14 +23,15 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceErase operator should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceErase operator should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceErase");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SequenceErase");
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(x_dims.size() == 2 && x_dims[1] == 1,
-                   "Input(X) of SequenceEraseOp should be a 2-D LoDTensor "
-                   "with the 2nd dimension equal to 1.");
+                   platform::errors::InvalidArgument(
+                       "Input(X) of SequenceEraseOp should be a 2-D LoDTensor "
+                       "with the 2nd dimension equal to 1,"
+                       "but received size %d with the 2nd dimension %d.",
+                       x_dims.size(), x_dims[1]));
     ctx->SetOutputDim("Out", x_dims);
     // The output LoDTensor's lod_level should be input X's lod_level.
     // For compile-time, we call SetLoDLevel to set output's lod_level.

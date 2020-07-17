@@ -253,13 +253,18 @@ def generate_activation_fn(op_type):
 
     def func(x, name=None):
         if in_dygraph_mode():
-            inputs = {'X': [x]}
             op = getattr(core.ops, op_type)
-            outs = op(inputs)
-            return outs['Out'][0]
+            return op(x)
 
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
+        if op_type not in ["abs", "exp", "square"]:
+            check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                     op_type)
+        else:
+            # abs exp square ops support dtype(int32, int64, float16, float32, float64)
+            check_variable_and_dtype(
+                x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
+                op_type)
+
         helper = LayerHelper(op_type, **locals())
 
         output = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -276,22 +281,18 @@ def generate_activation_fn(op_type):
 
 Return type
   Variable
+
 Examples:
     .. code-block:: python
 
-        import paddle.fluid as fluid
+        import paddle
         import numpy as np
 
-        inputs = fluid.data(name="x", shape = [None, 4], dtype='float32')
-        output = fluid.layers.%s(inputs)
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
-
-        #input.shape=1X4, batch_size=1
-        img = np.array([[1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
-        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-        print(res)
+        paddle.enable_imperative()
+        x_data = np.array([1, 2, 3, 4]).astype(np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        res = paddle.%s(x)
+        print(res.numpy())
 """ % op_type
     return func
 

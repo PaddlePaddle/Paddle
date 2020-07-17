@@ -49,7 +49,7 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
     CHECK_EQ(0, dl_tensor.ctx.device_id);
   } else if (platform::is_gpu_place(place)) {
     CHECK_EQ(kDLGPU, dl_tensor.ctx.device_type);
-    CHECK_EQ(boost::get<platform::CUDAPlace>(place).device,
+    CHECK_EQ(BOOST_GET_CONST(platform::CUDAPlace, place).device,
              dl_tensor.ctx.device_id);
   } else if (platform::is_cuda_pinned_place(place)) {
     CHECK_EQ(kDLCPUPinned, dl_tensor.ctx.device_type);

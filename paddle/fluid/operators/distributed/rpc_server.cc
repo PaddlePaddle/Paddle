@@ -25,7 +25,7 @@ namespace operators {
 namespace distributed {
 
 void RPCServer::ShutDown() {
-  LOG(INFO) << "RPCServer ShutDown ";
+  VLOG(3) << "RPCServer ShutDown ";
   ShutDownImpl();
 
   exit_flag_ = true;

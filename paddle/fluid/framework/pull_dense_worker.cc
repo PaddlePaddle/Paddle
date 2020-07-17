@@ -70,8 +70,8 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
 
   size_t MAX_FAIL_NUM = 20;
   if (pull_dense_fail_times_ > MAX_FAIL_NUM) {
-    LOG(FATAL) << "Pull Dense Failed Times More Than " << MAX_FAIL_NUM
-               << " Times";
+    PADDLE_THROW(platform::errors::Fatal(
+        "Pull dense failed more than %d times.", MAX_FAIL_NUM));
     exit(-1);
   }
   status_vec->resize(0);
@@ -138,6 +138,17 @@ bool PullDenseWorker::CheckUpdateParam(uint64_t table_id) {
 void PullDenseWorker::ResetThreadVersion(uint64_t table_id) {
   std::lock_guard<std::mutex> lock(mutex_for_version_);
   last_versions_[table_id] = current_version_[table_id];
+}
+
+int PullDenseWorker::GetThreadIdByScope(const Scope* scope) {
+  if (scope_to_thread_id_.find(scope) != scope_to_thread_id_.end()) {
+    return scope_to_thread_id_[scope];
+  }
+  return -1;
+}
+
+void PullDenseWorker::SetThreadIdByScope(const Scope* scope, int tid) {
+  scope_to_thread_id_[scope] = tid;
 }
 
 }  // namespace framework

@@ -40,8 +40,7 @@ static inline int NumBlocks(const int N) {
 
 static __global__ void GetLengthLoD(const int nthreads, const int* batch_ids,
                                     int* length_lod) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (nthreads);
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, nthreads) {
     platform::CudaAtomicAdd(length_lod + batch_ids[i], 1);
   }
 }
@@ -79,7 +78,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
     int index = 0;
     int lod_size;
-    auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
+    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
     for (size_t i = 0; i < roi_ins.size(); ++i) {
       auto roi_in = roi_ins[i];

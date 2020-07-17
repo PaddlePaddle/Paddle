@@ -27,6 +27,7 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -34,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
@@ -58,11 +60,58 @@ namespace framework {
 //   while (reader->Next()) {
 //      // trainer do something
 //   }
+union FeatureKey {
+  uint64_t uint64_feasign_;
+  float float_feasign_;
+};
+
+struct FeatureItem {
+  FeatureItem() {}
+  FeatureItem(FeatureKey sign, uint16_t slot) {
+    this->sign() = sign;
+    this->slot() = slot;
+  }
+  FeatureKey& sign() { return *(reinterpret_cast<FeatureKey*>(sign_buffer())); }
+  const FeatureKey& sign() const {
+    const FeatureKey* ret = reinterpret_cast<FeatureKey*>(sign_buffer());
+    return *ret;
+  }
+  uint16_t& slot() { return slot_; }
+  const uint16_t& slot() const { return slot_; }
+
+ private:
+  char* sign_buffer() const { return const_cast<char*>(sign_); }
+  char sign_[sizeof(FeatureKey)];
+  uint16_t slot_;
+};
+
+// sizeof Record is much less than std::vector<MultiSlotType>
+struct Record {
+  std::vector<FeatureItem> uint64_feasigns_;
+  std::vector<FeatureItem> float_feasigns_;
+  std::string ins_id_;
+  std::string content_;
+  uint64_t search_id;
+  uint32_t rank;
+  uint32_t cmatch;
+};
+
+struct PvInstanceObject {
+  std::vector<Record*> ads;
+  void merge_instance(Record* ins) { ads.push_back(ins); }
+};
+
+using PvInstance = PvInstanceObject*;
+
+inline PvInstance make_pv_instance() { return new PvInstanceObject(); }
+
 class DataFeed {
  public:
   DataFeed() {
     mutex_for_pick_file_ = nullptr;
     file_idx_ = nullptr;
+    mutex_for_fea_num_ = nullptr;
+    total_fea_num_ = nullptr;
   }
   virtual ~DataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
@@ -94,6 +143,13 @@ class DataFeed {
   virtual void AssignFeedVar(const Scope& scope);
 
   // This function will do nothing at default
+  virtual void SetInputPvChannel(void* channel) {}
+  // This function will do nothing at default
+  virtual void SetOutputPvChannel(void* channel) {}
+  // This function will do nothing at default
+  virtual void SetConsumePvChannel(void* channel) {}
+
+  // This function will do nothing at default
   virtual void SetInputChannel(void* channel) {}
   // This function will do nothing at default
   virtual void SetOutputChannel(void* channel) {}
@@ -106,10 +162,15 @@ class DataFeed {
   // This function will do nothing at default
   virtual void SetParseInsId(bool parse_ins_id) {}
   virtual void SetParseContent(bool parse_content) {}
+  virtual void SetParseLogKey(bool parse_logkey) {}
+  virtual void SetEnablePvMerge(bool enable_pv_merge) {}
+  virtual void SetCurrentPhase(int current_phase) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
+  virtual void SetFeaNumMutex(std::mutex* mutex) { mutex_for_fea_num_ = mutex; }
   virtual void SetFileListIndex(size_t* file_index) { file_idx_ = file_index; }
+  virtual void SetFeaNum(uint64_t* fea_num) { total_fea_num_ = fea_num; }
   virtual const std::vector<std::string>& GetInsIdVec() const {
     return ins_id_vec_;
   }
@@ -142,6 +203,9 @@ class DataFeed {
   std::vector<std::string> filelist_;
   size_t* file_idx_;
   std::mutex* mutex_for_pick_file_;
+  std::mutex* mutex_for_fea_num_ = nullptr;
+  uint64_t* total_fea_num_ = nullptr;
+  uint64_t fea_num_ = 0;
 
   // the alias of used slots, and its order is determined by
   // data_feed_desc(proto object)
@@ -163,6 +227,8 @@ class DataFeed {
   // The data read by DataFeed will be stored here
   std::vector<LoDTensor*> feed_vec_;
 
+  LoDTensor* rank_offset_;
+
   // the batch size defined by user
   int default_batch_size_;
   // current batch size
@@ -175,6 +241,9 @@ class DataFeed {
   std::vector<std::string> ins_id_vec_;
   std::vector<std::string> ins_content_vec_;
   platform::Place place_;
+
+  // The input type of pipe reader, 0 for one sample, 1 for one batch
+  int input_type_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
@@ -226,6 +295,10 @@ class InMemoryDataFeed : public DataFeed {
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
   virtual bool Start();
   virtual int Next();
+  virtual void SetInputPvChannel(void* channel);
+  virtual void SetOutputPvChannel(void* channel);
+  virtual void SetConsumePvChannel(void* channel);
+
   virtual void SetInputChannel(void* channel);
   virtual void SetOutputChannel(void* channel);
   virtual void SetConsumeChannel(void* channel);
@@ -233,6 +306,9 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetThreadNum(int thread_num);
   virtual void SetParseInsId(bool parse_ins_id);
   virtual void SetParseContent(bool parse_content);
+  virtual void SetParseLogKey(bool parse_logkey);
+  virtual void SetEnablePvMerge(bool enable_pv_merge);
+  virtual void SetCurrentPhase(int current_phase);
   virtual void LoadIntoMemory();
 
  protected:
@@ -244,11 +320,18 @@ class InMemoryDataFeed : public DataFeed {
   int thread_num_;
   bool parse_ins_id_;
   bool parse_content_;
+  bool parse_logkey_;
+  bool enable_pv_merge_;
+  int current_phase_{-1};  // only for untest
   std::ifstream file_;
   std::shared_ptr<FILE> fp_;
   paddle::framework::ChannelObject<T>* input_channel_;
   paddle::framework::ChannelObject<T>* output_channel_;
   paddle::framework::ChannelObject<T>* consume_channel_;
+
+  paddle::framework::ChannelObject<PvInstance>* input_pv_channel_;
+  paddle::framework::ChannelObject<PvInstance>* output_pv_channel_;
+  paddle::framework::ChannelObject<PvInstance>* consume_pv_channel_;
 };
 
 // This class define the data type of instance(ins_vec) in MultiSlotDataFeed
@@ -408,48 +491,27 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   return ar;
 }
 
-union FeatureKey {
-  uint64_t uint64_feasign_;
-  float float_feasign_;
-};
-
-struct FeatureItem {
-  FeatureItem() {}
-  FeatureItem(FeatureKey sign, uint16_t slot) {
-    this->sign() = sign;
-    this->slot() = slot;
-  }
-  FeatureKey& sign() { return *(reinterpret_cast<FeatureKey*>(sign_buffer())); }
-  const FeatureKey& sign() const {
-    const FeatureKey* ret = reinterpret_cast<FeatureKey*>(sign_buffer());
-    return *ret;
-  }
-  uint16_t& slot() { return slot_; }
-  const uint16_t& slot() const { return slot_; }
-
- private:
-  char* sign_buffer() const { return const_cast<char*>(sign_); }
-  char sign_[sizeof(FeatureKey)];
-  uint16_t slot_;
-};
-
-// sizeof Record is much less than std::vector<MultiSlotType>
-struct Record {
-  std::vector<FeatureItem> uint64_feasigns_;
-  std::vector<FeatureItem> float_feasigns_;
-  std::string ins_id_;
-  std::string content_;
-};
-
 struct RecordCandidate {
   std::string ins_id_;
-  std::unordered_multimap<uint16_t, FeatureKey> feas;
+  std::unordered_multimap<uint16_t, FeatureKey> feas_;
+  size_t shadow_index_ = -1;  // Optimization for Reservoir Sample
+
+  RecordCandidate() {}
+  RecordCandidate(const Record& rec,
+                  const std::unordered_set<uint16_t>& slot_index_to_replace) {
+    for (const auto& fea : rec.uint64_feasigns_) {
+      if (slot_index_to_replace.find(fea.slot()) !=
+          slot_index_to_replace.end()) {
+        feas_.insert({fea.slot(), fea.sign()});
+      }
+    }
+  }
 
   RecordCandidate& operator=(const Record& rec) {
-    feas.clear();
+    feas_.clear();
     ins_id_ = rec.ins_id_;
     for (auto& fea : rec.uint64_feasigns_) {
-      feas.insert({fea.slot(), fea.sign()});
+      feas_.insert({fea.slot(), fea.sign()});
     }
     return *this;
   }
@@ -458,22 +520,67 @@ struct RecordCandidate {
 class RecordCandidateList {
  public:
   RecordCandidateList() = default;
-  RecordCandidateList(const RecordCandidateList&) = delete;
-  RecordCandidateList& operator=(const RecordCandidateList&) = delete;
+  RecordCandidateList(const RecordCandidateList&) {}
 
+  size_t Size() { return cur_size_; }
   void ReSize(size_t length);
 
   void ReInit();
+  void ReInitPass() {
+    for (size_t i = 0; i < cur_size_; ++i) {
+      if (candidate_list_[i].shadow_index_ != i) {
+        candidate_list_[i].ins_id_ =
+            candidate_list_[candidate_list_[i].shadow_index_].ins_id_;
+        candidate_list_[i].feas_.swap(
+            candidate_list_[candidate_list_[i].shadow_index_].feas_);
+        candidate_list_[i].shadow_index_ = i;
+      }
+    }
+    candidate_list_.resize(cur_size_);
+  }
 
   void AddAndGet(const Record& record, RecordCandidate* result);
+  void AddAndGet(const Record& record, size_t& index_result) {  // NOLINT
+    // std::unique_lock<std::mutex> lock(mutex_);
+    size_t index = 0;
+    ++total_size_;
+    auto fleet_ptr = FleetWrapper::GetInstance();
+    if (!full_) {
+      candidate_list_.emplace_back(record, slot_index_to_replace_);
+      candidate_list_.back().shadow_index_ = cur_size_;
+      ++cur_size_;
+      full_ = (cur_size_ == capacity_);
+    } else {
+      index = fleet_ptr->LocalRandomEngine()() % total_size_;
+      if (index < capacity_) {
+        candidate_list_.emplace_back(record, slot_index_to_replace_);
+        candidate_list_[index].shadow_index_ = candidate_list_.size() - 1;
+      }
+    }
+    index = fleet_ptr->LocalRandomEngine()() % cur_size_;
+    index_result = candidate_list_[index].shadow_index_;
+  }
+  const RecordCandidate& Get(size_t index) const {
+    PADDLE_ENFORCE_LT(
+        index, candidate_list_.size(),
+        platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                     "elements in candidate_list[%lu].",
+                                     index, candidate_list_.size()));
+    return candidate_list_[index];
+  }
+  void SetSlotIndexToReplace(
+      const std::unordered_set<uint16_t>& slot_index_to_replace) {
+    slot_index_to_replace_ = slot_index_to_replace;
+  }
 
  private:
-  size_t _capacity = 0;
-  std::mutex _mutex;
-  bool _full = false;
-  size_t _cur_size = 0;
-  size_t _total_size = 0;
-  std::vector<RecordCandidate> _candidate_list;
+  size_t capacity_ = 0;
+  std::mutex mutex_;
+  bool full_ = false;
+  size_t cur_size_ = 0;
+  size_t total_size_ = 0;
+  std::vector<RecordCandidate> candidate_list_;
+  std::unordered_set<uint16_t> slot_index_to_replace_;
 };
 
 template <class AR>
@@ -557,6 +664,31 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual bool ParseOneInstance(Record* instance);
   virtual bool ParseOneInstanceFromPipe(Record* instance);
   virtual void PutToFeedVec(const std::vector<Record>& ins_vec);
+  virtual void GetMsgFromLogKey(const std::string& log_key, uint64_t* search_id,
+                                uint32_t* cmatch, uint32_t* rank);
+  std::vector<std::vector<float>> batch_float_feasigns_;
+  std::vector<std::vector<uint64_t>> batch_uint64_feasigns_;
+  std::vector<std::vector<size_t>> offset_;
+  std::vector<bool> visit_;
+};
+
+class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {
+ public:
+  PaddleBoxDataFeed() {}
+  virtual ~PaddleBoxDataFeed() {}
+
+ protected:
+  virtual void Init(const DataFeedDesc& data_feed_desc);
+  virtual bool Start();
+  virtual int Next();
+  virtual void AssignFeedVar(const Scope& scope);
+  virtual void PutToFeedVec(const std::vector<PvInstance>& pv_vec);
+  virtual void PutToFeedVec(const std::vector<Record*>& ins_vec);
+  virtual int GetCurrentPhase();
+  virtual void GetRankOffset(const std::vector<PvInstance>& pv_vec,
+                             int ins_number);
+  std::string rank_offset_name_;
+  int pv_batch_size_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)

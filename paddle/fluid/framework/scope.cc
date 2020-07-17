@@ -125,8 +125,9 @@ std::vector<std::string> Scope::LocalVarNames() const {
 void Scope::DeleteScope(Scope* scope) const {
   SCOPE_KIDS_WRITER_LOCK
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
-  PADDLE_ENFORCE(it != this->kids_.end(), "%p Cannot find %p as kid scope",
-                 this, scope);
+  PADDLE_ENFORCE_NE(it, this->kids_.end(),
+                    platform::errors::NotFound(
+                        "%p is not found in %p as kid scope", scope, this));
   this->kids_.erase(it);
   // When making memory benchmark on Fluid, we have to delete scope sync.
   if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
@@ -189,11 +190,16 @@ const Scope* Scope::FindScopeInternal(const std::string& name) const {
 void Scope::RenameInternal(const std::string& origin_name,
                            const std::string& new_name) const {
   auto origin_it = vars_.find(origin_name);
-  PADDLE_ENFORCE(origin_it != vars_.end(),
-                 "Cannot find original variable with name %s", origin_name);
+  PADDLE_ENFORCE_NE(
+      origin_it, vars_.end(),
+      platform::errors::NotFound(
+          "Original variable with name %s is not found in the scope.",
+          origin_name));
   auto new_it = vars_.find(new_name);
-  PADDLE_ENFORCE(new_it == vars_.end(),
-                 "The variable with name %s is already in the scope", new_name);
+  PADDLE_ENFORCE_EQ(
+      new_it, vars_.end(),
+      platform::errors::AlreadyExists(
+          "The variable with name %s already exists in the scope.", new_name));
   vars_[new_name].reset(origin_it->second.release());
   vars_.erase(origin_it);
 }

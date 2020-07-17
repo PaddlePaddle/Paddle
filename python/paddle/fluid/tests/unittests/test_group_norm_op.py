@@ -40,6 +40,26 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
     return output, mean.reshape((N, G)), var.reshape((N, G))
 
 
+class TestGroupNormOpError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+
+            def test_x_type():
+                input = np.random.random(2, 100, 3, 5).astype('float32')
+                goups = 2
+                fluid.layers.group_norm(input, groups)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_x_dtype():
+                x2 = fluid.layers.data(
+                    name='x2', shape=[2, 100, 3, 5], dtype='int32')
+                groups = 2
+                fluid.layers.group_norm(x2, groups)
+
+            self.assertRaises(TypeError, test_x_dtype)
+
+
 class TestGroupNormOp(OpTest):
     def setUp(self):
         self.op_type = "group_norm"

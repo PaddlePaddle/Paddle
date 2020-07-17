@@ -19,6 +19,9 @@ SET(CBLAS_SOURCE_DIR  ${THIRD_PARTY_PATH}/openblas/src/extern_openblas)
 SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 SET(CBLAS_REPOSITORY  https://github.com/xianyi/OpenBLAS.git)
 SET(CBLAS_TAG         v0.3.7)
+IF(WITH_ARM)
+    SET(CBLAS_TAG v0.2.18)
+ENDIF()
 cache_third_party(extern_openblas
     REPOSITORY    ${CBLAS_REPOSITORY}
     TAG           ${CBLAS_TAG}

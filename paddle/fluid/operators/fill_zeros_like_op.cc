@@ -22,10 +22,8 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FillZerosLikeOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FillZerosLikeOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fill_zeros_like");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fill_zeros_like");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -73,7 +71,7 @@ class FillZerosLikeOp2Maker : public FillZerosLikeOpMaker {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(FillZerosLikeOp2NoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(FillZerosLikeOp2NoNeedBufferVarsInferer,
                                     "X");
 
 }  // namespace operators
@@ -85,7 +83,7 @@ REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, ops::FillZerosLikeOp,
 
 REGISTER_OPERATOR(
     fill_zeros_like2, ops::FillZerosLikeOp2, ops::FillZerosLikeOp2Maker,
-    ops::FillZerosLikeOp2NoNeedBufferVarsInference,
+    ops::FillZerosLikeOp2NoNeedBufferVarsInferer,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 

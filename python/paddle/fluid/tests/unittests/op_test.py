@@ -207,9 +207,6 @@ class OpTest(unittest.TestCase):
         def is_mkldnn_op_test():
             return hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True
 
-        def is_ngraph_op_test():
-            return hasattr(cls, "use_ngraph") and cls.use_ngraph == True
-
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -229,7 +226,6 @@ class OpTest(unittest.TestCase):
             if cls.dtype in [np.float32, np.float64] \
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
                 and not hasattr(cls, 'exist_fp64_check_grad') \
-                and not is_ngraph_op_test() \
                 and not is_mkldnn_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
@@ -312,7 +308,6 @@ class OpTest(unittest.TestCase):
                 else:
                     tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
-
         return feed_map
 
     def _append_ops(self, block):
@@ -321,9 +316,6 @@ class OpTest(unittest.TestCase):
             (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
-        if fluid.core.is_compiled_with_ngraph() and \
-            fluid.core.globals()['FLAGS_use_ngraph']:
-            self.__class__.use_ngraph = True
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
@@ -637,24 +629,23 @@ class OpTest(unittest.TestCase):
             # computational consistency.
             # When inplace_atol is not None, the inplace check uses numpy.allclose
             # to check inplace result instead of numpy.array_equal.
+            expect_out = np.array(expect_outs[i])
+            actual_out = np.array(actual_outs[i])
             if inplace_atol is not None:
                 self.assertTrue(
                     np.allclose(
-                        np.array(expect_outs[i]),
-                        np.array(actual_outs[i]),
-                        atol=inplace_atol),
+                        expect_out, actual_out, atol=inplace_atol),
                     "Output (" + name + ") has diff at " + str(place) +
                     " when using and not using inplace" + "\nExpect " +
-                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
-                    + " in class " + self.__class__.__name__)
+                    str(expect_out) + "\n" + "But Got" + str(actual_out) +
+                    " in class " + self.__class__.__name__)
             else:
                 self.assertTrue(
-                    np.array_equal(
-                        np.array(expect_outs[i]), np.array(actual_outs[i])),
+                    np.array_equal(expect_out, actual_out),
                     "Output (" + name + ") has diff at " + str(place) +
                     " when using and not using inplace" + "\nExpect " +
-                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
-                    + " in class " + self.__class__.__name__ + '\n')
+                    str(expect_out) + "\n" + "But Got" + str(actual_out) +
+                    " in class " + self.__class__.__name__ + '\n')
 
     def _construct_grad_program_from_forward(self, fwd_program, grad_op_desc,
                                              op_grad_to_var):
@@ -935,24 +926,15 @@ class OpTest(unittest.TestCase):
                     res[op_desc] = self._calc_output(
                         place, no_check_set=no_check_set, for_inplace_test=True)
             else:
-                # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn/ngraph
-                # skip op that use_mkldnn and use_ngraph currently
+                # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
+                # skip op that use_mkldnn currently
                 flags_use_mkldnn = fluid.core.globals()["FLAGS_use_mkldnn"]
                 attrs_use_mkldnn = hasattr(
                     self,
                     'attrs') and bool(self.attrs.get('use_mkldnn', False))
-                flags_use_ngraph = fluid.core.globals()["FLAGS_use_ngraph"]
-                attrs_use_ngraph = hasattr(
-                    self,
-                    'attrs') and bool(self.attrs.get('use_ngraph', False))
                 if flags_use_mkldnn or attrs_use_mkldnn:
                     warnings.warn(
                         "check inplace_grad for ops using mkldnn is not supported"
-                    )
-                    continue
-                if flags_use_ngraph or attrs_use_ngraph:
-                    warnings.warn(
-                        "check inplace_grad for ops using ngraph is not supported"
                     )
                     continue
                 if has_infer_inplace:
@@ -1177,10 +1159,6 @@ class OpTest(unittest.TestCase):
                 return []
         places = [fluid.CPUPlace()]
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
-        use_ngraph = fluid.core.is_compiled_with_ngraph(
-        ) and fluid.core.globals()['FLAGS_use_ngraph']
-        if use_ngraph:
-            cpu_only = True
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\
            and not cpu_only:
             places.append(core.CUDAPlace(0))
@@ -1197,9 +1175,6 @@ class OpTest(unittest.TestCase):
             (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
-        if fluid.core.is_compiled_with_ngraph() and \
-            fluid.core.globals()['FLAGS_use_ngraph']:
-            self.__class__.use_ngraph = True
 
         places = self._get_places()
         for place in places:
@@ -1244,9 +1219,9 @@ class OpTest(unittest.TestCase):
 
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
-                return ("%s error, %s variable %s max gradient diff %f over limit %f, "
-                    "the first error element is %d, expected %f, but got %f.") \
-                    % (self.op_type, msg_prefix, name, max_diff, max_relative_error,
+                return ("Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
+                    "the first error element is %d, expected %e, but got %e.") \
+                    % (self.op_type, msg_prefix, name, str(a.shape), self.dtype, max_diff, max_relative_error,
                     offset, a.flatten()[offset], b.flatten()[offset])
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())

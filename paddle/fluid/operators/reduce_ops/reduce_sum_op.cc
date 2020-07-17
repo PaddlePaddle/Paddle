@@ -35,9 +35,33 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    int in_dtype = ctx.Attr<int>("in_dtype");
+    if (in_dtype >= 0) {
+      return framework::OpKernelType(
+          static_cast<framework::proto::VarType::Type>(in_dtype),
+          ctx.GetPlace());
+    }
+    return framework::OpKernelType(
+        framework::OperatorWithKernel::IndicateVarDataType(
+            ctx, framework::GradVarName("Out")),
+        ctx.GetPlace());
+  }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInferer, "X");
+class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
+ public:
+  void operator()(paddle::framework::InferVarTypeContext* ctx) const override {
+    auto data_type = static_cast<paddle::framework::proto::VarType::Type>(
+        BOOST_GET_CONST(int, ctx->GetAttr("out_dtype")));
+    if (data_type >= 0) {
+      ctx->SetOutputDataType("Out", data_type);
+    }
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
@@ -49,10 +73,11 @@ class ReduceSumOpMaker : public ops::ReduceOpMaker {
 };
 
 REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
+                  ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
-                  ops::ReduceSumGradNoNeedBufferVarInference);
+                  ops::ReduceSumGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(
     reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,

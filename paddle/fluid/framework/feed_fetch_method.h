@@ -24,7 +24,7 @@ namespace framework {
 void SetFeedVariable(Scope* scope, const LoDTensor& input,
                      const std::string& var_name, size_t index);
 
-LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
+FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
                             size_t index);
 
 LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name);

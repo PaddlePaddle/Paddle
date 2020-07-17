@@ -124,11 +124,6 @@ class OpDescCreationMethod(object):
                     new_attr.bools.extend(user_defined_attr)
                 elif attr.type == framework_pb2.LONGS:
                     new_attr.longs.extend(user_defined_attr)
-                elif attr.type == framework_pb2.INT_PAIRS:
-                    for p in user_defined_attr:
-                        pair = new_attr.int_pairs.add()
-                        pair.first = p[0]
-                        pair.second = p[1]
                 else:
                     raise NotImplementedError(
                         "A not supported attribute type: %s." % (

@@ -83,15 +83,9 @@ class UnpoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of UnpoolOp is not found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Indices"), true,
-        platform::errors::NotFound("Input(Indices) of UnpoolOp is not found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of UnpoolOp is not found."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Unpool");
+    OP_INOUT_CHECK(ctx->HasInput("Indices"), "Input", "Indices", "Unpool");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Unpool");
     auto in_x_dims = ctx->GetInputDim("X");
     auto in_y_dims = ctx->GetInputDim("Indices");
     std::string unpooling_type =
@@ -101,10 +95,16 @@ class UnpoolOp : public framework::OperatorWithKernel {
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
     PADDLE_ENFORCE_EQ(in_x_dims.size() == 4, true,
                       platform::errors::InvalidArgument(
-                          "Unpooling intput(X) must be of 4-dimensional, but "
-                          "received X's dimension is %d.",
+                          "Unpool Intput(X) must be of 4-dimensional, but "
+                          "received Input(X)'s dimensions is %d.",
                           in_x_dims.size()));
-    PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims);
+    PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of Input(X) must equal to be"
+                          "the dimensions of Input(Indices), but received"
+                          "dimensions of Input(X) is [%d], received dimensions"
+                          "of Input(Indices) is [%d]",
+                          in_x_dims, in_y_dims));
 
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
@@ -146,12 +146,9 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of UnpoolOpGradOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      platform::errors::NotFound(
-                          "Input(X@GRAD) of UnpoolOpGradOp is not found."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "UnpoolGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "UnpoolGrad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

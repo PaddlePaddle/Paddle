@@ -45,9 +45,9 @@ FuseOptions FusePassBase::FindFuseOption(const Node& node1,
                                          const Node& node2) const {
 #ifdef PADDLE_WITH_MKLDNN
   bool node1_mkldnn = node1.Op()->HasAttr("use_mkldnn") &&
-                      boost::get<bool>(node1.Op()->GetAttr("use_mkldnn"));
+                      BOOST_GET_CONST(bool, node1.Op()->GetAttr("use_mkldnn"));
   bool node2_mkldnn = node2.Op()->HasAttr("use_mkldnn") &&
-                      boost::get<bool>(node2.Op()->GetAttr("use_mkldnn"));
+                      BOOST_GET_CONST(bool, node2.Op()->GetAttr("use_mkldnn"));
   if (node1_mkldnn && node2_mkldnn)
     return FUSE_MKLDNN;
   else if (!node1_mkldnn && !node2_mkldnn)

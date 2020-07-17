@@ -29,17 +29,25 @@ class StridedSliceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "Input (Input) of slice op should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output (Out) of slice op should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "StridedSlice");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "StridedSlice");
 
     auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE_LT(in_dims.size(), 7,
-                      "The rank of input should be less than 7.");
-    auto starts = ctx->Attrs().Get<std::vector<int>>("starts");
-    auto ends = ctx->Attrs().Get<std::vector<int>>("ends");
-    auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
+    PADDLE_ENFORCE_LT(
+        in_dims.size(), 7,
+        platform::errors::InvalidArgument(
+            "The dimension of StridedSlice operator's input should be less "
+            "than 7, but received dimension is %d.",
+            in_dims.size()));
+
+    auto starts_int = ctx->Attrs().Get<std::vector<int>>("starts");
+    auto ends_int = ctx->Attrs().Get<std::vector<int>>("ends");
+    auto strides_int = ctx->Attrs().Get<std::vector<int>>("strides");
+
+    std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
+    std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
+    std::vector<int64_t> strides(strides_int.begin(), strides_int.end());
+
     auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
     auto infer_flags = ctx->Attrs().Get<std::vector<int>>("infer_flags");
     auto decrease_axis = ctx->Attrs().Get<std::vector<int>>("decrease_axis");
@@ -50,20 +58,26 @@ class StridedSliceOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInputs("StartsTensorList")) {
       auto StartsTensorList = ctx->Inputs("StartsTensorList");
-      PADDLE_ENFORCE_GT(StartsTensorList.size(), 0,
-                        "StartsTensorList size can't be zero");
+      PADDLE_ENFORCE_GT(
+          StartsTensorList.size(), 0,
+          platform::errors::InvalidArgument(
+              "StridedSlice operator's StartsTensorList is empty."));
       starts_size = StartsTensorList.size();
     }
     if (ctx->HasInputs("EndsTensorList")) {
       auto EndsTensorList = ctx->Inputs("EndsTensorList");
-      PADDLE_ENFORCE_GT(EndsTensorList.size(), 0,
-                        "EndsTensorList size can't be zero");
+      PADDLE_ENFORCE_GT(
+          EndsTensorList.size(), 0,
+          platform::errors::InvalidArgument(
+              "StridedSlice operator's EndsTensorList is empty."));
       ends_size = EndsTensorList.size();
     }
     if (ctx->HasInputs("StridesTensorList")) {
       auto StridesTensorList = ctx->Inputs("StridesTensorList");
-      PADDLE_ENFORCE_GT(StridesTensorList.size(), 0,
-                        "StridesTensorList size can't be zero");
+      PADDLE_ENFORCE_GT(
+          StridesTensorList.size(), 0,
+          platform::errors::InvalidArgument(
+              "StridedSlice operator's StridesTensorList is empty."));
       strides_size = StridesTensorList.size();
     }
 
@@ -73,22 +87,35 @@ class StridedSliceOp : public framework::OperatorWithKernel {
       tensor_input = true;
     }
     if (!ctx->HasInput("EndsTensor")) {
-      PADDLE_ENFORCE_EQ(ends_size, axes.size(),
-                        "The size of ends must be equal to the size of axes.");
+      PADDLE_ENFORCE_EQ(
+          ends_size, axes.size(),
+          platform::errors::InvalidArgument(
+              "The size of ends attribute in StridedSlice operator is not "
+              "equal to the size of axes attribute. The ends attribute's size "
+              "is %d, axes attribute's size is %d.",
+              ends_size, axes.size()));
     }
     if (!ctx->HasInput("StartsTensor")) {
       PADDLE_ENFORCE_EQ(
           starts_size, axes.size(),
-          "The size of starts must be equal to the size of axes.");
+          platform::errors::InvalidArgument(
+              "The size of starts attribute in StridedSlice operator is not "
+              "equal to the size of axes attribute. The starts attribute's "
+              "size is %d, axes attribute's size is %d.",
+              starts_size, axes.size()));
     }
     if (!ctx->HasInput("StridesTensor")) {
       PADDLE_ENFORCE_EQ(
           strides_size, axes.size(),
-          "The size of strides must be equal to the size of axes.");
+          platform::errors::InvalidArgument(
+              "The size of strides attribute in StridedSlice operator is not "
+              "equal to the size of axes attribute. The strides attribute's "
+              "size is %d, axes attribute's size is %d.",
+              strides_size, axes.size()));
     }
     // we need to analysis strided slice op is valid for
     // the parameter that we get from python front
-    std::vector<int> out_dims_vector(in_dims.size(), -1);
+    std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
     if (!tensor_input) {
       StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
                           decrease_axis, out_dims_vector.data(), axes.size(),
@@ -97,11 +124,14 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     framework::DDim out_dims(framework::make_ddim(out_dims_vector));
     // generate new shape
     if (decrease_axis.size() > 0) {
-      std::vector<int> new_out_shape;
+      std::vector<int64_t> new_out_shape;
       for (size_t i = 0; i < decrease_axis.size(); ++i) {
         if (ctx->IsRuntime() && infer_flags[i] != -1) {
           PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                            "decrease dim should be 1");
+                            platform::errors::InvalidArgument(
+                                "the size of decrease dimension should be 1, "
+                                "but received %d.",
+                                out_dims[decrease_axis[i]]));
         }
         out_dims[decrease_axis[i]] = 0;
       }
@@ -219,9 +249,11 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true, "Input should not be null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
+                   "StridedSliceGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "StridedSliceGrad");
+
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");
     if (ctx->HasOutput(x_grad_name)) {
@@ -272,7 +304,7 @@ class StridedSliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInferer,
                                     "Input");
 
 }  // namespace operators
@@ -283,7 +315,7 @@ REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
                   ops::StridedSliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::StridedSliceOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
-                  ops::StridedSliceOpGradNoNeedBufferVarsInference);
+                  ops::StridedSliceOpGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     strided_slice,

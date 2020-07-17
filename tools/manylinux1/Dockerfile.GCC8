@@ -8,11 +8,9 @@ MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 # ENV variables
 ARG WITH_GPU
 ARG WITH_AVX
-ARG WITH_DOC
  
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
-ENV WITH_DOC=${WITH_DOC:-OFF}
 
 ENV HOME /root
 # Add bash enhancements
@@ -77,7 +75,7 @@ RUN apt-get update && \
     python-matplotlib \
     automake locales clang-format swig  \
     liblapack-dev liblapacke-dev \
-    net-tools libtool ccache module-init-tools && \
+    net-tools libtool module-init-tools && \
     apt-get clean -y
 
 # Install Python2.7.15 to replace original python
@@ -177,8 +175,6 @@ RUN pip3.6 --no-cache-dir install certifi urllib3[secure]
 RUN pip3.7 --no-cache-dir install certifi urllib3[secure]
 RUN pip --no-cache-dir install certifi urllib3[secure]
 
-RUN echo "export PATH=/usr/lib/ccache:${PATH}" >> ~/.bashrc
-
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
 RUN echo 'root:root' | chpasswd
@@ -187,3 +183,9 @@ RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 CMD source ~/.bashrc
 EXPOSE 22
 
+# ccache 3.7.9
+RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
+    tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
+    ./configure -prefix=/usr/local/ccache-3.7.9 && \
+    make -j8 && make install && \
+    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache

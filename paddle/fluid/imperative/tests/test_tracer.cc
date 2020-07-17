@@ -285,6 +285,11 @@ TEST(test_tracer, test_unique_name_generator) {
   auto fc_2 = tracer.GenerateUniqueName("fc");
   ASSERT_STREQ("fc_0", fc_1.c_str());
   ASSERT_STREQ("fc_1", fc_2.c_str());
+  // use `eager_tmp` as key if not specify it.
+  auto tmp_var_2 = tracer.GenerateUniqueName();
+  ASSERT_STREQ("eager_tmp_2", tmp_var_2.c_str());
+  auto tmp_var_3 = tracer.GenerateUniqueName("eager_tmp");
+  ASSERT_STREQ("eager_tmp_3", tmp_var_3.c_str());
 }
 
 TEST(test_tracer, test_current_tracer) {

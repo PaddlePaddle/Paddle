@@ -102,12 +102,31 @@ void MainTest(std::initializer_list<std::string> quantize_enabled_op_types,
     if (node->IsOp()) {
       auto* op = node->Op();
       if (op->HasAttr("use_quantizer") &&
-          boost::get<bool>(op->GetAttr("use_quantizer"))) {
+          BOOST_GET_CONST(bool, op->GetAttr("use_quantizer"))) {
         ++use_quantizer_true_count;
       }
     }
   }
 
+  EXPECT_EQ(use_quantizer_true_count, expected_use_quantizer_true_count);
+}
+
+void DefaultAttrTest(unsigned expected_use_quantizer_true_count) {
+  auto prog = BuildProgramDesc();
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  auto pass = PassRegistry::Instance().Get("cpu_quantize_placement_pass");
+  graph.reset(pass->Apply(graph.release()));
+
+  unsigned use_quantizer_true_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->HasAttr("use_quantizer") &&
+          BOOST_GET_CONST(bool, op->GetAttr("use_quantizer"))) {
+        ++use_quantizer_true_count;
+      }
+    }
+  }
   EXPECT_EQ(use_quantizer_true_count, expected_use_quantizer_true_count);
 }
 
@@ -120,6 +139,11 @@ TEST(QuantizerPlacementPass, enabled_conv_excluded_one) {
 TEST(QuantizerPlacementPass, excluded_none) {
   // 2 conv + 2 pool
   MainTest({}, {}, 4);
+}
+
+TEST(QuantizerPlacementPass, default_attr_value) {
+  // 2 conv + 2 pool
+  DefaultAttrTest(4);
 }
 
 }  // namespace ir

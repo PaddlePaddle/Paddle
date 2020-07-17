@@ -30,7 +30,7 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   const std::vector<std::string> *callstack = nullptr;
   auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack = &boost::get<std::vector<std::string>>(iter->second);
+    callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
     if (callstack->empty()) callstack = nullptr;
   }
 
@@ -56,9 +56,15 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   }
   // Step 3. Construct final call stack & append error op name
   sout << exception->err_str_;
-  if (callstack) {
-    sout << "  [operator < " << type << " > error]";
-  }
+  sout << "  [operator < " << type << " > error]";
+  exception->err_str_ = sout.str();
+}
+
+void AppendErrorOpHint(const std::string &type,
+                       platform::EnforceNotMet *exception) {
+  std::ostringstream sout;
+  sout << exception->err_str_;
+  sout << "  [operator < " << type << " > error]";
   exception->err_str_ = sout.str();
 }
 

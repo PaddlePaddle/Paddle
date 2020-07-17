@@ -63,7 +63,7 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FillConstantBatchSizeLikeOpMaker,
-    ops::BatchSizeLikeNoNeedBufferVarsInference);
+    ops::BatchSizeLikeNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     fill_constant_batch_size_like,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,

@@ -32,6 +32,8 @@ __all__ = [
 @dygraph_only
 def save_dygraph(state_dict, model_path):
     '''
+    :api_attr: imperative
+
     Save Layer's state_dict to disk. This will generate a file with suffix ".pdparams"
     
     The state_dict is get from Layers.state_dict function
@@ -63,7 +65,7 @@ def save_dygraph(state_dict, model_path):
     '''
 
     base_name = os.path.basename(model_path)
-    assert base_name != "", "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
+    assert base_name != "", "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received filename is empty string."
 
     suffix = ".pdparams"
     assert len(state_dict) > 0, "state_dict is empty, no need to save"
@@ -78,9 +80,9 @@ def save_dygraph(state_dict, model_path):
     for k, v in state_dict.items():
         if isinstance(v, (Variable, core.VarBase)):
             model_dict[k] = v.numpy()
+            name_table[k] = v.name
         else:
             model_dict[k] = v
-        name_table[k] = v.name
     model_dict["StructuredToParameterName@@"] = name_table
 
     file_name = model_path + suffix
@@ -95,6 +97,8 @@ def save_dygraph(state_dict, model_path):
 @dygraph_only
 def load_dygraph(model_path, keep_name_table=False):
     '''
+    :api_attr: imperative
+    
     Load parameter state_dict from disk.
 
     Args:
@@ -125,7 +129,13 @@ def load_dygraph(model_path, keep_name_table=False):
 
     '''
 
-    params_file_path = model_path + ".pdparams"
+    model_prefix = model_path
+    if model_prefix.endswith(".pdparams"):
+        model_prefix = model_prefix[:-9]
+    elif model_prefix.endswith(".pdopt"):
+        model_prefix = model_prefix[:-6]
+
+    params_file_path = model_prefix + ".pdparams"
     if not os.path.exists(params_file_path):
         raise RuntimeError("Parameter file [ {} ] not exists".format(
             params_file_path))
@@ -137,7 +147,7 @@ def load_dygraph(model_path, keep_name_table=False):
     if not keep_name_table and "StructuredToParameterName@@" in para_dict:
         del para_dict["StructuredToParameterName@@"]
     opti_dict = None
-    opti_file_path = model_path + ".pdopt"
+    opti_file_path = model_prefix + ".pdopt"
     if os.path.exists(opti_file_path):
         with open(opti_file_path, 'rb') as f:
             opti_dict = pickle.load(f) if six.PY2 else pickle.load(

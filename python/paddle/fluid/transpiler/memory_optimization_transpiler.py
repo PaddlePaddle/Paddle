@@ -21,6 +21,8 @@ def memory_optimize(input_program,
                     level=0,
                     skip_grads=True):
     """
+	:api_attr: Static Graph
+
     This API is deprecated since 1.6. Please do not use it. The better
     memory optimization strategies are enabled by default.
     """
@@ -41,6 +43,8 @@ def memory_optimize(input_program,
 
 def release_memory(input_program, skip_opt_set=None):
     """
+	:api_attr: Static Graph
+
     This API is deprecated since 1.6. Please do not use it. The better
     memory optimization strategies are enabled by default.
     """

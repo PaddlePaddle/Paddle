@@ -24,16 +24,17 @@ class LoDResetOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LoDResetOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LoDResetOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LoDReset");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "LoDReset");
 
     if (!ctx->HasInput("Y")) {
       auto level0 = ctx->Attrs().Get<std::vector<int>>("target_lod");
-      PADDLE_ENFORCE_GT(level0.size(), 0,
-                        "If Input(Y) not provided, the target lod should be "
-                        "specified by attribute `target_lod`.");
+      PADDLE_ENFORCE_GT(
+          static_cast<int64_t>(level0.size()), 0,
+          platform::errors::InvalidArgument(
+              "If Input(Y) is not provided, the output's LoD should be "
+              "specified by attribute 'target_lod'. But the size of "
+              "'target_lod' is 0."));
     } else if (ctx->IsRuntime()) {
       ctx->ShareLoD("Y", "Out");
     }
@@ -75,24 +76,25 @@ class LoDResetOp : public framework::OperatorWithKernel {
   }
 };
 
-class LoDResetOpVarTypeInference : public framework::VarTypeInference {
+class LoDResetOpVarTypeInference
+    : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto x_var_name = ctx->Input("X").front();
-    auto out_var_name = ctx->Output("Out").front();
-    bool append = boost::get<bool>(ctx->GetAttr("append"));
+    auto x_var_name = Input(ctx, "X").front();
+    auto out_var_name = Output(ctx, "Out").front();
+    bool append = BOOST_GET_CONST(bool, ctx->GetAttr("append"));
     if (ctx->HasInput("Y")) {
-      auto y_var_name = ctx->Input("Y").front();
-      auto y_lod_level = std::max(ctx->GetLoDLevel(y_var_name), 1);
-      ctx->SetLoDLevel(out_var_name, y_lod_level);
+      auto y_var_name = Input(ctx, "Y").front();
+      auto y_lod_level = std::max(GetLoDLevel(ctx, y_var_name), 1);
+      SetLoDLevel(ctx, out_var_name, y_lod_level);
     } else if (append) {
-      auto x_lod_level = std::max(ctx->GetLoDLevel(x_var_name), 1);
-      ctx->SetLoDLevel(out_var_name, x_lod_level);
+      auto x_lod_level = std::max(GetLoDLevel(ctx, x_var_name), 1);
+      SetLoDLevel(ctx, out_var_name, x_lod_level);
     } else {
-      ctx->SetLoDLevel(out_var_name, 1);
+      SetLoDLevel(ctx, out_var_name, 1);
     }
-    ctx->SetDataType(out_var_name, ctx->GetDataType(x_var_name));
-    ctx->SetType(out_var_name, paddle::framework::proto::VarType::LOD_TENSOR);
+    SetDataType(ctx, out_var_name, GetDataType(ctx, x_var_name));
+    SetType(ctx, out_var_name, paddle::framework::proto::VarType::LOD_TENSOR);
   }
 };
 
@@ -181,10 +183,9 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LoDResetGradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) of LoDResetGradOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LoDResetGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Output",
+                   framework::GradVarName("Out"), "LoDResetGrad");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -222,7 +223,7 @@ DECLARE_INPLACE_OP_INFERER(LoDResetGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -233,7 +234,7 @@ REGISTER_OPERATOR(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker,
                   ops::LoDResetGradMaker<paddle::imperative::OpBase>,
                   ops::LoDResetOpVarTypeInference, ops::LoDResetInplaceInferer);
 REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp,
-                  ops::LoDResetGradNoNeedBufferVarInference,
+                  ops::LoDResetGradNoNeedBufferVarInferer,
                   ops::LoDResetGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(

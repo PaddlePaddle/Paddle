@@ -18,6 +18,7 @@ limitations under the License. */
 #include <utility>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -49,6 +50,14 @@ Graph* Pass::Apply(Graph* graph) const {
     graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache,
+  // Passes can change params, tensors, so caching need to be discarded
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::MKLDNNDeviceContext* dev_ctx =
+      (platform::MKLDNNDeviceContext*)pool.Get(paddle::platform::CPUPlace());
+  dev_ctx->ResetBlobMap();
+#endif
   return graph;
 }
 

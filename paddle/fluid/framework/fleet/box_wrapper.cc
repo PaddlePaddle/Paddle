@@ -27,6 +27,9 @@ namespace framework {
 std::shared_ptr<BoxWrapper> BoxWrapper::s_instance_ = nullptr;
 cudaStream_t BoxWrapper::stream_list_[8];
 std::shared_ptr<boxps::BoxPSBase> BoxWrapper::boxps_ptr_ = nullptr;
+AfsManager* BoxWrapper::afs_manager = nullptr;
+int BoxWrapper::embedx_dim_ = 8;
+int BoxWrapper::expand_embed_dim_ = 0;
 
 void BasicAucCalculator::compute() {
   double* table[2] = {&_table[0][0], &_table[1][0]};
@@ -54,6 +57,94 @@ void BasicAucCalculator::compute() {
   _actual_ctr = tp / (fp + tp);
   _predicted_ctr = _local_pred / (fp + tp);
   _size = fp + tp;
+}
+
+void BoxWrapper::CheckEmbedSizeIsValid(int embedx_dim, int expand_embed_dim) {
+  PADDLE_ENFORCE_EQ(
+      embedx_dim_, embedx_dim,
+      platform::errors::InvalidArgument("SetInstance(): invalid embedx_dim. "
+                                        "When embedx_dim = %d, but got %d.",
+                                        embedx_dim_, embedx_dim));
+  PADDLE_ENFORCE_EQ(expand_embed_dim_, expand_embed_dim,
+                    platform::errors::InvalidArgument(
+                        "SetInstance(): invalid expand_embed_dim. When "
+                        "expand_embed_dim = %d, but got %d.",
+                        expand_embed_dim_, expand_embed_dim));
+}
+
+void BoxWrapper::PullSparse(const paddle::platform::Place& place,
+                            const std::vector<const uint64_t*>& keys,
+                            const std::vector<float*>& values,
+                            const std::vector<int64_t>& slot_lengths,
+                            const int hidden_size, const int expand_embed_dim) {
+#define EMBEDX_CASE(i, ...)                                                  \
+  case i: {                                                                  \
+    constexpr size_t EmbedxDim = i;                                          \
+    switch (expand_embed_dim) {                                              \
+      __VA_ARGS__                                                            \
+      default:                                                               \
+        PADDLE_THROW(platform::errors::InvalidArgument(                      \
+            "Unsupport this expand embedding size [%d]", expand_embed_dim)); \
+    }                                                                        \
+  } break
+
+#define PULLSPARSE_CASE(i, ...)                                             \
+  case i: {                                                                 \
+    constexpr size_t ExpandDim = i;                                         \
+    PullSparseCase<EmbedxDim, ExpandDim>(place, keys, values, slot_lengths, \
+                                         hidden_size, expand_embed_dim);    \
+  } break
+
+  CheckEmbedSizeIsValid(hidden_size - 3, expand_embed_dim);
+  switch (hidden_size - 3) {
+    EMBEDX_CASE(8, PULLSPARSE_CASE(0); PULLSPARSE_CASE(8);
+                PULLSPARSE_CASE(64););
+    EMBEDX_CASE(16, PULLSPARSE_CASE(0););
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupport this embedding size [%d]", hidden_size - 3));
+  }
+#undef PULLSPARSE_CASE
+#undef EMBEDX_CASE
+}
+
+void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
+                                const std::vector<const uint64_t*>& keys,
+                                const std::vector<const float*>& grad_values,
+                                const std::vector<int64_t>& slot_lengths,
+                                const int hidden_size,
+                                const int expand_embed_dim,
+                                const int batch_size) {
+#define EMBEDX_CASE(i, ...)                                                  \
+  case i: {                                                                  \
+    constexpr size_t EmbedxDim = i;                                          \
+    switch (expand_embed_dim) {                                              \
+      __VA_ARGS__                                                            \
+      default:                                                               \
+        PADDLE_THROW(platform::errors::InvalidArgument(                      \
+            "Unsupport this expand embedding size [%d]", expand_embed_dim)); \
+    }                                                                        \
+  } break
+
+#define PUSHSPARSE_CASE(i, ...)                                             \
+  case i: {                                                                 \
+    constexpr size_t ExpandDim = i;                                         \
+    PushSparseGradCase<EmbedxDim, ExpandDim>(place, keys, grad_values,      \
+                                             slot_lengths, hidden_size,     \
+                                             expand_embed_dim, batch_size); \
+  } break
+
+  CheckEmbedSizeIsValid(hidden_size - 3, expand_embed_dim);
+  switch (hidden_size - 3) {
+    EMBEDX_CASE(8, PUSHSPARSE_CASE(0); PUSHSPARSE_CASE(8);
+                PUSHSPARSE_CASE(64););
+    EMBEDX_CASE(16, PUSHSPARSE_CASE(0););
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupport this embedding size [%d]", hidden_size - 3));
+  }
+#undef PUSHSPARSE_CASE
+#undef EMBEDX_CASE
 }
 
 void BasicAucCalculator::calculate_bucket_error() {
@@ -117,139 +208,122 @@ void BoxWrapper::BeginPass() const {
                                 "BeginPass failed in BoxPS."));
 }
 
+void BoxWrapper::SetTestMode(bool is_test) const {
+  boxps_ptr_->SetTestMode(is_test);
+}
+
 void BoxWrapper::EndPass(bool need_save_delta) const {
   int ret = boxps_ptr_->EndPass(need_save_delta);
   PADDLE_ENFORCE_EQ(
       ret, 0, platform::errors::PreconditionNotMet("EndPass failed in BoxPS."));
 }
 
-void BoxWrapper::PullSparse(const paddle::platform::Place& place,
-                            const std::vector<const uint64_t*>& keys,
-                            const std::vector<float*>& values,
-                            const std::vector<int64_t>& slot_lengths,
-                            const int hidden_size) {
-  VLOG(3) << "Begin PullSparse";
-  platform::Timer all_timer;
-  platform::Timer pull_boxps_timer;
-  all_timer.Start();
-
-  int64_t total_length =
-      std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-  auto buf =
-      memory::AllocShared(place, total_length * sizeof(boxps::FeatureValueGpu));
-  boxps::FeatureValueGpu* total_values_gpu =
-      reinterpret_cast<boxps::FeatureValueGpu*>(buf->ptr());
-
-  if (platform::is_cpu_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Warning:: CPUPlace is not supported in PaddleBox now."));
-  } else if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-    int device_id = boost::get<platform::CUDAPlace>(place).GetDeviceId();
-    LoDTensor& total_keys_tensor = keys_tensor[device_id];
-    uint64_t* total_keys = reinterpret_cast<uint64_t*>(
-        total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
-
-    // construct slot_level lod info
-    auto slot_lengths_lod = slot_lengths;
-    for (size_t i = 1; i < slot_lengths_lod.size(); i++) {
-      slot_lengths_lod[i] += slot_lengths_lod[i - 1];
-    }
-    auto buf_key = memory::AllocShared(place, keys.size() * sizeof(uint64_t*));
-    auto buf_length =
-        memory::AllocShared(place, slot_lengths.size() * sizeof(int64_t));
-    uint64_t** gpu_keys = reinterpret_cast<uint64_t**>(buf_key->ptr());
-    int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());
-    cudaMemcpy(gpu_keys, keys.data(), keys.size() * sizeof(uint64_t*),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(gpu_len, slot_lengths_lod.data(),
-               slot_lengths.size() * sizeof(int64_t), cudaMemcpyHostToDevice);
-
-    this->CopyKeys(place, gpu_keys, total_keys, gpu_len,
-                   static_cast<int>(slot_lengths.size()),
-                   static_cast<int>(total_length));
-    VLOG(3) << "Begin call PullSparseGPU in BoxPS";
-    pull_boxps_timer.Start();
-    int ret =
-        boxps_ptr_->PullSparseGPU(total_keys, total_values_gpu,
-                                  static_cast<int>(total_length), device_id);
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "PullSparseGPU failed in BoxPS."));
-    pull_boxps_timer.Pause();
-
-    VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
-            << "]";
-    this->CopyForPull(place, gpu_keys, values, total_values_gpu, gpu_len,
-                      static_cast<int>(slot_lengths.size()), hidden_size,
-                      total_length);
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Please compile WITH_GPU option, because NCCL doesn't support "
-        "windows."));
-#endif
-  } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddleBox: PullSparse Only Support CPUPlace or CUDAPlace Now."));
+void BoxWrapper::GetRandomReplace(const std::vector<Record>& pass_data) {
+  VLOG(0) << "Begin GetRandomReplace";
+  size_t ins_num = pass_data.size();
+  replace_idx_.resize(ins_num);
+  for (auto& cand_list : random_ins_pool_list) {
+    cand_list.ReInitPass();
   }
-  all_timer.Pause();
-  VLOG(1) << "PullSparse total costs: " << all_timer.ElapsedSec()
-          << " s, of which BoxPS costs: " << pull_boxps_timer.ElapsedSec()
-          << " s";
-  VLOG(3) << "End PullSparse";
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
+    threads.push_back(std::thread([this, &pass_data, tid, ins_num]() {
+      int start = tid * ins_num / auc_runner_thread_num_;
+      int end = (tid + 1) * ins_num / auc_runner_thread_num_;
+      VLOG(3) << "GetRandomReplace begin for thread[" << tid
+              << "], and process [" << start << ", " << end
+              << "), total ins: " << ins_num;
+      auto& random_pool = random_ins_pool_list[tid];
+      for (int i = start; i < end; ++i) {
+        const auto& ins = pass_data[i];
+        random_pool.AddAndGet(ins, replace_idx_[i]);
+      }
+    }));
+  }
+  for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
+    threads[tid].join();
+  }
+  pass_done_semi_->Put(1);
+  VLOG(0) << "End GetRandomReplace";
 }
 
-void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
-                                const std::vector<const uint64_t*>& keys,
-                                const std::vector<const float*>& grad_values,
-                                const std::vector<int64_t>& slot_lengths,
-                                const int hidden_size, const int batch_size) {
-  VLOG(3) << "Begin PushSparseGrad";
-  platform::Timer all_timer;
-  platform::Timer push_boxps_timer;
-  all_timer.Start();
-  int64_t total_length =
-      std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-  auto buf = memory::AllocShared(
-      place, total_length * sizeof(boxps::FeaturePushValueGpu));
-  boxps::FeaturePushValueGpu* total_grad_values_gpu =
-      reinterpret_cast<boxps::FeaturePushValueGpu*>(buf->ptr());
-  if (platform::is_cpu_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Warning:: CPUPlace is not supported in PaddleBox now."));
-  } else if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    int device_id = boost::get<platform::CUDAPlace>(place).GetDeviceId();
-    LoDTensor& cached_total_keys_tensor = keys_tensor[device_id];
-    uint64_t* total_keys =
-        reinterpret_cast<uint64_t*>(cached_total_keys_tensor.data<int64_t>());
-    VLOG(3) << "Begin copy grad tensor to boxps struct";
-    this->CopyForPush(place, grad_values, total_grad_values_gpu, slot_lengths,
-                      hidden_size, total_length, batch_size);
-
-    VLOG(3) << "Begin call PushSparseGPU in BoxPS";
-    push_boxps_timer.Start();
-    int ret = boxps_ptr_->PushSparseGPU(
-        total_keys, total_grad_values_gpu, static_cast<int>(total_length),
-        boost::get<platform::CUDAPlace>(place).GetDeviceId());
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "PushSparseGPU failed in BoxPS."));
-    push_boxps_timer.Pause();
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Please compile WITH_GPU option, because NCCL doesn't support "
-        "windows."));
-#endif
-  } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddleBox: PushSparseGrad Only Support CPUPlace or CUDAPlace Now."));
+void BoxWrapper::GetRandomData(
+    const std::vector<Record>& pass_data,
+    const std::unordered_set<uint16_t>& slots_to_replace,
+    std::vector<Record>* result) {
+  VLOG(0) << "Begin GetRandomData";
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
+    threads.push_back(std::thread([this, &pass_data, tid, &slots_to_replace,
+                                   result]() {
+      int debug_erase_cnt = 0;
+      int debug_push_cnt = 0;
+      size_t ins_num = pass_data.size();
+      int start = tid * ins_num / auc_runner_thread_num_;
+      int end = (tid + 1) * ins_num / auc_runner_thread_num_;
+      VLOG(3) << "GetRandomData begin for thread[" << tid << "], and process ["
+              << start << ", " << end << "), total ins: " << ins_num;
+      const auto& random_pool = random_ins_pool_list[tid];
+      for (int i = start; i < end; ++i) {
+        const auto& ins = pass_data[i];
+        const RecordCandidate& rand_rec = random_pool.Get(replace_idx_[i]);
+        Record new_rec = ins;
+        for (auto it = new_rec.uint64_feasigns_.begin();
+             it != new_rec.uint64_feasigns_.end();) {
+          if (slots_to_replace.find(it->slot()) != slots_to_replace.end()) {
+            it = new_rec.uint64_feasigns_.erase(it);
+            debug_erase_cnt += 1;
+          } else {
+            ++it;
+          }
+        }
+        for (auto slot : slots_to_replace) {
+          auto range = rand_rec.feas_.equal_range(slot);
+          for (auto it = range.first; it != range.second; ++it) {
+            new_rec.uint64_feasigns_.push_back({it->second, it->first});
+            debug_push_cnt += 1;
+          }
+        }
+        (*result)[i] = std::move(new_rec);
+      }
+      VLOG(3) << "thread[" << tid << "]: erase feasign num: " << debug_erase_cnt
+              << " repush feasign num: " << debug_push_cnt;
+    }));
   }
-  all_timer.Pause();
-  VLOG(1) << "PushSparseGrad total cost: " << all_timer.ElapsedSec()
-          << " s, of which BoxPS cost: " << push_boxps_timer.ElapsedSec()
-          << " s";
-  VLOG(3) << "End PushSparseGrad";
+  for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
+    threads[tid].join();
+  }
+  VLOG(0) << "End GetRandomData";
 }
+
+void BoxWrapper::AddReplaceFeasign(boxps::PSAgentBase* p_agent,
+                                   int feed_pass_thread_num) {
+  VLOG(0) << "Enter AddReplaceFeasign Function";
+  int semi;
+  pass_done_semi_->Get(semi);
+  VLOG(0) << "Last Pass had updated random pool done. Begin AddReplaceFeasign";
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < feed_pass_thread_num; ++tid) {
+    threads.push_back(std::thread([this, tid, p_agent, feed_pass_thread_num]() {
+      VLOG(3) << "AddReplaceFeasign begin for thread[" << tid << "]";
+      for (size_t pool_id = tid; pool_id < random_ins_pool_list.size();
+           pool_id += feed_pass_thread_num) {
+        auto& random_pool = random_ins_pool_list[pool_id];
+        for (size_t i = 0; i < random_pool.Size(); ++i) {
+          auto& ins_candidate = random_pool.Get(i);
+          for (const auto& pair : ins_candidate.feas_) {
+            p_agent->AddKey(pair.second.uint64_feasign_, tid);
+          }
+        }
+      }
+    }));
+  }
+  for (int tid = 0; tid < feed_pass_thread_num; ++tid) {
+    threads[tid].join();
+  }
+  VLOG(0) << "End AddReplaceFeasign";
+}
+
 }  // end namespace framework
 }  // end namespace paddle
 #endif

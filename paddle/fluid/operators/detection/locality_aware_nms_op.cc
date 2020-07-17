@@ -26,37 +26,49 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("BBoxes"), true,
-                      "Input(BBoxes) of MultiClassNMS should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Scores"), true,
-                      "Input(Scores) of MultiClassNMS should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of MultiClassNMS should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("BBoxes"), "Input", "BBoxes",
+                   "locality_aware_nms");
+    OP_INOUT_CHECK(ctx->HasInput("Scores"), "Input", "Scores",
+                   "locality_aware_nms");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "locality_aware_nms");
 
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
     auto score_size = score_dims.size();
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(score_size, 3, "The rank of Input(Scores) must be 3");
-      PADDLE_ENFORCE_EQ(box_dims.size(), 3,
-                        "The rank of Input(BBoxes) must be 3");
-
-      PADDLE_ENFORCE_EQ(box_dims[2] == 4 || box_dims[2] == 8 ||
-                            box_dims[2] == 16 || box_dims[2] == 24 ||
-                            box_dims[2] == 32,
-                        true,
-                        "The last dimension of Input(BBoxes) must be 4 or 8, "
-                        "represents the layout of coordinate "
-                        "[xmin, ymin, xmax, ymax] or "
-                        "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
-                        "8 points: [xi, yi] i= 1,2,...,8 or "
-                        "12 points: [xi, yi] i= 1,2,...,12 or "
-                        "16 points: [xi, yi] i= 1,2,...,16");
-      PADDLE_ENFORCE_EQ(box_dims[1], score_dims[2],
-                        "The 2nd dimension of Input(BBoxes) must be equal to "
-                        "last dimension of Input(Scores), which represents the "
-                        "predicted bboxes.");
+      PADDLE_ENFORCE_EQ(
+          score_size, 3,
+          platform::errors::InvalidArgument(
+              "The rank of Input(Scores) must be 3. But received %d.",
+              score_size));
+      PADDLE_ENFORCE_EQ(
+          box_dims.size(), 3,
+          platform::errors::InvalidArgument(
+              "The rank of Input(BBoxes) must be 3. But received %d.",
+              box_dims.size()));
+      PADDLE_ENFORCE_EQ(
+          box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
+              box_dims[2] == 24 || box_dims[2] == 32,
+          true, platform::errors::InvalidArgument(
+                    "The last dimension of Input(BBoxes) must be 4 or 8, "
+                    "represents the layout of coordinate "
+                    "[xmin, ymin, xmax, ymax] or "
+                    "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
+                    "8 points: [xi, yi] i= 1,2,...,8 or "
+                    "12 points: [xi, yi] i= 1,2,...,12 or "
+                    "16 points: [xi, yi] i= 1,2,...,16. "
+                    "But received %d.",
+                    box_dims[2]));
+      PADDLE_ENFORCE_EQ(
+          box_dims[1], score_dims[2],
+          platform::errors::InvalidArgument(
+              "The 2nd dimension of Input(BBoxes) must be equal to "
+              "last dimension of Input(Scores), which represents the "
+              "predicted bboxes. But received the 2nd dimension of "
+              "Input(BBoxes) was %d, last dimension of Input(Scores) was %d.",
+              box_dims[1], score_dims[2]));
     }
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.

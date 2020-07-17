@@ -23,17 +23,29 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of IOUSimilarityOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of IOUSimilarityOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "iou_similarity");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "iou_similarity");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "The rank of Input(X) must be 2.");
-    PADDLE_ENFORCE_EQ(x_dims[1], 4UL, "The shape of X is [N, 4]");
-    PADDLE_ENFORCE_EQ(y_dims.size(), 2UL, "The rank of Input(Y) must be 2.");
-    PADDLE_ENFORCE_EQ(y_dims[1], 4UL, "The shape of Y is [M, 4]");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2UL,
+        platform::errors::InvalidArgument(
+            "The rank of Input(X) must be 2, but got dimension = %d.",
+            x_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        x_dims[1], 4UL,
+        platform::errors::InvalidArgument(
+            "The shape of X is [N, 4], bug got dimension = %d.", x_dims[1]));
+    PADDLE_ENFORCE_EQ(
+        y_dims.size(), 2UL,
+        platform::errors::InvalidArgument(
+            "The rank of Input(Y) must be 2, but got dimension = %d.",
+            y_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        y_dims[1], 4UL,
+        platform::errors::InvalidArgument(
+            "The shape of Y is [M, 4], but got dimension = %d.", y_dims[1]));
 
     ctx->ShareLoD("X", /*->*/ "Out");
     ctx->SetOutputDim("Out", framework::make_ddim({x_dims[0], y_dims[0]}));

@@ -42,39 +42,46 @@ def test_slice_in_if(x):
                 shape=[1, 2], value=9, dtype="int64"))
     if x.numpy()[0] > 0:
         a[0] = x
-    return a
+    out = a[0:]
+    return out
 
 
 def test_slice_in_while_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
-    iter_num = fluid.layers.fill_constant(
+    iter_num_var = fluid.layers.fill_constant(
         shape=[1], value=iter_num, dtype="int32")
     a = []
     i = 0
     # Note: `i < iter_num` can't be supported in dygraph mode now,
     # but PR22892 is fixing it https://github.com/PaddlePaddle/Paddle/pull/22892.
     # If PR22892 merged, change `i < iter_num.numpy()[0]` to `i < iter_num`.
-    while i < iter_num.numpy()[0]:
+    while i < iter_num_var.numpy()[0]:
         a.append(x)
         i += 1
 
     i = 0
-    while i < iter_num.numpy()[0]:
+    while i < iter_num_var.numpy()[0]:
         a[i] = fluid.layers.fill_constant(shape=[2], value=2, dtype="float32")
         i += 1
-
-    return a
+    out = a[0:iter_num]
+    return out
 
 
 def test_slice_in_for_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     a = []
+    # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
+    iter_num = fluid.layers.fill_constant(
+        shape=[1], value=iter_num, dtype="int32"
+    )  # TODO(liym27): Delete it if the type of parameter iter_num can be resolved
+
     for i in range(iter_num):
         a.append(x)
 
     for i in range(iter_num):
         a[i] = x
-    return a
+    out = a[2]
+    return out
 
 
 class TestSliceWithoutControlFlow(unittest.TestCase):
@@ -143,6 +150,8 @@ class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
     def run_dygraph_mode(self):
         with fluid.dygraph.guard():
             var_res = self.dygraph_func(self.input, self.iter_num)
+            if not isinstance(var_res, list):
+                var_res = [var_res]
             numpy_res = [ele.numpy() for ele in var_res]
             return numpy_res
 
@@ -167,6 +176,15 @@ class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
 class TestSliceInForLoop(TestSliceInWhileLoop):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_for_loop
+
+    def run_static_mode(self):
+        main_program = fluid.Program()
+        with fluid.program_guard(main_program):
+            static_out = dygraph_to_static_func(self.dygraph_func)(
+                self.input, self.iter_num)
+        exe = fluid.Executor(self.place)
+        numpy_res = exe.run(main_program, fetch_list=static_out)
+        return numpy_res
 
 
 if __name__ == '__main__':

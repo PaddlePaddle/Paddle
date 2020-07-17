@@ -161,7 +161,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #ifndef PADDLE_WITH_CUDA
       PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+      auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
       platform::SetDeviceId(dev_id);
 #endif
     }
@@ -177,7 +177,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       RunImpl(scope, place);
     }
 
-    VLOG(3) << place << " " << DebugStringEx(&scope);
+    VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
@@ -905,16 +905,6 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
-std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
-    const OpKernelType& key) const {
-  auto config_iter = kernel_configs_map_.find(key);
-  std::vector<KernelConfig>* kernel_configs = nullptr;
-  if (config_iter != kernel_configs_map_.end()) {
-    kernel_configs = &(config_iter->second);
-  }
-  return kernel_configs;
-}
-
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -951,8 +941,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     ChooseKernel(*runtime_ctx, scope, place);
   }
 
-  std::vector<KernelConfig>* kernel_configs = GetKernelConfig(*kernel_type_);
-
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
   Scope* transfer_scope = nullptr;
@@ -988,8 +976,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
-    (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
-                                     kernel_configs));
+    (*kernel_func_)(
+        ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
   }
 
   if (!transfered_inplace_vars.empty()) {
@@ -1058,11 +1046,20 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   OpKernelMap& kernels = kernels_iter->second;
 
   auto expected_kernel_key = this->GetExpectedKernelType(
-      ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr));
+      ExecutionContext(*this, scope, *dev_ctx, ctx));
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
       expected_kernel_key.place_ = platform::CPUPlace();
-    } else if (Attr<std::string>("op_device") == "gpu") {
+    } else if (Attr<std::string>("op_device").find("gpu") !=
+               std::string::npos) {
+      auto device = Attr<std::string>("op_device");
+      size_t pos = device.find(':');
+      if (pos != std::string::npos) {
+        device = device.substr(0, pos);
+        LOG_FIRST_N(WARNING, 1)
+            << "Device index is only supported under pipeline parallelism, "
+            << "so it will be ignored.";
+      }
       // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
       // will be executed and a warning will be given at the same time.
       if (SupportGPU()) {
@@ -1167,8 +1164,8 @@ Scope* OperatorWithKernel::PrepareData(
         if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
             (var->IsType<LoDTensor>() == true) &&
             (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
-            (paddle::platform::get_cur_paddle_data_layout() ==
-             DataLayout::kNHWC)) {
+            (paddle::platform::MKLDNNDeviceContext::tls()
+                 .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
           // Mixed execution : MKL-DNN and GPU is not supported!
           if (!new_scope) {
             new_scope = &scope.NewScope();
@@ -1338,7 +1335,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       "The Input Variable(%s) of %s Op used to determine kernel data type "
-      "is empty or not LoDTensor or SelectedRows.",
+      "is empty or not LoDTensor or SelectedRows or LoDTensorArray.",
       name, Type());
   return data_type;
 }

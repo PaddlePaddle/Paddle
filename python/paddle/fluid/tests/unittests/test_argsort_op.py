@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import numpy as np
@@ -318,6 +319,59 @@ class TestArgsortOpDescendingAxisNeg2CPU(TestArgsortOpAxisNeg2CPU):
 class TestArgsortOpDescendingAxisNeg2GPU(TestArgsortOpAxisNeg2GPU):
     def init_direction(self):
         self.descending = True
+
+
+class TestSortOnCPU(TestArgsortOpCPU):
+    def init_place(self):
+        self.place = core.CPUPlace()
+
+    def test_out(self):
+        self.init_place()
+        with fluid.program_guard(fluid.Program()):
+            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
+
+            res = fluid.data(name="output", shape=[2, 3, 4], dtype="float32")
+            output = paddle.tensor.sort(input=input, out=res)
+
+            exe = fluid.Executor(self.place)
+            data = np.array(
+                [[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
+                 [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]]],
+                dtype='float32')
+            result = exe.run(feed={'input': data}, fetch_list=[res, output[0]])
+
+            self.assertEqual((result[0] == result[1]).all(), True)
+
+
+class TestSortOnGPU(TestSortOnCPU):
+    def init_place(self):
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+
+class TestArgsortErrorOnCPU(unittest.TestCase):
+    def init_place(self):
+        self.place = core.CPUPlace()
+
+    def test_error(self):
+        self.init_place()
+        with fluid.program_guard(fluid.Program()):
+
+            def test_input_type():
+                x = [1]
+                output = fluid.layers.argsort(input=x)
+
+            self.assertRaises(TypeError, test_input_type)
+
+
+class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
+    def init_place(self):
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
 
 
 if __name__ == "__main__":

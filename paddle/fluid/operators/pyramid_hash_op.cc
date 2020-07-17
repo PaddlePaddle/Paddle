@@ -385,8 +385,8 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     }
     auto weight_type = _blobs_0->type();
     if (_is_training == 0 && weight_type != framework::proto::VarType::INT8) {
-      avx_axpy_noadd(top_data, top_data, top->dims()[0] * top->dims()[1],
-                     _drop_out_percent);
+      axpy_noadd(top_data, top_data, top->dims()[0] * top->dims()[1],
+                 _drop_out_percent);
     }
   }
 };
@@ -451,7 +451,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
                          int _space_len) const {
     for (int j = 0; j != _num_emb; j += _rand_len) {
       unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      avx_axpy(top_pos + j, weights + pos, _rand_len, mlr);
+      axpy(top_pos + j, weights + pos, _rand_len, mlr);
     }
   }
 
@@ -525,9 +525,7 @@ REGISTER_OPERATOR(pyramid_hash_grad, ops::PyramidHashOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pyramid_hash, ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, float>,
-    ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, double>,
     ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, int8_t>);
 REGISTER_OP_CPU_KERNEL(
     pyramid_hash_grad,
-    ops::CPUPyramidHashOPGradKernel<plt::CPUDeviceContext, float>,
-    ops::CPUPyramidHashOPGradKernel<plt::CPUDeviceContext, double>);
+    ops::CPUPyramidHashOPGradKernel<plt::CPUDeviceContext, float>);

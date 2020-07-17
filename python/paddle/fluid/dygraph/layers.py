@@ -23,10 +23,11 @@ from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
-from .base import program_desc_tracing_guard
+from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 import copy
+import weakref
 import warnings
 
 __all__ = ['Layer']
@@ -40,8 +41,29 @@ def _convert_camel_to_snake(name):
     return _all_cap_re.sub(r'\1_\2', s1).lower()
 
 
+class HookRemoveHelper(object):
+    """ A HookRemoveHelper that can be used to remove hook. """
+
+    next_hook_id = 0
+
+    def __init__(self, hooks):
+        self._hooks_ref = weakref.ref(hooks)
+        self._hook_id = HookRemoveHelper.next_hook_id
+        HookRemoveHelper.next_hook_id += 1
+
+    def remove(self):
+        hooks = self._hooks_ref()
+        if hooks is not None and self._hook_id in hooks:
+            del hooks[self._hook_id]
+
+
 class Layer(core.Layer):
-    """Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
+    """
+    :alias_main: paddle.nn.Layer
+	:alias: paddle.nn.Layer
+	:old_api: paddle.fluid.dygraph.layers.Layer
+
+    Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
     Parameters:
         name_scope (str, optional): prefix name used by the layer to name parameters.
@@ -59,6 +81,7 @@ class Layer(core.Layer):
     """
 
     def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
+        self.training = True
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
         self._full_name = unique_name.generate(name_scope)
@@ -67,14 +90,44 @@ class Layer(core.Layer):
         self._dtype = dtype
 
         self._parameters = collections.OrderedDict()
+        # Buffers the variable (not parameter) created in layer
+        self._buffers = collections.OrderedDict()
+        self._non_persistable_buffer_names_set = set()
         self._sub_layers = collections.OrderedDict()
         self._loaddict_holder = collections.OrderedDict()
 
+        self._forward_pre_hooks = collections.OrderedDict()
+        self._forward_post_hooks = collections.OrderedDict()
+
     def train(self):
+        """
+        Sets this Layer and all its sublayers to training mode.
+        This only effects certain modules like `Dropout` and `BatchNorm`.
+
+        Returns:
+            None
+        """
+        # global setting
         framework._dygraph_tracer().train_mode()
+        # Layer-level setting
+        self.training = True
+        for layer in self.sublayers():
+            layer.train()
 
     def eval(self):
+        """
+        Sets this Layer and all its sublayers to evaluation mode.
+        This only effects certain modules like `Dropout` and `BatchNorm`.
+
+        Returns:
+            None
+        """
+        # global setting
         framework._dygraph_tracer().eval_mode()
+        # Layer-level setting
+        self.training = False
+        for layer in self.sublayers():
+            layer.eval()
 
     def full_name(self):
         """Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__
@@ -83,6 +136,110 @@ class Layer(core.Layer):
             str: full name of this layer.
         """
         return self._full_name
+
+    def register_forward_post_hook(self, hook):
+        """Register a forward post-hook for Layer. The hook will be called after `forward` function has been computed.
+
+        It should have the following form, `input` and `output` of the `hook` is `input` and `output` of the `Layer` respectively.
+        User can use forward post-hook to change the output of the Layer or perform information statistics tasks on the Layer.
+ 
+        hook(Layer, input, output) -> None or modified output
+
+        Parameters:
+            hook(function): a function registered as a forward post-hook
+
+        Returns:
+            HookRemoveHelper: a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              import numpy as np
+
+              # the forward_post_hook change the output of the layer: output = output * 2 
+              def forward_post_hook(layer, input, output):
+                  # user can use layer, input and output for information statistis tasks
+
+                  # change the output 
+                  return output * 2
+
+              with fluid.dygraph.guard():
+                  linear = fluid.Linear(13, 5, dtype="float32")
+
+                  # register the hook
+                  forward_post_hook_handle = linear.register_forward_post_hook(forward_post_hook)
+                  
+                  value1 = np.arange(26).reshape(2, 13).astype("float32")
+                  in1 = fluid.dygraph.to_variable(value1)
+                  
+                  out0 = linear(in1)
+                  
+                  # remove the hook
+                  forward_post_hook_handle.remove()
+
+                  out1 = linear(in1)
+
+                  # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
+                  assert (out0.numpy() == (out1.numpy()) * 2).any()
+        """
+        hook_remove_helper = HookRemoveHelper(self._forward_post_hooks)
+        self._forward_post_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
+
+    def register_forward_pre_hook(self, hook):
+        """Register a forward pre-hook for Layer. The hook will be called before `forward` function has been computed.
+        
+        It should have the following form, `input` of the `hook` is `input` of the `Layer`,
+        hook can either return a tuple or a single modified value in the hook. We will wrap the value into a tuple if 
+        a single value is returned(unless that value is already a tuple).
+        User can use forward pre-hook to change the input of the Layer or perform information statistics tasks on the Layer.
+
+        hook(Layer, input) -> None or modified input
+
+        Parameters:
+            hook(function): a function registered as a forward pre-hook
+
+        Returns:
+            HookRemoveHelper: a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              import numpy as np
+
+              # the forward_post_hook change the input of the layer: input = input * 2
+              def forward_pre_hook(layer, input):
+                  # user can use layer and input for information statistis tasks
+
+                  # change the input
+                  input_return = (input[0] * 2)
+                  return input_return
+
+              with fluid.dygraph.guard():
+                  linear = fluid.Linear(13, 5, dtype="float32")
+
+                  # register the hook
+                  forward_pre_hook_handle = linear.register_forward_pre_hook(forward_pre_hook)
+
+                  value0 = np.arange(26).reshape(2, 13).astype("float32")
+                  in0 = fluid.dygraph.to_variable(value0)
+                  out0 = linear(in0)
+
+                  # remove the hook
+                  forward_pre_hook_handle.remove()
+
+                  value1 = value0 * 2
+                  in1 = fluid.dygraph.to_variable(value1)
+                  out1 = linear(in1)
+
+                  # hook change the linear's input to input * 2, so out0 is equal to out1.
+                  assert (out0.numpy() == out1.numpy()).any()
+        """
+        hook_remove_helper = HookRemoveHelper(self._forward_pre_hooks)
+        self._forward_pre_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
 
     def create_parameter(self,
                          shape,
@@ -260,6 +417,137 @@ class Layer(core.Layer):
                         layers_set=layers_set):
                     yield p, l
 
+    def register_buffer(self, name, variable, persistable=True):
+        """
+        Registers a variable as buffer into the layer.
+
+        `buffer` is a non-parameteric variable and will not be updated by optimizer,
+        but is necessary for evaluation and inference. For example, the mean and variance in BatchNorm layers.
+        The registered buffer is persistable by default, and will be saved into
+        `state_dict` alongside parameters. If set persistable=False, it registers
+        a non-persistable buffer, so that it will not be a part of `state_dict` .
+
+        Buffers can be accessed as attributes using given names.
+
+        Parameters:
+            name (string): name of the buffer. The buffer can be accessed
+                from this layer using the given name
+            variable (Variable): the variable to be registered as buffer.
+            persistable (bool): whether the buffer is part of this layer's
+                state_dict.
+
+        Returns:
+            None
+        
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    linear = fluid.Linear(10, 3)
+                    value = np.array([0]).astype("float32")
+                    buffer = fluid.dygraph.to_variable(value)
+                    linear.register_buffer("buf_name", buffer, persistable=True)
+                    
+                    # get the buffer by attribute.
+                    print(linear.buf_name)
+
+        """
+
+        if '_buffers' not in self.__dict__:
+            raise ValueError(
+                "super(YourLayer, self).__init__() should be called first")
+        elif not isinstance(name, six.string_types):
+            raise TypeError(
+                "The name of buffer should be a string, but received {}.".
+                format(type(name).__name__))
+        elif '.' in name:
+            raise KeyError("The name of buffer can not contain \".\"")
+        elif name == '':
+            raise KeyError("The name of buffer can not be empty.")
+        elif hasattr(self, name) and name not in self._buffers:
+            raise KeyError("attribute '{}' already exists.".format(name))
+        elif variable is not None and not type(variable) == core.VarBase:
+            raise TypeError(
+                "The registered buffer should be a core.VarBase, but received {}.".
+                format(type(variable).__name__))
+        else:
+            self._buffers[name] = variable
+            if persistable:
+                self._non_persistable_buffer_names_set.discard(name)
+            else:
+                self._non_persistable_buffer_names_set.add(name)
+
+    def buffers(self, include_sublayers=True):
+        """
+        Returns a list of all buffers from current layer and its sub-layers.
+
+        Parameters:
+            include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True
+
+        Returns:
+            list of :ref:`api_guide_Variable_en` : a list of buffers.
+        """
+        ret = [
+            buffer
+            for _, buffer in self.named_buffers(
+                include_sublayers=include_sublayers)
+        ]
+        return ret
+
+    def named_buffers(self, prefix='', include_sublayers=True):
+        """
+        Returns an iterator over all buffers in the Layer, yielding tuple of name and Variable.
+
+        Parameters:
+            prefix(str, optional): Prefix to prepend to all buffer names. Default: ''.
+            include_sublayers(bool, optional): Whether include the buffers of sublayers.
+                If True, also include the named buffers from sublayers. Default: True.
+
+        Yields:
+            (string, Variable): Tuple of name and Variable
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    buffer1 = fluid.dygraph.to_variable(np.array([0]).astype("float32"))
+                    # register a variable as buffer by specific `persistable`
+                    fc1.register_buffer("buf_name_1", buffer1, persistable=True)
+
+                    fc2 = fluid.Linear(3, 10)
+                    buffer2 = fluid.dygraph.to_variable(np.array([1]).astype("float32"))
+                    # register a buffer by assigning an attribute with Variable.
+                    # The `persistable` can only be False by this way.
+                    fc2.buf_name_2 = buffer2
+
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+
+                    # get all named buffers
+                    for name, buffer in model.named_buffers():
+                        print(name, buffer)
+
+        """
+        buffers_set = set()
+        named_sublayers = self.named_sublayers(
+            prefix=prefix,
+            include_sublayers=include_sublayers,
+            include_self=True)
+        for layer_prefix, sublayer in named_sublayers:
+            buffers = sublayer._buffers.items()
+            for key, buffer in buffers:
+                if buffer is None or buffer in buffers_set:
+                    continue
+                buffers_set.add(buffer)
+                name = layer_prefix + ('.' if layer_prefix else '') + key
+                yield name, buffer
+
     def clear_gradients(self):
         """
         Clear the gradients of all parameters for this layer.
@@ -293,6 +581,13 @@ class Layer(core.Layer):
         pass
 
     def __call__(self, *inputs, **kwargs):
+        for forward_pre_hook in self._forward_pre_hooks.values():
+            hook_result = forward_pre_hook(self, inputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result, )
+                inputs = hook_result
+
         if not self._built:
             with program_desc_tracing_guard(False):
                 self._build_once(*inputs, **kwargs)
@@ -301,7 +596,14 @@ class Layer(core.Layer):
                         self._parameters.values())
             self._built = True
 
-        outputs = self.forward(*inputs, **kwargs)
+        with param_guard(self._parameters), param_guard(self._buffers):
+            outputs = self.forward(*inputs, **kwargs)
+
+        for forward_post_hook in self._forward_post_hooks.values():
+            hook_result = forward_post_hook(self, inputs, outputs)
+            if hook_result is not None:
+                outputs = hook_result
+
         return outputs
 
     def forward(self, *inputs, **kwargs):
@@ -366,6 +668,8 @@ class Layer(core.Layer):
             return self._parameters[name]
         elif name in self._sub_layers:
             return self._sub_layers[name]
+        elif name in self._buffers:
+            return self._buffers[name]
         else:
             return object.__getattribute__(self, name)
 
@@ -388,7 +692,7 @@ class Layer(core.Layer):
 
                 value.set_value(self._loaddict_holder[value.name])
 
-            _remove_if_exist(self.__dict__, self._sub_layers)
+            _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
         elif params is not None and name in params:
             if value is not None:
@@ -404,7 +708,7 @@ class Layer(core.Layer):
                         "super(YourLayer, self).__init__() should be called first"
                     )
 
-                _remove_if_exist(self.__dict__, self._parameters)
+                _remove_if_exist(self.__dict__, self._parameters, self._buffers)
                 layers[name] = value
             elif layers is not None and name in layers:
                 if value is not None:
@@ -413,29 +717,89 @@ class Layer(core.Layer):
                         .format(name, type(value).__name__))
                 layers[name] = None
             else:
-                object.__setattr__(self, name, value)
+                _buffers = self.__dict__.get('_buffers', None)
+                if type(value) == core.VarBase:
+                    if _buffers is None:
+                        raise ValueError(
+                            "super(YourLayer, self).__init__() should be called first"
+                        )
+                    _remove_if_exist(self.__dict__, self._parameters,
+                                     self._sub_layers)
+                    # Set persistable=False by default. Only `register_buffer` can
+                    # add a persistable buffer.
+                    if name not in self._buffers:
+                        self._non_persistable_buffer_names_set.add(name)
+                    _buffers[name] = value
+                elif _buffers is not None and name in _buffers:
+                    if value is not None:
+                        raise TypeError(
+                            "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
+                            .format(name, type(value).__name__))
+                    # Assigning None will remove the buffer, but if re-assign a new varBase to it,
+                    # it will be remarked as a buffer with same `persistable` attribute.
+                    _buffers[name] = None
+                else:
+                    object.__setattr__(self, name, value)
 
     def __delattr__(self, name):
         if name in self._parameters:
             del self._parameters[name]
         elif name in self._sub_layers:
             del self._sub_layers[name]
+        elif name in self._buffers:
+            del self._buffers[name]
+            self._non_persistable_buffer_names_set.discard(name)
         else:
             object.__delattr__(self, name)
+
+    def __dir__(self):
+        """
+        Return a list. Get all parameters, buffers(non-parameter variables), sublayers, method and attr of Layer.
+
+        Examples:
+            import paddle.fluid as fluid
+            import numpy as np
+
+            fluid.dygraph.enable_dygraph()
+
+            class Mylayer(fluid.dygraph.Layer):
+                def __init__(self):
+                    super(Mylayer, self).__init__()
+                    self.linear1 = fluid.dygraph.Linear(10, 10)
+                    self.linear2 = fluid.dygraph.Linear(5, 5)
+                    self.conv2d = fluid.dygraph.Conv2D(3, 2, 3)
+                    self.embedding = fluid.dygraph.Embedding(size=[128, 16])
+                    self.h_0 = fluid.dygraph.to_variable(np.zeros([10, 10]).astype('float32'))
+
+            mylayer = Mylayer()
+            print(dir(mylayer))
+            # only parts are shown, because of list have too much content
+            # ['__call__', '__class__',  ... , 'conv2d', 'embedding', 'h_0', 'linear1', 'linear2', ... , 'sublayers', 'train']
+
+        """
+        method = dir(self.__class__)
+        attrs = list(self.__dict__.keys())
+        parameters = list(self._parameters.keys())
+        sublayers = list(self._sub_layers.keys())
+        buffers = list(self._buffers.keys())
+
+        keys = method + attrs + parameters + sublayers + buffers
+
+        return keys
 
     def state_dict(self,
                    destination=None,
                    include_sublayers=True,
                    structured_name_prefix=""):
         '''
-        Get all parameters of current layer and its sub-layers. And set all the parameters into a dict
+        Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters will set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
 
         Retruns:
-            dict: a dict contains all the parameters
+            dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
             .. code-block:: python
@@ -454,6 +818,9 @@ class Layer(core.Layer):
         for name, data in self._parameters.items():
             if data is not None:
                 destination[structured_name_prefix + name] = data
+        for name, buffer in self._buffers.items():
+            if buffer is not None and name not in self._non_persistable_buffer_names_set:
+                destination[structured_name_prefix + name] = buffer
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
@@ -471,12 +838,12 @@ class Layer(core.Layer):
                  include_sublayers=True,
                  use_structured_name=True):
         '''
-        Set parameters from stat_dict. All the parameters will be reset by the tensor in the stat_dict
+        Set parameters and persistable buffers from stat_dict. All the parameters and buffers will be reset by the tensor in the stat_dict
 
         Parameters:
-            state_dict(dict) : Dict contains all the parameters
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key. 
+            state_dict(dict) : Dict contains all the parameters and persistable buffers.
+            include_sublayers(bool, optional) : If true, also include the parameters and peresistable buffers from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
                                                   Default: True
         Returns:
             None
@@ -506,14 +873,14 @@ class Layer(core.Layer):
                   include_sublayers=True,
                   use_structured_name=True):
         '''
-        Set parameters from stat_dict. All the parameters will be reset by the tensor in the stat_dict
+        Set parameters and persistable buffers from stat_dict. All the parameters and persistabl buffers will be reset by the tensor in the stat_dict
 
         This api will be Deprecated. Please use set_dict
 
         Parameters:
-            state_dict(dict) : Dict contains all the parameters
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key.
+            state_dict(dict) : Dict contains all the parameters and persistable buffers.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True
         Returns:
             None
@@ -536,13 +903,13 @@ class Layer(core.Layer):
 
         inner_state_dict = self.state_dict()
 
-        for name, para in inner_state_dict.items():
-            key_name = name if use_structured_name else para.name
+        for name, param_or_buffer in inner_state_dict.items():
+            key_name = name if use_structured_name else param_or_buffer.name
             if key_name in stat_dict:
-                para.set_value(stat_dict[key_name])
+                param_or_buffer.set_value(stat_dict[key_name])
             else:
                 raise RuntimeError(
-                    "Parameter not found, Can't not find [ {} ] in stat_dict"
+                    "Parameter or persistable buffer not found, Can't find [ {} ] in stat_dict"
                     "use_structured_name is set to [{}]".format(
                         key_name, use_structured_name))
         unused_para_list = []
@@ -551,5 +918,5 @@ class Layer(core.Layer):
                 unused_para_list.append(k)
         if len(unused_para_list) > 0:
             warnings.warn(
-                "Varibale [ {} ] are not used, because not included in layers state_dict".
+                "Variables [ {} ] are not used, because not included in layers state_dict".
                 format(" ".join(unused_para_list)))

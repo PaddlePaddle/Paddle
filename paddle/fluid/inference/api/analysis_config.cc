@@ -116,8 +116,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
-  // NGRAPH related.
-  CP_MEMBER(use_ngraph_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -150,6 +148,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(cpu_math_library_num_threads_);
 
   CP_MEMBER(serialized_info_cache_);
+
+  CP_MEMBER(thread_local_stream_);
 
   if (use_gpu_) {
     pass_builder_.reset(new GpuPassStrategy(
@@ -206,16 +206,6 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 #endif
 
   Update();
-}
-
-void AnalysisConfig::EnableNgraph() {
-#ifdef PADDLE_WITH_NGRAPH
-  pass_builder()->EnableNgraph();
-  use_ngraph_ = true;
-#else
-  LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
-  use_ngraph_ = false;
-#endif
 }
 
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
@@ -292,6 +282,10 @@ void AnalysisConfig::Update() {
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
+      if (tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
+          (pass == "conv_bn_fuse_pass" || pass == "fc_fuse_pass")) {
+        continue;
+      }
       pass_builder()->AppendPass(pass);
     }
   }
@@ -302,20 +296,6 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder()->EnableCUDNN();
     }
-#endif
-  }
-
-  if (use_ngraph_) {
-    if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableNgraph() only works when IR optimization is enabled.";
-    }
-#ifdef PADDLE_WITH_NGRAPH
-    pass_builder()->EnableNgraph();
-    use_ngraph_ = true;
-#else
-    LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
-    use_ngraph_ = false;
 #endif
   }
 
@@ -387,8 +367,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << enable_memory_optim_;
 
-  ss << use_ngraph_;
-
   ss << use_mkldnn_;
   ss << mkldnn_cache_capacity_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
@@ -409,6 +387,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << cpu_math_library_num_threads_;
 
   ss << use_lite_;
+
+  ss << thread_local_stream_;
 
   return ss.str();
 }
@@ -500,5 +480,7 @@ void AnalysisConfig::PartiallyRelease() {
   params_file_.clear();
   params_file_.shrink_to_fit();
 }
+
+void AnalysisConfig::EnableGpuMultiStream() { thread_local_stream_ = true; }
 
 }  // namespace paddle

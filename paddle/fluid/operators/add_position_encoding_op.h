@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -40,25 +39,40 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
     int enc_size = 0;
 
     if (x_lod.empty()) {
-      PADDLE_ENFORCE(
-          x_dim.size() == 3UL,
-          "The input X of Add Position Encoding should be 3-D Tensor!");
+      PADDLE_ENFORCE_EQ(x_dim.size(), 3,
+                        platform::errors::InvalidArgument(
+                            "The input(X)'s dimension of AddPositionEncodingOp "
+                            "should be equal to "
+                            "3, but received %d. ",
+                            x_dim.size()));
       batch_size = x_dim[0];
       max_seq_len = x_dim[1];
       enc_size = x_dim[2];
     } else {
-      PADDLE_ENFORCE(
-          x_dim.size() == 2UL,
-          "The input X of Add Position Encoding should be 2-D LoDTensor!");
-      PADDLE_ENFORCE(
-          x_lod.size() == 1UL,
-          "The Add Position Encoding Op only supports lod_level == 1!");
+      PADDLE_ENFORCE_EQ(x_dim.size(), 2,
+                        platform::errors::InvalidArgument(
+                            "The input(X)'s dimension of AddPositionEncodingOp "
+                            "should be equal to "
+                            "2, but received %d. ",
+                            x_dim.size()));
+      PADDLE_ENFORCE_EQ(x_lod.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The input(X)'s lod level of AddPositionEncodingOp "
+                            "should be equal to "
+                            "1, but received %d. ",
+                            x_lod.size()));
+
       batch_size = x_lod[0].size() - 1;
       max_seq_len = -1;
       enc_size = x_dim[1];
     }
 
-    PADDLE_ENFORCE(enc_size % 2 == 0, "Only support even encode size!");
+    PADDLE_ENFORCE_EQ(enc_size % 2, 0,
+                      platform::errors::InvalidArgument(
+                          "The input(X)'s feature size of "
+                          "AddPositionEncodingOp only support even, "
+                          "but received an odd number: %d. ",
+                          enc_size));
 
     const int half_size = enc_size / 2;
     for (int i = 0; i < batch_size; ++i) {

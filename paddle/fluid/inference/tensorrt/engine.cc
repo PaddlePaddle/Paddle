@@ -39,7 +39,7 @@ void TensorRTEngine::InitNetwork() {
             nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
     infer_builder_config_.reset(infer_builder_->createBuilderConfig());
     infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-    optim_profile_.reset(infer_builder_->createOptimizationProfile());
+    optim_profile_ = infer_builder_->createOptimizationProfile();
 #endif
   } else {
     infer_network_.reset(infer_builder_->createNetwork());
@@ -124,22 +124,41 @@ void TensorRTEngine::FreezeNetwork() {
                   << ", this might be ok when trt does not need this range";
         }
       }
-      std::unordered_set<std::string> all_out_t_name;
-      for (int i = 0; i < network()->getNbOutputs(); i++) {
-        auto *temp = network()->getOutput(i);
-        temp->setDynamicRange(-1, 1);
-        all_out_t_name.insert(temp->getName());
-      }
-
-      for (int i = 0; i < network()->getNbLayers(); i++) {
-        auto layer = network()->getLayer(i);
+      auto is_layer_int8 = [&](nvinfer1::ILayer *layer) -> bool {
+        for (int j = 0; j < layer->getNbInputs(); j++) {
+          auto *temp_in = layer->getInput(j);
+          if (!temp_in->dynamicRangeIsSet()) {
+            VLOG(1) << "Layer(Name: " << layer->getName()
+                    << ") is set to float32 because its input("
+                    << temp_in->getName() << ") doesn't have dynamic range.";
+            return false;
+          }
+        }
         for (int j = 0; j < layer->getNbOutputs(); j++) {
           auto *temp_out = layer->getOutput(j);
-          if (std::find(all_out_t_name.begin(), all_out_t_name.end(),
-                        temp_out->getName()) != all_out_t_name.end()) {
-            layer->setPrecision(nvinfer1::DataType::kFLOAT);
-            layer->setOutputType(j, nvinfer1::DataType::kFLOAT);
+          if (temp_out->isNetworkOutput()) {
+            VLOG(1) << "Layer(Name: " << layer->getName()
+                    << ") is set to float32 because its output("
+                    << temp_out->getName() << ") is the output of the network.";
+            return false;
           }
+          if (!temp_out->dynamicRangeIsSet()) {
+            VLOG(1) << "Layer(Name: " << layer->getName()
+                    << ") is set to float32 because its output("
+                    << temp_out->getName() << ") doesn't have dynamic range.";
+            return false;
+          }
+        }
+        return true;
+      };
+      // If a layer's output is the network's output, or not all of its inputs
+      // and outputs have scales,
+      // this layer's precision and output type are set to float32.
+      // This step has no effect if this layer is fused during TRT optimization.
+      for (int i = 0; i < network()->getNbLayers(); i++) {
+        auto layer = network()->getLayer(i);
+        if (!is_layer_int8(layer)) {
+          layer->setPrecision(nvinfer1::DataType::kFLOAT);
         }
       }
 #endif
@@ -148,6 +167,7 @@ void TensorRTEngine::FreezeNetwork() {
 
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
+    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (auto &input : min_input_shape_) {
       optim_profile_->setDimensions(
           input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
@@ -159,7 +179,7 @@ void TensorRTEngine::FreezeNetwork() {
           input.first.c_str(), nvinfer1::OptProfileSelector::kOPT,
           Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
     }
-    infer_builder_config_->addOptimizationProfile(optim_profile_.get());
+    infer_builder_config_->addOptimizationProfile(optim_profile_);
     if (WithFp16()) {
       infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
       if (disable_trt_plugin_fp16()) {
@@ -236,7 +256,6 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
   std::string name_with_suffix = name + splitter + name_suffix;
-  auto w_dims = weight_tensor->dims();
   platform::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(
       weight_map.count(name_with_suffix), 0,
@@ -249,25 +268,6 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
   float *weight_data =
       weight_map[name_with_suffix]->mutable_data<float>(cpu_place);
   name_suffix_counter += 1;
-
-  if (enable_int8) {
-    // when the op is fc, scale's size should be 1
-    // when the op is conv, scale's size should be w_dims[0]
-    bool valid_scale_size =
-        (scale.size() == 1 || scale.size() == static_cast<size_t>(w_dims[0]));
-    PADDLE_ENFORCE(valid_scale_size, "TRT int8 quant: invalid scale size");
-    for (int i = 0; i < weight_tensor->numel(); i++) {
-      if (scale.size() == 1) {
-        weight_data[i] *= (scale[0] / 127);
-      } else {
-        PADDLE_ENFORCE(w_dims.size() == 4,
-                       "TRT int8 quant : We only use the channel quant for "
-                       "conv op, so the weight dims should be 4.");
-        int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
-        weight_data[i] *= (scale[i / inner_size] / 127);
-      }
-    }
-  }
   return weight_data;
 }
 

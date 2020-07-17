@@ -27,6 +27,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/backward.py"
            "paddle/fluid/operators/distributed/send_recv.proto.in"
            "paddle/fluid/framework/unused_var_check.cc"
+           "paddle/fluid/pybind/op_function_generator.cc"
            "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py"
@@ -35,6 +36,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py"
+           "tools/wlist.json"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -66,16 +68,16 @@ fi
 
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
 if [ "$api_spec_diff" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and one TPM (saxon-zh or Boyan-Liu or swtkiwi) approval for the api change for the management reason of API interface.\n"
+    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and one TPM (saxon-zh or jzhang533 or swtkiwi or Heeenrrry or TCChenlong) approval for the api change for the management reason of API interface.\n"
     check_approval 1 46782768 47554610
     echo_line=""
-    check_approval 1 2870059 2870059 27208573 
+    check_approval 1 2870059 29231 27208573 28379894 11935832
 fi
 
 api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc` 
 if [ "$api_doc_spec_diff" != "" ]; then
-    echo_line="You must have one TPM (saxon-zh or Boyan-Liu or swtkiwi) approval for the api change for the management reason of API document.\n"
-    check_approval 1 31623103 2870059 27208573
+    echo_line="You must have one TPM (saxon-zh or jzhang533 or swtkiwi or Heeenrrry or TCChenlong) approval for the api change for the management reason of API document.\n"
+    check_approval 1 2870059 29231 27208573 28379894 11935832
 fi
 
 op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec`
@@ -95,7 +97,7 @@ for API_FILE in ${API_FILES[*]}; do
   if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
       # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
       # You can use http://caius.github.io/github_id/ to find Github user id.
-      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,chenwhql 22561442,zhiqiu 6888866,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059,Boyan-Liu 31623103, zhouwei25 52485244, Aurelius84 9301846, liym27 33742067, zhhsplendid 7913861, kolinwei 22165420, liuwei1031 46661762, swtkiwi 27208573, juncaipeng 52520497, zhangting2020 26615455, JepsonWong 16509038, Shixiaowei02 39303645.
+      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,chenwhql 22561442,zhiqiu 6888866,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059,Boyan-Liu 31623103, zhouwei25 52485244, Aurelius84 9301846, liym27 33742067, zhhsplendid 7913861, kolinwei 22165420, liuwei1031 46661762, swtkiwi 27208573, juncaipeng 52520497, zhangting2020 26615455, JepsonWong 16509038, Shixiaowei02 39303645, Heeenrrry 28379894.
       if [ "${API_FILE}" == "CMakeLists.txt" ];then
           echo_line="You must have one RD (luotao1 or XiaoguangHu01) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           check_approval 1 6836917 46782768
@@ -103,14 +105,17 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have one RD (lanxianghit (Recommend) or luotao1) approval for the python/paddle/fluid/init.py, which manages the environment variables.\n"
           check_approval 1 6836917 47554610
       elif [ "${API_FILE}" == "python/requirements.txt" ];then
-          echo_line="You must have one RD (JepsonWong (Recommend) or luotao1) approval for python/requirements.txt, which manages the third-party python package.\n"
-          check_approval 1 6836917 16509038
+          echo_line="You must have one RD (kolinwei (Recommend), JepsonWong or luotao1) approval for python/requirements.txt, which manages the third-party python package.\n"
+          check_approval 1 22165420 16509038 6836917
       elif [ "${API_FILE}" == "paddle/fluid/operators/distributed/send_recv.proto.in" ];then
           echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/fluid/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
           check_approval 1 10721757 5442383
       elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
-          echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the paddle/fluid/framework/unused_var_check.cc, which manages the white list of operators that have unused input variables. Before change the white list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
+          echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the allow list of operators that have unused input variables. Before change the allow list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
           check_approval 1 6888866 32832641 6836917
+      elif [ "${API_FILE}" == "paddle/fluid/pybind/op_function_generator.cc" ];then
+          echo_line="You must have one RD (zhiqiu (Recommend) , phlrain) approval for the changes of paddle/fluid/pybind/op_function_generator.cc, which manages the logic of automatic generating op functions for dygraph. \n"
+          check_approval 1 6888866 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py" ];then
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (hong19860320 (Recommend), luotao1, phlrain) approval for the changes of check_shape_white_list.py, which manages the white list of operators with limited input size. Inputs size of all cases in the op test must be greater than or equal to 100. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/OP-Test-Input-Shape-Requirements. \n"
           check_approval 1 9973393 6836917 43953930
@@ -122,7 +127,7 @@ for API_FILE in ${API_FILES[*]}; do
           check_approval 1 45189361 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py" ];then
           echo_line="You must have one RD (cryoco (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py, which manages the white list of setting no_check_set of check_output. \n"
-          check_approval 1 12407750 26615455 6836917
+          check_approval 1 12407750 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py" ]; then
           echo_line="You must have one RD (JepsonWong (Recommend), luotao1, phlrain) approval for the ${API_FILE}, which manages the white list of instance size 0 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-instance_size=0-in-sequence-OP-test]. \n"
           check_approval 1 16509038 6836917 43953930
@@ -135,6 +140,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py" ];then
         echo_line="You must have one RD (Shixiaowei02 (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py, which manages the white list of no_grad_set without value in operators. For more information, please refer to[https://github.com/PaddlePaddle/Paddle/wiki/It's-recommend-to-set-no_grad_set-to-be-None].\n"
         check_approval 1 39303645 6836917 43953930
+      elif [ "${API_FILE}" == "tools/wlist.json" ];then
+        echo_line="You must have one RD (lelelelelez (Recommend) or luotao1) approval for the api whitelist for the tools/wlist.json.\n"
+        check_approval 1 22937122 6836917
       else
           echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
@@ -146,6 +154,18 @@ HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for the usage (either add or delete) of const_cast.\n"
     check_approval 1 3048612 46782768 12538138 6836917 32832641
+fi
+
+HAS_BOOST_GET=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -o -m 1 "boost::get" || true`
+if [ ${HAS_BOOST_GET} ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="boost::get is not recommended, because it may throw an bad_get exception without any stack information, so please use BOOST_GET(_**)(dtype, value) series macros here. If these macros cannot meet your needs, please use try-catch to handle boost::get and request chenwhql (Recommend), luotao1 or lanxianghit review and approve.\n"
+    check_approval 1 6836917 47554610 22561442
+fi
+
+HAS_LOG_FATAL=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -o -m 1 "LOG(FATAL)" || true`
+if [ ${HAS_LOG_FATAL} ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="LOG(FATAL) is not recommended, because it will throw exception without standard stack information, so please use PADDLE_THROW macro here. If you have to use LOG(FATAL) here, please request chenwhql (Recommend), luotao1 or lanxianghit review and approve.\n"
+    check_approval 1 6836917 47554610 22561442
 fi
 
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
@@ -172,11 +192,11 @@ if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 6836917 47554610 22561442
 fi
 
-ALL_PADDLE_CHECK=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "(PADDLE_ENFORCE[A-Z_]*|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" || true`
-VALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" | grep -zoE '(PADDLE_ENFORCE[A-Z_]*|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' || true`
+ALL_PADDLE_CHECK=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" || true`
+VALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' || true`
 INVALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" |grep -vxF "$VALID_PADDLE_CHECK" || true`
 if [ "${INVALID_PADDLE_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="The error message you wrote in PADDLE_ENFORCE{_**} or PADDLE_THROW does not meet our error message writing specification. Possible errors include 1. the error message is empty / 2. the error message is too short / 3. the error type is not specified. Please read the specification [ https://github.com/PaddlePaddle/Paddle/wiki/Paddle-Error-Message-Writing-Specification ], then refine the error message. If it is a mismatch, please specify chenwhql (Recommend), luotao1 or lanxianghit review and approve.\nThe PADDLE_ENFORCE{_**} or PADDLE_THROW entries that do not meet the specification are as follows:\n${INVALID_PADDLE_CHECK}\n"
+    echo_line="The error message you wrote in PADDLE_ENFORCE{_**} or PADDLE_THROW does not meet our error message writing specification. Possible errors include 1. the error message is empty / 2. the error message is too short / 3. the error type is not specified. Please read the specification [ https://github.com/PaddlePaddle/Paddle/wiki/Paddle-Error-Message-Writing-Specification ], then refine the error message. If it is a mismatch, please request chenwhql (Recommend), luotao1 or lanxianghit review and approve.\nThe PADDLE_ENFORCE{_**} or PADDLE_THROW entries that do not meet the specification are as follows:\n${INVALID_PADDLE_CHECK}\n"
     check_approval 1 6836917 47554610 22561442
 fi
 
@@ -206,7 +226,7 @@ fi
 HAS_OPERATORBASE_FLAG=`git diff -U0 --diff-filter=A upstream/$BRANCH | grep -E "public[[:space:]]+.*OperatorBase" || true`
 if [ "${HAS_OPERATORBASE_FLAG}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="In order to support dynamic graph, all ops are not recommended to inherit OperatorBase. Please use OperatorWithKernel instead.\nYou must have one RD (phlrain (Recommend), luotao1, lanxianghit or XiaoguangHu01) approval for the inherit of OperatorBase.\nYou inherit the OperatorBase class. The corresponding lines are as follows:\n${HAS_OPERATORBASE_FLAG}"
-    check_approval 1 47554610 46782768 22561442 6836917
+    check_approval 1 43953930 6836917 47554610 46782768
 fi
 
 HAS_INPLACE_TESTS=`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "inplace_atol[[:space:]]*=.*" || true`
@@ -267,6 +287,16 @@ ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_gr
 if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n" 
   check_approval 1 32832641 6836917
+fi
+
+# Get the list of PR authors with unresolved unit test issues
+pip install PyGithub
+# For getting PR related data
+wget https://paddle-ci.gz.bcebos.com/blk/block.txt
+HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has unit-test to be fixed" || true`
+if [ "${HASUTFIXED}" != "" ]; then
+  echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
+  check_approval 1 45041955 22165420
 fi
 
 if [ -n "${echo_list}" ];then

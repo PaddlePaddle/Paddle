@@ -28,6 +28,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -51,8 +52,10 @@ inline void shell_set_verbose(bool x) { shell_verbose_internal() = x; }
 extern std::shared_ptr<FILE> shell_fopen(const std::string& path,
                                          const std::string& mode);
 
-extern std::shared_ptr<FILE> shell_popen(const std::string& cmd,
-                                         const std::string& mode, int* err_no);
+std::shared_ptr<FILE> shell_popen(const std::string& cmd,
+                                  const std::string& mode, int* err_no,
+                                  int* status = NULL,
+                                  bool redirect_stderr = false);
 
 extern std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
     const std::string& cmd);
@@ -65,7 +68,17 @@ inline void shell_execute(const std::string& cmd) {
   } while (err_no == -1);
 }
 
-extern std::string shell_get_command_output(const std::string& cmd);
+// time_out:ms, default value:-1 means forever.
+// sleep_inter:ms, default -1 means not sleep.
+extern std::string shell_get_command_output(const std::string& cmd,
+                                            int time_out = 10 * 60 * 1000,
+                                            int sleep_inter = 1000);
+// time_out:ms, default -1 means forever.
+// sleep_inter:ms, default -1 means not sleep.
+extern std::vector<std::string> shell_execute_cmd(const std::string& cmd,
+                                                  int time_out = 0,
+                                                  int sleep_inter = 0,
+                                                  bool redirect_stderr = false);
 
 }  // namespace framework
 }  // namespace paddle

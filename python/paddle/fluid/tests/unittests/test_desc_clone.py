@@ -109,11 +109,8 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
     return t
 
 
-from paddle.fluid.transpiler.details import op_to_code
-
-
 def operator_equal(a, b):
-    if op_to_code(a) != op_to_code(b):
+    if a.__str__() != b.__str__():
         raise ValueError("In operator_equal not equal\n")
 
     for k, v in six.iteritems(a.__dict__):

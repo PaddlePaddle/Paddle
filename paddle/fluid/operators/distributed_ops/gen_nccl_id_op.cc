@@ -44,9 +44,15 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     std::vector<std::string> trainers =
         Attr<std::vector<std::string>>("trainers");
-    PADDLE_ENFORCE(
-        trainer_id >= 0 && trainer_id < static_cast<int>(trainers.size()),
-        "trainer_id:%d must be in trainers.size range", trainer_id);
+    PADDLE_ENFORCE_GE(trainer_id, 0, platform::errors::InvalidArgument(
+                                         "trainer_id %d is less than 0. Its "
+                                         "valid range is [0, trainer_size)"));
+    PADDLE_ENFORCE_LT(
+        trainer_id, static_cast<int>(trainers.size()),
+        platform::errors::OutOfRange("trainer_id %d is out of range. Its valid "
+                                     "range is [0, trainer_size)",
+                                     trainer_id));
+
     std::string endpoint = trainers[trainer_id];
 
     framework::Scope& local_scope = scope.NewScope();
@@ -58,12 +64,20 @@ class GenNCCLIdOp : public framework::OperatorBase {
     int inter_trainer_id = -1;
     int exter_trainer_id = -1;
     if (use_hierarchical_allreduce) {
-      PADDLE_ENFORCE(trainers.size() > 1, "trainers.size():%llu < 1",
-                     trainers.size());
-      PADDLE_ENFORCE(inter_nranks > 1, "inter_nranks:%d < 1", inter_nranks);
-      PADDLE_ENFORCE((trainers.size() % inter_nranks == 0),
-                     "trainers.size():%llu mod inter_nranks:%d != 0",
-                     trainers.size(), inter_nranks);
+      PADDLE_ENFORCE_GT(
+          trainers.size(), 1,
+          platform::errors::PreconditionNotMet(
+              "The number of collective trainers %llu <= 1", trainers.size()));
+      PADDLE_ENFORCE_GT(
+          inter_nranks, 1,
+          platform::errors::PreconditionNotMet(
+              "inter_nranks %d <= 1 while in hierarchical allreduce mode",
+              inter_nranks));
+      PADDLE_ENFORCE_EQ(
+          trainers.size() % inter_nranks, 0,
+          platform::errors::PreconditionNotMet(
+              "The number of trainers %llu mod inter_nranks %d is not equal 0",
+              trainers.size(), inter_nranks));
 
       inter_trainer_id = trainer_id % inter_nranks;
 
@@ -106,10 +120,16 @@ class GenNCCLIdOp : public framework::OperatorBase {
       return;
     }
 
-    PADDLE_ENFORCE(trainers.size() % inter_nranks == 0,
-                   "enpoints.size:%llu mod inter_nranks:%d should ==0",
-                   trainers.size(), inter_nranks);
-    PADDLE_ENFORCE(inter_nranks > 1, "inter_nranks:%d must > 1", inter_nranks);
+    PADDLE_ENFORCE_EQ(
+        trainers.size() % inter_nranks, 0,
+        platform::errors::PreconditionNotMet(
+            "The number of trainers %llu mod inter_nranks %d is not equal 0",
+            trainers.size(), inter_nranks));
+    PADDLE_ENFORCE_GT(
+        inter_nranks, 1,
+        platform::errors::PreconditionNotMet(
+            "inter_nranks %d <= 1 while in hierarchical allreduce mode",
+            inter_nranks));
 
     // hierarchical inter ncclid
     if (inter_trainer_id == 0) {
@@ -156,10 +176,11 @@ class GenNCCLIdOp : public framework::OperatorBase {
                        const std::string& nccl_id_name,
                        const std::vector<std::string>& endpoint_list) const {
     auto var = scope->FindVar(nccl_id_name);
-    PADDLE_ENFORCE_NOT_NULL(var, "can't find nccl_id_var_name:%s",
-                            nccl_id_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("Variable with name %s is not found",
+                                        nccl_id_name.c_str()));
     auto id = var->GetMutable<ncclUniqueId>();
-    PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(id));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGetUniqueId(id));
 
     distributed::RPCClient* client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);

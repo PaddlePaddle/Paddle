@@ -32,7 +32,7 @@ def create_reader(shape, batch_number):
 class DataLoaderKeepOrderTestBase(unittest.TestCase):
     def initParameters(self):
         self.iterable = False
-        self.break_num = 10000
+        self.break_num = 100
 
     def setUp(self):
         self.epoch_num = 3
@@ -151,7 +151,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
 class IterableDataLoaderKeepOrderTest2(DataLoaderKeepOrderTestBase):
     def initParameters(self):
         self.iterable = True
-        self.break_num = 10000
+        self.break_num = 100
 
 
 class IterableDataLoaderKeepOrderTest3(DataLoaderKeepOrderTestBase):

@@ -219,7 +219,13 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     auto in_dims = input->dims();
     auto out_dims = hidden_g->dims();
     int frame_size = static_cast<int>(in_dims[1] / 4);
-    PADDLE_ENFORCE_EQ(frame_size, out_dims[1]);
+    PADDLE_ENFORCE_EQ(
+        frame_size, out_dims[1],
+        platform::errors::InvalidArgument(
+            "The second dimension of Input(" +
+                framework::GradVarName("Hidden") +
+                ") should be %d, but received %d in LSTM@Grad operator.",
+            frame_size, out_dims[1]));
 
     math::LstmMetaValue<T> lstm_value;
     if (bias && ctx.Attr<bool>("use_peepholes")) {

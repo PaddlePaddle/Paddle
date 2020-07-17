@@ -109,6 +109,7 @@ class TestConv2dTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
         self.dtype = np.float64
+        self.need_check_grad = True
         self.is_test = False
         self.use_cudnn = False
         self.use_mkldnn = False
@@ -152,35 +153,40 @@ class TestConv2dTransposeOp(OpTest):
             self.check_output(check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
-        if self.use_cudnn:
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Filter'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Input']))
-        else:
-            self.check_grad(['Filter'], 'Output', no_grad_set=set(['Input']))
+        if self.need_check_grad:
+            if self.use_cudnn:
+                place = core.CUDAPlace(0)
+                self.check_grad_with_place(
+                    place, ['Filter'],
+                    'Output',
+                    max_relative_error=0.02,
+                    no_grad_set=set(['Input']))
+            else:
+                self.check_grad(
+                    ['Filter'], 'Output', no_grad_set=set(['Input']))
 
     def test_check_grad_no_filter(self):
-        if self.use_cudnn:
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Input'], 'Output', no_grad_set=set(['Filter']))
-        else:
-            self.check_grad(['Input'], 'Output', no_grad_set=set(['Filter']))
+        if self.need_check_grad:
+            if self.use_cudnn:
+                place = core.CUDAPlace(0)
+                self.check_grad_with_place(
+                    place, ['Input'], 'Output', no_grad_set=set(['Filter']))
+            else:
+                self.check_grad(
+                    ['Input'], 'Output', no_grad_set=set(['Filter']))
 
     def test_check_grad(self):
-        if self.use_cudnn:
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                set(['Input', 'Filter']),
-                'Output',
-                max_relative_error=0.02)
-        else:
-            self.check_grad(
-                set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+        if self.need_check_grad:
+            if self.use_cudnn:
+                place = core.CUDAPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    set(['Input', 'Filter']),
+                    'Output',
+                    max_relative_error=0.02)
+            else:
+                self.check_grad(
+                    set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -705,6 +711,124 @@ class TestDepthwiseConvTransposeAsymmetricPad_NHWC(TestConv2dTransposeOp):
         f_c = self.input_size[3] // self.groups
         self.filter_size = [self.input_size[3], f_c, 3, 3]
         self.op_type = "depthwise_conv2d_transpose"
+        self.data_format = 'NHWC'
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNN_FP16(TestConv2dTransposeOp):
+    def init_test_case(self):
+        self.dtype = np.float16
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.groups = 1
+        self.dilations = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 6, 3, 3]
+
+    def init_op_type(self):
+        self.need_check_grad = False
+        self.use_cudnn = True
+        self.op_type = "conv2d_transpose"
+
+    def test_check_output(self):
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(
+                place, atol=0.02, check_dygraph=(self.use_mkldnn == False))
+        else:
+            self.check_output(check_dygraph=(self.use_mkldnn == False))
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNN_NHWC_FP16(TestCUDNN_FP16):
+    def init_test_case(self):
+        self.dtype = np.float16
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        self.groups = 1
+        self.input_size = [2, 5, 5, 3]  # NHWC
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 6, 3, 3]
+        self.data_format = 'NHWC'
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNNWithSymmetricPad_NHWC_FP16(TestCUDNN_FP16):
+    def init_test_case(self):
+        self.dtype = np.float16
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.groups = 1
+        self.dilations = [1, 1]
+        self.input_size = [2, 5, 5, 3]  # NHWC
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 6, 3, 3]
+        self.data_format = 'NHWC'
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNNWithAsymmetricPad_NHWC_FP16(TestCUDNN_FP16):
+    def init_test_case(self):
+        self.dtype = np.float16
+        self.pad = [1, 0, 2, 3]
+        self.stride = [2, 2]
+        self.groups = 1
+        self.dilations = [1, 1]
+        self.input_size = [2, 5, 5, 3]  # NHWC
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 6, 3, 3]
+        self.data_format = 'NHWC'
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNNWithStride_NHWC_FP16(TestCUDNN_FP16):
+    def init_test_case(self):
+        self.dtype = np.float16
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.groups = 1
+        self.dilations = [1, 1]
+        self.input_size = [2, 5, 5, 3]  # NHWC
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 6, 3, 3]
+        self.data_format = 'NHWC'
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNNWithGroups_NHWC_FP16(TestCUDNN_FP16):
+    def init_test_case(self):
+        self.dtype = np.float16
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        self.groups = 2
+        self.input_size = [2, 5, 5, 4]  # NCHW
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 3, 3, 3]
+        self.data_format = 'NHWC'
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNNWithEvenUpsample_NHWC_FP16(TestCUDNN_FP16):
+    def init_test_case(self):
+        self.dtype = np.float16
+        self.pad = [2, 2]
+        self.stride = [2, 2]
+        self.groups = 1
+        self.dilations = [1, 1]
+        self.output_size = [14, 14]
+        self.input_size = [2, 7, 7, 3]  # NHWC
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 6, 5, 5]
         self.data_format = 'NHWC'
 
 

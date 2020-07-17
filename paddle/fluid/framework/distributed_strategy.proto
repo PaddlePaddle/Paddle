@@ -1,0 +1,87 @@
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+package paddle.fleet;
+
+enum Mode {
+  COLLECTIVE = 1;
+  PS = 2;
+  PIPELINE = 3;
+  HETER = 4; // support XPU and GPU computing server
+}
+
+message DistributedStrategy {
+  optional Mode mode = 1 [ default = COLLECTIVE ]; // just for serialization
+  // collective training strategy
+  optional bool amp = 2 [ default = false ];
+  optional int32 amp_loss_scaling = 3 [ default = 32768 ];
+  optional bool recompute = 4 [ default = false ];
+  repeated string recompute_checkpoints = 5;
+  optional bool localsgd = 6 [ default = false ];
+  optional int32 localsgd_k_step = 7 [ default = 4 ];
+  optional bool dgc = 8 [ default = false ];
+  optional bool hierachical_allreduce = 9 [ default = false ];
+  optional int32 nccl_comm_num = 10 [ default = 1 ];
+  optional bool gradient_merge = 11 [ default = false ];
+  optional int32 gradient_merge_k_step = 12 [ default = 1 ];
+  optional bool sequential_execution = 13 [ default = false ];
+  optional bool enable_backward_optimizer_op_deps = 14 [ default = true ];
+  optional bool lars = 15 [ default = false ];
+  optional bool lamb = 16 [ default = false ];
+  optional bool fuse_elewise_add_act_ops = 17 [ default = false ];
+  optional bool fuse_bn_act_ops = 18 [ default = false ];
+  optional bool enable_auto_fusion = 19 [ default = false ];
+  optional bool fuse_relu_depthwise_conv = 20 [ default = false ];
+  optional bool enable_inplace = 21 [ default = false ];
+  optional bool fuse_all_reduce_ops = 22 [ default = false ];
+  optional int32 num_iteration_per_drop_scope = 23 [ default = 1 ];
+  optional bool sync_batch_norm = 24 [ default = false ];
+  optional bool fuse_all_optimizer_ops = 25 [ default = false ];
+
+  // pipeline training
+  optional bool pipeline = 101 [ default = false ];
+  optional int32 pipeline_micro_batch = 102;
+
+  // parameter server training
+  optional bool sync = 201 [ default = false ];
+  optional bool async = 202 [ default = true ];
+  optional int32 async_k_step = 203 [ default = -1 ];
+  optional int32 max_merge_var_num = 204 [ default = 1 ];
+  optional int32 send_queue_size = 205 [ default = 16 ];
+  optional bool independent_recv_thread = 206 [ default = false ];
+  optional int32 min_send_grad_num_before_recv = 207 [ default = 1 ];
+  optional int32 thread_pool_size = 208 [ default = 1 ];
+  optional int32 send_wait_times = 209 [ default = 1 ];
+  optional bool runtime_split_send_recv = 210 [ default = false ];
+  optional bool use_thread_barrier = 211 [ default = false ];
+
+  // elastic deep learning strategies
+  optional bool elastic = 301 [ default = false ];
+
+  // auto parallel
+  optional bool auto = 401 [ default = false ];
+}
+
+message DistributedJobInfo {
+  optional int32 worker_num = 1;
+  optional int32 server_num = 2;
+  repeated string worker_ips = 3;
+  repeated string server_endpoints = 4;
+  optional string origin_startup = 5;
+  optional string origin_main = 6; // without backpropagation and optimization
+  optional string distributed_main = 7; // with backpropagation and optimization
+  optional string optimizer_name = 8;   // optimizer name
+  optional DistributedStrategy strategy = 101;
+}

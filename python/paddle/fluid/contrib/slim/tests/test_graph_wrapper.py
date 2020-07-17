@@ -37,6 +37,7 @@ def residual_block(num):
             num_filters=ch_out,
             stride=stride,
             padding=padding,
+            use_cudnn=False,
             act=None,
             bias_attr=bias_attr)
         return fluid.layers.batch_norm(input=tmp, act=act)

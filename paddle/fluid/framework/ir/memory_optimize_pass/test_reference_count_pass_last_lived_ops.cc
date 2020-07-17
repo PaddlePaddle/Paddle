@@ -186,12 +186,12 @@ TEST(test_reference_count_pass, test_no_need_buffer_var_shrink) {
     ReferenceCountPassTestHelper helper(program, use_cuda);
     ASSERT_TRUE(helper.IsLastLivedOps(x0, {"scale"}));
     ASSERT_EQ(
-        boost::get<float>(helper.LastLivedOps(x0)[0]->Attrs().at("scale")),
+        BOOST_GET_CONST(float, helper.LastLivedOps(x0)[0]->Attrs().at("scale")),
         1.0f);
 
     ASSERT_TRUE(helper.IsLastLivedOps(x1, {"scale"}));
     ASSERT_EQ(
-        boost::get<float>(helper.LastLivedOps(x1)[0]->Attrs().at("scale")),
+        BOOST_GET_CONST(float, helper.LastLivedOps(x1)[0]->Attrs().at("scale")),
         3.0f);
 
     ASSERT_TRUE(helper.IsLastLivedOps(x2, {"elementwise_mul"}));

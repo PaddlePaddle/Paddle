@@ -28,8 +28,7 @@ class TestTracedLayer(fluid.dygraph.Layer):
         super(TestTracedLayer, self).__init__(name_scope)
 
     def forward(self, input):
-        inputs = {'X': [input] if isinstance(input, fluid.Variable) else input}
-        return core.ops.relu(inputs)['Out'][0]
+        return core.ops.relu(input)
 
 
 class TestVariable(unittest.TestCase):
@@ -47,9 +46,7 @@ class TestVariable(unittest.TestCase):
             x.stop_gradient = False
 
             res1 = layers.elementwise_add(x, y)
-
-            inputs = {'X': [x], 'Y': [y]}
-            res2 = core.ops.elementwise_add(inputs)['Out'][0]
+            res2 = core.ops.elementwise_add(x, y)
 
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
@@ -61,9 +58,7 @@ class TestVariable(unittest.TestCase):
             y = fluid.dygraph.to_variable(b)
 
             res1 = layers.elementwise_mul(x, y)
-
-            inputs = {'X': [x], 'Y': [y]}
-            res2 = core.ops.elementwise_mul(inputs)['Out'][0]
+            res2 = core.ops.elementwise_mul(x, y)
 
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
@@ -73,9 +68,7 @@ class TestVariable(unittest.TestCase):
             x = fluid.dygraph.to_variable(a)
 
             res1 = layers.relu(x)
-
-            inputs = {'X': [x]}
-            res2 = core.ops.relu(inputs)['Out'][0]
+            res2 = core.ops.relu(x)
 
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
@@ -88,8 +81,7 @@ class TestVariable(unittest.TestCase):
             x.stop_gradient = False
             y.stop_gradient = False
 
-            inputs = {'X': [x], 'Y': [y]}
-            loss = core.ops.elementwise_mul(inputs)['Out'][0]
+            loss = core.ops.elementwise_mul(x, y)
 
             loss.backward()
             x_grad = x.gradient()
@@ -104,7 +96,7 @@ class TestVariable(unittest.TestCase):
             a = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             x = fluid.dygraph.to_variable(a)
             res_dygraph, static_layer = TracedLayer.trace(
-                layer, inputs=[x])  # dygraph out
+                layer, inputs=x)  # dygraph out
             res_static_graph = static_layer([x])[0]
 
             self.assertTrue(

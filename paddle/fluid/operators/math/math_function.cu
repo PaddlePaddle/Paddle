@@ -75,8 +75,7 @@ template <typename T>
 __global__ void RowwiseAddKernel(const T* a, const T* b, T* c, int width,
                                  int num) {
   T tmp = 1.0 / width;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, num) {
     int h = i * tmp;
     int w = i - h * width;
     c[i] = a[i] + b[w];
@@ -148,6 +147,19 @@ void RowwiseSum<platform::CUDADeviceContext, double>::operator()(
 template struct RowwiseMean<platform::CUDADeviceContext, float>;
 template struct RowwiseMean<platform::CUDADeviceContext, double>;
 
+template <typename T>
+struct ElementwiseAddTo<platform::CUDADeviceContext, T> {
+  void operator()(platform::CUDADeviceContext* ctx,
+                  const framework::Tensor& src, framework::Tensor* dst) {
+    auto in = framework::EigenVector<T>::Flatten(src);
+    auto out = framework::EigenVector<T>::Flatten(*dst);
+    auto& place = *(ctx->eigen_device());
+    out.device(place) = out + in;
+  }
+};
+
+template struct ElementwiseAddTo<platform::CUDADeviceContext,
+                                 platform::float16>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

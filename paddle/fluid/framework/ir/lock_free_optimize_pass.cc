@@ -170,7 +170,8 @@ ir::Node* LockFreeOptimizePass::CreateNewSGDNode(
   new_desc.SetInput("Grad", std::vector<std::string>({grad_node->Name()}));
   new_desc.SetOutput("ParamOut", old_desc->Output("ParamOut"));
 
-  std::vector<std::string> op_role_vars = boost::get<std::vector<std::string>>(
+  std::vector<std::string> op_role_vars = BOOST_GET_CONST(
+      std::vector<std::string>,
       new_desc.GetAttr(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName()));
   // replace the second op role var, because the grad name was
   // changed in new optimizer

@@ -82,7 +82,7 @@ struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
           out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
     out_e.device(*ctx.eigen_device()) =
-        (s / bin_cnt) * (bin_cnt * inv_s * out_e).round();
+        (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
   }
 };
 template struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext,
@@ -171,21 +171,21 @@ struct FindMovingAverageAbsMaxFunctor<platform::CPUDeviceContext, T> {
 template struct FindMovingAverageAbsMaxFunctor<platform::CPUDeviceContext,
                                                float>;
 
-class FakeQuantizeAbsMaxOp : public framework::OperatorWithKernel {
+class FakeQuantOrWithDequantAbsMaxOp : public framework::OperatorWithKernel {
  public:
-  FakeQuantizeAbsMaxOp(const std::string& type,
-                       const framework::VariableNameMap& inputs,
-                       const framework::VariableNameMap& outputs,
-                       const framework::AttributeMap& attrs)
+  FakeQuantOrWithDequantAbsMaxOp(const std::string& type,
+                                 const framework::VariableNameMap& inputs,
+                                 const framework::VariableNameMap& outputs,
+                                 const framework::AttributeMap& attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FakeQuantizeOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FakeQuantizeOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutScale"),
-                   "Output(Scale) of FakeQuantizeOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "FakeQuantOrWithDequantAbsMaxOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FakeQuantOrWithDequantAbsMaxOp");
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+                   "FakeQuantOrWithDequantAbsMaxOp");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->SetOutputDim("OutScale", {1});
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -200,7 +200,8 @@ class FakeQuantizeAbsMaxOp : public framework::OperatorWithKernel {
   }
 };
 
-class FakeQuantizeAbsMaxOpMaker : public framework::OpProtoAndCheckerMaker {
+class FakeQuantOrWithDequantAbsMaxOpMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) Input is float data type.");
@@ -211,15 +212,25 @@ class FakeQuantizeAbsMaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
-                         "'bit_length' should be between 1 and 16.");
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+                            platform::errors::InvalidArgument(
+                                "'bit_length' should be between 1 and 16, but "
+                                "the received is %d",
+                                bit_length));
         });
     AddComment(R"DOC(
-FakeQuantize operator
+This is a Base Op which supports FakeQuantAbsMaxOpMaker and FakeQuantDequantAbsMaxOpMaker.
+FakeQuantAbsMaxOp operator is used in the dynamic quantization.
 
 $$scale = max(abs(X))$$
 $$range = 2^{bit_length - 1} - 1$$
 $$Out = round(X/scale * range)$$
+
+FakeQuantDequantAbsMaxOp operator does the abs_max quantization and then dequantization.
+
+$$scale = max(abs(X))$$
+$$range = 2^{bit\_length - 1} - 1$$
+$$Out = round(X/scale * range) * scale / range$$
 
 )DOC");
   }
@@ -230,14 +241,12 @@ class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FakeChannelWiseQuantizeOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(Out) of FakeChannelWiseQuantizeOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("OutScale"),
-        "Output(Scale) of FakeChannelWiseQuantizeOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "FakeChannelWiseQuantizeAbsMax");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FakeChannelWiseQuantizeAbsMax");
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+                   "FakeChannelWiseQuantizeAbsMax");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->SetOutputDim("OutScale", {ctx->GetInputDim("X")[0]});
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -263,8 +272,11 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
-                         "'bit_length' should be between 1 and 16.");
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+                            platform::errors::InvalidArgument(
+                                "'bit_length' should be between 1 and 16, but "
+                                "the received is %d",
+                                bit_length));
         });
     AddComment(R"DOC(
 The scale of FakeChannelWiseQuantize operator is a vector.
@@ -288,14 +300,11 @@ class FakeQuantizeRangeAbsMaxOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FakeQuantizeRangeAbsMaxOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(Out) of FakeQuantizeRangeAbsMaxOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("OutScale"),
-        "Output(OutScale) of FakeQuantizeRangeAbsMaxOp should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FakeQuantizeRangeAbsMax");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FakeQuantizeRangeAbsMax");
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+                   "FakeQuantizeRangeAbsMax");
     if (ctx->HasOutput("OutScales")) {
       int window_size = ctx->Attrs().Get<int>("window_size");
       ctx->SetOutputDim("OutScales", {window_size});
@@ -329,8 +338,11 @@ class FakeQuantizeRangeAbsMaxOpMaker
     AddAttr<int>("bit_length", "(int, default 8), quantization bit number.")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
-                         "'bit_length' should be between 1 and 16.");
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+                            platform::errors::InvalidArgument(
+                                "'bit_length' should be between 1 and 16, but "
+                                "the received is %d",
+                                bit_length));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -357,16 +369,12 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOp
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FakeQuantOrWithDequantMovingAverageAbsMaxOp "
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FakeQuantOrWithDequantMovingAverageAbsMaxOp "
-                   "should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("OutScale"),
-        "Output(OutScale) of FakeQuantOrWithDequantMovingAverageAbsMaxOp "
-        "should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "FakeQuantOrWithDequantMovingAverageAbsMax");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FakeQuantOrWithDequantMovingAverageAbsMax");
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+                   "FakeQuantOrWithDequantMovingAverageAbsMax");
     if (ctx->HasOutput("OutState")) {
       ctx->SetOutputDim("OutState", {1});
     }
@@ -404,22 +412,25 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
     AddAttr<int>("bit_length", "(int, default 8), quantization bit number.")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
-                         "'bit_length' should be between 1 and 16.");
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+                            platform::errors::InvalidArgument(
+                                "'bit_length' should be between 1 and 16, but "
+                                "the received is %d",
+                                bit_length));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
     AddComment(R"DOC(
-This is a Base Op which support FakeQuantMovingAverageAbsMaxOp and FakeQuantDequantMovingAverageAbsMaxOp
-FakeQuantMovingAverageAbsMaxOp operator is used in static quantization.
+This is a Base Op which supports FakeQuantMovingAverageAbsMaxOp and FakeQuantDequantMovingAverageAbsMaxOp.
+FakeQuantMovingAverageAbsMaxOp operator is used in the static quantization.
 
 $$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
 $$range = 2^{bit\_length - 1} - 1$$
 $$Out = round(X/scale * range)$$
 
-FakeQuantDequantMovingAverageAbsMaxOp operator do the moving_average_abs_max op quant and then dequant.
+FakeQuantDequantMovingAverageAbsMaxOp operator does the moving_average_abs_max quant and then dequant.
 
 $$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
 $$range = 2^{bit\_length - 1} - 1$$
@@ -434,15 +445,12 @@ class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput("X"),
-        "Input(X) of MovingAverageAbsMaxScaleOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(Out) of MovingAverageAbsMaxScaleOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutScale"),
-                   "Output(OutScale) of MovingAverageAbsMaxScaleOp"
-                   "should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "MovingAverageAbsMaxScale");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "MovingAverageAbsMaxScale");
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+                   "MovingAverageAbsMaxScale");
     if (ctx->HasOutput("OutState")) {
       ctx->SetOutputDim("OutState", {1});
     }
@@ -491,6 +499,43 @@ $$Out = X$$
   }
 };
 
+class FakeQuantDequantGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    auto out_grad_name = framework::GradVarName("Out");
+    auto x_grad_name = framework::GradVarName("X");
+    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
+                   "FakeQuantDequantGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
+                   "FakeQuantDequantGradOp");
+
+    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim(out_grad_name));
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+};
+
+template <typename T>
+class FakeQuantDequantGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("fake_quantize_dequantize_grad");
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -498,12 +543,20 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
-    fake_quantize_abs_max, ops::FakeQuantizeAbsMaxOp,
-    ops::FakeQuantizeAbsMaxOpMaker,
+    fake_quantize_abs_max, ops::FakeQuantOrWithDequantAbsMaxOp,
+    ops::FakeQuantOrWithDequantAbsMaxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(fake_quantize_abs_max,
                        ops::FakeQuantizeAbsMaxKernel<CPU, float>);
+
+REGISTER_OPERATOR(fake_quantize_dequantize_abs_max,
+                  ops::FakeQuantOrWithDequantAbsMaxOp,
+                  ops::FakeQuantOrWithDequantAbsMaxOpMaker,
+                  ops::FakeQuantDequantGradMaker<paddle::framework::OpDesc>,
+                  ops::FakeQuantDequantGradMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(fake_quantize_dequantize_abs_max,
+                       ops::FakeQuantizeDequantizeAbsMaxKernel<CPU, float>);
 
 REGISTER_OPERATOR(
     fake_quantize_range_abs_max, ops::FakeQuantizeRangeAbsMaxOp,
@@ -519,16 +572,14 @@ REGISTER_OPERATOR(
     ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
 REGISTER_OP_CPU_KERNEL(fake_quantize_moving_average_abs_max,
                        ops::FakeQuantizeMovingAverageAbsMaxKernel<CPU, float>);
 
-REGISTER_OPERATOR(
-    fake_quantize_dequantize_moving_average_abs_max,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fake_quantize_dequantize_moving_average_abs_max,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
+                  ops::FakeQuantDequantGradMaker<paddle::framework::OpDesc>,
+                  ops::FakeQuantDequantGradMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     fake_quantize_dequantize_moving_average_abs_max,
     ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CPU, float>);
@@ -548,3 +599,7 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(moving_average_abs_max_scale,
                        ops::MovingAverageAbsMaxScaleKernel<CPU, float>);
+
+REGISTER_OPERATOR(fake_quantize_dequantize_grad, ops::FakeQuantDequantGradOp);
+REGISTER_OP_CPU_KERNEL(fake_quantize_dequantize_grad,
+                       ops::FakeQuantDequantGradKernel<CPU, float>);

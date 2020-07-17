@@ -89,41 +89,57 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Emission"), true,
-                      "Input(Emission) should be not null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Transition"), true,
-                      "Input(Transition) should be not null.");
-
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("ViterbiPath"), true,
-                      "Output(ViterbiPath) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("Emission"), "Input", "Emission",
+                   "CRFDecoding");
+    OP_INOUT_CHECK(ctx->HasInput("Transition"), "Input", "Transition",
+                   "CRFDecoding");
+    OP_INOUT_CHECK(ctx->HasOutput("ViterbiPath"), "Output", "ViterbiPath",
+                   "CRFDecoding");
 
     auto emission_dims = ctx->GetInputDim("Emission");
     bool has_length = ctx->HasInput("Length");
 
     if (has_length) {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
-                        "The Input(Emission) should be a 3-D tensor.");
+                        platform::errors::InvalidArgument(
+                            "The Input(Emission) should be a 3-D tensor. But "
+                            "received: input rank %u, input shape [%s]. ",
+                            emission_dims.size(), emission_dims));
     } else {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
-                        "The Input(Emission) should be a 2-D tensor.");
+                        platform::errors::InvalidArgument(
+                            "The Input(Emission) should be a 2-D tensor. But "
+                            "received: input rank %u, input shape [%s].",
+                            emission_dims.size(), emission_dims));
     }
-    PADDLE_ENFORCE_NE(emission_dims[0], 0,
-                      "An empty mini-batch is not allowed.");
 
     auto transition_dims = ctx->GetInputDim("Transition");
     PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
-                      "The Input(Transition) should be a 2-D tensor.");
+                      platform::errors::InvalidArgument(
+                          "The Input(Transition) should be a 2-D tensor. But "
+                          "received: input rank %u, input shape [%s].",
+                          transition_dims.size(), transition_dims));
     PADDLE_ENFORCE_EQ(
         transition_dims[0] - 2, transition_dims[1],
-        "An invalid dimension for the Input(Transition), which should "
-        "be a 2-D tensor with shape [(D + 2) x D].");
+        platform::errors::InvalidArgument(
+            "An invalid dimension for the Input(Transition), which should "
+            "be a 2-D tensor with shape [(D + 2) x D]. But received: input "
+            "rank %u, "
+            "input shape [%s].",
+            transition_dims.size(), transition_dims));
     if (ctx->IsRuntime() || (emission_dims[emission_dims.size() - 1] > 0 &&
                              transition_dims[transition_dims.size() - 1] > 0)) {
-      PADDLE_ENFORCE_EQ(
-          emission_dims[emission_dims.size() - 1],
-          transition_dims[transition_dims.size() - 1],
-          "The last dimension of the Input(Emission) and the Input(Transition) "
-          "should be equal to the tag number.");
+      PADDLE_ENFORCE_EQ(emission_dims[emission_dims.size() - 1],
+                        transition_dims[transition_dims.size() - 1],
+                        platform::errors::InvalidArgument(
+                            "The last dimension of the Input(Emission) and the "
+                            "Input(Transition) "
+                            "should be equal to the tag number. But received "
+                            "Input(Emission): rank "
+                            "%u, shape [%s]; received Input(Transition): rank "
+                            "%u, shape [%s].",
+                            emission_dims.size(), emission_dims,
+                            transition_dims.size(), transition_dims));
     }
     if (ctx->HasInput("Label")) {
       auto label_dims = ctx->GetInputDim("Label");
@@ -132,20 +148,31 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
             (label_dims.size() == 3UL && label_dims[2] == 1) ||
                 label_dims.size() == 2UL,
             true,
-            "The Input(Label) should be a 3-D tensor with last dimension "
-            "fixed to 1 or a 2-D tensor in padding mode.");
+            platform::errors::InvalidArgument(
+                "The Input(Label) should be a 3-D tensor with last dimension "
+                "fixed to 1 or a 2-D tensor in padding mode. But received: "
+                "input "
+                "rank %u, input shape [%s].",
+                label_dims.size(), label_dims));
       } else {
-        PADDLE_ENFORCE_EQ((label_dims.size() == 2UL && label_dims[1] == 1) ||
-                              label_dims.size() == 1UL,
-                          true,
-                          "The Input(Label) should be a 2-D tensor with last "
-                          "dimension fixed to 1 or a 1-D tensor.");
+        PADDLE_ENFORCE_EQ(
+            (label_dims.size() == 2UL && label_dims[1] == 1) ||
+                label_dims.size() == 1UL,
+            true, platform::errors::InvalidArgument(
+                      "The Input(Label) should be a 2-D tensor with last "
+                      "dimension fixed to 1 or a 1-D tensor. But received: "
+                      "input rank %u, input shape [%s].",
+                      label_dims.size(), label_dims));
       }
       if (ctx->IsRuntime() || (emission_dims[0] > 0 && label_dims[0] > 0)) {
         PADDLE_ENFORCE_EQ(
             emission_dims[0], label_dims[0],
-            "The first dimension of Input(Emission) and Input(Label) "
-            "should be the same.");
+            platform::errors::InvalidArgument(
+                "The first dimension of Input(Emission) and Input(Label) "
+                "should be the same. But received Input(Emission): rank %u, "
+                "shape [%s]; received Input(Label): rank %u, shape [%s].",
+                emission_dims.size(), emission_dims, label_dims.size(),
+                label_dims));
       }
     }
 

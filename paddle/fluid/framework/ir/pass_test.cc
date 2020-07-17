@@ -120,6 +120,50 @@ TEST(PassTest, TestPassAttrCheck) {
     exception = std::string(e.what());
   }
   ASSERT_TRUE(exception.find("shouldn't have cycle") != exception.npos);
+
+  pass = PassRegistry::Instance().Get("test_pass");
+  pass->Set<int>("test_pass_attr", new int);
+  try {
+    pass->Set<int>("test_pass_attr", new int);
+  } catch (paddle::platform::EnforceNotMet& e) {
+    exception = std::string(e.what());
+  }
+  ASSERT_TRUE(
+      exception.find("Attribute test_pass_attr already set in the pass") !=
+      exception.npos);
+}
+
+class TestPassWithDefault : public Pass {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const {
+    graph->Set<int>("copy_default_attr", new int);
+
+    int test_pass_attr = this->Get<int>("default_attr");
+    graph->Get<int>("copy_default_attr") = test_pass_attr + 1;
+  }
+};
+
+TEST(PassTest, TestPassDefaultAttrCheck) {
+  ProgramDesc prog;
+  // check if default value is set
+  auto pass = PassRegistry::Instance().Get("test_pass_default_attr");
+  std::unique_ptr<Graph> graph(new Graph(prog));
+  ASSERT_EQ(pass->Get<int>("default_attr"), 1);
+  graph.reset(pass->Apply(graph.release()));
+  ASSERT_EQ(graph->Get<int>("copy_default_attr"), 2);
+
+  // check if new value overrides default value
+  pass = PassRegistry::Instance().Get("test_pass_default_attr");
+  pass->Set<int>("default_attr", new int{3});
+  ASSERT_EQ(pass->Get<int>("default_attr"), 3);
+}
+
+TEST(PassTest, TestPassRegistrarDeconstructor) {
+  auto pass_registrary =
+      new PassRegistrar<paddle::framework::ir::TestPassWithDefault>(
+          "test_deconstructor");
+  pass_registrary->DefaultPassAttr("deconstructor_attr", new int{1});
+  pass_registrary->~PassRegistrar();
 }
 
 }  // namespace ir
@@ -129,3 +173,7 @@ TEST(PassTest, TestPassAttrCheck) {
 REGISTER_PASS(test_pass, paddle::framework::ir::TestPass)
     .RequirePassAttr("test_pass_attr")
     .RequireGraphAttr("test_graph_attr");
+
+REGISTER_PASS(test_pass_default_attr,
+              paddle::framework::ir::TestPassWithDefault)
+    .DefaultPassAttr("default_attr", new int{1});
