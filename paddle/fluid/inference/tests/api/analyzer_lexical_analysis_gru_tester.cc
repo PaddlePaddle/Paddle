@@ -138,7 +138,6 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
     }
   }
 }
-
 TEST(Analyzer_lexical_analysis_xnli, quantization) {
   AnalysisConfig config;
   SetConfig(&config);
@@ -167,8 +166,13 @@ TEST(Analyzer_lexical_analysis_xnli, quantization) {
         acc_sum[2]
             ? static_cast<float>(2 * precision * recall) / (precision + recall)
             : 0;
-    LOG(INFO) << "Precision: " << precision << ", Recall: " << recall
-              << ", f1_score: " << f1_score;
+
+    LOG(INFO) << "Precision:  " << std::fixed << std::setw(6)
+              << std::setprecision(5) << precision;
+    LOG(INFO) << "Recall:  " << std::fixed << std::setw(6)
+              << std::setprecision(5) << recall;
+    LOG(INFO) << "F1 score: " << std::fixed << std::setw(6)
+              << std::setprecision(5) << f1_score;
   } else {
     EXPECT_GT(outputs.size(), 0UL);
     EXPECT_EQ(1UL, outputs[0].size());

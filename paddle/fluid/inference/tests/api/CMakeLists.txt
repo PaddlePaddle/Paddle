@@ -336,9 +336,9 @@ if(WITH_MKLDNN)
   ### Lexcial analysis GRU model
   set(GRU_PATH "${INFERENCE_DEMO_INSTALL_DIR}/gru")
   download_GRU_data("${GRU_PATH}" "GRU_eval_data.tar.gz")
-  download_GRU_data("${GRU_PATH}" "gru_eval_fp32.tar.gz")
+  download_GRU_data("${GRU_PATH}" "GRU_eval_model.tar.gz")
   set(GRU_DATA_PATH "${GRU_PATH}/GRU_eval_data.bin")
-  set(GRU_MODEL_PATH "${GRU_PATH}/gru_eval_fp32")
+  set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model")
   set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis")
   set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_gru_tester.cc")
 
