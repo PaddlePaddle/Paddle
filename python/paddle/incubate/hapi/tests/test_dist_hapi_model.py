@@ -12,96 +12,119 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
 from __future__ import print_function
 
 import unittest
-
 import os
-import numpy as np
-import contextlib
+import time
+import copy
+import subprocess
+import paddle.fluid as fluid
 
-from paddle import fluid
-
-from paddle.incubate.hapi import Model, Input, set_device
-from paddle.incubate.hapi.loss import CrossEntropy
-from paddle.incubate.hapi.vision.models import LeNet
-from paddle.incubate.hapi.metrics import Accuracy
-from paddle.incubate.hapi.callbacks import ProgBarLogger
-from paddle.incubate.hapi.datasets import MNIST
+from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
 
-class MnistDataset(MNIST):
-    def __init__(self, mode, return_label=True):
-        super(MnistDataset, self).__init__(mode=mode)
-        self.return_label = return_label
+def get_cluster_from_args(selected_gpus):
+    cluster_node_ips = '127.0.0.1'
+    node_ip = '127.0.0.1'
 
-    def __getitem__(self, idx):
-        img = np.reshape(self.images[idx], [1, 28, 28])
-        if self.return_label:
-            return img, np.array(self.labels[idx]).astype('int64')
-        return img,
+    node_ips = [x.strip() for x in cluster_node_ips.split(',')]
 
-    def __len__(self):
-        return len(self.images)
+    node_ips.index(node_ip)
 
+    free_ports = None
 
-def compute_accuracy(pred, gt):
-    pred = np.argmax(pred, -1)
-    gt = np.array(gt)
-
-    correct = pred[:, np.newaxis] == gt
-
-    return np.sum(correct) / correct.shape[0]
+    free_ports = find_free_ports(len(selected_gpus))
+    if free_ports is not None:
+        free_ports = list(free_ports)
+    return get_cluster(node_ips, node_ip, free_ports, selected_gpus)
 
 
-@unittest.skipIf(not fluid.is_compiled_with_cuda(),
-                 'CPU testing is not supported')
-class TestDistTraning(unittest.TestCase):
-    def run(self, dynamic):
-        device = set_device('gpu')
-        fluid.enable_dygraph(device) if dynamic else None
-
-        im_shape = (-1, 784)
-        batch_size = 128
-
-        inputs = [Input(im_shape, 'float32', name='image')]
-        labels = [Input([None, 1], 'int64', name='label')]
-
-        train_dataset = MnistDataset(mode='train')
-        val_dataset = MnistDataset(mode='test')
-        test_dataset = MnistDataset(mode='test', return_label=False)
-
-        model = Model(LeNet(), inputs, labels)
-        optim = fluid.optimizer.Momentum(
-            learning_rate=0.001, momentum=.9, parameter_list=model.parameters())
-        loss = CrossEntropy()
-        model.prepare(optim, loss, Accuracy())
-        cbk = ProgBarLogger(50)
-
-        model.fit(train_dataset,
-                  val_dataset,
-                  epochs=2,
-                  batch_size=batch_size,
-                  callbacks=cbk)
-
-        eval_result = model.evaluate(val_dataset, batch_size=batch_size)
-
-        output = model.predict(
-            test_dataset, batch_size=batch_size, stack_outputs=True)
-
-        np.testing.assert_equal(output[0].shape[0], len(test_dataset))
-
-        acc = compute_accuracy(output[0], val_dataset.labels)
-
-        np.testing.assert_allclose(acc, eval_result['acc'])
-
-    def test_multiple_gpus_static(self):
-        self.run(False)
-
-    def test_multiple_gpus_dygraph(self):
-        self.run(True)
+def get_gpus(selected_gpus):
+    selected_gpus = [x.strip() for x in selected_gpus.split(',')]
+    return selected_gpus
 
 
-if __name__ == '__main__':
+def start_local_trainers(cluster,
+                         pod,
+                         training_script,
+                         training_script_args,
+                         log_dir=None):
+    current_env = copy.copy(os.environ.copy())
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
+    current_env.pop("http_proxy", None)
+    current_env.pop("https_proxy", None)
+
+    procs = []
+    for t in pod.trainers:
+        proc_env = {
+            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
+            "PADDLE_TRAINER_ID": "%d" % t.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+        }
+
+        current_env.update(proc_env)
+
+        print("trainer proc env:{}".format(current_env))
+
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            cmd = "python -m coverage run --branch -p " + training_script
+        else:
+            cmd = "python -u " + training_script
+
+        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+
+        fn = None
+
+        proc = subprocess.Popen(cmd.split(" "), env=current_env)
+
+        tp = TrainerProc()
+        tp.proc = proc
+        tp.rank = t.rank
+        tp.log_fn = fn
+        tp.cmd = cmd
+
+        procs.append(tp)
+
+    return procs
+
+
+class TestMultipleGpus(unittest.TestCase):
+    def run_mnist_2gpu(self, target_file_name):
+        if fluid.core.get_cuda_device_count() == 0:
+            return
+
+        selected_gpus = get_gpus('0,1')
+        cluster = None
+        pod = None
+
+        cluster, pod = get_cluster_from_args(selected_gpus)
+
+        procs = start_local_trainers(
+            cluster,
+            pod,
+            training_script=target_file_name,
+            training_script_args=[])
+
+        while True:
+            alive = watch_local_trainers(procs, cluster.trainers_nranks())
+
+            if not alive:
+                print("Local procs complete, POD info:{}".format(pod))
+                break
+            time.sleep(3)
+
+    def test_hapi_multiple_gpus_static(self):
+        self.run_mnist_2gpu('dist_hapi_mnist_static.py')
+
+    def test_hapi_multiple_gpus_dynamic(self):
+        self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py')
+
+
+if __name__ == "__main__":
     unittest.main()
