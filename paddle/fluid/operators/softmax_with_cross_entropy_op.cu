@@ -28,7 +28,7 @@ __global__ void CrossEntropyGrad(T* logit_grad, const int64_t* labels,
        i += blockDim.x * gridDim.x) {
     int idx_n = i / remain;
     int idx_remain = i % remain;
-    int tmp = labels[index];
+    int tmp = labels[i];
     if (ignore_index != tmp) {
       int idx = idx_n * d + tmp * remain + idx_remain;
       logit_grad[idx] -= static_cast<T>(1.);
