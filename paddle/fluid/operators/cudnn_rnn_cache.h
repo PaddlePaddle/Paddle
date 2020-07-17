@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
@@ -24,16 +25,12 @@ struct CudnnRNNCache {
   CudnnRNNCache() {
     x_desc_ = NULL;
     y_desc_ = NULL;
-    dx_desc_ = NULL;
-    dy_desc_ = NULL;
   }
   ~CudnnRNNCache() { release(); }
 
   cudnnRNNDescriptor_t rnn_desc_;
   cudnnTensorDescriptor_t *x_desc_;
   cudnnTensorDescriptor_t *y_desc_;
-  cudnnTensorDescriptor_t *dx_desc_;
-  cudnnTensorDescriptor_t *dy_desc_;
 
   cudnnTensorDescriptor_t hx_desc_;
   cudnnTensorDescriptor_t cx_desc_;
@@ -82,55 +79,38 @@ struct CudnnRNNCache {
     is_bidirec_ = is_bidirec;
     seed_ = seed;
 
+    const auto numDirections = is_bidirec_ ? 2 : 1;
+
     x_desc_ = new cudnnTensorDescriptor_t[seq_length_];
     y_desc_ = new cudnnTensorDescriptor_t[seq_length_];
-    dx_desc_ = new cudnnTensorDescriptor_t[seq_length_];
-    dy_desc_ = new cudnnTensorDescriptor_t[seq_length_];
-    int dim_a[3];
-    int stride_a[3];
+    std::vector<int> dims;
+    std::vector<int> strides;
+
+    std::vector<int> dims_y;
+    std::vector<int> strides_y;
 
     for (size_t i = 0; i < seq_length_; ++i) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&x_desc_[i]));
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&y_desc_[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnCreateTensorDescriptor(&dx_desc_[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnCreateTensorDescriptor(&dy_desc_[i]));
-      dim_a[0] = batch_size_;
-      dim_a[1] = input_size_;
-      dim_a[2] = 1;
-
-      stride_a[0] = dim_a[2] * dim_a[1];
-      stride_a[1] = dim_a[2];
-      stride_a[2] = 1;
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-          x_desc_[i], CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-          dx_desc_[i], CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-
-      dim_a[0] = batch_size_;
-      dim_a[1] = is_bidirec_ ? hidden_size_ * 2 : hidden_size_;
-      dim_a[2] = 1;
-
-      stride_a[0] = dim_a[2] * dim_a[1];
-      stride_a[1] = dim_a[2];
-      stride_a[2] = 1;
+      dims = {batch_size_, input_size_, 1};
+      strides = {input_size_, 1, 1};
 
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-          y_desc_[i], CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
+          x_desc_[i], CUDNN_DATA_FLOAT, 3, dims.data(), strides.data()));
+
+      dims_y = {batch_size_, hidden_size_ * numDirections, 1};
+      strides_y = {hidden_size_ * numDirections, 1, 1};
+
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-          dy_desc_[i], CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
+          y_desc_[i], CUDNN_DATA_FLOAT, 3, dims_y.data(), strides_y.data()));
     }
 
-    dim_a[0] = num_layers_ * (is_bidirec_ ? 2 : 1);
-    dim_a[1] = batch_size_;
-    dim_a[2] = hidden_size_;
-
-    stride_a[0] = dim_a[2] * dim_a[1];
-    stride_a[1] = dim_a[2];
-    stride_a[2] = 1;
+    std::vector<int> dims_hx;
+    std::vector<int> strides_hx;
+    dims_hx = {num_layers_ * numDirections, batch_size_, hidden_size_};
+    strides_hx = {hidden_size_ * batch_size_, hidden_size_, 1};
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&hx_desc_));
@@ -150,21 +130,21 @@ struct CudnnRNNCache {
         platform::dynload::cudnnCreateTensorDescriptor(&dcy_desc_));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        hx_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
+        hx_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        cx_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
+        cx_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        hy_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
+        hy_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        cy_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
+        cy_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        dhx_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
+        dhx_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        dcx_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
+        dcx_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        dhy_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
+        dhy_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        dcy_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
+        dcy_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateDropoutDescriptor(&dropout_desc_));
@@ -239,16 +219,10 @@ struct CudnnRNNCache {
           platform::dynload::cudnnDestroyTensorDescriptor(x_desc_[i]));
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(y_desc_[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnDestroyTensorDescriptor(dx_desc_[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnDestroyTensorDescriptor(dy_desc_[i]));
     }
 
     delete[] x_desc_;
     delete[] y_desc_;
-    delete[] dx_desc_;
-    delete[] dy_desc_;
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(hx_desc_));

@@ -77,22 +77,22 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     if (is_test) {
       // for inference
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInference(
-          handle, cudnn_rnn_cache->rnn_desc_, seq_len,
-          cudnn_rnn_cache->x_desc_, x_data, cudnn_rnn_cache->hx_desc_,
-          init_h_data, cudnn_rnn_cache->cx_desc_, init_c_data,
-          cudnn_rnn_cache->w_desc_, w_data, cudnn_rnn_cache->y_desc_, out_data,
-          cudnn_rnn_cache->hy_desc_, last_h_data, cudnn_rnn_cache->cy_desc_,
-          last_c_data, cudnn_rnn_cache->workspace_data_.data<uint8_t>(),
+          handle, cudnn_rnn_cache->rnn_desc_, seq_len, cudnn_rnn_cache->x_desc_,
+          x_data, cudnn_rnn_cache->hx_desc_, init_h_data,
+          cudnn_rnn_cache->cx_desc_, init_c_data, cudnn_rnn_cache->w_desc_,
+          w_data, cudnn_rnn_cache->y_desc_, out_data, cudnn_rnn_cache->hy_desc_,
+          last_h_data, cudnn_rnn_cache->cy_desc_, last_c_data,
+          cudnn_rnn_cache->workspace_data_.data<uint8_t>(),
           cudnn_rnn_cache->workspace_size_));
     } else {
       // for train
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardTraining(
-          handle, cudnn_rnn_cache->rnn_desc_, seq_len,
-          cudnn_rnn_cache->x_desc_, x_data, cudnn_rnn_cache->hx_desc_,
-          init_h_data, cudnn_rnn_cache->cx_desc_, init_c_data,
-          cudnn_rnn_cache->w_desc_, w_data, cudnn_rnn_cache->y_desc_, out_data,
-          cudnn_rnn_cache->hy_desc_, last_h_data, cudnn_rnn_cache->cy_desc_,
-          last_c_data, cudnn_rnn_cache->workspace_data_.data<uint8_t>(),
+          handle, cudnn_rnn_cache->rnn_desc_, seq_len, cudnn_rnn_cache->x_desc_,
+          x_data, cudnn_rnn_cache->hx_desc_, init_h_data,
+          cudnn_rnn_cache->cx_desc_, init_c_data, cudnn_rnn_cache->w_desc_,
+          w_data, cudnn_rnn_cache->y_desc_, out_data, cudnn_rnn_cache->hy_desc_,
+          last_h_data, cudnn_rnn_cache->cy_desc_, last_c_data,
+          cudnn_rnn_cache->workspace_data_.data<uint8_t>(),
           cudnn_rnn_cache->workspace_size_, reserve_data, reserve_size));
     }
     delete cudnn_rnn_cache;
@@ -225,21 +225,21 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE((size_t)seq_len, cudnn_rnn_cache->seq_length_,
                       "cudnn running seq_len CAN not greater seq_lengh");
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardData(
-        handle, cudnn_rnn_cache->rnn_desc_, seq_len,
-        cudnn_rnn_cache->y_desc_, out_data, cudnn_rnn_cache->dy_desc_,
-        out_grad_data, cudnn_rnn_cache->dhy_desc_, last_h_grad_data,
+        handle, cudnn_rnn_cache->rnn_desc_, seq_len, cudnn_rnn_cache->y_desc_,
+        out_data, cudnn_rnn_cache->y_desc_, out_grad_data,
+        cudnn_rnn_cache->dhy_desc_, last_h_grad_data,
         cudnn_rnn_cache->dcy_desc_, last_c_grad_data, cudnn_rnn_cache->w_desc_,
         weight_data, cudnn_rnn_cache->hx_desc_, init_h_data,
-        cudnn_rnn_cache->cx_desc_, init_c_data, cudnn_rnn_cache->dx_desc_,
+        cudnn_rnn_cache->cx_desc_, init_c_data, cudnn_rnn_cache->x_desc_,
         in_grad_data, cudnn_rnn_cache->dhx_desc_, init_h_grad_data,
         cudnn_rnn_cache->dcx_desc_, init_c_grad_data, work_data,
         cudnn_rnn_cache->workspace_size_, const_cast<uint8_t *>(reserve_data),
         reserve_size));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeights(
-        handle, cudnn_rnn_cache->rnn_desc_, seq_len,
-        cudnn_rnn_cache->x_desc_, input->data<T>(), cudnn_rnn_cache->hx_desc_,
-        init_h->data<T>(), cudnn_rnn_cache->y_desc_, out->data<T>(),
+        handle, cudnn_rnn_cache->rnn_desc_, seq_len, cudnn_rnn_cache->x_desc_,
+        input->data<T>(), cudnn_rnn_cache->hx_desc_, init_h->data<T>(),
+        cudnn_rnn_cache->y_desc_, out->data<T>(),
         cudnn_rnn_cache->workspace_data_.data<uint8_t>(),
         cudnn_rnn_cache->workspace_size_, cudnn_rnn_cache->dw_desc_,
         weight_grad->data<T>(), const_cast<uint8_t *>(reserve_data),
