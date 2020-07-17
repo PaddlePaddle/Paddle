@@ -439,6 +439,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 #undef INIT_OTHER_DEFINES
 #undef INIT_BASE_DEFINES
 };
+
 }  // namespace operators
 }  // namespace paddle
 
