@@ -357,6 +357,8 @@ __ops__noattr__ = [
     'sin',
     'sqrt',
     'tanh',
+    'sinh',
+    'cosh',
 ]
 
 for _OP in set(__ops__noattr__):
