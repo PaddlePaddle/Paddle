@@ -112,7 +112,7 @@ def train(args, place, to_static):
             state = to_variable(state)
             state.stop_gradient = True
             loss_probs = policy(state)
-            # print(loss_probs.name)
+
             probs = loss_probs.numpy()
 
             action, _mask = sample_action(probs[0])
@@ -166,7 +166,8 @@ def train(args, place, to_static):
         running_reward = 10
         for i_episode in itertools.count(1):
             state, ep_reward = env.reset(), 0
-            for t in range(1, 1000):  # default 1000
+            # The default loop number is 10000 is models, we changed it to 1000 for smaller test
+            for t in range(1, 1000):
                 state = np.array(state).astype("float32")
                 action, loss = select_action(state)
                 state, reward, done, _ = env.step(action)

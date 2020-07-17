@@ -233,14 +233,12 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto exe_ctx = exe.Prepare(*program, 0, skip_vars);
 
     // NOTE(Aurelius84): While training some models, forward can be called many
-    // times and then apply
-    // backpropagation all at once, such as Reinforcement Learning. Tensor data
-    // in multi step training
-    // should be saved into single scope separately. Otherwise, the gradients
-    // can be miscalculated because
+    // times and then apply backpropagation all at once, such as Reinforcement
+    // Learning. Tensor data in multi-step training should be saved into single
+    // scope separately. Otherwise, the gradients can be miscalculated because
     // always using the Tensor data of the last step in forward.
     framework::Scope *global_inner_scope = out_scope_vec->front();
-    VLOG(2) << "number of sub scope before forward: "
+    VLOG(2) << "The number of sub scopes before forward: "
             << out_scope_vec->front()->kids().size();
     framework::Scope &scope = global_inner_scope->NewScope();
 
@@ -262,7 +260,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     if (is_test) {
       out_scope_vec->front()->DropKids();
     }
-    VLOG(2) << "number of sub scope after forward: "
+    VLOG(2) << "The number of sub scopes after forward: "
             << out_scope_vec->front()->kids().size();
   }
 };
@@ -298,8 +296,8 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     auto orig_end_op_index = ctx.Attr<int64_t>("end_op_index");
     // NOTE: skip `shape` and `fill_constant` op created by
-    // fluid.backward.gradients,
-    // one forward output will generate one `shape` and `fill_constant`
+    // fluid.backward.gradients, one forward output will generate one `shape`
+    // and `fill_constant`
     int64_t start_op_index = orig_end_op_index + (output_grad_vars.size() * 2);
     int64_t end_op_index = block->OpSize();
 
@@ -311,7 +309,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     framework::Scope *global_inner_scope = out_scope_vec->front();
     auto sub_scope_num = global_inner_scope->kids().size();
-    VLOG(2) << "number of sub scope before backward: " << sub_scope_num;
+    VLOG(2) << "The number of sub scopes before backward: " << sub_scope_num;
     PADDLE_ENFORCE_GT(sub_scope_num, 0,
                       platform::errors::InvalidArgument(
                           "The OutScope of RunProgramGradOp should hold at "
@@ -349,7 +347,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     // Step5. drop current scope
     global_inner_scope->DeleteScope(&scope);
-    VLOG(2) << "number of sub scope after backward: "
+    VLOG(2) << "The number of sub scopes after backward: "
             << global_inner_scope->kids().size();
   }
 };
