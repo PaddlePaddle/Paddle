@@ -24,10 +24,10 @@ import unittest
 class TestMultiplyAPI(unittest.TestCase):
     """TestMultiplyAPI."""
 
-    def __test_case(self, x_data, y_data, axis=None):
+    def __run_static_graph_case(self, x_data, y_data, axis=-1):
         with program_guard(Program(), Program()):
-            x = paddle.nn.data(name='x', shape=x_data.shape, dtype='float32')
-            y = paddle.nn.data(name='y', shape=y_data.shape, dtype='float32')
+            x = paddle.nn.data(name='x', shape=x_data.shape, dtype=x_data.dtype)
+            y = paddle.nn.data(name='y', shape=y_data.shape, dtype=y_data.dtype)
             res = tensor.multiply(x, y, axis=axis)
 
             place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
@@ -40,70 +40,64 @@ class TestMultiplyAPI(unittest.TestCase):
             res = outs[0]
             return res
 
+    def __run_dynamic_graph_case(self, x_data, y_data, axis=-1):
+        paddle.enable_imperative()
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.multiply(x, y, axis=axis)
+        return res.numpy()
+
     def test_multiply(self):
         """test_multiply."""
         # test static computation graph: 1-d array
-        x_data = np.array([1, 2, 3], dtype=np.float32)
-        y_data = np.array([4, 5, 6], dtype=np.float32)
-        res = self.__test_case(x_data, y_data)
+        x_data = np.random.rand(10)
+        y_data = np.random.rand(10)
+        res = self.__run_static_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph: 2-d array
-        x_data = np.array([[1], [2], [3]], dtype=np.float32)
-        y_data = np.array([[4], [5], [6]], dtype=np.float32)
-        res = self.__test_case(x_data, y_data)
+        x_data = np.random.rand(2, 5)
+        y_data = np.random.rand(2, 5)
+        res = self.__run_static_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph: broadcast
-        x_data = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
-        y_data = np.array([1, 2, 3], dtype=np.float32)
-        res = self.__test_case(x_data, y_data)
-        expected = np.array([[1, 4, 9], [4, 10, 18]], dtype=np.float32)
-        self.assertTrue(np.allclose(res, expected))
+        x_data = np.random.rand(2, 5)
+        y_data = np.random.rand(5)
+        res = self.__run_static_graph_case(x_data, y_data)
+        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph: broadcast with axis
-        x_data = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
-        y_data = np.array([1, 2], dtype=np.float32)
-        res = self.__test_case(x_data, y_data, axis=0)
-        expected = np.array([[1, 2, 3], [8, 10, 12]], dtype=np.float32)
+        x_data = np.random.rand(2, 3, 4)
+        y_data = np.random.rand(3)
+        res = self.__run_static_graph_case(x_data, y_data, axis=1)
+        expected = np.multiply(x_data, y_data[..., np.newaxis])
         self.assertTrue(np.allclose(res, expected))
 
-        # test dynamic computation graph
-        paddle.enable_imperative()
-
         # test dynamic computation graph: 1-d array
-        x_data = np.array([1, 2, 3], dtype=np.float32)
-        y_data = np.array([4, 5, 6], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
-        res = paddle.multiply(x, y)
-        self.assertTrue(np.allclose(res.numpy(), np.multiply(x_data, y_data)))
+        x_data = np.random.rand(10)
+        y_data = np.random.rand(10)
+        res = self.__run_dynamic_graph_case(x_data, y_data)
+        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph: 2-d array
-        x_data = np.array([[1], [2], [3]], dtype=np.float32)
-        y_data = np.array([[4], [5], [6]], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
-        res = paddle.multiply(x, y, axis=1)
-        self.assertTrue(np.allclose(res.numpy(), np.multiply(x_data, y_data)))
+        x_data = np.random.rand(2, 5)
+        y_data = np.random.rand(2, 5)
+        res = self.__run_dynamic_graph_case(x_data, y_data)
+        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph: broadcast
-        x_data = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
-        y_data = np.array([1, 2, 3], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
-        res = paddle.multiply(x, y, axis=1)
-        expected = np.array([[1, 4, 9], [4, 10, 18]], dtype=np.float32)
-        self.assertTrue(np.allclose(res.numpy(), expected))
+        x_data = np.random.rand(2, 5)
+        y_data = np.random.rand(5)
+        res = self.__run_dynamic_graph_case(x_data, y_data)
+        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph: broadcast with axis
-        x_data = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
-        y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
-        res = paddle.multiply(x, y, axis=0)
-        expected = np.array([[1, 2, 3], [8, 10, 12]], dtype=np.float32)
-        self.assertTrue(np.allclose(res.numpy(), expected))
+        x_data = np.random.rand(2, 3, 4)
+        y_data = np.random.rand(3)
+        res = self.__run_dynamic_graph_case(x_data, y_data, axis=1)
+        expected = np.multiply(x_data, y_data[..., np.newaxis])
+        self.assertTrue(np.allclose(res, expected))
 
 
 class TestMultiplyError(unittest.TestCase):
@@ -114,15 +108,15 @@ class TestMultiplyError(unittest.TestCase):
         paddle.enable_imperative()
 
         # dtype can not be int8
-        x_data = np.array([1, 2, 3], dtype=np.int8)
-        y_data = np.array([1, 2, 3], dtype=np.int8)
+        x_data = np.random.randn(10).astype(np.int8)
+        y_data = np.random.randn(10).astype(np.int8)
         x = paddle.imperative.to_variable(x_data)
         y = paddle.imperative.to_variable(y_data)
         self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
 
-        # inputs must must be broadcastable
-        x_data = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
-        y_data = np.array([1, 2], dtype=np.float32)
+        # inputs must be broadcastable
+        x_data = np.random.rand(2, 5)
+        y_data = np.random.rand(2)
         x = paddle.imperative.to_variable(x_data)
         y = paddle.imperative.to_variable(y_data)
         self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
