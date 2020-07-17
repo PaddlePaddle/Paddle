@@ -213,6 +213,7 @@ function cmake_base() {
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
+        -DLITE_GIT_TAG=develop
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -241,6 +242,7 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
+        -DLITE_GIT_TAG=develop \
         -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -370,6 +372,7 @@ function cmake_gen_and_build() {
 }
 
 function build_mac() {
+    set +e
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cat <<EOF
@@ -380,7 +383,11 @@ EOF
     if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
         make clean
     fi
-    make install -j 8
+    make install -j 8;build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
+    set -e
     build_size
 }
 
