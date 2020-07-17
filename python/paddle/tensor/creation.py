@@ -413,7 +413,7 @@ def full(shape, fill_value, dtype=None, name=None):
           
           # attr value is an Variable Tensor.
           val = paddle.fill_constant([1], "float32", 2.0)
-          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32') i
+          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
           # [[2.0] 
           #  [2.0]]
     """
