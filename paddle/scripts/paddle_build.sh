@@ -64,6 +64,9 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
+    # `gym` is only used in unittest, it's not suitable to add in requirements.txt.
+    # Add it dynamically.
+    echo "gym" >> ${PADDLE_ROOT}/python/requirements.txt
     # Support build for all python versions, currently
     # including cp27-cp27m and cp27-cp27mu.
     PYTHON_FLAGS=""
@@ -119,6 +122,8 @@ function cmake_base() {
                 exit 1
             fi
         fi
+        # delete `gym` to avoid modifying requirements.txt in *.whl
+        sed -i .bak "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
@@ -175,6 +180,8 @@ function cmake_base() {
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
+        # delete `gym` to avoid modifying requirements.txt in *.whl
+        sed -i "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     fi
 
     if [ "$SYSTEM" == "Darwin" ]; then
@@ -213,6 +220,7 @@ function cmake_base() {
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
+        -DLITE_GIT_TAG=develop
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -241,6 +249,7 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
+        -DLITE_GIT_TAG=develop \
         -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -370,6 +379,7 @@ function cmake_gen_and_build() {
 }
 
 function build_mac() {
+    set +e
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cat <<EOF
@@ -380,7 +390,11 @@ EOF
     if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
         make clean
     fi
-    make install -j 8
+    make install -j 8;build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
+    set -e
     build_size
 }
 

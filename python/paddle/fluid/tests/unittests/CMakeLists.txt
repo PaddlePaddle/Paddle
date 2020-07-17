@@ -381,16 +381,22 @@ py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_para
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 py_test_modules(test_fuse_bn_act_pass MODULES test_fuse_bn_act_pass ENVS FLAGS_cudnn_deterministic=1 FLAGS_cudnn_batchnorm_spatial_persistent=1 FLAGS_conv_workspace_size_limit=1000)
 
-if(NOT WIN32)
-    # TODO: fix these unittests failure on Windows
+# NOTE: These unittests will appear NaN steadily in windows CI. After analysis,
+# it is found that windows CI will run all the training unittests with the ON_INFER option turned on, 
+# which will not appear in other CIs. The calculation behavior of some ops in inference mode is 
+# inconsistent with that in non-inference mode.
+if(NOT ON_INFER)
     py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
     py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
     py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
-    py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
     set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
     set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
     set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
+endif()
 
+if(NOT WIN32)
+    # TODO: fix these unittests failure on Windows
+    py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
     # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
     py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)

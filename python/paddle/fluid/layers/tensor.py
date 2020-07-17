@@ -1322,25 +1322,35 @@ def isfinite(x):
     return out
 
 
-def range(start, end, step, dtype):
+def range(start, end, step, dtype, name=None):
     """
     Return evenly spaced values within a given interval.
 
-    Values are generated within the half-open interval [start, stop) (in other words,
-    the interval including start but excluding stop).
+    Values are generated within the half-open interval [start, stop) (in other
+    words, the interval including start but excluding stop).
+
+    If dtype is float32 or float64, we advise adding a small epsilon to end to
+    avoid floating point rounding errors when comparing against end.
 
     Parameters:
-        start(float32 | float64 | int32 | int64 | Variable): Start of interval. The interval includes this value.
-            when start is Variable, it is a 1-D Tensor with shape [1].
-        end(float32 | float64 | int32 | int64 | Variable): End of interval. The interval does not include this
-                                 value, except in some cases where step is not an integer
-                                 and floating point round-off affects the length of out. When end is Variable,
-                                 it is a 1-D Tensor with shape [1].
-        step(float32 | float64 | int32 | int64 | Variable): Spacing between values. For any output out, this is the
-                                  distance between two adjacent values, out[i+1] - out[i].
-        dtype(str|core.VarDesc.VarType): the data type of the output tensor, can be float32, float64, int32, int64.
+        start(float|int|Variable): Start of interval. The interval includes
+            this value. If start is Variable, it is a 1-D Tensor with shape [1],
+            and it's data type should be one of int32, int64, float32, float64.
+        end(float|int|Variable): End of interval. The interval does not include
+            this value. When end is Variable, it is a 1-D Tensor with shape [1],
+            and it's data type should be int32, int64, float32, float64.
+        step(float|int|Variable): Spacing between values. For any out, this is
+            the istance between two adjacent values, out[i+1] - out[i].
+            When end is Variable, it is a 1-D Tensor with shape [1], and it's
+            data type should be one of int32, int64, float32, float64.
+        dtype(str|np.dtype|core.VarDesc.VarType): The data type of the output
+            tensor, can be float32, float64, int32, int64.
+        name(str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            Default is None.
 
-    Returns: a 1-D Tensor which is evenly spaced values within a given interval. Its data type is set by dtype.
+    Returns: a 1-D Tensor which is evenly spaced values within a given interval.
+        Its data type is set by dtype.
     
     Return type: Variable
 
@@ -1348,44 +1358,47 @@ def range(start, end, step, dtype):
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             data = fluid.layers.range(0, 10, 2, 'int32')
+            import paddle.fluid as fluid
+
+            out1 = fluid.layers.range(0, 10, 2, 'int32')
+            # [0, 2, 4, 6, 8]
+
+            start_var = fluid.layers.fill_constant([1], 'int64', 3)
+            out2 = fluid.layers.range(start_var, 7, 1, 'int64')
+            # [3, 4, 5, 6]
 
     """
-    check_type(start, 'start', (float, int, Variable), 'range')
-    check_type(end, 'end', (float, int, Variable), 'range')
-    check_type(step, 'step', (float, int, Variable), 'range')
-    helper = LayerHelper("range", **locals())
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
-    check_dtype(dtype, 'create data type',
-                ['float32', 'float64', 'int32', 'int64'], 'range')
-
-    dtype = convert_dtype(dtype)
     if not isinstance(start, Variable):
         start = fill_constant([1], dtype, start)
-    elif convert_dtype(start.dtype) != dtype:
-        # make sure that start, end, step has the same dtype as
-        # `dtype`
-        start = cast(x=start, dtype=dtype)
+    elif start.dtype != dtype:
+        start = cast(start, dtype)
 
     if not isinstance(end, Variable):
         end = fill_constant([1], dtype, end)
-    elif convert_dtype(end.dtype) != dtype:
-        end = cast(x=end, dtype=dtype)
+    elif end.dtype != dtype:
+        end = cast(end, dtype)
 
     if not isinstance(step, Variable):
         step = fill_constant([1], dtype, step)
-    elif convert_dtype(step.dtype) != dtype:
-        step = cast(x=step, dtype=dtype)
+    elif step.dtype != dtype:
+        step = cast(step, dtype)
 
-    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+    if in_dygraph_mode():
+        return core.ops.range(start, end, step)
 
+    check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
+                'range/arange')
+    helper = LayerHelper('range', **locals())
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='range',
         inputs={'Start': start,
                 'End': end,
                 'Step': step},
-        outputs={'Out': [out]})
+        outputs={'Out': out})
     out.stop_gradient = True
     return out
 
