@@ -207,6 +207,27 @@ class TestSinh(TestActivation):
             z_expected = np.sinh(np_x)
             self.assertTrue(np.allclose(z, z_expected))
 
+    def test_api(self):
+        test_data_shape = [11, 17]
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_x = np.random.uniform(0.1, 1,
+                                        test_data_shape).astype("float64")
+            data_x = fluid.layers.data(
+                name="data_x",
+                shape=test_data_shape,
+                append_batch_size=False,
+                dtype="float64")
+
+            pd_sinh_out = paddle.sinh(data_x)
+            exe = fluid.Executor(place=fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            np_sinh_res = exe.run(fluid.default_main_program(),
+                                  feed={"data_x": input_x},
+                                  fetch_list=[pd_sinh_out])
+
+        expected_res = np.sinh(input_x)
+        self.assertTrue(np.allclose(np_sinh_res, expected_res))
+
 
 class TestSinhOpError(unittest.TestCase):
     def test_errors(self):
@@ -244,6 +265,27 @@ class TestCosh(TestActivation):
             z = fluid.layers.cosh(x).numpy()
             z_expected = np.cosh(np_x)
             self.assertTrue(np.allclose(z, z_expected))
+
+    def test_api(self):
+        test_data_shape = [11, 17]
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_x = np.random.uniform(0.1, 1,
+                                        test_data_shape).astype("float64")
+            data_x = fluid.layers.data(
+                name="data_x",
+                shape=test_data_shape,
+                append_batch_size=False,
+                dtype="float64")
+
+            pd_cosh_out = paddle.cosh(data_x)
+            exe = fluid.Executor(place=fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            np_cosh_res = exe.run(fluid.default_main_program(),
+                                  feed={"data_x": input_x},
+                                  fetch_list=[pd_cosh_out])
+
+        expected_res = np.cosh(input_x)
+        self.assertTrue(np.allclose(np_cosh_res, expected_res))
 
 
 class TestCoshOpError(unittest.TestCase):
