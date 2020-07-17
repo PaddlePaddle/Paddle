@@ -20,7 +20,6 @@ import unittest
 import numpy as np
 import contextlib
 
-import paddle
 from paddle import fluid
 
 from paddle.incubate.hapi import Model, Input, set_device

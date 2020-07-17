@@ -40,6 +40,7 @@ def set_device(device):
             if device.lower() == 'gpu' and fluid.is_compiled_with_cuda() \
                 else fluid.CPUPlace()
 
+    global _global_device
     _global_device = device
     return device
 

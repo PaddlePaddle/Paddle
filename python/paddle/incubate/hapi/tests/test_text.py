@@ -23,7 +23,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Linear, Layer
 from paddle.fluid.layers import BeamSearchDecoder
-from paddle.incubate.hapi.model import Model, Input, set_device
+from paddle.incubate.hapi import Model, Input, set_device
 from paddle.incubate.hapi.text import *
 
 
@@ -49,7 +49,7 @@ class ModuleApiTest(unittest.TestCase):
     @staticmethod
     def model_init_wrapper(func):
         def __impl__(self, *args, **kwargs):
-            Model.__init__(self)
+            Layer.__init__(self)
             func(self, *args, **kwargs)
 
         return __impl__
@@ -91,8 +91,8 @@ class ModuleApiTest(unittest.TestCase):
         fluid.default_startup_program().random_seed = self._random_seed
         layer = self.model_cls(**self.attrs) if isinstance(
             self.attrs, dict) else self.model_cls(*self.attrs)
-        model = Model(layer)
-        model.prepare(inputs=self.make_inputs(), device=place)
+        model = Model(layer, inputs=self.make_inputs())
+        model.prepare()
         if self.param_states:
             model.load(self.param_states, optim_state=None)
         return model.test_batch(self.inputs)
