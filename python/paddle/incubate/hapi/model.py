@@ -1028,10 +1028,6 @@ class Model(object):
                 no loss.
             metrics (Metric|list of Metric|None): If metrics is set, all
                 metrics will be calculated and output in train/eval mode.
-            device (str|fluid.CUDAPlace|fluid.CPUPlace|None): Specify device
-                type, 'CPU', 'GPU', fluid.CUDAPlace or fluid.CPUPlace.
-                If None, automatically select device according to
-                installation package version.
 
         Returns:
             None
