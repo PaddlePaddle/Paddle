@@ -205,7 +205,9 @@ void BasicEngine::Execute() {
             continue;
           }
 
-          var = std::make_shared<VariableWrapper>(var->Name());
+          auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
+          tmp_var->SetType(var->Type());
+          var = tmp_var;
           need_accu_var_list_.emplace_back(iter->second.get(), var);
         }
       }

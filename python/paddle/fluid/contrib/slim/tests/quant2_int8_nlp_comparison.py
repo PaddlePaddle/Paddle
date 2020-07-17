@@ -17,8 +17,6 @@ import os
 import sys
 import argparse
 import logging
-import struct
-import six
 import numpy as np
 import time
 import paddle
@@ -143,7 +141,8 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
                  batch_size=1,
                  batch_num=1,
                  skip_batch_num=0,
-                 transform_to_int8=False):
+                 target='quant'):
+        assert target in ['quant', 'int8', 'fp32']
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         inference_scope = fluid.executor.global_scope()
@@ -159,15 +158,19 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if (self._debug):
                 graph.draw('.', 'quant_orig', graph.all_op_nodes())
-            if (transform_to_int8):
-                transform_to_mkldnn_int8_pass = Quant2Int8MkldnnPass(
+            if (target != 'quant'):
+                quant_transform_pass = Quant2Int8MkldnnPass(
                     self._quantized_ops,
                     _op_ids_to_skip=self._op_ids_to_skip,
                     _scope=inference_scope,
                     _place=place,
                     _core=core,
                     _debug=self._debug)
-                graph = transform_to_mkldnn_int8_pass.apply(graph)
+                if (target == 'int8'):
+                    graph = quant_transform_pass.apply(graph)
+                else:  # target == fp32
+                    graph = quant_transform_pass.prepare_and_optimize_fp32(
+                        graph)
 
             inference_program = graph.to_program()
 
@@ -223,26 +226,35 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
 
             return acc_avg, pps_avg, latency_avg
 
-    def _summarize_performance(self, fp32_pps, fp32_lat, int8_pps, int8_lat):
-        _logger.info('--- Performance summary ---')
+    def _print_performance(self, title, pps, lat):
         _logger.info(
-            'FP32: avg predictions per sec: {0:.2f}, avg latency: {1:.4f} ms'.
-            format(fp32_pps, fp32_lat))
-        _logger.info(
-            'INT8: avg predictions per sec: {0:.2f}, avg latency: {1:.4f} ms'.
-            format(int8_pps, int8_lat))
+            '{0}: avg predictions per sec: {1:.2f}, avg latency: {2:.4f} ms'.
+            format(title, pps, lat))
 
-    def _compare_accuracy(self, fp32_acc, int8_acc, threshold):
+    def _print_accuracy(self, title, acc):
+        _logger.info('{0}: avg accuracy: {1:.6f}'.format(title, acc))
+
+    def _summarize_performance(self, int8_pps, int8_lat, fp32_pps, fp32_lat):
+        _logger.info('--- Performance summary ---')
+        self._print_performance('INT8', int8_pps, int8_lat)
+        if fp32_lat >= 0:
+            self._print_performance('FP32', fp32_pps, fp32_lat)
+
+    def _summarize_accuracy(self, quant_acc, int8_acc, fp32_acc):
         _logger.info('--- Accuracy summary ---')
+        self._print_accuracy('Quant', quant_acc)
+        self._print_accuracy('INT8', int8_acc)
+        if fp32_acc >= 0:
+            self._print_accuracy('FP32', fp32_acc)
+
+    def _compare_accuracy(self, threshold, quant_acc, int8_acc):
         _logger.info(
-            'Accepted accuracy drop threshold: {0}. (condition: (FP32_acc - INT8_acc) <= threshold)'
+            'Accepted accuracy drop threshold: {0}. (condition: (Quant_acc - INT8_acc) <= threshold)'
             .format(threshold))
-        _logger.info('FP32: avg accuracy: {0:.6f}'.format(fp32_acc))
-        _logger.info('INT8: avg accuracy: {0:.6f}'.format(int8_acc))
         # Random outputs give accuracy about 0.33, we assume valid accuracy to be at least 0.5
-        assert fp32_acc > 0.5
+        assert quant_acc > 0.5
         assert int8_acc > 0.5
-        assert fp32_acc - int8_acc <= threshold
+        assert quant_acc - int8_acc <= threshold
 
     def test_graph_transformation(self):
         if not fluid.core.is_compiled_with_mkldnn():
@@ -250,9 +262,9 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
 
         quant_model_path = test_case_args.quant_model
         assert quant_model_path, 'The Quant model path cannot be empty. Please, use the --quant_model option.'
-        fp32_model_path = test_case_args.fp32_model if test_case_args.fp32_model else quant_model_path
         data_path = test_case_args.infer_data
         assert data_path, 'The dataset path cannot be empty. Please, use the --infer_data option.'
+        fp32_model_path = test_case_args.fp32_model
         labels_path = test_case_args.labels
         batch_size = test_case_args.batch_size
         batch_num = test_case_args.batch_num
@@ -270,9 +282,10 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
             self._op_ids_to_skip = set(
                 map(int, test_case_args.op_ids_to_skip.split(',')))
 
-        _logger.info('FP32 & Quant INT8 prediction run.')
+        _logger.info('Quant & INT8 prediction run.')
         _logger.info('Quant model: {}'.format(quant_model_path))
-        _logger.info('FP32 model: {}'.format(fp32_model_path))
+        if fp32_model_path:
+            _logger.info('FP32 model: {}'.format(fp32_model_path))
         _logger.info('Dataset: {}'.format(data_path))
         _logger.info('Labels: {}'.format(labels_path))
         _logger.info('Batch size: {}'.format(batch_size))
@@ -284,18 +297,20 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
             map(str, self._op_ids_to_skip)) if test_case_args.op_ids_to_skip
                                                                else 'none'))
 
-        _logger.info('--- FP32 prediction start ---')
+        _logger.info('--- Quant prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path, labels_path), batch_size=batch_size)
-        fp32_acc, fp32_pps, fp32_lat = self._predict(
+        quant_acc, quant_pps, quant_lat = self._predict(
             val_reader,
-            fp32_model_path,
+            quant_model_path,
             batch_size,
             batch_num,
             skip_batch_num,
-            transform_to_int8=False)
-        _logger.info('FP32: avg accuracy: {0:.6f}'.format(fp32_acc))
-        _logger.info('--- Quant INT8 prediction start ---')
+            target='quant')
+        self._print_performance('Quant', quant_pps, quant_lat)
+        self._print_accuracy('Quant', quant_acc)
+
+        _logger.info('--- INT8 prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path, labels_path), batch_size=batch_size)
         int8_acc, int8_pps, int8_lat = self._predict(
@@ -304,11 +319,29 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
             batch_size,
             batch_num,
             skip_batch_num,
-            transform_to_int8=True)
-        _logger.info('INT8: avg accuracy: {0:.6f}'.format(int8_acc))
+            target='int8')
+        self._print_performance('INT8', int8_pps, int8_lat)
+        self._print_accuracy('INT8', int8_acc)
 
-        self._summarize_performance(fp32_pps, fp32_lat, int8_pps, int8_lat)
-        self._compare_accuracy(fp32_acc, int8_acc, acc_diff_threshold)
+        fp32_acc = fp32_pps = fp32_lat = -1
+        if fp32_model_path:
+            _logger.info('--- FP32 prediction start ---')
+            val_reader = paddle.batch(
+                self._reader_creator(data_path, labels_path),
+                batch_size=batch_size)
+            fp32_acc, fp32_pps, fp32_lat = self._predict(
+                val_reader,
+                fp32_model_path,
+                batch_size,
+                batch_num,
+                skip_batch_num,
+                target='fp32')
+            self._print_performance('FP32', fp32_pps, fp32_lat)
+            self._print_accuracy('FP32', fp32_acc)
+
+        self._summarize_performance(int8_pps, int8_lat, fp32_pps, fp32_lat)
+        self._summarize_accuracy(quant_acc, int8_acc, fp32_acc)
+        self._compare_accuracy(acc_diff_threshold, quant_acc, int8_acc)
 
 
 if __name__ == '__main__':
