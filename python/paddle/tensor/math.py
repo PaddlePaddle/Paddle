@@ -260,94 +260,6 @@ def pow(input, exponent, out=None, name=None):
     return out
 
 
-def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
-    """
-	:alias_main: paddle.mul
-	:alias: paddle.mul,paddle.tensor.mul,paddle.tensor.math.mul
-
-    Mul Operator.
-    This operator is used to perform matrix multiplication for input $x$ and $y$.
-    The equation is:
-
-    ..  math::
-        Out = x * y
-
-    Both the input $x$ and $y$ can carry the LoD (Level of Details) information, or not. 
-    But the output only shares the LoD information with input $x$.
-
-    Args:
-        x (Variable): The first input Tensor/LoDTensor of mul_op.
-        y (Variable): The second input Tensor/LoDTensor of mul_op.
-        x_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. 
-            If the input $x$ is a tensor with more than two dimensions, $x$ will be flattened into a two-dimensional 
-            matrix first. The flattening rule is: the first `num_col_dims` will be flattened to form the first 
-            dimension of the final matrix (the height of the matrix), and the rest `rank(x) - num_col_dims` 
-            dimensions are flattened to form the second dimension of the final matrix (the width of the matrix). 
-            As a result, height of the flattened matrix is equal to the product of $x$'s first `x_num_col_dims` dimensions' 
-            sizes, and width of the flattened matrix is equal to the product of $x$'s last `rank(x) - num_col_dims` 
-            dimensions' size. For example, suppose $x$ is a 6-dimensional tensor with the shape [2, 3, 4, 5, 6], 
-            and `x_num_col_dims` = 3. Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default is 1. 
-        y_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the 
-            input $y$ is a tensor with more than two dimensions, $y$ will be flattened into a two-dimensional matrix first. 
-            The attribute `y_num_col_dims` determines how $y$ is flattened. See comments of `x_num_col_dims` for more details. 
-            Default is 1. 
-        out(Variable, optinal): The Variable that stores results of the operation. If out is None, 
-            a new Variable will be created to store the results.
-        name (str, optional): Name of the output. Normally there is no need for user to set this property. 
-            For more information, please refer to :ref:`api_guide_Name`. Default is None. If both of out and name are not None, 
-            the output name will be same as out. 
-
-    Returns:
-        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of mul op.
-
-    Examples:
-        ..  code-block:: python
-            
-            import paddle
-            import paddle.fluid as fluid
-            dataX = fluid.data(name="dataX", shape=[2, 5], dtype="float32")
-            dataY = fluid.data(name="dataY", shape=[5, 3], dtype="float32")
-            
-            res = fluid.data(name="output", shape=[2, 3], dtype="float32")
-            output = paddle.mul(dataX, dataY,
-                                      x_num_col_dims = 1,
-                                      y_num_col_dims = 1, 
-                                      out=res)
-            
-
-    """
-    inputs = {"X": [x], "Y": [y]}
-    attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
-    if in_dygraph_mode():
-        outs = core.ops.mul(inputs, attrs)
-        return outs['Out'][0]
-
-    helper = LayerHelper("mul", **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mul')
-    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'mul')
-
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        check_dtype(
-            out.dtype, out.name,
-            convert_dtype(x.dtype), 'mul',
-            '(The out data type in pow must be the same with input data type.)')
-        if name:
-            warnings.warn(
-                "The output Variable name of the paddle.tensor.pow operation can only be given by parameter out or name.\
-                When parameter out and name are set at the same time, out has a higher priority than name. \
-                Finally, the output Variable name is same as the out name %s"
-                                                                              %
-                out.name,
-                category=UserWarning,
-                stacklevel=2)
-    helper.append_op(
-        type="mul", inputs={"X": x,
-                            "Y": y}, attrs=attrs, outputs={"Out": out})
-    return out
-
-
 __ops__noattr__ = [
     'atan',
     'sin',
@@ -1386,7 +1298,7 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
     return out
 
 
-def log1p(x, out=None, name=None):
+def log1p(x, name=None):
     """
 	:alias_main: paddle.log1p
 	:alias: paddle.log1p,paddle.tensor.log1p,paddle.tensor.math.log1p
@@ -1396,9 +1308,6 @@ def log1p(x, out=None, name=None):
         Out = \\ln(x+1)
     Args:
         x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
-        out(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
@@ -1427,10 +1336,10 @@ def log1p(x, out=None, name=None):
     inputs = {'X': [x]}
     helper = LayerHelper('log1p', **locals())
     dtype = helper.input_dtype(input_param_name='x')
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
     return out
+
 
 def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
     """
