@@ -35,7 +35,6 @@ from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
 from paddle.io import DataLoader, Dataset
 
-#from .loss import Loss
 from .distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from .metrics import Metric
 from .callbacks import config_callbacks
@@ -379,15 +378,15 @@ class StaticGraphAdapter(object):
         losses = []
         metrics = []
         with fluid.program_guard(prog, self._startup_prog):
-            ins = self.model._inputs
-            lbls = self.model._labels if self.model._labels else []
-            inputs = [k.forward() for k in to_list(ins)]
-            labels = [k.forward() for k in to_list(lbls)]
+            inputs = self.model._inputs
+            labels = self.model._labels if self.model._labels else []
+            inputs = [k.forward() for k in to_list(inputs)]
+            labels = [k.forward() for k in to_list(labels)]
             self._label_vars[mode] = labels
             outputs = to_list(self.model.forward(*inputs))
 
             if mode != 'test' and self.model._loss_function:
-                losses = self.model._loss_function(outputs, labels)
+                losses = self.model._loss_function(*(outputs + labels))
 
             if self._nranks > 1 and mode != 'train':
                 outputs = [_all_gather(o, self._nranks) for o in outputs]
@@ -420,7 +419,7 @@ class StaticGraphAdapter(object):
         self._progs[mode] = prog
         self._endpoints[mode] = {
             "output": outputs,
-            "loss": losses,
+            "loss": to_list(losses),
             "metric": metrics
         }
 
@@ -497,18 +496,21 @@ class DynamicGraphAdapter(object):
         super(Model, self.model).train()
         self.mode = 'train'
         inputs = to_list(inputs)
-        if labels is not None:
-            labels = [to_variable(l) for l in to_list(labels)]
+        labels = labels or []
+        labels = [to_variable(l) for l in to_list(labels)]
+
         if self._nranks > 1:
             outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
-            losses = self.model._loss_function(outputs, labels)
+            losses = self.model._loss_function(*(to_list(outputs) + labels))
+            losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
             final_loss = self.ddp_model.scale_loss(final_loss)
             final_loss.backward()
             self.ddp_model.apply_collective_grads()
         else:
             outputs = self.model.forward(*[to_variable(x) for x in inputs])
-            losses = self.model._loss_function(outputs, labels)
+            losses = self.model._loss_function(*(to_list(outputs) + labels))
+            losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
 
@@ -516,8 +518,7 @@ class DynamicGraphAdapter(object):
         self.model.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(*(
-                to_list(outputs) + to_list(labels)))
+            metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
@@ -528,13 +529,16 @@ class DynamicGraphAdapter(object):
         super(Model, self.model).eval()
         self.mode = 'eval'
         inputs = to_list(inputs)
-        if labels is not None:
-            labels = [to_variable(l) for l in to_list(labels)]
+        labels = labels or []
+        labels = [to_variable(l) for l in to_list(labels)]
+
         outputs = self.model.forward(*[to_variable(x) for x in inputs])
         if self.model._loss_function:
-            losses = self.model._loss_function(outputs, labels)
+            losses = self.model._loss_function(*(to_list(outputs) + labels))
+            losses = to_list(losses)
         else:
             losses = []
+
         if self._nranks > 1:
             outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
             labels = [_all_gather(l, self._nranks) for l in labels]
@@ -560,8 +564,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(*(
-                to_list(outputs) + to_list(labels)))
+            metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 

@@ -27,7 +27,6 @@ from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
 from paddle.fluid.dygraph.base import to_variable
 
 from paddle.incubate.hapi.model import Model, Input, set_device
-#from paddle.incubate.hapi.loss import CrossEntropy
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.incubate.hapi.metrics import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
@@ -36,7 +35,7 @@ from paddle.incubate.hapi.distributed import DistributedBatchSampler, prepare_di
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation='softmax'):
+    def __init__(self, num_classes=10, classifier_activation=None):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes
         self.features = Sequential(
@@ -97,7 +96,7 @@ def dynamic_train(model, dataloader):
     model.train()
     for inputs, labels in dataloader:
         outputs = model(inputs)
-        loss = fluid.layers.cross_entropy(outputs, labels)
+        loss = CrossEntropyLoss(reduction="sum")(outputs, labels)
         avg_loss = fluid.layers.reduce_sum(loss)
         avg_loss.backward()
         optim.minimize(avg_loss)
@@ -300,8 +299,7 @@ class TestModelFunction(unittest.TestCase):
                                         parameter_list=m.parameters())
             m.train()
             output = m(to_variable(data))
-            l = to_variable(label)
-            loss = fluid.layers.cross_entropy(output, l)
+            loss = CrossEntropyLoss(reduction='sum')(output, to_variable(label))
             avg_loss = fluid.layers.reduce_sum(loss)
             avg_loss.backward()
             optim.minimize(avg_loss)
