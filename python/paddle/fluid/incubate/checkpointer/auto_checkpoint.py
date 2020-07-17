@@ -25,7 +25,7 @@ from contextlib import contextmanager
 
 from paddle.fluid import unique_name, compiler
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
-from .checkpointer import SerializableBase, Checkpointer, PaddleModel
+from .checkpointer import SerializableBase, CheckpointSaver, PaddleModel
 from paddle.fluid.framework import in_dygraph_mode, Program
 
 g_train_epoch_range = None
@@ -298,7 +298,7 @@ class TrainEpochRange(SerializableBase):
 
         self._hdfs = HDFSClient(self._checker.hdfs_home, config)
 
-        self._cper = Checkpointer(self._hdfs)
+        self._cper = CheckpointSaver(self._hdfs)
         self._file_name = "range_train_status"
 
         _thread_checker()
@@ -556,7 +556,7 @@ def _auto_checkpoint(exe, program):
     if key in exe_status:
         t = exe_status[key]
         if t._restored_from is None:
-            a = Checkpointer(g_train_epoch_range._hdfs)
+            a = CheckpointSaver(g_train_epoch_range._hdfs)
             m = PaddleModel(exe, program)
             a.load_checkpoint(
                 g_checker.get_exe_checkpoint_path(key), [m],

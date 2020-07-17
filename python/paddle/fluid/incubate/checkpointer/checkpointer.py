@@ -48,7 +48,7 @@ class PaddleModel(SerializableBase):
         #filename=self._file_name)
 
 
-class Checkpointer(object):
+class CheckpointSaver(object):
     def __init__(self, fs):
         self._fs = fs
         self._checkpoint_prefix = "__paddle_checkpoint__"
