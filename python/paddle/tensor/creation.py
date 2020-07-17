@@ -418,8 +418,6 @@ def full(shape, fill_value, dtype=None, name=None):
           #  [2.0]]
     """
 
-    helper = LayerHelper("full", **locals())
-
     if dtype is None:
         dtype = 'float32'
 
