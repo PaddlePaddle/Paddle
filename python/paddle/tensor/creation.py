@@ -74,6 +74,10 @@ def full_like(x, fill_value, dtype=None, name=None):
     Returns:
         out(Variable): The Tensor variable storing the output.
     
+    Raises:
+        TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None
+        and the data type of out Tensor must be the same as the dtype. 
+    
     Examples:
         .. code-block:: python
 
@@ -128,6 +132,11 @@ def ones(shape, dtype=None, name=None):
     Returns:
         Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
 
+    Raises:
+        TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None
+        and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The `shape` must be one of list, tuple and Variable.
+    
     Examples:
         .. code-block:: python
 
@@ -380,7 +389,7 @@ def full(shape, fill_value, dtype=None, name=None):
 
     Raises:
         TypeError: The `dtype` must be one of None, bool, float16, float32, float64, int32 and int64.
-        TypeError: The `shape` must be one of Variable, list tuple.
+        TypeError: The `shape` must be one of Variable, list and tuple.
     
     Examples:
         .. code-block:: python
