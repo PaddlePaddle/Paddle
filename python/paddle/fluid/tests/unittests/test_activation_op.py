@@ -183,7 +183,7 @@ class TestAtan(TestActivation, TestParameter):
             self.assertEqual(z, z_expected)
 
 
-class TestSinh(TestActivation, TestParameter):
+class TestSinh(TestActivation):
     def setUp(self):
         self.op_type = "sinh"
         self.init_dtype()
@@ -221,7 +221,7 @@ class TestSinhOpError(unittest.TestCase):
             fluid.layers.sinh(x_fp16)
 
 
-class TestCosh(TestActivation, TestParameter):
+class TestCosh(TestActivation):
     def setUp(self):
         self.op_type = "cosh"
         self.init_dtype()
