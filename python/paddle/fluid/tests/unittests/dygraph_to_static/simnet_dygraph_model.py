@@ -42,7 +42,7 @@ class EmbeddingLayer(object):
         # causes crush in dy2stat. Set it to True after fixing it.
         emb = Embedding(
             size=[self.dict_size, self.emb_dim],
-            is_sparse=False,
+            is_sparse=True,
             padding_idx=self.padding_idx,
             param_attr=attr.ParamAttr(
                 name=self.name, initializer=fluid.initializer.Xavier()))
