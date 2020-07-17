@@ -133,7 +133,9 @@ framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
     layout = framework::DataLayout::kMKLDNN;
   }
 #endif
-  return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(), layout,
+      library);
 }
 
 void FusionGRUOpMaker::Make() {

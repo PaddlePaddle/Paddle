@@ -410,12 +410,7 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
   }
 }
 
-enum class RNNReorderType{
-  PP_NTC,
-  PP_TNC,
-  NTC_PP,
-  TNC_PP
-};
+enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 
 }  // namespace platform
 }  // namespace paddle
