@@ -322,7 +322,7 @@ class StaticGraphAdapter(object):
         rets = [np.array(v) for v in rets]
         if self.mode == 'test':
             return rets[:]
-        losses = rets[:num_loss]
+
         metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
         metrics = []
         for metric, state in zip(self.model._metrics, metric_states):
@@ -346,7 +346,11 @@ class StaticGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metrics.append(metric.update(*state))
-        return (losses, metrics) if len(metrics) > 0 else losses
+
+        if num_loss and len(metrics):
+            return rets[:num_loss], metrics
+        else:
+            return rets[:num_loss] if num_loss else metrics
 
     def prepare(self):
         modes = ['train', 'eval', 'test']
@@ -536,8 +540,6 @@ class DynamicGraphAdapter(object):
         if self.model._loss_function:
             losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
-        else:
-            losses = []
 
         if self._nranks > 1:
             outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
@@ -568,10 +570,12 @@ class DynamicGraphAdapter(object):
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
-        # To be consistent with static graph
-        # return empty loss if loss_function is None
-        return ([to_numpy(l) for l in losses], metrics) \
-            if len(metrics) > 0 else [to_numpy(l) for l in losses]
+        if self.model._loss_function and len(metrics):
+            return [to_numpy(l) for l in losses], metrics
+        elif self.model._loss_function:
+            return [to_numpy(l) for l in losses]
+        elif self.model._loss_function:
+            return metrics
 
     def test_batch(self, inputs):
         super(Model, self.model).eval()
@@ -1626,9 +1630,12 @@ class Model(fluid.dygraph.Layer):
             if mode != 'test':
                 outs = getattr(self, mode + '_batch')(data[:len(self._inputs)],
                                                       data[len(self._inputs):])
-                # losses
-                loss = outs[0] if self._metrics else outs
-                metrics = [[l[0] for l in loss]]
+                if self._metrics and self._loss_function:
+                    metrics = [[l[0] for l in outs[0]]]
+                elif self._loss_function:
+                    metrics = [[l[0] for l in outs]]
+                else:
+                    metrics = []
 
                 # metrics
                 for metric in self._metrics:
@@ -1666,7 +1673,7 @@ class Model(fluid.dygraph.Layer):
             metric.reset()
 
     def _metrics_name(self):
-        metrics_name = ['loss']
+        metrics_name = ['loss'] if self._loss_function else []
         for m in self._metrics:
             metrics_name.extend(to_list(m.name()))
         return metrics_name
