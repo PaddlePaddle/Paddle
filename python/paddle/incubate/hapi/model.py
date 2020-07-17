@@ -1573,27 +1573,45 @@ class Model(fluid.dygraph.Layer):
         Returns:
             list: The fetch variables' name list
         """
-        assert not fluid.in_dygraph_mode(
-        ), 'Save inference model must in static mode!'
+        def get_feed_fetch(var_list):
+            from paddle.fluid import framework
+            vars = [
+                var for var in var_list if isinstance(var, framework.Variable)
+            ]
+            var_name_list = [var.name for var in vars]
 
-        prog = self._adapter._progs.get('test', None)
-        assert prog, \
-            "Model is not ready, please call `model.prepare()` first"
+            return var_name_list
 
-        infer_prog = prog.clone(for_test=True)
+        if fluid.in_dygraph_mode():
+            from paddle.fluid.dygraph import ProgramTranslator
+            prog_trans = ProgramTranslator()
 
-        input_names = [v.name for v in self._adapter._input_vars['test']]
-        endpoints = self._adapter._endpoints['test']['output']
+            func_spec, (concrete_program,
+                        partial_layer) = prog_trans._program_cache.last()
+            prog_trans.save_inference_model(save_dir)
 
-        return fluid.io.save_inference_model(
-            save_dir,
-            input_names,
-            endpoints,
-            self._adapter._executor,
-            main_program=infer_prog,
-            model_filename=model_filename,
-            params_filename=params_filename,
-            program_only=model_only)
+            fetch_var_name_list = get_feed_fetch(concrete_program.outputs)
+            return fetch_var_name_list
+
+        else:
+            prog = self._adapter._progs.get('test', None)
+            assert prog, \
+                "Model is not ready, please call `model.prepare()` first"
+            infer_prog = prog.clone(for_test=True)
+
+            input_names = [v.name for v in self._adapter._input_vars['test']]
+            endpoints = self._adapter._endpoints['test']['output']
+
+            return fluid.io.save_inference_model(
+                save_dir,
+                input_names,
+                endpoints,
+                self._adapter._executor,
+                main_program=infer_prog,
+                model_filename=model_filename,
+                params_filename=params_filename,
+                program_only=model_only)
+
 
     def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
         outputs = []
@@ -1671,3 +1689,4 @@ class Model(fluid.dygraph.Layer):
         except Exception:
             steps = None
         return steps
+
