@@ -86,10 +86,8 @@ def equal_all(x, y, name=None):
     helper = LayerHelper("equal_all", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
     helper.append_op(
-        type='equal_reduce',
-        inputs={'X': [x],
-                'Y': [y]},
-        outputs={'Out': [out]})
+        type='equal_all', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [out]})
     return out
 
 

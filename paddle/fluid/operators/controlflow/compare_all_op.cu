@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <thrust/fill.h>
-#include "paddle/fluid/operators/controlflow/compare_reduce_op.h"
+#include "paddle/fluid/operators/controlflow/compare_all_op.h"
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 namespace paddle {
 namespace operators {
@@ -95,5 +95,5 @@ class CompareReduceOpKernel
           paddle::platform::CUDADeviceContext, functor<float>>,        \
       paddle::operators::CompareReduceOpKernel<                        \
           paddle::platform::CUDADeviceContext, functor<double>>);
-REGISTER_COMPARE_REDUCE_CUDA_KERNEL(equal_reduce,
+REGISTER_COMPARE_REDUCE_CUDA_KERNEL(equal_all,
                                     paddle::operators::EqualReduceFunctor);

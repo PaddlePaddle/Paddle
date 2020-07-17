@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/controlflow/compare_reduce_op.h"
+#include "paddle/fluid/operators/controlflow/compare_all_op.h"
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -145,7 +145,7 @@ class CompareReduceOp : public framework::OperatorWithKernel {
           ::paddle::platform::CPUDeviceContext, functor<float>>,        \
       ::paddle::operators::CompareReduceOpKernel<                       \
           ::paddle::platform::CPUDeviceContext, functor<double>>);
-REGISTER_COMPARE_REDUCE_OP(equal_reduce, "X == Y");
+REGISTER_COMPARE_REDUCE_OP(equal_all, "X == Y");
 
-REGISTER_COMPARE_REDUCE_CPU_KERNEL(equal_reduce,
+REGISTER_COMPARE_REDUCE_CPU_KERNEL(equal_all,
                                    paddle::operators::EqualReduceFunctor);
