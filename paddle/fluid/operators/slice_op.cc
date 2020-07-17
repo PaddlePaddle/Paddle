@@ -150,7 +150,7 @@ class SliceOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.device_context());
+        ctx.Input<Tensor>("Input")->place());
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
