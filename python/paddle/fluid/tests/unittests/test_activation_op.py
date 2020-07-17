@@ -917,22 +917,15 @@ class TestLog1p(TestActivation):
                 shape=[11, 17],
                 append_batch_size=False,
                 dtype="float64")
-            res_log1p = fluid.layers.data(
-                name="res_log1p",
-                shape=[11, 17],
-                append_batch_size=False,
-                dtype="float64")
 
             out1 = paddle.log1p(data_x)
-            out2 = paddle.log1p(data_x, out=res_log1p)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            res1, res_in = exe.run(fluid.default_main_program(),
-                                   feed={"data_x": input_x},
-                                   fetch_list=[out1, res_log1p])
+            res1 = exe.run(fluid.default_main_program(),
+                           feed={"data_x": input_x},
+                           fetch_list=[out1])
         expected_res = np.log1p(input_x)
-        np.testing.assert_allclose(res1, expected_res)
-        np.testing.assert_allclose(res_in, expected_res)
+        self.assertTrue(np.allclose(res1, expected_res))
 
         # dygraph
         with fluid.dygraph.guard():
@@ -941,7 +934,7 @@ class TestLog1p(TestActivation):
             z = paddle.log1p(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log1p(np_x))
-        np.testing.assert_allclose(np_z, z_expected)
+        self.assertTrue(np.allclose(np_z, z_expected))
 
 
 class TestSquare(TestActivation):
