@@ -169,6 +169,8 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2]) {
         return mkldnn::memory::format_tag::ncw;
+      } else if (strides[1] >= strides[0] && strides[0] >= strides[2]) {
+        return mkldnn::memory::format_tag::ntc;
       } else {
         return mkldnn::memory::format_tag::nwc;
       }
@@ -407,6 +409,13 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
     return {{padding_top, padding_left}, {padding_bottom, padding_right}};
   }
 }
+
+enum class RNNReorderType{
+  PP_NTC,
+  PP_TNC,
+  NTC_PP,
+  TNC_PP
+};
 
 }  // namespace platform
 }  // namespace paddle
