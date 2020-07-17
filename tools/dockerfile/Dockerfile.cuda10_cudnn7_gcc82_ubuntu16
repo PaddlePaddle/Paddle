@@ -8,7 +8,7 @@ ARG UBUNTU_MIRROR
 RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 
 # Test
-ENV THIRD_PARTY_PATH=/home/third_party
+ENV THIRD_PARTY_PATH=/home/Paddle/third_party
 
 # ENV variables
 ARG WITH_GPU
