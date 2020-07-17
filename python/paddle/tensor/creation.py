@@ -75,8 +75,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         out(Variable): The Tensor variable storing the output.
     
     Raises:
-        TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None
-        and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None.
     
     Examples:
         .. code-block:: python
@@ -103,7 +102,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     helper = LayerHelper("full_like", **locals())
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full_like/zeros_like')
+                'full_like')
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
