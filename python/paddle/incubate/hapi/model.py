@@ -1044,9 +1044,10 @@ class Model(fluid.dygraph.Layer):
             optimizer (Optimizer|None): Optimizer must be set in training
                 and should be a Optimizer instance. It can be None in eval
                 and test mode.
-            loss_function (Loss|None): Loss function must be set in training
-                and should be a Loss instance. It can be None when there is
-                no loss.
+            loss_function (Loss|callable function|None): Loss function can
+                be a `fluid.dygraph.Layer` instance or any callable function
+                taken the predicted values and ground truth values as input.
+                It can be None when there is no loss.
             metrics (Metric|list of Metric|None): If metrics is set, all
                 metrics will be calculated and output in train/eval mode.
             inputs (Input|list|dict|None): `inputs`, entry points of network,
@@ -1104,9 +1105,11 @@ class Model(fluid.dygraph.Layer):
                 but got {}".format(device))
 
         self._optimizer = optimizer
-        #       if loss_function:
-        #           if not isinstance(loss_function, Loss):
-        #               raise TypeError("'loss_function' must be sub classes of 'Loss'")
+        if loss_function:
+            if not isinstance(loss_function, fluid.dygraph.Layer) or \
+               not callable(loss_function):
+                raise TypeError("'loss_function' must be sub classes of \
+                    `fluid.dygraph.Layer` or any callable function.")
         self._loss_function = loss_function
         if not in_dygraph_mode():
             if not isinstance(inputs, (list, dict, Input)):
