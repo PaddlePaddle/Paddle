@@ -141,15 +141,15 @@ class LocalFS(FS):
     def touch(self, fs_path):
         return Path(fs_path).touch()
 
-    def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=False):
+    def mv(self, src_path, dst_path, overwrite=False, test_exists=False):
         if not self.is_exist(src_path):
             raise FSFileNotExistsError
 
-        if self.is_exist(dst_path):
-            raise FSFileExistsError
-
         if overwrite and self.is_exist(dst_path):
             self.delete(dst_path)
+
+        if self.is_exist(dst_path):
+            raise FSFileExistsError
 
         return self.rename(src_path, dst_path)
 

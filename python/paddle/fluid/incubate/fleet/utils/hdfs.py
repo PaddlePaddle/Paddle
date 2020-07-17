@@ -218,16 +218,16 @@ class HDFSClient(FS):
                 raise ExecuteError
 
     @_handle_errors
-    def mv(self, fs_src_path, fs_dst_path, test_exists=True, overwrite=False):
+    def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
+        if overwrite and self.is_exist(fs_dst_path):
+            self.delete(fs_dst_path)
+
         if test_exists:
             if not self.is_exist(fs_src_path):
                 raise FSFileNotExistsError
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError
-
-        if overwrite and self.is_exist(fs_dst_path):
-            self.delete(fs_dst_path)
 
         cmd = "{} -mv {} {}".format(self._base_cmd, fs_src_path, fs_dst_path)
         ret, _ = self._run_cmd(cmd)

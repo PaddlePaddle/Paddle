@@ -59,8 +59,8 @@ class FSTest(unittest.TestCase):
         fs.delete(dir_path)
         self.assertTrue(not fs.is_exist(dir_path))
 
-        fs.mkdir(dir_path)
-        fs.mkdir(new_dir_path)
+        fs.mkdirs(dir_path)
+        fs.mkdirs(new_dir_path)
         fs.mv(dir_path, new_dir_path, overwrite=True)
         self.assertTrue(not fs.is_exist(dir_path))
         self.assertTrue(not fs.is_exist(new_dir_path))
