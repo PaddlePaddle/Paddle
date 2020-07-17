@@ -13,6 +13,10 @@
 # limitations under the License.
 #
 
+if(WIN32)
+	return()
+endif()
+
 set(C_API_SRCS pd_config.cc pd_predictor.cc pd_tensor.cc c_api.cc)
 
 cc_library(paddle_fluid_c SRCS ${C_API_SRCS} DEPS paddle_fluid)

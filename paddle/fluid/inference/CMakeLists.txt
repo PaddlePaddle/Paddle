@@ -41,9 +41,11 @@ add_subdirectory(api)
 
 # Create static inference library if needed
 # All static libs in inference/api
-set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor zero_copy_tensor reset_tensor_array
+if(NOT WIN32)
+  set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor zero_copy_tensor reset_tensor_array
               analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
-create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
+  create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
+endif()
 
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
