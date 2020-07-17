@@ -409,7 +409,7 @@ class TestModelFunction(unittest.TestCase):
             shutil.rmtree(path)
             fluid.disable_dygraph() if dynamic else None
 
-    def test_dynamic_save_static_load1(self):
+    def test_dynamic_save_static_load(self):
         path = tempfile.mkdtemp()
         # for dynamic in [True, False]:
         device = set_device('cpu')
