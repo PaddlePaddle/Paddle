@@ -25,7 +25,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG 34c29406c27ee00cef033a98887403443eb2565f)
+    set(LITE_GIT_TAG ab8af5c4b4dc5b40217633e0aa436315912d7b53)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -93,6 +93,7 @@ function(external_lite_static_libs alias path)
 endfunction()
 
 external_lite_static_libs(lite_full_static ${LITE_BINARY_DIR}/inference_lite_lib/cxx/lib/libpaddle_full_api_shared.so)
+set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/inference_lite_lib/cxx/lib/libpaddle_full_api_shared.so)
 
 add_definitions(-DPADDLE_WITH_LITE)
 add_definitions(-DLITE_WITH_LOG)

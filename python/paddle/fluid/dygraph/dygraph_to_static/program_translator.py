@@ -36,6 +36,7 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
+from paddle.fluid.annotations import deprecated
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
 
@@ -125,6 +126,9 @@ class FunctionSpec(object):
         self._args = args
         self._kwargs = kwargs
 
+        dyfunc = getattr(func, '__wrapped__', func)
+        self._dyfunc_code = inspect.getsource(dyfunc)
+
     def is_method(self):
         return self._args and isinstance(self._args[0], layers.Layer)
 
@@ -198,7 +202,9 @@ class FunctionSpec(object):
         # Note: if dygraph function is a method of class,
         # consider instance info as hash key.
         if self.is_method():
-            return self._dyfunc, self._args[0]
+            # NOTE: we can use Layer's (instance + function code) as hash key.
+            # An instance will not hold two identical methods 
+            return self._dyfunc_code, self._args[0]
         else:
             return self._dyfunc
 
@@ -278,8 +284,9 @@ class ConcreteProgram(object):
                 with param_guard(func_spec.parameters(False)), param_guard(
                         func_spec.buffers(False)):
                     outputs = static_func(*inputs)
-                if not isinstance(outputs, (tuple, list)):
-                    outputs = [outputs] if outputs else []
+                if not isinstance(outputs,
+                                  (tuple, list)) and outputs is not None:
+                    outputs = [outputs]
 
         return ConcreteProgram(
             inputs=inputs,
@@ -309,6 +316,17 @@ class ProgramCache(object):
                 type(item))
         if item not in self._caches:
             self._caches[item] = self._build_once(item)
+        return self._caches[item]
+
+    def get_program(self, item):
+        if not isinstance(item, FunctionSpec):
+            raise ValueError(
+                "Input item's type should be FunctionSpec, but received %s" %
+                type(item))
+        if item not in self._caches:
+            raise RuntimeError(
+                "Failed to find program for input item, please decorate input function by `@declarative`."
+            )
         return self._caches[item]
 
     def last(self):
@@ -632,6 +650,7 @@ class ProgramTranslator(object):
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
 
+    @deprecated(since='2.0', instead="paddle.imperative.jit.save")
     @switch_to_static_graph
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """

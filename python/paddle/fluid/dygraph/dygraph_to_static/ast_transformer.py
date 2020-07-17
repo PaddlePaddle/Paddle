@@ -21,9 +21,10 @@ from __future__ import print_function
 import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import AssertTransformer
-from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicApiTransformer
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
+from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
+from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import CastTransformer
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import LogicalTransformer
@@ -92,6 +93,9 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
         # Transform call recursively
         CallTransformer(node_wrapper).transform()
+
+        # Transform python type casting statement
+        CastTransformer(node_wrapper).transform()
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:

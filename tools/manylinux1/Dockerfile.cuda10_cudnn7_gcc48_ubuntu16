@@ -100,10 +100,13 @@ WORKDIR /home/setuptools-40.6.2
 RUN python setup.py build
 RUN python setup.py install
 WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/69/81/52b68d0a4de760a2f1979b0931ba7889202f302072cc7a0d614211bc7579/pip-18.0.tar.gz
-RUN tar -zxvf pip-18.0.tar.gz
+
+RUN wget https://files.pythonhosted.org/packages/69/81/52b68d0a4de760a2f1979b0931ba7889202f302072cc7a0d614211bc7579/pip-18.0.tar.gz && tar -zxvf pip-18.0.tar.gz
 WORKDIR pip-18.0
-RUN python setup.py install
+RUN python setup.py install && \
+  python3.7 setup.py install && \
+  python3.6 setup.py install && \
+  python3 setup.py install
 
 WORKDIR /home
 RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-18.0.tar.gz && \
@@ -224,6 +227,9 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     ./configure -prefix=/usr/local/ccache-3.7.9 && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
+
+RUN wget --no-check-certificate  -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
+     tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd

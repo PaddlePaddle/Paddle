@@ -67,8 +67,9 @@ class StaticCode1():
             shape=[1], dtype='bool', value=False)
         __return_0 = fluid.layers.fill_constant(
             shape=[1], dtype='bool', value=False)
-        __return_value_0 = fluid.layers.fill_constant(
+        __return_value_init_0 = fluid.layers.fill_constant(
             shape=[1], dtype='float64', value=0.0)
+        __return_value_0 = __return_value_init_0
 
         def true_fn_0(x_v):
             x_v = x_v - 1
@@ -123,8 +124,9 @@ class StaticCode2():
             shape=[1], dtype='bool', value=False)
         __return_2 = fluid.layers.fill_constant(
             shape=[1], dtype='bool', value=False)
-        __return_value_1 = fluid.layers.fill_constant(
+        __return_value_init_1 = fluid.layers.fill_constant(
             shape=[1], dtype='float64', value=0.0)
+        __return_value_1 = __return_value_init_1
 
         def true_fn_3(x_v):
             x_v = x_v - 1

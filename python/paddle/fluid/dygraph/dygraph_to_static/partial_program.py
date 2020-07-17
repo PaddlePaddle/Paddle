@@ -19,9 +19,10 @@ import logging
 from paddle.fluid import log_helper
 from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
+from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
-from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle.compat as cpt
 
 _logger = log_helper.get_logger(
@@ -111,14 +112,7 @@ class PartialProgramLayer(layers.Layer):
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
 
-        # Check all params from main program can be found in self._params:
-        # 1. parameter in self._params should be type `framework.ParamBase` which are created in dygraph.
-        # 2. parameter from transformed program shall be found in self._params.
-        #    Because they share same data with ParamBase of original dygraph.
-        self._check_params_all_inited(main_program)
-        self._prune_unused_params(main_program)
-
-        self._infer_program = main_program
+        self._infer_program = self._verify_program(main_program)
         self._train_program = self._append_backward_desc()
         # Switch infer or train by train() and eval()
         self._trace_program = None
@@ -126,6 +120,20 @@ class PartialProgramLayer(layers.Layer):
         self._inner_scope = core.Scope()
         # Set default mode to train
         self.train()
+
+    def _verify_program(self, main_program):
+        """
+        Verify that the program parameter is initialized, prune some unused params,
+        and remove redundant op callstack.
+        """
+        # 1. Check all params from main program can be found in self._params
+        self._check_params_all_inited(main_program)
+        # 2. Prune the parameters not used anywhere in the program.
+        self._prune_unused_params(main_program)
+        # 3. Remove op's python call stack with redundant low-level error messages.
+        main_program = self._remove_op_call_stack(main_program)
+
+        return main_program
 
     @switch_to_static_graph
     def _append_backward_desc(self):
@@ -184,7 +192,8 @@ class PartialProgramLayer(layers.Layer):
                 'is_test': not self.training
             })
 
-        return self._restore_out(out_vars)
+        restored_nest_out = self._restore_out(out_vars)
+        return self._remove_no_value(restored_nest_out)
 
     def _prepare(self, inputs):
         """
@@ -239,10 +248,43 @@ class PartialProgramLayer(layers.Layer):
         for i, idx in enumerate(self._outputs.var_ids):
             flatten_outputs[idx] = out_vars[i]
         outs = self._outputs.restore(flatten_outputs)
-        if len(outs) == 1:
+        if outs is not None and len(outs) == 1:
             outs = outs[0]
 
         return outs
+
+    def _is_no_value(self, var):
+        if isinstance(var, core.VarBase):
+            if var.shape == [1] and var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
+                return True
+        return False
+
+    def _remove_no_value(self, out_vars):
+        """
+        Removes invalid value for various-length return statement
+        """
+        if isinstance(out_vars, core.VarBase):
+            if self._is_no_value(out_vars):
+                return None
+            return out_vars
+        elif isinstance(out_vars, (tuple, list)):
+            if isinstance(out_vars, tuple):
+                res = tuple(
+                    var for var in out_vars if not self._is_no_value(var))
+            else:
+                # isinstance(out_vars, list)
+                res = [var for var in out_vars if not self._is_no_value(var)]
+
+            has_removed = (len(out_vars) > len(res))
+            # len(out_vars) > len(res) means we have removed var. This is
+            # preventing out_vars is empty or just one element at the beginning
+            if len(res) == 0 and has_removed:
+                return None
+            elif len(res) == 1 and has_removed:
+                return res[0]
+            return res
+
+        return out_vars
 
     def _set_grad_type(self, params):
         # NOTE: if user set sparse gradient mode, the param's gradient
@@ -259,6 +301,19 @@ class PartialProgramLayer(layers.Layer):
             if grad_var is None:
                 continue
             param._set_grad_type(grad_var.type())
+
+    def _remove_op_call_stack(self, main_program):
+        """
+        Remove op's python call stack with redundant low-level error messages related to
+        transforamtions to avoid confusing users.
+        """
+        assert isinstance(main_program, framework.Program)
+        for block in main_program.blocks:
+            for op in block.ops:
+                if op.has_attr("op_callstack"):
+                    op._remove_attr("op_callstack")
+
+        return main_program
 
     def _check_params_all_inited(self, main_program):
         """
