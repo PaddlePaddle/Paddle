@@ -341,6 +341,10 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
     Returns:
         Variable: An identity Tensor or LoDTensor of shape [num_rows, num_columns].
+    
+    Raises:
+        TypeError: The `dtype` must be one of float16, float32, float64, int32 int64 and None.
+        TypeError: The `num_columns` must be non-negative int.
 
     Examples:
         .. code-block:: python
@@ -348,12 +352,12 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
           paddle.enable_imperative()  # Now we are in imperative mode
           data = paddle.eye(3, dtype='int32')
-          # [[1, 0, 0]
-          #  [0, 1, 0]
-          #  [0, 0, 1]]
+          # [[1 0 0]
+          #  [0 1 0]
+          #  [0 0 1]]
           data = paddle.eye(2, 3, dtype='int32')
-          # [[1, 0, 0]
-          #  [0, 1, 0]]
+          # [[1 0 0]
+          #  [0 1 0]]
     """
 
     if dtype is None:

@@ -1563,6 +1563,9 @@ def eye(num_rows,
 
     Returns:
         Variable: An identity Tensor or LoDTensor of shape batch_shape + [num_rows, num_columns].
+    Raises:
+        TypeError: The `dtype` must be one of float16, float32, float64, int32 and int64.
+        TypeError: The `num_columns` must be non-negative int.
 
     Examples:
         .. code-block:: python
