@@ -33,8 +33,7 @@ void SetConfig(AnalysisConfig *cfg) {
 
 std::vector<size_t> ReadSentenceLod(std::ifstream &file, size_t offset,
                                     int64_t total_sentences_num) {
-  std::vector<size_t> sentence_lod;
-  sentence_lod.resize(total_sentences_num);
+  std::vector<size_t> sentence_lod(total_sentences_num);
 
   file.clear();
   file.seekg(offset);
@@ -65,11 +64,10 @@ class TensorReader {
       tensor.lod.push_back(lod);
     }
     file_.seekg(position_);
-    file_.read(reinterpret_cast<char *>(tensor.data.data()), numel * sizeof(T));
-    position_ = file_.tellg();
     if (file_.eof()) LOG(ERROR) << name_ << ": reached end of stream";
     if (file_.fail())
       throw std::runtime_error(name_ + ": failed reading file.");
+    file_.read(reinterpret_cast<char *>(tensor.data.data()), numel * sizeof(T));
     return tensor;
   }
 
@@ -138,6 +136,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
     }
   }
 }
+
 TEST(Analyzer_lexical_analysis_xnli, quantization) {
   AnalysisConfig config;
   SetConfig(&config);
@@ -176,9 +175,9 @@ TEST(Analyzer_lexical_analysis_xnli, quantization) {
   } else {
     EXPECT_GT(outputs.size(), 0UL);
     EXPECT_EQ(1UL, outputs[0].size());
-    LOG(INFO) << "Can only provide performance withoug accuracy because the "
-                 "model does not contain accuracy layer. Please "
-                 "save eval model to achieve accuracy.";
+    LOG(INFO) << "No accuracy result. To get accuracy result provide a model "
+                 "with accuracy layers in it and use --with_accuracy_layer "
+                 "option.";
   }
 }
 
