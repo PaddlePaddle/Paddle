@@ -21,6 +21,7 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
 from ..fluid.layers import fill_constant
 from paddle.common_ops_import import *
+import paddle
 
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
@@ -413,76 +414,80 @@ def full(shape, fill_value, dtype=None, name=None):
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
 
-def arange(start, end, step=1, dtype=None, name=None):
+def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
 	:alias_main: paddle.arange
 	:alias: paddle.arange,paddle.tensor.arange,paddle.tensor.creation.arange
 
     Return evenly spaced values within a given interval.
 
-    Values are generated within the half-open interval [start, stop) (in other words,
-    the interval including start but excluding stop).
+    Values are generated into the half-open interval [start, stop) with the step.
+    (the interval including start but excluding stop).
+
+    If dtype is float32 or float64, we advise adding a small epsilon to end to
+    avoid floating point rounding errors when comparing against end.
 
     Parameters:
-        start(float32 | float64 | int32 | int64 | Variable): Start of interval. The interval includes this value.
-            when start is Variable, it is a 1-D Tensor with shape [1].
-        end(float32 | float64 | int32 | int64 | Variable): End of interval. The interval does not include this
-                                 value, except in some cases where step is not an integer
-                                 and floating point round-off affects the length of out. When end is Variable,
-                                 it is a 1-D Tensor with shape [1].
-        step(float32 | float64 | int32 | int64 | Variable): Spacing between values. For any output out, this is the
-                                  distance between two adjacent values, out[i+1] - out[i].
-        dtype(str|core.VarDesc.VarType): the data type of the output tensor, can be float32, float64, int32, int64.
+        start(float|int|Variable): Start of interval. The interval includes
+            this value. If end is None, the half-open interval is [0, start).
+            If start is Variable, it is a 1-D Tensor with shape [1], and it's
+            data type should be one of int32, int64, float32, float64. Default
+            is 0.
+        end(float|int|Variable, optional): End of interval. The interval does
+            not include this value. When end is Variable, it is a 1-D Tensor
+            with shape [1], and it's data type should be one of int32, int64,
+            float32, float64. If end is None, the half-open interval is [0, start).
+            Default is None.
+        step(float|int|Variable, optional): Spacing between values. For any
+            out, this is the istance between two adjacent values, out[i+1] - out[i].
+            When end is Variable, it is a 1-D Tensor with shape [1], and it's
+            data type should be one of int32, int64, float32, float64. Default is 1.
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
+            the output tensor, can be float32, float64, int32, int64. If dtype
+            is `None` , the data type of out tensor is `int64` . Defaule is None
+        name(str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            Default is None.
 
-    Returns: a 1-D Tensor which is evenly spaced values within a given interval. Its data type is set by dtype.
+    Returns: a 1-D Tensor which is evenly spaced values within a given interval.
+        Its data type is set by dtype.
     
     Return type: Variable
+
+    Raises:
+        TypeError: If dtype is not float32, float64, int32 or int64.
 
     examples:
 
         .. code-block:: python
 
-             import paddle
-             # expected out put: [0, 2, 4, 6, 8]
-             data = paddle.arange(0, 10, 2, 'int32')
+        import paddle
+        import numpy as np
 
-         #dygraph mode
-             import paddle
-             import paddle.fluid as fluid
-             with fluid.dygraph.guard():
-                 x = paddle.arange(0, 6, 2) 
-                 # x: [0, 2, 4]
-                 # x dtype: float32
+        paddle.enable_imperative()
+
+        out1 = paddle.arange(5)
+        # [0, 1, 2, 3, 4]
+
+        out2 = paddle.arange(3, 9, 2.0)
+        # [3, 5, 7]
+
+        # use 4.999 instead of 5.0 to avoid floating point rounding errors
+        out3 = paddle.arange(4.999, dtype='float32')
+        # [0., 1., 2., 3., 4.]
+
+        start_var = paddle.imperative.to_variable(np.array([3]))
+        out4 = paddle.arange(start_var, 7)
+        # [3, 4, 5, 6]
              
     """
-    helper = LayerHelper("range", **locals())
-
     if dtype is None:
-        dtype = 'float32'
+        dtype = 'int64'
+    if end is None:
+        end = start
+        start = 0
 
-    check_dtype(dtype, 'create data type',
-                ['float32', 'float64', 'int32', 'int64'], 'range')
-
-    dtype = convert_dtype(dtype)
-    if not isinstance(start, Variable):
-        start = fill_constant([1], dtype, start)
-
-    if not isinstance(end, Variable):
-        end = fill_constant([1], dtype, end)
-
-    if not isinstance(step, Variable):
-        step = fill_constant([1], dtype, step)
-
-    out = helper.create_variable_for_type_inference(dtype=start.dtype)
-
-    helper.append_op(
-        type='range',
-        inputs={'Start': start,
-                'End': end,
-                'Step': step},
-        outputs={'Out': [out]})
-    out.stop_gradient = True
-    return out
+    return paddle.fluid.layers.range(start, end, step, dtype, name)
 
 
 def _tril_triu_op(helper):
