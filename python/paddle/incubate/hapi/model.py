@@ -1573,6 +1573,7 @@ class Model(fluid.dygraph.Layer):
         Returns:
             list: The fetch variables' name list
         """
+
         def get_feed_fetch(var_list):
             from paddle.fluid import framework
             vars = [
@@ -1611,7 +1612,6 @@ class Model(fluid.dygraph.Layer):
                 model_filename=model_filename,
                 params_filename=params_filename,
                 program_only=model_only)
-
 
     def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
         outputs = []
@@ -1689,4 +1689,3 @@ class Model(fluid.dygraph.Layer):
         except Exception:
             steps = None
         return steps
-
