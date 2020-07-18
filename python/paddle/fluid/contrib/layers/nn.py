@@ -1005,7 +1005,7 @@ def sparse_embedding(input,
         attrs={
             'padding_idx': padding_idx,
             'is_sparse': True,
-            'is_distributed': False,
+            'is_distributed': True,
             'remote_prefetch': True,
             'is_test': is_test,
             'entry': entry_str

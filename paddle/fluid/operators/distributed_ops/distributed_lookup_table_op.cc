@@ -26,7 +26,7 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("Ids"),
                    "Input(Ids) of LookupTableOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("W"),
@@ -40,7 +40,7 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(table_dims.size(), 2,
                       "Only 2 dimensions of the 'Embedding' is supported.");
 
-    for (auto& ids_dim : ids_dims) {
+    for (auto &ids_dim : ids_dims) {
       PADDLE_ENFORCE_EQ(ids_dim.size(), 2,
                         "The dimension of the 'Ids' tensor must be 2.");
     }
@@ -51,7 +51,7 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
 
     auto outputs_dims = std::vector<framework::DDim>();
 
-    for (auto& ids_dim : ids_dims) {
+    for (auto &ids_dim : ids_dims) {
       if (lookup_table_version == "lookup_table") {
         outputs_dims.push_back(
             framework::make_ddim({ids_dim[0], table_dims[1]}));
@@ -68,7 +68,7 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
@@ -78,7 +78,7 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
 template <typename T>
 class DistributedLookupTableKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext &context) const override {
     auto ids_vars = context.MultiInputVar("Ids");
     auto emb_vars = context.MultiOutput<framework::Tensor>("Embeddings");
 
@@ -87,24 +87,25 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto out_names = context.OutputNames("Outputs");
     auto lookup_tables = context.Attr<std::vector<std::string>>("table_names");
     auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
+    auto is_distributed = context.Attr<bool>("is_distributed");
 
     auto lookup_table_version =
         context.Attr<std::string>("lookup_table_version");
 
     operators::distributed::prefetchs(id_names, out_names, embedding_name,
-                                      false, lookup_tables, endpoints, context,
-                                      context.scope());
+                                      is_distributed, lookup_tables, endpoints,
+                                      context, context.scope());
 
     if (lookup_table_version == "lookup_table_v2") {
-      auto& scope = context.scope();
+      auto &scope = context.scope();
       auto emb_dim =
           scope.FindVar(embedding_name)->Get<framework::LoDTensor>().dims()[1];
 
       for (size_t i = 0; i < id_names.size(); ++i) {
-        auto* id_var = scope.FindVar(id_names[i]);
-        auto* out_var = scope.FindVar(out_names[i]);
-        auto* id_tensor = id_var->GetMutable<framework::LoDTensor>();
-        auto* out_tensor = out_var->GetMutable<framework::LoDTensor>();
+        auto *id_var = scope.FindVar(id_names[i]);
+        auto *out_var = scope.FindVar(out_names[i]);
+        auto *id_tensor = id_var->GetMutable<framework::LoDTensor>();
+        auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
 
         auto id_dims = id_tensor->dims();
         out_tensor->Resize(framework::make_ddim(
@@ -141,6 +142,11 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string vector, default 127.0.0.1:6164)"
         "Server endpoints in the order of input variables for mapping")
         .SetDefault({"127.0.0.1:6164"});
+
+    AddAttr<int>("pserver_num", "the number of pserver").SetDefault(0);
+
+    AddAttr<bool>("is_distributed",
+                  "(boolean, default false) distributed lookup table.");
 
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
 

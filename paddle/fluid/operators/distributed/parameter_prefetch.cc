@@ -41,39 +41,52 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-static std::vector<std::vector<int64_t>> SplitIds(
-    const std::vector<int64_t>& ids_vector, const int round_robin) {
-  std::set<int64_t> all_ids;
-
-  for (auto id : ids_vector) {
-    all_ids.insert(id);
-  }
-
-  std::vector<std::vector<int64_t>> splited_ids;
-  splited_ids.resize(round_robin);
-  for (auto& id : all_ids) {
-    auto section_index = id % round_robin;
-    splited_ids[section_index].push_back(id);
-  }
-  return splited_ids;
-}
-
 static void SplitIdsIntoMultipleVarsBySection(
-    const std::vector<std::string>& in_var_names, const int pserver_nums,
-    const std::vector<std::vector<int64_t>>& splited_ids,
-    framework::Scope* scope) {
-  PADDLE_ENFORCE_EQ(in_var_names.size(), pserver_nums,
-                    platform::errors::OutOfRange(
-                        "send varnames size: %d not equal %d, internal error",
-                        in_var_names.size(), pserver_nums));
+    const std::vector<int64_t>& in_ids,
+    const std::vector<std::string>& in_varnames, const int tables,
+    const int pservers, const bool is_distibuted, framework::Scope* scope,
+    std::vector<std::vector<int64_t>>* splited_ids,
+    std::vector<std::vector<int64_t>>* origin_ids) {
+  PADDLE_ENFORCE_EQ(
+      in_varnames.size(), tables,
+      platform::errors::OutOfRange(
+          "send varnames size: %d not equal table number: %d, internal error",
+          in_varnames.size(), tables));
+
+  PADDLE_ENFORCE_LE(
+      tables, pservers,
+      platform::errors::OutOfRange("table number %d not equal or less than "
+                                   "pserver number: %d, internal error",
+                                   tables, pservers));
 
   auto place = platform::CPUPlace();
 
-  for (size_t i = 0; i < in_var_names.size(); ++i) {
-    auto* id_tensor =
-        scope->Var(in_var_names[i])->GetMutable<framework::LoDTensor>();
+  std::set<int64_t> st(input_ids.begin(), input_ids.end());
+  input_ids.assign(st.begin(), st.end());
 
-    auto& ids = splited_ids[i];
+  splited_ids->resize(tables);
+  origin_ids->resize(tables);
+
+  if (is_distibuted) {
+    for (auto& id : all_ids) {
+      auto pserver_id = id % pservers;
+      (*splited_ids)[pserver_id].push_back(id);
+      (*origin_ids)[pserver_id].push_back(id);
+    }
+  } else {
+    for (auto& id : all_ids) {
+      auto pserver_id = id % pservers;
+      (*origin_ids)[pserver_id].push_back(id);
+      auto id = id / pservers;
+      (*splited_ids)[pserver_id].push_back(id);
+    }
+  }
+
+  for (size_t i = 0; i < in_varnames.size(); ++i) {
+    auto* id_tensor =
+        scope->Var(in_varnames[i])->GetMutable<framework::LoDTensor>();
+
+    auto& ids = (*splited_ids)[i];
     if (!ids.empty()) {
       auto* id_tensor_data = id_tensor->mutable_data<int64_t>(
           framework::make_ddim({static_cast<int64_t>(ids.size()), 1}), place);
@@ -87,7 +100,14 @@ typedef std::vector<std::pair<std::string, std::string>> TableAndEndpoints;
 void prefetch_core(
     const std::vector<int64_t>& ids, const TableAndEndpoints& tables,
     const framework::ExecutionContext& context, const framework::Scope& scope,
+    const bool is_distributed,
     std::unordered_map<int64_t, std::vector<float>>* recved_vec_map) {
+  distributed::RPCClient* rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+          context.Attr<int>("trainer_id"));
+
+  int pservers = context.Attr<bool>("pserver_num");
+
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& actual_ctx = *pool.Get(context.GetPlace());
 
@@ -100,19 +120,16 @@ void prefetch_core(
     out_var_names.push_back("prefetch_recv@" + tables[i].second);
   }
 
-  auto splited_ids = SplitIds(ids, tables.size());
-
-  SplitIdsIntoMultipleVarsBySection(in_var_names, tables.size(), splited_ids,
-                                    local_scope.get());
+  std::vector<std::vector<int64_t>> split_ids;
+  std::vector<std::vector<int64_t>> origin_ids;
+  SplitIdsIntoMultipleVarsBySection(ids, in_var_names, tables.size(), pservers,
+                                    is_distributed, local_scope.get(),
+                                    &split_ids, &origin_ids);
 
   // create output var in local scope
   for (auto& name : out_var_names) {
     local_scope->Var(name)->GetMutable<framework::LoDTensor>();
   }
-
-  distributed::RPCClient* rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(
-          context.Attr<int>("trainer_id"));
 
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < in_var_names.size(); i++) {
@@ -128,11 +145,12 @@ void prefetch_core(
   }
 
   for (size_t i = 0; i < rets.size(); i++) {
-    PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
+                                               "internal error in RPCClient"));
   }
 
   for (size_t o_idx = 0; o_idx < out_var_names.size(); ++o_idx) {
-    auto& ids_in_this_section = splited_ids[o_idx];
+    auto& ids_in_this_section = origin_ids[o_idx];
 
     if (!ids_in_this_section.empty()) {
       auto& prefetch_out_var =
@@ -158,28 +176,32 @@ void prefetch_core(
 }
 
 void prefetch(const std::string& id_name, const std::string& out_name,
-              const std::string& persistable_var_name, const bool backfill,
+              const std::string& persistable_var_name,
+              const bool is_distributed,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& endpoints,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
-  prefetchs({id_name}, {out_name}, persistable_var_name, backfill, table_names,
-            endpoints, context, scope);
+  prefetchs({id_name}, {out_name}, persistable_var_name, is_distributed,
+            table_names, endpoints, context, scope);
 }
 
 void prefetchs(const std::vector<std::string>& id_var_names,
                const std::vector<std::string>& out_var_names,
-               const std::string& persistable_var_name, const bool backfill,
+               const std::string& persistable_var_name,
+               const bool is_distributed,
                const std::vector<std::string>& table_names,
                const std::vector<std::string>& endpoints,
                const framework::ExecutionContext& context,
                const framework::Scope& scope) {
   auto vec_dim_1 = 0;
+  auto vec_dim_0 = 0;
   framework::Variable* var = scope.FindVar(persistable_var_name);
 
   if (var->IsType<SelectedRows>()) {
     vec_dim_1 = var->Get<framework::SelectedRows>().value().dims()[1];
   } else {
+    vec_dim_0 = var->Get<framework::LoDTensor>().dims()[0];
     vec_dim_1 = var->Get<framework::LoDTensor>().dims()[1];
   }
 
@@ -194,43 +216,38 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     PADDLE_THROW("multi prefetch only support CPU currently");
   }
 
-  std::vector<std::vector<int64_t>> ids_group;
   std::vector<int64_t> ids_union;
-  std::vector<framework::LoD> ids_lods;
   TableAndEndpoints tables;
 
   for (auto& id_name : id_var_names) {
-    auto* id_tensor =
-        scope.FindVar(id_name)->GetMutable<framework::LoDTensor>();
-    auto id_dims = id_tensor->dims();
-    id_tensor->Resize(framework::make_ddim(
-        {static_cast<int64_t>(id_dims[0] * id_dims[1]), 1}));
-    auto* id_data = id_tensor->data<int64_t>();
-    std::vector<int64_t> ids;
-
-    for (int64_t i = 0; i < id_tensor->numel(); ++i) {
-      if (id_data[i] < 0) {
-        PADDLE_THROW(platform::errors::OutOfRange(
-            "Variable value (input) of OP(embedding) "
-            "expected in [0, int64], but got %ld. Please check input value.",
-            ids[i]));
-      }
-      ids.push_back(id_data[i]);
-      ids_union.push_back(id_data[i]);
-    }
-    ids_group.push_back(ids);
-    ids_lods.push_back(id_tensor->lod());
+    auto& id_tensor = in_var->Get<framework::LoDTensor>();
+    std::copy_n(id_tensor.data<int64_t>(), id_tensor.numel(),
+                back_inserter(ids_union));
   }
 
   std::unordered_set<int64_t> s(ids_union.begin(), ids_union.end());
   ids_union.assign(s.begin(), s.end());
+
+  for (auto& i : ids_union) {
+    PADDLE_ENFORCE_GE(
+        i, 0, platform::errors::OutOfRange(
+                  "each element in embedding should be larger or equal 0"));
+    if (!is_distributed) {
+      PADDLE_ENFORCE_LT(
+          i, vec_dim_0,
+          platform::errors::OutOfRange(
+              "embedding id must in [0, %d) when is_distributed False",
+              vec_dim_0));
+    }
+  }
 
   for (size_t i = 0; i < table_names.size(); i++) {
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
 
   std::unordered_map<int64_t, std::vector<float>> recved_vec_map;
-  prefetch_core(ids_union, tables, context, scope, &recved_vec_map);
+  prefetch_core(ids_union, tables, context, scope, is_distributed,
+                &recved_vec_map);
 
   auto padding_idx = distributed::kNoPadding;
 
@@ -238,20 +255,20 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     padding_idx = context.Attr<int64_t>("padding_idx");
   }
 
-  // copy vectors to out vars
   for (size_t i = 0; i < out_var_names.size(); i++) {
-    auto& ids = ids_group[i];
+    auto* in_var = scope.FindVar(id_var_names[i]);
+    auto& id_tensor = in_var->Get<framework::LoDTensor>();
+    auto ids_size = id_tensor.dims()[0];
+    const auto* id_data = id_tensor.data<int64_t>();
+
     auto* out_t =
         scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
-    out_t->Resize(
-        framework::make_ddim({static_cast<int64_t>(ids.size()), vec_dim_1}));
-    out_t->set_lod(ids_lods[i]);
-
+    out_t->set_lod(id_tensor.lod());
+    out_t->Resize(framework::make_ddim({ids_size, vec_dim_1}));
     auto* out_d = out_t->mutable_data<float>(place);
 
-    for (size_t idx = 0; idx < ids.size(); idx++) {
-      const auto& id = ids[idx];
-
+    for (size_t idx = 0; idx < ids_size; idx++) {
+      const auto& id = id_data[idx];
       if (padding_idx != distributed::kNoPadding && id == padding_idx) {
         memset(out_d + idx * vec_dim_1, 0, sizeof(float) * vec_dim_1);
       } else {

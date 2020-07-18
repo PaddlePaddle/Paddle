@@ -63,27 +63,42 @@ def _get_lr_ops(program):
 
 
 def is_sparse_op(op):
-    if op.type == "lookup_table" and op.attr('is_sparse') is True:
+    if op.type == "lookup_table" and op.attr('is_sparse') is True and op.attr(
+            'is_distributed') is False:
         return True
 
-    if op.type == "distributed_lookup_table":
+    if op.type == "distributed_lookup_table" and op.attr(
+            'is_distributed') is False:
+        return True
+
+    return False
+
+
+def is_distributed_sparse_op(op):
+    if op.type == "lookup_table" and op.attr('is_distributed') is True:
+        return True
+
+    if op.type == "distributed_lookup_table" and op.attr(
+            'is_distributed') is True:
         return True
 
     return False
 
 
 def get_sparse_tablename(op):
-    if is_sparse_op(op):
-        return op.input("W")[0]
-    return None
+    return op.input("W")[0]
 
 
-def get_all_get_sparse_tablenames(program):
+def get_sparse_tablenames(program, is_distributed):
     tablenames = set()
-    for op in program.global_block().ops:
-        varname = get_sparse_tablename(op)
-        if varname:
-            tablenames.add(varname)
+    if is_distributed:
+        for op in program.global_block().ops:
+            if is_distributed_sparse_op(op):
+                tablenames.add(get_sparse_tablename(op))
+    else:
+        for op in program.global_block().ops:
+            if is_sparse_op(op):
+                tablenames.add(get_sparse_tablename(op))
     return list(tablenames)
 
 
@@ -208,17 +223,15 @@ class CompileTimeStrategy(object):
     def get_origin_startup_program(self):
         return self.origin_startup_program
 
-    def get_sparse_varname_on_ps(self, endpoint=None):
+    def get_sparse_varname_on_ps(self, is_distributed, endpoint=None):
         if not endpoint:
             endpoint = self.get_ps_endpoint()
 
-        varnames = get_all_get_sparse_tablenames(self.get_origin_main_program())
-
+        varnames = get_sparse_tablenames(self.get_origin_main_program(),
+                                         is_distributed)
         ps_sparse_varnames = []
-
         for varname in varnames:
             tables = self.get_var_distributed(varname, True)
-
             for i in range(len(tables)):
                 table, ep, _ = tables[i]
                 if ep == endpoint:
@@ -605,9 +618,9 @@ class CompileTimeStrategy(object):
                     block = vars_metatools.VarBlock(var.name, block_id,
                                                     curr_block_size)
                     blocks.append(str(block))
-
             else:
-                split_count = slice_count
+                split_count = slice_count if var.shape[
+                    0] > slice_count else var.shape[0]
                 numel = reduce(lambda x, y: x * y, var.shape)
 
                 for block_id in range(split_count):

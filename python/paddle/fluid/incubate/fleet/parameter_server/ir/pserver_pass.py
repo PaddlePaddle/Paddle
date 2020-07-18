@@ -23,8 +23,9 @@ from paddle.fluid.framework import Block
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _orig_varname
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distributed_sparse_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablename
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_all_get_sparse_tablenames
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
 
 LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
@@ -638,7 +639,8 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         origin_name = _orig_varname(param_name)
         o_main_program = config.get_origin_main_program()
         for op in o_main_program.global_block().ops:
-            if get_sparse_tablename(op) == origin_name:
+            if is_distributed_sparse_op(op) and get_sparse_tablename(
+                    op) == origin_name:
                 entry = op.attr("entry")
                 return entry
 
@@ -769,6 +771,12 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         grad, param = grad_to_param.split(":")
         param_blockid_map[param] = grad_blockid_map[grad]
 
+    origin_program = config.get_origin_main_program()
+    sparse_varnames = get_sparse_tablenames(origin_program, False)
+
+    for varname in sparse_varnames:
+        param_blockid_map.pop(varname)
+
     if not is_startup:
         for param, blockid in param_blockid_map.items():
             opt_block = program.block(blockid)
@@ -818,31 +826,33 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
     return program
 
 
-def get_sparse_from_listen_and_serv(program):
+def get_distributed_from_listen_and_serv(program, origin_program):
     op = get_op_by_type(program.global_block(), "listen_and_serv")
-
+    sparse_varnames = get_sparse_tablenames(origin_program, True)
     sparse_params = []
     grad_to_params = op.attr('sparse_grad_to_param')
     for grad_to_param in grad_to_params:
         _, param = grad_to_param.split(":")
-        sparse_params.append(param)
-
+        if _orig_varname(param) in sparse_varnames:
+            sparse_params.append(param)
     return sparse_params
 
 
 def delete_unused_in_main_pass(program, config):
-    sparse_params = get_sparse_from_listen_and_serv(program)
+    origin_program = config.get_origin_main_program()
+    sparse_params = get_distributed_from_listen_and_serv(origin_program,
+                                                         program)
 
     for var in sparse_params:
         if program.global_block().has_var(var):
             program.global_block()._remove_var(var)
-
     return program
 
 
 def delete_unused_in_startup_pass(program, main_program, config):
-    sparse_params = get_sparse_from_listen_and_serv(main_program)
-
+    origin_program = config.get_origin_main_program()
+    sparse_params = get_distributed_from_listen_and_serv(origin_program,
+                                                         main_program)
     remove_ops = []
 
     for op in program.global_block().ops:
@@ -943,8 +953,8 @@ def add_geo_optimizer_pass(program, config):
     endpoint = config.get_ps_endpoint()
     params = [p for p in config.param_grad_ep_mapping[endpoint]["params"]]
 
-    sparse_tablenames = get_all_get_sparse_tablenames(
-        config.get_origin_main_program())
+    sparse_tablenames = get_sparse_tablenames(config.get_origin_main_program(),
+                                              False)
 
     for param in params:
         _clone_var(program.global_block(), param)

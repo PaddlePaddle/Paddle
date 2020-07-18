@@ -278,11 +278,15 @@ class FleetTranspiler(Fleet):
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
-            varnames = self.compiled_config.get_sparse_varname_on_ps()
+            sparse_varnames = self.compiled_config.get_sparse_varname_on_ps(
+                True)
+            distribtued_varnames = self.compiled_config.get_sparse_varname_on_ps(
+                False)
 
             remaining_vars = list(
                 filter(
-                    FleetTranspiler.__exclude_vars(varnames),
+                    FleetTranspiler.__exclude_vars(sparse_varnames +
+                                                   distribtued_varnames),
                     self.main_program.list_vars()))
 
             fluid.io.load_vars(
@@ -291,7 +295,11 @@ class FleetTranspiler(Fleet):
                 dirname=model_dir,
                 vars=remaining_vars)
 
-            self._load_sparse_params(dirname=model_dir, varnames=varnames)
+            self._load_sparse_params(
+                dirname=model_dir, varnames=sparse_varnames)
+
+            # todo(tangwei12) load distributed vars
+            # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
 
     def _init_pslib_server(self, model_dir=None, **kwargs):
         mode = kwargs.get("mode", 0)
