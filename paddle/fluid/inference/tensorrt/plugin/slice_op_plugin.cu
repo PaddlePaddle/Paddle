@@ -81,7 +81,7 @@ bool SlicePluginDynamic::supportsFormatCombination(
     int nb_outputs) {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
-                  "The input of swish plugin shoule not be nullptr."));
+                  "The input of slice plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos, nb_inputs + nb_outputs,
