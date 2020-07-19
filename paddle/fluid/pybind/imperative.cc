@@ -873,7 +873,7 @@ void BindImperative(py::module *m_ptr) {
            &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
-           py::arg("key") = "tmp")
+           py::arg("key") = "eager_tmp")
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,

@@ -269,7 +269,14 @@ void FastThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
 void FastThreadedSSAGraphExecutor::ExecutionFinal(
     std::vector<OpHandleBase *> *fetch_ops) {
   VLOG(3) << "caught exception " << exception_.Type() << ", rethrow it";
-  ClearFetchOp(graph_, fetch_ops);
+  // NOTE: If a new exception occurs in this ClearFetchOp operation, it will
+  // cause the loss of exception triggered firstly not thrown.
+  // Instead, the cleanup operation should only be performed when an EOF
+  // exception is caught. If other exceptions are triggered, the ClearFetchOp
+  // should not be continued.
+  if (exception_.Type() == "EOF") {
+    ClearFetchOp(graph_, fetch_ops);
+  }
   exception_.ReThrow();
 }
 

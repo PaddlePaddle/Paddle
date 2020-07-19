@@ -45,13 +45,10 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
 
-#TODO(malin): Fix this unitest failed on GCC8.
-LIST(REMOVE_ITEM TEST_OPS test_roll_op)
 #TODO(sunxiaolong01): Fix this unitest failed on GCC8.
 LIST(REMOVE_ITEM TEST_OPS test_conv2d_transpose_op)
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
-    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
@@ -61,12 +58,16 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
     list(REMOVE_ITEM TEST_OPS test_desc_clone)
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
-    list(REMOVE_ITEM TEST_OPS test_hsigmoid_op)
     list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
     list(REMOVE_ITEM TEST_OPS test_split_ids_op)
     list(REMOVE_ITEM TEST_OPS test_program_code)
     LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
     LIST(REMOVE_ITEM TEST_OPS test_math_op_patch_var_base)
+endif()
+
+if(APPLE OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_hdfs)
+    LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
 endif()
 
 if (NOT ${WITH_GPU})
@@ -91,7 +92,6 @@ endif()
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_pipeline)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
-    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
@@ -205,6 +205,7 @@ endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
@@ -232,6 +233,8 @@ list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
+list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
+list(REMOVE_ITEM TEST_OPS test_pipeline)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -321,6 +324,7 @@ if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
 
     #not need
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
@@ -354,7 +358,7 @@ if(WITH_DISTRIBUTE)
         endif()
         bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
-        set(dist_ut_port 1000)
+        set(dist_ut_port 20001)
         foreach(TEST_OP ${DIST_TEST_OPS})
             bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
             MATH(EXPR dist_ut_port "${dist_ut_port}+50")
@@ -363,22 +367,29 @@ if(WITH_DISTRIBUTE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
+py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 py_test_modules(test_fuse_bn_act_pass MODULES test_fuse_bn_act_pass ENVS FLAGS_cudnn_deterministic=1 FLAGS_cudnn_batchnorm_spatial_persistent=1 FLAGS_conv_workspace_size_limit=1000)
 
-if(NOT WIN32)
-    # TODO: fix these unittests failure on Windows
+# NOTE: These unittests will appear NaN steadily in windows CI. After analysis,
+# it is found that windows CI will run all the training unittests with the ON_INFER option turned on, 
+# which will not appear in other CIs. The calculation behavior of some ops in inference mode is 
+# inconsistent with that in non-inference mode.
+if(NOT ON_INFER)
     py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
     py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
     py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
-    py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
     set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
     set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
     set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
+endif()
 
+if(NOT WIN32)
+    # TODO: fix these unittests failure on Windows
+    py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
     # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
     py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
@@ -414,6 +425,7 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
+        test_parallel_executor_profiler
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
