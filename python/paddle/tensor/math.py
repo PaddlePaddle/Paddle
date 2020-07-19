@@ -1309,10 +1309,7 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     if convert_dtype(input.dtype) in ['int32', 'int64']:
         check_type(value, 'value', int, 'addcmul')
 
-    if out is not None:
-        layers.assign(layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value), out)
-    else:
-        out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
+    out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
     return out
 
 
