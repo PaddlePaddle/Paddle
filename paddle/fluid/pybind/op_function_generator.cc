@@ -82,6 +82,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
     {"amp_check_finite_and_scale", {"Out", "FoundInfinite"}},
+    {"adam_scale",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
 };
 
 // clang-format off
