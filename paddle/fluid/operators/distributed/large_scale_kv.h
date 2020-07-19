@@ -818,6 +818,16 @@ class LargeScaleKV {
     return variable.get();
   }
 
+  bool GradInLargeScale(const std::string &name) {
+    auto got = grad_to_variables.find(name);
+
+    if (got == grad_to_variables.end()) {
+      return false;
+    }
+
+    return true;
+  }
+
   SparseVariable *GetByGrad(const std::string &name) {
     return Get(grad_to_variables[name]);
   }

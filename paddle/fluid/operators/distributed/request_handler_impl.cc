@@ -88,10 +88,13 @@ bool RequestSendHandler::Handle(const std::string& varname,
       // for sparse ids
       if (var->IsType<framework::SelectedRows>()) {
         auto* ins = distributed::LargeScaleKV::GetInstance();
-        auto* large_scale_var = ins->GetByGrad(run_varname);
 
-        for (auto name : large_scale_var->CachedVarnames()) {
-          scope->Var(name);
+        if (ins->GradInLargeScale(run_varname)) {
+          auto* large_scale_var = ins->GetByGrad(run_varname);
+
+          for (auto name : large_scale_var->CachedVarnames()) {
+            scope->Var(name);
+          }
         }
 
         if (distributed_mode_ == DistributedMode::kGeo &&

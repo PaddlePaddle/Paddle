@@ -817,12 +817,11 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             print("large_scale_metas: {}".format(meta_str))
             large_scale_kv_metas.append(meta_str)
 
-        if large_scale_kv_metas:
-            program.global_block().append_op(
-                type="lookup_sparse_table_init",
-                inputs=None,
-                outputs=None,
-                attrs={"large_scale_metas": large_scale_kv_metas})
+        program.global_block().append_op(
+            type="lookup_sparse_table_init",
+            inputs=None,
+            outputs=None,
+            attrs={"large_scale_metas": large_scale_kv_metas})
 
     # todo: need delete unused var.
     return program
