@@ -42,7 +42,7 @@ class SliceOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       bool ban_fp16 = engine_->disable_trt_plugin_fp16();
       plugin::SlicePluginDynamic* plugin =
-          new plugin::SlicePluginDynamic(starts, ends, ends, ban_fp16);
+          new plugin::SlicePluginDynamic(starts, ends, axes, ban_fp16);
       layer = engine_->AddPluginV2(&input, 1, plugin);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
@@ -53,7 +53,7 @@ class SliceOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "You are running the TRT Dynamic Shape mode, need to confirm that "
