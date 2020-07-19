@@ -139,8 +139,7 @@ def ones(shape, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
-          
+          import paddle 
           paddle.enable_imperative()
           
           #default dtype for ones OP
