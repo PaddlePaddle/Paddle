@@ -763,19 +763,20 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
     grad_to_params = op.attr('sparse_grad_to_param')
     grad_to_block_ids = op.attr('grad_to_block_id')
 
+    origin_program = config.get_origin_main_program()
+    sparse_varnames = get_sparse_tablenames(origin_program, False)
+
     for grad_to_block_id in grad_to_block_ids:
         grad, blockid = grad_to_block_id.split(":")
         grad_blockid_map[grad] = int(blockid)
 
     for grad_to_param in grad_to_params:
         grad, param = grad_to_param.split(":")
+
+        if _orig_varname(param) in sparse_varnames:
+            continue
+
         param_blockid_map[param] = grad_blockid_map[grad]
-
-    origin_program = config.get_origin_main_program()
-    sparse_varnames = get_sparse_tablenames(origin_program, False)
-
-    for varname in sparse_varnames:
-        param_blockid_map.pop(varname)
 
     if not is_startup:
         for param, blockid in param_blockid_map.items():
@@ -816,11 +817,12 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             print("large_scale_metas: {}".format(meta_str))
             large_scale_kv_metas.append(meta_str)
 
-        program.global_block().append_op(
-            type="lookup_sparse_table_init",
-            inputs=None,
-            outputs=None,
-            attrs={"large_scale_metas": large_scale_kv_metas})
+        if large_scale_kv_metas:
+            program.global_block().append_op(
+                type="lookup_sparse_table_init",
+                inputs=None,
+                outputs=None,
+                attrs={"large_scale_metas": large_scale_kv_metas})
 
     # todo: need delete unused var.
     return program
@@ -840,8 +842,8 @@ def get_distributed_from_listen_and_serv(program, origin_program):
 
 def delete_unused_in_main_pass(program, config):
     origin_program = config.get_origin_main_program()
-    sparse_params = get_distributed_from_listen_and_serv(origin_program,
-                                                         program)
+    sparse_params = get_distributed_from_listen_and_serv(program,
+                                                         origin_program)
 
     for var in sparse_params:
         if program.global_block().has_var(var):
@@ -851,8 +853,8 @@ def delete_unused_in_main_pass(program, config):
 
 def delete_unused_in_startup_pass(program, main_program, config):
     origin_program = config.get_origin_main_program()
-    sparse_params = get_distributed_from_listen_and_serv(origin_program,
-                                                         main_program)
+    sparse_params = get_distributed_from_listen_and_serv(main_program,
+                                                         origin_program)
     remove_ops = []
 
     for op in program.global_block().ops:

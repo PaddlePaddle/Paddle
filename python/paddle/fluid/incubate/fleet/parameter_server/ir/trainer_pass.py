@@ -89,6 +89,8 @@ def distributed_ops_pass(program, config):
             ]
             w = program.global_block().vars[ops[0].input("W")[0]]
             padding_idx = ops[0].attr("padding_idx")
+            is_distributed = ops[0].attr("is_distributed")
+
             outputs = [
                 program.global_block().vars[op.output("Out")[0]] for op in ops
             ]
@@ -113,6 +115,8 @@ def distributed_ops_pass(program, config):
 
             tables = config.get_var_distributed(w.name, True)
 
+            pserver_endpoints = config.get_ps_endpoints()
+
             tablenames, eps, sections, = [], [], []
             for table in tables:
                 tablenames.append(table[0])
@@ -131,6 +135,8 @@ def distributed_ops_pass(program, config):
                     attrs={
                         "table_names": tablenames,
                         "endpoints": eps,
+                        "is_distributed": is_distributed,
+                        "pserver_num": len(pserver_endpoints),
                         "padding_idx": padding_idx,
                         "trainer_id": trainer_id
                     })

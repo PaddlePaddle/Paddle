@@ -41,7 +41,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 from paddle.fluid.incubate.fleet.parameter_server import version
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_all_get_sparse_tablenames
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.ir.checkport import wait_server_ready
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
@@ -119,8 +119,9 @@ class FleetTranspiler(Fleet):
                 opt_init_map[
                     "truncated_gaussian_random"] = ["seed", "mean", "std"]
 
-                table_names = get_all_get_sparse_tablenames(
-                    self._origin_main_program)
+                table_names = get_sparse_tablenames(self._origin_main_program,
+                                                    True)
+
                 init_attrs = []
                 for value_name in table_names:
                     value_var = self._origin_main_program.global_block().vars[

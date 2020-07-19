@@ -42,11 +42,11 @@ using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
 static void SplitIdsIntoMultipleVarsBySection(
-    const std::vector<int64_t>& in_ids,
-    const std::vector<std::string>& in_varnames, const int tables,
-    const int pservers, const bool is_distibuted, framework::Scope* scope,
-    std::vector<std::vector<int64_t>>* splited_ids,
-    std::vector<std::vector<int64_t>>* origin_ids) {
+    const std::vector<int64_t> &in_ids,
+    const std::vector<std::string> &in_varnames, const int tables,
+    const int pservers, const bool is_distibuted, framework::Scope *scope,
+    std::vector<std::vector<int64_t>> *splited_ids,
+    std::vector<std::vector<int64_t>> *origin_ids) {
   PADDLE_ENFORCE_EQ(
       in_varnames.size(), tables,
       platform::errors::OutOfRange(
@@ -61,34 +61,35 @@ static void SplitIdsIntoMultipleVarsBySection(
 
   auto place = platform::CPUPlace();
 
-  std::set<int64_t> st(input_ids.begin(), input_ids.end());
-  input_ids.assign(st.begin(), st.end());
+  std::set<int64_t> st(in_ids.begin(), in_ids.end());
+  std::vector<int64_t> all_ids;
+  all_ids.assign(st.begin(), st.end());
 
   splited_ids->resize(tables);
   origin_ids->resize(tables);
 
   if (is_distibuted) {
-    for (auto& id : all_ids) {
+    for (auto &id : all_ids) {
       auto pserver_id = id % pservers;
       (*splited_ids)[pserver_id].push_back(id);
       (*origin_ids)[pserver_id].push_back(id);
     }
   } else {
-    for (auto& id : all_ids) {
+    for (auto &id : all_ids) {
       auto pserver_id = id % pservers;
       (*origin_ids)[pserver_id].push_back(id);
-      auto id = id / pservers;
+      id = id / pservers;
       (*splited_ids)[pserver_id].push_back(id);
     }
   }
 
   for (size_t i = 0; i < in_varnames.size(); ++i) {
-    auto* id_tensor =
+    auto *id_tensor =
         scope->Var(in_varnames[i])->GetMutable<framework::LoDTensor>();
 
-    auto& ids = (*splited_ids)[i];
+    auto &ids = (*splited_ids)[i];
     if (!ids.empty()) {
-      auto* id_tensor_data = id_tensor->mutable_data<int64_t>(
+      auto *id_tensor_data = id_tensor->mutable_data<int64_t>(
           framework::make_ddim({static_cast<int64_t>(ids.size()), 1}), place);
       memcpy(id_tensor_data, ids.data(), sizeof(int64_t) * ids.size());
     }
@@ -98,18 +99,18 @@ static void SplitIdsIntoMultipleVarsBySection(
 typedef std::vector<std::pair<std::string, std::string>> TableAndEndpoints;
 
 void prefetch_core(
-    const std::vector<int64_t>& ids, const TableAndEndpoints& tables,
-    const framework::ExecutionContext& context, const framework::Scope& scope,
+    const std::vector<int64_t> &ids, const TableAndEndpoints &tables,
+    const framework::ExecutionContext &context, const framework::Scope &scope,
     const bool is_distributed,
-    std::unordered_map<int64_t, std::vector<float>>* recved_vec_map) {
-  distributed::RPCClient* rpc_client =
+    std::unordered_map<int64_t, std::vector<float>> *recved_vec_map) {
+  distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(
           context.Attr<int>("trainer_id"));
 
   int pservers = context.Attr<bool>("pserver_num");
 
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto& actual_ctx = *pool.Get(context.GetPlace());
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &actual_ctx = *pool.Get(context.GetPlace());
 
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
@@ -127,7 +128,7 @@ void prefetch_core(
                                     &split_ids, &origin_ids);
 
   // create output var in local scope
-  for (auto& name : out_var_names) {
+  for (auto &name : out_var_names) {
     local_scope->Var(name)->GetMutable<framework::LoDTensor>();
   }
 
@@ -150,13 +151,13 @@ void prefetch_core(
   }
 
   for (size_t o_idx = 0; o_idx < out_var_names.size(); ++o_idx) {
-    auto& ids_in_this_section = origin_ids[o_idx];
+    auto &ids_in_this_section = origin_ids[o_idx];
 
     if (!ids_in_this_section.empty()) {
-      auto& prefetch_out_var =
+      auto &prefetch_out_var =
           local_scope->Var(out_var_names[o_idx])->Get<framework::LoDTensor>();
-      const auto* out_var_data = prefetch_out_var.data<float>();
-      auto& dims = prefetch_out_var.dims();
+      const auto *out_var_data = prefetch_out_var.data<float>();
+      auto &dims = prefetch_out_var.dims();
 
       PADDLE_ENFORCE_EQ(dims.size(), 2, "");
       PADDLE_ENFORCE_EQ(ids_in_this_section.size(), dims[0]);
@@ -175,28 +176,28 @@ void prefetch_core(
   }
 }
 
-void prefetch(const std::string& id_name, const std::string& out_name,
-              const std::string& persistable_var_name,
+void prefetch(const std::string &id_name, const std::string &out_name,
+              const std::string &persistable_var_name,
               const bool is_distributed,
-              const std::vector<std::string>& table_names,
-              const std::vector<std::string>& endpoints,
-              const framework::ExecutionContext& context,
-              const framework::Scope& scope) {
+              const std::vector<std::string> &table_names,
+              const std::vector<std::string> &endpoints,
+              const framework::ExecutionContext &context,
+              const framework::Scope &scope) {
   prefetchs({id_name}, {out_name}, persistable_var_name, is_distributed,
             table_names, endpoints, context, scope);
 }
 
-void prefetchs(const std::vector<std::string>& id_var_names,
-               const std::vector<std::string>& out_var_names,
-               const std::string& persistable_var_name,
+void prefetchs(const std::vector<std::string> &id_var_names,
+               const std::vector<std::string> &out_var_names,
+               const std::string &persistable_var_name,
                const bool is_distributed,
-               const std::vector<std::string>& table_names,
-               const std::vector<std::string>& endpoints,
-               const framework::ExecutionContext& context,
-               const framework::Scope& scope) {
+               const std::vector<std::string> &table_names,
+               const std::vector<std::string> &endpoints,
+               const framework::ExecutionContext &context,
+               const framework::Scope &scope) {
   auto vec_dim_1 = 0;
   auto vec_dim_0 = 0;
-  framework::Variable* var = scope.FindVar(persistable_var_name);
+  framework::Variable *var = scope.FindVar(persistable_var_name);
 
   if (var->IsType<SelectedRows>()) {
     vec_dim_1 = var->Get<framework::SelectedRows>().value().dims()[1];
@@ -219,8 +220,9 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   std::vector<int64_t> ids_union;
   TableAndEndpoints tables;
 
-  for (auto& id_name : id_var_names) {
-    auto& id_tensor = in_var->Get<framework::LoDTensor>();
+  for (auto &id_name : id_var_names) {
+    auto *in_var = scope.FindVar(id_name);
+    auto &id_tensor = in_var->Get<framework::LoDTensor>();
     std::copy_n(id_tensor.data<int64_t>(), id_tensor.numel(),
                 back_inserter(ids_union));
   }
@@ -228,7 +230,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   std::unordered_set<int64_t> s(ids_union.begin(), ids_union.end());
   ids_union.assign(s.begin(), s.end());
 
-  for (auto& i : ids_union) {
+  for (auto &i : ids_union) {
     PADDLE_ENFORCE_GE(
         i, 0, platform::errors::OutOfRange(
                   "each element in embedding should be larger or equal 0"));
@@ -256,19 +258,19 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   }
 
   for (size_t i = 0; i < out_var_names.size(); i++) {
-    auto* in_var = scope.FindVar(id_var_names[i]);
-    auto& id_tensor = in_var->Get<framework::LoDTensor>();
+    auto *in_var = scope.FindVar(id_var_names[i]);
+    auto &id_tensor = in_var->Get<framework::LoDTensor>();
     auto ids_size = id_tensor.dims()[0];
-    const auto* id_data = id_tensor.data<int64_t>();
+    const auto *id_data = id_tensor.data<int64_t>();
 
-    auto* out_t =
+    auto *out_t =
         scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
     out_t->set_lod(id_tensor.lod());
     out_t->Resize(framework::make_ddim({ids_size, vec_dim_1}));
-    auto* out_d = out_t->mutable_data<float>(place);
+    auto *out_d = out_t->mutable_data<float>(place);
 
-    for (size_t idx = 0; idx < ids_size; idx++) {
-      const auto& id = id_data[idx];
+    for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
+      const auto &id = id_data[idx];
       if (padding_idx != distributed::kNoPadding && id == padding_idx) {
         memset(out_d + idx * vec_dim_1, 0, sizeof(float) * vec_dim_1);
       } else {
