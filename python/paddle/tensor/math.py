@@ -210,14 +210,12 @@ def pow(input, exponent, name=None):
             x = fluid.data(name="x", shape=[32,32], dtype="float32")
 
             # example 1: argument exponent is float
-            res = fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_1 = paddle.pow(x, 2.0, out=res)
+            y_1 = paddle.pow(x, 2.0)
             # y_1 is x^{2.0}
 
             # example 2: argument exponent is Variable
             exponent_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
-            res = fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_2 = paddle.pow(x, exponent_tensor, out=res)
+            y_2 = paddle.pow(x, exponent_tensor)
             # y_2 is x^{3.0}
     """
     helper = LayerHelper('pow', **locals())
@@ -392,9 +390,7 @@ Examples:
 
         x = fluid.data(name="x", shape=[3], dtype="float32")
         y = fluid.data(name='y', shape=[3], dtype='float32')
-
-        output = fluid.data(name="output", shape=[3], dtype="float32")
-        z = paddle.add(x, y, out=output)
+        z = paddle.add(x, y)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -504,8 +500,7 @@ Examples:
 
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
-        output = fluid.data(name="output", shape=[2,3,4,5], dtype="float32")
-        z = paddle.div(x, y, out=output)
+        z = paddle.div(x, y)
         # z = x / y
 
         place = fluid.CPUPlace()
