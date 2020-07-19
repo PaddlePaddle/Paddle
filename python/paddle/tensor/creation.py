@@ -326,8 +326,7 @@ def zeros_like(input, dtype=None, device=None, name=None):
 
 def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
-    **eye**
-    This function constructs an identity tensor.
+    This function constructs 2-D Tensor with ones on the diagonal and zeros elsewhere.
 
     Args:
         num_rows(int): the number of rows in each batch tensor.

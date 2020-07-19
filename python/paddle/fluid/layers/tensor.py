@@ -1547,7 +1547,7 @@ def eye(num_rows,
 
     **eye**
 
-    This function constructs an identity tensor, or a batch of tensor.
+    This function constructs a or a batch of 2-D tensor with ones on the diagonal and zeros elsewhere, 
 
     Args:
         num_rows(int): the number of rows in each batch tensor.
