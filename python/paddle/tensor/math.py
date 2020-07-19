@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1401,7 +1401,7 @@ def clamp(input, min=None, max=None, name=None):
 
     return output
 
-  
+
 def trace(x, offset=0, axis1=0, axis2=1, name=None):
     """
 	:alias_main: paddle.trace
