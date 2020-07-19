@@ -70,26 +70,6 @@ class TestActivation(OpTest):
 
 
 class TestParameter(object):
-    def test_out(self):
-        with fluid.program_guard(fluid.Program()):
-            data = fluid.layers.data(name="X", shape=[1])
-            out = eval("paddle.%s(data, out=data)" % self.op_type)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result = exe.run(feed={"X": np.array([0.1])},
-                             fetch_list=[data, out])
-            self.assertEqual(result[0], result[1])
-
-    def test_out_name(self):
-        with fluid.program_guard(fluid.Program()):
-            data = fluid.layers.data(name="X", shape=[1])
-            out = eval("paddle.%s(data, name='Y', out=data)" % self.op_type)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result = exe.run(feed={"X": np.array([0.1])},
-                             fetch_list=[data, out])
-            self.assertEqual(result[0], result[1])
-
     def test_dygraph(self):
         with fluid.dygraph.guard():
             np_x = np.array([0.1])
