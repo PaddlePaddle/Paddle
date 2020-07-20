@@ -49,6 +49,7 @@ class TestMultiplyAPI(unittest.TestCase):
 
     def test_multiply(self):
         """test_multiply."""
+        np.random.seed(7)
         # test static computation graph: 1-d array
         x_data = np.random.rand(10)
         y_data = np.random.rand(10)
@@ -118,6 +119,7 @@ class TestMultiplyError(unittest.TestCase):
             y = paddle.nn.data(name='y', shape=[2], dtype=np.float32)
             self.assertRaises(fluid.core.EnforceNotMet, tensor.multiply, x, y)
 
+        np.random.seed(7)
         # test dynamic computation graph: dtype can not be int8
         paddle.enable_imperative()
         x_data = np.random.randn(10).astype(np.int8)
