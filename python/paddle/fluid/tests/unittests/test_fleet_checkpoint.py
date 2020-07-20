@@ -23,6 +23,7 @@ import sys
 
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
 
 
 class FleetTest(unittest.TestCase):
@@ -69,6 +70,10 @@ class FleetTest(unittest.TestCase):
             fs=fs,
             remain_all_checkpoint=False)
         self.assertEqual(n2, n1 + 1)
+
+        c = CheckpointSaver(fs)
+        cp_nos = c.get_checkpoint_no(dir_path)
+        assert len(cp_nos) == 1  # cleanup all others
 
         # unnormal
         # test remain_all_checkpoint 
