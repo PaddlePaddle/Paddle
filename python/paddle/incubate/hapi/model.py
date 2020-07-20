@@ -504,7 +504,7 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
             losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -512,7 +512,7 @@ class DynamicGraphAdapter(object):
             final_loss.backward()
             self.ddp_model.apply_collective_grads()
         else:
-            outputs = self.model.forward(*[to_variable(x) for x in inputs])
+            outputs = self.model.forward(* [to_variable(x) for x in inputs])
             losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -523,7 +523,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -536,7 +536,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.forward(* [to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -567,7 +567,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss_function and len(metrics):
@@ -671,15 +671,14 @@ class Model(fluid.dygraph.Layer):
         import numpy as np
         import paddle
         import paddle.fluid as fluid
-        #import paddle.incubate.hapi as hapi
         from paddle.incubate.hapi import Model, Input, set_device
-        from paddle.incubate.hapi.loss import CrossEntropy
+        from paddle.nn.layer.loss import CrossEntropyLoss
         from paddle.incubate.hapi.dataset import MNIST
 
         class MyModel(Model):
             def __init__(self):
                 super(MyModel, self).__init__()
-                self._fc = fluid.dygraph.Linear(784, 10, act='softmax')
+                self._fc = fluid.dygraph.Linear(784, 10)
             def forward(self, x):
                 y = self._fc(x)
                 return y
@@ -695,7 +694,7 @@ class Model(fluid.dygraph.Layer):
         
         mnist_data = MNIST(mode='train')
         model.prepare(optim,
-                      CrossEntropy(average=True),
+                      CrossEntropyLoss(),
                       hapi.metrics.Accuracy(),
                       inputs,
                       labels,
@@ -743,11 +742,12 @@ class Model(fluid.dygraph.Layer):
               import numpy as np
               import paddle.fluid as fluid
               from paddle.incubate.hapi import Model, Input, set_device
+              from paddle.nn.layer.loss import CrossEntropyLoss
 
               class MyModel(Model):
                   def __init__(self):
                       super(MyModel, self).__init__()
-                      self._fc = Linear(784, 1, act='softmax')
+                      self._fc = Linear(784, 1)
                   def forward(self, x):
                       y = self._fc(x)
                       return y
@@ -762,7 +762,7 @@ class Model(fluid.dygraph.Layer):
               inputs = [Input([None, 784], 'float32', name='x')]
               labels = [Input([None, 1], 'int64', name='label')]
               model.prepare(optim,
-                            CrossEntropy(average=True),
+                            CrossEntropyLoss(),
                             inputs=inputs,
                             labels=labels,
                             device=device)
@@ -795,11 +795,12 @@ class Model(fluid.dygraph.Layer):
               import numpy as np
               import paddle.fluid as fluid
               from paddle.incubate.hapi import Model, Input, set_device
+              from paddle.nn.layer.loss import CrossEntropyLoss
 
               class MyModel(Model):
                   def __init__(self):
                       super(MyModel, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                      self._fc = fluid.dygraph.Linear(784, 1)
                   def forward(self, x):
                       y = self._fc(x)
                       return y
@@ -814,7 +815,7 @@ class Model(fluid.dygraph.Layer):
               inputs = [Input([None, 784], 'float32', name='x')]
               labels = [Input([None, 1], 'int64', name='label')]
               model.prepare(optim,
-                            CrossEntropy(average=True),
+                            CrossEntropyLoss(),
                             inputs=inputs,
                             labels=labels,
                             device=device)
@@ -1203,7 +1204,7 @@ class Model(fluid.dygraph.Layer):
             .. code-block:: python
 
               from paddle.incubate.hapi.model import Model, Input, set_device
-              from paddle.incubate.hapi.loss import CrossEntropy
+              from paddle.nn.layer.loss import CrossEntropyLoss
               from paddle.incubate.hapi.metrics import Accuracy
               from paddle.incubate.hapi.datasets import MNIST
               from paddle.incubate.hapi.vision.models import LeNet
@@ -1218,12 +1219,12 @@ class Model(fluid.dygraph.Layer):
               inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
               labels = [Input([None, 1], 'int64', name='label')]
            
-              model = LeNet()
+              model = LeNet(classifier_activation=None)
               optim = fluid.optimizer.Adam(
                   learning_rate=0.001, parameter_list=model.parameters())
               model.prepare(
                   optim,
-                  CrossEntropy(),
+                  CrossEntropyLoss(),
                   Accuracy(topk=(1, 2)),
                   inputs=inputs,
                   labels=labels,
@@ -1240,7 +1241,7 @@ class Model(fluid.dygraph.Layer):
             .. code-block:: python
 
               from paddle.incubate.hapi.model import Model, Input, set_device
-              from paddle.incubate.hapi.loss import CrossEntropy
+              from paddle.nn.layer.loss import CrossEntropyLoss
               from paddle.incubate.hapi.metrics import Accuracy
               from paddle.incubate.hapi.datasets import MNIST
               from paddle.incubate.hapi.vision.models import LeNet
@@ -1264,7 +1265,7 @@ class Model(fluid.dygraph.Layer):
                   learning_rate=0.001, parameter_list=model.parameters())
               model.prepare(
                   optim,
-                  CrossEntropy(),
+                  CrossEntropyLoss(),
                   Accuracy(topk=(1, 2)),
                   inputs=inputs,
                   labels=labels,

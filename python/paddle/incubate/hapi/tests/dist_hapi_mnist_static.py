@@ -23,7 +23,7 @@ import contextlib
 from paddle import fluid
 
 from paddle.incubate.hapi.model import Model, Input, set_device
-from paddle.incubate.hapi.loss import CrossEntropy
+from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.incubate.hapi.vision.models import LeNet
 from paddle.incubate.hapi.metrics import Accuracy
 from paddle.incubate.hapi.callbacks import ProgBarLogger
@@ -73,7 +73,7 @@ class TestDistTraning(unittest.TestCase):
         model = LeNet()
         optim = fluid.optimizer.Momentum(
             learning_rate=0.001, momentum=.9, parameter_list=model.parameters())
-        loss = CrossEntropy()
+        loss = CrossEntropyLoss()
         model.prepare(optim, loss, Accuracy(), inputs, labels, device=device)
         cbk = ProgBarLogger(50)
 

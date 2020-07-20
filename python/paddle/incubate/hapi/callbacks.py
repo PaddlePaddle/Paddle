@@ -294,7 +294,7 @@ class ProgBarLogger(Callback):
             import numpy as np
             from paddle import fluid
             from paddle.incubate.hapi.metrics import Accuracy
-            from paddle.incubate.hapi.loss import CrossEntropy
+            from paddle.nn.layer.loss import CrossEntropyLoss
             from paddle.incubate.hapi.datasets import MNIST
             from paddle.incubate.hapi.vision.models import LeNet
             from paddle.incubate.hapi.callbacks import ProgBarLogger
@@ -305,11 +305,11 @@ class ProgBarLogger(Callback):
 
             train_dataset = MNIST(mode='train')
 
-            model = LeNet()
+            model = LeNet(classifier_activation=None)
 
             optim = fluid.optimizer.Adam(0.001)
             model.prepare(optimizer=optim, 
-                        loss_function=CrossEntropy(), 
+                        loss_function=CrossEntropyLoss(), 
                         metrics=Accuracy(), 
                         inputs=inputs, 
                         labels=labels)
@@ -436,7 +436,7 @@ class ModelCheckpoint(Callback):
             import numpy as np
             from paddle import fluid
             from paddle.incubate.hapi.metrics import Accuracy
-            from paddle.incubate.hapi.loss import CrossEntropy
+            from paddle.nn.layer.loss import CrossEntropyLoss
             from paddle.incubate.hapi.datasets import MNIST
             
             from paddle.incubate.hapi.vision.models import LeNet
@@ -448,13 +448,13 @@ class ModelCheckpoint(Callback):
 
             train_dataset = MNIST(mode='train')
 
-            model = LeNet()
+            model = LeNet(classifier_activation=None)
 
             optim = fluid.optimizer.Adam(0.001)
-            model.prepare(optimizer=optim, 
-                        loss_function=CrossEntropy(), 
-                        metrics=Accuracy(), 
-                        inputs=inputs, 
+            model.prepare(optimizer=optim,
+                        loss_function=CrossEntropyLoss(),
+                        metrics=Accuracy(),
+                        inputs=inputs,
                         labels=labels)
 
             callback = ModelCheckpoint(save_dir='./temp')
