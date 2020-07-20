@@ -435,6 +435,7 @@ def squeeze(x, axis=None, name=None):
     """
 	:alias_main: paddle.squeeze
 	:alias: paddle.squeeze,paddle.tensor.squeeze,paddle.tensor.manipulation.squeeze
+    :update_api: paddle.fluid.layers.squeeze
 
     This OP will squeeze the dimension(s) of size 1 of input tensor's shape. 
 
