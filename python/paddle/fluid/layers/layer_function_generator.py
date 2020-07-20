@@ -286,27 +286,14 @@ Examples:
     .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import numpy as np
 
-        inputs = fluid.data(name="x", shape = [None, 4], dtype='float32')
-        output = paddle.%s(inputs)
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
-
-        #input.shape=1X4, batch_size=1
-        img = np.array([[1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
-        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-        print(res)
-
-        # using dygraph
-        with paddle.imperative.guard():
-            dygraph_input = paddle.imperative.to_variable(img)
-            dygraph_output = paddle.%s(dygraph_input)
-            print(dygraph_output.numpy())
-""" % (op_type, op_type)
-
+        paddle.enable_imperative()
+        x_data = np.array([1, 2, 3, 4]).astype(np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        res = paddle.%s(x)
+        print(res.numpy())
+""" % op_type
     return func
 
 

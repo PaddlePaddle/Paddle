@@ -142,8 +142,8 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
   } else if (str == "bandpass") {
     return ActivationMode::kBandPass;
   } else {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Unknown activation string: %s.", str));
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unknown CUDNN activation string: %s.", str));
   }
 }
 

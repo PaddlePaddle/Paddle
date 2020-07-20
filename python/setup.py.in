@@ -145,10 +145,10 @@ packages=['paddle',
           'paddle.incubate.complex.tensor',
           'paddle.fleet',
           'paddle.fleet.base',
-          'paddle.fleet.collective',
+          'paddle.fleet.meta_optimizers',
+          'paddle.fleet.runtime',
           'paddle.fleet.dataset',
           'paddle.fleet.metrics',
-          'paddle.fleet.parameter_server',
           'paddle.fleet.proto',
           'paddle.framework',
           'paddle.fluid',
@@ -202,6 +202,7 @@ packages=['paddle',
           'paddle.nn.initializer',
           'paddle.metric',
           'paddle.imperative',
+          'paddle.imperative.jit',
           'paddle.tensor',
           ]
 
@@ -270,6 +271,10 @@ else:
         # copy the openblas.dll
         shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
+
+if '${WITH_LITE}' == 'ON':
+    shutil.copy('${LITE_SHARED_LIB}', libs_path)
+    package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
