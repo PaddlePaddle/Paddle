@@ -143,6 +143,11 @@ RUN wget -q https://paddlepaddledeps.bj.bcebos.com/TensorRT-6.0.1.5.Ubuntu-16.04
     tar -zxf TensorRT-6.0.1.5.Ubuntu-16.04.x86_64-gnu.cuda-10.1.cudnn7.tar.gz -C /usr/local && \
     cp -rf /usr/local/TensorRT-6.0.1.5/include/* /usr/include/ && cp -rf /usr/local/TensorRT-6.0.1.5/lib/* /usr/lib/ 
 
+# Install patchelf-0.10 
+RUN wget https://paddle-ci.gz.bcebos.com/patchelf-0.10.tar.gz && \
+    tar -zxvf patchelf-0.10.tar.gz && cd patchelf-0.10 && \
+    ./configure && make -j8 && make install
+
 # git credential to skip password typing
 RUN git config --global credential.helper store
 
