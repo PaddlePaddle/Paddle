@@ -54,9 +54,6 @@ void TrainerBase::ParseDumpConfig(const TrainerDesc& desc) {
 
 void TrainerBase::DumpWork(int tid) {
 #ifdef _LINUX
-  if (!need_dump_field_ && !need_dump_param_) {
-    return;
-  }
   int err_no = 0;
   // GetDumpPath is implemented in each Trainer
   std::string path = GetDumpPath(tid);

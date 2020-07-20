@@ -260,8 +260,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     prog_id_to_worker[k].get_desc().CopyFrom(
                         ps_param.trainer_param[0])
             elif len(prog_id_to_worker) == 1:
-                prog_id_to_worker[0].get_desc().CopyFrom(
-                   ps_param.trainer_param[0])
+                prog_id_to_worker[0].get_desc().CopyFrom(ps_param.trainer_param[
+                    0])
             else:
                 if len(ps_param.trainer_param) != len(prog_id_to_worker):
                     raise ValueError(
