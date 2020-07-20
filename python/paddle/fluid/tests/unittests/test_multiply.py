@@ -115,8 +115,8 @@ class TestMultiplyError(unittest.TestCase):
 
         # test static computation graph: inputs must be broadcastable 
         with program_guard(Program(), Program()):
-            x = paddle.nn.data(name='x', shape=[20, 50], dtype=np.float32)
-            y = paddle.nn.data(name='y', shape=[20], dtype=np.float32)
+            x = paddle.nn.data(name='x', shape=[20, 50], dtype=np.float64)
+            y = paddle.nn.data(name='y', shape=[20], dtype=np.float64)
             self.assertRaises(fluid.core.EnforceNotMet, tensor.multiply, x, y)
 
         np.random.seed(7)
