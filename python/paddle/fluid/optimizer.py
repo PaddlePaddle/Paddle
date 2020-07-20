@@ -604,15 +604,14 @@ class Optimizer(object):
         # But if current block is in control flow, append optimize op in the
         # grad block of current block
 
-        # global_block = framework.default_main_program().global_block()
-        # target_block = global_block
+        global_block = framework.default_main_program().global_block()
+        target_block = global_block
         current_block = framework.default_main_program().current_block()
-        target_block = current_block
-        # if current_block.idx != global_block.idx:
-        #     assert current_block.backward_block_idx != -1, \
-        #         "current block is not global_block, but it doesn't have backward block."
-        #     target_block = framework.default_main_program().blocks[
-        #         current_block.backward_block_idx]
+        if current_block.idx != global_block.idx:
+            assert current_block.backward_block_idx != -1, \
+                "current block is not global_block, but it doesn't have backward block."
+            target_block = framework.default_main_program().blocks[
+                current_block.backward_block_idx]
 
         start = len(target_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
@@ -5036,8 +5035,14 @@ class GradientMergeOptimizer(object):
                     layers.assign(input=tmp_var, output=grad)
 
                 # 2. apply_optimize
-                # cur_block_idx = main_block.program.current_block_idx
-                # main_block._set_forward_block_idx(cur_block_idx)
+                cur_block_idx = main_block.program.current_block_idx
+                cur_block = main_block.program.current_block()
+
+                target_grad_block = main_block.program._create_block(
+                    parent_idx=cur_block.parent_idx)
+                target_grad_block._set_forward_block_idx(cur_block_idx)
+                main_block.program.current_block_idx = cur_block_idx
+
                 self.inner_optimizer.apply_optimize(
                     loss,
                     startup_program=startup_program,
