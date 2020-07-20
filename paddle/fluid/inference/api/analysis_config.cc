@@ -356,8 +356,9 @@ void AnalysisConfig::Update() {
 
   if (use_xpu_) {
 #ifndef PADDLE_WITH_XPU
-    LOG(FATAL) << "You tried to use an XPU device, but Paddle was not compiled "
-                  "with XPU-runtime.";
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use an XPU device, but Paddle was not compiled "
+        "with XPU-runtime."));
 #endif
     if (!use_lite_) {
       LOG(WARNING) << "Because XPU currently only works in Paddle-Lite "

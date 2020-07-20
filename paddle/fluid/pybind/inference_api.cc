@@ -433,6 +433,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
+           py::arg("zero_copy") = false,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("passes_filter") = std::vector<std::string>(),
            py::arg("ops_filter") = std::vector<std::string>())

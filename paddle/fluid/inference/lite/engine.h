@@ -24,9 +24,9 @@
 #pragma GCC diagnostic ignored "-Wall"
 #include "lite/api/cxx_api.h"
 #include "lite/api/paddle_place.h"
-#include "lite/backends/xpu/target_wrapper.h"
 #include "lite/core/context.h"
 #include "lite/core/device_info.h"
+#include "lite/core/memory.h"
 #include "lite/core/op_registry.h"
 #include "lite/core/tensor.h"
 #pragma GCC diagnostic pop

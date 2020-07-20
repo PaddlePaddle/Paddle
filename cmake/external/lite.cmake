@@ -25,7 +25,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG ab8af5c4b4dc5b40217633e0aa436315912d7b53)
+    set(LITE_GIT_TAG 42ab4d559f6659edfc35040fb30fdcec3dc3f8aa)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -100,6 +100,7 @@ if(XPU_SDK_ROOT)
   include_directories("${XPU_SDK_ROOT}/XTCL/include")
   add_definitions(-DPADDLE_WITH_XPU)
   LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/shlib/")
+  LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/runtime/shlib/")
 endif()
 
 add_definitions(-DPADDLE_WITH_LITE)

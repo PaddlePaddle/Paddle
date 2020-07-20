@@ -212,7 +212,7 @@ template <>
 void TensorDataShare(framework::LoDTensor* dst, paddle::lite::Tensor* src) {
   constexpr framework::proto::VarType::Type dtype =
       framework::proto::VarType_Type_FP32;
-  void* src_raw_data = const_cast<void*>(src->raw_data());
+  void* src_raw_data = src->raw_data();
   std::shared_ptr<memory::allocation::Allocation> holder(
       new memory::allocation::Allocation(src_raw_data, src->memory_size(),
                                          GetNativePlace(src->target())));
