@@ -29,6 +29,7 @@ from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Program, Block, Variable, ParamBase, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph.io import TranslatedLayer, VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
+from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
 
 __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
@@ -167,7 +168,15 @@ def _declarative_(dygraph_func):
                 "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
-        return program_translator.get_output(dygraph_func, *args, **kwargs)
+        try:
+            return program_translator.get_output(dygraph_func, *args, **kwargs)
+        except Exception as e:
+            error_data = getattr(e, ERROR_DATA, None)
+            if error_data:
+                new_exception = error_data.create_exception()
+                raise new_exception
+            else:
+                raise
 
     return __impl__
 
