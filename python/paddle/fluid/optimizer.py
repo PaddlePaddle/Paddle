@@ -604,14 +604,15 @@ class Optimizer(object):
         # But if current block is in control flow, append optimize op in the
         # grad block of current block
 
-        global_block = framework.default_main_program().global_block()
-        target_block = global_block
+        # global_block = framework.default_main_program().global_block()
+        # target_block = global_block
         current_block = framework.default_main_program().current_block()
-        if current_block.idx != global_block.idx:
-            assert current_block.backward_block_idx != -1, \
-                "current block is not global_block, but it doesn't have backward block."
-            target_block = framework.default_main_program().blocks[
-                current_block.backward_block_idx]
+        target_block = current_block
+        # if current_block.idx != global_block.idx:
+        #     assert current_block.backward_block_idx != -1, \
+        #         "current block is not global_block, but it doesn't have backward block."
+        #     target_block = framework.default_main_program().blocks[
+        #         current_block.backward_block_idx]
 
         start = len(target_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
@@ -4929,3 +4930,124 @@ class LookaheadOptimizer(object):
             with switch.default():
                 pass
         return mini_out
+
+
+class GradientMergeOptimizer(object):
+    """
+    """
+
+    def __init__(self, inner_optimizer, k_steps=1):
+        if framework.in_dygraph_mode():
+            raise Exception(
+                "In dygraph, we don't support GradientMergeOptimizer."
+                "You can do Gradient merge by yourself with k-times forward + backward, "
+                "and one-time optimizer.minimize()")
+
+        assert (inner_optimizer is not None), "inner optimizer can not be None"
+        assert (isinstance(k_steps, int) and
+                k_steps > 0), "k_steps should be a positive integer"
+
+        self.inner_optimizer = inner_optimizer
+        self.k_steps = k_steps
+        self.type = "gradient_merge"
+
+    def minimize(self, loss, startup_program=None):
+        assert isinstance(loss, Variable), "The loss should be an Variable."
+        params_grads = self.inner_optimizer.backward(
+            loss, startup_program=startup_program)
+
+        # Get startup_program and main_program
+        if startup_program is None:
+            startup_program = default_startup_program()
+        main_block = loss.block
+
+        # add some vars to the main_program
+        param_names = [x.name for x in main_block.all_parameters()]
+        param_to_gradient_merge = {}
+        for param_name in param_names:
+            param_var = main_block.var(param_name)
+            assert (param_var is not None)
+            gradient_merge_var = main_block.create_var(
+                name=param_name + "@GRAD@GradientMerge",
+                shape=param_var.shape,
+                dtype=param_var.dtype,
+                persistable=True)
+            param_to_gradient_merge[param_name] = gradient_merge_var
+
+        # add some vars to the startup_program
+        startup_block = startup_program.global_block()
+        for param_name in param_names:
+            param_var = startup_block.var(param_name)
+            assert (param_var is not None)
+            gradient_merge_var = startup_block.create_var(
+                name=param_name + "@GRAD@GradientMerge",
+                shape=param_var.shape,
+                dtype=param_var.dtype,
+                persistable=True)
+
+            startup_block.append_op(
+                type="fill_constant",
+                outputs={"Out": gradient_merge_var},
+                attrs={
+                    "shape": param_var.shape,
+                    "dtype": param_var.dtype,
+                    "value": float(0),
+                })
+
+        # Add Var k to main prog and startup prog
+        gradient_merge_k = layers.create_global_var(
+            name="gradient_merge_k",
+            shape=[1],
+            value=int(self.k_steps),
+            dtype='int32',
+            persistable=True)
+
+        # Add Var step
+        gradient_merge_step = layers.create_global_var(
+            name="gradient_merge_step",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True)
+        layers.increment(x=gradient_merge_step, value=1.0, in_place=True)
+
+        # gradient merge
+        zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
+        one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
+
+        mod = layers.elementwise_mod(gradient_merge_step, gradient_merge_k)
+        with layers.control_flow.Switch() as switch:
+            with switch.case(mod != zero_var):
+                # 1. update the gradient_merge_vars
+                #  gradient_merge_vars += gradient_vars
+                for param_name in param_names:
+                    grad = main_block.var(param_name + "@GRAD")
+                    grad_merge = param_to_gradient_merge[param_name]
+                    tmp_var = layers.elementwise_add(grad, grad_merge)
+                    layers.assign(input=tmp_var, output=grad_merge)
+
+            with switch.default():
+                # 1. update the graient_vars
+                #     gradient_vars += gradient_merge_vars
+                for param_name in param_names:
+                    grad = main_block.var(param_name + "@GRAD")
+                    grad_merge = param_to_gradient_merge[param_name]
+                    tmp_var = layers.elementwise_add(grad, grad_merge)
+                    layers.assign(input=tmp_var, output=grad)
+
+                # 2. apply_optimize
+                # cur_block_idx = main_block.program.current_block_idx
+                # main_block._set_forward_block_idx(cur_block_idx)
+                self.inner_optimizer.apply_optimize(
+                    loss,
+                    startup_program=startup_program,
+                    params_grads=params_grads)
+
+                # 3. clear gradient_merge_vars
+                for param_name in param_names:
+                    grad_merge = param_to_gradient_merge[param_name]
+                    layers.fill_constant(
+                        shape=grad_merge.shape,
+                        dtype=grad_merge.dtype,
+                        value=0.0,
+                        out=grad_merge)
