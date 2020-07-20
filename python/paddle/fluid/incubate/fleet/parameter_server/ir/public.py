@@ -619,11 +619,20 @@ class CompileTimeStrategy(object):
                                                     curr_block_size)
                     blocks.append(str(block))
             else:
-                split_count = slice_count if var.shape[
-                    0] > slice_count else var.shape[0]
-                numel = reduce(lambda x, y: x * y, var.shape)
+                block_size = var.shape[0] / slice_count
+                remainder = var.shape[0] % slice_count
 
-                for block_id in range(split_count):
+                if block_size == 0:
+                    dim0s = [block_size] * remainder
+                else:
+                    dim0s = [block_size] * slice_count
+                for i in range(remainder):
+                    dim0s[i] = dim0s[i] + 1
+
+                dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+
+                for block_id in range(len(dim0s)):
+                    numel = dim0s[block_id] * dim1
                     block = vars_metatools.VarBlock(var.name, block_id, numel)
                     blocks.append(str(block))
         return blocks
