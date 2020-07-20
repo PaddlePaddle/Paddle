@@ -51,51 +51,51 @@ class TestMultiplyAPI(unittest.TestCase):
         """test_multiply."""
         np.random.seed(7)
         # test static computation graph: 1-d array
-        x_data = np.random.rand(10)
-        y_data = np.random.rand(10)
+        x_data = np.random.rand(200)
+        y_data = np.random.rand(200)
         res = self.__run_static_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph: 2-d array
-        x_data = np.random.rand(2, 5)
-        y_data = np.random.rand(2, 5)
+        x_data = np.random.rand(2, 500)
+        y_data = np.random.rand(2, 500)
         res = self.__run_static_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph: broadcast
-        x_data = np.random.rand(2, 5)
-        y_data = np.random.rand(5)
+        x_data = np.random.rand(2, 500)
+        y_data = np.random.rand(500)
         res = self.__run_static_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph: broadcast with axis
-        x_data = np.random.rand(2, 3, 4)
-        y_data = np.random.rand(3)
+        x_data = np.random.rand(2, 300, 40)
+        y_data = np.random.rand(300)
         res = self.__run_static_graph_case(x_data, y_data, axis=1)
         expected = np.multiply(x_data, y_data[..., np.newaxis])
         self.assertTrue(np.allclose(res, expected))
 
         # test dynamic computation graph: 1-d array
-        x_data = np.random.rand(10)
-        y_data = np.random.rand(10)
+        x_data = np.random.rand(200)
+        y_data = np.random.rand(200)
         res = self.__run_dynamic_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph: 2-d array
-        x_data = np.random.rand(2, 5)
-        y_data = np.random.rand(2, 5)
+        x_data = np.random.rand(20, 50)
+        y_data = np.random.rand(20, 50)
         res = self.__run_dynamic_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph: broadcast
-        x_data = np.random.rand(2, 5)
-        y_data = np.random.rand(5)
+        x_data = np.random.rand(2, 500)
+        y_data = np.random.rand(500)
         res = self.__run_dynamic_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph: broadcast with axis
-        x_data = np.random.rand(2, 3, 4)
-        y_data = np.random.rand(3)
+        x_data = np.random.rand(2, 300, 40)
+        y_data = np.random.rand(300)
         res = self.__run_dynamic_graph_case(x_data, y_data, axis=1)
         expected = np.multiply(x_data, y_data[..., np.newaxis])
         self.assertTrue(np.allclose(res, expected))
@@ -109,28 +109,28 @@ class TestMultiplyError(unittest.TestCase):
         # test static computation graph: dtype can not be int8
         paddle.disable_imperative()
         with program_guard(Program(), Program()):
-            x = paddle.nn.data(name='x', shape=[10], dtype=np.int8)
-            y = paddle.nn.data(name='y', shape=[10], dtype=np.int8)
+            x = paddle.nn.data(name='x', shape=[100], dtype=np.int8)
+            y = paddle.nn.data(name='y', shape=[100], dtype=np.int8)
             self.assertRaises(TypeError, tensor.multiply, x, y)
 
         # test static computation graph: inputs must be broadcastable 
         with program_guard(Program(), Program()):
-            x = paddle.nn.data(name='x', shape=[2, 5], dtype=np.float32)
-            y = paddle.nn.data(name='y', shape=[2], dtype=np.float32)
+            x = paddle.nn.data(name='x', shape=[20, 50], dtype=np.float32)
+            y = paddle.nn.data(name='y', shape=[20], dtype=np.float32)
             self.assertRaises(fluid.core.EnforceNotMet, tensor.multiply, x, y)
 
         np.random.seed(7)
         # test dynamic computation graph: dtype can not be int8
         paddle.enable_imperative()
-        x_data = np.random.randn(10).astype(np.int8)
-        y_data = np.random.randn(10).astype(np.int8)
+        x_data = np.random.randn(200).astype(np.int8)
+        y_data = np.random.randn(200).astype(np.int8)
         x = paddle.imperative.to_variable(x_data)
         y = paddle.imperative.to_variable(y_data)
         self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
 
         # test dynamic computation graph: inputs must be broadcastable
-        x_data = np.random.rand(2, 5)
-        y_data = np.random.rand(2)
+        x_data = np.random.rand(200, 5)
+        y_data = np.random.rand(200)
         x = paddle.imperative.to_variable(x_data)
         y = paddle.imperative.to_variable(y_data)
         self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
