@@ -27,13 +27,12 @@ class TrainEpochRangeWrapper(object):
         self._checkpoint_epoch_no = None
 
         self._train_epoch_range = acp.TrainEpochRange(
-            -1,
-            name,
-            checkpoint_inter=acp._get_checker().save_checkpoint_inter,
-            load_last=-2)
+            -1, name, checkpoint_inter=acp._get_checker().save_checkpoint_inter)
 
         if self._train_epoch_range.restored_from == acp.CONST_CHECKPOINT:
             self._checkpoint_epoch_no = self._train_epoch_range._checkpoint_epoch_no
+            # can't assign data because it will be go throughed
+            #self._epoch_no = self._train_epoch_range._epoch_no
 
     def save_checkpoint(self):
         logger.info(self)
@@ -54,11 +53,12 @@ class TrainEpochRangeWrapper(object):
         ) <= 1, "data loader checkpoint must contain one exe when running"
 
     def beyond_restored(self):
-        if self.is_restored():
+        if self.is_restored:
             return self._epoch_no > self._checkpoint_epoch_no
 
         return True
 
+    @property
     def is_restored(self):
         return self._checkpoint_epoch_no is not None
 
@@ -79,13 +79,16 @@ def _check_env():
 
 def _current(name):
     init = False
+
+    acp.g_acp_type = acp.CONST_DACP_TYPE
+
     if name not in g_ranges:
         g_ranges[name] = TrainEpochRangeWrapper(name)
         init = True
     t = g_ranges[name]
     t.check()
+
     acp.g_train_epoch_range = t._train_epoch_range
-    acp.g_acp_type = acp.CONST_DACP_TYPE
 
     return t, init
 
@@ -125,7 +128,7 @@ def _end(name):
         t.increment_epoch_no()
         t.save_checkpoint()
 
-        if not t.is_restored():
+        if not t.is_restored:
             logger.info("end dataloader epoch_no:{}".format(t._epoch_no))
         else:
             logger.info("end generator epoch_no:{} checkpoint_epoch_no:{}".

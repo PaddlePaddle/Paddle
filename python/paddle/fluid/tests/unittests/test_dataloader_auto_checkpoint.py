@@ -134,7 +134,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self.assertEqual(i, break_epoch_no)
         logger.info("leave _run_save_basic")
 
-    def _run_load_basic(self, started_epoch_no=None):
+    def _run_load_basic(self, break_epoch_no=None):
         """
         load checkpoint
         """
@@ -146,35 +146,24 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         i = 0
         name = None
-        check = False
+        epochs = []
         for i in range(3):
             for data in data_loader():
-                self.assertLessEqual(1, i)  # load from checkpoint
-                name = data_loader._auto_checkpoint_name
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+                if i not in epochs:
+                    epoch.append(i)
 
-                if started_epoch_no is not None and not check:
-                    o = dacp.g_ranges(name)
-                    self.assertEqual(o._checkpoint_epoch_no,
-                                     setarted_epoch_no - 1)
-                    self.assertEqual(o._load_cp_nos,
-                                     [i for i in range(0, started_epoch_no)])
-                    self.assertEqual(o._load_last, -1)
-                    check = True
-
-                if started_epoch_no is None:
-                    o = acp._get_train_epoch_range()
-                    self.assertEqual(o._checkpoint_epoch_no, None)
-                    self.assertEqual(self._load_cp_nos, [i for i in range(3)])
-                    self.assertEqual(o._load_last, -1)
-
-        self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
-
-        if break_epoch_no is None:
-            self.assertEqual(i, 2)
+        if break_epoch_no is not None:
+            if break_epoch_no == 0:
+                self.assertEqual(epochs, [0, 1, 2])
+            elif break_epoch_no == 1:
+                self.assertEqual(epochs, [0, 1, 2])
+            elif break_epoch_no == 2:
+                self.assertEqual(epochs, [1, 2])
         else:
-            self.assertEqual(i, break_epoch_no)
+            self.assertEqual(epochs, [1, 2])
+
         logger.info("leave _run_load_basic")
 
     def test_basic_type(self):

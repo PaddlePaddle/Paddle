@@ -118,6 +118,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         o = None
         i = 0
         check = False
+
         for i in acp.train_epoch_range(3, 0):
             o = acp._get_train_epoch_range()
 

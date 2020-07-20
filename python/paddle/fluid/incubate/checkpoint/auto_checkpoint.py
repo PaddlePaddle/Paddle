@@ -270,7 +270,7 @@ class TrainEpochRange(SerializableBase):
                  max_epoch_num,
                  name,
                  checkpoint_inter=15 * 60,
-                 load_last=-1):
+                 restored=True):
         self._max_epoch_num = max_epoch_num
         self._epoch_no = -1  # current epoch_no
         self._name = name
@@ -282,12 +282,15 @@ class TrainEpochRange(SerializableBase):
         self._last_checkpoint_time = time.time()
 
         self._load_cp_nos = None
-        self._load_last = load_last
-        assert load_last <= -1, "load_last:{} must be negtive".format(load_last)
         self._checkpoint_epoch_no = None
 
         self._checker = g_checker
         if not self._checker.valid():
+            return
+
+        self._file_name = "range_train_status"
+
+        if not restored:
             return
 
         self._checkpoint_path = self._checker.get_range_checkpoint_path(name)
@@ -303,28 +306,64 @@ class TrainEpochRange(SerializableBase):
         self._hdfs = HDFSClient(self._checker.hdfs_home, config)
 
         self._cper = CheckpointSaver(self._hdfs)
-        self._file_name = "range_train_status"
 
         _thread_checker()
 
+        self._get_last_valid_checkpoint()
+
+    def _look_for_valid(self, cp_nos):
+        cps = []
+        epoch_no = -1
+        for i in cp_nos[::-1]:
+            t = TrainEpochRange(self._max_epoch_num, self.name, restored=False)
+            self._cper.load_checkpoint(
+                self._checkpoint_path, [t],
+                self._checker.trainer_id,
+                checkpoint_no=i)
+            cps.append(t)
+            print("look for valid:{} t:{}", i, t._serialize())
+            if epoch_no < 0:
+                epoch_no = t._epoch_no
+            else:
+                if epoch_no - t._epoch_no >= 1:
+                    return t, i
+        return None
+
+    def _get_last_valid_checkpoint(self):
         self._load_cp_nos = self._cper.get_checkpoint_no(self._checkpoint_path)
-        logger.info("checkpoint nos:{} load_last:{}".format(self._load_cp_nos,
-                                                            load_last))
-        if len(self._load_cp_nos) >= 1:
+        logger.info("checkpoint nos:{}".format(self._load_cp_nos))
+
+        if len(self._load_cp_nos) < 1:
+            self._restored_from = CONST_MEMORYINIT
+            return
+
+        if g_acp_type == CONST_ACP_TYPE:
+            # get the last one
+            self._cper.load_checkpoint(self._checkpoint_path, [self],
+                                       self._checker.trainer_id)
+            self._restored_from = CONST_CHECKPOINT
+            self._checkpoint_epoch_no = self._epoch_no
+
+            logger.info("load tain_epoch_range checkpoint:{}".format(
+                self._serialize()))
+
+        elif g_acp_type == CONST_DACP_TYPE:
+            t, i = self._look_for_valid(self._load_cp_nos)
+            if t is None:
+                self._restored_from = CONST_MEMORYINIT
+                return
+
             self._cper.load_checkpoint(
                 self._checkpoint_path, [self],
                 self._checker.trainer_id,
-                checkpoint_no=self._load_cp_nos[-1])
+                checkpoint_no=i)
+
             self._restored_from = CONST_CHECKPOINT
-
-            self._epoch_no += load_last
-            if self._epoch_no < 0:
-                self._epoch_no = -1
             self._checkpoint_epoch_no = self._epoch_no
-
-            logger.info("load tain_epoch_range checkpoint:{}".format(self))
+            logger.info("load tain_epoch_range checkpoint:{}".format(
+                self._serialize()))
         else:
-            self._restored_from = CONST_MEMORYINIT
+            assert False, "not supported acp_type:{}".format(g_acp_type)
 
     def _to_dict(self):
         d = {
@@ -333,8 +372,7 @@ class TrainEpochRange(SerializableBase):
             "name": self._name,
             "checkpoint_path": self._checkpoint_path,
             "restored_from": self._restored_from,
-            "checkpoint_epoch_no": self._checkpoint_epoch_no,
-            "load_last": self._load_last,
+            "checkpoint_epoch_no": self._checkpoint_epoch_no
         }
         return d
 
@@ -351,9 +389,7 @@ class TrainEpochRange(SerializableBase):
             s = self._serialize()
             f.write(s)
 
-    def _serialize(
-            self,
-            pop_keys=["restored_from", "checkpoint_epoch_no", "load_last"]):
+    def _serialize(self, pop_keys=["restored_from", "checkpoint_epoch_no"]):
         # self
         d = self._to_dict()
         for k in pop_keys:
@@ -414,10 +450,17 @@ class TrainEpochRange(SerializableBase):
 
     def save_checkpoint(self):
         # not save last one because exe and program can't be restored.
-        if self._checker.trainer_id == 0 and self._epoch_no != self._max_epoch_num - 1:
-            if time.time() - self._last_checkpoint_time >= self._save_checkpoint_inter or \
-                    (self._epoch_no >= self._max_epoch_num and self._max_epoch_num >=0):
-                self._save_checkpoint()
+        if self._checker.trainer_id == 0:
+            if time.time(
+            ) - self._last_checkpoint_time >= self._save_checkpoint_inter:
+                if g_acp_type == CONST_ACP_TYPE:
+                    # not save the last one
+                    if self._max_epoch_num > 0 and self._epoch_no != self._max_epoch_num - 1:
+                        self._save_checkpoint()
+                elif g_acp_type == CONST_DACP_TYPE:
+                    self._save_checkpoint()
+                else:
+                    assert False, "not supported acp_type:{}".format(g_acp_type)
             self._last_checkpoint_time = time.time()
 
     def _save_checkpoint(self):
@@ -429,24 +472,24 @@ class TrainEpochRange(SerializableBase):
             return
 
         e = self._exe_status
-        l = e.values()
-        for t in l:
+        for k, t in six.iteritems(self._exe_status):
             m = PaddleModel(t._exe, t._program)
             p = self._checker.get_exe_checkpoint_path(t._hash_key)
+            t._epoch_no = self.get()
             path, checkpoint_no = self._cper.save_checkpoint(
                 p, [m], self._checker.trainer_id)
             # index info
             t._checkpoint_path = path
             t._checkpoint_no = checkpoint_no
-            t.epoch_no = self.get()
 
             e[t._key] = t
 
-            logger.info("save executor checkpoint:{}".format(t))
+            #logger.info("save executor checkpoint:{}".format(t._serialize()))
 
         if len(self._exe_status) > 0:
             self._cper.save_checkpoint(self._checkpoint_path, [self])
-            logger.info("save train_epoch_range checkpoint:{}".format(self))
+            logger.info("save train_epoch_range checkpoint:{}".format(
+                self._serialize()))
 
 
 def _get_train_epoch_range():
