@@ -447,7 +447,7 @@ def squeeze(x, axis=None, name=None):
         Case1:
 
           Input:
-            x.shape = [1, 3, 1, 5]
+            x.shape = [1, 3, 1, 5]  # If axis is not provided, all dims equal of size 1 will be removed.
             axis = None
           Output:
             out.shape = [3, 5]
@@ -455,32 +455,32 @@ def squeeze(x, axis=None, name=None):
         Case2:
 
           Input:
-            x.shape = [1, 3, 1, 5]
+            x.shape = [1, 3, 1, 5]  # If axis is provided, it will remove the dimension(s) by given axis that of size 1.
             axis = 0
           Output:
             out.shape = [3, 1, 5]
         
-        Case3:
+        Case4:
 
           Input:
-            x.shape = [1, 3, 1, 5]
-            axis = [-1, -2]
+            x.shape = [1, 3, 1, 5]  # If the dimension of one given axis (3) is not of size 1, the dimension remain unchanged. 
+            axis = [0, 2, 3]
           Output:
-            out.shape = [1, 3, 5]
+            out.shape = [3, 5]
 
         Case4:
 
           Input:
-            x.shape = [1, 3, 1, 5]
-            axis = [0, 2]
+            x.shape = [1, 3, 1, 5]  # If axis is negative, axis = axis + rank(input)
+            axis = [-2]
           Output:
-            out.shape = [3, 5]
+            out.shape = [1, 3, 5]
 
     Args:
         input (Variable): The input Tensor. Support data type: float32, float64, int8, int32, int64.
-        axis (int|list, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
+        axis (int|list|tuple, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
                           The range of axis is :math:`[-rank(input), rank(input))`.
-                          If axis is negative, :math:`axes=axes+rank(input)`.
+                          If axis is negative, :math:`axis = axis + rank(input)`.
                           If axis is None, all the dimensions of input of size 1 will be removed.
         name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
@@ -502,6 +502,8 @@ def squeeze(x, axis=None, name=None):
         axis = []
     elif isinstance(axis, int):
         axis = [axis]
+    elif isinstance(axis, tuple):
+        axis = list(axis)
 
     return layers.squeeze(x, axis, name)
 
