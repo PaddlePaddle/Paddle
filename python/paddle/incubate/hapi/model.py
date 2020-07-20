@@ -498,8 +498,8 @@ class DynamicGraphAdapter(object):
         self.model.network.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(*(
-                to_list(outputs) + to_list(labels)))
+            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
+                labels)))
             m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
@@ -542,8 +542,8 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(*(
-                to_list(outputs) + to_list(labels)))
+            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
+                labels)))
             m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
