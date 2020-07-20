@@ -53,8 +53,8 @@ def split_with_and_without_core_ops(member, cur_name):
                     api_with_ops.append(cur_name)
                 else:
                     api_without_ops.append(cur_name)
-
-        except Exception as e:  # special for PyBind method
+        except:
+            # If getsource failed (pybind API or function inherit from father class), just skip
             pass
 
 
@@ -70,7 +70,8 @@ def get_md5_of_func(member, cur_name):
         try:
             source = inspect.getsource(member)
             func_dict[cur_name] = md5(source)
-        except TypeError:  # special for PyBind method
+        except:
+            # If getsource failed (pybind API or function inherit from father class), just skip
             pass
 
 
