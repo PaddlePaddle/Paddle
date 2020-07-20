@@ -98,16 +98,27 @@ def _begin(name):
         return False
 
     t, init = _current(name)
+    t.increment_epoch_no()
+
     if init:
         logger.info("acp_type:{}".format(acp.g_acp_type))
         if t.is_restored:
             logger.info("begin dataloader epoch_no:{} checkpoint_epoch_no:{}".
-                        format(t._epoch_no + 1, t._checkpoint_epoch_no))
+                        format(t._epoch_no, t._checkpoint_epoch_no))
         else:
-            logger.info("begin dataloader epoch_no:{}".format(t._epoch_no + 1))
+            logger.info("begin dataloader epoch_no:{}".format(t._epoch_no))
             return True
 
+
+def _next(name):
+    if not _check_env():
+        return False
+
+    t, init = _current(name)
+    assert not init, "internal error, {} must be initted".format(name)
+
     if not t.beyond_restored():
+        print("raise StopIteration")
         raise StopIteration
 
     return True
@@ -125,7 +136,6 @@ def _end(name):
         t._runing_status = CONST_GENERATOR_END
         assert t._train_epoch_range == acp.g_train_epoch_range, "interal error, current running range must equal"
 
-        t.increment_epoch_no()
         t.save_checkpoint()
 
         if not t.is_restored:

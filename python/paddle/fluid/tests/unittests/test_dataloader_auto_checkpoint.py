@@ -149,9 +149,10 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         epochs = []
         for i in range(3):
             for data in data_loader():
+                print("run load_basic epoch:", i)
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
                 if i not in epochs:
-                    epoch.append(i)
+                    epochs.append(i)
 
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
         if break_epoch_no is not None:
