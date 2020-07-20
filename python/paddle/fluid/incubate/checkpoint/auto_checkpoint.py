@@ -25,7 +25,7 @@ from contextlib import contextmanager
 
 from paddle.fluid import unique_name, compiler
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
-from .checkpointer import SerializableBase, CheckpointSaver, PaddleModel
+from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel
 from paddle.fluid.framework import in_dygraph_mode, Program
 
 g_train_epoch_range = None
@@ -211,7 +211,11 @@ class ExeTrainStatus(SerializableBase):
     def __eq__(self, t):
         return self._epoch_no == t._epoch_no and \
             self._hash_key == t._hash_key and \
-            self._key == t._key
+            self._key == t._key and \
+            self._checkpoint_path == t._checkpoint_path and \
+            self._checkpoint_no == t._checkpoint_no and \
+            self._exe_name == t._exe_name and \
+            self._program_name == t._program_name
 
     def __ne__(self, t):
         return not self == t

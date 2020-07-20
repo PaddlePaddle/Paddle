@@ -27,6 +27,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 from paddle.fluid import compiler
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
+from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel, CheckpointSaver
 
 import os
 import sys
@@ -44,21 +45,6 @@ class LambConfig(object):
 class DistFCConfig(object):
     def __init__(self):
         pass
-
-
-class TrainStatus(object):
-    def __init__(self, epoch_no=-1):
-        # completed epoch
-        self._epoch_no = epoch_no
-
-    def next(self):
-        return self._epoch_no + 1
-
-    def __eq__(self, t):
-        return self._epoch_no == t._epoch_no
-
-    def __ne__(self, t):
-        return not self == t
 
 
 class Collective(Fleet):
@@ -155,8 +141,8 @@ class Collective(Fleet):
     def save_checkpoint(self,
                         executor,
                         path,
-                        train_status,
                         trainer_id,
+                        train_status,
                         main_program=None,
                         fs=LocalFS(),
                         local_cache_path=".cache",
@@ -168,9 +154,9 @@ class Collective(Fleet):
         if main_program == None:
             main_program = self._transpiled_program
 
-        m = PaddleModel(exe, main_program)
+        m = PaddleModel(executor, main_program)
         t = train_status
-        c = Chekpointer(fs)
+        c = CheckpointSaver(fs)
         real_path, checkpoint_no = c.save_checkpoint(
             path=path,
             slists=[m, t],
@@ -186,6 +172,7 @@ class Collective(Fleet):
                         executor,
                         path,
                         trainer_id,
+                        train_status,
                         main_program=None,
                         fs=LocalFS(),
                         local_cache_path=".cache",
@@ -197,16 +184,13 @@ class Collective(Fleet):
         if main_program == None:
             main_program = self._transpiled_program
 
-        m = PaddleModel(exe, main_program)
-        t = TrainStatus()
-        c = Chekpointer(fs)
-        c.load_checkpoint(
-            path, [m, t],
+        m = PaddleModel(executor, main_program)
+        c = CheckpointSaver(fs)
+        return c.load_checkpoint(
+            path, [m, train_status],
             trainer_id=trainer_id,
             ignore_empty=ignore_empty,
             local_cache_path=local_cache_path)
-
-        return m, t
 
 
 fleet = Collective()

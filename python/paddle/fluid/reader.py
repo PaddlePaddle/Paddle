@@ -29,8 +29,8 @@ from .unique_name import UniqueNameGenerator
 import logging
 import warnings
 from .dataset import DatasetBase, InMemoryDataset
-from .incubate.checkpointer import dataloader_auto_checkpoint as dacp
-from .incubate.checkpointer import auto_checkpoint as acp
+from .incubate.checkpoint import dataloader_auto_checkpoint as dacp
+from .incubate.checkpoint import auto_checkpoint as acp
 
 ### Dygraph DataLoader configs ###
 import os

@@ -49,9 +49,10 @@ class AutoCheckpointTest(AutoCheckpointBase):
             exe, main_prog, startup_prog)
         for i in range(3):
             self.assertEqual(acp._get_train_epoch_range(), None)
-            self.assertEqual(acp.g_acp_type, None)
             for data in data_loader():
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
+        self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
 
         m1 = PaddleModel(exe, compiled)
         m1.serialize(save_dir)

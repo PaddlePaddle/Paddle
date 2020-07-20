@@ -40,6 +40,8 @@ class FSTest(unittest.TestCase):
                 func(a)
             elif len(args) == 3:
                 func(a, a)
+            elif len(args) == 5:
+                func(a, a, a, a)
             print("args:", args, len(args), "func:", func)
             self.assertFalse(True)
         except NotImplementedError as e:

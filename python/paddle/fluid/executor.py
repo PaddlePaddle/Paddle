@@ -30,7 +30,7 @@ from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
-from .incubate.checkpointer import auto_checkpoint as acp
+from .incubate.checkpoint import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
