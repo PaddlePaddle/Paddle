@@ -1,4 +1,22 @@
-@ECHO OFF
+rem Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+rem
+rem Licensed under the Apache License, Version 2.0 (the "License");
+rem you may not use this file except in compliance with the License.
+rem You may obtain a copy of the License at
+rem
+rem     http://www.apache.org/licenses/LICENSE-2.0
+rem
+rem Unless required by applicable law or agreed to in writing, software
+rem distributed under the License is distributed on an "AS IS" BASIS,
+rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+rem See the License for the specific language governing permissions and
+rem limitations under the License.
+
+rem =================================================
+rem               Build Paddle for Windows
+rem =================================================
+
+@ECHO ON
 SETLOCAL
 
 set work_dir=%cd%
@@ -114,14 +132,15 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 %PYTHON_EXECUTABLE% -m pip install --upgrade pip
-dir %work_dir%\build\third_party\install\openblas\lib
-dir %work_dir%\build\third_party\install\openblas\bin
-dir %work_dir%\build\third_party\install\zlib\bin
-dir %work_dir%\build\third_party\install\mklml\lib
-dir %work_dir%\build\third_party\install\mkldnn\bin
-dir %work_dir%\build\third_party\install\warpctc\bin
 
-set PATH=%work_dir%\build\third_party\install\openblas\lib;%work_dir%\build\third_party\install\openblas\bin;%work_dir%\build\third_party\install\zlib\bin;%work_dir%\build\third_party\install\mklml\lib;%work_dir%\build\third_party\install\mkldnn\bin;%work_dir%\build\third_party\install\warpctc\bin;%PATH%
+dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
+dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
+dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
+dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
+dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
+dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
+
+set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;%THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
 ctest.exe --output-on-failure -C Release -j 10
 goto:eof
 
@@ -179,7 +198,7 @@ echo if [ ! -e "$(pwd)/../.git/refs/remotes/upstream/$BRANCH" ]; then>>  check_c
 echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_unittest.sh
 echo fi>>  check_change_of_unittest.sh
 echo git checkout -b origin_pr >>  check_change_of_unittest.sh
-echo git checkout -b test_pr -t upstream/$BRANCH >>  check_change_of_unittest.sh
+echo git checkout -b dev -t upstream/$BRANCH >>  check_change_of_unittest.sh
 echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE:\=\\% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0" -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% >>  check_change_of_unittest.sh
 echo cat ^<^<EOF>>  check_change_of_unittest.sh
 echo     ============================================       >>  check_change_of_unittest.sh
