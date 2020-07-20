@@ -70,6 +70,7 @@ struct CommContext {
 
     ss << " aggregation->add: " << merge_add << " ";
     ss << " is_sparse: " << is_sparse << "\n";
+    ss << " is_distributed: " << is_distributed << "\n";
 
     return ss.str();
   }

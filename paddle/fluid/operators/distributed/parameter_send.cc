@@ -203,7 +203,7 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
       // split rows index into output sparse vars
       for (size_t i = 0; i < send_rows.size(); ++i) {
         auto ep_idx = send_rows[i] % pserver_num;
-        auto id = send_rows[i] % pserver_num;
+        auto id = send_rows[i] / pserver_num;
         outs_rows_idx[ep_idx].push_back(id);
         outs_dense_idx[ep_idx].push_back(i);
       }
@@ -216,7 +216,7 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
 
         auto dims = send_slr.GetCompleteDims();
         dims[0] = rows_idx.size();
-        outs[out_idx]->set_height(rpc_ctx.height_sections[ctx]);
+        outs[out_idx]->set_height(rpc_ctx.height_sections[out_idx]);
         outs[out_idx]->mutable_rows()->clear();
         outs[out_idx]->mutable_value()->mutable_data<T>(dims, send_slr.place());
 
@@ -258,7 +258,7 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
         auto dims = send_slr.GetCompleteDims();
         dims[0] = rows_idx.size();
 
-        outs[out_idx]->set_height(rpc_ctx.height_sections[ctx]);
+        outs[out_idx]->set_height(rpc_ctx.height_sections[out_idx]);
         outs[out_idx]->mutable_rows()->clear();
         outs[out_idx]->mutable_value()->mutable_data<T>(dims, send_slr.place());
 
