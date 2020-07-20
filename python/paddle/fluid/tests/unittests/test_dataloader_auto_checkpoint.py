@@ -159,11 +159,11 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             if break_epoch_no == 0:
                 self.assertEqual(epochs, [0, 1, 2])
             elif break_epoch_no == 1:
-                self.assertEqual(epochs, [0, 1, 2])
-            elif break_epoch_no == 2:
                 self.assertEqual(epochs, [1, 2])
+            elif break_epoch_no == 2:
+                self.assertEqual(epochs, [2])
         else:
-            self.assertEqual(epochs, [1, 2])
+            self.assertEqual(epochs, [2])
 
         logger.info("leave _run_load_basic")
 
@@ -193,7 +193,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         fs.delete(checker.hdfs_checkpoint_path)
 
-    def test_coreno_epoch(self):
+    def test_corener_epochno(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
 
@@ -203,7 +203,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self._reset_generator()
             self._run_save_basic(break_epoch_no=i)
             self._reset_generator()
-            self._run_load_basic(started_epoch_no=i)
+            self._run_load_basic(break_epoch_no=i)
 
         fs.delete(checker.hdfs_checkpoint_path)
 
