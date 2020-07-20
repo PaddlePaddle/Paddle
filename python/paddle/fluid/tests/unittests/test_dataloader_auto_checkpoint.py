@@ -149,7 +149,6 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         epochs = []
         for i in range(3):
             for data in data_loader():
-                print("run load_basic epoch:", i)
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
                 if i not in epochs:
                     epochs.append(i)

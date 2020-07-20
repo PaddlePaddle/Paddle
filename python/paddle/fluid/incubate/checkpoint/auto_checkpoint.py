@@ -331,7 +331,7 @@ class TrainEpochRange(SerializableBase):
 
     def _get_last_valid_checkpoint(self):
         self._load_cp_nos = self._cper.get_checkpoint_no(self._checkpoint_path)
-        logger.info("checkpoint nos:{}".format(self._load_cp_nos))
+        logger.info("find checkpoint nos:{}".format(self._load_cp_nos))
 
         if len(self._load_cp_nos) < 1:
             self._restored_from = CONST_MEMORYINIT

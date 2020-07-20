@@ -35,7 +35,6 @@ class TrainEpochRangeWrapper(object):
             #self._epoch_no = self._train_epoch_range._epoch_no
 
     def save_checkpoint(self):
-        logger.info(self)
         if self.beyond_restored():
             self._train_epoch_range.save_checkpoint()
 
@@ -100,14 +99,14 @@ def _begin(name):
     t, init = _current(name)
     t.increment_epoch_no()
 
-    if init:
-        logger.info("acp_type:{}".format(acp.g_acp_type))
-        if t.is_restored:
-            logger.info("begin dataloader epoch_no:{} checkpoint_epoch_no:{}".
-                        format(t._epoch_no, t._checkpoint_epoch_no))
-        else:
-            logger.info("begin dataloader epoch_no:{}".format(t._epoch_no))
-            return True
+    logger.info("acp_type:{}".format(acp.g_acp_type))
+    if t.is_restored:
+        logger.info("begin dataloader epoch_no:{} checkpoint_epoch_no:{}".
+                    format(t._epoch_no, t._checkpoint_epoch_no))
+    else:
+        logger.info("begin dataloader epoch_no:{}".format(t._epoch_no))
+
+    return True
 
 
 def _next(name):
@@ -118,7 +117,6 @@ def _next(name):
     assert not init, "internal error, {} must be initted".format(name)
 
     if not t.beyond_restored():
-        print("raise StopIteration")
         raise StopIteration
 
     return True
@@ -141,7 +139,7 @@ def _end(name):
         if not t.is_restored:
             logger.info("end dataloader epoch_no:{}".format(t._epoch_no))
         else:
-            logger.info("end generator epoch_no:{} checkpoint_epoch_no:{}".
+            logger.info("end dataloader epoch_no:{} checkpoint_epoch_no:{}".
                         format(t._epoch_no, t._checkpoint_epoch_no))
     finally:
         # important
