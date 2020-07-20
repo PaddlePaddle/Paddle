@@ -218,7 +218,7 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
         auto dims = send_slr.GetCompleteDims();
         dims[0] = rows_idx.size();
 
-        outs[out_idx]->set_height(0);
+        outs[out_idx]->set_height(rpc_ctx.height_sections[ctx]);
         outs[out_idx]->mutable_rows()->clear();
         outs[out_idx]->mutable_value()->mutable_data<T>(dims, send_slr.place());
 

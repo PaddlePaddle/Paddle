@@ -29,7 +29,8 @@ struct CommContext {
               const std::vector<std::string> &emap,
               const std::vector<int64_t> &sections,
               const std::vector<std::string> &origin_names, int id,
-              bool merge_add_ = true, bool is_sparse_ = true)
+              bool merge_add_ = true, bool is_sparse_ = true,
+              bool is_distributed_ = false)
       : var_name(name),
         splited_varnames(names),
         epmap(emap),
@@ -37,7 +38,8 @@ struct CommContext {
         origin_varnames(origin_names),
         trainer_id(id),
         merge_add(merge_add_),
-        is_sparse(is_sparse_) {}
+        is_sparse(is_sparse_),
+        is_distributed(is_distributed_) {}
 
   CommContext(const CommContext &ctx) {
     var_name = ctx.var_name;
@@ -48,6 +50,7 @@ struct CommContext {
     merge_add = ctx.merge_add;
     is_sparse = ctx.is_sparse;
     origin_varnames = ctx.origin_varnames;
+    is_distributed = ctx.is_distributed;
   }
 
   std::string print() const {
@@ -79,6 +82,7 @@ struct CommContext {
   int trainer_id;
   bool merge_add;
   bool is_sparse;
+  bool is_distributed;
 };
 
 }  // namespace distributed

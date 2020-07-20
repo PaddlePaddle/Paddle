@@ -238,7 +238,13 @@ class CompileTimeStrategy(object):
                     ps_sparse_varnames.append(table)
         return ps_sparse_varnames
 
-    def build_ctx(self, vars, mapping, is_grad, is_sparse, is_send):
+    def build_ctx(self,
+                  vars,
+                  mapping,
+                  is_grad,
+                  is_sparse,
+                  is_send,
+                  is_distributed=False):
         def get_grad_var_ep(slices):
             names = []
             eps = []
@@ -282,11 +288,14 @@ class CompileTimeStrategy(object):
         trainer_id = self.get_role_id()
         aggregate = True
         ctx = CommContext(name, names, eps, sections, origin_varnames,
-                          trainer_id, aggregate, is_sparse)
+                          trainer_id, aggregate, is_sparse, is_distributed)
         return ctx
 
     def get_trainer_send_context(self):
         send_ctx = {}
+        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
+                                                    True)
+
         if not self.is_geo_mode():
             for merged in self.merged_dense_pairs:
                 grad = merged[1]
@@ -295,9 +304,13 @@ class CompileTimeStrategy(object):
                 send_ctx[ctx.var_name()] = ctx
 
             for merged in self.merged_sparse_pairs:
+                param = merged[0]
                 grad = merged[1]
+
+                is_distributed = True if param in distibuted_varnames else False
+
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
-                                     True)
+                                     True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
 
             if self.is_async_mode():
@@ -306,10 +319,13 @@ class CompileTimeStrategy(object):
         else:
             for pairs in self.origin_sparse_pairs:
                 param, grad = pairs
+
+                is_distributed = True if param in distibuted_varnames else False
+
                 param_ctx = self.build_ctx(param, self.param_var_mapping, False,
-                                           True, True)
+                                           True, True, is_distributed)
                 grad_ctx = self.build_ctx(grad, self.grad_var_mapping, True,
-                                          True, True)
+                                          True, True, is_distributed)
 
                 ctx = CommContext(param_ctx.var_name(),
                                   param_ctx.split_varnames(),
@@ -317,7 +333,9 @@ class CompileTimeStrategy(object):
                                   param_ctx.sections(),
                                   grad_ctx.origin_varnames(),
                                   param_ctx.trainer_id(),
-                                  param_ctx.aggregate(), param_ctx.is_sparse())
+                                  param_ctx.aggregate(),
+                                  param_ctx.is_sparse(),
+                                  param_ctx.is_distributed())
 
                 send_ctx[ctx.var_name()] = ctx
             name, ctx = self._step_ctx()
@@ -445,7 +463,7 @@ class CompileTimeStrategy(object):
         sections = [1] * len(endpoints)
         names = [name] * len(endpoints)
         ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
-                          True, False)
+                          True, False, False)
         return name, ctx
 
     def _create_vars_from_blocklist(self, block_list):

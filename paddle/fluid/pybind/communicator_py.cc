@@ -61,6 +61,8 @@ void BindCommunicatorContext(py::module* m) {
            [](const CommContext& self) { return self.height_sections; })
       .def("aggregate", [](const CommContext& self) { return self.merge_add; })
       .def("is_sparse", [](const CommContext& self) { return self.is_sparse; })
+      .def("is_distributed",
+           [](const CommContext& self) { return self.is_distributed; })
       .def("origin_varnames",
            [](const CommContext& self) { return self.origin_varnames; })
       .def("__str__", [](const CommContext& self) { return self.print(); });
