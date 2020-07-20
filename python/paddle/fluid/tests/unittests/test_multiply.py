@@ -105,16 +105,28 @@ class TestMultiplyError(unittest.TestCase):
 
     def test_errors(self):
         """test_errors."""
-        paddle.enable_imperative()
+        # test static computation graph: dtype can not be int8
+        paddle.disable_imperative()
+        with program_guard(Program(), Program()):
+            x = paddle.nn.data(name='x', shape=[10], dtype=np.int8)
+            y = paddle.nn.data(name='y', shape=[10], dtype=np.int8)
+            self.assertRaises(TypeError, tensor.multiply, x, y)
 
-        # dtype can not be int8
+        # test static computation graph: inputs must be broadcastable 
+        with program_guard(Program(), Program()):
+            x = paddle.nn.data(name='x', shape=[2, 5], dtype=np.float32)
+            y = paddle.nn.data(name='y', shape=[2], dtype=np.float32)
+            self.assertRaises(fluid.core.EnforceNotMet, tensor.multiply, x, y)
+
+        # test dynamic computation graph: dtype can not be int8
+        paddle.enable_imperative()
         x_data = np.random.randn(10).astype(np.int8)
         y_data = np.random.randn(10).astype(np.int8)
         x = paddle.imperative.to_variable(x_data)
         y = paddle.imperative.to_variable(y_data)
         self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
 
-        # inputs must be broadcastable
+        # test dynamic computation graph: inputs must be broadcastable
         x_data = np.random.rand(2, 5)
         y_data = np.random.rand(2)
         x = paddle.imperative.to_variable(x_data)
