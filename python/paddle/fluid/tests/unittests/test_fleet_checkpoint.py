@@ -61,10 +61,14 @@ class FleetTest(unittest.TestCase):
             exe, dir_path, trainer_id=0, fs=fs, train_status=status2)
         self.assertEqual(status2, status)
 
-        _, n2 = fleet.save_checkpoint(exe, dir_path, train_status=status, fs=fs)
+        _, n2 = fleet.save_checkpoint(
+            exe,
+            dir_path,
+            trainer_id=0,
+            train_status=status,
+            fs=fs,
+            remain_all_checkpoint=False)
         self.assertEqual(n2, n1 + 1)
-
-        fleet.clean_redundant_checkpoints(dir_path, fs=fs)
 
         # unnormal
         # test remain_all_checkpoint 

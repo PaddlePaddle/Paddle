@@ -196,9 +196,6 @@ class CheckpointSaver(object):
         if len(s) == 0:
             s.add(max_no)
 
-        if checkpoint_num < 1:
-            checkpoint_num = 1
-
         dirs = self._fs.list_dirs(root_path)
         for d in dirs:
             g = d.split(".")
