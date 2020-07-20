@@ -182,8 +182,7 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
     std::vector<std::vector<size_t>> outs_rows_idx;
     std::vector<std::vector<size_t>> outs_dense_idx;
 
-    auto table_pairs = GetMultiFieldCommContext(rpc_ctx, scope, multi_parts);
-
+    auto table_pairs = GetMultiFieldCommContext(rpc_ctx, scope, 1);
     outs_rows_idx.resize(table_pairs.size());
     outs_dense_idx.resize(table_pairs.size());
 
@@ -198,21 +197,62 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
       outs.push_back(out);
     }
 
-    auto pserver_num = rpc_ctx.epmap.size();
-    // split rows index into output sparse vars
-    for (size_t i = 0; i < send_rows.size(); ++i) {
-      auto ep_idx = send_rows[i] % pserver_num;
-      auto table_idx = send_rows[i] % multi_parts;
-      auto out_idx = ep_idx * multi_parts + table_idx;
-      outs_rows_idx[out_idx].push_back(send_rows[i]);
-      outs_dense_idx[out_idx].push_back(i);
-    }
+    if (!rpc_ctx.is_distributed) {
+      auto pserver_num = rpc_ctx.epmap.size();
 
-    auto place = platform::CPUPlace();
+      // split rows index into output sparse vars
+      for (size_t i = 0; i < send_rows.size(); ++i) {
+        auto ep_idx = send_rows[i] % pserver_num;
+        auto id = send_rows[i] % pserver_num;
+        outs_rows_idx[ep_idx].push_back(id);
+        outs_dense_idx[ep_idx].push_back(i);
+      }
 
-    for (size_t ctx = 0; ctx < rpc_ctx.splited_varnames.size(); ctx++) {
-      for (int part = 0; part < multi_parts; part++) {
-        auto out_idx = ctx * multi_parts + part;
+      auto place = platform::CPUPlace();
+
+      for (size_t out_idx = 0; out_idx < rpc_ctx.splited_varnames.size();
+           out_idx++) {
+        auto rows_idx = outs_rows_idx[out_idx];
+
+        auto dims = send_slr.GetCompleteDims();
+        dims[0] = rows_idx.size();
+        outs[out_idx]->set_height(rpc_ctx.height_sections[ctx]);
+        outs[out_idx]->mutable_rows()->clear();
+        outs[out_idx]->mutable_value()->mutable_data<T>(dims, send_slr.place());
+
+        if (rows_idx.size() > 0) {
+          for (auto idx : rows_idx) {
+            outs[out_idx]->mutable_rows()->push_back(idx);
+          }
+          auto dst = outs[out_idx]->mutable_value()->mutable_data<T>(place);
+          for (size_t j = 0; j < rows_idx.size(); j++) {
+            if (platform::is_cpu_place(place)) {
+              memory::Copy(platform::CPUPlace(), dst + j * row_numel,
+                           platform::CPUPlace(),
+                           src + outs_dense_idx[out_idx][j] * row_numel,
+                           sizeof(T) * row_numel);
+            } else {
+              PADDLE_THROW("do not support GPU now");
+            }
+          }
+        }
+        PADDLE_ENFORCE_EQ(rows_idx.size(), outs[out_idx]->rows().size(),
+                          "rows should has the same size with tensor dim 0");
+      }
+    } else {
+      auto pserver_num = rpc_ctx.epmap.size();
+
+      // split rows index into output sparse vars
+      for (size_t i = 0; i < send_rows.size(); ++i) {
+        auto out_idx = send_rows[i] % pserver_num;
+        outs_rows_idx[out_idx].push_back(send_rows[i]);
+        outs_dense_idx[out_idx].push_back(i);
+      }
+
+      auto place = platform::CPUPlace();
+
+      for (size_t out_idx = 0; out_idx < rpc_ctx.splited_varnames.size();
+           out_idx++) {
         auto rows_idx = outs_rows_idx[out_idx];
 
         auto dims = send_slr.GetCompleteDims();

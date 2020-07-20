@@ -49,7 +49,7 @@ void BindCommunicatorContext(py::module* m) {
       .def(
           py::init<const std::string&, const std::vector<std::string>&,
                    const std::vector<std::string>&, const std::vector<int64_t>&,
-                   const std::vector<std::string>&, int, bool, bool>())
+                   const std::vector<std::string>&, int, bool, bool, bool>())
       .def("var_name", [](const CommContext& self) { return self.var_name; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
