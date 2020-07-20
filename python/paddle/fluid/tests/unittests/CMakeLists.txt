@@ -59,11 +59,9 @@ if(WIN32)
 
     # TODO: Fix these unittests failed on Windows
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
-    list(REMOVE_ITEM TEST_OPS test_desc_clone)
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
     list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
     list(REMOVE_ITEM TEST_OPS test_split_ids_op)
-    list(REMOVE_ITEM TEST_OPS test_program_code)
     LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
     LIST(REMOVE_ITEM TEST_OPS test_math_op_patch_var_base)
 endif()
