@@ -14,6 +14,12 @@ find_path(CUDNN_INCLUDE_DIR cudnn.h
     NO_DEFAULT_PATH
 )
 
+find_path(CUDNN_INCLUDE_VERSION_DIR cudnn_version.h
+    PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include
+    $ENV{CUDNN_ROOT} $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
+    NO_DEFAULT_PATH
+)
+
 get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
 
 set(TARGET_ARCH "x86_64")
@@ -97,8 +103,10 @@ if(CUDNN_FOUND)
 
     parse_cudnn_version(${CUDNN_INCLUDE_DIR}/cudnn.h)
     if(NOT CUDNN_VERSION)
-        # For cudnn 8, CUDNN_VERSION is redorced in a separate header file.
-        parse_cudnn_version(${CUDNN_INCLUDE_DIR}/cudnn_version.h)
+        if(CUDNN_INCLUDE_VERSION_DIR)
+            # For cudnn 8, CUDNN_VERSION is redorced in a separate header file.
+            parse_cudnn_version(${CUDNN_INCLUDE_DIR}/cudnn_version.h)
+        endif()
     endif()
 
     if("${CUDNN_VERSION}" STREQUAL "2000")
