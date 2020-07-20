@@ -37,11 +37,13 @@ class TestPretrainedModel(unittest.TestCase):
             fluid.disable_dygraph()
         return res
 
-    def test_mobilenetv2(self):
-        x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)
-        y_dygraph = self.infer(x, 'mobilenet_v2')
-        y_static = self.infer(x, 'mobilenet_v2', dygraph=False)
-        np.testing.assert_allclose(y_dygraph, y_static)
+    def test_models(self):
+        arches = ['mobilenet_v1', 'mobilenet_v2', 'resnet18']
+        for arch in arches:
+            x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)
+            y_dygraph = self.infer(x, arch)
+            y_static = self.infer(x, arch, dygraph=False)
+            np.testing.assert_allclose(y_dygraph, y_static)
 
 
 if __name__ == '__main__':
