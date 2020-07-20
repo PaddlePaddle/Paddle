@@ -1599,7 +1599,6 @@ class Model(fluid.dygraph.Layer):
             assert prog, \
                 "Model is not ready, please call `model.prepare()` first"
             infer_prog = prog.clone(for_test=True)
-
             input_names = [v.name for v in self._adapter._input_vars['test']]
             endpoints = self._adapter._endpoints['test']['output']
 
