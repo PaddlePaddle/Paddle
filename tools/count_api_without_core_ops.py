@@ -23,6 +23,8 @@ import hashlib
 import six
 import functools
 
+__all__ = ['get_apis_with_and_without_core_ops', ]
+
 # APIs that should not be printed into API.spec 
 omitted_list = [
     "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
