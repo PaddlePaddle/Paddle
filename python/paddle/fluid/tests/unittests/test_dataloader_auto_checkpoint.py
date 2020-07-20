@@ -177,7 +177,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self.assertEqual(i, break_epoch_no)
         logger.info("leave _run_load_basic")
 
-    def test_basic(self):
+    def test_basic_type(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
 
@@ -187,6 +187,12 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self._run_must_acp()
         self._reset_generator()
         self._run_must_dacp()
+
+        fs.delete(checker.hdfs_checkpoint_path)
+
+    def test_basic(self):
+        checker = acp._get_checker()
+        fs = HDFSClient(checker.hdfs_home, None)
 
         # test save and load epoch_no must be right
         fs.delete(checker.hdfs_checkpoint_path)
