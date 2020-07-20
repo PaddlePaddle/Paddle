@@ -107,7 +107,7 @@ void prefetch_core(
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(
           context.Attr<int>("trainer_id"));
 
-  int pservers = context.Attr<bool>("pserver_num");
+  int pservers = context.Attr<int>("pserver_num");
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &actual_ctx = *pool.Get(context.GetPlace());
