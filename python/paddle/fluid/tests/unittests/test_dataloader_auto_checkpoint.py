@@ -16,16 +16,16 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet, TrainStatus
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
 import sys
 
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
-import paddle.fluid.incubate.checkpointer.auto_checkpoint as acp
-import paddle.fluid.incubate.checkpointer.dataloader_auto_checkpoint as dacp
-import paddle.fluid.incubate.checkpointer.auto_checkpoint as acp
-from paddle.fluid.incubate.checkpointer.checkpointer import PaddleModel
+import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+import paddle.fluid.incubate.checkpoint.dataloader_auto_checkpoint as dacp
+import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
 from paddle.fluid.framework import program_guard
 from paddle.fluid import unique_name
 
@@ -48,7 +48,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self._init_env(exe, main_prog, startup_prog, iterable=True)
 
         # use two
-        for i in acp.train_epoch_range(1):
+        for i in acp.train_epoch_range(2):
             for data in data_loader():
                 name = acp.g_train_epoch_range.name
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
@@ -58,7 +58,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self.assertEqual(i, 1)
 
         # use two
-        for i in range(1):
+        for i in range(2):
             for data in data_loader():
                 self.assertEqual(acp.g_acp_type, acp.CONST_ACP_TYPE)
 
@@ -80,7 +80,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self._init_env(exe, main_prog, startup_prog, iterable=True)
 
         # use two
-        for i in range(1):
+        for i in range(2):
             for data in data_loader():
                 name = acp.g_train_epoch_range.name
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
@@ -90,7 +90,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self.assertEqual(i, 1)
 
         # use two
-        for i in acp.train_epoch_range(1):
+        for i in acp.train_epoch_range(2):
             self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
             self.assertEqual(acp.g_train_epoch_range, None)
             for data in data_loader():
@@ -134,7 +134,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self.assertEqual(i, break_epoch_no)
         logger.info("leave _run_save_basic")
 
-    def _run_load_basic(self):
+    def _run_load_basic(self, started_epoch_no=None):
         """
         load checkpoint
         """
@@ -181,12 +181,14 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
 
+        # test type must be right
         fs.delete(checker.hdfs_checkpoint_path)
         self._reset_generator()
         self._run_must_acp()
         self._reset_generator()
         self._run_must_dacp()
 
+        # test save and load epoch_no must be right
         fs.delete(checker.hdfs_checkpoint_path)
         self._reset_generator()
         self._run_save_basic()
@@ -199,6 +201,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
 
+        # test break at some epoch_nos
         for i in range(3):
             fs.delete(checker.hdfs_checkpoint_path)
             self._reset_generator()
