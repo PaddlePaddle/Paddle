@@ -36,14 +36,14 @@ logger = get_logger()
 
 
 class AutoCheckpointTest(AutoCheckpointBase):
-    def _run_save_model(self):
+    def _run_normal(self):
         exe, main_prog, startup_prog = self._generate()
 
         save_dir = "./run_save_model"
         fs = LocalFS()
 
         fs.delete(save_dir)
-        logger.info("begin _run_save_model")
+        logger.info("begin _run_normal")
 
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
             exe, main_prog, startup_prog)
@@ -60,7 +60,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         m2 = PaddleModel(exe, compiled)
         m2.deserialize(save_dir)
 
-        logger.info("end _run_save_model")
+        logger.info("end _run_normal")
         fs.delete(save_dir)
 
     def _run_save_0(self, break_epoch_no=None):
@@ -84,10 +84,6 @@ class AutoCheckpointTest(AutoCheckpointBase):
             for data in data_loader():
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
-            fluid.io.save_inference_model(
-                save_dir, [image.name, label.name], [loss],
-                exe,
-                main_program=main_prog)
             self.assertEqual(len(o._exe_status), 1)
 
             if break_epoch_no is not None:
@@ -119,38 +115,31 @@ class AutoCheckpointTest(AutoCheckpointBase):
         i = 0
         check = False
 
+        epochs = None
         for i in acp.train_epoch_range(3, 0):
-            o = acp._get_train_epoch_range()
-
-            logger.info("_run_load_0 name:{} epoch_no:{}".format(o.name, i))
-            if started_epoch_no is not None and not check:
-                self.assertEqual(o.get(), started_epoch_no)
-                self.assertEqual(o._load_cp_nos,
-                                 [i for i in range(started_epoch_no)])
-                self.assertEqual(o._load_last, -1)
-                check = True
+            epoch.append(i)
 
             for data in data_loader():
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
-            fluid.io.save_inference_model(
-                save_dir, [image.name, label.name], [loss],
-                exe,
-                main_program=main_prog)
-            self.assertEqual(len(o._exe_status), 1)
-
         o = acp._get_train_epoch_range()
         self.assertTrue(o == None, "now train epoch must not exits now")
         self.assertEqual(i, 2)
-        fluid.io.save_inference_model(
-            save_dir, [image.name, label.name], [loss],
-            exe,
-            main_program=compiled)
+
+        if break_epoch_no is not None:
+            if break_epoch_no == 0:
+                self.assertEqual(epochs, [0, 1, 2])
+            elif break_epoch_no == 1:
+                self.assertEqual(epochs, [1, 2])
+            elif break_epoch_no == 2:
+                self.assertEqual(epochs, [2])
+        else:
+            self.assertEqual(epochs, [2])
 
         fs.delete(save_dir)
         logger.info("begin _run_load_0")
 
-    def test_basic(self):
+    def test_normal(self):
         logger.info("begin test_basic")
         checker = acp._get_checker()
 
@@ -159,8 +148,14 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(checker.hdfs_checkpoint_path)
         self._reset_generator()
         self._clear_envs()
-        self._run_save_model()
+        self._run_normal()
         self._readd_envs()
+
+    def test_basic(self):
+        logger.info("begin test_basic")
+        checker = acp._get_checker()
+
+        fs = HDFSClient(checker.hdfs_home, None)
 
         fs.delete(checker.hdfs_checkpoint_path)
         self._reset_generator()
@@ -268,10 +263,6 @@ class AutoCheckpointTest(AutoCheckpointBase):
                                 feed=data,
                                 fetch_list=[loss])
 
-            fluid.io.save_inference_model(
-                save_dir, [image.name, label.name], [loss],
-                exe,
-                main_program=main_prog)
             self.assertEqual(len(o._exe_status), 1)
 
         o = acp._get_train_epoch_range()

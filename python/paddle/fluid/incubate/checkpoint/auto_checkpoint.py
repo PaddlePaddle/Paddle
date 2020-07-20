@@ -327,7 +327,7 @@ class TrainEpochRange(SerializableBase):
             else:
                 if epoch_no - t._epoch_no >= 1:
                     return t, i
-        return None
+        return None, None
 
     def _get_last_valid_checkpoint(self):
         self._load_cp_nos = self._cper.get_checkpoint_no(self._checkpoint_path)
