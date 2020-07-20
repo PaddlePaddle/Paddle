@@ -650,9 +650,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     Returns:
         Variable: Tensor which is created according to shape and dtype.
 
-    Raise:
+    Raises:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
         and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The shape must be one of list, tuple and Variable.
 
     Examples:
         .. code-block:: python
@@ -665,7 +666,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-          data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[1.5, 1.5]
+          data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[[1.5, 1.5]]
 
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([2], "int32", 2) # shape=[2,2]
@@ -1423,6 +1424,12 @@ def linspace(start, stop, num, dtype=None, name=None):
         Variable, the output data type will be float32, float64.: The 1-D tensor with fixed number of evenly spaced values, \
         the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
         the value with input :attr:`start`. 
+
+    Raises:
+        TypeError: The dtype must be one of float32 and float64.
+        TypeError: The dtype of `start` and `stop`  must be one of float32 and float64.
+        TypeError: The dtype of `num` must be one of int32 and int64.
+
 
     Examples:
         .. code-block:: python
