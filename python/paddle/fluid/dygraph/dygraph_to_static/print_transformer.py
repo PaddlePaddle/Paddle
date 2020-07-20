@@ -53,7 +53,6 @@ class PrintTransformer(gast.NodeTransformer):
 
     # NOTE: deal with print in PY2
     def visit_Print(self, node):
-        # node.values must be a elts
         convert_print_node = self._create_print_node(node.values)
         return gast.Expr(value=convert_print_node)
 
