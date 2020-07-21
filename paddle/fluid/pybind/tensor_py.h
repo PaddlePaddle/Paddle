@@ -266,8 +266,8 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
                                                         zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
-    // TODO(cql): temporary keeping uint16, which is used for casting float16
-    // before. It should be depracated later.
+    // since there is still no support for bfloat16 in py,
+    // uint16 is used for casting bfloat16
     SetTensorFromPyArrayT<paddle::platform::bfloat16, P>(self, array, place,
                                                          zero_copy);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
