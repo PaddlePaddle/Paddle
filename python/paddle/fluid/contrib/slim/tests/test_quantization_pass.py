@@ -266,7 +266,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
                 with fluid.program_guard(main, startup):
                     img = fluid.layers.data(
                         name='image', shape=[1, 28, 28], dtype='float32')
-                    image.stop_gradient = False
+                    img.stop_gradient = False
                     label = fluid.layers.data(
                         name='label', shape=[1], dtype='int64')
                     loss = conv_net(img, label, quant_skip_pattern)
