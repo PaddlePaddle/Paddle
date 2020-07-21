@@ -87,8 +87,8 @@ def lstm_naive(
         return (2. / (1. + np.exp(y))) - 1.
 
     output = []
-    pre_h = np.zeros((batch_size, hidden_size), dtype=input.dtype)
-    pre_c = np.zeros((batch_size, hidden_size), dtype=input.dtype)
+    pre_h = np.zeros((1, batch_size, hidden_size), dtype=input.dtype)
+    pre_c = np.zeros((1, batch_size, hidden_size), dtype=input.dtype)
 
     for i in range(seq_len):
         emb_1 = input[i]
@@ -111,11 +111,7 @@ def lstm_naive(
 
     output = np.concatenate(output, -1)
     output = output.reshape((batch_size, -1, hidden_size))
-
     output = output.transpose((1, 0, 2))
-
-    pre_h = pre_h.reshape((1, batch_size, hidden_size))
-    pre_c = pre_c.reshape((1, batch_size, hidden_size))
 
     return output, pre_h, pre_c
 
@@ -144,8 +140,8 @@ class TestCUDNNLstmOp(OpTest):
 
         output, last_hidden, last_cell = lstm_naive(input, flat_w)
 
-        init_h = np.zeros((batch_size, hidden_size), dtype=np.float32)
-        init_c = np.zeros((batch_size, hidden_size), dtype=np.float32)
+        init_h = np.zeros((1, batch_size, hidden_size), dtype=np.float32)
+        init_c = np.zeros((1, batch_size, hidden_size), dtype=np.float32)
         state = np.ndarray((300)).astype("uint8")
 
         self.inputs = {
@@ -205,8 +201,9 @@ class TestCUDNNlstmAPI(unittest.TestCase):
                                       'float32', 0.0)
         init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
                                       'float32', 0.0)
-        rnn_out, last_h, last_c = layers.lstm(
-            input, init_h, init_c, hidden_size, num_layers, dropout_prob)
+        rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
+                                              hidden_size, num_layers,
+                                              dropout_prob)
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         input_i = np.random.uniform(

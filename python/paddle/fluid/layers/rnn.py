@@ -2160,6 +2160,7 @@ def dynamic_lstm(input,
 def lstm(input,
          init_h,
          init_c,
+         max_len,
          hidden_size,
          num_layers,
          dropout_prob=0.0,
@@ -2260,7 +2261,7 @@ def lstm(input,
             init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
             init_c = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
             rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
-                    hidden_size, num_layers, \
+                    max_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
             rnn_out.shape  # (-1, 100, 150)
             last_h.shape  # (1, 20, 150)
@@ -2271,6 +2272,7 @@ def lstm(input,
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'lstm')
     check_variable_and_dtype(init_h, 'init_h', ['float32', 'float64'], 'lstm')
     check_variable_and_dtype(init_c, 'init_c', ['float32', 'float64'], 'lstm')
+    check_type(max_len, 'max_len', (int), 'lstm')
     check_type(hidden_size, 'hidden_size', (int), 'lstm')
     check_type(num_layers, 'num_layers', (int), 'lstm')
     dtype = input.dtype
@@ -2328,6 +2330,7 @@ def lstm(input,
             'StateOut': state_out,
         },
         attrs={
+            'max_len': max_len,
             'is_bidirec': is_bidirec,
             'input_size': input_size,
             'hidden_size': hidden_size,

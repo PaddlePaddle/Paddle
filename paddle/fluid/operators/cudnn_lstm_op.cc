@@ -38,18 +38,36 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("LastC"), "Output", "LastC", "CudnnLSTM");
 
     auto in_dims = ctx->GetInputDim("Input");
+    auto init_dims = ctx->GetInputDim("InitH");
     PADDLE_ENFORCE_EQ(in_dims.size(), 3,
                       platform::errors::InvalidArgument(
                           "The rank of Input in CudnnLSTM  must be 3. But "
                           "received Input's rank is %d.",
                           in_dims.size()));
+    PADDLE_ENFORCE_EQ(init_dims.size(), 3,
+                      platform::errors::InvalidArgument(
+                          "The rank of InitH in CudnnLSTM  must be 3. But "
+                          "received InitH's rank is %d.",
+                          init_dims.size()));
+
+    PADDLE_ENFORCE_EQ(in_dims[1], init_dims[1],
+                      platform::errors::InvalidArgument(
+                          "The in_dims[1] (Input dims) and init_dims[1] (InitH "
+                          "dims) should be equal. But "
+                          "received in_dims[1] is %d and init_dims[1] is %d.",
+                          in_dims[1], init_dims[1]));
+    PADDLE_ENFORCE_EQ(in_dims[2], init_dims[2],
+                      platform::errors::InvalidArgument(
+                          "The in_dims[2] (Input dims) and init_dims[2] (InitH "
+                          "dims) should be equal. But "
+                          "received in_dims[2] is %d and init_dims[2] is %d.",
+                          in_dims[2], init_dims[2]));
 
     auto out_dims = in_dims;
     auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
     bool is_bidirec = ctx->Attrs().Get<bool>("is_bidirec");
     out_dims[2] = is_bidirec ? hidden_size * 2 : hidden_size;
 
-    auto init_dims = ctx->GetInputDim("InitH");
     auto last_dims = init_dims;
     last_dims[0] = is_bidirec ? last_dims[0] * 2 : last_dims[0];
     ctx->SetOutputDim("Out", out_dims);
