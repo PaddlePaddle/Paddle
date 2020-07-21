@@ -38,7 +38,9 @@ generator = unique_name.UniqueNameGenerator()
 CONST_CHECKPOINT = "checkpoint"
 CONST_MEMORYINIT = "memory_init"
 
+# auto checkpoint by dataloader event.
 CONST_DACP_TYPE = "dacp"
+# auto checkpoint by loop range.
 CONST_ACP_TYPE = "acp"
 g_acp_type = None
 g_program_attr = {}  # program_name->can_be_auto_checkpoint
@@ -80,7 +82,7 @@ class AutoCheckpointChecker(object):
         self._ce_test = None
 
         self._run_env = os.getenv("PADDLE_RUNNING_ENV")
-        if self.run_env != "PADDLE_EDL_AUTO_CHECKPOINT":
+        if self._run_env != "PADDLE_EDL_AUTO_CHECKPOINT":
             return
 
         try:
