@@ -745,7 +745,7 @@ class Model(object):
               class MyModel(fluid.dygraph.Layer):
                   def __init__(self):
                       super(MyModel, self).__init__()
-                      self._fc = Linear(784, 10, act='softmax')
+                      self._fc = fluid.dygraph.Linear(784, 10, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
