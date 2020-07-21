@@ -143,7 +143,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(save_dir)
         logger.info("begin _run_load_0")
 
-    def test_normal(self):
+    def _test_normal(self):
         logger.info("begin test_normal")
         checker = acp._get_checker()
 
@@ -154,9 +154,9 @@ class AutoCheckpointTest(AutoCheckpointBase):
         self._reset_generator()
         self._run_normal()
         self._readd_envs()
-        logger.info("begin test_normal")
+        logger.info("end test_normal")
 
-    def test_basic(self):
+    def _test_basic(self):
         logger.info("begin test_basic")
         checker = acp._get_checker()
 
@@ -171,7 +171,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
 
         logger.info("end test_basic")
 
-    def test_corner_epoch_no(self):
+    def _test_corner_epoch_no(self):
         logger.info("begin test_corener_epoch_no")
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
@@ -186,7 +186,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(checker.hdfs_checkpoint_path)
         logger.info("end test_corener_epoch_no")
 
-    def test_multiple(self):
+    def _test_multiple(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
         fs.delete(checker.hdfs_checkpoint_path)
@@ -207,6 +207,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
             self._init_env(exe, main_prog2, startup_prog2)
 
         o = None
+        epochs = []
         for i in acp.train_epoch_range(3, 0):
             for data in data_loader1():
                 fetch = exe.run(compiled1, feed=data, fetch_list=[loss1])
@@ -216,15 +217,17 @@ class AutoCheckpointTest(AutoCheckpointBase):
 
             o = acp._get_train_epoch_range()
             self.assertEqual(len(o._exe_status), 2)
+            epochs.append(i)
 
         o = acp._get_train_epoch_range()
         self.assertTrue(o == None, "now train epoch must not exits now")
         self.assertEqual(i, 2)
+        self.assertEqual(epochs, [0, 1, 2])
 
         fs.delete(save_dir)
         logger.info("end test_multiple")
 
-    def test_distributed_basic(self):
+    def _test_distributed_basic(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
         fs.delete(checker.hdfs_checkpoint_path)
@@ -277,6 +280,13 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(save_dir)
 
         logger.info("end test_distributed_basic")
+
+    def test_all(self):
+        self._test_normal()
+        self._test_basic()
+        self._test_corner_epoch_no()
+        self._test_multiple()
+        self._test_distributed_basic()
 
 
 if __name__ == '__main__':

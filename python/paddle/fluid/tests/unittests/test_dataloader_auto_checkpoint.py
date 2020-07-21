@@ -166,7 +166,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         logger.info("leave _run_load_basic")
 
-    def test_basic_type(self):
+    def _test_basic_type(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
 
@@ -179,7 +179,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         fs.delete(checker.hdfs_checkpoint_path)
 
-    def test_basic(self):
+    def _test_basic(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
 
@@ -192,7 +192,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         fs.delete(checker.hdfs_checkpoint_path)
 
-    def test_corener_epochno(self):
+    def _test_corener_epochno(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
 
@@ -205,6 +205,11 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self._run_load_basic(break_epoch_no=i)
 
         fs.delete(checker.hdfs_checkpoint_path)
+
+    def test_all(self):
+        self._test_basic_type()
+        self._test_basic()
+        self._test_corener_epochno()
 
 
 if __name__ == '__main__':
