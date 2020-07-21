@@ -26,6 +26,7 @@ from paddle.fluid.contrib.slim.quantization import ConvertToInt8Pass
 from paddle.fluid.contrib.slim.quantization import TransformForMobilePass
 from paddle.fluid.contrib.slim.quantization import AddQuantDequantPass
 from paddle.fluid import core
+from paddle.fluid.layer_helper import LayerHelper
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["CPU_NUM"] = "1"
