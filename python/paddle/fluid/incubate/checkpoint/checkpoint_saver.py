@@ -38,14 +38,18 @@ class PaddleModel(SerializableBase):
     def serialize(self, path):
         from ...io import save_persistables
         save_persistables(
-            executor=self._exe, dirname=path, main_program=self._program)
-        #filename=self._file_name)
+            executor=self._exe,
+            dirname=path,
+            main_program=self._program,
+            filename=self._file_name)
 
     def deserialize(self, path):
         from ...io import load_persistables
         load_persistables(
-            executor=self._exe, dirname=path, main_program=self._program)
-        #filename=self._file_name)
+            executor=self._exe,
+            dirname=path,
+            main_program=self._program,
+            filename=self._file_name)
 
 
 class CheckpointSaver(object):

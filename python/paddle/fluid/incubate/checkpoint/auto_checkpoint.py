@@ -324,7 +324,7 @@ class TrainEpochRange(SerializableBase):
                 self._checker.trainer_id,
                 checkpoint_no=i)
             cps.append(t)
-            print("look for valid:{} t:{}", i, t._serialize())
+            logger.debug("look for valid:{} t:{}".format(i, t._serialize()))
             if epoch_no < 0:
                 epoch_no = t._epoch_no
             else:
@@ -648,8 +648,6 @@ def _auto_checkpoint(exe, program):
         t._program = program
         t._epoch_no = g_train_epoch_range.get()
     else:
-        #h = _get_hash(key)
-
         t = ExeTrainStatus()
         t._epoch_no = g_train_epoch_range.get()
         t._hash_key = key

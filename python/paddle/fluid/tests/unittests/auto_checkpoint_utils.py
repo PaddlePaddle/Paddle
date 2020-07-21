@@ -147,6 +147,7 @@ class AutoCheckpointBase(unittest.TestCase):
         acp.g_acp_type = None
         dacp.g_ranges = {}
         acp.g_checker = acp.AutoCheckpointChecker()
+        acp.g_program_attr = {}
 
     def _clear_envs(self):
         os.environ.pop("PADDLE_RUNNING_ENV", None)

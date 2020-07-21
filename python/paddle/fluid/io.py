@@ -820,7 +820,6 @@ def load_vars(executor,
                     'file_path': filename,
                     'model_from_memory': vars_from_memory
                 })
-
         executor.run(load_prog)
 
         # check var shape
