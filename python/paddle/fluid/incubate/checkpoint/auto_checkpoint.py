@@ -41,6 +41,7 @@ CONST_MEMORYINIT = "memory_init"
 CONST_DACP_TYPE = "dacp"
 CONST_ACP_TYPE = "acp"
 g_acp_type = None
+g_program_attr = {}  # program_name->can_be_auto_checkpoint
 
 
 def _get_logger(log_level, name="auto_checkpoint"):
@@ -496,18 +497,50 @@ def _get_train_epoch_range():
     return g_train_epoch_range
 
 
+def _check_program_oprole(program):
+    global_block = program.global_block()
+    has_backward = False
+    has_opt = False
+    for idx, op in enumerate(global_block.ops):
+        if op._is_backward_op():
+            has_backward = True
+
+        if op._is_optimize_op():
+            has_opt = True
+
+        if has_backward and has_opt:
+            return True
+
+    return False
+
+
 def _can_auto_checkpoint(program):
     if not isinstance(program, compiler.CompiledProgram) and \
             not isinstance(program, Program):
         return False
 
     if isinstance(program, compiler.CompiledProgram):
-        if not program._auto_checkpoint or \
-                program._program is None or \
+        if program._program is None or \
                 program._program._is_distributed:
             return False
     else:
-        if not program._auto_checkpoint or program._is_distributed:
+        if program._is_distributed:
+            return False
+
+    if program._auto_checkpoint_name in g_program_attr:
+        if not g_program_attr[program._auto_checkpoint_name]:
+            return False
+    else:
+        ret = False
+        if isinstance(program, compiler.CompiledProgram):
+            ret = _check_program_oprole(program._program)
+        else:
+            ret = _check_program_oprole(program)
+
+        g_program_attr[program._auto_checkpoint_name] = ret
+        if not ret:
+            logger.info("program {} need't to auto checkpoint".format(
+                program._auto_checkpoint_name))
             return False
 
     _get_checker()
@@ -586,10 +619,9 @@ def _initial_names(exe, program):
 
 
 def _auto_checkpoint(exe, program):
+    _initial_names(exe, program)
     if not _can_auto_checkpoint(program):
         return
-
-    _initial_names(exe, program)
 
     exe_status = g_train_epoch_range._exe_status
     key = _get_running_key(exe._auto_checkpoint_name,

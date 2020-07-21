@@ -2387,6 +2387,16 @@ class Operator(object):
         else:
             return False
 
+    def _is_backward_op(self):
+        op_maker = core.op_proto_and_checker_maker
+        BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
+
+        op_role = self.desc.attr(op_maker.kOpRoleAttrName())
+        if op_role & int(BACKWARD):
+            return True
+
+        return False
+
 
 class Block(object):
     """
@@ -3938,7 +3948,6 @@ class Program(object):
         self._appending_grad_times = 0
 
         # identifier for auto checkpoint
-        self._auto_checkpoint = True
         self._auto_checkpoint_name = None
 
     def global_seed(self, seed=0):

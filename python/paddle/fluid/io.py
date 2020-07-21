@@ -364,7 +364,6 @@ def save_vars(executor,
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
         # to keep consistency.
         save_program._sync_with_cpp()
-        save_program._auto_checkpoint = False
         executor.run(save_program)
         if save_to_memory:
             return global_scope().find_var(params_var_name).get_bytes()
@@ -822,7 +821,6 @@ def load_vars(executor,
                     'model_from_memory': vars_from_memory
                 })
 
-        load_prog._auto_checkpoint = False
         executor.run(load_prog)
 
         # check var shape
