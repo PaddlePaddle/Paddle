@@ -14,8 +14,9 @@
 
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
-from paddle.fluid.framework import Variable, core
-from paddle.fluid.layers import Assert, cast, control_flow, logical_and, logical_not, logical_or, nn
+from paddle.fluid.framework import core, Variable
+from paddle.fluid.layers import Assert, Print
+from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 
 
 def convert_while_loop(cond, body, loop_vars):
@@ -271,3 +272,16 @@ def convert_assert(cond, message=""):
         return Assert(cond)
     else:
         assert cond, message
+
+
+def convert_print(*args):
+    """
+    A function representing Python ``print`` statement. Note: this is a basic
+    python function so we haven't handle sep, end, file and flush parameters of
+    python function.
+    """
+    for var in args:
+        if isinstance(var, Variable):
+            var = Print(var)
+        else:
+            print(var)
