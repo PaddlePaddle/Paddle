@@ -783,9 +783,6 @@ class Optimizer(object):
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
-        params_grads, table_param_and_grad, table_optimize_op = \
-            self._process_distribute_lookuptable(params_grads)
-
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
@@ -797,10 +794,6 @@ class Optimizer(object):
             params_grads, self.regularization, self._param_device_map)
 
         optimize_ops = self._create_optimization_pass(params_grads)
-        if table_optimize_op is not None:
-            optimize_ops.append(table_optimize_op)
-            params_grads.append(table_param_and_grad)
-
         return optimize_ops
 
     def apply_optimize(self, loss, startup_program, params_grads):
