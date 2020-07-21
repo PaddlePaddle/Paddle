@@ -481,7 +481,7 @@ class DynamicGraphAdapter(object):
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss = self.ddp_model.scale_loss(final_loss)
@@ -489,7 +489,7 @@ class DynamicGraphAdapter(object):
             self.ddp_model.apply_collective_grads()
         else:
             outputs = self.model.network.forward(
-                *[to_variable(x) for x in inputs])
+                * [to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
@@ -498,9 +498,9 @@ class DynamicGraphAdapter(object):
         self.model.network.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(*(
-                to_list(outputs) + to_list(labels)))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
+                labels)))
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -512,7 +512,7 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
         else:
@@ -542,9 +542,9 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(*(
-                to_list(outputs) + to_list(labels)))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
+                labels)))
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         # To be consistent with static graph
