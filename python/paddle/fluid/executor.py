@@ -25,6 +25,7 @@ import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
 from . import core
+from . import unique_name
 from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
@@ -560,7 +561,8 @@ class Executor(object):
         self._closed = False
         self.pruned_program_scope_caches = dict()
 
-        self._auto_checkpoint_name = None
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_executor__")
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)

@@ -183,18 +183,6 @@ class AutoCheckpointChecker(object):
     def generate_range_name():
         return generator("_range_")
 
-    @staticmethod
-    def generate_program_name():
-        return generator("_program_")
-
-    @staticmethod
-    def generate_executor_name():
-        return generator("_executor_")
-
-    @staticmethod
-    def generate_generator_loader_name():
-        return generator("_generator_loader_")
-
 
 class ExeTrainStatus(SerializableBase):
     def __init__(self):
@@ -611,11 +599,8 @@ def _get_hash(key):
 
 
 def _initial_names(exe, program):
-    if program._auto_checkpoint_name is None:
-        program._auto_checkpoint_name = g_checker.generate_program_name()
-
-    if exe._auto_checkpoint_name is None:
-        exe._auto_checkpoint_name = g_checker.generate_executor_name()
+    assert exe._auto_checkpoint_name != None
+    assert program._auto_checkpoint_name != None
 
 
 def _auto_checkpoint(exe, program):

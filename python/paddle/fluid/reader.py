@@ -31,6 +31,7 @@ import warnings
 from .dataset import DatasetBase, InMemoryDataset
 from .incubate.checkpoint import dataloader_auto_checkpoint as dacp
 from .incubate.checkpoint import auto_checkpoint as acp
+from . import unique_name
 
 ### Dygraph DataLoader configs ###
 import os
@@ -980,8 +981,8 @@ class GeneratorLoader(DataLoaderBase):
         if not self._iterable:
             self._init_non_iterable()
 
-        self._auto_checkpoint_name = acp._get_checker(
-        ).generate_generator_loader_name()
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_dataloader__")
 
     def _wait_thread_ends(self):
         # Get self._thread first to prevent data race, because __thread_main__

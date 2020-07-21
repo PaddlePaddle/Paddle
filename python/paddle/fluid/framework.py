@@ -3948,7 +3948,8 @@ class Program(object):
         self._appending_grad_times = 0
 
         # identifier for auto checkpoint
-        self._auto_checkpoint_name = None
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_program__")
 
     def global_seed(self, seed=0):
         """

@@ -18,6 +18,7 @@ import six
 import sys
 from .. import compat as cpt
 from . import framework
+from . import unique_name
 from .framework import cuda_places, cpu_places
 
 from . import core
@@ -158,7 +159,8 @@ class CompiledProgram(object):
         self._exec_strategy = None
 
         # identifier for auto checkpoint
-        self._auto_checkpoint_name = None
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_compiled_program__")
 
     def with_data_parallel(self,
                            loss_name=None,
