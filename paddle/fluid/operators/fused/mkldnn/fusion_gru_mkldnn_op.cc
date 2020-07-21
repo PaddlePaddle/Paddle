@@ -72,9 +72,9 @@ class GRUMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::gru_forward> {
       auto input_md = MKLDNNMemDesc({Ti, N, IC}, MKLDNNGetDataType<T>(),
                                     MKLDNNMemoryFormat::any);
       auto weight_x_md = MKLDNNMemDesc(
-          {L, D, IC, G, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ldigo);
+          {L, D, IC, G, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
       auto weight_h_md = MKLDNNMemDesc(
-          {L, D, OC, G, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ldigo);
+          {L, D, OC, G, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
       auto bias_md = MKLDNNMemDesc({L, D, G, OC}, MKLDNNGetDataType<float>(),
                                    MKLDNNMemoryFormat::ldgo);
       auto hidden_md = MKLDNNMemDesc({Ti, N, OC}, MKLDNNGetDataType<T>(),
@@ -203,11 +203,14 @@ class GRUMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::gru_forward> {
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(h0_key));
 
+    auto* h0_data = to_void_cast(h0->data<T>());
+
     if (!memory_p) {
       memory_p = std::make_shared<dnnl::memory>(
-          this->fwd_pd_->weights_layer_desc(), this->engine_,
-          to_void_cast(h0->data<T>()));
+          this->fwd_pd_->weights_layer_desc(), this->engine_, h0_data);
       this->dev_ctx_.SetBlob(h0_key, memory_p);
+    } else {
+      memory_p->set_data_handle(h0_data);
     }
     return memory_p;
   }
@@ -219,11 +222,15 @@ class GRUMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::gru_forward> {
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wx_key));
 
     if (!memory_p) {
-      memory_p = std::make_shared<dnnl::memory>(
-          this->fwd_pd_->weights_layer_desc(), this->engine_);
+      auto user_md =
+          MKLDNNMemDesc({1, 1, IC, 3, OC}, MKLDNNGetDataType<float>(),
+                        MKLDNNMemoryFormat::ldigo);
+      auto user_memory = dnnl::memory(user_md, this->engine_);
 
-      auto* weight_x_data = reinterpret_cast<T*>(memory_p->get_data_handle());
-      memcpy(weight_x_data, weight_x->data<T>(), sizeof(T) * IC * 3 * OC);
+      auto* weight_x_data =
+          reinterpret_cast<float*>(user_memory.get_data_handle());
+      memcpy(weight_x_data, weight_x->data<float>(),
+             sizeof(float) * IC * 3 * OC);
 
       if (origin_mode == false) {
         for (int64_t i = 0; i < IC; ++i) {
@@ -233,6 +240,14 @@ class GRUMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::gru_forward> {
           weight_x_data += 3 * OC;
         }
       }
+
+      memory_p = std::make_shared<dnnl::memory>(
+          this->fwd_pd_->weights_layer_desc(), this->engine_);
+
+      dnnl::stream astream(this->engine_);
+      dnnl::reorder(user_memory, *memory_p)
+          .execute(astream, user_memory, *memory_p);
+
       this->dev_ctx_.SetBlob(wx_key, memory_p);
     }
     return memory_p;
@@ -245,27 +260,30 @@ class GRUMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::gru_forward> {
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wh_key));
 
     if (!memory_p) {
-      memory_p = std::make_shared<dnnl::memory>(
-          this->fwd_pd_->weights_iter_desc(), this->engine_);
+      auto user_md =
+          MKLDNNMemDesc({1, 1, OC, 3, OC}, MKLDNNGetDataType<float>(),
+                        MKLDNNMemoryFormat::ldigo);
+      auto user_memory = dnnl::memory(user_md, this->engine_);
 
-      // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to oneDNN format
-      // [OC, 3OC]
-      auto* weight_h_data = reinterpret_cast<T*>(memory_p->get_data_handle());
-      auto* user_weight_h_data = weight_h->data<T>();
+      // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to
+      // oneDNN format [OC, 3OC]
+      auto* weight_h_data =
+          reinterpret_cast<float*>(user_memory.get_data_handle());
+      auto* user_weight_h_data = weight_h->data<float>();
 
       auto src1_iter = user_weight_h_data;
       auto src2_iter = user_weight_h_data + 2 * OC * OC;
 
       for (int64_t c = 0; c < OC; ++c) {
-        memcpy(weight_h_data, src1_iter, 2 * OC * sizeof(T));
-        memcpy(weight_h_data + 2 * OC, src2_iter, OC * sizeof(T));
+        memcpy(weight_h_data, src1_iter, 2 * OC * sizeof(float));
+        memcpy(weight_h_data + 2 * OC, src2_iter, OC * sizeof(float));
 
         src1_iter += 2 * OC;
         src2_iter += OC;
         weight_h_data += 3 * OC;
       }
 
-      weight_h_data = reinterpret_cast<T*>(memory_p->get_data_handle());
+      weight_h_data = reinterpret_cast<float*>(user_memory.get_data_handle());
 
       if (origin_mode == false) {
         for (int64_t i = 0; i < OC; ++i) {
@@ -275,6 +293,14 @@ class GRUMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::gru_forward> {
           weight_h_data += 3 * OC;
         }
       }
+
+      memory_p = std::make_shared<dnnl::memory>(
+          this->fwd_pd_->weights_iter_desc(), this->engine_);
+
+      dnnl::stream astream(this->engine_);
+      dnnl::reorder(user_memory, *memory_p)
+          .execute(astream, user_memory, *memory_p);
+
       this->dev_ctx_.SetBlob(wh_key, memory_p);
     }
     return memory_p;
@@ -289,7 +315,7 @@ class GRUMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::gru_forward> {
     if (!memory_p) {
       memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->bias_desc(),
                                                 this->engine_);
-      auto* bias_data = reinterpret_cast<T*>(memory_p->get_data_handle());
+      auto* bias_data = reinterpret_cast<float*>(memory_p->get_data_handle());
       if (bias) {
         const float* user_bias_data =
             bias->data<float>();  // Bias in oneDNN is always float
