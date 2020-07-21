@@ -88,5 +88,24 @@ class TestCastOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_dtype_type)
 
 
+class TestCastSameDtype(unittest.TestCase):
+    def test_same_dtype(self):
+        with program_guard(Program(), Program()):
+            x = fluid.layers.data(name='x', shape=[4, 8], dtype='float32')
+            output = fluid.layers.cast(x=x, dtype='float32')
+            x_data = np.random.random((4, 8)).astype('float32')
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+            else:
+                place = core.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            results = exe.run(fluid.default_main_program(),
+                              feed={"x": x_data, },
+                              fetch_list=[output],
+                              return_numpy=True)
+        self.assertTrue(np.allclose(results[0], x_data))
+
+
 if __name__ == '__main__':
     unittest.main()

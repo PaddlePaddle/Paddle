@@ -250,6 +250,8 @@ def cast(x, dtype):
         'uint8'
     ], 'cast')
 
+    if convert_dtype(x.dtype) == convert_dtype(dtype):
+        return x
     helper = LayerHelper('cast', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
