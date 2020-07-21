@@ -291,30 +291,22 @@ class ProgBarLogger(Callback):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from paddle import fluid
-            from paddle.incubate.hapi.metrics import Accuracy
-            from paddle.incubate.hapi.loss import CrossEntropy
-            from paddle.incubate.hapi.datasets import MNIST
-            from paddle.incubate.hapi.vision.models import LeNet
-            from paddle.incubate.hapi.callbacks import ProgBarLogger
-            from paddle.incubate.hapi.model import Input
+            import paddle.fluid as fluid
+            import paddle.incubate.hapi as hapi
 
-            inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
-            labels = [Input([None, 1], 'int64', name='label')]
+            inputs = [hapi.Input([-1, 1, 28, 28], 'float32', name='image')]
+            labels = [hapi.Input([None, 1], 'int64', name='label')]
 
-            train_dataset = MNIST(mode='train')
+            train_dataset = hapi.datasets.MNIST(mode='train')
 
-            model = LeNet()
+            model = hapi.Model(hapi.vision.LeNet(), inputs, labels)
 
             optim = fluid.optimizer.Adam(0.001)
-            model.prepare(optimizer=optim, 
-                        loss_function=CrossEntropy(), 
-                        metrics=Accuracy(), 
-                        inputs=inputs, 
-                        labels=labels)
+            model.prepare(optimizer=optim,
+                        loss_function=hapi.loss.CrossEntropy(),
+                        metrics=hapi.metrics.Accuracy())
 
-            callback = ProgBarLogger(log_freq=10)
+            callback = hapi.callbacks.ProgBarLogger(log_freq=10)
             model.fit(train_dataset, batch_size=64, callbacks=callback)
     """
 
@@ -433,31 +425,22 @@ class ModelCheckpoint(Callback):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from paddle import fluid
-            from paddle.incubate.hapi.metrics import Accuracy
-            from paddle.incubate.hapi.loss import CrossEntropy
-            from paddle.incubate.hapi.datasets import MNIST
-            
-            from paddle.incubate.hapi.vision.models import LeNet
-            from paddle.incubate.hapi.callbacks import ModelCheckpoint
-            from paddle.incubate.hapi.model import Input
+            import paddle.fluid as fluid
+            import paddle.incubate.hapi as hapi
 
-            inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
-            labels = [Input([None, 1], 'int64', name='label')]
+            inputs = [hapi.Input([-1, 1, 28, 28], 'float32', name='image')]
+            labels = [hapi.Input([None, 1], 'int64', name='label')]
 
-            train_dataset = MNIST(mode='train')
+            train_dataset = hapi.datasets.MNIST(mode='train')
 
-            model = LeNet()
+            model = hapi.Model(hapi.vision.LeNet(), inputs, labels)
 
             optim = fluid.optimizer.Adam(0.001)
-            model.prepare(optimizer=optim, 
-                        loss_function=CrossEntropy(), 
-                        metrics=Accuracy(), 
-                        inputs=inputs, 
-                        labels=labels)
+            model.prepare(optimizer=optim,
+                        loss_function=hapi.loss.CrossEntropy(),
+                        metrics=hapi.metrics.Accuracy())
 
-            callback = ModelCheckpoint(save_dir='./temp')
+            callback = hapi.callbacks.ModelCheckpoint(save_dir='./temp')
             model.fit(train_dataset, batch_size=64, callbacks=callback)
     """
 

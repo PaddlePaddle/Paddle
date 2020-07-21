@@ -86,13 +86,13 @@ class CrossEntropy(Loss):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import LeNet
-            from paddle.incubate.hapi.loss import CrossEntropy
+            import paddle.fluid as fluid
+            import paddle.incubate.hapi as hapi
 
             fluid.enable_dygraph()
 
-            model = Model(LeNet())
-            model.prepare(loss_function=CrossEntropy())
+            model = hapi.Model(hapi.vision.LeNet())
+            model.prepare(loss_function=hapi.loss.CrossEntropy())
             
     """
 
@@ -120,13 +120,13 @@ class SoftmaxWithCrossEntropy(Loss):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import LeNet
-            from paddle.incubate.hapi.loss import SoftmaxWithCrossEntropy
+            import paddle.fluid as fluid
+            import paddle.incubate.hapi as hapi
 
             fluid.enable_dygraph()
 
-            model = Model(LeNet(classifier_activation=None))
-            loss = SoftmaxWithCrossEntropy()
+            model = hapi.Model(hapi.vision.LeNet(classifier_activation=None))
+            loss = hapi.loss.SoftmaxWithCrossEntropy()
             model.prepare(loss_function=loss)
     """
 
