@@ -206,6 +206,9 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         fs.delete(checker.hdfs_checkpoint_path)
 
+    def test_invalid_save_model(self):
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()

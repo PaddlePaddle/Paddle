@@ -61,6 +61,15 @@ class TrainEpochRangeWrapper(object):
     def is_restored(self):
         return self._checkpoint_epoch_no is not None
 
+    def contain(self, exe_name, program_name):
+        key = acp._get_running_key(exe_name, program_name)
+
+        e = self._train_epoch_range._exe_status
+        if key not in e:
+            return False
+
+        return True
+
 
 logger = acp._get_logger(20)
 
@@ -146,3 +155,24 @@ def _end(name):
         acp.g_train_epoch_range = None
 
     return True
+
+
+def _is_restoring(executor, program):
+    if acp.g_acp_type != CONST_DACP_TYPE:
+        return False
+
+    if len(g_ranges) < 1:
+        return False
+
+    for n, range_wrapper in six.iteritems(g_ranges):  # ranges
+        if not range_wrapper.is_restored():
+            continue
+
+        if not range_wrapper.contain(executor._auto_checkpoint_name,
+                                     program._auto_checkpoint_name):
+            continue
+
+        if range_wrapper.beyond_restored():
+            return False
+        else:
+            return True
