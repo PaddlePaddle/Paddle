@@ -49,10 +49,14 @@ class AutoCheckpointTest(AutoCheckpointBase):
             exe, main_prog, startup_prog)
         for i in range(3):
             self.assertEqual(acp._get_train_epoch_range(), None)
+            self.assertEqual(acp.g_acp_type, None)
             for data in data_loader():
+                self.assertEqual(acp.g_acp_type, None)
+                self.assertEqual(acp._get_train_epoch_range(), None)
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
-        self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
+        self.assertEqual(acp.g_acp_type, None)
+        self.assertEqual(acp._get_train_epoch_range(), None)
 
         m1 = PaddleModel(exe, compiled)
         m1.serialize(save_dir)
@@ -100,7 +104,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(save_dir)
         logger.info("end _run_save_0")
 
-    def _run_load_0(self, started_epoch_no=None):
+    def _run_load_0(self, break_epoch_no=None):
         logger.info("begin _run_load_0")
         exe, main_prog, startup_prog = self._generate()
 
@@ -115,9 +119,9 @@ class AutoCheckpointTest(AutoCheckpointBase):
         i = 0
         check = False
 
-        epochs = None
+        epochs = []
         for i in acp.train_epoch_range(3, 0):
-            epoch.append(i)
+            epochs.append(i)
 
             for data in data_loader():
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
@@ -140,16 +144,17 @@ class AutoCheckpointTest(AutoCheckpointBase):
         logger.info("begin _run_load_0")
 
     def test_normal(self):
-        logger.info("begin test_basic")
+        logger.info("begin test_normal")
         checker = acp._get_checker()
 
         fs = HDFSClient(checker.hdfs_home, None)
 
         fs.delete(checker.hdfs_checkpoint_path)
-        self._reset_generator()
         self._clear_envs()
+        self._reset_generator()
         self._run_normal()
         self._readd_envs()
+        logger.info("begin test_normal")
 
     def test_basic(self):
         logger.info("begin test_basic")
@@ -176,7 +181,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
             self._reset_generator()
             self._run_save_0(break_epoch_no=i)
             self._reset_generator()
-            self._run_load_0(started_epoch_no=i)
+            self._run_load_0(break_epoch_no=i)
 
         fs.delete(checker.hdfs_checkpoint_path)
         logger.info("end test_corener_epoch_no")
