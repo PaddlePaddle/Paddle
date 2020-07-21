@@ -67,6 +67,11 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
 
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
 
+    memory::allocation::AllocationPtr tmp_cpu_info_data =
+        memory::Alloc(context, num_ints * sizeof(int));
+
+    std::vector<int> info;  // only for singular checking
+    info.resize(num_ints);
     // This functions in cuBLAS is intended to be used for matrices of small
     // sizes where the launch overhead is a significant factor.
     // TODO(Xreki): call function in cusolver for large matrices.
@@ -78,6 +83,15 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
       blas.BatchedMatInv(n,
                          reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
                          gpu_inv_ptrs, gpu_info_ptr, batch_size);
+
+      cudaMemcpy(info.data(), gpu_info_ptr, sizeof(int) * num_ints,
+                 cudaMemcpyDeviceToHost);
+      for (int i = 0; i < num_ints; ++i) {
+        PADDLE_ENFORCE_EQ(
+            info[i], 0, platform::errors::PreconditionNotMet(
+                            "For batch [%d]: U(%d, %d) is zero, singular U.", i,
+                            info[i], info[i]));
+      }
     } else {
       // This function performs the LU factorization of each matrix A by the
       // equation P * A = L * U. L and U are written back to original matrix A,
@@ -90,6 +104,14 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
       blas.BatchedGETRI(n,
                         reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
                         gpu_pivot_ptr, gpu_inv_ptrs, gpu_info_ptr, batch_size);
+      cudaMemcpy(info.data(), gpu_info_ptr, sizeof(int) * num_ints,
+                 cudaMemcpyDeviceToHost);
+      for (int i = 0; i < num_ints; ++i) {
+        PADDLE_ENFORCE_EQ(
+            info[i], 0, platform::errors::PreconditionNotMet(
+                            "For batch [%d]: U(%d, %d) is zero, singular U.", i,
+                            info[i], info[i]));
+      }
     }
   }
 };
