@@ -433,6 +433,60 @@ private:
   int num_{0};
 };
 
+struct BthreadMutextGuard {
+  BthreadMutextGuard(bthread_mutex_t* rho) {
+    mutex_ = rho;
+    bthread_mutex_lock(mutex_);
+  }
+  ~BthreadMutextGuard() {
+    bthread_mutex_unlock(mutex_);
+  }
+  bthread_mutex_t* mutex_;
+};
+
+template <class T>
+class BtObjectPool {
+public:
+  BtObjectPool() {
+    bthread_mutex_init(&mutex_, NULL);
+    bthread_cond_init(&cond_, NULL);
+  }
+  
+  virtual ~BtObjectPool() {
+    bthread_cond_destroy(&cond_);
+    bthread_mutex_destroy(&mutex_);
+  };
+  
+  std::shared_ptr<T> Get() {
+    BthreadMutextGuard guard(&mutex_);
+    while (pool_.empty()) {
+      bthread_cond_wait(&cond_, &mutex_);
+    }
+    auto ret =  pool_.back();
+    pool_.pop_back();
+    return ret;
+  }
+  
+  void Push(std::shared_ptr<T> data) {
+    BthreadMutextGuard guard(&mutex_);
+    pool_.push_back(std::move(data));
+    bthread_cond_signal(&cond_);
+  }
+  
+  int Size() {
+    return pool_.size();
+  }
+  
+  std::shared_ptr<T>& GetElement(int i) {
+    return pool_[i];
+  }
+
+private:
+  std::vector<std::shared_ptr<T>> pool_;
+  bthread_mutex_t mutex_;
+  bthread_cond_t cond_;
+  int num_{0};
+};
 
 template <class K, class T>
 struct HeterNode {
@@ -470,6 +524,7 @@ public:
     cond_.wait(lock, [this] { return size < cap_; });
     if (task_map_.find(key) != task_map_.end()) {
       //std::cout << "try put key=" << key << " false" << std::endl;
+      task_map_.erase(key);
       return false;
     }
     else {

@@ -214,7 +214,7 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   //CHECK(xpu_end_op_index_ = ops_.size() - 1);
   
   //// init pool
-  for (size_t i = 0; i < 5; ++i) {
+  for (size_t i = 0; i < 6; ++i) {
     for (size_t j = 0; j < places_.size(); ++j) {
       int num = j;
       std::shared_ptr<HeterServiceContext> context = std::make_shared<HeterServiceContext>();

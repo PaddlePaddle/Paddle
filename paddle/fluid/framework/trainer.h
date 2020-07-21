@@ -190,7 +190,7 @@ class HeterXpuTrainer : public TrainerBase {
   std::vector<OperatorBase*> ops_;
   std::vector<std::string> op_names_;
   std::vector<Scope*> place_scopes_;
-  HeterObjectPool<HeterServiceContext> object_pool_;
+  BtObjectPool<HeterServiceContext> object_pool_;
   std::vector<cudaStream_t> copy_streams_;
   std::vector<platform::Place> places_;
   std::vector<cudaEvent_t> events_;
