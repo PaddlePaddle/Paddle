@@ -63,7 +63,8 @@ class Array {
 
   HOSTDEVICE inline const T &at(size_t i) const {
 #ifndef __CUDA_ARCH__
-    PADDLE_ENFORCE_LT(i, N, "Array index out of bounds");
+    PADDLE_ENFORCE_LT(
+        i, N, platform::errors::OutOfRange("Array index out of bounds."));
 #endif
     return (*this)[i];
   }
@@ -106,7 +107,7 @@ class Array<T, 0> {
     static T obj();
     return obj;
 #else
-    PADDLE_THROW("Array<T, 0> has no element");
+    PADDLE_THROW(platform::errors::Unavailable("Array<T, 0> has no element."));
 #endif
   }
 
@@ -115,7 +116,7 @@ class Array<T, 0> {
     static const T obj();
     return obj;
 #else
-    PADDLE_THROW("Array<T, 0> has no element");
+    PADDLE_THROW(platform::errors::Unavailable("Array<T, 0> has no element."));
 #endif
   }
 
