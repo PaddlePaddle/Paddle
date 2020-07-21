@@ -69,7 +69,7 @@ struct CudnnRNNCache {
             int batch_size, int input_size, int hidden_size, int num_layers,
             float dropout_prob, bool is_bidirec, int seed, int weight_numel,
             size_t *reserve_size_, framework::Tensor *dropout_state_,
-            bool initialized) {
+            bool initialized, cudnnDataType_t cudnn_type) {
     seq_length_ = seq_len;
     batch_size_ = batch_size;
     input_size_ = input_size;
@@ -80,6 +80,8 @@ struct CudnnRNNCache {
     seed_ = seed;
 
     const auto numDirections = is_bidirec_ ? 2 : 1;
+    auto cudnn_size =
+        cudnn_type == CUDNN_DATA_FLOAT ? sizeof(float) : sizeof(double);
 
     x_desc_ = new cudnnTensorDescriptor_t[seq_length_];
     y_desc_ = new cudnnTensorDescriptor_t[seq_length_];
@@ -98,13 +100,13 @@ struct CudnnRNNCache {
       strides = {input_size_, 1, 1};
 
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-          x_desc_[i], CUDNN_DATA_FLOAT, 3, dims.data(), strides.data()));
+          x_desc_[i], cudnn_type, 3, dims.data(), strides.data()));
 
       dims_y = {batch_size_, hidden_size_ * numDirections, 1};
       strides_y = {hidden_size_ * numDirections, 1, 1};
 
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-          y_desc_[i], CUDNN_DATA_FLOAT, 3, dims_y.data(), strides_y.data()));
+          y_desc_[i], cudnn_type, 3, dims_y.data(), strides_y.data()));
     }
 
     std::vector<int> dims_hx;
@@ -130,21 +132,21 @@ struct CudnnRNNCache {
         platform::dynload::cudnnCreateTensorDescriptor(&dcy_desc_));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        hx_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
+        hx_desc_, cudnn_type, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        cx_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
+        cx_desc_, cudnn_type, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        hy_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
+        hy_desc_, cudnn_type, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        cy_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
+        cy_desc_, cudnn_type, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        dhx_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
+        dhx_desc_, cudnn_type, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        dcx_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
+        dcx_desc_, cudnn_type, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        dhy_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
+        dhy_desc_, cudnn_type, 3, dims_hx.data(), strides_hx.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        dcy_desc_, CUDNN_DATA_FLOAT, 3, dims_hx.data(), strides_hx.data()));
+        dcy_desc_, cudnn_type, 3, dims_hx.data(), strides_hx.data()));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateDropoutDescriptor(&dropout_desc_));
@@ -176,12 +178,12 @@ struct CudnnRNNCache {
         handle, rnn_desc_, hidden_size_, num_layers_, dropout_desc_,
         CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-        CUDNN_RNN_ALGO_STANDARD, CUDNN_DATA_FLOAT));
+        CUDNN_RNN_ALGO_STANDARD, cudnn_type));
 #else
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor(
         rnn_desc_, hidden_size_, num_layers_, dropout_desc_, CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-        CUDNN_DATA_FLOAT));
+        cudnn_type));
 #endif
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -190,18 +192,18 @@ struct CudnnRNNCache {
         platform::dynload::cudnnCreateFilterDescriptor(&dw_desc_));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
-        handle, rnn_desc_, x_desc_[0], &weights_size_, CUDNN_DATA_FLOAT));
+        handle, rnn_desc_, x_desc_[0], &weights_size_, cudnn_type));
 
-    PADDLE_ENFORCE_EQ(weights_size_, sizeof(float) * weight_numel,
+    PADDLE_ENFORCE_EQ(weights_size_, cudnn_size * weight_numel,
                       "cudnn lstm weight size should be SAME");
     int dim_w[3];
-    dim_w[0] = weights_size_ / sizeof(float);
+    dim_w[0] = weights_size_ / cudnn_size;
     dim_w[1] = 1;
     dim_w[2] = 1;
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetFilterNdDescriptor(
-        w_desc_, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 3, dim_w));
+        w_desc_, cudnn_type, CUDNN_TENSOR_NCHW, 3, dim_w));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetFilterNdDescriptor(
-        dw_desc_, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 3, dim_w));
+        dw_desc_, cudnn_type, CUDNN_TENSOR_NCHW, 3, dim_w));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
         handle, rnn_desc_, seq_length_, x_desc_, &workspace_size_));

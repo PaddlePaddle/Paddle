@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/cudnn_desc.h"
 
 namespace paddle {
 namespace operators {
@@ -66,10 +67,12 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     auto input_dim = x->dims()[2];
     size_t reserve_size;
     bool state_initialized = state_out->IsInitialized() ? true : false;
+    cudnnDataType_t cudnn_type = platform::ToCudnnDataType(
+        framework::ToDataType(std::type_index(typeid(T))));
     cudnn_rnn_cache->init(handle, ctx.GetPlace(), seq_len, batch_size,
                           input_dim, hidden_size, num_layers, dropout_prob,
                           is_bidirec, seed, input_w_numel, &reserve_size,
-                          state_out, state_initialized);
+                          state_out, state_initialized, cudnn_type);
 
     auto *reserve_data = reserve->mutable_data<uint8_t>(
         {static_cast<int64_t>(reserve_size)}, ctx.GetPlace());
@@ -161,10 +164,12 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto batch_size = input->dims()[1];
     auto input_dim = input->dims()[2];
     size_t reserve_size;
+    cudnnDataType_t cudnn_type = platform::ToCudnnDataType(
+        framework::ToDataType(std::type_index(typeid(T))));
     cudnn_rnn_cache->init(handle, ctx.GetPlace(), seq_len, batch_size,
                           input_dim, hidden_size, num_layers, dropout_prob,
                           is_bidirec, seed, input_w_numel, &reserve_size,
-                          const_cast<Tensor *>(state), true);
+                          const_cast<Tensor *>(state), true, cudnn_type);
 
     auto work_data = cudnn_rnn_cache->workspace_data_.data<uint8_t>();
     const uint8_t *reserve_data = reserve->data<uint8_t>();
@@ -198,5 +203,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(cudnn_lstm, ops::CudnnLSTMGPUKernel<float>);
-REGISTER_OP_CUDA_KERNEL(cudnn_lstm_grad, ops::CudnnLSTMGPUGradKernel<float>);
+REGISTER_OP_CUDA_KERNEL(cudnn_lstm, ops::CudnnLSTMGPUKernel<float>,
+                        ops::CudnnLSTMGPUKernel<double>);
+REGISTER_OP_CUDA_KERNEL(cudnn_lstm_grad, ops::CudnnLSTMGPUGradKernel<float>,
+                        ops::CudnnLSTMGPUGradKernel<double>);
