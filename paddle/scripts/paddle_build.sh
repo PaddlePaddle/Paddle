@@ -598,7 +598,7 @@ function generate_api_spec() {
     deactivate
 }
 
-funciton check_qa_approvals(){
+function check_qa_approvals() {
     if [ "$GITHUB_API_TOKEN" == "" ] || [ "$GIT_PR_ID" == "" ]; then
         return 0
     fi
@@ -1398,7 +1398,7 @@ function main() {
         test_fluid_lib_train
         ;;
       test_train)
-        gen_fluid_lib ${parallel_number}
+        gen_fluid_lib ${parallel_number}check_qa_approvals
         test_fluid_lib_train
         ;;
       assert_api_approvals)
