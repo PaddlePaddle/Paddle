@@ -290,12 +290,38 @@ class TestQuantizationFreezePass(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup)
+
+        def pact(x, name=None):
+            helper = LayerHelper("pact", **locals())
+            dtype = 'float32'
+            init_thres = 20
+            u_param_attr = fluid.ParamAttr(
+                name=x.name + '_pact',
+                initializer=fluid.initializer.ConstantInitializer(
+                    value=init_thres),
+                regularizer=fluid.regularizer.L2Decay(0.0001),
+                learning_rate=1)
+            u_param = helper.create_parameter(
+                attr=u_param_attr, shape=[1], dtype=dtype)
+            x = fluid.layers.elementwise_sub(
+                x, fluid.layers.relu(fluid.layers.elementwise_sub(x, u_param)))
+            x = fluid.layers.elementwise_add(
+                x,
+                fluid.layers.relu(fluid.layers.elementwise_sub(-u_param, x)))
+            return x
+
+        def get_optimizer():
+            return fluid.optimizer.MomentumOptimizer(0.0001, 0.9)
+
         transform_pass = QuantizationTransformPass(
             scope=scope,
             place=place,
             activation_quantize_type=activation_quant_type,
             weight_quantize_type=weight_quant_type,
-            skip_pattern=quant_skip_pattern)
+            skip_pattern=quant_skip_pattern,
+            act_preprocess_func=pact,
+            optimizer_func=get_optimizer,
+            executor=exe)
         transform_pass.apply(main_graph)
         transform_pass.apply(test_graph)
         dev_name = '_gpu_' if use_cuda else '_cpu_'
