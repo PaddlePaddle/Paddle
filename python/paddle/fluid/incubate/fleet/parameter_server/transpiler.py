@@ -90,6 +90,9 @@ class FleetTranspiler(Fleet):
         if role_maker is None:
             role_maker = MPISymetricRoleMaker()
         super(FleetTranspiler, self).init(role_maker)
+        if role_maker._is_heter_worker():
+            gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            self._executor = Executor(fluid.CUDAPlace(gpu_id))
         self._fleet_ptr = core.Fleet()
 
     def _init_transpiler_worker(self):
@@ -429,7 +432,8 @@ class FleetTranspiler(Fleet):
             else:
                 if strategy.runtime_split_send_recv:
                     if strategy.geo_sgd_mode:
-                        _strategy = GeoStrategy(strategy.geo_sgd_need_push_nums)
+                        _strategy = GeoStrategy(
+                            strategy.geo_sgd_need_push_nums)
                     elif strategy.half_async:
                         _strategy = HalfAsyncStrategy()
                     else:
@@ -632,8 +636,8 @@ if you would like to save all variables in a
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                            var.desc.type() == core.VarDesc.VarType.READER:
+                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                    var.desc.type() == core.VarDesc.VarType.READER:
                 return False
             return var.persistable
 
@@ -842,14 +846,14 @@ if you would like to save all variables in a
             # get fs config from fleet_desc
             fs_name = self._opt_info["fleet_desc"].fs_client_param.uri
             fs_ugi = self._opt_info["fleet_desc"].fs_client_param.user + "," + \
-                     self._opt_info["fleet_desc"].fs_client_param.passwd
+                self._opt_info["fleet_desc"].fs_client_param.passwd
             hadoop_bin = self._opt_info["fleet_desc"].fs_client_param.hadoop_bin
             # download model_path if it's hdfs/afs
             if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
                 dest = "./model_for_load_table_%s" % table_id
                 cmd = hadoop_bin + " fs -D fs.default.name=" + fs_name + \
-                      " -D hadoop.job.ugi=" + fs_ugi + " -get " + model_path + \
-                      " " + dest
+                    " -D hadoop.job.ugi=" + fs_ugi + " -get " + model_path + \
+                    " " + dest
                 ret = os.system(cmd)
                 if ret != 0:
                     raise RuntimeError("download model failed")
@@ -859,8 +863,8 @@ if you would like to save all variables in a
                     model_proto_file.startswith("afs:"):
                 dest = "./model_proto_file_for_load_table_%s" % table_id
                 cmd = hadoop_bin + " fs -D fs.default.name=" + fs_name + \
-                      " -D hadoop.job.ugi=" + fs_ugi + " -get " + \
-                      model_proto_file + " " + dest
+                    " -D hadoop.job.ugi=" + fs_ugi + " -get " + \
+                    model_proto_file + " " + dest
                 ret = os.system(cmd)
                 if ret != 0:
                     raise RuntimeError("download model proto file failed")
@@ -962,7 +966,8 @@ class ParameterServerOptimizer(DistributedOptimizer):
             # for main program
             _main = worker.find_heter_ops_pass(_main, compiled_config)
             _main = worker.split_heter_program_pass(_main, compiled_config)
-            _main = worker.append_heter_communicate_ops_pass(_main, compiled_config)
+            _main = worker.append_heter_communicate_ops_pass(
+                _main, compiled_config)
 
             # for startup
             _startup = worker.delet_extra_ops_pass(_startup, compiled_config)
@@ -1030,4 +1035,4 @@ class ParameterServerOptimizer(DistributedOptimizer):
         fleet.compiled_config = compiled_config
         fleet.main_program, fleet.startup_program = \
             self._build_trainer_programs(compiled_config) if fleet.is_worker() \
-                else self._build_pserver_programs(compiled_config)
+            else self._build_pserver_programs(compiled_config)
