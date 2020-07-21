@@ -307,7 +307,9 @@ class CompileTimeStrategy(object):
                 param = merged[0]
                 grad = merged[1]
 
-                is_distributed = True if param in distibuted_varnames else False
+                param_name = param.merged_var.name
+
+                is_distributed = True if param_name in distibuted_varnames else False
 
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
                                      True, is_distributed)
@@ -319,8 +321,8 @@ class CompileTimeStrategy(object):
         else:
             for pairs in self.origin_sparse_pairs:
                 param, grad = pairs
-
-                is_distributed = True if param in distibuted_varnames else False
+                param_name = param.name
+                is_distributed = True if param_name in distibuted_varnames else False
 
                 param_ctx = self.build_ctx(param, self.param_var_mapping, False,
                                            True, True, is_distributed)
@@ -344,6 +346,9 @@ class CompileTimeStrategy(object):
 
     def get_communicator_send_context(self):
         send_ctx = {}
+        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
+                                                    True)
+
         if self.is_geo_mode():
             for pairs in self.merged_dense_pairs:
                 param = pairs[0]
@@ -353,8 +358,11 @@ class CompileTimeStrategy(object):
 
             for pairs in self.merged_sparse_pairs:
                 param = pairs[0]
+                param_name = param.merged_var.name
+                is_distributed = True if param_name in distibuted_varnames else False
+
                 ctx = self.build_ctx(param, self.param_var_mapping, False, True,
-                                     True)
+                                     True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
             name, ctx = self._step_ctx()
             send_ctx[name] = ctx
@@ -366,9 +374,13 @@ class CompileTimeStrategy(object):
                 send_ctx[ctx.var_name()] = ctx
 
             for merged in self.merged_sparse_pairs:
-                grad = merged[1]
+                param, grad = merged
+                param_name = param.merged_var.name
+
+                is_distributed = True if param_name in distibuted_varnames else False
+
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True, False,
-                                     True)
+                                     True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
 
             name, ctx = self._step_ctx()
