@@ -1038,8 +1038,6 @@ class QuantizationFreezePass(object):
             if op_name in self._fake_quant_op_names:
                 input_arg_name = op_node.input('X')[0]
                 if input_arg_name in persistable_vars:
-                    if input_arg_name.endswith("_elementwise_add_0.tmp_0"):
-                        input_arg_name = self._original_arg_name(input_arg_name)
                     if self._weight_quantize_type == 'abs_max':
                         param = self._load_var(input_arg_name)
                         scale_v = np.max(np.abs(param))
