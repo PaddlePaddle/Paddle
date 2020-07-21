@@ -205,7 +205,8 @@ class TestCUDNNlstmAPI(unittest.TestCase):
                                       'float32', 0.0)
         init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
                                       'float32', 0.0)
-        rnn_out, last_h, last_c = layers.lstm( input, init_h, init_c, hidden_size, num_layers, dropout_prob)
+        rnn_out, last_h, last_c = layers.lstm(
+            input, init_h, init_c, hidden_size, num_layers, dropout_prob)
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         input_i = np.random.uniform(

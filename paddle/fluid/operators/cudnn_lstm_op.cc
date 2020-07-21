@@ -49,9 +49,12 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     bool is_bidirec = ctx->Attrs().Get<bool>("is_bidirec");
     out_dims[2] = is_bidirec ? hidden_size * 2 : hidden_size;
 
+    auto init_dims = ctx->GetInputDim("InitH");
+    auto last_dims = init_dims;
+    last_dims[0] = is_bidirec ? last_dims[0] * 2 : last_dims[0];
     ctx->SetOutputDim("Out", out_dims);
-    ctx->SetOutputDim("LastH", ctx->GetInputDim("InitH"));
-    ctx->SetOutputDim("LastC", ctx->GetInputDim("InitC"));
+    ctx->SetOutputDim("LastH", last_dims);
+    ctx->SetOutputDim("LastC", last_dims);
   }
 
  protected:

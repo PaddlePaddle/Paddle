@@ -50,7 +50,6 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
 
     float dropout_prob = ctx.Attr<float>("dropout_prob");
     bool is_bidirec = ctx.Attr<bool>("is_bidirec");
-    int input_size = ctx.Attr<int>("input_size");
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
     bool is_test = ctx.Attr<bool>("is_test");
@@ -64,10 +63,11 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     auto input_w_numel = w->numel();
     auto seq_len = x->dims()[0];
     auto batch_size = x->dims()[1];
+    auto input_dim = x->dims()[2];
     size_t reserve_size;
     bool state_initialized = state_out->IsInitialized() ? true : false;
     cudnn_rnn_cache->init(handle, ctx.GetPlace(), seq_len, batch_size,
-                          input_size, hidden_size, num_layers, dropout_prob,
+                          input_dim, hidden_size, num_layers, dropout_prob,
                           is_bidirec, seed, input_w_numel, &reserve_size,
                           state_out, state_initialized);
 
@@ -126,84 +126,30 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto input_dims = input->dims();
     auto init_h_dims = init_h->dims();
     auto init_c_dims = init_c->dims();
-    in_grad->mutable_data<T>(ctx.GetPlace());
-    weight_grad->mutable_data<T>(ctx.GetPlace());
+
+    auto *weight_data = weight->data<T>();
+    auto *init_h_data = init_h->data<T>();
+    auto *init_c_data = init_c->data<T>();
+    auto *out_data = out->data<T>();
+    auto *out_grad_data = out_grad->data<T>();
+    auto *last_h_grad_data = last_h_grad->data<T>();
+    auto *last_c_grad_data = last_c_grad->data<T>();
+
     math::SetConstant<paddle::platform::CUDADeviceContext, T> zero;
-    zero(dev_ctx, in_grad, static_cast<T>(0.0));
+    weight_grad->mutable_data<T>(ctx.GetPlace());
     zero(dev_ctx, weight_grad, static_cast<T>(0.0));
 
-    T *init_h_grad_data = NULL;
-    if (init_h_grad == nullptr) {
-      Tensor init_h_grad_temp;
-      init_h_grad_temp.mutable_data<T>(init_h_dims, ctx.GetPlace());
-      zero(dev_ctx, &init_h_grad_temp, static_cast<T>(0.0));
+    in_grad->mutable_data<T>(input_dims, ctx.GetPlace());
+    auto *in_grad_data = in_grad->data<T>();
 
-      init_h_grad_data = init_h_grad_temp.data<T>();
-    } else {
-      init_h_grad->mutable_data<T>(init_h_dims, ctx.GetPlace());
-      zero(dev_ctx, init_h_grad, static_cast<T>(0.0));
-      init_h_grad_data = init_h_grad->data<T>();
-    }
+    init_h_grad->mutable_data<T>(init_h_dims, ctx.GetPlace());
+    auto *init_h_grad_data = init_h_grad->data<T>();
 
-    T *init_c_grad_data = NULL;
-    if (init_c_grad == nullptr) {
-      Tensor init_c_grad_temp;
-      init_c_grad_temp.mutable_data<T>(init_c_dims, ctx.GetPlace());
-      zero(dev_ctx, &init_c_grad_temp, static_cast<T>(0.0));
-
-      init_c_grad_data = init_c_grad_temp.data<T>();
-    } else {
-      init_c_grad->mutable_data<T>(init_c_dims, ctx.GetPlace());
-      zero(dev_ctx, init_c_grad, static_cast<T>(0.0));
-      init_c_grad_data = init_c_grad->data<T>();
-    }
-
-    const T *last_h_grad_data = NULL;
-    if (last_h_grad == nullptr) {
-      Tensor last_h_grad_temp;
-      last_h_grad_temp.mutable_data<T>(init_h_dims, ctx.GetPlace());
-      zero(dev_ctx, &last_h_grad_temp, static_cast<T>(0.0));
-
-      last_h_grad_data = (const T *)last_h_grad_temp.data<T>();
-    } else {
-      last_h_grad_data = last_h_grad->data<T>();
-    }
-
-    const T *last_c_grad_data = NULL;
-    if (last_c_grad == nullptr) {
-      Tensor last_c_grad_temp;
-      last_c_grad_temp.mutable_data<T>(init_c_dims, ctx.GetPlace());
-      zero(dev_ctx, &last_c_grad_temp, static_cast<T>(0.0));
-
-      last_c_grad_data = (const T *)last_c_grad_temp.data<T>();
-    } else {
-      last_c_grad_data = last_c_grad->data<T>();
-    }
-
-    const T *out_grad_data = NULL;
-    if (out_grad == nullptr) {
-      Tensor out_grad_temp;
-      out_grad_temp.mutable_data<T>(out->dims(), ctx.GetPlace());
-      zero(dev_ctx, &out_grad_temp, static_cast<T>(0.0));
-
-      out_grad_data = (const T *)out_grad_temp.data<T>();
-    } else {
-      out_grad_data = out_grad->data<T>();
-    }
-
-    // zero( dev_ctx, last_h_grad, static_cast<T>(0.0));
-    // zero( dev_ctx, last_c_grad, static_cast<T>(0.0));
-
-    auto out_data = out->data<T>();
-    // auto out_grad_data = out_grad->data<T>();
-    auto weight_data = weight->data<T>();
-    auto init_h_data = init_h->data<T>();
-    auto init_c_data = init_c->data<T>();
-    auto in_grad_data = in_grad->data<T>();
+    init_c_grad->mutable_data<T>(init_c_dims, ctx.GetPlace());
+    auto *init_c_grad_data = init_c_grad->data<T>();
 
     float dropout_prob = ctx.Attr<float>("dropout_prob");
     bool is_bidirec = ctx.Attr<bool>("is_bidirec");
-    int input_size = ctx.Attr<int>("input_size");
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
     int seed = ctx.Attr<int>("seed");
@@ -213,9 +159,10 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto input_w_numel = weight->numel();
     auto seq_len = input_dims[0];
     auto batch_size = input->dims()[1];
+    auto input_dim = input->dims()[2];
     size_t reserve_size;
     cudnn_rnn_cache->init(handle, ctx.GetPlace(), seq_len, batch_size,
-                          input_size, hidden_size, num_layers, dropout_prob,
+                          input_dim, hidden_size, num_layers, dropout_prob,
                           is_bidirec, seed, input_w_numel, &reserve_size,
                           const_cast<Tensor *>(state), true);
 
@@ -227,21 +174,20 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardData(
         handle, cudnn_rnn_cache->rnn_desc_, seq_len, cudnn_rnn_cache->y_desc_,
         out_data, cudnn_rnn_cache->y_desc_, out_grad_data,
-        cudnn_rnn_cache->dhy_desc_, last_h_grad_data,
-        cudnn_rnn_cache->dcy_desc_, last_c_grad_data, cudnn_rnn_cache->w_desc_,
-        weight_data, cudnn_rnn_cache->hx_desc_, init_h_data,
-        cudnn_rnn_cache->cx_desc_, init_c_data, cudnn_rnn_cache->x_desc_,
-        in_grad_data, cudnn_rnn_cache->dhx_desc_, init_h_grad_data,
-        cudnn_rnn_cache->dcx_desc_, init_c_grad_data, work_data,
-        cudnn_rnn_cache->workspace_size_, const_cast<uint8_t *>(reserve_data),
-        reserve_size));
+        cudnn_rnn_cache->hy_desc_, last_h_grad_data, cudnn_rnn_cache->cy_desc_,
+        last_c_grad_data, cudnn_rnn_cache->w_desc_, weight_data,
+        cudnn_rnn_cache->hx_desc_, init_h_data, cudnn_rnn_cache->cx_desc_,
+        init_c_data, cudnn_rnn_cache->x_desc_, in_grad_data,
+        cudnn_rnn_cache->hx_desc_, init_h_grad_data, cudnn_rnn_cache->cx_desc_,
+        init_c_grad_data, work_data, cudnn_rnn_cache->workspace_size_,
+        const_cast<uint8_t *>(reserve_data), reserve_size));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeights(
         handle, cudnn_rnn_cache->rnn_desc_, seq_len, cudnn_rnn_cache->x_desc_,
         input->data<T>(), cudnn_rnn_cache->hx_desc_, init_h->data<T>(),
         cudnn_rnn_cache->y_desc_, out->data<T>(),
         cudnn_rnn_cache->workspace_data_.data<uint8_t>(),
-        cudnn_rnn_cache->workspace_size_, cudnn_rnn_cache->dw_desc_,
+        cudnn_rnn_cache->workspace_size_, cudnn_rnn_cache->w_desc_,
         weight_grad->data<T>(), const_cast<uint8_t *>(reserve_data),
         reserve_size));
     delete cudnn_rnn_cache;
