@@ -109,6 +109,7 @@ class AutoCheckpointChecker(object):
 
         except Exception as e:
             logger.fatal("exception:", e)
+            sys.exit(1)
 
     def get_range_checkpoint_path(self, name):
         return "{}/{}/range/{}".format(self.hdfs_checkpoint_path, self.job_id,
