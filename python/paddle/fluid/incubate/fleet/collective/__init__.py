@@ -470,7 +470,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         Transpile the programs to distributed programs. And add the variables.
         """
         worker_endpoints = fleet.worker_endpoints()
-        trainer_id = fleet.worker_index()
+        trainer_id = fleet.worker_id()
         current_endpoint = fleet.worker_endpoints()[trainer_id]
         worker_endpoints_env = ','.join(worker_endpoints)
         trainers_num = fleet.worker_num()
@@ -512,7 +512,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def _node_num(self):
         worker_endpoints = fleet.worker_endpoints()
-        current_endpoint = fleet.worker_endpoints()[fleet.worker_index()]
+        current_endpoint = fleet.worker_endpoints()[fleet.worker_id()]
         worker_endpoints_env = ','.join(worker_endpoints)
 
         node_ips = self._get_node_ips_from_endpoints(worker_endpoints)
@@ -574,7 +574,7 @@ class CollectiveOptimizer(DistributedOptimizer):
             return main_program
 
         self._strategy.num_trainers = fleet.worker_num()
-        self._strategy.trainer_id = fleet.worker_index()
+        self._strategy.trainer_id = fleet.worker_id()
         self._strategy.trainers_endpoints = fleet.worker_endpoints()
         self._strategy.enable_backward_optimizer_op_deps = True
 

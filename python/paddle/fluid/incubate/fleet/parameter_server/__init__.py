@@ -11,3 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
+
+from paddle.fluid.incubate.fleet.parameter_server.transpiler import fleet as ins
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig
+from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import StrategyFactory
+
+__all__ = [
+    'TrainerRuntimeConfig', 'StrategyFactory', 'fleet', 'DistributedMode'
+]
+
+fleet = ins

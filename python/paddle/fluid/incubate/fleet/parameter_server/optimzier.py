@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Optimizer Factory."""
 
 __all__ = ["DistributedAdam", "FLEET_GLOBAL_DICT"]
 import paddle.fluid as fluid
@@ -38,43 +37,40 @@ FLEET_GLOBAL_DICT = {
 }
 
 
-class DistributedOptimizerImplBase(object):
+class ParameterServerOptimizer(DistributedOptimizer):
     """
-    DistributedOptimizerImplBase
-    base class of optimizers
+    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
+    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    minimize() function is implemented.
+    DistributedOptimizer is the starting point for a user who wants to
+    run distributed training. The optimized information will be stored in
+    Fleet() instance who holds the global information about current distributed
+    training.
+
+    Args:
+        optimizer(Optimizer): subclass of Optimizer.
+        strategy(DistributeTranspilerConfig): instance of DistributeTranspilerConfig.
+
+    Returns:
+        None
     """
 
-    def __init__(self, optimizer):
-        self._optimizer = optimizer
+    def __init__(self, optimizer, strategy, mode=PSMode.TRANSPILER):
+        super(ParameterServerOptimizer, self).__init__(optimizer, strategy)
+        self._mode = mode
+        if self._mode == PSMode.PSLIB:
+            self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
+            if optimizer.type != "adam":
+                print("Currently, distributed optimizer only support Adam"
+                      "Will config built-in adam for you."
+                      "We will support more functions in DistributedOptimizer",
+                      sys.stderr)
+                self._optimizer_name = "DistributedAdam"
+
+            self._optimizer = globals()[self._optimizer_name](optimizer)
+
         self._learning_rate = optimizer._learning_rate
-        self._regularization = optimizer.regularization
 
-    def minimize(self,
-                 losses,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None):
-        """
-        Args:
-            losses(Variable): loss variable defined by user
-            startup_program(Program): startup program that defined by user
-            parameter_list(str list): parameter names defined by users
-            no_grad_set(set): a set of variables that is defined by users
-                so that these variables do not need gradient computation
-        """
-        pass
-
-
-class DistributedAdam(DistributedOptimizerImplBase):
-    """
-    DistributedAdam
-    adam optimizer in distributed training
-    """
-
-    def __init__(self, optimizer):
-        # todo(guru4elephant): add more optimizers here as argument
-        # todo(guru4elephant): make learning_rate as a variable
-        super(DistributedAdam, self).__init__(optimizer)
         self._window = 1
         self.type = "downpour"
         self.data_norm_name = [
@@ -87,6 +83,54 @@ class DistributedAdam(DistributedOptimizerImplBase):
         self.supported_embedding_grad_types = [
             "lookup_table_grad", "push_sparse", "push_sparse_v2"
         ]
+
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None):
+        raise NotImplementedError()
+
+    def apply_gradients(self, params_grads):
+        raise NotImplementedError()
+
+    def minimize(self,
+                 losses,
+                 scopes=None,
+                 startup_programs=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+
+        if not isinstance(losses, list):
+            losses = [losses]
+
+        optimize_ops, param_grads, opt_info = \
+            self._optimizer._minimize(
+                losses,
+                startup_programs,
+                parameter_list,
+                no_grad_set,
+                self._strategy)
+        opt_info["mpi_rank"] = fleet.worker_id()
+        opt_info["mpi_size"] = fleet.worker_num()
+
+        fleet._set_opt_info(opt_info)
+
+        programs = [loss.block.program for loss in losses]
+
+        if scopes is None:
+            scopes = [fluid.global_scope()] * len(programs)
+
+        if len(scopes) != len(programs):
+            raise ValueError(
+                "You should make sure len(scopes) == len(programs) or set scopes None"
+            )
+
+        fleet._main_programs = programs
+        fleet._scopes = scopes
+
+        return [optimize_ops, param_grads]
 
     def _find_distributed_lookup_table_inputs(self, program, table_names):
         """
@@ -244,8 +288,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
             if prog_id not in prog_id_to_param_grads:
                 prog_id_to_param_grads[prog_id] = []
             prog_id_to_param_grads[prog_id].append(params_grads)
-
-        #if strategy.get("parallel_compute")
 
         # if user specify a fleet_desc.prototxt file, then load the file
         # instead of creating default fleet_desc.prototxt.

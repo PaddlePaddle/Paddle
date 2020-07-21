@@ -12,25 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
-import unittest
-import paddle.fluid as fluid
-
-
-class TestCheckpointNotifyOp(unittest.TestCase):
-    def test_checkpoint_notify_op(self):
-        program = fluid.Program()
-        attrs = {}
-        attrs['epmap'] = []
-        attrs['dir'] = ''
-        attrs['lookup_table'] = ''
-        program.current_block().append_op(
-            type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(program)
+class PSMode:
+    """
+    There are various mode for fleet, each of them is designed for different model.
+    """
+    TRANSPILER = 1
+    PSLIB = 2
 
 
-if __name__ == '__main__':
-    unittest.main()
+class DistributedMode:
+    SYNC = 0
+    ASYNC = 1
+    HALF_ASYNC = 2
+    GEO = 3

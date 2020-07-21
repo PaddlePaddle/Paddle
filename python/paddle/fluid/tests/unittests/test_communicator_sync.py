@@ -24,8 +24,8 @@ import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server import fleet
+from paddle.fluid.incubate.fleet.parameter_server import StrategyFactory
 
 
 class TestCommunicator(unittest.TestCase):

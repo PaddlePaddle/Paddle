@@ -16,28 +16,22 @@ from __future__ import print_function
 """
     high level unit test for distribute fleet.
 """
-import argparse
-import os
-import pickle
-import subprocess
-import sys
-import time
-import traceback
-import math
-import collections
-import socket
-from contextlib import closing
 
-import six
-import unittest
-import numpy as np
+import os
+import sys
+import subprocess
+
+import argparse
+from contextlib import closing
+import socket
+import time
 import tempfile
+import unittest
 
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server import fleet
+from paddle.fluid.incubate.fleet.parameter_server import StrategyFactory
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
 
@@ -106,7 +100,16 @@ class FleetDistRunnerBase(object):
                 fluid.clip.set_gradient_clip(
                     clip=fluid.clip.GradientClipByGlobalNorm(2.0))
 
-        optimizer = fluid.optimizer.SGD(LEARNING_RATE)
+        use_decay = int(os.getenv("DECAY", "0"))
+        if use_decay:
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=fluid.layers.exponential_decay(
+                    learning_rate=LEARNING_RATE,
+                    decay_steps=500,
+                    decay_rate=0.969,
+                    staircase=True))
+        else:
+            optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
@@ -266,6 +269,12 @@ class TestFleetBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0.communicate()
         tr1_out, tr1_err = tr1.communicate()
+
+        tr0_ret = tr0.returncode
+        tr1_ret = tr0.returncode
+
+        self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
+        self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")
 
         # close trainer file
         tr0_pipe.close()
