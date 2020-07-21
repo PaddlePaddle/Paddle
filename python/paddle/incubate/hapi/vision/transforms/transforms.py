@@ -804,7 +804,7 @@ class ColorJitter(object):
 
 
 class RandomCrop(object):
-    """Crop the given CV Image at a random location.
+    """Crops the given CV Image at a random location.
 
     Args:
         size (sequence|int): Desired output size of the crop. If size is an
@@ -968,7 +968,7 @@ class RandomErasing(object):
 
 
 class Pad(object):
-    """Pad the given CV Image on all sides with the given "pad" value.
+    """Pads the given CV Image on all sides with the given "pad" value.
 
     Args:
         padding (int|list|tuple): Padding on each border. If a single int is provided this
@@ -984,10 +984,10 @@ class Pad(object):
             ``edge`` means pads with the last value at the edge of the image. 
             ``reflect`` means pads with reflection of image (without repeating the last value on the edge) 
             padding ``[1, 2, 3, 4]`` with 2 elements on both sides in reflect mode 
-            will result in ``[3, 2, 1, 2, 3, 4, 3, 2]``
+            will result in ``[3, 2, 1, 2, 3, 4, 3, 2]``.
             ``symmetric`` menas pads with reflection of image (repeating the last value on the edge)
             padding ``[1, 2, 3, 4]`` with 2 elements on both sides in symmetric mode 
-            will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``
+            will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``.
 
     Examples:
     
@@ -1030,7 +1030,7 @@ class Pad(object):
 
 
 class RandomRotate(object):
-    """Rotate the image by angle.
+    """Rotates the image by angle.
 
     Args:
         degrees (sequence or float or int): Range of degrees to select from.
@@ -1104,7 +1104,7 @@ class RandomRotate(object):
 
 
 class Grayscale(object):
-    """Convert image to grayscale.
+    """Converts image to grayscale.
 
     Args:
         output_channels (int): (1 or 3) number of channels desired for output image

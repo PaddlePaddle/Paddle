@@ -19,6 +19,8 @@ from paddle import fluid
 from paddle.fluid.framework import Variable
 from paddle.fluid.executor import global_scope
 
+fluid.layers.load_combine
+
 
 def to_list(value):
     if value is None:

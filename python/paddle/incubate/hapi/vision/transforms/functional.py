@@ -104,7 +104,7 @@ def resize(img, size, interpolation=cv2.INTER_LINEAR):
 
 
 def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
-    """Pad the given CV Image on all sides with speficified padding mode and fill value.
+    """Pads the given CV Image on all sides with speficified padding mode and fill value.
 
     Args:
         img (np.ndarray): Image to be padded.
@@ -117,14 +117,14 @@ def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
             length 3, it is used to fill R, G, B channels respectively.
             This value is only used when the padding_mode is constant
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default is constant.
-            ``constant`` means pads with a constant value, this value is specified with fill. 
-            ``edge`` means pads with the last value at the edge of the image. 
-            ``reflect`` means pads with reflection of image (without repeating the last value on the edge) 
+            ``constant`` means padding with a constant value, this value is specified with fill. 
+            ``edge`` means padding with the last value at the edge of the image. 
+            ``reflect`` means padding with reflection of image (without repeating the last value on the edge) 
             padding ``[1, 2, 3, 4]`` with 2 elements on both sides in reflect mode 
-            will result in ``[3, 2, 1, 2, 3, 4, 3, 2]``
+            will result in ``[3, 2, 1, 2, 3, 4, 3, 2]``.
             ``symmetric`` menas pads with reflection of image (repeating the last value on the edge)
             padding ``[1, 2, 3, 4]`` with 2 elements on both sides in symmetric mode 
-            will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``
+            will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``.
 
     Returns:
         numpy ndarray: Padded image.
@@ -198,7 +198,7 @@ def rotate(img,
            interpolation=cv2.INTER_LINEAR,
            expand=False,
            center=None):
-    """Rotate the image by angle.
+    """Rotates the image by angle.
 
     Args:
         img (numpy.ndarray): Image to be rotated.
@@ -267,7 +267,7 @@ def rotate(img,
 
 
 def to_grayscale(img, num_output_channels=1):
-    """Convert image to grayscale version of image.
+    """Converts image to grayscale version of image.
 
     Args:
         img (numpy.ndarray): Image to be converted to grayscale.
