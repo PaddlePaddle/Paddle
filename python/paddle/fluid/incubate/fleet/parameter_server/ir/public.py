@@ -389,8 +389,11 @@ class CompileTimeStrategy(object):
 
     def get_communicator_recv_context(self, recv_type=1):
         # recv_type
-        # 1 : DENSE 2. SPARSE 3. ALL
+        # 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL
         sparse_varnames = []
+
+        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
+                                                    True)
 
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
@@ -398,6 +401,7 @@ class CompileTimeStrategy(object):
 
         dense_recv_ctx = {}
         sparse_recv_ctx = {}
+        distributed_recv_ctx = {}
 
         for merged in self.merged_variables_pairs:
             params = merged[0]
@@ -410,18 +414,29 @@ class CompileTimeStrategy(object):
 
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
-            ctx = self.build_ctx(param, self.param_var_mapping, False, True,
-                                 False)
-            sparse_recv_ctx[ctx.var_name()] = ctx
+
+            if param.name in distibuted_varnames:
+                ctx = self.build_ctx(param, self.param_var_mapping, False, True,
+                                     False, True)
+                distributed_recv_ctx[ctx.var_name()] = ctx
+            else:
+                ctx = self.build_ctx(param, self.param_var_mapping, False, True,
+                                     False, True)
+                sparse_recv_ctx[ctx.var_name()] = ctx
 
         if recv_type == 1:
             return dense_recv_ctx
         if recv_type == 2:
             return sparse_recv_ctx
         if recv_type == 3:
+            return distributed_recv_ctx
+        if recv_type == 4:
             dense_recv_ctx.update(sparse_recv_ctx)
+            dense_recv_ctx.update(distributed_recv_ctx)
             return dense_recv_ctx
-        assert ValueError("recv_type can only be 1/2/3")
+        assert ValueError(
+            "recv_type can only be 1/2/3/4, 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL"
+        )
 
     def get_server_runtime_config(self):
         return self.strategy.get_server_runtime_config()

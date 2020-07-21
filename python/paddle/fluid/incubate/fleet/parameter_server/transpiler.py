@@ -165,7 +165,7 @@ class FleetTranspiler(Fleet):
 
         if self.compiled_config.is_geo_mode():
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
-                recv_type=3)
+                recv_type=4)
         else:
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
                 recv_type=1)
@@ -544,6 +544,26 @@ class FleetTranspiler(Fleet):
         prog = Program()
         block = prog.global_block()
 
+        # for name, var_ctx in context.items():
+        #     block.append_op(
+        #         type='checkpoint_notify',
+        #         attrs={
+        #             "varname": name,
+        #             "is_slice": True,
+        #             "slice_varnames": var_ctx.split_varnames(),
+        #             "remote_varnames": var_ctx.split_varnames(),
+        #             "endpoints": var_ctx.split_endpoints(),
+        #             "dirname": dirname
+        #         })
+
+        executor.run(prog)
+        return context.keys()
+
+    def _save_distributed_params(self, executor, dirname, context,
+                                 main_program):
+        prog = Program()
+        block = prog.global_block()
+
         for name, var_ctx in context.items():
             block.append_op(
                 type='checkpoint_notify',
@@ -560,19 +580,25 @@ class FleetTranspiler(Fleet):
         return context.keys()
 
     def _save_distributed_persistables(self, executor, dirname, main_program):
+        dense_ctx = fleet.compiled_config.get_communicator_recv_context(
+            recv_type=1)
 
         sparse_ctx = fleet.compiled_config.get_communicator_recv_context(
             recv_type=2)
 
-        dense_ctx = fleet.compiled_config.get_communicator_recv_context(
-            recv_type=1)
+        distributed_ctx = fleet.compiled_config.get_communicator_recv_context(
+            recv_type=3)
 
         recv_dense_varnames = self._save_dense_params(executor, dirname,
                                                       dense_ctx, main_program)
+
         recv_sparse_varnames = self._save_sparse_params(
             executor, dirname, sparse_ctx, main_program)
 
-        saved_varnames = recv_dense_varnames + recv_sparse_varnames
+        recv_distributed_varnames = self._save_distributed_params(
+            executor, dirname, distributed_ctx, main_program)
+
+        saved_varnames = recv_dense_varnames + recv_sparse_varnames + recv_distributed_varnames
 
         remaining_vars = list(
             filter(
