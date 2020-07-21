@@ -306,3 +306,16 @@ def delet_extra_optimizes_pass(program, config):
             program.global_block()._remove_var(var)
 
     return program
+
+
+def find_heter_ops_pass(program, config):
+    pass
+
+def split_heter_program_pass(program, config):
+    pass
+
+def append_heter_communicate_ops_pass(program, config):
+    pass
+
+def delete_extra_ops_pass(program, config):
+    pass

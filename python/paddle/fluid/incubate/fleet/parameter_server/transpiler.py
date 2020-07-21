@@ -41,7 +41,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 from paddle.fluid.incubate.fleet.parameter_server import version
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_all_get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.ir.checkport import wait_server_ready
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
@@ -119,9 +119,8 @@ class FleetTranspiler(Fleet):
                 opt_init_map[
                     "truncated_gaussian_random"] = ["seed", "mean", "std"]
 
-                table_names = get_sparse_tablenames(self._origin_main_program,
-                                                    True)
-
+                table_names = get_all_get_sparse_tablenames(
+                    self._origin_main_program)
                 init_attrs = []
                 for value_name in table_names:
                     value_var = self._origin_main_program.global_block().vars[
@@ -279,15 +278,11 @@ class FleetTranspiler(Fleet):
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
-            sparse_varnames = self.compiled_config.get_sparse_varname_on_ps(
-                True)
-            distribtued_varnames = self.compiled_config.get_sparse_varname_on_ps(
-                False)
+            varnames = self.compiled_config.get_sparse_varname_on_ps()
 
             remaining_vars = list(
                 filter(
-                    FleetTranspiler.__exclude_vars(sparse_varnames +
-                                                   distribtued_varnames),
+                    FleetTranspiler.__exclude_vars(varnames),
                     self.main_program.list_vars()))
 
             fluid.io.load_vars(
@@ -296,11 +291,7 @@ class FleetTranspiler(Fleet):
                 dirname=model_dir,
                 vars=remaining_vars)
 
-            self._load_sparse_params(
-                dirname=model_dir, varnames=sparse_varnames)
-
-            # todo(tangwei12) load distributed vars
-            # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
+            self._load_sparse_params(dirname=model_dir, varnames=varnames)
 
     def _init_pslib_server(self, model_dir=None, **kwargs):
         mode = kwargs.get("mode", 0)
@@ -966,6 +957,15 @@ class ParameterServerOptimizer(DistributedOptimizer):
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
+
+        if self.is_heter_parameter_server:
+            # for main program
+            _main = worker.find_heter_ops_pass(_main, compiled_config)
+            _main = worker.split_heter_program_pass(_main, compiled_config)
+            _main = worker.append_heter_communicate_ops_pass(_main, compiled_config)
+
+            # for startup
+            _startup = worker.delet_extra_ops_pass(_startup, compiled_config)
 
         return _main, _startup
 

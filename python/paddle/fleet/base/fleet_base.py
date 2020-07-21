@@ -70,7 +70,7 @@ class Fleet(object):
         Returns:
             bool: True if this is the first node of worker,
                   False if not.
-        
+
         """
         return self._role_maker.is_first_worker()
 
@@ -305,10 +305,10 @@ class Fleet(object):
                 valid_graph_optimizer_list.append(opt)
         # combine recalled meta optimizers to be a valid meta optimizer
         meta_optimizer, graph_optimizer, final_dist_strategy = \
-                self.strategy_compiler.generate_optimizer(
-                    loss, self._role_maker, self.user_defined_optimizer,
-                    self.user_defined_strategy, valid_optimizer_list,
-                    valid_graph_optimizer_list)
+            self.strategy_compiler.generate_optimizer(
+                loss, self._role_maker, self.user_defined_optimizer,
+                self.user_defined_strategy, valid_optimizer_list,
+                valid_graph_optimizer_list)
         optimize_ops = []
         params_grads = []
         if meta_optimizer:
