@@ -1412,6 +1412,7 @@ function main() {
         cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         check_change_of_unittest ${PYTHON_ABI:-""}
+		check_qa_approvals
         ;;
       macbuild)
         cmake_gen ${PYTHON_ABI:-""}
