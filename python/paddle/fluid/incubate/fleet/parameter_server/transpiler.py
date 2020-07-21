@@ -530,18 +530,19 @@ class FleetTranspiler(Fleet):
 
         reshaped_val_map = {}
         reshaped_val_map["sgd"] = []
-        reshaped_val_map["adam"] = ["moment1", "moment2"]
-        reshaped_val_map["adagrad"] = ["moment"]
-        reshaped_val_map["adamax"] = ["moment", "inf_norm"]
-        reshaped_val_map["momentum"] = ["velocity"]
-        reshaped_val_map["lars_momentum"] = ["velocity"]
-        reshaped_val_map["rmsprop"] = ["momentum", "mean_square", "mean_grad"]
-        reshaped_val_map["decayed_adagrad"] = ["moment"]
-        reshaped_val_map["ftrl"] = ["squared", "linear"]
+        reshaped_val_map["adam"] = ["moment1_0", "moment2_0"]
+        reshaped_val_map["adagrad"] = ["moment_0"]
+        reshaped_val_map["adamax"] = ["moment_0", "inf_norm_0"]
+        reshaped_val_map["momentum"] = ["velocity_0"]
+        reshaped_val_map["lars_momentum"] = ["velocity_0"]
+        reshaped_val_map[
+            "rmsprop"] = ["momentum_0", "mean_square_0", "mean_grad_0"]
+        reshaped_val_map["decayed_adagrad"] = ["moment_0"]
+        reshaped_val_map["ftrl"] = ["squared_0", "linear_0"]
 
         orishaped_val_map = {}
-        orishaped_val_map["adam"] = ["beta1_pow_acc", "beta2_pow_acc"]
-        orishaped_val_map["adamax"] = ["beta1_pow_acc"]
+        orishaped_val_map["adam"] = ["beta1_pow_acc_0", "beta2_pow_acc_0"]
+        orishaped_val_map["adamax"] = ["beta1_pow_acc_0"]
 
         if op not in supported_opts:
             raise ValueError(
@@ -602,7 +603,7 @@ class FleetTranspiler(Fleet):
                     })
 
         executor.run(prog)
-        return [var.name for var in local_vars]
+        return local_vars
 
     def _save_sparse_params(self, executor, dirname, context, main_program):
         prog = Program()
@@ -637,6 +638,8 @@ class FleetTranspiler(Fleet):
                     "remote_varnames": var_ctx.split_varnames(),
                     "is_sparse": True,
                     "endpoints": var_ctx.split_endpoints(),
+                    "pserver_num":
+                    len(self._role_maker.get_pserver_endpoints()),
                     "file_path": os.path.join(dirname, var.name)
                 })
 
@@ -661,6 +664,8 @@ class FleetTranspiler(Fleet):
                         "remote_varnames": remote_varnames,
                         "is_sparse": True,
                         "endpoints": var_ctx.split_endpoints(),
+                        "pserver_num":
+                        len(self._role_maker.get_pserver_endpoints()),
                         "file_path": os.path.join(dirname, var.name)
                     })
 

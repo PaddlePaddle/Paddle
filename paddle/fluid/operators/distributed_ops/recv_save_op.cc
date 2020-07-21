@@ -163,8 +163,6 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto place = ctx.GetPlace();
-
     auto filename = ctx.Attr<std::string>("file_path");
     auto overwrite = ctx.Attr<bool>("overwrite");
 
@@ -176,7 +174,6 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     MkDirRecursively(DirName(filename).c_str());
 
     auto origin_shape = ctx.Attr<std::vector<int64_t>>("shape");
-
     auto slice_shapes = ctx.Attr<std::vector<std::string>>("slice_shapes");
     auto slice_varnames = ctx.Attr<std::vector<std::string>>("slice_varnames");
     auto remote_varnames =
@@ -184,9 +181,9 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     auto endpoints = ctx.Attr<std::vector<std::string>>("endpoints");
 
     auto trainer_id = ctx.Attr<int>("trainer_id");
-    auto is_sparse = ctx.Attr<int>("is_sparse");
-    auto is_distributed = ctx.Attr<int>("is_distributed");
+    auto is_sparse = ctx.Attr<bool>("is_sparse");
     auto pserver_num = ctx.Attr<int>("pserver_num");
+    // auto is_distributed = ctx.Attr<int>("is_distributed");
 
     PADDLE_ENFORCE_EQ(slice_shapes.size(), slice_varnames.size(),
                       platform::errors::InvalidArgument(
@@ -212,8 +209,8 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
                                   framework::make_ddim(origin_shape));
 
     framework::Scope &local_scope = ctx.scope().NewScope();
-
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto place = ctx.GetPlace();
     auto &device_ctx = *pool.Get(place);
 
     distributed::RPCClient *rpc_client =
@@ -251,6 +248,11 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
         local_scope.EraseVars({varname});
       }
     } else {
+      PADDLE_ENFORCE_GT(
+          pserver_num, 0,
+          platform::errors::InvalidArgument(
+              "Expected attr len(pserver_num) must gather than 0"));
+
       std::vector<std::string> varnames;
       auto *var = local_scope.Var("tmp_for_sparse_merge");
       auto *o_t = var->GetMutable<framework::LoDTensor>();
@@ -298,7 +300,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
       for (int j = 0; j < origin_shape[0]; ++j) {
         auto id = j % pserver_num;
         auto idx = j / pserver_num;
-        std::memcpy(tensors[id] + idx * dims1, out_d + j * dims1,
+        std::memcpy(out_d + j * dims1, tensors[id] + idx * dims1,
                     sizeof(float) * dims1);
       }
 
