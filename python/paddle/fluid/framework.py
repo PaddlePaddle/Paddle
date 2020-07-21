@@ -2381,15 +2381,22 @@ class Operator(object):
     def _is_optimize_op(self):
         op_maker = core.op_proto_and_checker_maker
         OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+
+        if not self.desc.has_attr(op_maker.kOpRoleAttrName()):
+            return False
+
         op_role = self.desc.attr(op_maker.kOpRoleAttrName())
         if op_role & int(OPTIMIZE):
             return True
-        else:
-            return False
+
+        return False
 
     def _is_backward_op(self):
         op_maker = core.op_proto_and_checker_maker
         BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
+
+        if not self.desc.has_attr(op_maker.kOpRoleAttrName()):
+            return False
 
         op_role = self.desc.attr(op_maker.kOpRoleAttrName())
         if op_role & int(BACKWARD):
