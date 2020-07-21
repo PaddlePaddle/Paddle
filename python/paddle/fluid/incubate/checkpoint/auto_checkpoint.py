@@ -487,7 +487,7 @@ class TrainEpochRange(SerializableBase):
 
             e[t._key] = t
 
-            #logger.info("save executor checkpoint:{}".format(t._serialize()))
+            logger.debug("save executor checkpoint:{}".format(t._serialize()))
 
         if len(self._exe_status) > 0:
             self._cper.save_checkpoint(self._checkpoint_path, [self])
@@ -541,12 +541,10 @@ def _can_auto_checkpoint(program):
 
         g_program_attr[program._auto_checkpoint_name] = ret
         if not ret:
-            logger.info("program {} need't to auto checkpoint".format(
+            logger.debug("program {} need't to auto checkpoint".format(
                 program._auto_checkpoint_name))
             return False
 
-    _get_checker()
-    #logger.info("_can_auto_checkpoint:{}".format(g_train_epoch_range))
     return g_checker.valid() and g_train_epoch_range is not None
 
 
@@ -621,6 +619,7 @@ def _initial_names(exe, program):
 
 
 def _auto_checkpoint(exe, program):
+    _get_checker()
     _initial_names(exe, program)
     if not _can_auto_checkpoint(program):
         return

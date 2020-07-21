@@ -215,7 +215,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
                 fetch = exe.run(compiled2, feed=data, fetch_list=[loss2])
 
             o = acp._get_train_epoch_range()
-            self.assertTrue(len(o._exe_status), 2)
+            self.assertEqual(len(o._exe_status), 2)
 
         o = acp._get_train_epoch_range()
         self.assertTrue(o == None, "now train epoch must not exits now")
