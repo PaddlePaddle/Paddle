@@ -390,11 +390,9 @@ class CompileTimeStrategy(object):
     def get_communicator_recv_context(self, recv_type=1):
         # recv_type
         # 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL
-        sparse_varnames = []
-
         distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
                                                     True)
-
+        sparse_varnames = []
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
             sparse_varnames.append(param.name)
@@ -421,7 +419,7 @@ class CompileTimeStrategy(object):
                 distributed_recv_ctx[ctx.var_name()] = ctx
             else:
                 ctx = self.build_ctx(param, self.param_var_mapping, False, True,
-                                     False, True)
+                                     False, False)
                 sparse_recv_ctx[ctx.var_name()] = ctx
 
         if recv_type == 1:
