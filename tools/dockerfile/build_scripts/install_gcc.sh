@@ -22,5 +22,8 @@ if [ "$1" == "gcc82" ]; then
   ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
   make -j8 && make install
   cd .. && rm -rf temp_gcc82
-  cp ${lib_faile} ${lib_faile}.bak  && rm -f ${lib_faile} && ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_faile} && cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 ${lib_path}
+  cp ${lib_faile} ${lib_faile}.bak  && rm -f ${lib_faile} && 
+  ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_faile} && \
+  ln -s /usr/local/gcc-8.2/lib64/libgfortran.so.5 ${lib_faile} && \
+  cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 ${lib_path}
 fi

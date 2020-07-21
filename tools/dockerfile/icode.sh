@@ -26,6 +26,16 @@ function centos_gcc8(){
 }
 
 
+function fix_https(){
+  sed -i 's#https#http#g' /etc/apt/sources.list.d/nvidia-ml.list 
+  sed -i 's#https#http#g' /etc/apt/sources.list.d/cuda.list
+}
+
+
+function all_change(){
+    sed -i 's#ENV HOME /root#ENV HOME /root\nENV DEBIAN_FRONTEND=noninteractive#g' Dockerfile.ubuntu
+}
+
 function centos() {
   # centos6
   sed 's#<baseimg>#8.0-cudnn7-devel-centos6#g'  Dockerfile.centos >test/centos_6_cpu_runtime.dockerfile 
@@ -90,7 +100,7 @@ function main() {
   if [ ! -d "test" ];then
     mkdir test
   fi
-
+  all_change
   centos
   ubuntu
 }
