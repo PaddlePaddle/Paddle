@@ -409,9 +409,9 @@ def sort(x, axis=-1, descending=False, name=None):
                             [4,7,7,9],
                             [1,7,0,6]]]).astype(np.float32)
             x = imperative.to_variable(input_array)
-            out1 = paddle.argsort(input=x, axis=-1)
-            out2 = paddle.argsort(input=x, axis=0)
-            out3 = paddle.argsort(input=x, axis=1)
+            out1 = paddle.sort(x=x, axis=-1)
+            out2 = paddle.sort(x=x, axis=0)
+            out3 = paddle.sort(x=x, axis=1)
             print(out1[0].numpy())
 	    #[[[5. 5. 8. 9.]
 	    #  [0. 0. 1. 7.]
@@ -421,11 +421,11 @@ def sort(x, axis=-1, descending=False, name=None):
 	    #  [0. 1. 6. 7.]]]
             print(out1[1].numpy())
 	    #[[[0 3 1 2]
-	    # [0 1 2 3]
-	    # [2 3 0 1]]
+	    #  [0 1 2 3]
+	    #  [2 3 0 1]]
             # [[1 3 2 0]
-	    # [0 1 2 3]
-	    # [2 0 3 1]]]
+	    #  [0 1 2 3]
+	    #  [2 0 3 1]]]
             print(out2[0].numpy())
             #[[[5. 2. 4. 2.]
 	    #  [0. 0. 1. 7.]
