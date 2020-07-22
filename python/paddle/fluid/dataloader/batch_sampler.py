@@ -163,4 +163,5 @@ class _InfiniteIterableSampler(object):
         self.batch_size = batch_size
 
     def __iter__(self):
-        yield [None] * self.batch_size
+        while True:
+            yield [None] * self.batch_size

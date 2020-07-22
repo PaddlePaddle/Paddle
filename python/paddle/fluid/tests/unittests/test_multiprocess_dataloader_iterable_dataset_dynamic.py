@@ -27,8 +27,8 @@ from paddle.io import Dataset, BatchSampler, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
-from test_multiprocess_dataloader_static import RandomDataset, prepare_places
-from test_multiprocess_dataloader_static import EPOCH_NUM, BATCH_SIZE, IMAGE_SIZE, SAMPLE_NUM, CLASS_NUM
+from test_multiprocess_dataloader_iterable_dataset_static import RandomDataset, prepare_places
+from test_multiprocess_dataloader_iterable_dataset_static import EPOCH_NUM, BATCH_SIZE, IMAGE_SIZE, SAMPLE_NUM, CLASS_NUM
 
 
 class SimpleFCNet(fluid.dygraph.Layer):
@@ -116,10 +116,8 @@ class TestDygraphDataLoader(unittest.TestCase):
                 sys.stdout.flush()
                 ret = self.run_main(num_workers=num_workers, places=p)
                 results.append(ret)
-            diff = np.max(
-                np.abs(results[0]['loss'] - results[1]['loss']) /
-                np.abs(results[0]['loss']))
-            self.assertLess(diff, 1e-2)
+            assert results[0]['loss'].shape[0] * 2 == results[1]['loss'].shape[
+                0]
 
 
 if __name__ == '__main__':

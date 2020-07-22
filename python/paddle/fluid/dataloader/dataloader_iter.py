@@ -252,13 +252,13 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._outstanding_capacity = 2 * max(self._num_workers,
                                              len(self._places))
 
+        # init workers and indices queues and put 2 indices in each indices queue
         self._init_workers()
-        self._init_thread()
-
-        self._shutdown = False
-
         for _ in range(self._outstanding_capacity):
             self._try_put_indices()
+
+        self._init_thread()
+        self._shutdown = False
 
     def _init_workers(self):
         # multiprocess worker and indice queue list initial as empty
@@ -280,9 +280,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._indices_queues.append(indices_queue)
             worker = multiprocessing.Process(
                 target=self._worker_loop,
-                args=(self._dataset, indices_queue, self._data_queue,
-                      self._workers_done_event, self._collate_fn,
-                      self._worker_init_fn, i))
+                args=(self._dataset, self._dataset_kind, indices_queue,
+                      self._data_queue, self._workers_done_event,
+                      self._collate_fn, self._worker_init_fn, i))
             worker.daemon = True
             worker.start()
             self._workers.append(worker)
@@ -356,8 +356,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._blocking_queue.kill()
         logging.error("DataLoader reader thread raised an exception!")
 
-    def _worker_loop(self, dataset, indices_queue, out_queue, done_event,
-                     collate_fn, init_fn, worker_id):
+    def _worker_loop(self, dataset, dataset_kind, indices_queue, out_queue,
+                     done_event, collate_fn, init_fn, worker_id):
         try:
             # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
             # some shared memory objects may have been applied for but have not yet
@@ -369,33 +369,26 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             core._set_process_signal_handler()
 
             init_exception = None
-            if init_fn is not None:
-                try:
+            try:
+                if init_fn is not None:
                     init_fn(worker_id)
-                    fetcher = _DatasetKind.create_fetcher(dataset_kind, dataset,
-                                                          collate_fn, True)
-                except:
-                    init_exception = Exception("init_fn failed in worker {}: " \
-                                         "{}".format(worker_id, sys.exc_info()))
+                fetcher = _DatasetKind.create_fetcher(dataset_kind, dataset,
+                                                      collate_fn, True)
+            except:
+                init_exception = Exception("init_fn failed in worker {}: " \
+                                     "{}".format(worker_id, sys.exc_info()))
 
             iterator_drained = False
             parent_watch_dog = ParentWatchDog()
 
             while parent_watch_dog.is_alive():
-                print("enterrrrrrrrr")
-                import sys
-                sys.stdout.flush()
                 try:
                     data = indices_queue.get(MP_INDICES_CHECK_INTERVAL)
                 except queue.Empty:
                     continue
 
-                print("worker data", data)
-                sys.stdout.flush()
-
                 # None as poison piil, so worker event should be set
                 if data is None:
-                    print("worker {} get None to exit".format(worker_id))
                     assert done_event.is_set() or iterator_drained, \
                             "get None when worker done_event set"
                     break
@@ -413,11 +406,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         # batch = [dataset[i] for i in indices]
                         # if self._collate_fn is not None:
                         #     batch = self._collate_fn(batch)
-                        print("indices", indices)
-                        sys.stdout.flush()
                         batch = fetcher.fetch(indices)
-                        print("batch", batch)
-                        sys.stdout.flush()
                 except Exception as e:
                     if isinstance(
                             e,
@@ -521,6 +510,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 if self._dataset_kind == _DatasetKind.ITER and isinstance(
                         data, _IterableDatasetStopIteration):
                     self._shutdown_worker(data.worker_id)
+                    self._batches_outstanding -= 1
                     self._try_put_indices()
                     continue
 
@@ -532,6 +522,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     continue
 
     def _try_put_indices(self):
+        # assert self._batches_outstanding <= self._outstanding_capacity, \
         assert self._send_idx - self._rcvd_idx <= self._outstanding_capacity, \
                     "too many indices have been put to queue"
         try:
@@ -539,7 +530,13 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         except StopIteration:
             return
 
-        worker_idx = next(self._workers_idx_cycle)
+        for i in range(self._num_workers):
+            worker_idx = next(self._workers_idx_cycle)
+            if self._worker_status[worker_idx]:
+                break
+        else:
+            return
+
         self._indices_queues[worker_idx].put((self._send_idx, indices))
         self._batches_outstanding += 1
         self._send_idx += 1
