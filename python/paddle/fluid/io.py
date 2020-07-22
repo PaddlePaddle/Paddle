@@ -43,7 +43,7 @@ from . import dataloader
 from .dataloader import *
 from . import core
 from .. import compat as cpt
-from .incubate.checkpoint import auto_checkpoint as dacp
+from .incubate.checkpoint import dataloader_auto_checkpoint as dacp
 
 batch = paddle.batch
 

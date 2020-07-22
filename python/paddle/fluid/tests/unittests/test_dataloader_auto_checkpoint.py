@@ -134,7 +134,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self.assertEqual(i, break_epoch_no)
         logger.info("leave _run_save_basic")
 
-    def _run_load_basic(self, break_epoch_no=None):
+    def _run_load_basic(self, break_epoch_no=None, model_dir=None):
         """
         load checkpoint
         """
@@ -152,6 +152,12 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
                 if i not in epochs:
                     epochs.append(i)
+
+            if model_dir is not None:
+                path = self._get_model_dir(model_dir, i)
+                fluid.io.save(compiled, path)
+                fluid.io.save(compiled._program, path)
+                fluid.io.save(main_prog, path)
 
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
         if break_epoch_no is not None:
@@ -206,8 +212,32 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         fs.delete(checker.hdfs_checkpoint_path)
 
+    def _get_model_dir(model_dir, epoch_no):
+        return "{}_{}".format(model_dir, epoch_no)
+
     def test_invalid_save_model(self):
-        pass
+        checker = acp._get_checker()
+        fs = HDFSClient(checker.hdfs_home, None)
+
+        # test save and load epoch_no must be right
+        fs.delete(checker.hdfs_checkpoint_path)
+        self._reset_generator()
+        self._run_save_basic()
+        self._reset_generator()
+
+        model_dir = "_run_load_basic_"
+        for i in range(3):
+            fs.delete(self._get_model_dir(model_dir, i))
+
+        self._run_load_basic(model_dir=model_dir)
+
+        for i in range(2):
+            self.assertFalse(fs.is_exist(self._get_model_dir(model_dir, i)))
+
+        for i in range(3):
+            fs.delete(self._get_model_dir(model_dir, i))
+
+        fs.delete(checker.hdfs_checkpoint_path)
 
 
 if __name__ == '__main__':

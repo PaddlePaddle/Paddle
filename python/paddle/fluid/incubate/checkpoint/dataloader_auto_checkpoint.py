@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import six
 from . import auto_checkpoint as acp
 
 g_ranges = {}
@@ -158,14 +159,14 @@ def _end(name):
 
 
 def _is_restoring(executor, program):
-    if acp.g_acp_type != CONST_DACP_TYPE:
+    if acp.g_acp_type != acp.CONST_DACP_TYPE:
         return False
 
     if len(g_ranges) < 1:
         return False
 
     for n, range_wrapper in six.iteritems(g_ranges):  # ranges
-        if not range_wrapper.is_restored():
+        if not range_wrapper.is_restored:
             continue
 
         if not range_wrapper.contain(executor._auto_checkpoint_name,
@@ -175,4 +176,9 @@ def _is_restoring(executor, program):
         if range_wrapper.beyond_restored():
             return False
         else:
+            logger.info(
+                "range_wrapper:{} is restoring save_model may be canceled",
+                range_wrapper)
             return True
+
+    return False
