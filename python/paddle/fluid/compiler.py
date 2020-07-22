@@ -18,7 +18,6 @@ import six
 import sys
 from .. import compat as cpt
 from . import framework
-from . import unique_name
 from .framework import cuda_places, cpu_places
 
 from . import core
