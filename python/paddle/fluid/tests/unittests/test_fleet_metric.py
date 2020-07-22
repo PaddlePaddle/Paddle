@@ -63,13 +63,13 @@ class TestFleetMetric(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(train, startup):
             t = fluid.layers.create_global_var(
-                shape=[1,1],
+                shape=[1, 1],
                 value=1,
                 dtype='int64',
                 persistable=True,
                 force_cpu=True)
             t1 = fluid.layers.create_global_var(
-                shape=[1,1],
+                shape=[1, 1],
                 value=1,
                 dtype='int64',
                 persistable=True,
