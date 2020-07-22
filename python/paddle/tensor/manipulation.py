@@ -23,7 +23,6 @@ from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import concat  #DEFINE_ALIAS
 from ..fluid.layers import expand  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import flatten  #DEFINE_ALIAS
@@ -40,6 +39,7 @@ from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
 from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
 from ..fluid.layers import shard_index  #DEFINE_ALIAS
 from ..fluid.layers import unique_with_counts  #DEFINE_ALIAS
+import paddle
 
 __all__ = [
     'cast', 'concat', 'expand', 'expand_as', 'flatten', 'gather', 'gather_nd',
@@ -48,6 +48,62 @@ __all__ = [
     'transpose', 'unique', 'unique_with_counts', 'unsqueeze', 'unstack', 'flip',
     'unbind', 'roll'
 ]
+
+
+def concat(x, axis=0, name=None):
+    """
+	:alias_main: paddle.concat
+	:alias: paddle.concat,paddle.tensor.concat,paddle.tensor.manipulation.concat
+	:old_api: paddle.fluid.layers.concat
+
+    This OP concatenates the input along the axis.
+
+    Args:
+        x(list): List of input Tensors with data type float16, float32, float64, int32, int64.
+        axis(int|Variable, optional):  A scalar with type ``int32`` or a ``Tensor`` 
+            with shape [1] and type ``int32``. Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when ``axis < 0``, it works the same way
+            as axis+R. Default is 0.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Raises:
+        TypeError: The dtype of `x` must be one of float16, float32, float64, int32 and int64. 
+        TypeError: The `axis` must be int or Variable.
+
+    Returns:
+        Variable: A Tensor with the same data type as input's.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            
+            paddle.enable_imperative()  # Now we are in imperative mode
+            in1 = np.array([[1,2,3],
+                            [4,5,6]])
+            in2 = np.array([[11,12,13],
+                            [14,15,16]])
+            in3 = np.array([[21,22],
+                            [23,24]])
+            x1 = paddle.imperative.to_variable(in1)
+            x2 = paddle.imperative.to_variable(in2)
+            x3 = paddle.imperative.to_variable(in3)
+            zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
+            #when the axis is negative, the real axis is (axis + Rank(x))
+            out1 = paddle.concat(x=[x1,x2,x3], axis=-1)
+            out2 = paddle.concat(x=[x1,x2], axis=0)
+            out3 = paddle.concat(x=[x1,x2], axis=zero)
+            # out1
+            # [[ 1  2  3 11 12 13 21 22]
+            #  [ 4  5  6 14 15 16 23 24]]
+            # out2 out3
+            # [[ 1  2  3]
+            #  [ 4  5  6]
+            #  [11 12 13]
+            #  [14 15 16]]
+    """
+    return paddle.fluid.layers.concat(input=x, axis=axis, name=name)
 
 
 def flip(x, axis, name=None):
