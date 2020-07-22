@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -49,10 +50,9 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
-  std::vector<distributed::VarHandlePtr> rets;
-
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
+  std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
     auto &recv_var_name = rpc_ctx.splited_varnames[i];
     local_scope->Var(recv_var_name);
@@ -73,6 +73,7 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
   int64_t width = 0;
 
   std::vector<int64_t> all_ids;
+  auto pserver_num = rpc_ctx.splited_varnames.size();
 
   for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
     auto &recv_var_name = rpc_ctx.splited_varnames[i];
@@ -83,7 +84,9 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
     ids_num += recv_t.rows().size();
     width = recv_t.value().dims()[1];
 
-    all_ids.insert(all_ids.end(), recv_t.rows().begin(), recv_t.rows().end());
+    std::transform(recv_t.rows().begin(), recv_t.rows().end(),
+                   std::back_inserter(all_ids),
+                   [&](int64_t id) { return id * pserver_num + i; });
   }
 
   auto *var = scope.FindVar(rpc_ctx.var_name);
