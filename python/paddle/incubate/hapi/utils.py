@@ -12,12 +12,81 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import inspect
 import numpy as np
 
+from collections import OrderedDict
 from paddle import fluid
 from paddle.fluid.framework import Variable
 from paddle.fluid.executor import global_scope
+
+__all__ = ['uncombined_weight_to_state_dict']
+
+
+def uncombined_weight_to_state_dict(weight_dir):
+    """
+    Convert uncombined weight to state_dict
+
+    Args:
+        weight_dir (str): weight direcotory path.
+
+    Returns:
+        OrderDict: weight dict.
+    """
+
+    def _get_all_params_name(dir):
+        params_name = []
+        dir = os.path.expanduser(dir)
+
+        dir_len = len(dir)
+        for root, _, fnames in sorted(os.walk(dir, followlinks=True)):
+            for fname in sorted(fnames):
+                path = os.path.join(root[dir_len:], fname)
+                params_name.append(path)
+
+        return params_name
+
+    class Load(fluid.dygraph.Layer):
+        def __init__(self):
+            super(Load, self).__init__()
+
+        def forward(self, filename):
+            weight = self.create_parameter(
+                shape=[1],
+                dtype='float32',
+                default_initializer=fluid.initializer.ConstantInitializer(0.0))
+            self._helper.append_op(
+                type='load',
+                inputs={},
+                outputs={'Out': [weight]},
+                attrs={'file_path': filename})
+            return weight
+
+    params_name_list = _get_all_params_name(weight_dir)
+    if not fluid.in_dygraph_mode():
+        dygraph_enabled = False
+        fluid.enable_imperative()
+    else:
+        dygraph_enabled = True
+
+    load = Load()
+    state_dict = OrderedDict()
+
+    for param_name in params_name_list:
+        param_path = os.path.join(weight_dir, param_name)
+        weight = load(param_path)
+        try:
+            weight = weight.numpy()
+        except Exception as e:
+            print(e)
+
+        state_dict[param_name] = weight
+
+    if not dygraph_enabled:
+        fluid.disable_imperative()
+
+    return state_dict
 
 
 def to_list(value):

@@ -23,18 +23,13 @@ from . import datasets
 from . import distributed
 from . import vision
 from . import text
+from . import utils
 
 logger.setup_logger()
 
 __all__ = [
-    'callbacks',
-    'datasets',
-    'distributed',
-    'download',
-    'metrics',
-    'loss',
-    'vision',
-    'text',
+    'callbacks', 'datasets', 'distributed', 'download', 'metrics', 'loss',
+    'vision', 'text', 'utils'
 ]
 
 __all__ += model.__all__
