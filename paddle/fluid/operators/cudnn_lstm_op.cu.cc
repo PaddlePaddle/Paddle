@@ -174,8 +174,6 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto work_data = cudnn_rnn_cache->workspace_data_.data<uint8_t>();
     const uint8_t *reserve_data = reserve->data<uint8_t>();
 
-    PADDLE_ENFORCE_LE((size_t)seq_len, cudnn_rnn_cache->seq_length_,
-                      "cudnn running seq_len CAN not greater seq_lengh");
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardData(
         handle, cudnn_rnn_cache->rnn_desc_, seq_len, cudnn_rnn_cache->y_desc_,
         out_data, cudnn_rnn_cache->y_desc_, out_grad_data,

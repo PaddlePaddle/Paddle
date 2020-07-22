@@ -170,18 +170,14 @@ class TestCUDNNLstmOp(OpTest):
         # depend on the scope structure
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place,
-            atol=1e-5,
-            no_check_set=['Reserve', 'StateOut'],
-            check_dygraph=True)
+            place, atol=1e-5, no_check_set=['Reserve', 'StateOut'])
 
     def test_grad_with_place(self):
         # depend on the scope structure
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            set(['Input', 'W', 'InitH', 'InitC']), ['Out', 'LastH', 'LastC'],
-            check_dygraph=True)
+        self.check_grad_with_place(place,
+                                   set(['Input', 'W', 'InitH', 'InitC']),
+                                   ['Out', 'LastH', 'LastC'])
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

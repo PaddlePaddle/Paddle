@@ -194,8 +194,10 @@ struct CudnnRNNCache {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
         handle, rnn_desc_, x_desc_[0], &weights_size_, cudnn_type));
 
-    PADDLE_ENFORCE_EQ(weights_size_, cudnn_size * weight_numel,
-                      "cudnn lstm weight size should be SAME");
+    PADDLE_ENFORCE_EQ(
+        weights_size_, cudnn_size * weight_numel,
+        platform::errors::InvalidArgument(
+            "The cudnn lstm and setting weight size should be same."));
     int dim_w[3];
     dim_w[0] = weights_size_ / cudnn_size;
     dim_w[1] = 1;
