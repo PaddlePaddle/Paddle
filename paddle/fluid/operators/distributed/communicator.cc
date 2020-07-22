@@ -521,16 +521,19 @@ void GeoCommunicator::SendByCommunicator(int batches) {
 }
 
 void GeoCommunicator::SendSparse(const std::string &varname, int batches) {
+  std::vector<int64_t> ids;
   auto &ids_queue = send_ids_to_queue_.at(varname);
-  std::set<int64_t> st;
+
   for (int i = 0; i < batches; ++i) {
     auto pop_ids = ids_queue->Pop();
-    std::copy(pop_ids.begin(), pop_ids.end(), back_inserter(st));
+    std::copy(pop_ids.begin(), pop_ids.end(), back_inserter(ids));
   }
 
-  std::vector<int64_t> ids;
+  auto size = ids.size();
+
+  std::set<int64_t> st(ids.begin(), ids.end());
   ids.assign(st.begin(), st.end());
-  VLOG(1) << "SendSparse receive var: " << varname << " unset: " << 0
+  VLOG(1) << "SendSparse receive var: " << varname << " unset: " << size
           << " set: " << ids.size();
 
   if (ids.empty()) {
@@ -764,7 +767,7 @@ void GeoCommunicator::InitSparse() {
     meta.value_names = {"Param"};
 
     auto dic = string::split_string<std::string>(attrs[1], ",");
-    dicts.push_back(std::stoll(dic[0]));
+    dicts.push_back(std::stoi(dic[0]));
     meta.value_dims = {std::stoi(dic[1])};
     meta.mode = distributed::Mode::training;
     meta.grad_name = "none";

@@ -133,7 +133,10 @@ class FleetTranspiler(Fleet):
                 for value_name in sparse_varnames:
                     value_var = self._origin_main_program.global_block().vars[
                         value_name]
-                    value_attr = [value_name, str(value_var.shape[1])]
+                    value_attr = [
+                        value_name,
+                        ",".join([str(dim) for dim in value_var.shape])
+                    ]
                     for op in self._origin_startup_program.global_block().ops:
                         if op.type in opt_init_map.keys(
                         ) and value_name == op.output("Out")[0]:
