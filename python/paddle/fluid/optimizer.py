@@ -4935,7 +4935,7 @@ class GradientMergeOptimizer(object):
     """
     """
 
-    def __init__(self, inner_optimizer, k_steps=1):
+    def __init__(self, inner_optimizer, k_steps=1, avg=True):
         if framework.in_dygraph_mode():
             raise Exception(
                 "In dygraph, we don't support GradientMergeOptimizer."
@@ -4949,11 +4949,32 @@ class GradientMergeOptimizer(object):
         self.inner_optimizer = inner_optimizer
         self.k_steps = k_steps
         self.type = "gradient_merge"
+        self.avg = avg
 
-    def minimize(self, loss, startup_program=None):
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+
+        #TODO(mapingshuo) support sparse embedding
         assert isinstance(loss, Variable), "The loss should be an Variable."
+        assert (
+            parameter_list is None
+        ), "The parameter_list should be None when using GradientMergeOptimizer"
+        assert (
+            no_grad_set is None
+        ), "The no_grad_set should be None when using GradientMergeOptimizer"
+
         params_grads = self.inner_optimizer.backward(
             loss, startup_program=startup_program)
+
+        for k, v in params_grads:
+            assert (
+                v.type != core.VarDesc.VarType.SELECTED_ROWS
+            ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
+
+        param_to_grad = {k.name: v for (k, v) in params_grads}
 
         # Get startup_program and main_program
         if startup_program is None:
@@ -4961,7 +4982,7 @@ class GradientMergeOptimizer(object):
         main_block = loss.block
 
         # add some vars to the main_program
-        param_names = [x.name for x in main_block.all_parameters()]
+        param_names = param_to_grad.keys()
         param_to_gradient_merge = {}
         for param_name in param_names:
             param_var = main_block.var(param_name)
@@ -5020,7 +5041,7 @@ class GradientMergeOptimizer(object):
                 # 1. update the gradient_merge_vars
                 #  gradient_merge_vars += gradient_vars
                 for param_name in param_names:
-                    grad = main_block.var(param_name + "@GRAD")
+                    grad = param_to_grad[param_name]
                     grad_merge = param_to_gradient_merge[param_name]
                     tmp_var = layers.elementwise_add(grad, grad_merge)
                     layers.assign(input=tmp_var, output=grad_merge)
@@ -5029,9 +5050,11 @@ class GradientMergeOptimizer(object):
                 # 1. update the graient_vars
                 #     gradient_vars += gradient_merge_vars
                 for param_name in param_names:
-                    grad = main_block.var(param_name + "@GRAD")
+                    grad = param_to_grad[param_name]
                     grad_merge = param_to_gradient_merge[param_name]
                     tmp_var = layers.elementwise_add(grad, grad_merge)
+                    if self.avg:
+                        tmp_var = layers.scale(tmp_var, 1.0 / self.k_steps)
                     layers.assign(input=tmp_var, output=grad)
 
                 # 2. apply_optimize
@@ -5043,7 +5066,7 @@ class GradientMergeOptimizer(object):
                 target_grad_block._set_forward_block_idx(cur_block_idx)
                 main_block.program.current_block_idx = cur_block_idx
 
-                self.inner_optimizer.apply_optimize(
+                optimize_ops = self.inner_optimizer.apply_optimize(
                     loss,
                     startup_program=startup_program,
                     params_grads=params_grads)
@@ -5056,3 +5079,4 @@ class GradientMergeOptimizer(object):
                         dtype=grad_merge.dtype,
                         value=0.0,
                         out=grad_merge)
+        return optimize_ops, params_grads
