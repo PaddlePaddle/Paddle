@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
+
 #include <memory>
 #include <random>
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
@@ -33,7 +35,10 @@ class StubAllocation : public Allocation {
 };
 
 TEST(BestFitAllocator, test_allocation) {
-  StubAllocation stub(4UL * 1024 * 1024 * 1024);
+  // NOTE(zhiqiu): On windows with msvc compiler, unsigned long (UL) is 32bits,
+  // so 4UL * 1024 * 1024 * 1024 becomes 0.
+  // We need to use 4ULL (unsigned long long) here.
+  StubAllocation stub(4ULL * 1024 * 1024 * 1024);
   BestFitAllocator allocator(&stub);
   { auto allocation = allocator.Allocate(64); }
 

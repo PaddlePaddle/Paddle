@@ -6207,7 +6207,7 @@ def squeeze(input, axes, name=None):
     check_variable_and_dtype(
         input, 'input',
         ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
-    check_type(axes, 'axes', list, 'squeeze')
+    check_type(axes, 'axes', (list, tuple), 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
