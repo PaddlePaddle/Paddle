@@ -682,9 +682,9 @@ class Model(object):
         import paddle.fluid as fluid
         import paddle.incubate.hapi as hapi
         
-        class MyModel(fluid.dygraph.Layer):
+        class MyNet(fluid.dygraph.Layer):
             def __init__(self):
-                super(MyModel, self).__init__()
+                super(MyNet, self).__init__()
                 self._fc1 = fluid.dygraph.Linear(784, 200, act='softmax')
             def forward(self, x):
                 y = self._fc1(x)
@@ -695,10 +695,10 @@ class Model(object):
         fluid.enable_dygraph(device)
         
         # inputs and labels are not required for dynamic graph.
-        input = hapi.Input('x', None, 784], 'float32')
+        input = hapi.Input('x', [None, 784], 'float32')
         label = hapi.Input('label', [None, 1], 'int64')
         
-        model = hapi.Model(MyModel(), input, label)
+        model = hapi.Model(MyNet(), input, label)
         optim = fluid.optimizer.SGD(learning_rate=1e-3,
             parameter_list=model.parameters())
         model.prepare(optim,
@@ -765,9 +765,9 @@ class Model(object):
               import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
-              class MyModel(fluid.dygraph.Layer):
+              class MyNet(fluid.dygraph.Layer):
                   def __init__(self):
-                      super(MyModel, self).__init__()
+                      super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 10, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
@@ -778,7 +778,7 @@ class Model(object):
 
               input = hapi.Input('x', [None, 784], 'float32')
               label = hapi.Input('label', [None, 1], 'int64')
-              model = hapi.Model(MyModel(), input, label)
+              model = hapi.Model(MyNet(), input, label)
               optim = fluid.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim, hapi.loss.CrossEntropy(average=True))
@@ -812,9 +812,9 @@ class Model(object):
               import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
-              class MyModel(fluid.dygraph.Layer):
+              class MyNet(fluid.dygraph.Layer):
                   def __init__(self):
-                      super(MyModel, self).__init__()
+                      super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 10, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
@@ -825,7 +825,7 @@ class Model(object):
 
               input = hapi.Input('x', [None, 784], 'float32')
               label = hapi.Input('label', [None, 1], 'int64')
-              model = hapi.Model(MyModel(), input, label)
+              model = hapi.Model(MyNet(), input, label)
               optim = fluid.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim,
@@ -857,9 +857,9 @@ class Model(object):
               import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
-              class MyModel(fluid.dygraph.Layer):
+              class MyNet(fluid.dygraph.Layer):
                   def __init__(self):
-                      super(MyModel, self).__init__()
+                      super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
@@ -868,7 +868,7 @@ class Model(object):
               device = hapi.set_device('gpu')
               fluid.enable_dygraph(device)
 
-              model = hapi.Model(MyModel())
+              model = hapi.Model(MyNet())
               model.prepare()
               data = np.random.random(size=(4,784)).astype(np.float32)
               out = model.eval_batch([data])
@@ -905,9 +905,9 @@ class Model(object):
               import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
               
-              class MyModel(fluid.dygraph.Layer):
+              class MyNet(fluid.dygraph.Layer):
                   def __init__(self):
-                      super(MyModel, self).__init__()
+                      super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
@@ -915,7 +915,7 @@ class Model(object):
               
               device = hapi.set_device('cpu')
               fluid.enable_dygraph(device)
-              model = hapi.Model(MyModel())
+              model = hapi.Model(MyNet())
               model.save('checkpoint/test')
         """
         if ParallelEnv().local_rank == 0:
@@ -957,9 +957,9 @@ class Model(object):
               import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
               
-              class MyModel(fluid.dygraph.Layer):
+              class MyNet(fluid.dygraph.Layer):
                   def __init__(self):
-                      super(MyModel, self).__init__()
+                      super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
@@ -967,7 +967,7 @@ class Model(object):
               
               device = hapi.set_device('cpu')
               fluid.enable_dygraph(device)
-              model = hapi.Model(MyModel())
+              model = hapi.Model(MyNet())
               model.load('checkpoint/test')
         """
 
@@ -1032,16 +1032,16 @@ class Model(object):
               import paddle.fluid as fluid
               from paddle.incubate.hapi import Model
 
-              class MyModel(fluid.dygraph.Layer):
+              class MyNet(fluid.dygraph.Layer):
                   def __init__(self):
-                      super(MyModel, self).__init__()
+                      super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(20, 10, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
 
               fluid.enable_dygraph()
-              model = Model(MyModel())
+              model = Model(MyNet())
               params = model.parameters()
         """
         return self._adapter.parameters()
