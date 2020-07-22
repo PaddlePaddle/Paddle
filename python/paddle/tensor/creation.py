@@ -260,8 +260,9 @@ def zeros_like(x, dtype=None, name=None):
 	:alias_main: paddle.zeros_like
 	:alias: paddle.tensor.zeros_like, paddle.tensor.creation.zeros_like
 
-    This function creates a zeros tensor which has identical shape and dtype 
-    with ``x``.
+    This OP returns a tensor filled with the value 0, with the same shape as
+    ``x``. The data type of the output is the same as ``x``, or if ``dtype``
+    is not None, it is the same as ``dtype``.
 
     Args:
         x(Variable): The input tensor which specifies shape and dtype. The
@@ -275,7 +276,9 @@ def zeros_like(x, dtype=None, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A zeros tensor which has identical shape and dtype with ``x``.
+        Variable: A tensor filled with the value 0, with the same shape as ``x``.
+            The data type of the output is the same as ``x``, or if ``dtype``
+            is not None, it is the same as ``dtype``.
 
     Raise:
         TypeError: If ``dtype`` is not None and does not point to bool,
@@ -441,7 +444,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             is None.
         step(float|int|Variable, optional): Spacing between values. For any
             out, this is the istance between two adjacent values, out[i+1] - out[i].
-            When ``end`` is Variable, it is a 1-D Tensor(with shape [1], and
+            When ``step`` is Variable, it is a 1-D Tensor(with shape [1], and
             data type int32, int64, float32, float64). Default is 1.
         dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
             the output tensor. ``dtype`` supports float32, float64, int32, int64.
@@ -452,8 +455,9 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             Default is None.
 
     Returns: 
-        Variable: A 1-D Tensor which is evenly spaced values within a given
-            interval. Its data type is set by dtype.
+        Variable: A 1-D Tensor with values in from the interval [``start``, ``end``)
+            taken with common difference ``step`` beginning from ``start``. Its
+            data type is set by ``dtype``.
 
     Raises:
         TypeError: If ``dtype`` does not point to float32, float64, int32, int64.

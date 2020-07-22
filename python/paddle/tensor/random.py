@@ -48,10 +48,9 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     from [0, ``low``).
 
     Args:
-        low(int): The lower bound on the range of random values to generate,
-            the ``low`` is included in the range.(unless ``high`` = None, in
-            which case this parameter is one above the highest such integer).
-            Default is 0.
+        low(int): The lower bound on the range of random values to generate.
+            The ``low`` is included in the range. (If ``high`` is None, the
+            range is [0, ``low``)]). Default is 0.
         high(int, optional): The upper bound on the range of random values to
             generate, the ``high`` is excluded in the range. Default is None
             (see above for behavior if high = None). Default is None.
@@ -73,7 +72,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     Raises:
         TypeError: If ``shape`` is not list, tuple, Variable.
         TypeError: If ``dtype`` does not point to int32, int64.
-        ValueError: If ``low`` is not large then high; If ``high`` is None, and
+        ValueError: If ``high`` is not greater then ``low``; If ``high`` is None, and
             ``low`` is not greater than 0.
 
     Examples:
@@ -235,8 +234,8 @@ def randperm(n, dtype="int64", name=None):
             Default is None.
 
     Returns:
-        Variable: A random permutation from 0 to n-1. The data type of the
-            output is ``dtype`` .
+        Variable: A 1-D tensor which is a random permutation from 0 to n-1. The
+            data type of the output is ``dtype`` .
 
     Raises:
         ValueError: If ``n`` is not greater than 0.
@@ -281,7 +280,7 @@ def rand(shape, dtype=None, name=None):
 	:alias_main: paddle.rand
 	:alias: paddle.tensor.rand, paddle.tensor.random.rand
 
-    This OP initializes a variable with random values sampled from a uniform
+    This OP returns a Tensor with random values sampled from a uniform
     distribution in the range [0, 1).
 
     Examples:
@@ -312,7 +311,7 @@ def rand(shape, dtype=None, name=None):
         the output is ``dtype``.
 
     Raises:
-        TypeError: If ``shape`` is not list, tupple, Variable.
+        TypeError: If ``shape`` is not list, tuple, Variable.
         ValueError: If ``dtype`` does not point to float32, float64.
 
     Examples:
