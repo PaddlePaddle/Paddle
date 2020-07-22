@@ -51,6 +51,7 @@ requirements:
     - astor
     - gast>=0.3.3
     - matplotlib
+    - opencv>=3.4.2
 """
 
         self.requirement_run_windows = r"""
@@ -69,8 +70,11 @@ requirements:
     - pathlib
     - gast>=0.3.3
     - py-cpuinfo==5.0.0
+    - opencv>=3.4.2
 """
-        self.test = """
+"""
+
+        self.test = r"""
 test:
   import:
     paddle
