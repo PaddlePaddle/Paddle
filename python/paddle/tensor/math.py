@@ -321,7 +321,7 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
-def add(x, y, alpha=1, out=None, name=None):
+def add(x, y, axis=-1, alpha=1, out=None, name=None):
     """
 Examples:
 
@@ -444,7 +444,7 @@ Examples:
 
     """
     op_type = 'elementwise_add'
-    axis = -1
+    axis = -1 if axis is None else axis
     act = None
     if alpha != 1:
         y = scale(y, scale=alpha)
@@ -463,7 +463,7 @@ Examples:
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def div(x, y, out=None, name=None):
+def div(x, y, axis=-1, out=None, name=None):
     """
 Examples:
 
@@ -563,7 +563,7 @@ Examples:
 
     """
     op_type = 'elementwise_div'
-    axis = -1
+    axis = -1 if axis is None else axis
     act = None
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
@@ -647,7 +647,7 @@ for func in [
     func.__doc__ = alias_main + """\n""" + alias + """\n""" + _generate_doc_string_(
         op_proto,
         additional_args_lines=additional_args_lines,
-        skip_attrs_set={"x_data_format", "y_data_format", "axis",
+        skip_attrs_set={"x_data_format", "y_data_format",
             "use_quantizer", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
 
