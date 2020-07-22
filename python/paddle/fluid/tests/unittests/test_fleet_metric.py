@@ -25,15 +25,13 @@ from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet
 
 
 class TestFleetMetric(unittest.TestCase):
-    """
-    Test cases for fleet metric.
-    """
+    """Test cases for fleet metric."""
 
     def setUp(self):
         """Set up, set envs."""
 
         class FakeFleet:
-            """fake fleet only for test"""
+            """Fake fleet only for test."""
 
             def __init__(self):
                 """Init."""
@@ -46,26 +44,36 @@ class TestFleetMetric(unittest.TestCase):
                 self.gloo.init()
 
             def _all_reduce(self, input, output, mode="sum"):
-                """all reduce using gloo"""
+                """All reduce using gloo."""
                 input_list = [i for i in input]
                 ans = self.gloo.all_reduce(input_list, mode)
                 for i in range(len(ans)):
                     output[i] = 1
 
             def _barrier_worker(self):
-                """fake barrier worker, do nothing"""
+                """Fake barrier worker, do nothing."""
                 pass
 
         self.fleet = FakeFleet()
         fleet._role_maker = self.fleet
 
     def test_metric_1(self):
-        """test cases for metrics"""
+        """Test cases for metrics."""
         train = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train, startup):
-            t = fluid.layers.create_global_var(shape=[1,1], value=1, dtype='int64', persistable=True, force_cpu=True)
-            t1 = fluid.layers.create_global_var(shape=[1,1], value=1, dtype='int64', persistable=True, force_cpu=True)
+            t = fluid.layers.create_global_var(
+                shape=[1,1],
+                value=1,
+                dtype='int64',
+                persistable=True,
+                force_cpu=True)
+            t1 = fluid.layers.create_global_var(
+                shape=[1,1],
+                value=1,
+                dtype='int64',
+                persistable=True,
+                force_cpu=True)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         scope = fluid.Scope()
