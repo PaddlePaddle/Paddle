@@ -119,11 +119,18 @@ class FleetTranspiler(Fleet):
                 opt_init_map[
                     "truncated_gaussian_random"] = ["seed", "mean", "std"]
 
-                table_names = get_sparse_tablenames(self._origin_main_program,
-                                                    True)
+                dist_varnames = get_sparse_tablenames(self._origin_main_program,
+                                                      True)
+                sparse_varnames = get_sparse_tablenames(
+                    self._origin_main_program, False)
+
+                if len(dist_varnames) != 0:
+                    raise ValueError(
+                        "GeoStrategy can not support large scale embeding now, please use fluid.layers.embedding"
+                    )
 
                 init_attrs = []
-                for value_name in table_names:
+                for value_name in sparse_varnames:
                     value_var = self._origin_main_program.global_block().vars[
                         value_name]
                     value_attr = [value_name, str(value_var.shape[1])]

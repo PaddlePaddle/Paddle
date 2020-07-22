@@ -102,10 +102,6 @@ bool RequestSendHandler::Handle(const std::string &varname,
                 run_varname)) {
           auto &grad_slr =
               scope->FindVar(run_varname)->Get<framework::SelectedRows>();
-
-          auto *large_scale_var = ins->GetByGrad(run_varname);
-          ins->Get(large_scale_var->GetMeta()->name)->Init(grad_slr.rows());
-
           AsyncSparseParamUpdateRecorder::GetInstance()->Update(
               run_varname, grad_slr.rows());
         }

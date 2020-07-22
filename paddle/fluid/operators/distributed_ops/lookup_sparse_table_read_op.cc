@@ -55,7 +55,8 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     auto *ins = distributed::LargeScaleKV::GetInstance();
 
     if (init) {
-      ins->Get(tablename)->GetAndInit(ids, value_names, &values);
+      ins->Get(tablename)->Init(ids);
+      ins->Get(tablename)->Get(ids, value_names, &values);
     } else {
       ins->Get(tablename)->Get(ids, value_names, &values);
     }
