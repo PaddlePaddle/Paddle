@@ -55,38 +55,35 @@ namespace framework {
 #define strdup _strdup
 #endif
 
-std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
 std::once_flag p2p_init_flag;
 std::once_flag glog_warning_once_flag;
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
-  std::call_once(gflags_init_flag, [&]() {
-    FLAGS_logtostderr = true;
-    // NOTE(zhiqiu): dummy is needed, since the function
-    // ParseNewCommandLineFlags in gflags.cc starts processing
-    // commandline strings from idx 1.
-    // The reason is, it assumes that the first one (idx 0) is
-    // the filename of executable file.
-    args.insert(args.begin(), "dummy");
-    std::vector<char *> argv;
-    std::string line;
-    int argc = args.size();
-    for (auto &arg : args) {
-      argv.push_back(const_cast<char *>(arg.data()));
-      line += arg;
-      line += ' ';
-    }
-    VLOG(1) << "Before Parse: argc is " << argc
-            << ", Init commandline: " << line;
 
-    char **arr = argv.data();
-    google::ParseCommandLineFlags(&argc, &arr, true);
-    successed = true;
+  FLAGS_logtostderr = true;
+  // NOTE(zhiqiu): dummy is needed, since the function
+  // ParseNewCommandLineFlags in gflags.cc starts processing
+  // commandline strings from idx 1.
+  // The reason is, it assumes that the first one (idx 0) is
+  // the filename of executable file.
+  args.insert(args.begin(), "dummy");
+  std::vector<char *> argv;
+  std::string line;
+  int argc = args.size();
+  for (auto &arg : args) {
+    argv.push_back(const_cast<char *>(arg.data()));
+    line += arg;
+    line += ' ';
+  }
+  VLOG(1) << "Before Parse: argc is " << argc << ", Init commandline: " << line;
 
-    VLOG(1) << "After Parse: argc is " << argc;
-  });
+  char **arr = argv.data();
+  google::ParseCommandLineFlags(&argc, &arr, true);
+  successed = true;
+  VLOG(1) << "After Parse: argc is " << argc;
+
   return successed;
 }
 
