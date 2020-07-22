@@ -1326,6 +1326,7 @@ function main() {
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         example
         assert_api_spec_approvals
+	check_qa_approvals
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
@@ -1412,7 +1413,6 @@ function main() {
         cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         check_change_of_unittest ${PYTHON_ABI:-""}
-		check_qa_approvals
         ;;
       macbuild)
         cmake_gen ${PYTHON_ABI:-""}
