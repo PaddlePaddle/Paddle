@@ -145,8 +145,8 @@ for API_FILE in ${API_FILES[*]}; do
         echo_line="You must have one RD (lelelelelez (Recommend) or luotao1) approval for the api whitelist for the tools/wlist.json.\n"
         check_approval 1 22937122 6836917
       elif [ "${API_FILE}" == "python/paddle/fleet/__init__.py" ]; then
-        echo_line="You must have (guru4elephant) approval for ${API_FILE} changes "
-	check_approval 1 35550832
+        echo_line="You must have (guru4elephant,gavin2312,) approval for ${API_FILE} changes "
+	check_approval 1 35550832 1552048
       else
           echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
