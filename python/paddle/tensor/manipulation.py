@@ -318,14 +318,14 @@ def split(x, num_or_sections, axis=0, name=None):
             is a list or tuple, the length of it indicates the number of
             sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
             :attr:`dim` dimension orderly. The length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
-        axis (int32|Varible, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. The dimension along which to split. If :math:`dim < 0`, the
-            dimension to split along is :math:`rank(input) + dim`. Default is 0.
+        axis (int32|Varible, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. The axis along which to split. If :math:`axis < 0`, the
+            axis to split along is :math:`rank(x) + axis`. Default is 0.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Variable): The list of segmented Tensor variables.
     Raises:
         TypeError: num_or_sections is not int, list or tuple.
-        TypeError: dim is not int or Variable.
+        TypeError: axis is not int or Variable.
     Example:
         .. code-block:: python
             import numpy as np
