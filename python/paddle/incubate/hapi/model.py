@@ -49,7 +49,30 @@ __all__ = [
 
 
 class Input(fluid.dygraph.Layer):
-    def __init__(self, shape=None, dtype=None, name=None):
+    """
+    Define inputs the model.
+
+    Args:
+        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
+            for more details.
+        shape (tuple(integers)|list[integers]): List|Tuple of integers
+            declaring the shape. You can set "None" or -1 at a dimension
+            to indicate the dimension can be of any size. For example,
+            it is useful to set changeable batch size as "None" or -1.
+        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
+            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
+            uint8. Default: float32.
+
+    Examples:
+        .. code-block:: python
+
+        import paddle.incubate.hapi as hapi
+
+        input = hapi.Input([None, 784], 'float32', name='x')
+        label = hapi.Input([None, 1], 'int64', name='label')
+    """
+
+    def __init__(self, name, shape=None, dtype='float32'):
         super(Input, self).__init__()
         self.shape = shape
         self.dtype = dtype
@@ -672,10 +695,10 @@ class Model(object):
         fluid.enable_dygraph(device)
         
         # inputs and labels are not required for dynamic graph.
-        inputs = [hapi.Input([None, 784], 'float32', name='x')]
-        labels = [hapi.Input([None, 1], 'int64', name='label')]
+        input = hapi.Input([None, 784], 'float32', name='x')
+        label = hapi.Input([None, 1], 'int64', name='label')
         
-        model = hapi.Model(MyModel(), inputs, labels)
+        model = hapi.Model(MyModel(), input, label)
         optim = fluid.optimizer.SGD(learning_rate=1e-3,
             parameter_list=model.parameters())
         model.prepare(optim,
@@ -753,9 +776,9 @@ class Model(object):
               device = hapi.set_device('gpu')
               fluid.enable_dygraph(device)
 
-              inputs = [hapi.Input([None, 784], 'float32', name='x')]
-              labels = [hapi.Input([None, 1], 'int64', name='label')]
-              model = hapi.Model(MyModel(), inputs, labels)
+              input = hapi.Input([None, 784], 'float32', name='x')
+              label = hapi.Input([None, 1], 'int64', name='label')
+              model = hapi.Model(MyModel(), input, label)
               optim = fluid.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim, hapi.loss.CrossEntropy(average=True))
@@ -800,9 +823,9 @@ class Model(object):
               device = hapi.set_device('gpu')
               fluid.enable_dygraph(device)
 
-              inputs = [hapi.Input([None, 784], 'float32', name='x')]
-              labels = [hapi.Input([None, 1], 'int64', name='label')]
-              model = hapi.Model(MyModel(), inputs, labels)
+              input = hapi.Input([None, 784], 'float32', name='x')
+              label = hapi.Input([None, 1], 'int64', name='label')
+              model = hapi.Model(MyModel(), input, label)
               optim = fluid.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim,
@@ -1154,10 +1177,10 @@ class Model(object):
               train_dataset = hapi.datasets.MNIST(mode='train')
               val_dataset = hapi.datasets.MNIST(mode='test')
            
-              inputs = [hapi.Input([None, 1, 28, 28], 'float32', name='image')]
-              labels = [hapi.Input([None, 1], 'int64', name='label')]
+              input = hapi.Input([None, 1, 28, 28], 'float32', name='image')
+              label = hapi.Input([None, 1], 'int64', name='label')
            
-              model = hapi.Model(hapi.vision.LeNet(), inputs, labels)
+              model = hapi.Model(hapi.vision.LeNet(), input, label)
               optim = fluid.optimizer.Adam(
                   learning_rate=0.001, parameter_list=model.parameters())
               model.prepare(
@@ -1189,10 +1212,10 @@ class Model(object):
               val_loader = fluid.io.DataLoader(val_dataset,
                   places=device, batch_size=64)
            
-              inputs = [hapi.Input([None, 1, 28, 28], 'float32', name='image')]
-              labels = [hapi.Input([None, 1], 'int64', name='label')]
+              input = hapi.Input([None, 1, 28, 28], 'float32', name='image')
+              label = hapi.Input([None, 1], 'int64', name='label')
            
-              model = hapi.Model(hapi.vision.LeNet(), inputs, labels)
+              model = hapi.Model(hapi.vision.LeNet(), input, label)
               optim = fluid.optimizer.Adam(
                   learning_rate=0.001, parameter_list=model.parameters())
               model.prepare(
@@ -1316,9 +1339,9 @@ class Model(object):
             # declarative mode
             val_dataset = hapi.datasets.MNIST(mode='test')
 
-            inputs = [hapi.Input([-1, 1, 28, 28], 'float32', name='image')]
-            labels = [hapi.Input([None, 1], 'int64', name='label')]
-            model = hapi.Model(hapi.vision.LeNet(), inputs, labels)
+            input = hapi.Input([-1, 1, 28, 28], 'float32', name='image')
+            label = hapi.Input([None, 1], 'int64', name='label')
+            model = hapi.Model(hapi.vision.LeNet(), input, label)
             model.prepare(metrics=hapi.metrics.Accuracy())
 
             result = model.evaluate(val_dataset, batch_size=64)
@@ -1423,8 +1446,8 @@ class Model(object):
             test_dataset = MnistDataset(mode='test', return_label=False)
 
             # declarative mode
-            inputs = [hapi.Input([-1, 1, 28, 28], 'float32', name='image')]
-            model = hapi.Model(hapi.vision.LeNet(), inputs)
+            input = hapi.Input([-1, 1, 28, 28], 'float32', name='image')
+            model = hapi.Model(hapi.vision.LeNet(), input)
             model.prepare()
 
             result = model.predict(test_dataset, batch_size=64)
@@ -1505,8 +1528,8 @@ class Model(object):
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
-            inputs = [hapi.Input([-1, 1, 28, 28], 'float32', name='image')]
-            model = hapi.Model(hapi.vision.LeNet(), inputs)
+            input = hapi.Input([-1, 1, 28, 28], 'float32', name='image')
+            model = hapi.Model(hapi.vision.LeNet(), input)
             model.prepare()
 
             model.save_inference_model('inference_model')

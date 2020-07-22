@@ -31,6 +31,13 @@ def set_device(device):
         
     Returns:
         fluid.CUDAPlace or fluid.CPUPlace: Created GPU or CPU place.
+
+    Examples:
+        .. code-block:: python
+
+        import paddle.incubate.hapi as hapi
+
+        input = hapi.set_device('gpu')
     """
 
     assert isinstance(device, six.string_types) and device.lower() in ['cpu', 'gpu'], \
