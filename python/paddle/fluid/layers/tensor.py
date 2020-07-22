@@ -267,19 +267,21 @@ def concat(input, axis=0, name=None):
 	:alias: paddle.concat,paddle.tensor.concat,paddle.tensor.manipulation.concat
 	:old_api: paddle.fluid.layers.concat
 
-    **Concat**
-
     This OP concatenates the input along the axis.
 
     Args:
-        input(list): List of input Tensors with data type float32, float64, int32,
+        input(list): List of input Tensors with data type float16, float32, float64, int32,
             int64.
-        axis(int32|Variable, optional):  A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. Axis to compute indices along. The effective range
-            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+        axis(int|Variable, optional): Specify the axis to operate on the input Tensor.
+            It's a scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``.
+            The effective range is [-R, R), where R is Rank(x). when ``axis < 0``, it works the same way
             as axis+R. Default is 0.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+    Raises:
+        TypeError: The dtype of input must be one of float16, float32, float64, int32 and int64. 
+        TypeError: The `axis` must be int or Variable.
 
     Returns:
         Variable: A Tensor with the same data type as input's.
@@ -300,6 +302,7 @@ def concat(input, axis=0, name=None):
                 x1 = fluid.dygraph.to_variable(in1)
                 x2 = fluid.dygraph.to_variable(in2)
                 x3 = fluid.dygraph.to_variable(in3)
+                #when the axis is negative, the real axis is (axis + Rank(x))
                 out1 = fluid.layers.concat(input=[x1,x2,x3], axis=-1)
                 out2 = fluid.layers.concat(input=[x1,x2], axis=0)
                 print(out1.numpy())
