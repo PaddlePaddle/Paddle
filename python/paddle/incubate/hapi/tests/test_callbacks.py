@@ -36,7 +36,7 @@ class TestCallbacks(unittest.TestCase):
         freq = 2
         eval_steps = 20
 
-        inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
+        inputs = [Input('image', [None, 1, 28, 28], 'float32')]
         lenet = Model(LeNet(), inputs)
         lenet.prepare()
 

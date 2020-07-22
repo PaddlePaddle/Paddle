@@ -27,7 +27,7 @@ from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
 from paddle.fluid.dygraph.base import to_variable
 
 import paddle.incubate.hapi as hapi
-from paddle.incubate.hapi.model import Model, Input
+from paddle.incubate.hapi import Model, Input
 from paddle.incubate.hapi.loss import CrossEntropy
 from paddle.incubate.hapi.metrics import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
@@ -150,8 +150,8 @@ class TestModel(unittest.TestCase):
 
         cls.acc1 = dynamic_evaluate(dy_lenet, cls.val_loader)
 
-        cls.inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
-        cls.labels = [Input([None, 1], 'int64', name='label')]
+        cls.inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
+        cls.labels = [Input('label', [None, 1], 'int64')]
 
         cls.save_dir = tempfile.mkdtemp()
         cls.weight_path = os.path.join(cls.save_dir, 'lenet')
@@ -317,8 +317,8 @@ class TestModelFunction(unittest.TestCase):
             optim2 = fluid.optimizer.SGD(learning_rate=0.001,
                                          parameter_list=net.parameters())
 
-            inputs = [Input([None, dim], 'float32', name='x')]
-            labels = [Input([None, 1], 'int64', name='label')]
+            inputs = [Input('x', [None, dim], 'float32')]
+            labels = [Input('label', [None, 1], 'int64')]
             model = Model(net, inputs, labels)
             model.prepare(optim2, loss_function=CrossEntropy(average=False))
             loss, = model.train_batch([data], [label])
@@ -345,7 +345,7 @@ class TestModelFunction(unittest.TestCase):
             fluid.enable_dygraph(device) if dynamic else None
             self.set_seed()
             net = MyModel()
-            inputs = [Input([None, dim], 'float32', name='x')]
+            inputs = [Input('x', [None, dim], 'float32')]
             model = Model(net, inputs)
             model.prepare()
             out, = model.test_batch([data])
@@ -359,8 +359,8 @@ class TestModelFunction(unittest.TestCase):
             device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel()
-            inputs = [Input([None, 20], 'float32', name='x')]
-            labels = [Input([None, 1], 'int64', name='label')]
+            inputs = [Input('x', [None, 20], 'float32')]
+            labels = [Input('label', [None, 1], 'int64')]
             optim = fluid.optimizer.SGD(learning_rate=0.001,
                                         parameter_list=net.parameters())
             model = Model(net, inputs, labels)
@@ -384,8 +384,8 @@ class TestModelFunction(unittest.TestCase):
         model.save(path + '/test')
         fluid.disable_dygraph()
 
-        inputs = [Input([None, 20], 'float32', name='x')]
-        labels = [Input([None, 1], 'int64', name='label')]
+        inputs = [Input('x', [None, 20], 'float32')]
+        labels = [Input('label', [None, 1], 'int64')]
         model = Model(MyModel(), inputs, labels)
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
@@ -398,8 +398,8 @@ class TestModelFunction(unittest.TestCase):
         path = tempfile.mkdtemp()
 
         net = MyModel()
-        inputs = [Input([None, 20], 'float32', name='x')]
-        labels = [Input([None, 1], 'int64', name='label')]
+        inputs = [Input('x', [None, 20], 'float32')]
+        labels = [Input('label', [None, 1], 'int64')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
@@ -411,8 +411,8 @@ class TestModelFunction(unittest.TestCase):
         fluid.enable_dygraph(device)  #if dynamic else None
 
         net = MyModel()
-        inputs = [Input([None, 20], 'float32', name='x')]
-        labels = [Input([None, 1], 'int64', name='label')]
+        inputs = [Input('x', [None, 20], 'float32')]
+        labels = [Input('label', [None, 1], 'int64')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
@@ -427,7 +427,7 @@ class TestModelFunction(unittest.TestCase):
             device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel()
-            inputs = [Input([None, 20], 'float32', name='x')]
+            inputs = [Input('x', [None, 20], 'float32')]
             model = Model(net, inputs)
             model.prepare()
             params = model.parameters()
@@ -437,7 +437,7 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         net = LeNet()
-        inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
+        inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
         model = Model(net, inputs)
         model.prepare()
         save_dir = tempfile.mkdtemp()

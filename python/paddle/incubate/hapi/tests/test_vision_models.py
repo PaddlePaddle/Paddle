@@ -28,8 +28,8 @@ class TestVisonModels(unittest.TestCase):
         else:
             net = models.__dict__[arch](pretrained=pretrained)
 
-        inputs = [hapi.Input([None, 3, 224, 224], 'float32', name='image')]
-        model = hapi.Model(net, inputs)
+        input = hapi.Input('image', [None, 3, 224, 224], 'float32')
+        model = hapi.Model(net, input)
         model.prepare()
 
         model.test_batch(x)
@@ -71,8 +71,8 @@ class TestVisonModels(unittest.TestCase):
         self.models_infer('resnet152')
 
     def test_lenet(self):
-        inputs = [hapi.Input([None, 1, 28, 28], 'float32', name='x')]
-        lenet = hapi.Model(models.__dict__['LeNet'](), inputs)
+        input = hapi.Input('x', [None, 1, 28, 28], 'float32')
+        lenet = hapi.Model(models.__dict__['LeNet'](), input)
         lenet.prepare()
 
         x = np.array(np.random.random((2, 1, 28, 28)), dtype=np.float32)

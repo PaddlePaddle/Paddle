@@ -294,8 +294,8 @@ class ProgBarLogger(Callback):
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
-            inputs = [hapi.Input([-1, 1, 28, 28], 'float32', name='image')]
-            labels = [hapi.Input([None, 1], 'int64', name='label')]
+            inputs = [hapi.Input('image', [-1, 1, 28, 28], 'float32')]
+            labels = [hapi.Input('label', [None, 1], 'int64')]
 
             train_dataset = hapi.datasets.MNIST(mode='train')
 
@@ -428,8 +428,8 @@ class ModelCheckpoint(Callback):
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
-            inputs = [hapi.Input([-1, 1, 28, 28], 'float32', name='image')]
-            labels = [hapi.Input([None, 1], 'int64', name='label')]
+            inputs = [hapi.Input('image', [-1, 1, 28, 28], 'float32')]
+            labels = [hapi.Input('label', [None, 1], 'int64')]
 
             train_dataset = hapi.datasets.MNIST(mode='train')
 

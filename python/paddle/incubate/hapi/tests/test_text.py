@@ -142,10 +142,7 @@ class TestBasicLSTM(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
         ]
         return inputs
 
@@ -171,10 +168,7 @@ class TestBasicGRU(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
         ]
         return inputs
 
@@ -225,11 +219,8 @@ class TestBeamSearch(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, self.inputs[0].shape[-1]], "float32",
-                name="init_hidden"),
-            Input(
-                [None, self.inputs[1].shape[-1]], "float32", name="init_cell"),
+            Input("init_hidden", [None, self.inputs[0].shape[-1]], "float32"),
+            Input("init_cell", [None, self.inputs[1].shape[-1]], "float32"),
         ]
         return inputs
 
@@ -281,14 +272,10 @@ class TestTransformerEncoder(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[0].shape[-1]],
-                "float32",
-                name="enc_input"),
-            Input(
-                [None, self.inputs[1].shape[1], None, None],
-                "float32",
-                name="attn_bias"),
+            Input("enc_input", [None, None, self.inputs[0].shape[-1]],
+                  "float32"),
+            Input("attn_bias", [None, self.inputs[1].shape[1], None, None],
+                  "float32"),
         ]
         return inputs
 
@@ -349,22 +336,14 @@ class TestTransformerDecoder(TestTransformerEncoder):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[0].shape[-1]],
-                "float32",
-                name="dec_input"),
-            Input(
-                [None, None, self.inputs[0].shape[-1]],
-                "float32",
-                name="enc_output"),
-            Input(
-                [None, self.inputs[-1].shape[1], None, None],
-                "float32",
-                name="self_attn_bias"),
-            Input(
-                [None, self.inputs[-1].shape[1], None, None],
-                "float32",
-                name="cross_attn_bias"),
+            Input("dec_input", [None, None, self.inputs[0].shape[-1]],
+                  "float32"),
+            Input("enc_output", [None, None, self.inputs[0].shape[-1]],
+                  "float32"),
+            Input("self_attn_bias",
+                  [None, self.inputs[-1].shape[1], None, None], "float32"),
+            Input("cross_attn_bias",
+                  [None, self.inputs[-1].shape[1], None, None], "float32"),
         ]
         return inputs
 
@@ -452,14 +431,10 @@ class TestTransformerBeamSearchDecoder(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[0].shape[-1]],
-                "float32",
-                name="enc_output"),
-            Input(
-                [None, self.inputs[1].shape[1], None, None],
-                "float32",
-                name="trg_src_attn_bias"),
+            Input("enc_output", [None, None, self.inputs[0].shape[-1]],
+                  "float32"),
+            Input("trg_src_attn_bias",
+                  [None, self.inputs[1].shape[1], None, None], "float32"),
         ]
         return inputs
 
@@ -498,12 +473,9 @@ class TestSequenceTagging(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None], "int64", name="word"),
-            Input(
-                [None], "int64", name="lengths"),
-            Input(
-                [None, None], "int64", name="target"),
+            Input("word", [None, None], "int64"),
+            Input("lengths", [None], "int64"),
+            Input("target", [None, None], "int64"),
         ]
         return inputs
 
@@ -545,10 +517,7 @@ class TestStackedRNN(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
         ]
         return inputs
 
@@ -574,10 +543,7 @@ class TestLSTM(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
         ]
         return inputs
 
@@ -613,10 +579,7 @@ class TestBiLSTM(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
         ]
         return inputs
 
@@ -646,10 +609,7 @@ class TestGRU(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
         ]
         return inputs
 
@@ -685,10 +645,7 @@ class TestBiGRU(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
         ]
         return inputs
 
@@ -723,9 +680,7 @@ class TestCNNEncoder(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, self.inputs[-1].shape[1], None], "float32",
-                name="input"),
+            Input("input", [None, self.inputs[-1].shape[1], None], "float32"),
         ]
         return inputs
 
