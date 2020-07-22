@@ -158,10 +158,6 @@ class CompiledProgram(object):
         self._build_strategy = build_strategy
         self._exec_strategy = None
 
-        # identifier for auto checkpoint
-        self._auto_checkpoint_name = unique_name.generate(
-            "__auto_checkpoint_compiled_program__")
-
     def with_data_parallel(self,
                            loss_name=None,
                            build_strategy=None,

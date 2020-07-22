@@ -505,18 +505,20 @@ def _check_program_oprole(program):
     return False
 
 
-def _can_auto_checkpoint(program):
-    if not isinstance(program, compiler.CompiledProgram) and \
-            not isinstance(program, Program):
+def _can_auto_checkpoint(prog):
+    if not isinstance(prog, compiler.CompiledProgram) and \
+            not isinstance(prog, Program):
         return False
 
-    if isinstance(program, compiler.CompiledProgram):
-        if program._program is None or \
-                program._program._is_distributed:
+    if isinstance(prog, compiler.CompiledProgram):
+        if prog._program is None or \
+                prog._program._is_distributed:
             return False
     else:
-        if program._is_distributed:
+        if prog._is_distributed:
             return False
+
+    program = _get_valid_program(prog)
 
     if program._auto_checkpoint_name in g_program_attr:
         if not g_program_attr[program._auto_checkpoint_name]:
@@ -599,16 +601,22 @@ def _get_hash(key):
     return hashlib.md5(k).hexdigest()
 
 
-def _initial_names(exe, program):
-    assert exe._auto_checkpoint_name != None
-    assert program._auto_checkpoint_name != None
+def _get_valid_program(prog):
+    if isinstance(prog, compiler.CompiledProgram):
+        return prog._program
+
+    return prog
 
 
-def _auto_checkpoint(exe, program):
+def _auto_checkpoint(exe, prog):
     _get_checker()
-    _initial_names(exe, program)
-    if not _can_auto_checkpoint(program):
+
+    assert exe._auto_checkpoint_name != None
+    if not _can_auto_checkpoint(prog):
         return
+
+    program = _get_valid_program(prog)
+    assert program._auto_checkpoint_name != None
 
     exe_status = g_train_epoch_range._exe_status
     key = _get_running_key(exe._auto_checkpoint_name,

@@ -177,8 +177,8 @@ def _is_restoring(executor, program):
             return False
         else:
             logger.info(
-                "range_wrapper:{} is restoring save_model may be canceled",
-                range_wrapper)
+                "range_wrapper:{} is restoring save_model may be canceled".
+                format(range_wrapper))
             return True
 
     return False

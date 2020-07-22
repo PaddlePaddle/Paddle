@@ -111,11 +111,24 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         compiled, data_loader, optimizer, loss, image, label = \
             self._init_env(exe, main_prog, startup_prog)
+        """
+        print("main_progam:", main_prog)
+        for var in main_prog.list_vars():
+            if fluid.io.is_persistable(var):
+                print("vars:", var)
+        """
 
         i = 0
         name = None
         logger.info("g_acp_type:{} g_ranges:{}".format(acp.g_acp_type,
                                                        dacp.g_ranges))
+
+        # delete model path.
+        fs = LocalFS()
+        for i in range(3):
+            path = self._get_model_dir("save_basic", i)
+            fs.delete(path)
+
         for i in range(3):
             for data in data_loader():
                 name = data_loader._auto_checkpoint_name
@@ -125,8 +138,19 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
                 if i == break_epoch_no:
                     break
 
+            path = self._get_model_dir("save_basic", i)
+            fluid.io.save_persistables(exe, path, main_program=main_prog)
+            self.assertTrue(fs.is_exist(path))
+
         self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
+
+        # delete model path.
+        """
+        for i in range(3):
+            path=self._get_model_dir("save_basic", i)
+            fs.delete(path)
+        """
 
         if break_epoch_no is None:
             self.assertEqual(i, 2)
@@ -155,9 +179,9 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
             if model_dir is not None:
                 path = self._get_model_dir(model_dir, i)
-                fluid.io.save(compiled, path)
-                fluid.io.save(compiled._program, path)
-                fluid.io.save(main_prog, path)
+                fluid.io.save_persistables(exe, path, main_prog)
+                #fluid.io.save_persistables(exe, path, compiled._program)
+                #fluid.io.save_persistables(exe, path, main_prog)
 
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
         if break_epoch_no is not None:
@@ -212,7 +236,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         fs.delete(checker.hdfs_checkpoint_path)
 
-    def _get_model_dir(model_dir, epoch_no):
+    def _get_model_dir(self, model_dir, epoch_no):
         return "{}_{}".format(model_dir, epoch_no)
 
     def test_invalid_save_model(self):
@@ -234,8 +258,8 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         for i in range(2):
             self.assertFalse(fs.is_exist(self._get_model_dir(model_dir, i)))
 
-        for i in range(3):
-            fs.delete(self._get_model_dir(model_dir, i))
+        #for i in range(3):
+        #    fs.delete(self._get_model_dir(model_dir, i))
 
         fs.delete(checker.hdfs_checkpoint_path)
 
