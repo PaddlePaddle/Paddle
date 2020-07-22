@@ -126,7 +126,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         # delete model path.
         fs = LocalFS()
         for i in range(3):
-            path = self._get_model_dir("save_basic", i)
+            path = self._get_model_dir("dacp_save_basic", i)
             fs.delete(path)
 
         for i in range(3):
@@ -138,7 +138,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
                 if i == break_epoch_no:
                     break
 
-            path = self._get_model_dir("save_basic", i)
+            path = self._get_model_dir("dacp_save_basic", i)
             fluid.io.save_persistables(exe, path, main_program=main_prog)
             self.assertTrue(fs.is_exist(path))
 
@@ -146,11 +146,9 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
 
         # delete model path.
-        """
         for i in range(3):
-            path=self._get_model_dir("save_basic", i)
+            path = self._get_model_dir("dacp_save_basic", i)
             fs.delete(path)
-        """
 
         if break_epoch_no is None:
             self.assertEqual(i, 2)
@@ -180,8 +178,6 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             if model_dir is not None:
                 path = self._get_model_dir(model_dir, i)
                 fluid.io.save_persistables(exe, path, main_prog)
-                #fluid.io.save_persistables(exe, path, compiled._program)
-                #fluid.io.save_persistables(exe, path, main_prog)
 
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
         if break_epoch_no is not None:
@@ -249,7 +245,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self._run_save_basic()
         self._reset_generator()
 
-        model_dir = "_run_load_basic_"
+        model_dir = "dacp_load_basic"
         for i in range(3):
             fs.delete(self._get_model_dir(model_dir, i))
 
@@ -258,8 +254,8 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         for i in range(2):
             self.assertFalse(fs.is_exist(self._get_model_dir(model_dir, i)))
 
-        #for i in range(3):
-        #    fs.delete(self._get_model_dir(model_dir, i))
+        for i in range(3):
+            fs.delete(self._get_model_dir(model_dir, i))
 
         fs.delete(checker.hdfs_checkpoint_path)
 
