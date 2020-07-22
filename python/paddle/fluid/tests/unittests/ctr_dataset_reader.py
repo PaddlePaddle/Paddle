@@ -66,15 +66,19 @@ class CtrReader(object):
         pass
 
     def _reader_creator(self, filelist):
+        def get_rand(low=0.0, high=1.0):
+            return random.random()
+
         def reader():
             for file in filelist:
                 with open(file, 'r') as f:
                     for line in f:
-                        fs = line.strip().split('\t')
-                        dnn_input = load_dnn_input_record(fs[0])
-                        lr_input = load_lr_input_record(fs[1])
-                        click = [int(fs[2])]
-                        yield [dnn_input] + [lr_input] + [click]
+                        if get_rand() < 0.05:
+                            fs = line.strip().split('\t')
+                            dnn_input = load_dnn_input_record(fs[0])
+                            lr_input = load_lr_input_record(fs[1])
+                            click = [int(fs[2])]
+                            yield [dnn_input] + [lr_input] + [click]
 
         return reader
 

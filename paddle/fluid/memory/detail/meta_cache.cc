@@ -25,14 +25,20 @@ MetadataCache::MetadataCache(bool uses_gpu) : uses_gpu_(uses_gpu) {}
 MemoryBlock::Desc* MetadataCache::LoadDesc(MemoryBlock* block) {
   if (uses_gpu_) {
     auto iter = cache_.find(block);
-    PADDLE_ENFORCE_NE(iter, cache_.end());
+    PADDLE_ENFORCE_NE(
+        iter, cache_.end(),
+        platform::errors::NotFound("The memory block is not found in cache"));
     auto* desc = &(iter->second);
-    PADDLE_ENFORCE_EQ(desc->CheckGuards(), true, "Invalid CPU memory access");
+    PADDLE_ENFORCE_EQ(
+        desc->CheckGuards(), true,
+        platform::errors::InvalidArgument("Invalid CPU memory access"));
     return desc;
   } else {
     auto* desc = reinterpret_cast<MemoryBlock::Desc*>(block);
     VLOG(10) << "Load MemoryBlock::Desc type=" << desc->type;
-    PADDLE_ENFORCE_EQ(desc->CheckGuards(), true, "Invalid CPU memory access");
+    PADDLE_ENFORCE_EQ(
+        desc->CheckGuards(), true,
+        platform::errors::InvalidArgument("Invalid CPU memory access"));
     return reinterpret_cast<MemoryBlock::Desc*>(block);
   }
 }

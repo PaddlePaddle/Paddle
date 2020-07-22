@@ -68,22 +68,30 @@ fi
 
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
 if [ "$api_spec_diff" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and one TPM (saxon-zh or Boyan-Liu or swtkiwi or Heeenrrry) approval for the api change for the management reason of API interface.\n"
+    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and one TPM (saxon-zh or jzhang533 or swtkiwi or Heeenrrry or TCChenlong) approval for the api change for the management reason of API interface.\n"
     check_approval 1 46782768 47554610
     echo_line=""
-    check_approval 1 2870059 2870059 27208573 28379894
+    check_approval 1 2870059 29231 27208573 28379894 11935832
 fi
 
 api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc` 
 if [ "$api_doc_spec_diff" != "" ]; then
-    echo_line="You must have one TPM (saxon-zh or Boyan-Liu or swtkiwi or Heeenrrry) approval for the api change for the management reason of API document.\n"
-    check_approval 1 31623103 2870059 27208573 28379894
+    echo_line="You must have one TPM (saxon-zh or jzhang533 or swtkiwi or Heeenrrry or TCChenlong) approval for the api change for the management reason of API document.\n"
+    check_approval 1 2870059 29231 27208573 28379894 11935832
+fi
+
+api_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
+if [ "$api_spec_diff" != "" ]; then
+    echo_line="You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without 'core.ops'.\n"
+    echo_line="${echo_line}For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/paddle_api_development_manual.md]\n"
+    echo_line="${echo_line}Related APIs: ${api_spec_diff}"
+    check_approval 1 6888866 43953930
 fi
 
 op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec`
 if [ "$op_type_spec_diff" != "" ]; then
     echo_line="You must have one RD (Aurelius84 (Recommend) or liym27 or zhhsplendid)approval for the data_type registration of new operator. More data_type of new operator should be registered in your PR. Please make sure that both float/double (or int/int64_t) have been registered.\n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/Data-types-of-generic-Op-must-be-fully-registered].\n"
-    check_approval 1 9301846 33742067 7913861
+    check_approval 1 9j301846 33742067 7913861
 fi
 
 op_desc_diff=`python ${PADDLE_ROOT}/tools/check_op_desc.py ${PADDLE_ROOT}/paddle/fluid/OP_DESC_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_DESC_PR.spec`
@@ -97,7 +105,7 @@ for API_FILE in ${API_FILES[*]}; do
   if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
       # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
       # You can use http://caius.github.io/github_id/ to find Github user id.
-      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,chenwhql 22561442,zhiqiu 6888866,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059,Boyan-Liu 31623103, zhouwei25 52485244, Aurelius84 9301846, liym27 33742067, zhhsplendid 7913861, kolinwei 22165420, liuwei1031 46661762, swtkiwi 27208573, juncaipeng 52520497, zhangting2020 26615455, JepsonWong 16509038, Shixiaowei02 39303645, Heeenrrry 28379894.
+      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,chenwhql 22561442,zhiqiu 6888866,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059,Boyan-Liu 31623103, zhouwei25 52485244, Aurelius84 9301846, liym27 33742067, zhhsplendid 7913861, kolinwei 22165420, liuwei1031 46661762, swtkiwi 27208573, juncaipeng 52520497, zhangting2020 26615455, JepsonWong 16509038, Shixiaowei02 39303645, Heeenrrry 28379894,XieYunshen 32428676.
       if [ "${API_FILE}" == "CMakeLists.txt" ];then
           echo_line="You must have one RD (luotao1 or XiaoguangHu01) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           check_approval 1 6836917 46782768
@@ -127,7 +135,7 @@ for API_FILE in ${API_FILES[*]}; do
           check_approval 1 45189361 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py" ];then
           echo_line="You must have one RD (cryoco (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py, which manages the white list of setting no_check_set of check_output. \n"
-          check_approval 1 12407750 26615455 6836917
+          check_approval 1 12407750 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py" ]; then
           echo_line="You must have one RD (JepsonWong (Recommend), luotao1, phlrain) approval for the ${API_FILE}, which manages the white list of instance size 0 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-instance_size=0-in-sequence-OP-test]. \n"
           check_approval 1 16509038 6836917 43953930
@@ -141,8 +149,8 @@ for API_FILE in ${API_FILES[*]}; do
         echo_line="You must have one RD (Shixiaowei02 (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py, which manages the white list of no_grad_set without value in operators. For more information, please refer to[https://github.com/PaddlePaddle/Paddle/wiki/It's-recommend-to-set-no_grad_set-to-be-None].\n"
         check_approval 1 39303645 6836917 43953930
       elif [ "${API_FILE}" == "tools/wlist.json" ];then
-        echo_line="You must have one TPM (saxon-zh or Boyan-Liu or swtkiwi or Heeenrrry) approval for the api whitelist for the tools/wlist.json.\n"
-        check_approval 1 31623103 2870059 27208573 28379894
+        echo_line="You must have one RD (lelelelelez (Recommend) or luotao1) approval for the api whitelist for the tools/wlist.json.\n"
+        check_approval 1 22937122 6836917
       else
           echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
@@ -278,6 +286,21 @@ if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
         echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. The corresponding lines are as follows:\n${ERROR_LINES}\n"
         check_approval 1 26615455 6836917 43953930
+    fi
+fi
+
+RUNTYPE_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH|grep -E "CMakeLists.txt"||true`
+if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    for CMAKELISTS_FILE in ${RUNTYPE_FILE_CHANGED};
+    do
+        RUNTYPE_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "^+" |grep -E "RUN_TYPE=EXCLUSIVE|RUN_TYPE=DIST|PROPERTIES[[:space:]]+TIMEOUT" || true`
+	if [[ ${RUNTYPE_ADD} != "" ]];then
+	    RUNTYPE_ADD_LINES="${RUNTYPE_ADD_LINES}\n${CMAKELISTS_FILE}\n${RUNTYPE_ADD}\n"
+	fi
+    done
+    if [[ ${RUNTYPE_ADD_LINES} != "" ]];then
+        echo_line="You must have one QA (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE to EXCLUSIVE or DIST, or setting TIMEOUT properties.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\nFor more information, please refer to:https://github.com/PaddlePaddle/Paddle/wiki/PaddlePaddle-Unit-test-specification"
+	check_approval 1 32428676 45041955
     fi
 fi
 

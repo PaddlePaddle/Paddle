@@ -62,5 +62,5 @@ class TestDygraphFramework(unittest.TestCase):
     def test_dygraph_to_string(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         with fluid.dygraph.guard():
-            var_inp = fluid.dygraph.base.to_variable(np_inp)
-            var_inp.to_string(throw_on_error=True)
+            var_inp = fluid.dygraph.to_variable(np_inp)
+            print(str(var_inp))

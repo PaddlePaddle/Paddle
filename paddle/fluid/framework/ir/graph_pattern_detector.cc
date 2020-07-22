@@ -140,7 +140,7 @@ void GraphPatternDetector::ValidateByNodeRole(
           subgraphs->begin(), subgraphs->end(),
           [](const GraphPatternDetector::subgraph_t &subgraph) -> bool {
             // Collect the inputs and outputs.
-            std::unordered_set<Node *> ios;
+            std::set<Node *> ios;
             for (auto &item : subgraph) {
               if (!item.first->IsIntermediate()) {
                 ios.insert(item.second);
@@ -166,7 +166,7 @@ void GraphPatternDetector::ValidateByNodeRole(
 }
 
 struct HitGroup {
-  std::unordered_map<PDNode *, Node *> roles;
+  std::map<PDNode *, Node *> roles;
 
   bool Match(Node *node, PDNode *pat) {
     if (nodes_.count(node)) {
@@ -184,7 +184,7 @@ struct HitGroup {
   }
 
  private:
-  std::unordered_set<Node *> nodes_;
+  std::set<Node *> nodes_;
 };
 
 // Tell whether Node a links to b.
@@ -283,7 +283,7 @@ void GraphPatternDetector::UniquePatterns(
   if (subgraphs->empty()) return;
   std::vector<GraphPatternDetector::subgraph_t> result;
 
-  std::unordered_set<size_t> set;
+  std::set<size_t> set;
   std::hash<std::string> hasher;
   for (auto &g : *subgraphs) {
     // Sort the items in the sub-graph, and transform to a string key.
@@ -305,7 +305,7 @@ void GraphPatternDetector::UniquePatterns(
 void GraphPatternDetector::RemoveOverlappedMatch(
     std::vector<subgraph_t> *subgraphs) {
   std::vector<subgraph_t> result;
-  std::unordered_set<Node *> node_set;
+  std::set<Node *> node_set;
 
   for (const auto &subgraph : *subgraphs) {
     bool valid = true;
@@ -1980,99 +1980,58 @@ PDNode *patterns::TransposeFlattenConcat::operator()(
   return concat_out;
 }
 
-void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
-                                              const std::string &op_type,
-                                              const std::string &weight_name,
-                                              int times,
-                                              const std::string &quant_type,
-                                              const std::string &dequant_type) {
-  int kNumFields = 5;
-  const int kQuantizedWeightOffset = 0;
-  const int kQuantizedOpOffset = 1;
-  const int kQuantizedOpOutOffset = 2;
-  const int kDequantOpOffset = 3;
-  const int kDequantOpOutOffset = 4;
-  const int kDequantOpWeightScaleOffset = 5;
-
-  // the quant op always be one.
-  auto quant_op_in_scale = pattern->NewNode(GetNodeName("quant_op_in_scale"))
+void patterns::DeleteQuantOpFuse::operator()(PDNode *input_act_node,
+                                             const std::string &quant_type) {
+  auto *input_scale_node = pattern->NewNode(GetNodeName("input_scale_node"))
                                ->assert_is_op_input(quant_type, "InScale")
                                ->AsInput();
-  auto quant_op =
-      pattern->NewNode(GetNodeName("quant_op"))->assert_is_op(quant_type);
+  auto *quant_node =
+      pattern->NewNode(GetNodeName("quant_node"))->assert_is_op(quant_type);
+  auto *output_scale_node = pattern->NewNode(GetNodeName("output_scale_node"))
+                                ->assert_is_op_output(quant_type, "OutScale")
+                                ->AsOutput();
+  auto *output_act_node = pattern->NewNode(GetNodeName("output_act_node"))
+                              ->assert_is_op_output(quant_type, "Out")
+                              ->AsOutput();
+  quant_node->LinksFrom({input_scale_node, input_act_node});
+  output_scale_node->LinksFrom({quant_node});
+  output_act_node->LinksFrom({quant_node});
+}
 
-  PDNode *quant_op_out_scale = nullptr;
+void patterns::DequantOpFuse::operator()(PDNode *quantized_op_input,
+                                         const std::string &quantized_op_type,
+                                         const std::string &dequant_type,
+                                         const std::string &weight_name) {
+  auto *quantized_op_weight =
+      pattern->NewNode(GetNodeName("quantized_op_weight"))
+          ->assert_is_op_input(quantized_op_type, weight_name)
+          ->AsInput();
+  auto *quantized_op = pattern->NewNode(GetNodeName("quantized_op"))
+                           ->assert_is_op(quantized_op_type);
+  auto *quantized_op_out = pattern->NewNode(GetNodeName("quantized_op_out"))
+                               ->assert_is_op_output(quantized_op_type)
+                               ->assert_is_op_input(dequant_type, "X");
+  auto *dequant_op =
+      pattern->NewNode(GetNodeName("dequant_op"))->assert_is_op(dequant_type);
+  auto *dequant_op_out = pattern->NewNode(GetNodeName("dequant_op_out"))
+                             ->assert_is_op_output(dequant_type, "Out")
+                             ->AsOutput();
+  PDNode *dequant_channel_scale = nullptr;
   if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
-    kNumFields += 1;
-    quant_op_out_scale = pattern->NewNode(GetNodeName("quant_op_out_scale"))
-                             ->assert_is_op_output(quant_type, "OutScale")
-                             ->assert_is_op_nth_input(dequant_type, "Scales", 1)
-                             ->AsIntermediate();
+    dequant_channel_scale =
+        pattern->NewNode(GetNodeName("dequant_channel_scale"))
+            ->assert_is_op_nth_input(dequant_type, "Scales", 0)
+            ->AsInput();
+  }
+  quantized_op->LinksFrom({quantized_op_input, quantized_op_weight});
+  quantized_op_out->LinksFrom({quantized_op});
+
+  if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
+    dequant_op->LinksFrom({quantized_op_out, dequant_channel_scale});
   } else {
-    quant_op_out_scale = pattern->NewNode(GetNodeName("quant_op_out_scale"))
-                             ->assert_is_op_output(quant_type, "OutScale")
-                             ->assert_is_op_input(dequant_type, "Scale")
-                             ->AsIntermediate();
+    dequant_op->LinksFrom({quantized_op_out});
   }
-
-  auto quant_op_out = pattern->NewNode(GetNodeName("quant_op_out"))
-                          ->assert_is_op_output(quant_type, "Out")
-                          ->assert_is_op_input(op_type)
-                          ->AsIntermediate();
-
-  // there are 'times' quantized and dequant op
-  std::vector<PDNode *> nodes;
-  for (int i = 0; i < times; i++) {
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("quantized_op_weight") + std::to_string(i))
-            ->assert_is_op_input(op_type, weight_name)
-            ->AsInput());
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("quantized_op") + std::to_string(i))
-            ->assert_is_op(op_type));
-
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("quantized_op_out") + std::to_string(i))
-            ->assert_is_op_output(op_type)
-            ->assert_is_op_input(dequant_type, "X")
-            ->AsIntermediate());
-
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("dequant_op") + std::to_string(i))
-            ->assert_is_op(dequant_type));
-
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("dequant_op_out") + std::to_string(i))
-            ->assert_is_op_output(dequant_type, "Out")
-            ->AsOutput());
-
-    if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
-      nodes.push_back(pattern
-                          ->NewNode(GetNodeName("dequant_channel_scale") +
-                                    std::to_string(i))
-                          ->assert_is_op_nth_input(dequant_type, "Scales", 0)
-                          ->AsInput());
-    }
-  }
-
-  quant_op->LinksFrom({quant_op_input, quant_op_in_scale});
-  quant_op_out->LinksFrom({quant_op});
-  for (int i = 0; i < times; i++) {
-    nodes[i * kNumFields + kQuantizedOpOffset]->LinksFrom(
-        {quant_op_out, nodes[i * kNumFields + kQuantizedWeightOffset]});
-    nodes[i * kNumFields + kQuantizedOpOutOffset]->LinksFrom(
-        {nodes[i * kNumFields + kQuantizedOpOffset]});
-    if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
-      nodes[i * kNumFields + kDequantOpOffset]->LinksFrom(
-          {nodes[i * kNumFields + kQuantizedOpOutOffset], quant_op_out_scale,
-           nodes[i * kNumFields + kDequantOpWeightScaleOffset]});
-    } else {
-      nodes[i * kNumFields + kDequantOpOffset]->LinksFrom(
-          {nodes[i * kNumFields + kQuantizedOpOutOffset], quant_op_out_scale});
-    }
-    nodes[i * kNumFields + kDequantOpOutOffset]->LinksFrom(
-        {nodes[i * kNumFields + kDequantOpOffset]});
-  }
+  dequant_op_out->LinksFrom({dequant_op});
 }
 
 void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
