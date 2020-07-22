@@ -109,6 +109,7 @@ class TestListenAndServOp(unittest.TestCase):
                     slice_shapes=["5,8", "5,8"],
                     slice_varnames=["table", "table"],
                     remote_varnames=['table', 'table'],
+                    is_sparse=False,
                     endpoints=emaps,
                     file_path=model_file)
 
