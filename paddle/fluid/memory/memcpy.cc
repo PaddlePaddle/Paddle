@@ -18,6 +18,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_header.h"
+#endif
+
 namespace paddle {
 namespace memory {
 
@@ -28,6 +32,90 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
   if (UNLIKELY(num == 0)) return;
   std::memcpy(dst, src, num);
 }
+
+#ifdef PADDLE_WITH_XPU
+template <>
+void Copy<platform::XPUPlace, platform::CPUPlace>(
+    platform::XPUPlace dst_place, void* dst,
+    platform::CPUPlace src_place, const void* src,
+    size_t num) {
+  if (num <= 0) {
+    VLOG(0) << "memcpy XPU_HOST_TO_DEVICE size <= 0 (" << num << ")";
+    return;
+  }
+  int dev_id = -1;
+  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  if (dev_id >= 64) {
+    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
+    dev_id -= 64;
+  }
+  if (dev_id != boost::get<platform::XPUPlace>(dst_place).device) {
+    PADDLE_ENFORCE(xpu_set_device(dst_place.device) == XPU_SUCCESS);
+  }
+  int r = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+  PADDLE_ENFORCE(r == 0, "xpu_memcpy error");
+  if (dev_id != dst_place.device) {
+    PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+  }
+}
+
+template <>
+void Copy<platform::CPUPlace, platform::XPUPlace>(
+    platform::CPUPlace dst_place, void* dst,
+    platform::XPUPlace src_place, const void* src,
+    size_t num) {
+  if (num <= 0) {
+    VLOG(0) << "memcpy XPU_DEVICE_TO_HOST size <= 0 (" << num << ")";
+    return;
+  }
+  int dev_id = -1;
+  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  if (dev_id >= 64) {
+    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
+    dev_id -= 64;
+  }
+  if (dev_id != src_place.device) {
+    PADDLE_ENFORCE(xpu_set_device(src_place.device) == XPU_SUCCESS);
+  }
+  int r = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+  PADDLE_ENFORCE(r == 0, "xpu_memcpy error");
+  if (dev_id != src_place.device) {
+    PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+  }
+}
+
+template <>
+void Copy<platform::XPUPlace, platform::XPUPlace>(
+    platform::XPUPlace dst_place, void* dst,
+    platform::XPUPlace src_place, const void* src,
+    size_t num) {
+  if (num <= 0) {
+    VLOG(0) << "memcpy XPU_DEVICE_TO_DEVICE size <= 0 (" << num << ")";
+    return;
+  }
+  int dev_id = -1;
+  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  if (dev_id >= 64) {
+    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
+    dev_id -= 64;
+  }
+  if (dev_id != src_place.device ||
+      dev_id != dst_place.device) {
+    PADDLE_ENFORCE(xpu_set_device(src_place.device) == XPU_SUCCESS);
+    void* tmp = malloc(num);
+    int r = xpu_memcpy(tmp, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+    PADDLE_ENFORCE(r == 0, "xpu_memcpy error");
+    PADDLE_ENFORCE(xpu_set_device(dst_place.device) == XPU_SUCCESS);
+    r = xpu_memcpy(dst, tmp, num, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+    PADDLE_ENFORCE(r == 0, "xpu_memcpy error");
+    PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+    free(tmp);
+  } else {
+    int r = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_DEVICE_TO_DEVICE);
+    PADDLE_ENFORCE(r == 0, "xpu_memcpy error");
+  }
+}
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 static constexpr size_t kMaxGpuAsyncCopyBytes = 64 * 1024;  // 64K

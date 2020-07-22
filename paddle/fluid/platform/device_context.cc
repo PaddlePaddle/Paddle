@@ -61,7 +61,7 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU option or check that your train process hold the "
+        "with WITH_GPU or WITH_XPU option or check that your train process hold the "
         "correct gpu_id if you use Executor.",
         place));
   }
@@ -116,6 +116,14 @@ DeviceContextPool::DeviceContextPool(
           "CUDAPlace is not supported. Please re-compile with WITH_GPU "
           "option."));
 #endif
+    } else if (platform::is_xpu_place(p)) {
+#ifdef PADDLE_WITH_XPU
+      EmplaceDeviceContext<XPUDeviceContext, XPUPlace>(&device_contexts_, p);
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("XPUPlace is not supported. Please "
+                                          "re-compile with WITH_XPU option."));
+#endif
     }
   }
 }
@@ -133,6 +141,35 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 }
 
 Place CPUDeviceContext::GetPlace() const { return place_; }
+
+#ifdef PADDLE_WITH_XPU
+XPUDeviceContext::XPUDeviceContext() {
+  context_ = xpu::create_context();
+}
+
+XPUDeviceContext::~XPUDeviceContext() {
+  xpu::destroy_context(context_);
+}
+
+XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
+  int dev_id = -1;
+  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  PADDLE_ENFORCE(xpu_set_device(place.device) == XPU_SUCCESS);
+  context_ = xpu::create_context();
+  PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+}
+
+void XPUDeviceContext::Wait() const {
+  PADDLE_ENFORCE(xpu_set_device(place_.device) == XPU_SUCCESS);
+  xpu_wait();
+}
+
+Place XPUDeviceContext::GetPlace() const { return place_; }
+
+xpu::Context* XPUDeviceContext::x_context() const {
+  return context_;
+}
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 
