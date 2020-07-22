@@ -556,9 +556,11 @@ void DownpourWorker::TrainFilesWithProfiler() {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                        "Tensor %s contains Inf", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                        "Tensor %s contains NAN", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -829,9 +831,11 @@ void DownpourWorker::TrainFiles() {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                        "Tensor %s contains Inf", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                        "Tensor %s contains NAN", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
