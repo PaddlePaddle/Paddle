@@ -6204,6 +6204,7 @@ def squeeze(input, axes, name=None):
 
     """
     helper = LayerHelper("squeeze", **locals())
+
     check_variable_and_dtype(
         input, 'input',
         ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
