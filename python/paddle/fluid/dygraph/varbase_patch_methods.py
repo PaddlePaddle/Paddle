@@ -133,10 +133,10 @@ def monkey_patch_varbase():
 
         Args:
             backward_strategy( :ref:`api_fluid_dygraph_BackwardStrategy` ): The Backward Strategy to run backward
-            retain_graph(bool, optional): If False, the graph used to compute grads will be freed. After calling
-            this method(`backward`), if you still want to add more ops to the graph previously built, you have to
-            set the parameter `retain_graph` True, then the grads will be retained. Thus, seting it False is much
-            more memory-efficient. Defaults to False.
+            retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
+            like to add more ops to the built graph after calling this method(`backward`), set the parameter
+            `retain_graph` True, then the grads will be retained. Thus, seting it False is much more memory-efficient.
+            Defaults to False.
 
         Returns:
             NoneType: None
