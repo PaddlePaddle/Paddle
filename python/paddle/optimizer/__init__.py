@@ -12,32 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define all optimizers in this directory, 
-# __all__ = ['Adadelta',
-#            'AdadeltaOptimizer',
-#            'Adagrad',
-#            'AdagradOptimizer',
-#            'Adam',
-#            'Adamax',
-#            'AdamaxOptimizer',
-#            'AdamOptimizer',
-#            'DecayedAdagrad',
-#            'DecayedAdagradOptimizer',
-#            'DGCMomentumOptimizer',
-#            'Dpsgd',
-#            'DpsgdOptimizer',
-#            'ExponentialMovingAverage',
-#            'Ftrl',
-#            'FtrlOptimizer',
-#            'LambOptimizer',
-#            'LarsMomentum',
-#            'LarsMomentumOptimizer',
-#            'LookaheadOptimizer',
-#            'ModelAverage',
-#            'Momentum',
-#            'MomentumOptimizer',
-#            'PipelineOptimizer',
-#            'RecomputeOptimizer',
-#            'RMSPropOptimizer',
-#            'SGD',
-#            'SGDOptimizer']
+__all__ = [
+    'Adadelta', 'AdadeltaOptimizer', 'Adagrad', 'AdagradOptimizer', 'Adam',
+    'Adamax', 'AdamaxOptimizer', 'AdamOptimizer', 'DecayedAdagrad',
+    'DecayedAdagradOptimizer', 'DGCMomentumOptimizer', 'Dpsgd',
+    'DpsgdOptimizer', 'ExponentialMovingAverage', 'Ftrl', 'FtrlOptimizer',
+    'LambOptimizer', 'LarsMomentum', 'LarsMomentumOptimizer',
+    'LookaheadOptimizer', 'ModelAverage', 'Momentum', 'MomentumOptimizer',
+    'PipelineOptimizer', 'RecomputeOptimizer', 'RMSPropOptimizer', 'SGD',
+    'SGDOptimizer'
+]
+
+
+from ..fluid.optimizer import  SGD, Momentum, Adagrad, Adam, Adamax, Dpsgd, DecayedAdagrad, \
+            Ftrl, SGDOptimizer, MomentumOptimizer, AdagradOptimizer, \
+            AdamOptimizer, AdamaxOptimizer, DpsgdOptimizer, \
+            DecayedAdagradOptimizer, RMSPropOptimizer, FtrlOptimizer, Adadelta, \
+            AdadeltaOptimizer, ModelAverage, LarsMomentum, \
+            LarsMomentumOptimizer, DGCMomentumOptimizer, LambOptimizer, \
+            ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, \
+            RecomputeOptimizer

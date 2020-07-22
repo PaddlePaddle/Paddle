@@ -23,8 +23,8 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must exist");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) must exist");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceMask");
+    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "SequenceMask");
 
     int maxlen = ctx->Attrs().Get<int>("maxlen");
     auto dim = framework::vectorize<int>(ctx->GetInputDim("X"));

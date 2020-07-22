@@ -241,6 +241,77 @@ class API_Test_Elementwise_Sum(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
 
+class TestRaiseSumError(unittest.TestCase):
+    def test_errors(self):
+        def test_type():
+            fluid.layers.sum([11, 22])
+
+        self.assertRaises(TypeError, test_type)
+
+        def test_dtype():
+            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+            data2 = fluid.data(name="input2", shape=[10], dtype="int8")
+            fluid.layers.sum([data1, data2])
+
+        self.assertRaises(TypeError, test_dtype)
+
+        def test_dtype1():
+            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+            fluid.layers.sum(data1)
+
+        self.assertRaises(TypeError, test_dtype1)
+
+
+class TestRaiseSumsError(unittest.TestCase):
+    def test_errors(self):
+        def test_type():
+            fluid.layers.sums([11, 22])
+
+        self.assertRaises(TypeError, test_type)
+
+        def test_dtype():
+            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+            data2 = fluid.data(name="input2", shape=[10], dtype="int8")
+            fluid.layers.sums([data1, data2])
+
+        self.assertRaises(TypeError, test_dtype)
+
+        def test_dtype1():
+            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+            fluid.layers.sums(data1)
+
+        self.assertRaises(TypeError, test_dtype1)
+
+        def test_out_type():
+            data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
+            data2 = fluid.data(name="input2", shape=[10], dtype="float32")
+            fluid.layers.sums([data1, data2], out=[10])
+
+        self.assertRaises(TypeError, test_out_type)
+
+        def test_out_dtype():
+            data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
+            data2 = fluid.data(name="input2", shape=[10], dtype="float32")
+            out = fluid.data(name="out", shape=[10], dtype="int8")
+            fluid.layers.sums([data1, data2], out=out)
+
+        self.assertRaises(TypeError, test_out_dtype)
+
+
+class TestSumOpError(unittest.TestCase):
+    def test_errors(self):
+        def test_empty_list_input():
+            with fluid.dygraph.guard():
+                fluid.core.ops.sum([])
+
+        def test_list_of_none_input():
+            with fluid.dygraph.guard():
+                fluid.core.ops.sum([None])
+
+        self.assertRaises(Exception, test_empty_list_input)
+        self.assertRaises(Exception, test_list_of_none_input)
+
+
 create_test_sum_fp16_class(TestSelectedRowsSumOp)
 create_test_sum_fp16_class(TestLoDTensorAndSelectedRowsOp)
 

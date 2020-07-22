@@ -52,11 +52,7 @@ int* TestBuddyAllocator(BuddyAllocator* allocator, size_t size_bytes,
 
     EXPECT_NE(p, nullptr);
 
-#ifdef PADDLE_WITH_CUDA
     if (size_bytes < allocator->GetMaxChunkSize()) {
-#else
-    if (size_bytes < allocator->GetMaxChunkSize()) {
-#endif
       // Not allocate from SystemAllocator
       EXPECT_FALSE(use_system_allocator);
       EXPECT_GE(allocator->Used(), used_bytes + size_bytes);
@@ -100,9 +96,9 @@ TEST(BuddyAllocator, GpuFraction) {
   TestBuddyAllocator(&buddy_allocator, 10 << 20);
 
   // Greater than max chunk size
-  TestBuddyAllocator(&buddy_allocator, 499 << 20,
+  TestBuddyAllocator(&buddy_allocator, 300 << 20,
                      /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator, 2 * static_cast<size_t>(1 << 30),
+  TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
 }
 
@@ -124,7 +120,7 @@ TEST(BuddyAllocator, InitRealloc) {
   // Greater than max chunk size
   TestBuddyAllocator(&buddy_allocator, 101 << 20,
                      /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator, 2 * static_cast<size_t>(1 << 30),
+  TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
 }
 
@@ -147,7 +143,7 @@ TEST(BuddyAllocator, ReallocSizeGreaterThanInit) {
   // Greater than max trunk size
   TestBuddyAllocator(&buddy_allocator, 11 << 20,
                      /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator, 2 * static_cast<size_t>(1 << 30),
+  TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
 }
 
@@ -226,7 +222,7 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
   FLAGS_reallocate_gpu_memory_in_mb = 0;
 
   void* p = nullptr;
-  EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(3) << 30) == cudaSuccess);
+  EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(1) << 30) == cudaSuccess);
 
   // BuddyAllocator should be able to alloc the remaining GPU
   BuddyAllocator buddy_allocator(
@@ -234,7 +230,7 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
       platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
   TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1) << 30);
-  TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(2) << 30);
+  TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1) << 30);
 
   if (p) {
     EXPECT_TRUE(cudaFree(p) == cudaSuccess);

@@ -13,13 +13,14 @@
 # limitations under the License.
 
 # TODO: define classes of convolutional neural network
+
 __all__ = [
     'Conv2D',
     'Conv2DTranspose',
     'Conv3D',
     'Conv3DTranspose',
-    #    'TreeConv',
-    #    'Conv1D'
+    #       'TreeConv',
+    #       'Conv1D'
 ]
 
 import numpy as np
@@ -39,6 +40,9 @@ def _get_default_param_initializer(num_channels, filter_size):
 
 class Conv2D(layers.Layer):
     """
+	:alias_main: paddle.nn.Conv2D
+	:alias: paddle.nn.Conv2D,paddle.nn.layer.Conv2D,paddle.nn.layer.conv.Conv2D
+
     This interface is used to construct a callable object of the ``Conv2D`` class.
     For more details, refer to code examples.
     The convolution2D layer calculates the output based on the input, filter
@@ -234,6 +238,9 @@ class Conv2D(layers.Layer):
 
 class Conv2DTranspose(layers.Layer):
     """
+	:alias_main: paddle.nn.Conv2DTranspose
+	:alias: paddle.nn.Conv2DTranspose,paddle.nn.layer.Conv2DTranspose,paddle.nn.layer.conv.Conv2DTranspose
+
     This interface is used to construct a callable object of the ``Conv2DTranspose`` class.
     For more details, refer to code examples.
     The convolution2D transpose layer calculates the output based on the input,
@@ -430,6 +437,9 @@ class Conv2DTranspose(layers.Layer):
 
 class Conv3D(layers.Layer):
     """
+	:alias_main: paddle.nn.Conv3D
+	:alias: paddle.nn.Conv3D,paddle.nn.layer.Conv3D,paddle.nn.layer.conv.Conv3D
+
     **Convlution3D Layer**
 
     The convolution3D layer calculates the output based on the input, filter
@@ -620,6 +630,9 @@ class Conv3D(layers.Layer):
 
 class Conv3DTranspose(layers.Layer):
     """
+	:alias_main: paddle.nn.Conv3DTranspose
+	:alias: paddle.nn.Conv3DTranspose,paddle.nn.layer.Conv3DTranspose,paddle.nn.layer.conv.Conv3DTranspose
+
     **Convlution3D transpose layer**
 
     The convolution3D transpose layer calculates the output based on the input,

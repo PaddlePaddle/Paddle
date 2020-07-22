@@ -33,13 +33,33 @@ class SliceOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       "Output (Out) of slice op should not be null.");
-
+    auto x_var_type = ctx->GetInputsVarType("Input")[0];
+    auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
+    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      PADDLE_ENFORCE_EQ(axes.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The size of axes must be 1 when the Input of "
+                            "SliceOp is LoDTensorArray, "
+                            "but received %d.",
+                            axes.size()));
+      if (ctx->IsRuntime()) {
+        // If the var type of input is LOD_TENSOR_ARRAY,
+        // the output shape is determined by SliceKernel:Compute in runtime.
+        return;
+      } else {
+        // NOTE(liym27): A better way is needed to get accurate dims of tensor
+        // array.
+        // The resulted dim of GetInputDim("Input") is the dim of the
+        // last item written into TensorArray "Input". Maybe it's a bug to fix.
+        ctx->SetOutputDim("Out", ctx->GetInputDim("Input"));
+        return;
+      }
+    }
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(in_dims.size(), 7,
                       "The rank of input should be less than 7.");
     framework::DDim out_dims(in_dims);
 
-    auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
     auto starts = ctx->Attrs().Get<std::vector<int>>("starts");
     auto ends = ctx->Attrs().Get<std::vector<int>>("ends");
     auto infer_flags = ctx->Attrs().Get<std::vector<int>>("infer_flags");
@@ -146,6 +166,25 @@ class SliceOp : public framework::OperatorWithKernel {
   }
 };
 
+class SliceOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto x_name = "Input";
+    auto out_name = "Out";
+    auto decrease_axis = ctx->GetAttr("decrease_axis");
+    auto not_decrease = boost::get<std::vector<int>>(decrease_axis).size() == 0;
+    if (not_decrease) {
+      // The default type of out is LoDTensor.
+      // However, if no axis is decreased and the type of input is not
+      // LoDTensor, the type of out should be the same as input.
+      // For example, input is a LoDTensorArray and no axis is decreased, the
+      // output should be a LoDTensorArray.
+      ctx->SetOutputType(out_name, ctx->GetInputType(x_name));
+      ctx->SetOutputDataType(out_name, ctx->GetInputDataType(x_name));
+    }
+  }
+};
+
 class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -236,6 +275,14 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true, "Input should not be null");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                       "Input(Out@GRAD) should not be null");
+    auto x_var_type = ctx->GetInputsVarType("Input")[0];
+    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      // If the var type of input is LOD_TENSOR_ARRAY,
+      // the output shape is determined by SliceGradKernel:Compute in runtime.
+      if (ctx->IsRuntime()) {
+        return;
+      }
+    }
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");
     if (ctx->HasOutput(x_grad_name)) {
@@ -259,6 +306,21 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
+  }
+};
+
+class SliceOpGradVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto x = "Input";
+    auto d_out = framework::GradVarName("Out");
+    auto out = framework::GradVarName("Input");
+    // The types of grad_input and input should always be the same.
+    // The default type of out is LoDTensor, but the type of input can be
+    // LoDTensor or LoDTensorArray,
+    // so set the type of both to be the same.
+    ctx->SetOutputType(out, ctx->GetInputType(x));
+    ctx->SetOutputDataType(out, ctx->GetInputDataType(d_out));
   }
 };
 
@@ -315,7 +377,7 @@ class SliceDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SliceOpGradNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SliceOpGradNoNeedBufferVarsInferer,
                                     "Input");
 
 }  // namespace operators
@@ -324,11 +386,13 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SliceOpGradNoNeedBufferVarsInference,
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
                   ops::SliceOpGradMaker<paddle::framework::OpDesc>,
-                  ops::SliceOpGradMaker<paddle::imperative::OpBase>);
+                  ops::SliceOpGradMaker<paddle::imperative::OpBase>,
+                  ops::SliceOpVarTypeInference);
 REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
                   ops::SliceDoubleOpGradMaker<paddle::framework::OpDesc>,
                   ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
-                  ops::SliceOpGradNoNeedBufferVarsInference);
+                  ops::SliceOpGradNoNeedBufferVarsInferer,
+                  ops::SliceOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,

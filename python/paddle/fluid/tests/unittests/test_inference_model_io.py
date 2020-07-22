@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 
+import os
 import six
 import numpy as np
 import paddle.fluid.core as core
@@ -27,13 +28,20 @@ import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.io import save_inference_model, load_inference_model
+from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
 from paddle.fluid.transpiler import memory_optimize
 
 
 class TestBook(unittest.TestCase):
+    class InferModel(object):
+        def __init__(self, list):
+            self.program = list[0]
+            self.feed_var_names = list[1]
+            self.fetch_vars = list[2]
+
     def test_fit_line_inference_model(self):
         MODEL_DIR = "./tmp/inference_model"
+        UNI_MODEL_DIR = "./tmp/inference_model1"
 
         init_program = Program()
         program = Program()
@@ -65,30 +73,43 @@ class TestBook(unittest.TestCase):
                           'y': tensor_y},
                     fetch_list=[avg_cost])
 
+        # Separated model and unified model
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
+        save_inference_model(UNI_MODEL_DIR, ["x", "y"], [avg_cost], exe,
+                             program, 'model', 'params')
+        main_program = program.clone()._prune_with_input(
+            feeded_var_names=["x", "y"], targets=[avg_cost])
+        params_str = save_persistables(exe, None, main_program, None)
+
         expected = exe.run(program,
                            feed={'x': tensor_x,
                                  'y': tensor_y},
                            fetch_list=[avg_cost])[0]
 
         six.moves.reload_module(executor)  # reload to build a new scope
-        exe = executor.Executor(place)
 
-        [infer_prog, feed_var_names, fetch_vars] = load_inference_model(
-            MODEL_DIR, exe)
+        model_0 = self.InferModel(load_inference_model(MODEL_DIR, exe))
+        with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
+            model_str = f.read()
+        model_1 = self.InferModel(
+            load_inference_model(None, exe, model_str, params_str))
 
-        outs = exe.run(
-            infer_prog,
-            feed={feed_var_names[0]: tensor_x,
-                  feed_var_names[1]: tensor_y},
-            fetch_list=fetch_vars)
-        actual = outs[0]
+        for model in [model_0, model_1]:
+            outs = exe.run(model.program,
+                           feed={
+                               model.feed_var_names[0]: tensor_x,
+                               model.feed_var_names[1]: tensor_y
+                           },
+                           fetch_list=model.fetch_vars)
+            actual = outs[0]
 
-        self.assertEqual(feed_var_names, ["x", "y"])
-        self.assertEqual(len(fetch_vars), 1)
-        print("fetch %s" % str(fetch_vars[0]))
-        self.assertTrue("scale" in str(fetch_vars[0]))
-        self.assertEqual(expected, actual)
+            self.assertEqual(model.feed_var_names, ["x", "y"])
+            self.assertEqual(len(model.fetch_vars), 1)
+            print("fetch %s" % str(model.fetch_vars[0]))
+            self.assertEqual(expected, actual)
+
+        self.assertRaises(ValueError, fluid.io.load_inference_model, None, exe,
+                          model_str, None)
 
 
 class TestSaveInferenceModel(unittest.TestCase):
@@ -121,7 +142,7 @@ class TestSaveInferenceModel(unittest.TestCase):
         # fake program without feed/fetch
         with program_guard(program, init_program):
             x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='int32')
             predict = fluid.layers.fc(input=x, size=2, act='softmax')
             acc = fluid.layers.accuracy(input=predict, label=y)
             auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
@@ -169,6 +190,14 @@ class TestInstance(unittest.TestCase):
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
         self.assertRaises(TypeError, save_inference_model,
                           [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
+
+
+class TestLoadInferenceModelError(unittest.TestCase):
+    def test_load_model_not_exist(self):
+        place = core.CPUPlace()
+        exe = executor.Executor(place)
+        self.assertRaises(ValueError, load_inference_model,
+                          './test_not_exist_dir', exe)
 
 
 if __name__ == '__main__':

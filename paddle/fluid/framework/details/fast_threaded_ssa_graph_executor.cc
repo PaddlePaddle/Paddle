@@ -63,7 +63,7 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
 
   FetchResultType fetches;
   if (return_merged) {
-    fetches = FeedFetchList(fetch_tensors.size());
+    fetches = FetchList(fetch_tensors.size());
   } else {
     fetches = FetchUnmergedList(fetch_tensors.size());
   }
@@ -150,8 +150,13 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
             "Possible reasons are:\n"
             "  1. The variable to be fetched is not defined in main program.\n"
             "  2. The variable to be fetched is not an input or output of any "
-            "operator.",
-            var_name));
+            "operator.\n"
+            "  3. Confirm that you have used the fetch `Variable` format "
+            "instead of the string literal('%s') in `fetch_list` parameter "
+            "when using `executor.run` method. In other words, the format of "
+            "`executor.run(fetch_list=[fetch_var])`(fetch_var is a Variable) "
+            "is recommended.",
+            var_name, var_name));
 
     auto &vars = fetched_var_it->second;
 
@@ -264,7 +269,14 @@ void FastThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
 void FastThreadedSSAGraphExecutor::ExecutionFinal(
     std::vector<OpHandleBase *> *fetch_ops) {
   VLOG(3) << "caught exception " << exception_.Type() << ", rethrow it";
-  ClearFetchOp(graph_, fetch_ops);
+  // NOTE: If a new exception occurs in this ClearFetchOp operation, it will
+  // cause the loss of exception triggered firstly not thrown.
+  // Instead, the cleanup operation should only be performed when an EOF
+  // exception is caught. If other exceptions are triggered, the ClearFetchOp
+  // should not be continued.
+  if (exception_.Type() == "EOF") {
+    ClearFetchOp(graph_, fetch_ops);
+  }
   exception_.ReThrow();
 }
 

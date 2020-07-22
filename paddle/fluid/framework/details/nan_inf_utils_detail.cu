@@ -122,7 +122,7 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
 
   auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
       platform::DeviceContextPool::Instance().Get(tensor_.place()));
-  int dev_id = boost::get<platform::CUDAPlace>(tensor_.place()).device;
+  int dev_id = BOOST_GET_CONST(platform::CUDAPlace, tensor_.place()).device;
   PADDLE_ENFORCE_EQ(
       (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex().size()), true,
       platform::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
@@ -152,9 +152,7 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
 
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemcpyAsync(gpu_str_ptr, iter->first.c_str(), op_var.length() + 1,
-                          cudaMemcpyHostToDevice, dev_ctx->stream()),
-          platform::errors::External(
-              "Async cudaMemcpy op_var info to gpu failed."));
+                          cudaMemcpyHostToDevice, dev_ctx->stream()));
     } else {  // get
       auto iter = op_var2gpu_str.find(op_var);
       PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(), true,

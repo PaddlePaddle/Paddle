@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 
 class BaseTestCase(OpTest):
@@ -283,6 +284,23 @@ class APT_ArgMaxTest(unittest.TestCase):
                 paddle.argmax(data, dtype="float32")
 
         self.assertRaises(TypeError, test_dtype2)
+
+
+class TestArgMinMaxOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_argmax_x_type():
+                x1 = [1, 2, 3]
+                output = fluid.layers.argmax(x=x1)
+
+            self.assertRaises(TypeError, test_argmax_x_type)
+
+            def test_argmin_x_type():
+                x2 = [1, 2, 3]
+                output = fluid.layers.argmin(x=x2)
+
+            self.assertRaises(TypeError, test_argmin_x_type)
 
 
 if __name__ == '__main__':

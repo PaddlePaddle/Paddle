@@ -39,6 +39,16 @@ DEFINE_int32(multiple_of_cupti_buffer_size, 1,
              "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
+namespace platform {
+
+void ParseCommandLineFlags(int argc, char **argv, bool remove) {
+  google::ParseCommandLineFlags(&argc, &argv, remove);
+}
+
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 
 #ifdef _WIN32
@@ -50,7 +60,8 @@ std::once_flag glog_init_flag;
 std::once_flag p2p_init_flag;
 std::once_flag glog_warning_once_flag;
 
-void InitGflags(std::vector<std::string> argv) {
+bool InitGflags(std::vector<std::string> args) {
+  bool successed = false;
   std::call_once(gflags_init_flag, [&]() {
     FLAGS_logtostderr = true;
     // NOTE(zhiqiu): dummy is needed, since the function
@@ -58,20 +69,25 @@ void InitGflags(std::vector<std::string> argv) {
     // commandline strings from idx 1.
     // The reason is, it assumes that the first one (idx 0) is
     // the filename of executable file.
-    argv.insert(argv.begin(), "dummy");
-    int argc = argv.size();
-    char **arr = new char *[argv.size()];
+    args.insert(args.begin(), "dummy");
+    std::vector<char *> argv;
     std::string line;
-    for (size_t i = 0; i < argv.size(); i++) {
-      arr[i] = &argv[i][0];
-      line += argv[i];
+    int argc = args.size();
+    for (auto &arg : args) {
+      argv.push_back(const_cast<char *>(arg.data()));
+      line += arg;
       line += ' ';
     }
     VLOG(1) << "Before Parse: argc is " << argc
             << ", Init commandline: " << line;
+
+    char **arr = argv.data();
     google::ParseCommandLineFlags(&argc, &arr, true);
+    successed = true;
+
     VLOG(1) << "After Parse: argc is " << argc;
   });
+  return successed;
 }
 
 void InitP2P(std::vector<int> devices) {
@@ -82,9 +98,8 @@ void InitP2P(std::vector<int> devices) {
       for (int j = 0; j < count; ++j) {
         if (devices[i] == devices[j]) continue;
         int can_acess = -1;
-        PADDLE_ENFORCE(
-            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]),
-            "Failed to test P2P access.");
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]));
         if (can_acess != 1) {
           LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
                        << " to " << devices[j];
@@ -102,14 +117,18 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                 \
-  {                                                               \
-    PADDLE_ENFORCE(!platform::dynload::cuptiActivityGetAttribute( \
-        attr, &attrValueSize, &attrValue));                       \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
-    PADDLE_ENFORCE(!platform::dynload::cuptiActivitySetAttribute( \
-        attr, &attrValueSize, &attrValue));                       \
+#define MULTIPLY_ATTR_VALUE(attr)                                            \
+  {                                                                          \
+    PADDLE_ENFORCE_EQ(                                                       \
+        !platform::dynload::cuptiActivityGetAttribute(attr, &attrValueSize,  \
+                                                      &attrValue),           \
+        true, platform::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                        \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";                \
+    PADDLE_ENFORCE_EQ(                                                       \
+        !platform::dynload::cuptiActivitySetAttribute(attr, &attrValueSize,  \
+                                                      &attrValue),           \
+        true, platform::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
@@ -168,12 +187,12 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
 
 // Throw some informations when CPU instructions mismatch.
-#define AVX_GUIDE(compiletime, runtime)                                     \
-  LOG(FATAL)                                                                \
-      << "This version is compiled on higher instruction(" #compiletime     \
-         ") system, you may encounter illegal instruction error running on" \
-         " your local CPU machine. Please reinstall the " #runtime          \
-         " version or compile from source code."
+#define AVX_GUIDE(compiletime, runtime)                                  \
+  PADDLE_THROW(platform::errors::Unavailable(                            \
+      "This version is compiled on higher instruction(" #compiletime     \
+      ") system, you may encounter illegal instruction error running on" \
+      " your local CPU machine. Please reinstall the " #runtime          \
+      " version or compile from source code."))
 
 #ifdef __AVX512F__
   if (!platform::MayIUse(platform::avx512f)) {

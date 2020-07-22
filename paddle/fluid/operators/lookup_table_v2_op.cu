@@ -144,7 +144,7 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> new_rows;
       new_rows.resize(ids_num);
-      auto gpu_place = boost::get<platform::CUDAPlace>(context.GetPlace());
+      auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
 
       // TODO(yuyang18): Strange code here.
       memory::Copy(gpu_place, new_rows.CUDAMutableData(context.GetPlace()),

@@ -30,10 +30,6 @@ using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
 }
@@ -192,11 +188,7 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
           reinterpret_cast<const void *>(d_batch_square_sum),
           reinterpret_cast<void *>(d_batch_square_sum), C,
           platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(), stream));
-      cudaError_t e_sync = cudaStreamSynchronize(stream);
-      if (e_sync != 0) {
-        LOG(FATAL) << "Fail to sync nccl stream: "
-                   << cudaGetErrorString(e_sync);
-      }
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU, and need_sync_stats connot be "

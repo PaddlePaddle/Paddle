@@ -23,6 +23,8 @@ from paddle.fluid import framework
 
 class Tracer(core.Tracer):
     """
+    :api_attr: imperative
+    
     Tracer is used to execute and record the operators executed, to construct the 
     computation graph in dygraph model. Tracer has two mode, :code:`train_mode`
     and :code:`eval_mode`. In :code:`train_mode`, Tracer would add backward network 

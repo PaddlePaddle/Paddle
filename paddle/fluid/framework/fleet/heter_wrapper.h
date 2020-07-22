@@ -25,13 +25,14 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace framework {
+
+class HeterCpuWorker;
 
 typedef std::function<void(void*)> HeterRpcCallbackFunc;
 

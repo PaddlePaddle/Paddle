@@ -161,7 +161,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #ifndef PADDLE_WITH_CUDA
       PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+      auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
       platform::SetDeviceId(dev_id);
 #endif
     }
@@ -1050,7 +1050,16 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
       expected_kernel_key.place_ = platform::CPUPlace();
-    } else if (Attr<std::string>("op_device") == "gpu") {
+    } else if (Attr<std::string>("op_device").find("gpu") !=
+               std::string::npos) {
+      auto device = Attr<std::string>("op_device");
+      size_t pos = device.find(':');
+      if (pos != std::string::npos) {
+        device = device.substr(0, pos);
+        LOG_FIRST_N(WARNING, 1)
+            << "Device index is only supported under pipeline parallelism, "
+            << "so it will be ignored.";
+      }
       // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
       // will be executed and a warning will be given at the same time.
       if (SupportGPU()) {
@@ -1155,8 +1164,8 @@ Scope* OperatorWithKernel::PrepareData(
         if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
             (var->IsType<LoDTensor>() == true) &&
             (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
-            (paddle::platform::get_cur_paddle_data_layout() ==
-             DataLayout::kNHWC)) {
+            (paddle::platform::MKLDNNDeviceContext::tls()
+                 .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
           // Mixed execution : MKL-DNN and GPU is not supported!
           if (!new_scope) {
             new_scope = &scope.NewScope();
@@ -1326,7 +1335,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       "The Input Variable(%s) of %s Op used to determine kernel data type "
-      "is empty or not LoDTensor or SelectedRows.",
+      "is empty or not LoDTensor or SelectedRows or LoDTensorArray.",
       name, Type());
   return data_type;
 }

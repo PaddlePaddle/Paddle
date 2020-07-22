@@ -34,7 +34,7 @@ class SwishOpConverter : public OpConverter {
     size_t output_num = op_desc.Output("Out").size();
     PADDLE_ENFORCE(output_num == 1);
     // Get attrs
-    float beta = boost::get<float>(op_desc.GetAttr("beta"));
+    float beta = BOOST_GET_CONST(float, op_desc.GetAttr("beta"));
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {

@@ -22,7 +22,8 @@ namespace framework {
 namespace ir {
 
 void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph, "graph cannot be nullptr.");
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("conv_activation_mkldnn_fuse", graph);
 
   GraphPatternDetector gpd;
@@ -58,8 +59,9 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     // MKLDNN ops use alpha and beta as activation parameters but paddle ops are
     // not generalized
     if (activation_type() == "relu6") {
-      desc->SetAttr("fuse_alpha",
-                    boost::get<float>(activation->Op()->GetAttr("threshold")));
+      desc->SetAttr(
+          "fuse_alpha",
+          BOOST_GET_CONST(float, activation->Op()->GetAttr("threshold")));
     } else if (activation_type() == "swish") {
       // paddle uses beta but mkldnn uses alpha for swish
       desc->SetAttr("fuse_alpha",
@@ -74,7 +76,8 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     GraphSafeRemoveNodes(graph, {activation, conv_out});
 
     PADDLE_ENFORCE_GT(subgraph.count(conv_input), 0UL,
-                      "subgraph has to contain conv_input node.");
+                      platform::errors::InvalidArgument(
+                          "Subgraph has to contain conv input node."));
     IR_NODE_LINK_TO(conv, activation_out);
     found_conv_activation_count++;
   };

@@ -102,7 +102,7 @@ void MainTest(std::initializer_list<std::string> quantize_enabled_op_types,
     if (node->IsOp()) {
       auto* op = node->Op();
       if (op->HasAttr("use_quantizer") &&
-          boost::get<bool>(op->GetAttr("use_quantizer"))) {
+          BOOST_GET_CONST(bool, op->GetAttr("use_quantizer"))) {
         ++use_quantizer_true_count;
       }
     }
@@ -122,7 +122,7 @@ void DefaultAttrTest(unsigned expected_use_quantizer_true_count) {
     if (node->IsOp()) {
       auto* op = node->Op();
       if (op->HasAttr("use_quantizer") &&
-          boost::get<bool>(op->GetAttr("use_quantizer"))) {
+          BOOST_GET_CONST(bool, op->GetAttr("use_quantizer"))) {
         ++use_quantizer_true_count;
       }
     }

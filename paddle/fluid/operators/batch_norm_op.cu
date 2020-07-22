@@ -47,16 +47,23 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
+
+    bool test_mode = is_test && (!trainable_stats);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size() >= 2 && x_dims.size() <= 5, true,
+        platform::errors::InvalidArgument(
+            "The size of input's dimensions should be between 2 and 5"
+            "But received: the size of input's dimensions is [%d]",
+            x_dims.size()));
 
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
@@ -66,7 +73,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 
     auto dtype = platform::CudnnDataType<T>::type;
     const bool fast_nhwc_batch_norm =
-        is_test ||
+        test_mode ||
         (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent);
 
     auto compute_format =
@@ -133,7 +140,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDeriveBNTensorDescriptor(
             bn_param_desc_, data_desc_,
-            is_test ? CUDNN_BATCHNORM_SPATIAL : mode_));
+            test_mode ? CUDNN_BATCHNORM_SPATIAL : mode_));
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -143,15 +150,39 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     auto handle = dev_ctx.cudnn_handle();
 
     // Now, depending on whether we are running test or not, we have two paths.
-    if (is_test || use_global_stats) {
+    if (test_mode || use_global_stats) {
       // only when test we use input to do computation.
       const auto *est_mean = ctx.Input<Tensor>("Mean");
       const auto *est_var = ctx.Input<Tensor>("Variance");
       // Run inference mode.
-      PADDLE_ENFORCE_EQ(est_mean->dims().size(), 1UL);
-      PADDLE_ENFORCE_EQ(est_var->dims().size(), 1UL);
-      PADDLE_ENFORCE_EQ(est_mean->dims()[0], C);
-      PADDLE_ENFORCE_EQ(est_var->dims()[0], C);
+      PADDLE_ENFORCE_EQ(
+          est_mean->dims().size(), 1UL,
+          platform::errors::InvalidArgument(
+              "The size of mean's dimensions must equal to 1."
+              "But received: the size of mean's dimensions mean is [%d],"
+              "the dimensions of mean is [%s].",
+              est_mean->dims().size(), est_mean->dims()));
+      PADDLE_ENFORCE_EQ(
+          est_var->dims().size(), 1UL,
+          platform::errors::InvalidArgument(
+              "The size of variance's dimensions must equal to 1."
+              "But received: the size of variance's dimensions is [%d],"
+              "the dimensions of variance is [%s].",
+              est_var->dims().size(), est_var->dims()));
+      PADDLE_ENFORCE_EQ(
+          est_mean->dims()[0], C,
+          platform::errors::InvalidArgument(
+              "The first dimension of mean must equal to the number of "
+              "Channels, which is [%d]. But received: the first dimension"
+              "of mean is [%d], the dimensions of mean is [%s].",
+              C, est_mean->dims()[0], est_mean->dims()));
+      PADDLE_ENFORCE_EQ(
+          est_var->dims()[0], C,
+          platform::errors::InvalidArgument(
+              "The first dimension of variance must equal to the number"
+              "of Channels, which is [%d]. But received: the first dimension of"
+              "variance is [%d], the dimensions of variance is [%s].",
+              C, est_var->dims()[0], est_var->dims()));
 
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnBatchNormalizationForwardInference(
@@ -500,8 +531,13 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
     const auto &x_dims = x->dims();
 
-    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size() >= 2 && x_dims.size() <= 5, true,
+        platform::errors::InvalidArgument(
+            "The size of input's dimensions should be between 2 and 5."
+            "But received: the size of input's dimensions is [%d],"
+            "the dimensions of input is [%s]",
+            x_dims.size(), x_dims));
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
@@ -512,8 +548,19 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
       d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     }
-    PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
-    PADDLE_ENFORCE_EQ(scale->dims()[0], C);
+    PADDLE_ENFORCE_EQ(
+        scale->dims().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "The size of scale's dimensions must equal to 1. But received: "
+            "the size of scale's dimensions is [%d], the dimensions of scale "
+            "is [%s].",
+            scale->dims().size(), scale->dims()));
+    PADDLE_ENFORCE_EQ(
+        scale->dims()[0], C,
+        platform::errors::InvalidArgument(
+            "The first dimension of scale must equal to Channels[%d]. But "
+            "received: the first dimension of scale is [%d]",
+            C, scale->dims()[0]));
 
     auto dtype = platform::CudnnDataType<T>::type;
     const auto *reserve_space = ctx.Input<Tensor>("ReserveSpace");

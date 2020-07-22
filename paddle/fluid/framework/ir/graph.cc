@@ -44,11 +44,14 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
     all_vars.emplace(var->Name(), var);
   }
 
+  auto not_visited_vars = all_vars;
+
   for (auto *op : program.Block(0).AllOps()) {
     ir::Node *node = CreateOpNode(op);
     // For input args, reuse the same var name if it was created before.
     // Otherwise, create a new one.
     for (auto &each_var_name : op->InputArgumentNames()) {
+      not_visited_vars.erase(each_var_name);
       ir::Node *var = nullptr;
       if (var_nodes.find(each_var_name) != var_nodes.end()) {
         var = var_nodes.at(each_var_name).back();
@@ -68,11 +71,13 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
     // For output args, always create a new var.
     std::unordered_set<std::string> out_arg_set;
     for (auto &each_var_name : op->OutputArgumentNames()) {
+      not_visited_vars.erase(each_var_name);
       if (each_var_name != kEmptyVarName) {
-        PADDLE_ENFORCE(out_arg_set.count(each_var_name) == 0,
-                       "Program is wrong. %s occurs in output of %s several "
-                       "times.",
-                       each_var_name, op->Type());
+        PADDLE_ENFORCE_EQ(out_arg_set.count(each_var_name), 0,
+                          platform::errors::InvalidArgument(
+                              "The input Program is invalid. Variable %s occurs"
+                              " in output of %s multiple times.",
+                              each_var_name, op->Type()));
         out_arg_set.insert(each_var_name);
       }
 
@@ -90,6 +95,16 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
       var->inputs.push_back(node);
     }
   }
+
+  for (auto &pair : not_visited_vars) {
+    const auto &var_name = pair.first;
+    auto *var_desc = pair.second;
+    if (var_name != kEmptyVarName) {
+      VLOG(10) << "Create isolated var node " << var_name;
+      var_nodes[var_name].push_back(CreateVarNode(var_desc));
+    }
+  }
+
   Set<const std::vector<OpDesc *>>(
       details::kStaleProgramOpDescs,
       new std::vector<OpDesc *>(program.Block(0).AllOps()));
@@ -121,10 +136,10 @@ void Graph::ResolveHazard(
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;
 
-      PADDLE_ENFORCE(
-          write_op,
-          string::Sprintf("The write_op of var %s should not be empty.",
-                          (*it_new)->Name()));
+      PADDLE_ENFORCE_NOT_NULL(
+          write_op, platform::errors::NotFound(
+                        "The generate operator of variable %s is null.",
+                        (*it_new)->Name()));
 
       // Add write after write dependence
       ir::Node *upstream_op =
@@ -174,6 +189,8 @@ std::shared_ptr<Graph> Graph::Clone() {
   cloned_graph->num_node_created_ = 0;
   std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
   for (auto *n : this->node_set_) {
+    PADDLE_ENFORCE_NOT_NULL(n, platform::errors::InvalidArgument(
+                                   "The node to be cloned is nullptr."));
     ir::Node *cloned_node = nullptr;
     if (n->IsCtrlVar()) {
       cloned_node = cloned_graph->CreateControlDepVar();
@@ -184,11 +201,11 @@ std::shared_ptr<Graph> Graph::Clone() {
     } else if (n->IsOp()) {
       cloned_node = cloned_graph->CreateOpNode(n->Op());
     }
-    if (cloned_node) {
-      origin_to_cloned[n] = cloned_node;
-    } else {
-      PADDLE_THROW("The cloned node's type is not supported!");
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        cloned_node,
+        platform::errors::InvalidArgument(
+            "Failed to clone new node from original node in graph."));
+    origin_to_cloned[n] = cloned_node;
   }
   for (auto *n : this->node_set_) {
     for (auto it = n->inputs.begin(); it != n->inputs.end(); it++) {

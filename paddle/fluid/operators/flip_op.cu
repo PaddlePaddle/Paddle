@@ -73,7 +73,7 @@ class FlipKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
     auto cplace = platform::CPUPlace();
     auto& dev_ctx = ctx.template device_context<CUDADeviceContext>();
 
@@ -81,7 +81,7 @@ class FlipKernel<platform::CUDADeviceContext, T>
     Tensor* out = ctx.Output<Tensor>("Out");
     auto* in_data = x->data<T>();
     auto* out_data = out->mutable_data<T>(ctx.GetPlace());
-    auto flip_dims = ctx.template Attr<std::vector<int>>("dims");
+    auto flip_dims = ctx.template Attr<std::vector<int>>("axis");
 
     const int flip_dims_size = static_cast<int>(flip_dims.size());
     auto x_dims = x->dims();

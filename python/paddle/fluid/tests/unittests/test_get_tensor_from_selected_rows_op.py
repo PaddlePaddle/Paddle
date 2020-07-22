@@ -17,7 +17,28 @@ from __future__ import print_function
 import unittest
 import paddle.fluid.core as core
 import numpy as np
+import paddle.fluid as fluid
 from paddle.fluid.op import Operator
+from paddle.fluid import Program, program_guard
+
+
+class TestGetTensorFromSelectedRowsError(unittest.TestCase):
+    """get_tensor_from_selected_rows error message enhance"""
+
+    def test_errors(self):
+        with program_guard(Program()):
+            x_var = fluid.data('X', [2, 3])
+            x_data = np.random.random((2, 4)).astype("float32")
+
+            def test_Variable():
+                fluid.layers.get_tensor_from_selected_rows(x=x_data)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_SELECTED_ROWS():
+                fluid.layers.get_tensor_from_selected_rows(x=x_var)
+
+            self.assertRaises(TypeError, test_SELECTED_ROWS)
 
 
 class TestGetTensorFromSelectedRows(unittest.TestCase):

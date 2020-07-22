@@ -111,15 +111,15 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
   }
 };
 
-class WriteToArrayInferVarType : public framework::VarTypeInference {
+class WriteToArrayInferVarType : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto x_name = ctx->Input("X")[0];
-    auto out_name = ctx->Output("Out")[0];
+    auto x_name = Input(ctx, "X")[0];
+    auto out_name = Output(ctx, "Out")[0];
     VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
-    ctx->SetType(out_name, framework::proto::VarType::LOD_TENSOR_ARRAY);
-    if (ctx->HasVar(x_name)) {
-      ctx->SetDataType(out_name, ctx->GetDataType(x_name));
+    SetType(ctx, out_name, framework::proto::VarType::LOD_TENSOR_ARRAY);
+    if (HasVar(ctx, x_name)) {
+      SetDataType(ctx, out_name, GetDataType(ctx, x_name));
     }
   }
 };

@@ -43,44 +43,48 @@ bool DimensionIsCompatibleWith(const framework::DDim& first,
 class ReadInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Reader"),
-                   "The ReadOp must take a reader as input.");
-    PADDLE_ENFORCE(ctx->HasOutputs("Out"),
-                   "The ReadOp should be assigned with output.");
+    OP_INOUT_CHECK(ctx->HasInput("Reader"), "Input", "Reader", "read");
+    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "read");
     if (!ctx->IsRuntime() && ctx->Attrs().Get<bool>("infer_out")) {
       std::vector<framework::DDim> reader_dims = ctx->GetReaderDims("Reader");
       std::vector<std::string> out_names = ctx->Outputs("Out");
       PADDLE_ENFORCE_EQ(
           reader_dims.size(), out_names.size(),
-          "The reader's dim number doesn't match the output number.");
+          platform::errors::InvalidArgument(
+              "The reader's dim number doesn't match the output number."));
       ctx->SetOutputsDim("Out", reader_dims);
       auto in_desc =
-          boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Reader")[0]);
+          BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Reader")[0]);
       auto in_lod_levels = in_desc->GetLoDLevels();
       auto out_var_ptrs = ctx->GetOutputVarPtrs("Out");
-      PADDLE_ENFORCE_EQ(in_lod_levels.size(), out_var_ptrs.size(),
-                        "LoDLevels of Input(Reader) must be the same as the "
-                        "number of Outputs(Out).");
+      PADDLE_ENFORCE_EQ(
+          in_lod_levels.size(), out_var_ptrs.size(),
+          platform::errors::InvalidArgument(
+              "LoDLevels of Input(Reader) must be the same as the "
+              "number of Outputs(Out)."));
       for (size_t i = 0; i < out_var_ptrs.size(); ++i) {
-        auto* out_desc = boost::get<framework::VarDesc*>(out_var_ptrs[i]);
+        auto* out_desc = BOOST_GET(framework::VarDesc*, out_var_ptrs[i]);
         out_desc->SetLoDLevel(in_lod_levels[i]);
       }
     }
   }
 };
 
-class ReadInferVarType : public framework::VarTypeInference {
+class ReadInferVarType : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    bool infer_out = boost::get<bool>(ctx->GetAttr("infer_out"));
+    bool infer_out = BOOST_GET_CONST(bool, ctx->GetAttr("infer_out"));
     if (infer_out) {
-      std::string reader_name = ctx->Input("Reader")[0];
-      std::vector<std::string> out_names = ctx->Output("Out");
-      auto dtypes = ctx->GetDataTypes(reader_name);
-      PADDLE_ENFORCE_EQ(dtypes.size(), out_names.size());
+      std::string reader_name = Input(ctx, "Reader")[0];
+      auto& out_names = Output(ctx, "Out");
+      auto dtypes = GetDataTypes(ctx, reader_name);
+      PADDLE_ENFORCE_EQ(dtypes.size(), out_names.size(),
+                        platform::errors::InvalidArgument(
+                            "The number of input reader's dtypes do not match "
+                            "the output variable number."));
       for (size_t i = 0; i < dtypes.size(); ++i) {
-        ctx->SetType(out_names[i], framework::proto::VarType::LOD_TENSOR);
-        ctx->SetDataType(out_names[i], dtypes[i]);
+        SetType(ctx, out_names[i], framework::proto::VarType::LOD_TENSOR);
+        SetDataType(ctx, out_names[i], dtypes[i]);
       }
     }
   }
@@ -109,31 +113,36 @@ class ReadOp : public framework::OperatorBase {
       VLOG(3) << "throw_eof_exp";
       PADDLE_THROW_EOF();
     }
-    PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size(),
-                      "input size and output size of read_op do not match");
+    PADDLE_ENFORCE_EQ(
+        ins.size(), out_arg_names.size(),
+        platform::errors::InvalidArgument("input data number and output data "
+                                          "number of read_op do not match"));
 
     const std::vector<framework::DDim>& shapes = reader->Shapes();
     const std::vector<framework::proto::VarType::Type>& var_types =
         reader->VarTypes();
     const std::vector<bool>& need_check_feed = reader->NeedCheckFeed();
     PADDLE_ENFORCE_EQ(out_arg_names.size(), need_check_feed.size(),
-                      "output size of read_op and the number of fed "
-                      "variables of reader do not match");
+                      platform::errors::InvalidArgument(
+                          "output size of read_op and the number of fed "
+                          "variables of reader do not match"));
 
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
       if (need_check_feed[i]) {
         auto in_dims = ins[i].dims();
-        PADDLE_ENFORCE_EQ(DimensionIsCompatibleWith(shapes[i], in_dims), true,
-                          "The fed Variable %s should have dimensions = %d, "
-                          "shape = [%s], but received fed shape [%s]",
-                          out_arg_names[i], shapes[i].size(), shapes[i],
-                          in_dims);
+        PADDLE_ENFORCE_EQ(
+            DimensionIsCompatibleWith(shapes[i], in_dims), true,
+            platform::errors::InvalidArgument(
+                "The fed Variable %s should have dimensions = %d, "
+                "shape = [%s], but received fed shape [%s]",
+                out_arg_names[i], shapes[i].size(), shapes[i], in_dims));
         PADDLE_ENFORCE_EQ(
             ins[i].type(), var_types[i],
-            "The data type of fed Variable %s must be %s, but received %s",
-            out_arg_names[i], var_types[i], ins[i].type());
+            platform::errors::InvalidArgument(
+                "The data type of fed Variable %s must be %s, but received %s",
+                out_arg_names[i], var_types[i], ins[i].type()));
       }
       out->ShareDataWith(ins[i]);
       out->set_lod(ins[i].lod());

@@ -32,6 +32,8 @@ __all__ = [
 @dygraph_only
 def save_dygraph(state_dict, model_path):
     '''
+    :api_attr: imperative
+
     Save Layer's state_dict to disk. This will generate a file with suffix ".pdparams"
     
     The state_dict is get from Layers.state_dict function
@@ -63,7 +65,7 @@ def save_dygraph(state_dict, model_path):
     '''
 
     base_name = os.path.basename(model_path)
-    assert base_name != "", "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
+    assert base_name != "", "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received filename is empty string."
 
     suffix = ".pdparams"
     assert len(state_dict) > 0, "state_dict is empty, no need to save"
@@ -78,9 +80,9 @@ def save_dygraph(state_dict, model_path):
     for k, v in state_dict.items():
         if isinstance(v, (Variable, core.VarBase)):
             model_dict[k] = v.numpy()
+            name_table[k] = v.name
         else:
             model_dict[k] = v
-        name_table[k] = v.name
     model_dict["StructuredToParameterName@@"] = name_table
 
     file_name = model_path + suffix
@@ -95,6 +97,8 @@ def save_dygraph(state_dict, model_path):
 @dygraph_only
 def load_dygraph(model_path, keep_name_table=False):
     '''
+    :api_attr: imperative
+    
     Load parameter state_dict from disk.
 
     Args:

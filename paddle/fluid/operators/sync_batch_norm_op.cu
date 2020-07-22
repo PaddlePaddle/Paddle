@@ -28,6 +28,7 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout layout = framework::StringToDataLayout(layout_str);
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
     PADDLE_ENFORCE_EQ(use_global_stats, false,
                       platform::errors::InvalidArgument(
                           "sync_batch_norm doesn't support "
@@ -47,9 +48,10 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
     auto *saved_inv_variance = ctx.Output<Tensor>("SavedVariance");
 
+    bool test_mode = is_test && (!trainable_stats);
     SyncBatchNormFunctor<platform::CUDADeviceContext, T>(
         ctx, layout, x, y, est_mean, est_var, mean_out, variance_out,
-        saved_mean, saved_inv_variance, epsilon, momentum, is_test,
+        saved_mean, saved_inv_variance, epsilon, momentum, test_mode,
         use_global_stats);
   }
 };

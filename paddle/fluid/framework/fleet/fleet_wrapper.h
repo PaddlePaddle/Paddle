@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/heter_service.h"
-#include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
@@ -250,15 +249,22 @@ class FleetWrapper {
 
   void PrintTableStat(const uint64_t table_id);
   // mode = 0, load all feature
-  // mode = 1, laod delta feature, which means load diff
+  // mode = 1, load delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);
   // mode = 0, load all feature
-  // mode = 1, laod delta feature, which means load diff
+  // mode = 1, load delta feature, which means load diff
   void LoadModelOneTable(const uint64_t table_id, const std::string& path,
                          const int mode);
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
   void SaveModel(const std::string& path, const int mode);
+  // mode = 0, save all feature
+  // mode = 1, save delta feature, which means save diff
+  void SaveModelOneTable(const uint64_t table_id, const std::string& path,
+                         const int mode);
+  // save model with prefix
+  void SaveModelOneTablePrefix(const uint64_t table_id, const std::string& path,
+                               const int mode, const std::string& prefix);
   // get save cache threshold
   double GetCacheThreshold(int table_id);
   // shuffle cache model between servers
@@ -290,6 +296,10 @@ class FleetWrapper {
   // send client to client message
   std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
                                              const std::string& msg);
+  // confirm all the updated params in the current pass
+  void Confirm();
+  // revert all the updated params in the current pass
+  void Revert();
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {

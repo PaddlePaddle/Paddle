@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from paddle.fluid import metrics
+import paddle.fluid as fluid
 
 
 class TestAucOp(OpTest):
@@ -104,5 +105,25 @@ class TestGlobalAucOp(OpTest):
         self.check_output()
 
 
-if __name__ == "__main__":
+class TestAucOpError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+
+            def test_type1():
+                data1 = fluid.data(name="input1", shape=[-1, 2], dtype="int")
+                label1 = fluid.data(name="label1", shape=[-1], dtype="int")
+                result1 = fluid.layers.auc(input=data1, label=label1)
+
+            self.assertRaises(TypeError, test_type1)
+
+            def test_type2():
+                data2 = fluid.data(
+                    name="input2", shape=[-1, 2], dtype="float32")
+                label2 = fluid.data(name="label2", shape=[-1], dtype="float32")
+                result2 = fluid.layers.auc(input=data2, label=label2)
+
+            self.assertRaises(TypeError, test_type2)
+
+
+if __name__ == '__main__':
     unittest.main()

@@ -21,6 +21,7 @@ from paddle.fluid import core
 from paddle.fluid import Linear
 from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
+import paddle
 
 
 class MyLayer(fluid.Layer):
@@ -203,6 +204,31 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.array_equal(dy_out1, dy_out2))
         self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
 
+    def test_functional_paddle_imperative_dygraph_context(self):
+        self.assertFalse(paddle.imperative.enabled())
+        paddle.enable_imperative()
+        self.assertTrue(paddle.imperative.enabled())
+        np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        var_inp = paddle.imperative.to_variable(np_inp)
+        mlp = MLP(input_size=2)
+        out = mlp(var_inp)
+        dy_out1 = out.numpy()
+        out.backward()
+        dy_grad1 = mlp._linear1.weight.gradient()
+        paddle.disable_imperative()
+        self.assertFalse(paddle.imperative.enabled())
+        with paddle.imperative.guard():
+            self.assertTrue(paddle.imperative.enabled())
+            var_inp = paddle.imperative.to_variable(np_inp)
+            mlp = MLP(input_size=2)
+            out = mlp(var_inp)
+            dy_out2 = out.numpy()
+            out.backward()
+            dy_grad2 = mlp._linear1.weight.gradient()
+        self.assertFalse(paddle.imperative.enabled())
+        self.assertTrue(np.array_equal(dy_out1, dy_out2))
+        self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
+
     def test_isinstance(self):
         var = fluid.layers.data(shape=[1], name='x', dtype='float32')
         self.assertTrue(isinstance(var, fluid.Variable))
@@ -214,18 +240,22 @@ class TestImperative(unittest.TestCase):
     def test_create_VarBase(self):
         x = np.ones([2, 2], np.float32)
         y = np.zeros([3, 3], np.float32)
+        t = fluid.Tensor()
+        t.set(x, fluid.CPUPlace())
         with fluid.dygraph.guard():
             tmp = fluid.core.VarBase(value=x, place=fluid.core.CPUPlace())
             tmp2 = fluid.core.VarBase(y, fluid.core.CPUPlace())
             tmp3 = fluid.dygraph.base.to_variable(x)
             tmp4 = fluid.core.VarBase(y)
             tmp5 = fluid.core.VarBase(value=x)
+            tmp6 = fluid.core.VarBase(t)
 
             self.assertTrue(np.array_equal(x, tmp.numpy()))
             self.assertTrue(np.array_equal(y, tmp2.numpy()))
             self.assertTrue(np.array_equal(x, tmp3.numpy()))
             self.assertTrue(np.array_equal(y, tmp4.numpy()))
             self.assertTrue(np.array_equal(x, tmp5.numpy()))
+            self.assertTrue(np.array_equal(x, tmp6.numpy()))
 
     def test_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
@@ -234,6 +264,24 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(l0.weight._grad_ivar() is None)
             l1 = fluid.Linear(2, 2)
             with fluid.dygraph.no_grad():
+                self.assertTrue(l1.weight.stop_gradient is False)
+                tmp = l1.weight * 2
+                self.assertTrue(tmp.stop_gradient)
+            x = fluid.dygraph.to_variable(data)
+            y = l0(x) + tmp
+            o = l1(y)
+            o.backward()
+
+            self.assertTrue(tmp._grad_ivar() is None)
+            self.assertTrue(l0.weight._grad_ivar() is not None)
+
+    def test_paddle_imperative_no_grad_guard(self):
+        data = np.array([[2, 3], [4, 5]]).astype('float32')
+        with fluid.dygraph.guard():
+            l0 = fluid.Linear(2, 2)
+            self.assertTrue(l0.weight._grad_ivar() is None)
+            l1 = fluid.Linear(2, 2)
+            with paddle.imperative.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
@@ -340,7 +388,6 @@ class TestImperative(unittest.TestCase):
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp.stop_gradient = False
             l = MyLayer()
-            print(var_inp)
             x = l(var_inp)[0]
             self.assertIsNotNone(x)
             dy_out = x.numpy()
@@ -596,6 +643,15 @@ class TestDygraphUtils(unittest.TestCase):
             res1 = func(a, bias=a)
             res2 = a + a
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+
+class TestDygraphGuardWithError(unittest.TestCase):
+    def test_without_guard(self):
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(np.zeros([10, 10]))
+        with self.assertRaisesRegexp(TypeError,
+                                     "Please use `with fluid.dygraph.guard()"):
+            y = fluid.layers.matmul(x, x)
 
 
 if __name__ == '__main__':

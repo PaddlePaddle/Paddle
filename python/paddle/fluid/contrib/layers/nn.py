@@ -27,13 +27,15 @@ from ... import unique_name
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
+from paddle.fluid.layers import slice, reshape
 import warnings
 
 __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
-    'partial_sum', 'tdm_child', 'rank_attention'
+    'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler', 'batch_fc',
+    '_pull_box_extended_sparse', 'bilateral_slice'
 ]
 
 
@@ -419,6 +421,9 @@ def tree_conv(nodes_vector,
           # also output tensor could be pooling(the pooling in paper called global pooling)
           pooled = fluid.layers.reduce_max(out_vector, dim=2) # global pooling
     """
+    check_type(nodes_vector, 'nodes_vector', (Variable), 'tree_conv')
+    check_type(edge_set, 'edge_set', (Variable), 'tree_conv')
+
     helper = LayerHelper("tree_conv", **locals())
     dtype = helper.input_dtype('nodes_vector')
     feature_size = nodes_vector.shape[2]
@@ -1019,11 +1024,221 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     return (child, leaf_mask)
 
 
+def tdm_sampler(x,
+                neg_samples_num_list,
+                layer_node_num_list,
+                leaf_node_num,
+                tree_travel_attr=None,
+                tree_layer_attr=None,
+                output_positive=True,
+                output_list=True,
+                seed=0,
+                tree_dtype='int32',
+                dtype='int32'):
+    """
+    **Tdm Sampler**
+    According to the input positive samples at leaf node(x), do negative sampling layer by layer on the given tree.
+    .. code-block:: text
+
+        Given:
+            tree[[0], [1, 2], [3, 4], [5, 6]] # A binary tree with seven nodes
+            travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path (exclude root node)
+            layer_list = [[1, 2], [3, 4, 5, 6]] # two layer (exclude root node)
+
+            x = [[0], [1], [2], [3]] # Corresponding to leaf node [[3], [4], [5], [6]]
+            neg_samples_num_list = [0, 0] # negative sample nums = 0
+            layer_node_num_list = [2, 4]
+            leaf_node_num = 4
+            output_list = False
+
+          we get:
+            out = [[1, 3], [1, 4], [2, 5], [2, 6]]
+            labels = [[1, 1], [1, 1], [1, 1], [1, 1]]
+            mask = [[1, 1], [1, 1], [1, 1], [1, 1]]
+
+    Args:
+        x (Variable): Variable contained the item_id(corresponding to leaf node) information, dtype support int32/int64.
+        neg_samples_num_list (list(int)): Number of negative samples per layer.
+        layer_node_num_list (list(int)): Number of nodes per layer, must has same shape with neg_samples_num_list.
+        leaf_node_num (int): Number of leaf nodes.
+        tree_travel_attr (ParamAttr): To specify the tdm-travel parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
+            has shape (leaf_node_num, len(layer_node_num_list)), dtype support int32/int64.
+        tree_layer_attr (ParamAttr): To specify the tdm-layer parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
+            has shape (node_num, 1), dtype support int32/int64.
+        output_positive (bool): Whether to output positive samples (includ label and mask )at the same time.
+        output_list (bool): Whether to divide the output into layers and organize it into list format.
+        seed (int): The number of random seed.
+        tree_dtype(np.dtype|core.VarDesc.VarType|str): The dtype of tdm-travel and tdm-layer, support int32/int64
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype of output(sampling results, labels and masks) 
+
+    Returns:
+        tuple: A tuple including sampling results, corresponding labels and masks. if output_positive = True, sampling
+            result  will include both positive and negative samples. If sampling reseult is a positive sample, the label is 1, 
+            and if it is a negative sample, it is 0. If the tree is unbalanced, in order to ensure the consistency of the 
+            sampling result shape, the padding sample's mask = 0, the real sample's mask value = 1. 
+            If output_list = True, the result will organize into list format specified by layer information.
+            Output variable have same type with tdm-travel and tdm-layer parameter(tree_dtype).
+
+    Examples:
+        .. code-block:: python
+        import paddle.fluid as fluid
+        import numpy as np
+        x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+        travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
+        layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
+
+        neg_samples_num_list = [0, 0] # negative sample nums = 0
+        layer_node_num_list = [2, 4] #two layer (exclude root node)
+        leaf_node_num = 4
+
+        travel_array = np.array(travel_list)
+        layer_array = np.array(layer_list_flat)
+
+        sample, label, mask = fluid.contrib.layers.tdm_sampler(
+            x,
+            neg_samples_num_list,
+            layer_node_num_list,
+            leaf_node_num,
+            tree_travel_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    travel_array)),
+            tree_layer_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    layer_array)),
+            output_positive=True,
+            output_list=True,
+            seed=0,
+            tree_dtype='int32')
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        xx = np.array([[0],[1]]).reshape((2,1)).astype("int32")
+
+        exe.run(feed={"x":xx})
+
+    """
+    helper = LayerHelper("tdm_sampler", **locals())
+    check_dtype(tree_dtype, 'tree_dtype', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_sampler')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_sampler')
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if len(neg_samples_num_list) != len(layer_node_num_list):
+        raise ValueError(
+            "The shape of negative samples list must match the shape of layers. "
+            "But received len of neg_samples_num_list: {},"
+            "and len of layer_node_num_list: {}, please check your input.".
+            format(len(neg_samples_num_list), len(layer_node_num_list)))
+    assert leaf_node_num is not None, "leaf_node_num should not be None here."
+
+    layer_nums = 0
+    node_nums = 0
+    tree_layer_offset_lod = [0]
+    for layer_idx, layer_node_num in enumerate(layer_node_num_list):
+        layer_nums += 1
+        node_nums += layer_node_num
+        tree_layer_offset_lod.append(node_nums)
+        if neg_samples_num_list[layer_idx] >= layer_node_num_list[layer_idx]:
+            raise ValueError(
+                "The number of negative samples must be less than the number of nodes "
+                "in the layer {}, But received negative nums {}, and num of node at layer {} "
+                "is {}, please check your input.".format(
+                    layer_idx, neg_samples_num_list[
+                        layer_idx], layer_idx, layer_node_num_list[layer_idx]))
+    assert leaf_node_num < node_nums, "leaf_node_num must be less than total node nums."
+
+    travel_shape = [leaf_node_num, layer_nums]
+    travel = helper.create_parameter(
+        attr=tree_travel_attr,
+        shape=travel_shape,
+        dtype=tree_dtype,
+        default_initializer=Constant(0))
+
+    layer_shape = [node_nums, 1]
+    layer = helper.create_parameter(
+        attr=tree_layer_attr,
+        shape=layer_shape,
+        dtype=tree_dtype,
+        default_initializer=Constant(0))
+
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    out.stop_gradient = True
+
+    labels = helper.create_variable_for_type_inference(dtype=dtype)
+    labels.stop_gradient = True
+
+    mask = helper.create_variable_for_type_inference(dtype=dtype)
+    mask.stop_gradient = True
+
+    helper.append_op(
+        type='tdm_sampler',
+        inputs={"X": x,
+                "Travel": travel,
+                "Layer": layer},
+        outputs={'Out': out,
+                 'Labels': labels,
+                 'Mask': mask},
+        attrs={
+            'neg_samples_num_list': neg_samples_num_list,
+            'output_positive': output_positive,
+            'layer_offset_lod': tree_layer_offset_lod,
+            'seed': seed,
+            'dtype': c_dtype
+        })
+
+    if output_list:
+        output_list = []
+        labels_list = []
+        mask_list = []
+        start_offset = 0
+        positive_flag = 1
+        if not output_positive:
+            positive_flag = 0
+
+        for layer_sample_num in neg_samples_num_list:
+            end_offset = start_offset + \
+                layer_sample_num + positive_flag
+            layer_samples = slice(
+                out, axes=[1], starts=[start_offset], ends=[end_offset])
+            layer_labels = slice(
+                labels, axes=[1], starts=[start_offset], ends=[end_offset])
+            layer_mask = slice(
+                mask, axes=[1], starts=[start_offset], ends=[end_offset])
+
+            layer_samples = reshape(layer_samples,
+                                    [-1, layer_sample_num + positive_flag, 1])
+            layer_samples.stop_gradient = True
+
+            layer_labels = reshape(layer_labels,
+                                   [-1, layer_sample_num + positive_flag, 1])
+            layer_labels.stop_gradient = True
+
+            layer_mask = reshape(layer_mask,
+                                 [-1, layer_sample_num + positive_flag, 1])
+            layer_mask.stop_gradient = True
+
+            output_list.append(layer_samples)
+            labels_list.append(layer_labels)
+            mask_list.append(layer_mask)
+            start_offset = end_offset
+
+        out = output_list
+        labels = labels_list
+        mask = mask_list
+
+    return (out, labels, mask)
+
+
 def rank_attention(input,
                    rank_offset,
                    rank_param_shape,
                    rank_param_attr,
-                   max_rank=3):
+                   max_rank=3,
+                   max_size=0):
     """
     **Rank Attention layer**
     This Op can calculate rank attention between input and rank_param, and 
@@ -1042,7 +1257,7 @@ def rank_attention(input,
         .. code-block:: python
            import paddle.fluid as fluid
            import numpy as np
-           
+
            input = fluid.data(name="input", shape=[None, 2], dtype="float32")
            rank_offset = fluid.data(name="rank_offset", shape=[None, 7], dtype="int32")
            out = fluid.contrib.layers.rank_attention(input=input,
@@ -1053,7 +1268,8 @@ def rank_attention(input,
                                                                      name="ubm_rank_param.w_0",
                                                                      initializer=
                                                                      fluid.initializer.Xavier(uniform=False)),
-                                                      max_rank=3)
+                                                      max_rank=3,
+                                                      max_size=0)
     """
     helper = LayerHelper('rank_attention', **locals())
     dtype = helper.input_dtype(input_param_name='input')
@@ -1065,6 +1281,8 @@ def rank_attention(input,
     rank_param.stop_gradient = False
 
     output = helper.create_variable_for_type_inference(dtype)
+    input_help = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
     ins_rank = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
@@ -1075,7 +1293,181 @@ def rank_attention(input,
             "RankOffset": rank_offset,
             "RankParam": rank_param
         },
-        outputs={"Out": output},
-        attrs={"MaxRank": max_rank})
-
+        outputs={"Out": output,
+                 "InputHelp": input_help,
+                 "InsRank": ins_rank},
+        attrs={"MaxRank": max_rank,
+               "MaxSize": max_size})
     return output
+
+
+def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
+    """
+    **Batch FC layer**
+    This Op can calculate BatchFC. This is similar to matmul op, 
+    except that the bias and relu activation layers are added. 
+    Notice: It currently supports GPU device.
+    This Op exists in contrib, which means that it is not shown to the public.
+    Args:
+        input: Tensor with data type float32, float64.
+        param_size: The size of w.
+        param_attr: Attribute initializer of w.
+        bias_size: The size of bias.
+        bias_attr: Attribute initializer of bias.
+        act: Activation to be applied to the output of this layer.
+
+    Returns:
+        Variable: A Tensor with the same data type as input's.
+    Examples:
+        .. code-block:: python
+           import paddle.fluid as fluid
+           
+           input = fluid.data(name="input", shape=[16, 2, 3], dtype="float32")
+           out = fluid.contrib.layers.batch_fc(input=input,
+                                               param_size=[16, 3, 10],
+                                               param_attr=
+                                                 fluid.ParamAttr(learning_rate=1.0,
+                                                               name="w_0",
+                                                               initializer=
+                                                               fluid.initializer.Xavier(uniform=False)),
+                                               bias_size=[16, 10],
+                                               bias_attr=
+                                                 fluid.ParamAttr(learning_rate=1.0,
+                                                               name="b_0",
+                                                               initializer=
+                                                               fluid.initializer.Xavier(uniform=False)),
+                                                   act="relu")
+    """
+
+    helper = LayerHelper("batch_fc", **locals())
+    check_type(input, 'input', (Variable), 'batch_fc')
+    input_shape = input.shape
+    assert input_shape[0] == param_size[0]
+    assert input_shape[2] == param_size[1]
+    assert param_size[2] == bias_size[1]
+    assert input_shape[0] == bias_size[0]
+
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'input', ['float32', 'float64'], 'batch_fc')
+
+    w = helper.create_parameter(
+        attr=param_attr, shape=param_size, dtype=dtype, is_bias=False)
+    b = helper.create_parameter(
+        attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=False)
+    pre_act = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="batch_fc",
+        inputs={"Input": input,
+                "W": w,
+                "Bias": b},
+        outputs={"Out": pre_act})
+    return helper.append_activation(pre_act)
+
+
+def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
+    """
+    **Pull Box Extended Sparse Layer**
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    BoxPS lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of
+            each embedding vector respectively.
+        extend_size(int): The embedding size parameter in extended dim, 
+            which indicates the size of each embedding vector respectively.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+      float32 now.
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb, emb_ex = fluid.contrib.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
+    """
+    helper = LayerHelper('pull_box_extended_sparse', **locals())
+    helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    outs_extend = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    helper.append_op(
+        type='pull_box_extended_sparse',
+        inputs={'Ids': inputs},
+        outputs={'Out': outs,
+                 'OutExtend': outs_extend},
+        attrs={'emb_size': size,
+               'emb_extended_size': extend_size})
+    if len(outs) == 1:
+        return outs[0], outs_extend[0]
+    return outs, outs_extend
+
+
+def bilateral_slice(x, guide, grid, has_offset, name=None):
+    """
+    :alias_main: paddle.nn.functional.bilateral_slice
+	:alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
+	:old_api: paddle.fluid.layers.bilateral_slice
+
+    This operation implements bilateral slicing on the input according to the guide map.
+    For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_
+
+    Args:
+        x(Variable): The input tensor, which is a 4-D tensor with shape
+                     [N, C, H, W], N is the batch size, C is the channel
+                     number, H and W is the feature height and width.
+                     The data type is float32 and float64.
+        guide(Variable): Input grid tensor of shape [N, H, W]. The
+                        data type is float32 and float64.
+        grid(Variable): Input grid tensor of shape [N, C, D, H, W]. The
+                        data type is float32 and float64.
+        has_offset(bool): Whether to slice with affine offset.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Variable: Output of shape [N, C, H, W]. The data type is same as input tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x = fluid.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
+            guide = fluid.data(name='guide', shape=[None, 101, 60], dtype='float32')
+            grid = fluid.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
+
+            # without offset
+            output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=False)
+            
+            # has offset
+            output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=True)
+
+    """
+    helper = LayerHelper("bilateral_slice", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'bilateral_slice')
+    check_variable_and_dtype(guide, 'guide', ['float32', 'float64'],
+                             'bilateral_slice')
+    check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
+                             'bilateral_slice')
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    inputs = {'X': x, 'Guide': guide, 'Grid': grid}
+
+    helper.append_op(
+        type='bilateral_slice',
+        inputs=inputs,
+        attrs={'has_offset': has_offset},
+        outputs={'Out': out})
+    return out

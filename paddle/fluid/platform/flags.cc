@@ -171,9 +171,9 @@ DEFINE_bool(cudnn_batchnorm_spatial_persistent, false,
 
 /**
  * NCCL related FLAG
- * Name: FLAGS_enable_cublas_tensor_op_math
- * Since Version:
- * Value Range:
+ * Name: FLAGS_sync_nccl_allreduce
+ * Since Version: 1.3
+ * Value Range: bool, default=true
  * Example:
  * Note: asynchronous nccl allreduce or synchronous issue:
  *       https://github.com/PaddlePaddle/Paddle/issues/15049
@@ -303,7 +303,8 @@ DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
  * Allocator related FLAG
  * Name: FLAGS_allocator_strategy
  * Since Version: 1.2
- * Value Range: string, {naive_best_fit, auto_growth}, default=auto_growth
+ * Value Range: string, {naive_best_fit, auto_growth, thread_local},
+ * default=auto_growth
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */

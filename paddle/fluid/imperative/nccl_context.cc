@@ -123,7 +123,7 @@ void NCCLParallelContext::Init() {
   } else {
     BcastNCCLId(&nccl_id, 0);
   }
-  int gpu_id = boost::get<platform::CUDAPlace>(place_).device;
+  int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
   VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
           << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id;
 

@@ -22,6 +22,7 @@ import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
+import numpy as np
 from paddle.fluid import compiler, Program, program_guard
 
 
@@ -80,28 +81,6 @@ class TestFillConstantOp4(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
-
-class TestFillConstantOp5(unittest.TestCase):
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program()):
-            data = fluid.data(name="X", shape=[1], dtype="float32")
-            out = paddle.zeros(shape=[1], out=data, dtype="float32")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result = exe.run(feed={"X": np.array(
-                [0.1], dtype="float32")},
-                             fetch_list=[data, out])
-            self.assertEqual(result[0], result[1])
-        with fluid.program_guard(fluid.Program()):
-            data = fluid.data(name="X", shape=[1], dtype="float32")
-            out = paddle.ones(shape=[1], out=data, dtype="float32")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result = exe.run(feed={"X": np.array(
-                [0.1], dtype="float32")},
-                             fetch_list=[data, out])
-            self.assertEqual(result[0], result[1])
 
 
 class TestFillConstantOpWithSelectedRows(unittest.TestCase):
@@ -263,12 +242,12 @@ class TestFillConstantOp2_ValueTensor(OpTest):
 # Test python API
 class TestFillConstantAPI(unittest.TestCase):
     def test_api(self):
-        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
 
+        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
         positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
+
         shape_tensor_int32 = fluid.data(
             name="shape_tensor_int32", shape=[2], dtype="int32")
-
         shape_tensor_int64 = fluid.data(
             name="shape_tensor_int64", shape=[2], dtype="int64")
 
@@ -349,6 +328,15 @@ class TestFillConstantOpError(unittest.TestCase):
                 dtype='float64',
                 out=x2)
 
+            x3 = np.random.randn(100, 100).astype('int32')
+            self.assertRaises(
+                TypeError,
+                fluid.layers.fill_constant,
+                shape=[100, 100],
+                value=5,
+                dtype='float64',
+                out=x3)
+
             # The argument shape's type of fill_constant_op must be list, tuple or Variable.
             def test_shape_type():
                 fluid.layers.fill_constant(shape=1, dtype="float32", value=1)
@@ -377,75 +365,6 @@ class TestFillConstantOpError(unittest.TestCase):
                     shape=[shape, 2], dtype="float32", value=1)
 
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
-
-
-class ApiZerosTest(unittest.TestCase):
-    def test_out(self):
-        with fluid.program_guard(fluid.Program()):
-            zeros = paddle.zeros(shape=[10], dtype="float64")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result, = exe.run(fetch_list=[zeros])
-            expected_result = np.zeros(10, dtype="float64")
-        self.assertEqual((result == expected_result).all(), True)
-
-        with fluid.program_guard(fluid.Program()):
-            zeros = paddle.zeros(shape=[10], dtype="int64")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result, = exe.run(fetch_list=[zeros])
-            expected_result = np.zeros(10, dtype="int64")
-        self.assertEqual((result == expected_result).all(), True)
-
-        with fluid.program_guard(fluid.Program()):
-            zeros = paddle.zeros(shape=[10], dtype="int64", device="cpu")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result, = exe.run(fetch_list=[zeros])
-            expected_result = np.zeros(10, dtype="int64")
-        self.assertEqual((result == expected_result).all(), True)
-
-
-class ApiOnesTest(unittest.TestCase):
-    def test_out(self):
-        with fluid.program_guard(fluid.Program()):
-            ones = paddle.ones(shape=[10], dtype="float64")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result, = exe.run(fetch_list=[ones])
-            expected_result = np.ones(10, dtype="float64")
-        self.assertEqual((result == expected_result).all(), True)
-
-        with fluid.program_guard(fluid.Program()):
-            ones = paddle.ones(shape=[10], dtype="int64")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result, = exe.run(fetch_list=[ones])
-            expected_result = np.ones(10, dtype="int64")
-        self.assertEqual((result == expected_result).all(), True)
-
-        with fluid.program_guard(fluid.Program()):
-            ones = paddle.ones(shape=[10], dtype="int64", device="cpu")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result, = exe.run(fetch_list=[ones])
-            expected_result = np.ones(10, dtype="int64")
-        self.assertEqual((result == expected_result).all(), True)
-
-
-class ApiOnesZerosError(unittest.TestCase):
-    def test_errors(self):
-        def test_error1():
-            with fluid.program_guard(fluid.Program()):
-                ones = paddle.ones(shape=10, dtype="int64", device="opu")
-
-        self.assertRaises(ValueError, test_error1)
-
-        def test_error2():
-            with fluid.program_guard(fluid.Program()):
-                ones = paddle.ones(shape=10, dtype="int64", device="opu")
-
-        self.assertRaises(ValueError, test_error2)
 
 
 if __name__ == "__main__":

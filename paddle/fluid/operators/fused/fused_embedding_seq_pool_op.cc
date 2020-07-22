@@ -53,7 +53,7 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
     int64_t last_dim = FusedEmbeddingSeqPoolLastDim(table_dims, ids_dims);
     // in compile time, the lod level of ids must be 1
     framework::VarDesc* ids_desc =
-        boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Ids")[0]);
+        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Ids")[0]);
     PADDLE_ENFORCE_EQ(ids_desc->GetLoDLevel(), 1,
                       platform::errors::InvalidArgument(
                           "In compile time, the LoD Level of Ids should be 1. "
@@ -146,19 +146,20 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
     : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    auto out_var_name = ctx->Output(framework::GradVarName("W")).front();
+    auto out_var_name = framework::GradVarName("W");
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = boost::get<bool>(attr);
+    bool is_sparse = BOOST_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "fused_embedding_seq_pool_grad op "
               << framework::GradVarName("W") << " is set to SelectedRows";
-      ctx->SetType(out_var_name, framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetOutputType(out_var_name,
+                         framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "fused_embedding_seq_pool_grad op "
               << framework::GradVarName("W") << " is set to LoDTensor";
-      ctx->SetType(out_var_name, framework::proto::VarType::LOD_TENSOR);
+      ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     }
-    ctx->SetDataType(out_var_name, ctx->GetDataType(ctx->Input("W")[0]));
+    ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));
   }
 };
 

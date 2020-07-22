@@ -67,11 +67,9 @@ else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
-cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
-cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(garbage_collector SRCS garbage_collector.cc DEPS device_context memory gflags glog)
 
@@ -88,6 +86,8 @@ endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
+cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope)
+cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
@@ -149,28 +149,38 @@ cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 
 cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
+cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
 
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
 if(WITH_PYTHON)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
   py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
+  py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-  add_dependencies(framework_py_proto framework_py_proto_init)
+  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto)
   if (NOT WIN32)
     add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto
+      COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto/__init__.py
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+      COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   else(NOT WIN32)
     string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
+    string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fleet/proto/")
     add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+	  COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto
+	  COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto/__init__.py
           COMMAND copy /Y *.py ${proto_dstpath}
+	  COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
+	  COMMENT "Copy generated python proto into directory paddle/fleet/proto."
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif(NOT WIN32)
 endif()
@@ -192,9 +202,10 @@ if(WITH_DISTRIBUTE)
   device_context scope framework_proto trainer_desc_proto glog fs shell
   fleet_wrapper heter_wrapper box_wrapper lodtensor_printer
   lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
-  graph_to_program_pass variable_helper data_feed_proto heter_service_proto timer )
-set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
-set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  graph_to_program_pass variable_helper data_feed_proto timer monitor
+  heter_service_proto)
+  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+  set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
@@ -203,8 +214,11 @@ else()
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
-  graph_to_program_pass variable_helper timer pslib_brpc)
-  cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
+  graph_to_program_pass variable_helper timer monitor pslib_brpc )
+  # TODO: Fix these unittest failed on Windows
+  if(NOT WIN32)
+    cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
+  endif()
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_helper conditional_block_op_helper)

@@ -26,9 +26,9 @@ __global__ void KeDequantize(const T* in, const float* dict, int num,
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num) {
     if (in[idx] < 0) {
-      out[idx] = -std::pow(static_cast<float>(2.0), dict[in[idx] + 128]);
+      out[idx] = -dict[in[idx] + 128];
     } else {
-      out[idx] = std::pow(static_cast<float>(2.0), dict[in[idx]]);
+      out[idx] = dict[in[idx]];
     }
   }
 }

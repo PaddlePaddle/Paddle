@@ -59,8 +59,12 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
   vec_new_shape.reserve(list_new_shape_tensor.size());
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
-                      "shape of dim tensor should be [1]");
+    PADDLE_ENFORCE_EQ(
+        tensor->dims(), framework::make_ddim({1}),
+        platform::errors::InvalidArgument(
+            "Shape of dim tensor in uniform_random_op should be [1]"
+            "But received tensor's dim=%s.",
+            tensor->dims()));
 
     if (tensor->type() == framework::proto::VarType::INT32) {
       if (platform::is_gpu_place(tensor->place())) {

@@ -51,15 +51,14 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInferer, "X");
 class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
  public:
   void operator()(paddle::framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<paddle::framework::proto::VarType::Type>(
-        boost::get<int>(ctx->GetAttr("out_dtype")));
+        BOOST_GET_CONST(int, ctx->GetAttr("out_dtype")));
     if (data_type >= 0) {
-      auto& out_var_name = ctx->Output("Out").front();
-      ctx->SetDataType(out_var_name, data_type);
+      ctx->SetOutputDataType("Out", data_type);
     }
   }
 };
@@ -78,7 +77,7 @@ REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
-                  ops::ReduceSumGradNoNeedBufferVarInference);
+                  ops::ReduceSumGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(
     reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,

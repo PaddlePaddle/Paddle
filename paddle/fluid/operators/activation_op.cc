@@ -71,8 +71,9 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     if ((static_cast<int>(kDepValue) &
          static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
-        FLAGS_use_mkldnn || (op->HasAttr("use_mkldnn") &&
-                             boost::get<bool>(op->GetAttr("use_mkldnn")))) {
+        FLAGS_use_mkldnn ||
+        (op->HasAttr("use_mkldnn") &&
+         BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
       op->SetInput("X", this->Input("X"));
     }
 
@@ -129,9 +130,10 @@ class ActivationOp : public framework::OperatorWithKernel {
 class ActivationOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
+    return m;
   }
 };
 
@@ -223,14 +225,14 @@ $$out = |x|$$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$$out = \left \lceil x \right \rceil$$
+$$out = \\left \\lceil x \\right \\rceil$$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
-Floor Activation Operator.
+Floor Activation Operator. Computes floor of x element-wise.
 
-$$out = \left \lfloor x \right \rfloor$$
+$$out = \\left \\lfloor x \\right \\rfloor$$
 
 )DOC";
 
@@ -274,6 +276,15 @@ UNUSED constexpr char LogDoc[] = R"DOC(
 Log Activation Operator.
 
 $$out = \ln(x)$$
+
+Natural logarithm of x.
+
+)DOC";
+
+UNUSED constexpr char Log1pDoc[] = R"DOC(
+Log Activation Operator.
+
+$out = \ln(x+1)$
 
 Natural logarithm of x.
 
@@ -634,6 +645,7 @@ REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
+REGISTER_ACTIVATION_OP_MAKER(Log1p, Log1pDoc);
 REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softplus, SoftplusDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
@@ -810,10 +822,10 @@ class SquareDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInference,
+DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-DECLARE_INPLACE_OP_INFERER(ActivationDoubleGradOpInplaceInference,
+DECLARE_INPLACE_OP_INFERER(ActivationDoubleGradOpInplaceInferer,
                            {"DDX", "DDOut"});
 
 template <typename T>
@@ -901,7 +913,7 @@ namespace plat = paddle::platform;
       std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(),      \
                        ops::ActFwdInplaceInferer, void>::type);             \
   REGISTER_OPERATOR(KERNEL_TYPE##_grad, ops::ActivationOpGrad,              \
-                    ops::ActivationGradOpInplaceInference);
+                    ops::ActivationGradOpInplaceInferer);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name, functor,        \
                                        grad_functor)                      \
@@ -929,13 +941,13 @@ REGISTER_OPERATOR(
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInference,
+                  ops::ActivationGradOpInplaceInferer,
                   ops::ReluDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::ReluDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     relu_grad_grad,
     ops::ActivationOpDoubleGrad2<ops::ReluGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInference);
+    ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 
@@ -959,13 +971,13 @@ REGISTER_OPERATOR(
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInference,
+                  ops::ActivationGradOpInplaceInferer,
                   ops::LeakyReluDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::LeakyReluDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     leaky_relu_grad_grad,
     ops::ActivationOpDoubleGrad2<ops::LeakyReluGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInference);
+    ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluFunctor,
                                LeakyReluGradFunctor);
@@ -988,13 +1000,13 @@ REGISTER_OPERATOR(
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInference,
+                  ops::ActivationGradOpInplaceInferer,
                   ops::ELUDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::ELUDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     elu_grad_grad,
     ops::ActivationOpDoubleGrad<ops::ELUGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInference);
+    ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
 REGISTER_OP_CPU_KERNEL(
@@ -1016,13 +1028,13 @@ REGISTER_OPERATOR(
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(sqrt_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInference,
+                  ops::ActivationGradOpInplaceInferer,
                   ops::SqrtDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::SqrtDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     sqrt_grad_grad,
     ops::ActivationOpDoubleGrad<ops::SqrtGradGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInference);
+    ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
 REGISTER_OP_CPU_KERNEL(
@@ -1044,13 +1056,13 @@ REGISTER_OPERATOR(
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(square_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInference,
+                  ops::ActivationGradOpInplaceInferer,
                   ops::SquareDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::SquareDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     square_grad_grad,
     ops::ActivationOpDoubleGrad<ops::SquareGradGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInference);
+    ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(square,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
@@ -1094,7 +1106,7 @@ REGISTER_OPERATOR(
     std::conditional<ops::CanInplaceAct<ops::PowGradFunctor<float>>(),
                      ops::ActFwdInplaceInferer, void>::type);
 REGISTER_OPERATOR(pow_grad, ops::PowOpGrad,
-                  ops::ActivationGradOpInplaceInference);
+                  ops::ActivationGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     pow, ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<float>>,
@@ -1119,7 +1131,7 @@ REGISTER_OPERATOR(
     std::conditional<ops::CanInplaceAct<ops::ExpGradFunctor<float>>(),
                      ops::ActFwdInplaceInferer, void>::type);
 REGISTER_OPERATOR(exp_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInference);
+                  ops::ActivationGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(exp,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
@@ -1151,7 +1163,7 @@ REGISTER_OPERATOR(
     std::conditional<ops::CanInplaceAct<ops::AbsGradFunctor<float>>(),
                      ops::ActFwdInplaceInferer, void>::type);
 REGISTER_OPERATOR(abs_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInference);
+                  ops::ActivationGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(abs,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,

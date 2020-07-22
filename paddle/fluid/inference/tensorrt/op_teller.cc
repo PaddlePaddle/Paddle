@@ -23,6 +23,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
 #if IS_TRT_VERSION_GE(5130)
     teller_set.insert("relu6");
+    teller_set.insert("hard_sigmoid");
 #endif
 #if IS_TRT_VERSION_GE(6000)
     teller_set.insert("fused_embedding_eltwise_layernorm");
@@ -42,11 +43,18 @@ struct SimpleOpTypeSetTeller : public Teller {
 
  private:
   // use this set for no calib int8.
-  std::unordered_set<std::string> int8_teller_set{
-      "mul",        "conv2d",           "pool2d",
-      "relu",       "depthwise_conv2d", "softmax",
-      "batch_norm", "elementwise_add",  "leaky_relu",
-      "fc"};
+  std::unordered_set<std::string> int8_teller_set{"mul",
+                                                  "conv2d",
+                                                  "pool2d",
+                                                  "relu",
+                                                  "depthwise_conv2d",
+                                                  "softmax",
+                                                  "batch_norm",
+                                                  "elementwise_add",
+                                                  "leaky_relu",
+                                                  "fc",
+                                                  "relu6",
+                                                  "concat"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "conv2d",
@@ -54,6 +62,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "relu",
       "softmax",
       "sigmoid",
+      "hard_swish",
       "depthwise_conv2d",
       "batch_norm",
       "concat",
@@ -72,6 +81,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "instance_norm",
       "gelu",
       "layer_norm",
+      "scale",
   };
 };
 
@@ -79,7 +89,7 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
                     bool use_no_calib_int8) {
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
-       boost::get<std::string>(desc.GetAttr("op_namescope")) ==
+       BOOST_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
            "/skip_quant_2/") ||
       desc.HasAttr("skip_quant"))
     return false;
@@ -88,7 +98,7 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
     if (op_type == "pool2d" || op_type == "conv2d" ||
         op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
       std::vector<int> paddings =
-          boost::get<std::vector<int>>(desc.GetAttr("paddings"));
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() > 2) return false;
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;

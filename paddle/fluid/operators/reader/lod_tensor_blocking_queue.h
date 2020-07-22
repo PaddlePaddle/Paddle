@@ -201,9 +201,10 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
 class LoDTensorBlockingQueueHolder {
  public:
   void InitOnce(size_t capacity, bool speed_test_mode = false) {
-    PADDLE_ENFORCE(
-        queue_ == nullptr,
-        "LoDTensorBlockingQueueHolder::InitOnce() can only be called once");
+    PADDLE_ENFORCE_EQ(
+        queue_, nullptr,
+        platform::errors::AlreadyExists("LoDTensorBlockingQueueHolder::"
+                                        "InitOnce() can only be called once"));
     queue_.reset(new LoDTensorBlockingQueue(capacity, speed_test_mode));
   }
 

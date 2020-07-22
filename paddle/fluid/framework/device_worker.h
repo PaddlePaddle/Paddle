@@ -46,7 +46,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end);
+std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end);
 std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
 bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
@@ -143,6 +143,7 @@ class DeviceWorker {
   }
   virtual ~DeviceWorker() {}
   virtual void Initialize(const TrainerDesc& desc) = 0;
+  virtual void InitRandomDumpConfig(const TrainerDesc& desc);
   virtual void SetDeviceIndex(int tid) = 0;
   virtual void TrainFiles() = 0;
   virtual void PrintFetchVars() = 0;
@@ -152,11 +153,24 @@ class DeviceWorker {
   virtual void BindingDataFeedMemory() = 0;
   virtual void SetRootScope(Scope* root_scope);
   virtual void SetDataFeed(DataFeed* data_feed);
-  virtual void SetNeedDump(bool need_dump_field) {}
-  virtual void SetChannelWriter(ChannelObject<std::string>* queue) {}
   virtual void SetWorkerNum(int num) {};
   virtual void CacheProgram(const ProgramDesc &main_program) {};
   virtual void Schedule(int taskid) {};
+  virtual void SetNeedDumpField(bool need_dump_field) {
+    need_dump_field_ = need_dump_field;
+  }
+  virtual void SetNeedDumpParam(bool need_dump_param) {
+    need_dump_param_ = need_dump_param;
+  }
+  virtual void SetDumpFieldVector(const std::vector<std::string>& dump_fields) {
+    dump_fields_ = &dump_fields;
+  }
+  virtual void SetDumpParamVector(const std::vector<std::string>& dump_param) {
+    dump_param_ = &dump_param;
+  }
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue) {
+    writer_.Reset(queue);
+  }
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
@@ -167,6 +181,9 @@ class DeviceWorker {
   virtual void GetXpuOpIndex() {}
 
  protected:
+  virtual void DumpParam(const Scope& scope, const int batch_id);
+  virtual void DumpField(const Scope& scope, int dump_mode,
+                         int dump_interval = 10000);
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;
   paddle::platform::Place place_;
@@ -176,6 +193,17 @@ class DeviceWorker {
   bool use_cvm_;
   bool no_cvm_;
   TrainerDesc trainer_desc_;
+
+  // dump params or grads for debug
+  bool need_dump_param_;
+  bool need_dump_field_;
+  const std::vector<std::string>* dump_param_;
+  const std::vector<std::string>* dump_fields_;
+  std::vector<std::string> all_param_;
+
+  int dump_mode_ = 0;
+  int dump_interval_ = 10000;
+  ChannelWriter<std::string> writer_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
@@ -204,8 +232,6 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
-  virtual void SetNeedDump(bool need_dump_field);
-  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void PrintFetchVars();
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
@@ -215,7 +241,6 @@ class HogwildWorker : public CPUWorkerBase {
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
-  virtual void DumpParam(const int batch_id);
 
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
@@ -224,12 +249,6 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
-  // dump params or grads for debug
-  bool need_dump_param_;
-  bool need_dump_field_;
-  std::vector<std::string> dump_param_;
-  std::vector<std::string> dump_fields_;
-  ChannelWriter<std::string> writer_;
 };
 
 class DownpourWorker : public HogwildWorker {
@@ -239,8 +258,6 @@ class DownpourWorker : public HogwildWorker {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
-  virtual void SetNeedDump(bool need_dump_field);
-  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
@@ -252,7 +269,6 @@ class DownpourWorker : public HogwildWorker {
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
-  virtual void DumpParam(const int batch_id);
 
   DownpourWorkerParameter param_;
   // copy table
@@ -320,323 +336,6 @@ class DownpourWorkerOpt : public DownpourWorker {
   std::string async_wait_name_;
   int async_index_ = -1;
   uint64_t async_tid_ = 0;
-};
-
-enum HeterTaskState {
-  PULL_SPARSE,
-  OP_RUN,
-  XPU,
-  OP_RUN_END,
-  PUSH_GRAD,
-  DONE
-};
-
-class HeterTask {
-public:
-  void Update() {
-    if (state_ == PULL_SPARSE) {
-      state_ = OP_RUN;
-    }
-    else if (state_ == OP_RUN) {
-      state_ = XPU;
-      //state_ = PUSH_GRAD;
-      //state_ = PUSH_GRAD;
-    }
-    else if (state_ == XPU) {
-      state_ = OP_RUN_END;
-    }
-    else if (state_ == OP_RUN_END) {
-      state_ = PUSH_GRAD;
-    }
-    else if (state_ == PUSH_GRAD) {
-      state_ = DONE;
-    }
-  }
-  void Reset() {
-    total_time = 0;
-    read_time = 0;
-    pack_time = 0;
-    pull_sparse_local_time = 0;
-    op_all_time = 0;
-    xpu_op_time = 0;
-    xpu_wait_time = 0;
-    cpu_op_time = 0;
-    collect_label_time = 0;
-    fill_sparse_time = 0;
-    push_sparse_time = 0;
-  }
-  void Show() {
-    std::cout << "features size " << features_.size() << std::endl;
-    for (size_t i = 0; i < features_.size(); ++i) {
-      std::cout << "features[" << i << "] size " << features_[i].size() << std::endl;
-    }
-  }
-  void PackTask(Scope* scope, int taskid, DataFeed* reader, int cur_batch, const ProgramDesc& program);
-
-  Scope* scope_{nullptr};
-  int taskid_;
-  int cur_batch_;
-  HeterTaskState state_;
-  // cache
-  std::map<uint64_t, std::vector<uint64_t>> features_;
-  std::map<uint64_t, std::vector<float>> feature_labels_;
-  std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
-  std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
-  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
-  double total_time{0};
-  double read_time{0};
-  double pack_time{0};
-  double pull_sparse_local_time{0};
-  double op_all_time{0};
-  double xpu_op_time{0};
-  double xpu_wait_time{0};
-  double cpu_op_time{0};
-  double collect_label_time{0};
-  double fill_sparse_time{0};
-  double push_sparse_time{0};
-};
-
-template <class T>
-class HeterObjectPool {
-public:
-  HeterObjectPool() {}
-  virtual ~HeterObjectPool() {};
-  std::shared_ptr<T> Get() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (pool_.empty()) {
-      num_ += 1;
-      #ifdef PADDLE_WITH_CUDA
-      VLOG(0) << "pool construct size: " << num_;
-      #endif
-      return std::make_shared<T>();
-    }
-    else {
-      auto ret =  pool_.back();
-      pool_.pop_back();
-      return ret;
-    }
-  }
-  void Push(std::shared_ptr<T> data) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    pool_.push_back(std::move(data));
-  }
-  int Size() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return pool_.size();
-  }
-  std::shared_ptr<T>& GetElement(int i) {
-    return pool_[i];
-  }
-private:
-  std::vector<std::shared_ptr<T>> pool_;
-  std::mutex mutex_;
-  int num_{0};
-};
-
-struct BthreadMutextGuard {
-  BthreadMutextGuard(bthread_mutex_t* rho) {
-    mutex_ = rho;
-    bthread_mutex_lock(mutex_);
-  }
-  ~BthreadMutextGuard() {
-    bthread_mutex_unlock(mutex_);
-  }
-  bthread_mutex_t* mutex_;
-};
-
-template <class T>
-class BtObjectPool {
-public:
-  BtObjectPool() {
-    bthread_mutex_init(&mutex_, NULL);
-    bthread_cond_init(&cond_, NULL);
-  }
-  
-  virtual ~BtObjectPool() {
-    bthread_cond_destroy(&cond_);
-    bthread_mutex_destroy(&mutex_);
-  };
-  
-  std::shared_ptr<T> Get() {
-    BthreadMutextGuard guard(&mutex_);
-    while (pool_.empty()) {
-      bthread_cond_wait(&cond_, &mutex_);
-    }
-    auto ret =  pool_.back();
-    pool_.pop_back();
-    return ret;
-  }
-  
-  void Push(std::shared_ptr<T> data) {
-    BthreadMutextGuard guard(&mutex_);
-    pool_.push_back(std::move(data));
-    bthread_cond_signal(&cond_);
-  }
-  
-  int Size() {
-    return pool_.size();
-  }
-  
-  std::shared_ptr<T>& GetElement(int i) {
-    return pool_[i];
-  }
-
-private:
-  std::vector<std::shared_ptr<T>> pool_;
-  bthread_mutex_t mutex_;
-  bthread_cond_t cond_;
-  int num_{0};
-};
-
-template <class K, class T>
-struct HeterNode {
-  K key;
-  T value;
-  HeterNode *prev;
-  HeterNode *next;
-};
-
-template <class K, class T>
-class HeterList {
-public:
-  HeterList() 
-    : head_(new HeterNode<K, T>)
-    , tail_(new HeterNode<K, T>) {
-    head_->prev = NULL;
-    head_->next = tail_;
-    tail_->prev = head_;
-    tail_->next = NULL;
-    size = 0;
-    cap_ = 1e9;
-  }
-  
-  ~HeterList() {
-    delete head_;
-    delete tail_;
-  }
-  
-  void SetCap(int num) {
-    cap_ = num;
-  }
-
-  bool TryPut(K& key, T& value) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    cond_.wait(lock, [this] { return size < cap_; });
-    if (task_map_.find(key) != task_map_.end()) {
-      //std::cout << "try put key=" << key << " false" << std::endl;
-      task_map_.erase(key);
-      return false;
-    }
-    else {
-      HeterNode<K, T>* node = new HeterNode<K, T>;
-      node->key = key;
-      node->value = value;
-      map_[node->key] = node;
-      attach(node);
-      //std::cout << "try put key=" << key << " true" << std::endl;
-      return true;
-    }
-  }
-
-  bool Put(K& key, T& value) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    cond_.wait(lock, [this] { return size < cap_; });
-    HeterNode<K, T>* node = new HeterNode<K, T>;
-    //std::cout << "put key=" << key << " true" << std::endl;
-    node->key = key;
-    node->value = value;
-    map_[node->key] = node;
-    attach(node);
-    return true;
-  }
-  
-  T TryGet(const K &key) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto iter = map_.find(key);
-    if (iter != map_.end()) {
-      //std::cout << "try get key=" << key << " true" << std::endl;
-      HeterNode<K, T>* node = iter->second;
-      detach(node);
-      cond_.notify_one();
-      T ret = std::move(node->value);
-      map_.erase(key);
-      delete node;
-      return ret;
-    }
-    task_map_.insert(key);
-    //std::cout << "try get key=" << key << " false" << std::endl;
-    return nullptr;
-  }
-  
-  T Get(const K &key) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto iter = map_.find(key);
-    if (iter != map_.end()) {
-      //std::cout << "get key=" << key << " true" << std::endl;
-      HeterNode<K, T>* node = iter->second;
-      detach(node);
-      cond_.notify_one();
-      T ret = std::move(node->value);
-      map_.erase(key);
-      delete node;
-      return ret;
-    }
-    //std::cout << "get key=" << key << " false" << std::endl;
-    return nullptr;
-  }
-  
-  T Get() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    HeterNode<K, T>* node = head_->next;
-    if (node == tail_) {
-      //std::cout << "get2 false" << std::endl;
-      return nullptr;
-    }
-    else {
-      detach(node);
-      cond_.notify_one();
-      T ret = std::move(node->value);
-      map_.erase(node->key);
-      //std::cout << "get2 key=" << node->key << " true" << std::endl;
-      delete node;
-      return ret;
-    }
-  }
-
-  bool Empty() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return head_->next == tail_;
-  }
-
-  int Size() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return size;
-  }
-
-private:
-    void detach(HeterNode<K, T> *node) {
-      node->prev->next = node->next;
-      node->next->prev = node->prev;
-      size--;
-    }
-
-    void attach(HeterNode<K, T> *node) {
-      node->prev = head_;
-      node->next = head_->next;
-      head_->next->prev = node;
-      head_->next = node;
-      size++;
-    }
-
-private:
-    HeterNode<K, T> *head_;
-    HeterNode<K, T> *tail_;
-    std::unordered_map<K, HeterNode<K, T>*> map_;
-    std::unordered_set<K> task_map_;
-    std::mutex mutex_;
-    std::condition_variable cond_;
-    int cap_;
-    int size;
 };
 
 class HeterCpuWorker : public HogwildWorker {
@@ -720,40 +419,9 @@ class HeterCpuWorker : public HogwildWorker {
 };
 
 #if defined(PADDLE_WITH_NCCL)
-using ScopeQueue = operators::reader::BlockingQueue<Scope*>;
-
-class SyncFunctor {
- public:
-  SyncFunctor(int rank_id, int rank_num, int sync_steps);
-  virtual ~SyncFunctor() {}
-
-  void SetSyncParam(const std::vector<std::string>& sync_param) {
-    sync_param_ = &sync_param;
-  }
-  void SetNcclCtxMap(platform::NCCLContextMap* nccl_ctx_map) {
-    nccl_ctx_map_ = nccl_ctx_map;
-  }
-
-  int operator()(Scope* scope);
-  static std::vector<Scope*> pipeline_scopes_;
-  static uint64_t sync_flag_;
-
- protected:
-  const int rank_id_;
-  const int rank_num_;
-  const std::vector<std::string>* sync_param_ = nullptr;
-  platform::NCCLContextMap* nccl_ctx_map_ = nullptr;
-
-  uint64_t sync_signal_;
-  const int sync_steps_;
-  int counter_;
-
-  void Synchronize();
-};
-
 class SectionWorker : public DeviceWorker {
  public:
-  SectionWorker() {}
+  SectionWorker() { local_batch_id_ = 0; }
   ~SectionWorker() override {}
 
   void Initialize(const TrainerDesc& desc) override;
@@ -769,50 +437,39 @@ class SectionWorker : public DeviceWorker {
   const platform::Place& place() const { return place_; }
 
   void SetSectionIndex(int section_id) { section_id_ = section_id; }
-  void SetDeviceIndex(int tid) override { pipeline_id_ = tid; }
+  void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
-  void SetVarNames(const std::vector<std::string>& in_var_names,
-                   const std::vector<std::string>& out_var_names) {
-    in_var_names_ = &in_var_names;
-    out_var_names_ = &out_var_names;
+  void SetMicrobatchNum(int num) { num_microbatches_ = num; }
+  void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
+    microbatch_scopes_ = scope;
   }
-  void SetScopeQueue(ScopeQueue* in_scope_queue, ScopeQueue* out_scope_queue) {
-    in_scope_queue_ = in_scope_queue;
-    out_scope_queue_ = out_scope_queue;
+  void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
+  void SetSkipVars(const std::vector<std::string>& skip_vars) {
+    skip_vars_ = skip_vars;
   }
-  void SetCountMutex(std::mutex* mutex) { worker_count_mutex_ = mutex; }
-  void SetWorkerCount(int* worker_count) { worker_count_ = worker_count; }
-  void SetSectionNum(int section_num) { section_num_ = section_num; }
-  void SetPipelineNum(int pipeline_num) { pipeline_num_ = pipeline_num; }
-  void SetNextSectionPlace(const paddle::platform::Place& place) {
-    next_section_place_ = place;
-  }
-  SyncFunctor* sync_func_ = nullptr;
-  void SetSyncFunctor(SyncFunctor* sync_func) { sync_func_ = sync_func; }
 
   static std::atomic<int> cpu_id_;
 
  protected:
   void AutoSetCPUAffinity(bool reuse);
   int section_id_;
-  int pipeline_id_;
-  int section_num_;
-  int pipeline_num_;
   int thread_id_;
-  // This worker will consume scope from in_scope_queue_
-  // and produce scope to out_scope_queue_
-  ScopeQueue* in_scope_queue_ = nullptr;
-  ScopeQueue* out_scope_queue_ = nullptr;
-  const std::vector<std::string>* in_var_names_ = nullptr;
-  const std::vector<std::string>* out_var_names_ = nullptr;
-  std::mutex* worker_count_mutex_ = nullptr;
-  int* worker_count_ = nullptr;
-  paddle::platform::Place next_section_place_;
+  int num_microbatches_;
+  std::vector<Scope*> microbatch_scopes_;
+  std::vector<std::string> skip_vars_;
+  const Scope* minibatch_scope_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+  static std::mutex thread_mutex;
+  static std::condition_variable thread_condition;
+  static bool threads_completed;
+  std::shared_ptr<framework::ProgramDesc> program_;
+  static uint64_t batch_id_;
+  uint64_t local_batch_id_;
 
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 #endif
+
 }  // namespace framework
 }  // namespace paddle

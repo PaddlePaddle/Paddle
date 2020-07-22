@@ -19,7 +19,6 @@ from .. import core
 from . import layers
 from . import parallel_helper
 from .. import framework
-from ..layers import collective
 from . import to_variable, no_grad
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
@@ -28,6 +27,9 @@ ParallelStrategy = core.ParallelStrategy
 
 
 def prepare_context(strategy=None):
+    '''
+    :api_attr: imperative
+    '''
     if strategy is None:
         strategy = ParallelStrategy()
         strategy.nranks = Env().nranks
@@ -418,13 +420,22 @@ class DataParallel(layers.Layer):
 
         grad_var_set = set()
         grad_vars = []
+        sparse_grad_vars = []
         for param in self._layers.parameters():
             # NOTE(zcd): The grad_ivar maybe no generated.
             if param.trainable and (param._grad_ivar() is not None):
                 g_var = param._grad_ivar()
+                if g_var._is_sparse():
+                    sparse_grad_vars.append(g_var)
+                    continue
                 grad_vars.append(g_var)
                 assert g_var not in grad_var_set
                 grad_var_set.add(g_var)
+
+        if sparse_grad_vars:
+            sparse_grad_vars.sort(key=lambda x: x.name)
+            for grad_var in sparse_grad_vars:
+                grad_var._allreduce(self._strategy)
 
         # FIXME(zcd): the type of the var should be LoDTensor, i.e
         # the gradients should be dense, otherwise, the following
@@ -447,9 +458,8 @@ class DataParallel(layers.Layer):
 
         coalesced_grads_and_vars = self._coalesce_tensors(grad_var_groups)
 
-        for coalesced_grad, g_vars, g_shapes in coalesced_grads_and_vars:
-            collective._allreduce(
-                coalesced_grad, coalesced_grad, sync_mode=False)
+        for coalesced_grad, _, _ in coalesced_grads_and_vars:
+            coalesced_grad._allreduce(self._strategy)
 
         self._split_tensors(coalesced_grads_and_vars)
 

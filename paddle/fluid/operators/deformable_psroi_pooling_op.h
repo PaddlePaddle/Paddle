@@ -171,9 +171,13 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
     set_zero(dev_ctx, top_count, static_cast<T>(0));
 
     const int num_rois = rois->dims()[0];
-    PADDLE_ENFORCE_EQ(num_rois, out->dims()[0],
-                      "number of rois should be same with number of output");
-
+    PADDLE_ENFORCE_EQ(
+        num_rois, out->dims()[0],
+        platform::errors::InvalidArgument(
+            "The number of Input(ROIs) should be same with the number of "
+            "Ouput(Output), but received ROIs number is:%d, Output number "
+            "is:%d.",
+            num_rois, out->dims()[0]));
     framework::Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
     int* roi_batch_id_data =
@@ -200,8 +204,11 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
     auto count = num_rois * output_dim * pooled_height * pooled_width;
     auto num_classes = no_trans ? 1 : channels_trans / 2;
     auto channels_each_class = no_trans ? output_dim : output_dim / num_classes;
-    PADDLE_ENFORCE(channels_each_class >= 1,
-                   "channels_each must greater than 1");
+    PADDLE_ENFORCE_GE(channels_each_class, 1,
+                      platform::errors::InvalidArgument(
+                          "channels_each_class should not be lower than 1, but "
+                          "channels_each_class is:%d.",
+                          channels_each_class));
 
     const T* bottom_data = input->data<T>();
     const T* bottom_rois = rois->data<T>();
@@ -212,11 +219,18 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
 
     auto rois_lod = rois->lod().back();
     int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(rois_batch_size, batch,
-                      "The rois_batch_size must equal to batch_size of img.");
+    PADDLE_ENFORCE_EQ(
+        rois_batch_size, batch,
+        platform::errors::InvalidArgument(
+            "rois_batch_size should be equal to the batch_size, but "
+            "rois_batch_size is:%d, batch_size is:%d.",
+            rois_batch_size, batch));
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(num_rois, rois_num_with_lod,
-                      "The rois_num from input and lod must be the same.");
+                      platform::errors::InvalidArgument(
+                          "The rois_num from input and lod must be same, but"
+                          "rois_num from input is:%d, rois_num from lod is:%d.",
+                          num_rois, rois_num_with_lod));
     for (int n = 0; n < rois_batch_size; ++n) {
       for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
         roi_batch_id_data[i] = n;
@@ -467,7 +481,10 @@ class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T> {
     int rois_batch_size = rois_lod.size() - 1;
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(num_rois, rois_num_with_lod,
-                      "The rois_num from input and lod must be the same.");
+                      platform::errors::InvalidArgument(
+                          "The rois_num from input and lod must be same, but"
+                          "rois_num from input is:%d, rois_num from lod is:%d.",
+                          num_rois, rois_num_with_lod));
     for (int n = 0; n < rois_batch_size; ++n) {
       for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
         roi_batch_id_data[i] = n;

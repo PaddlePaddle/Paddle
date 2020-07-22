@@ -108,8 +108,9 @@ template <typename DeviceContext, typename T>
 class DropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(!context.Attr<bool>("is_test"),
-                   "GradOp is only callable when is_test is false");
+    PADDLE_ENFORCE_EQ(!context.Attr<bool>("is_test"), true,
+                      platform::errors::PreconditionNotMet(
+                          "GradOp is only callable when is_test is false"));
 
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));

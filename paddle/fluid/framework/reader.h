@@ -35,12 +35,16 @@ class ReaderBase {
       : shapes_(shapes),
         var_types_(var_types),
         need_check_feed_(need_check_feed) {
-    PADDLE_ENFORCE_EQ(shapes_.size(), need_check_feed_.size(),
-                      "Construct ReaderBase with mismatched sizes of shapes "
-                      "and need_check_feed");
-    PADDLE_ENFORCE_EQ(var_types_.size(), need_check_feed_.size(),
-                      "Construct ReaderBase with mismatched sizes of var_types "
-                      "and need_check_feed");
+    PADDLE_ENFORCE_EQ(
+        shapes_.size(), need_check_feed_.size(),
+        platform::errors::InvalidArgument(
+            "Construct ReaderBase with mismatched sizes of shapes "
+            "and need_check_feed"));
+    PADDLE_ENFORCE_EQ(
+        var_types_.size(), need_check_feed_.size(),
+        platform::errors::InvalidArgument(
+            "Construct ReaderBase with mismatched sizes of var_types "
+            "and need_check_feed"));
   }
 
   virtual void ReadNext(std::vector<LoDTensor>* out);
@@ -108,7 +112,10 @@ class DecoratedReader : public ReaderBase,
       : ReaderBase(reader->Shapes(), reader->VarTypes(),
                    reader->NeedCheckFeed()),
         reader_(reader) {
-    PADDLE_ENFORCE_NOT_NULL(reader_);
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_,
+        platform::errors::InvalidArgument(
+            "The underlying reader of DecoratedReader should not be null"));
   }
 
   void RegisterDecorateChain() {
@@ -148,7 +155,10 @@ class ReaderHolder {
   template <typename T>
   void Reset(const std::shared_ptr<T>& reader) {
     auto reader_base = std::dynamic_pointer_cast<ReaderBase>(reader);
-    PADDLE_ENFORCE_NOT_NULL(reader_base);
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_base,
+        platform::errors::InvalidArgument(
+            "The underlying reader of ReaderHolder should not be null"));
     reader_ = reader_base;
   }
 
@@ -157,7 +167,10 @@ class ReaderHolder {
   const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
   void ReadNext(std::vector<LoDTensor>* out) {
-    PADDLE_ENFORCE_NOT_NULL(reader_);
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_,
+        platform::errors::InvalidArgument(
+            "The underlying reader of ReaderHolder should not be null"));
     reader_->ReadNext(out);
   }
 
@@ -174,13 +187,19 @@ class ReaderHolder {
 
   void Shutdown() {
     VLOG(1) << "Shutdown";
-    PADDLE_ENFORCE_NOT_NULL(reader_);
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_,
+        platform::errors::InvalidArgument(
+            "The underlying reader of ReaderHolder should not be null"));
     reader_->Shutdown();
   }
 
   void Start() {
     VLOG(1) << "start";
-    PADDLE_ENFORCE_NOT_NULL(reader_);
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_,
+        platform::errors::InvalidArgument(
+            "The underlying reader of ReaderHolder should not be null"));
     reader_->Start();
   }
 

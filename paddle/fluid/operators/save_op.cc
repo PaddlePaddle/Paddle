@@ -73,7 +73,7 @@ class SaveOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto var_type = framework::proto::VarType::RAW;
-    ctx->SetType(LOOKUP_TABLE_PATH, var_type);
+    ctx->InsertVar(LOOKUP_TABLE_PATH, var_type);
   }
 };
 

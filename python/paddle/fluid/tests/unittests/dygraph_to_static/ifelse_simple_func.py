@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 
 def add_fn(x):
@@ -43,7 +42,10 @@ def dyfunc_with_if_else(x_v, label=None):
 def dyfunc_with_if_else2(x, col=100):
     row = 0
     if abs(col) > x.shape[-1]:
-        col = -1
+        # TODO: Don't support return non-Tensor in Tensor-dependent `if` stament currently.
+        #  `x` is Tensor, `col` is not Tensor, and `col` is the return value of `true_fn` after transformed.
+        # col = -1
+        col = fluid.layers.fill_constant(shape=[1], value=-1, dtype="int64")
     if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[row][col]:
         y = fluid.layers.relu(x)
     else:
@@ -52,12 +54,62 @@ def dyfunc_with_if_else2(x, col=100):
     return y
 
 
+def dyfunc_with_if_else3(x):
+    # Create new var in parent scope, return it in true_fn and false_fn.
+    # The var is created only in one of If.body or If.orelse node, and it used as gast.Load firstly after gast.If node.
+    # The transformed code:
+    """
+    q = fluid.dygraph.dygraph_to_static.variable_trans_func.
+        data_layer_not_check(name='q', shape=[-1], dtype='float32')
+    z = fluid.dygraph.dygraph_to_static.variable_trans_func.
+            data_layer_not_check(name='z', shape=[-1], dtype='float32')
+
+    def true_fn_0(q, x, y):
+        x = x + 1
+        z = x + 2
+        q = x + 3
+        return q, x, y, z
+
+    def false_fn_0(q, x, y):
+        y = y + 1
+        z = x - 2
+        m = x + 2
+        n = x + 3
+        return q, x, y, z
+    q, x, y, z = fluid.layers.cond(fluid.layers.mean(x)[0] < 5, lambda :
+        fluid.dygraph.dygraph_to_static.convert_call(true_fn_0)(q, x, y),
+        lambda : fluid.dygraph.dygraph_to_static.convert_call(false_fn_0)(q,
+        x, y))
+    """
+    y = x + 1
+    # NOTE: x_v[0] < 5 is True
+    if fluid.layers.mean(x).numpy()[0] < 5:
+        x = x + 1
+        z = x + 2
+        q = x + 3
+    else:
+        y = y + 1
+        z = x - 2
+        m = x + 2
+        n = x + 3
+
+    q = q + 1
+    n = q + 2
+    x = n
+    return x
+
+
 def nested_if_else(x_v):
     batch_size = 16
     feat_size = x_v.shape[-1]
     bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
     if x_v.shape[0] != batch_size:
-        batch_size = x_v.shape[0]
+        # TODO: Don't support return non-Tensor in Tensor-dependent `if` stament currently.
+        #  `x_v.shape[0]` is not Tensor, and `batch_size` is the return value of `true_fn` after transformed.
+        # col = -1
+        # batch_size = x_v.shape[0]
+        batch_size = fluid.layers.shape(x_v)[0]
+
     # if tensor.shape is [1], now support to compare with numpy.
     if fluid.layers.mean(x_v).numpy() < 0:
         y = x_v + bias
@@ -142,7 +194,6 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
         self.alpha = 10.
         self.constant_vars = {}
 
-    @dygraph_to_static_func
     def forward(self, input):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:
@@ -249,4 +300,32 @@ def if_with_class_var(x, y=None):
         x = x + foo.b
     else:
         x = x - foo.b
+    return x
+
+
+def if_tensor_case(x):
+    x = fluid.dygraph.to_variable(x)
+
+    mean = fluid.layers.mean(x)
+    # It is equivalent to `if mean != 0`
+    if mean:
+        for i in range(0, 10):
+            if i > 5:
+                x += 1
+                break
+            x += 1
+    else:
+        for i in range(0, 37):
+            x += 1
+            break
+            x += i
+
+    # join `and`/`or`
+    if fluid.layers.mean(x) + 1 and mean > 1 and x is not None or 2 > 1:
+        x -= 1
+
+    # `not` statement
+    if not (x[0][0] and (mean * x)[0][0]):
+        x += 1
+
     return x

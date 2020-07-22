@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <mkldnn.h>
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+#include "mkldnn.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
@@ -101,6 +101,11 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
   }
 }
 
+struct mkldnn_dummy_primitive {
+  struct primitive_desc {};
+  struct desc {};
+};
+
 inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
                                           mkldnn::memory::data_type data_type,
                                           MKLDNNMemoryFormat format) {
@@ -173,6 +178,9 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3]) {
         return mkldnn::memory::format_tag::nchw;
+      } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
+                 strides[1] >= strides[0]) {
+        return mkldnn::memory::format_tag::cdba;
       } else {
         return mkldnn::memory::format_tag::nhwc;
       }

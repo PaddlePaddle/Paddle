@@ -53,7 +53,23 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     attr_checker->Check(&attrs, true);
   }
 
-  OpBase::Run(*op, ins, outs, attrs, place);
+  try {
+    OpBase::Run(*op, ins, outs, attrs, place);
+  } catch (platform::EnforceNotMet& exception) {
+    framework::AppendErrorOpHint(type, &exception);
+    throw std::move(exception);
+  } catch (std::exception& ex) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Operator %s raises an %s exception.\n"
+        "The exception content is\n:%s.",
+        type, platform::demangle(typeid(ex).name()), ex.what()));
+  } catch (...) {
+    // NOTE: this branch represents a very serious bug with
+    // low probability of occurrence, and we can't get its
+    // exception content here.
+    PADDLE_THROW(platform::errors::Fatal(
+        "Operator %s raises an unknown exception.", type));
+  }
 
   if (enable_program_desc_tracing_) {
     VLOG(5) << "Trace op " << type << " into ProgramDesc";

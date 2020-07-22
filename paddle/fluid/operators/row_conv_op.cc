@@ -15,8 +15,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -33,16 +33,17 @@ class RowConvOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of RowConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) of RowConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of RowConvOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "row_conv");
+    OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "row_conv");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "row_conv");
 
     auto x_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
-    PADDLE_ENFORCE_EQ(filter_dims.size(), 2, "Input(Y)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(filter_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "Input(Filter)'s dimensions should be 2. Received: "
+                          "Input(Filter)'s shape: [%s].",
+                          filter_dims));
 
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", "Out");
@@ -54,10 +55,9 @@ class RowConvGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of output(Out) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "row_conv_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "row_conv_grad");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {

@@ -133,7 +133,7 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
   } else {
 #ifdef PADDLE_WITH_CUDA
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto gpu_place = boost::get<platform::CUDAPlace>(t_place);
+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, t_place);
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
     memory::Copy(platform::CPUPlace(), static_cast<void *>(data), gpu_place,
@@ -145,27 +145,35 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
 #endif
   }
 }
-template void ZeroCopyTensor::copy_from_cpu<float>(const float *data);
-template void ZeroCopyTensor::copy_from_cpu<int64_t>(const int64_t *data);
-template void ZeroCopyTensor::copy_from_cpu<int32_t>(const int32_t *data);
-template void ZeroCopyTensor::copy_from_cpu<uint8_t>(const uint8_t *data);
-template void ZeroCopyTensor::copy_to_cpu<float>(float *data);
-template void ZeroCopyTensor::copy_to_cpu<int64_t>(int64_t *data);
-template void ZeroCopyTensor::copy_to_cpu<int32_t>(int32_t *data);
-template void ZeroCopyTensor::copy_to_cpu<uint8_t>(uint8_t *data);
+template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<float>(
+    const float *data);
+template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<int64_t>(
+    const int64_t *data);
+template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<int32_t>(
+    const int32_t *data);
+template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<uint8_t>(
+    const uint8_t *data);
+template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<float>(float *data);
+template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<int64_t>(int64_t *data);
+template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<int32_t>(int32_t *data);
+template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<uint8_t>(uint8_t *data);
 
-template float *ZeroCopyTensor::data<float>(PaddlePlace *place,
-                                            int *size) const;
-template int64_t *ZeroCopyTensor::data<int64_t>(PaddlePlace *place,
-                                                int *size) const;
-template int32_t *ZeroCopyTensor::data<int32_t>(PaddlePlace *place,
-                                                int *size) const;
-template uint8_t *ZeroCopyTensor::data<uint8_t>(PaddlePlace *place,
-                                                int *size) const;
-template float *ZeroCopyTensor::mutable_data<float>(PaddlePlace place);
-template int64_t *ZeroCopyTensor::mutable_data<int64_t>(PaddlePlace place);
-template int32_t *ZeroCopyTensor::mutable_data<int32_t>(PaddlePlace place);
-template uint8_t *ZeroCopyTensor::mutable_data<uint8_t>(PaddlePlace place);
+template PD_INFER_DECL float *ZeroCopyTensor::data<float>(PaddlePlace *place,
+                                                          int *size) const;
+template PD_INFER_DECL int64_t *ZeroCopyTensor::data<int64_t>(
+    PaddlePlace *place, int *size) const;
+template PD_INFER_DECL int32_t *ZeroCopyTensor::data<int32_t>(
+    PaddlePlace *place, int *size) const;
+template PD_INFER_DECL uint8_t *ZeroCopyTensor::data<uint8_t>(
+    PaddlePlace *place, int *size) const;
+template PD_INFER_DECL float *ZeroCopyTensor::mutable_data<float>(
+    PaddlePlace place);
+template PD_INFER_DECL int64_t *ZeroCopyTensor::mutable_data<int64_t>(
+    PaddlePlace place);
+template PD_INFER_DECL int32_t *ZeroCopyTensor::mutable_data<int32_t>(
+    PaddlePlace place);
+template PD_INFER_DECL uint8_t *ZeroCopyTensor::mutable_data<uint8_t>(
+    PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() const {
   PADDLE_ENFORCE(!name_.empty(),

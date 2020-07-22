@@ -43,7 +43,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
     bool this_is_seqpool_op =
         x && x->IsOp() && x->Op()->Type() == "sequence_pool" &&
         x->Op()->HasAttr("pooltype") &&
-        boost::get<std::string>(x->Op()->GetAttr("pooltype")) == type &&
+        BOOST_GET_CONST(std::string, x->Op()->GetAttr("pooltype")) == type &&
         x->outputs.size() == 2;  // seqpool should only have 2 outputs
     bool satisfied_all = this_is_seqpool_op;
     if (this_is_seqpool_op) {

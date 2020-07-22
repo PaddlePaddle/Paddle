@@ -725,6 +725,59 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         self.assertTrue(np.array_equal(weight_with_prune, weight_expected))
         self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
+    def test_prune_feed_var_in_fetchlist_1(self):
+        # the variable to be fed is not leaf
+        program = framework.Program()
+        startup_program = framework.Program()
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(program, startup_program):
+                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+                exe = fluid.Executor(fluid.CPUPlace())
+                exe.run(startup_program)
+                weight_init = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor())
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+                res = exe.run(program,
+                              feed={y.name: x_np,
+                                    'label': label_np},
+                              fetch_list=[y.name, loss1.name],
+                              use_prune=True)
+                self.assertIsNotNone(scope.find_var(loss1.name))
+                self.assertIsNone(scope.find_var(loss2.name))
+                self.assertIsNone(scope.find_var(x.name))
+                weight = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor())
+                self.assertTrue(np.array_equal(weight_init,
+                                               weight))  # weight unchanged
+
+    def test_prune_feed_var_in_fetchlist_2(self):
+        # the variable to be fed is leaf
+        program = framework.Program()
+        startup_program = framework.Program()
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(program, startup_program):
+                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+                exe = fluid.Executor(fluid.CPUPlace())
+                exe.run(startup_program)
+                weight_init = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor())
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+                res = exe.run(program,
+                              feed={x.name: x_np,
+                                    'label': label_np},
+                              fetch_list=[x.name, loss1.name],
+                              use_prune=True)
+                self.assertIsNotNone(scope.find_var(loss1.name))
+                self.assertIsNone(scope.find_var(loss2.name))
+                weight = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor())
+                self.assertTrue(np.array_equal(weight_init,
+                                               weight))  # weight unchanged
+
 
 if __name__ == '__main__':
     unittest.main()

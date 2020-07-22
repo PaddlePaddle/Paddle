@@ -35,6 +35,7 @@ __device__ inline double Sqrt(double x) { return sqrt(x); }
 
 )";
 
+// List some bulit-in functions of __half implemented in cuda_fp16.hpp
 static constexpr char predefined_cuda_functions_fp16[] = R"(
 #define __HALF_TO_US(var) *(reinterpret_cast<unsigned short *>(&(var)))
 #define __HALF_TO_CUS(var) *(reinterpret_cast<const unsigned short *>(&(var)))
@@ -193,12 +194,22 @@ __CUDA_FP16_DECL__ __half __hdiv(__half a, __half b) {
     return v;
 }
 
+__CUDA_FP16_DECL__ __half __hneg(const __half a)
+{
+    __half zero;
+    zero = __float2half(0.0);
+    return __hsub(zero, a);
+}
 
 /* Some basic arithmetic operations expected of a builtin */
 __device__ __forceinline__ __half operator+(const __half &lh, const __half &rh) { return __hadd(lh, rh); }
 __device__ __forceinline__ __half operator-(const __half &lh, const __half &rh) { return __hsub(lh, rh); }
 __device__ __forceinline__ __half operator*(const __half &lh, const __half &rh) { return __hmul(lh, rh); }
 __device__ __forceinline__ __half operator/(const __half &lh, const __half &rh) { return __hdiv(lh, rh); }
+
+/* Unary plus and inverse operators */
+__device__ __forceinline__ __half operator+(const __half &h) { return h; }
+__device__ __forceinline__ __half operator-(const __half &h) { return __hneg(h); }
 
 /* Some basic comparison operations to make it look like a builtin */
 __device__ __forceinline__ bool operator==(const __half &lh, const __half &rh) { return __heq(lh, rh); }
@@ -268,6 +279,22 @@ __CUDA_FP16_DECL__ __half hlog(const __half a) {
 __CUDA_FP16_DECL__ __half hsqrt(const __half a) {
     __APPROX_FCAST(sqrt);
 }
+
+#if defined(__cplusplus) && (__CUDA_ARCH__ >= 320 || !defined(__CUDA_ARCH__))
+#if (defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)
+#define __LDG_PTR   "l"
+#else
+#define __LDG_PTR   "r"
+#endif /*(defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)*/
+__CUDA_FP16_DECL__ __half __ldg(const __half *ptr)
+{
+    __half ret;
+    asm ("ld.global.nc.b16 %0, [%1];"  : "=h"(__HALF_TO_US(ret)) : __LDG_PTR(ptr));
+    return ret;
+}
+
+#undef __LDG_PTR
+#endif /*defined(__cplusplus) && (__CUDA_ARCH__ >= 320 || !defined(__CUDA_ARCH__))*/
 
 __device__ inline __half Exp(const __half x) { return hexp(x); }
 __device__ inline __half Log(const __half x) { return hlog(x); }

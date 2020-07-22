@@ -123,7 +123,7 @@ class GradOpBaseMakerBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return boost::get<T>(GetAttr(name));
+    return BOOST_GET_CONST(T, GetAttr(name));
   }
 
   const std::string& ForwardOpType() const { return type_; }
@@ -257,6 +257,8 @@ class TracedGradOp {
                      kRole == TracedVarRole::kBackward);
     }
   }
+
+  std::string Type() const { return op_->Type(); }
 
   void SetType(const std::string& type) { op_->SetType(type); }
 

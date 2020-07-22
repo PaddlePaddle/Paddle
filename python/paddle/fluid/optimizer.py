@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import logging
 from collections import defaultdict
 
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
@@ -24,7 +25,7 @@ from . import framework
 from . import layers
 from . import unique_name
 from .backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
-from .clip import GradientClipBase, error_clip_callback, append_gradient_clip_ops
+from .clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
@@ -32,7 +33,7 @@ from .layers import ops
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
 from .dygraph import no_grad
-from .dygraph.learning_rate_scheduler import LearningRateDecay
+from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpochDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -64,31 +65,43 @@ class Optimizer(object):
                  learning_rate,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
-        self._parameter_list = parameter_list
+        self._parameter_list = list(
+            parameter_list) if parameter_list is not None else None
+        self._name = name
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
                 raise TypeError(
                     "learning rate should be float or LearningRateDecay, got %s here"
                     % type(learning_rate))
-            if name is not None:
-                self._name = unique_name.generate(name)
-            else:
-                self._name = unique_name.generate(self.__class__.__name__)
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameter_list argument given to the Optimizer should not be None in dygraph mode."
                 )
+            if regularization is not None:
+                for param in self._parameter_list:
+                    if param.regularizer is not None:
+                        logging.info(
+                            "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
+                            "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
+                            % regularization.__str__())
+                        break
         else:
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, framework.Variable):
                 raise TypeError(
                     "learning rate should be float or Variable, got %s here" %
                     type(learning_rate))
-            self._name = name
 
+        if grad_clip is not None:
+            if not isinstance(grad_clip, GradientClipBase):
+                raise TypeError(
+                    "'grad_clip' should be an instance of GradientClipBase's derived class"
+                )
         self.regularization = regularization
+        self._grad_clip = grad_clip
         self._learning_rate = learning_rate
         # the learning rate type should be inferenced from loss
         self._dtype = None
@@ -107,8 +120,6 @@ class Optimizer(object):
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
-        # if pass grad_clip into minimize, it will not be None
-        self._grad_clip = None
 
     @framework.dygraph_only
     def state_dict(self):
@@ -138,17 +149,17 @@ class Optimizer(object):
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
         if isinstance(self._learning_rate, LearningRateDecay):
-            var_tmp = None
-            if framework.in_dygraph_mode():
+            state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
+
+            if not isinstance(self._learning_rate, _LearningRateEpochDecay):
+                var_tmp = None
                 var_temp = framework._varbase_creator(
                     None, name='global_step', dtype='int32')
-            else:
-                var_temp = Variable(None, name='global_step', dtype='int32')
 
-            tensor.fill_constant(
-                [1], "int32", self._learning_rate.step_num, out=var_temp)
+                tensor.fill_constant(
+                    [1], "int32", self._learning_rate.step_num, out=var_temp)
 
-            state_dict['global_step'] = var_temp
+                state_dict['global_step'] = var_temp
         return state_dict
 
     @framework.dygraph_only
@@ -182,30 +193,28 @@ class Optimizer(object):
         '''
 
         if isinstance(self._learning_rate, LearningRateDecay):
-            assert 'global_step' in state_dict, \
-                    'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
-            global_step = state_dict['global_step']
+            self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
-            if isinstance(global_step, core.VarBase):
-                step_np = global_step
-                step_np = np.array(step_np.value().get_tensor())
-                assert step_np.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( step_np.shape )
+            if not isinstance(self._learning_rate, _LearningRateEpochDecay):
+                assert 'global_step' in state_dict, \
+                        'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
+                global_step = state_dict['global_step']
 
-                self._learning_rate.step_num = int(step_np[0])
-            elif isinstance(global_step, Variable):
-                step_np = global_step.numpy()
-                assert step_np.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( step_np.shape )
-                self._learning_rate.step_num = step_np[0]
-            elif isinstance(global_step, np.ndarray):
-                assert global_step.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( global_step.shape )
-                self._learning_rate.step_num = global_step[0]
-            else:
-                raise RuntimeError(
-                    "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
-                    type(global_step))
+                if isinstance(global_step, Variable):
+                    step_np = global_step
+                    step_np = np.array(step_np.value().get_tensor())
+                    assert step_np.shape == (1,),  \
+                            "global step shape is (1,), the shape is {}".format( step_np.shape )
+
+                    self._learning_rate.step_num = int(step_np[0])
+                elif isinstance(global_step, np.ndarray):
+                    assert global_step.shape == (1,),  \
+                            "global step shape is (1,), the shape is {}".format( global_step.shape )
+                    self._learning_rate.step_num = global_step[0]
+                else:
+                    raise RuntimeError(
+                        "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
+                        type(global_step))
 
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
@@ -287,10 +296,86 @@ class Optimizer(object):
                 persistable=True)
 
     @framework.dygraph_only
+    def set_lr(self, value):
+        """
+        :api_attr: imperative
+        
+        Set the value of the learning rate manually in the optimizer. If the optimizer use LearningRateDecay,
+        this API cannot be invoked, because it will lead to conflict.
+
+        Args:
+            value (float|Variable): the value of learning rate
+
+        Returns:
+            None
+          
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                        
+                with fluid.dygraph.guard():
+                    linear = fluid.dygraph.nn.Linear(10, 10)
+
+                    adam = fluid.optimizer.Adam(0.1, parameter_list=linear.parameters())
+
+                    # set learning rate manually by python float value
+                    lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
+                    for i in range(5):
+                        adam.set_lr(lr_list[i])
+                        lr = adam.current_step_lr()
+                        print("current lr is {}".format(lr))
+                    # Print:
+                    #    current lr is 0.2
+                    #    current lr is 0.3
+                    #    current lr is 0.4
+                    #    current lr is 0.5
+                    #    current lr is 0.6
+
+
+                    # set learning rate manually by framework Variable
+                    lr_var = fluid.layers.create_global_var(
+                        shape=[1], value=0.7, dtype='float32')
+                    adam.set_lr(lr_var)
+                    lr = adam.current_step_lr()
+                    print("current lr is {}".format(lr))
+                    # Print:
+                    #    current lr is 0.7
+
+
+
+        """
+        if not isinstance(value, (framework.Variable, float)):
+            raise TypeError(
+                "The type of 'value' in optimizer.set_lr must be (float, Variable), but received %s."
+                % (type(value)))
+        if isinstance(self._learning_rate, LearningRateDecay):
+            raise RuntimeError(
+                "optimizer's learning rate can't be LearningRateDecay when invoke this API, because this will lead to conflict."
+            )
+        if isinstance(value, float):
+            self._learning_rate = value
+            current_lr = self._global_learning_rate()
+            if current_lr is not None:
+                global_block = framework.default_main_program().global_block()
+                global_block.append_op(
+                    type='fill_constant',
+                    outputs={'Out': [current_lr]},
+                    attrs={
+                        'dtype': current_lr.dtype,
+                        'shape': list(current_lr.shape),
+                        'value': float(value)
+                    },
+                    stop_gradient=True)
+        else:
+            assert len(value.shape) == 1 and value.shape[
+                0] == 1, "optimizer's learning rate must be 1-D Tensor with shape[1]"
+            self._learning_rate_map[framework.default_main_program()] = value
+
+    @framework.dygraph_only
     def current_step_lr(self):
         """
-        .. note::
-          **This API is ONLY available in Dygraph mode**
+        :api_attr: imperative
         
         Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
         otherwise return the step learning rate.
@@ -336,11 +421,14 @@ class Optimizer(object):
 
         """
         current_lr = self._global_learning_rate()
-        if current_lr:
+        if isinstance(current_lr, framework.Variable):
             return self._global_learning_rate().numpy()[0]
 
         if isinstance(self._learning_rate, float):
             return self._learning_rate
+        elif isinstance(self._learning_rate, _LearningRateEpochDecay):
+            step_lr = self._learning_rate()
+            return step_lr.numpy()[0]
         else:
             step_lr = self._learning_rate.step()
             if isinstance(step_lr, (float, int)):
@@ -619,7 +707,7 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
+            parameter_list (Iterable, optional): Iterable of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
@@ -698,15 +786,15 @@ class Optimizer(object):
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
 
-        # 'minimize(grad_clip)' or 'set_gradient_clip'
+        # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
         else:
             params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
-        params_grads = append_regularization_ops(params_grads,
-                                                 self.regularization)
+        params_grads = append_regularization_ops(
+            params_grads, self.regularization, self._param_device_map)
 
         optimize_ops = self._create_optimization_pass(params_grads)
         if table_optimize_op is not None:
@@ -787,8 +875,7 @@ class Optimizer(object):
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None,
-                 grad_clip=None):
+                 no_grad_set=None):
         """
         Add operations to minimize ``loss`` by updating ``parameter_list``.
 
@@ -797,16 +884,11 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
+            parameter_list (Iterable, optional): Iterable of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
-                to be updated. The default value is None.   
-            grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-                some derived class of ``GradientClipBase`` . There are three cliping strategies 
-                ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-                :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no 
-                gradient clipping.
+                to be updated. The default value is None.
 
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
@@ -820,12 +902,7 @@ class Optimizer(object):
             Please refer to the example of current Optimizer.
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
-        if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
-                raise TypeError(
-                    "'grad_clip' should be an instance of GradientClipBase's derived class"
-                )
-            self._grad_clip = grad_clip
+
         parameter_list = parameter_list if parameter_list \
             else self._parameter_list
         params_grads = self.backward(
@@ -851,7 +928,7 @@ class SGDOptimizer(Optimizer):
     Parameters:
         learning_rate (float|Variable): The learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -859,6 +936,10 @@ class SGDOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -896,12 +977,14 @@ class SGDOptimizer(Optimizer):
                  learning_rate,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         assert learning_rate is not None
         super(SGDOptimizer, self).__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "sgd"
 
@@ -953,7 +1036,7 @@ class MomentumOptimizer(Optimizer):
         learning_rate (float|Variable): The learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
         momentum (float): Momentum factor
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
@@ -962,6 +1045,10 @@ class MomentumOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1002,6 +1089,7 @@ class MomentumOptimizer(Optimizer):
                  parameter_list=None,
                  use_nesterov=False,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         assert learning_rate is not None
         assert momentum is not None
@@ -1009,6 +1097,7 @@ class MomentumOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "momentum"
         self._momentum = momentum
@@ -1059,6 +1148,8 @@ class MomentumOptimizer(Optimizer):
 
 class DGCMomentumOptimizer(Optimizer):
     """
+	:api_attr: Static Graph
+
     DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
 
     DGC reduces the communication bandwidth by sending only the important gradients (sparse update):\
@@ -1093,17 +1184,18 @@ class DGCMomentumOptimizer(Optimizer):
         sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity). \
             Default is [0.999]. For example, if the sparsity is [0.99, 0.999], \
                 the top [1%, 0.1%] important element will be transmitted.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
-        local_grad_clip_norm (float, optional): Local gradient clip norm value. Optional, default is None, represent no need clip.
-        num_trainers (int, optional): The number of training nodes. Optional, default is None.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipByNorm, optional): Gradient cliping strategy. ``DGCMomentumOptimizer`` only support 
+            :ref:`api_fluid_clip_GradientClipByNorm` , and if not, it will raise TypeError. Default None, 
+            meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1130,9 +1222,9 @@ class DGCMomentumOptimizer(Optimizer):
                  sparsity=[0.999],
                  parameter_list=None,
                  use_nesterov=False,
-                 local_grad_clip_norm=None,
                  num_trainers=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support DGCMomentumOptimizer.")
@@ -1146,6 +1238,7 @@ class DGCMomentumOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "dgc_momentum"
         self._momentum = momentum
@@ -1159,20 +1252,23 @@ class DGCMomentumOptimizer(Optimizer):
         self._rampup_begin_step_var = None
         self._global_step_var = None
 
-        self._local_grad_clip_norm = None
-        self._clip_norm = None
-        if local_grad_clip_norm is not None:
-            assert isinstance(num_trainers, int)
-            assert isinstance(local_grad_clip_norm, float)
-            assert num_trainers > 0
+        self._dgc_clip_norm = None
+        if grad_clip is not None:
+            if not isinstance(grad_clip, GradientClipByNorm):
+                raise TypeError(
+                    "The type of grad_clip should be 'GradientClipByNorm', because DGCMomentumOptimizer only support GradientClipByNorm"
+                )
+            assert isinstance(
+                num_trainers, int
+            ), "The type of num_trainers should be 'int', but received %s" % type(
+                value)
+            assert num_trainers > 0, "The value of num_trainers should be greater than 0!"
 
-            self._local_grad_clip_norm = local_grad_clip_norm
             self._num_trainers = num_trainers
-            self._clip_norm = local_grad_clip_norm * (num_trainers**-0.5)
+            self._dgc_clip_norm = grad_clip.clip_norm * (num_trainers**-0.5)
 
         self.regular_type, self.regular_coeff = self._get_regularization_param(
             self.regularization)
-        self._grad_clip = None
 
     def _get_regularization_param(self, regularization):
         regular_type = 0
@@ -1342,8 +1438,8 @@ class DGCMomentumOptimizer(Optimizer):
                     op._remove_attr(op_maker.kOpRoleVarAttrName())
 
             clip_var = grad_var
-            if self._local_grad_clip_norm is not None:
-                clip_var = self._append_clip_norm(grad_var, self._clip_norm)
+            if self._dgc_clip_norm is not None:
+                clip_var = self._append_clip_norm(grad_var, self._dgc_clip_norm)
             self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var,
                          encoded_var, gather_var)
 
@@ -1444,7 +1540,7 @@ class DGCMomentumOptimizer(Optimizer):
             else:
                 dgc_params_grads.append((param, grad))
 
-        # 'minimize(grad_clip)' or 'set_gradient_clip'
+        # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             not_dgc_params_grads = self._grad_clip(not_dgc_params_grads)
         else:
@@ -1486,7 +1582,7 @@ class LarsMomentumOptimizer(Optimizer):
             momentum (float): momentum factor
         lars_coeff (float): Defines how much we trust the layer to change its weights.
         lars_weight_decay (float): Weight decay coefficient for decaying using LARS.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -1494,6 +1590,10 @@ class LarsMomentumOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1526,6 +1626,7 @@ class LarsMomentumOptimizer(Optimizer):
                  lars_weight_decay=0.0005,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         assert learning_rate is not None
         assert momentum is not None
@@ -1533,6 +1634,7 @@ class LarsMomentumOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "lars_momentum"
         self._momentum = momentum
@@ -1599,7 +1701,7 @@ class AdagradOptimizer(Optimizer):
             It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -1607,6 +1709,10 @@ class AdagradOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -1639,6 +1745,7 @@ class AdagradOptimizer(Optimizer):
                  epsilon=1.0e-6,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None,
                  initial_accumulator_value=0.0):
         assert learning_rate is not None
@@ -1647,6 +1754,7 @@ class AdagradOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "adagrad"
         self._epsilon = epsilon
@@ -1718,7 +1826,7 @@ class AdamOptimizer(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -1726,6 +1834,10 @@ class AdamOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -1835,6 +1947,7 @@ class AdamOptimizer(Optimizer):
                  epsilon=1e-8,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None,
                  lazy_mode=False):
         assert learning_rate is not None
@@ -1845,6 +1958,7 @@ class AdamOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "adam"
         self._beta1 = beta1
@@ -1978,7 +2092,7 @@ class AdamaxOptimizer(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -1986,6 +2100,10 @@ class AdamaxOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2031,6 +2149,7 @@ class AdamaxOptimizer(Optimizer):
                  epsilon=1e-8,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         assert learning_rate is not None
         assert beta1 is not None
@@ -2040,6 +2159,7 @@ class AdamaxOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "adamax"
         self._beta1 = beta1
@@ -2147,7 +2267,7 @@ class DpsgdOptimizer(Optimizer):
         clip (float): clipping threshold
         batch_size (float): batch size.
         sigma (float): for gaussian noise.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
     Notes:
@@ -2230,7 +2350,7 @@ class DecayedAdagradOptimizer(Optimizer):
         decay (float, optional): The decay rate. The default value is 0.95.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2238,6 +2358,10 @@ class DecayedAdagradOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2264,6 +2388,7 @@ class DecayedAdagradOptimizer(Optimizer):
                  epsilon=1.0e-6,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         assert learning_rate is not None
         assert decay is not None
@@ -2273,6 +2398,7 @@ class DecayedAdagradOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "decayed_adagrad"
         self._decay = decay
@@ -2329,7 +2455,7 @@ class AdadeltaOptimizer(Optimizer):
         learning_rate (float|Variable): global learning rate.
         epsilon (float): a small float number for numeric stability. Default 1.0e-6.
         rho (float): a floating point value indicating the decay rate. Default 0.95.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2337,6 +2463,10 @@ class AdadeltaOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
@@ -2367,6 +2497,7 @@ class AdadeltaOptimizer(Optimizer):
                  rho=0.95,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
@@ -2378,6 +2509,7 @@ class AdadeltaOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "adadelta"
         self._epsilon = epsilon
@@ -2480,7 +2612,7 @@ class RMSPropOptimizer(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2488,6 +2620,10 @@ class RMSPropOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -2536,11 +2672,13 @@ class RMSPropOptimizer(Optimizer):
                  centered=False,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         super(RMSPropOptimizer, self).__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
@@ -2648,7 +2786,7 @@ class FtrlOptimizer(Optimizer):
         l1 (float): L1 regularization strength, default is 0.0.
         l2 (float): L2 regularization strength, default is 0.0.
         lr_power (float): Learning Rate Power, default is -0.5.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2656,6 +2794,10 @@ class FtrlOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -2704,11 +2846,13 @@ class FtrlOptimizer(Optimizer):
                  lr_power=-0.5,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         super(FtrlOptimizer, self).__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
@@ -2749,7 +2893,7 @@ class FtrlOptimizer(Optimizer):
                 "LinearAccumOut": linear_acc
             },
             attrs={"l1": self._l1,
-                   "l2": self._l1,
+                   "l2": self._l2,
                    "lr_power": self._lr_power},
             stop_gradient=True)
 
@@ -2790,7 +2934,7 @@ class LambOptimizer(AdamOptimizer):
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             Default 0.999.
         epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2798,6 +2942,10 @@ class LambOptimizer(AdamOptimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
             decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
             Default None.
@@ -2834,6 +2982,7 @@ class LambOptimizer(AdamOptimizer):
                  epsilon=1e-6,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  exclude_from_weight_decay_fn=None,
                  name=None):
         assert learning_rate is not None
@@ -2845,6 +2994,7 @@ class LambOptimizer(AdamOptimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             beta1=beta1,
             beta2=beta2,
             epsilon=epsilon,
@@ -2924,6 +3074,8 @@ Lamb = LambOptimizer
 
 class ModelAverage(Optimizer):
     """
+	:api_attr: Static Graph
+
     The ModelAverage optimizer accumulates specific continuous historical parameters
     during training. The accumulated historical range can be controlled by the passed
     ``average_window_rate`` argument. The averaged ``Parameter`` are used in the prediction,
@@ -3231,6 +3383,8 @@ class ModelAverage(Optimizer):
 
 class ExponentialMovingAverage(object):
     """
+	:api_attr: Static Graph
+
     Compute the moving average of parameters with exponential decay.
     Given a parameter :math:`\\theta`, its exponential moving average (EMA)
     will be
@@ -3479,306 +3633,859 @@ class ExponentialMovingAverage(object):
 
 class PipelineOptimizer(object):
     """
-    Pipeline Optimizer
+	:api_attr: Static Graph
 
-    Train with pipeline mode. The program will be split by cut_list. 
-
-    If the len of cut_list is k, then the whole program (including \
-    backward part) will be split to 2*k-1 sections. 
-    
-    So the length of place_list and concurrency_list must be also 2*k-1.
-
-    Note: Though the asynchronous mode is applied in pipeline training to speed up, \
-    the final performance depends on the training progress of each pipeline heavily.
-
-    And we will try the synchronous mode in the future.
+    Pipeline Optimizer: Make a program to run as pipeline, that is splitting a
+    program into multiple sections (sub-programs) and each section run on a
+    device to enable the training of large scale models and the use of
+    heterogeneous devices. Meanwhile, all sections run in the stype of pipeline.
 
     Args:
-        optimizer (Optimizer): The based optimizer, such as SGD.
-        cut_list (list of Variable list): The cut variable of the main_program.
-        place_list (list of Place): The place where the section will run on.
-        concurrency_list (list of int): The concurrency degree.
-        queue_size (int): Each section will consume scopes from its in-scope queue 
-                        and produce scopes to out-scope queue. And this parameter 
-                        specify the scope queue size. [Optional. Default: 30].
-        sync_steps (int): The synchronization steps between different cards. [Optional. Default: 1].
-        start_cpu_core_id (int): specify the first cpu core id. [Optional. Default:0].
-
+        optimizer (Optimizer): The optimizer to use, such as SGD.
+        num_microbatches (int): Number of microbatches. [Optional. Default:1].
+        start_cpu_core_id (int): The first cpu core id to use. [Optional. Default:0].
+    
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
-            y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
-            emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
-            emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
-            concat = layers.concat([emb_x, emb_y], axis=1)
-            fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
-            loss = layers.reduce_mean(fc)
+            with fluid.device_guard("gpu:0"):
+                x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
+                y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+                data_loader = fluid.io.DataLoader.from_generator(
+                    feed_list=[x, y],
+                    capacity=64,
+                    use_double_buffer=True,
+                    iterable=False)
+
+                emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
+                emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
+
+            with fluid.device_guard("gpu:1"):
+                concat = layers.concat([emb_x, emb_y], axis=1)
+                fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
+                loss = layers.reduce_mean(fc)
             optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-            optimizer = fluid.optimizer.PipelineOptimizer(optimizer,
-                    cut_list=[[emb_x, emb_y], [loss]],
-                    place_list=[fluid.CPUPlace(), fluid.CUDAPlace(0), fluid.CPUPlace()],
-                    concurrency_list=[1, 1, 4],
-                    queue_size=2,
-                    sync_steps=1,
-                    )
+            optimizer = fluid.optimizer.PipelineOptimizer(optimizer)
             optimizer.minimize(loss)
-            place = fluid.CPUPlace()
+
+            def train_reader():
+                for _ in range(4):
+                    x = np.random.random(size=[1]).astype('int64')
+                    y = np.random.random(size=[1]).astype('int64')
+                    yield x, y
+            data_loader.set_sample_generator(train_reader, batch_size=1)
+
+            place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
+            batch_size = 1
             filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
             dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
             dataset.set_use_var([x,y])
             dataset.set_batch_size(batch_size)
             dataset.set_filelist(filelist)
+            data_loader.start()
             exe.train_from_dataset(
-                        fluid.default_main_program(),
-                        dataset,
-                        thread=2,
-                        debug=False,
-                        fetch_list=[],
-                        fetch_info=[],
-                        print_period=1)
+                    fluid.default_main_program(),
+                    dataset)
+            data_loader.reset()
     """
 
-    def __init__(self,
-                 optimizer,
-                 cut_list=None,
-                 place_list=None,
-                 concurrency_list=None,
-                 queue_size=30,
-                 sync_steps=1,
-                 start_cpu_core_id=0):
+    def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
-        # TODO: check properties
+        if not isinstance(optimizer, Optimizer):
+            raise ValueError("The 'optimizer' parameter for "
+                             "PipelineOptimizer must be an instance of "
+                             "Optimizer, but the given type is {}.".format(
+                                 type(optimizer)))
         self._optimizer = optimizer
-        self._cut_list = cut_list
-        self._place_list = place_list
-        self._concurrency_list = concurrency_list
-        self._queue_size = queue_size
-        self._sync_steps = sync_steps
+        assert num_microbatches >= 1, (
+            "num_microbatches must be a positive value.")
+        self._num_microbatches = num_microbatches
+        assert start_cpu_core_id >= 0, (
+            "start_cpu_core_id must be greater than or equal to 0.")
         self._start_cpu_core_id = start_cpu_core_id
+        self._place_list = None
+        op_maker = core.op_proto_and_checker_maker
+        self._op_role = op_maker.OpRole
+        self._op_role_key = op_maker.kOpRoleAttrName()
+        self._op_role_var_key = op_maker.kOpRoleVarAttrName()
+        self._op_device_key = op_maker.kOpDeviceAttrName()
+        self._param_device_map = dict()
 
     def _create_vars(self, block, main_program):
+        # Create vars for block, copied from main_program's global block
         used_var_set = set()
         for op_idx in range(block.desc.op_size()):
             op_desc = block.desc.op(op_idx)
             vars = op_desc.input_arg_names() + op_desc.output_arg_names()
             for var in vars:
-                if var in used_var_set:
+                # a var whose name contains "blocking_queue" 
+                # only exists in startup program 
+                if var in used_var_set or "_blocking_queue" in var:
                     continue
                 used_var_set.add(var)
                 source_var = main_program.block(0).var(str(var))
-                block._clone_variable(source_var, False)
+                if source_var.type == core.VarDesc.VarType.READER:
+                    block.create_var(name=var, type=core.VarDesc.VarType.READER)
+                else:
+                    block._clone_variable(source_var, False)
 
-    def _extract_section_opt_ops(self, ops, cut_point_name):
+    def _is_loss_grad_op(self, op):
+        if self._op_role_key not in op.attr_names:
+            return False
+        op_role = int(op.all_attrs()[self._op_role_key])
+        return op_role & int(self._op_role.Backward) and op_role & int(
+            self._op_role.Loss)
+
+    def _is_backward_op(self, op):
+        return self._op_role_key in op.attr_names and int(op.all_attrs()[
+            self._op_role_key]) & int(self._op_role.Backward)
+
+    def _is_optimize_op(self, op):
+        return self._op_role_key in op.attr_names and int(op.all_attrs()[
+            self._op_role_key]) & int(self._op_role.Optimize)
+
+    def _is_update_op(self, op):
+        return 'Param' in op.input_names and 'Grad' in op.input_names and (
+            "LearningRate" in op.input_names)
+
+    def _split_program(self, main_program):
         """
-        Extract opt ops in the given section
+        Split a program into sections according to devices that ops run on.
+
+        Args:
+            main_program (Program): the main program
         """
-        output_names = set(cut_point_name)
-        relevant_op_flags = [True] * len(ops)
-        for i, op in reversed(list(enumerate(ops))):
-            if _some_in_set_(op.desc.output_arg_names(), output_names):
-                for name in op.desc.input_arg_names():
-                    output_names.add(name)
-            else:
-                relevant_op_flags[i] = False
-
-        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
-        return op_path
-
-    def _find_input_output(self, ops, name, is_forward=True):
-        """
-        Find the inputs or outputs of a section
-        """
-        all_set = set()
-        part_set = set()
-        for op in ops:
-            if is_forward:
-                part_set.update(op.desc.output_arg_names())
-            else:
-                part_set.update(op.desc.input_arg_names())
-            all_set.update(op.desc.output_arg_names())
-            all_set.update(op.desc.input_arg_names())
-        return all_set - part_set
-
-    def _find_persistable_vars(self, ops, whole_parameters):
-        """
-        find the persistable input vars in current section
-        """
-        res = set()
-        for op in ops:
-            vars = op.desc.input_arg_names()
-            for var in vars:
-                if var in whole_parameters:
-                    res.add(var)
-        return res
-
-    def _is_opt_role_op(self, op):
-        op_maker = core.op_proto_and_checker_maker
-        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleAttrName() in op.attr_names and \
-                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) & int(optimize_role) != 0:
-            return True
-        return False
-
-    def _is_lr_role_op(self, op):
-        op_maker = core.op_proto_and_checker_maker
-        optimize_role = core.op_proto_and_checker_maker.OpRole.LRSched
-        if op_maker.kOpRoleAttrName() in op.attr_names and \
-                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
-            return True
-        return False
-
-    def _extract_section_ops(self, ops, cut_point_name):
-        """
-        Extract ops in the given section 
-        """
-        output_names = set(cut_point_name)
-        relevant_op_flags = [True] * len(ops)
-        for i, op in reversed(list(enumerate(ops))):
-            if not self._is_opt_role_op(op) and _some_in_set_(
-                    op.desc.output_arg_names(), output_names):
-                for name in op.desc.input_arg_names():
-                    output_names.add(name)
-            elif op.desc.type() == "print" and op.desc.input_arg_names()[
-                    0] in output_names:
-                continue
-            else:
-                relevant_op_flags[i] = False
-
-        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
-        return op_path
-
-    def _find_section_opt(self, ops, params):
-        res = self._extract_section_opt_ops(ops, params)
-        return res
-
-    def _split_program(self, main_program, cut_list):
         programs = []
+        # Map from device to its corresponding section program info
+        device_program_map = dict()
         block = main_program.block(0)
-        whole_parameters = [e.name for e in block.all_parameters()]
-        cut_var_names = []
-        cut_len = len(cut_list)
-        sec_params = []
-        for i, cut_vars in enumerate(cut_list[:-1]):
-            cut_var_names.append([cut_var.name for cut_var in cut_vars])
-        for i, cut_vars in reversed(list(enumerate(cut_list[:-1]))):
-            cut_var_names.append(
-                [_append_grad_suffix_(cut_var.name) for cut_var in cut_vars])
-            if i == 0:
-                cut_var_names[-1] += [var.name for var in cut_list[-1]]
-        ops = block.ops[:]
-        for i, cut_vars in enumerate(cut_var_names):
-            program = {
-                "program": Program(),
-                "input_set": set(),
-                "output_set": set()
-            }
-            cur_ops = self._extract_section_ops(ops, cut_vars)
-            if i == 0:
-                for op in ops:
-                    if self._is_lr_role_op(op):
-                        cur_ops.append(op)
-            #prevent inplace in/out
-            program["input_set"].update(
-                self._find_input_output(
-                    cur_ops, [], is_forward=True))
-            for e in cur_ops:
-                ops.remove(e)
 
-            if i < cut_len:
-                sec_params.append(
-                    self._find_persistable_vars(cur_ops, whole_parameters))
-            if i >= cut_len - 1:
-                opt_ops = self._find_section_opt(
-                    ops, sec_params[2 * cut_len - 2 - i])
+        for op in block.ops:
+            device = op.attr(self._op_device_key)
 
-                for e in opt_ops:
-                    ops.remove(e)
-                cur_ops += opt_ops
-
-            op_descs = [op.desc for op in cur_ops]
-            for op_desc in op_descs:
-                ap_op = program["program"].block(0).desc.append_op()
-                ap_op.copy_from(op_desc)
-            program["input_set"].update(
-                self._find_input_output(
-                    cur_ops, cut_vars, is_forward=True))
-            program["input_set"].update(sec_params[min(i, 2 * cut_len - 2 - i)])
-            program["output_set"].update(
-                self._find_input_output(
-                    cur_ops, cut_vars, is_forward=False))
-            programs.append(program)
-        program = {
-            "program": Program(),
-            "input_set": set(),
-            "output_set": set()
-        }
-        op_descs = [op.desc for op in ops]
-        for op_desc in op_descs:
+            if device not in device_program_map:
+                program = {"program": Program()}
+                device_program_map[device] = program
+            program = device_program_map[device]
+            op_desc = op.desc
             ap_op = program["program"].block(0).desc.append_op()
             ap_op.copy_from(op_desc)
-        program["input_set"].update(
-            [cut_var.name + "@GRAD" for cut_var in cut_list[0]])
-        program["input_set"].update(
-            self._find_input_output(
-                ops, [], is_forward=True))
-        program["input_set"].update(sec_params[0])
-        programs.append(program)
-        inputs = set()
-        for program in reversed(list(programs)):
-            output_list = list(program["output_set"])
-            for output in output_list:
-                if output not in inputs:
-                    program["output_set"].remove(output)
-            inputs.update(program["input_set"])
+
+        for key in sorted(device_program_map.keys()):
+            program = device_program_map[key]
+            program['program']._sync_with_cpp()
+            programs.append(program)
+
         return programs
+
+    def _find_post_op(self, ops, cur_op, var_name):
+        """
+        Find the real post op that has variable named var_name as input.
+
+        Args:
+            ops (list): A list of ops.
+            cur_op (Operator): Current operator which has variable named
+                               var_name as output.
+            var_name (string): Variable name.
+        """
+        post_op = []
+        before = True
+        for op in ops:
+            if op == cur_op:
+                before = False
+                continue
+            if before:
+                continue
+            for in_var_name in op.input_arg_names:
+                if in_var_name == var_name:
+                    post_op.append(op)
+        if post_op:
+            if not len(post_op) == 1:
+                raise ValueError("Each op can only have one post op.")
+            return post_op[0]
+        return None
+
+    def _find_real_prev_op(self, ops, cur_op, var_name):
+        """
+        Find the real previous op that outputs variable named var_name.
+
+        Args:
+            ops (list): A list of ops.
+            cur_op (Operator): Current operator which has variable named
+                               var_name as input.
+            var_name (string): Variable name.
+        """
+        prev_op = []
+        for op in ops:
+            if op == cur_op:
+                break
+            for out_var_name in op.output_arg_names:
+                if out_var_name == var_name:
+                    prev_op.append(op)
+        if prev_op:
+            # A op may have more than one prev op,
+            # e.g., for 'learning_rate', there may be multiple ops have it as
+            # output.
+            return prev_op[-1]
+        return None
+
+    def _rename_arg(self, op, old_name, new_name):
+        op_desc = op.desc
+        if isinstance(op_desc, tuple):
+            op_desc = op_desc[0]
+        op_desc._rename_input(old_name, new_name)
+        op_desc._rename_output(old_name, new_name)
+
+    def _create_var(self, block, ref_var, name):
+        """
+        Create a new var for block, which has the same type,
+        shape and dtype as ref_var, then rename it with the
+        name `name`.
+        """
+        new_var = block.create_var(
+            name=name,
+            shape=ref_var.shape,
+            dtype=ref_var.dtype,
+            type=ref_var.type,
+            lod_level=ref_var.lod_level,
+            persistable=False,
+            is_data=False,
+            need_check_feed=ref_var.desc.need_check_feed())
+        return new_var
+
+    def _get_data_var_info(self, block):
+        """
+        Get all vars whose is_data attribute are true and then rename them.
+
+        For PipelineTrainer, all data vars are binded to
+        minibatch scope, so we have to feed them to the microbatch
+        to avoid conflicts. The vars feeded to microbatch have to
+        be renamed.
+        """
+        # A map from var name to the renamed name.
+        raw_name_new_name_map = dict()
+        # Because we will create vars in block, it is more safe
+        # to get all var_names before iteration.
+        var_names = list(block.vars.keys())
+        for var_name in var_names:
+            var = block.var(var_name)
+            if not var.is_data:
+                continue
+            assert var_name not in raw_name_new_name_map, (
+                "{} has already been processed.".format(var_name))
+            new_name = unique_name.generate(var_name)
+            raw_name_new_name_map[var_name] = new_name
+            new_var = self._create_var(block, var, new_name)
+            new_var.is_data = False
+
+        # map of data to devices that that data on
+        data_devices_map = dict()
+        for op in block.ops:
+            dev_spec = op.attr(self._op_device_key)
+            for var_name in op.input_arg_names:
+                if var_name not in raw_name_new_name_map:
+                    continue
+                if not var_name in data_devices_map:
+                    data_devices_map[var_name] = []
+                if not dev_spec in data_devices_map[var_name]:
+                    data_devices_map[var_name].append(dev_spec)
+                new_name = raw_name_new_name_map[var_name]
+                #self._rename_arg(op, var_name, new_name)
+        return data_devices_map, raw_name_new_name_map
+
+    def _rename_var_in_block(self, block, raw_name_new_name_map):
+        """
+        Rename vars whose names in raw_name_new_name_map to the corresponding
+        new names.
+        """
+        for op in block.ops:
+            if op.type == "enqueue" or op.type == "dequeue":
+                continue
+            for var_name in op.input_arg_names:
+                if var_name in raw_name_new_name_map:
+                    new_name = raw_name_new_name_map[var_name]
+                    self._rename_arg(op, var_name, new_name)
+
+    def _insert_enq_deq_for_data_var(self, main_block, programs, startup,
+                                     devices):
+        """
+        Insert enqueue and dequeue ops for data var
+
+        Args:
+            main_block (Block): Global block for main program
+            programs (dict): Dictionary for section params
+            startup (Program): Startup program
+            devices (list): List of devices in the format (dev:dev_index)
+        """
+        main_program = main_block.program
+        data_devices_map, raw_name_new_name_map = self._get_data_var_info(
+            main_block)
+
+        first_prog = programs[0]['program']
+        first_block = first_prog.block(0)
+        enqueue_index = 0
+        if first_block.ops[0].type == "create_py_reader" or (
+                first_block.ops[1].type == "create_py_reader"):
+            for op in first_block.ops:
+                if op.type == "read":
+                    enqueue_index += 1
+                    break
+                enqueue_index += 1
+        first_dev_spec = devices[0]
+        for var_name in data_devices_map.keys():
+            for device in data_devices_map[var_name]:
+                # step1: generate queue for each pair of data var and device
+                # that that data on
+                queue_name = var_name + "_blocking_queue"
+                queue_name = unique_name.generate(queue_name)
+                queue_var = startup.block(0).create_var(
+                    name=queue_name,
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW)
+                startup.block(0).append_op(
+                    type='queue_generator',
+                    attrs={
+                        'names': [queue_name],
+                        'capacity': self._num_microbatches
+                    })
+                main_var = main_block.var(var_name)
+                assert main_var.is_data
+                if not var_name in first_block.vars:
+                    self._create_var(first_block, main_var, var_name)
+                first_block._insert_op(
+                    index=enqueue_index,
+                    type='enqueue',
+                    inputs={'X': first_block.var(var_name)},
+                    attrs={
+                        'queue_name': queue_name,
+                        self._op_device_key: first_dev_spec,
+                        self._op_role_key: self._op_role.Forward
+                    })
+                # Get the device that that data on
+                assert device in devices
+                prog_index = devices.index(device)
+                prog = programs[prog_index]['program']
+                block = prog.block(0)
+                index = 0
+                if device == first_dev_spec:
+                    index = enqueue_index + 1
+                new_name = raw_name_new_name_map[var_name]
+                source_var = main_program.block(0).var(var_name)
+                new_var = self._create_var(block, source_var, new_name)
+                block._insert_op(
+                    index=index,
+                    type='dequeue',
+                    outputs={'Out': [new_var]},
+                    attrs={
+                        self._op_device_key: device,
+                        self._op_role_key: self._op_role.Forward,
+                        'queue_name': queue_name,
+                    })
+                self._rename_var_in_block(block, raw_name_new_name_map)
+
+    def _strip_grad_suffix(self, name):
+        """
+        Strip the grad suffix from the given variable name
+        """
+        pos = name.find(core.grad_var_suffix())
+        return name[:pos] if pos != -1 else name
+
+    def _append_grad_suffix(self, name):
+        """
+        Append grad suffix to the given variable name
+        """
+        return name + core.grad_var_suffix()
+
+    def _update_param_device_map(self, params_grads, block):
+        for param_grad in params_grads:
+            if not param_grad[0].trainable: continue
+            param_name = param_grad[0].name
+            ops = block.ops
+            for op in ops:
+                input_arg_names = op.input_arg_names
+                if param_name in input_arg_names:
+                    self._param_device_map[param_name] = op.attr(
+                        self._op_device_key)
+                    break
+
+    def _add_opdevice_attr_for_regularization_clip(self, block):
+        """
+        Add op_device attribute for regulization and clip ops.
+        """
+        for op in block.ops:
+            # role for regularization and clip ops is optimize
+            if int(op.attr(self._op_role_key)) != int(self._op_role.Optimize):
+                continue
+            if op.has_attr(self._op_device_key) and (
+                    op.attr(self._op_device_key) != ""):
+                continue
+            assert self._op_role_var_key in op.attr_names
+            op_role_var = op.all_attrs()[self._op_role_var_key]
+            assert len(op_role_var) == 2
+            param_name = block.vars[op_role_var[0]].name
+            device = self._param_device_map[param_name]
+            op._set_attr(self._op_device_key, device)
+
+    def _add_default_opdevice_attr(self, block):
+        """
+        1. Add default op_device attribute for lr-related ops.
+           The default value is the one that of the first place.
+        2. Add default op_device attribute for sum ops added during
+           backward. For these ops, we set the op_device attribute
+           as the one of its post op, i.e, which op has the output of the
+           sum op as an input.
+        """
+        first_devcie = ""
+
+        # Get the device spec of the first place.
+        # device_spec: 'cpu' for cpu device and 'gpu:id' for gpu device,
+        # e.g. 'gpu:0', 'gpu:1', etc.
+        for op in block.ops:
+            if op.has_attr(self._op_device_key) and (
+                    op.attr(self._op_device_key) != ""):
+                first_device = op.attr(self._op_device_key)
+                break
+        assert first_device
+
+        # set op_device attr for lr-related ops
+        lrsched_role = int(self._op_role.LRSched)
+        for op in block.ops:
+            if not op.has_attr(self._op_device_key) or (
+                    op.attr(self._op_device_key) == ""):
+                if op.type == "sum":
+                    # For sum ops that compute the sum of @RENAMED@ vars
+                    for name in op.desc.input_arg_names():
+                        assert '@RENAME@' in name
+                    assert len(op.desc.output_arg_names()) == 1
+                    out_name = op.desc.output_arg_names()[0]
+                    post_op = self._find_post_op(block.ops, op, out_name)
+                    device = post_op.attr(self._op_device_key)
+                    assert device
+                    op._set_attr(self._op_device_key, device)
+                    continue
+
+                assert op.attr(self._op_role_key) == lrsched_role, (
+                    "Op whose op_device attr has not been set for pipeline"
+                    " must be of the role LRSched.")
+                op._set_attr(self._op_device_key, first_device)
+
+    def _check_validation(self, block):
+        """
+        Check whether ops in a block are all validate (i.e., the 
+        op_device attribute has been set).
+        Then, return all device specifications in order.
+        """
+        device_specs = []
+        for op in block.ops:
+            type = op.type
+            if not op._has_kernel(type):
+                assert op.type == "conditional_block" and (
+                    op.attr(self._op_role_key) == int(self._op_role.LRSched)), (
+                        "Now, the only supported op without kernel is "
+                        "conditional_block, and its op role must be LRSched.")
+            assert op.has_attr(self._op_device_key), (
+                "op ({}) has no {} attribute.".format(op.type,
+                                                      self._op_device_key))
+            dev_spec = op.attr(self._op_device_key)
+            assert dev_spec, ("op_device attribute for op "
+                              "{} has not been set.".format(op.type))
+            if not dev_spec in device_specs:
+                device_specs.append(dev_spec)
+        return device_specs
+
+    def _insert_enq_deq_ops_for_boundaries(self, block, origin_block,
+                                           startup_program):
+        """
+        Insert a pair of enqueue and dequeue ops for every two
+        consecutive ops on different devices.
+        """
+        startup_block = startup_program.global_block()
+        extra_index = 0
+
+        # A map from var to device spec where op takes it as input,
+        # avoiding multiple enqueue and dequeue ops.
+        var_devspec = dict()
+
+        for index, op in list(enumerate(origin_block.ops)):
+            cur_device_spec = op.attr(self._op_device_key)
+            for var_name in op.input_arg_names:
+                # i.e., lod_tensor_blocking_queue created by DataLoader,
+                # which only exists in startup program.
+                if not var_name in origin_block.vars: continue
+                var = block.var(var_name)
+                # skip data, because we will process it later
+                if var.is_data: continue
+                prev_op = self._find_real_prev_op(origin_block.ops, op,
+                                                  var_name)
+                if prev_op is None:
+                    continue
+                prev_device_spec = prev_op.attr(self._op_device_key)
+
+                if prev_device_spec != cur_device_spec:
+                    if var_name not in var_devspec:
+                        var_devspec[var_name] = []
+                    if cur_device_spec in var_devspec[var_name]: continue
+                    var_devspec[var_name].append(cur_device_spec)
+
+                    queue_name = var_name + "_blocking_queue"
+                    queue_name = unique_name.generate(queue_name)
+                    queue_var = startup_block.create_var(
+                        name=queue_name,
+                        persistable=True,
+                        type=core.VarDesc.VarType.RAW)
+                    startup_block.append_op(
+                        type='queue_generator',
+                        attrs={
+                            'names': [queue_name],
+                            'capacity': self._num_microbatches
+                        })
+                    op_role = op.all_attrs()[self._op_role_key]
+                    var = block.vars[var_name]
+                    block._insert_op(
+                        index=index + extra_index,
+                        type='enqueue',
+                        inputs={'X': var},
+                        attrs={
+                            'queue_name': queue_name,
+                            self._op_device_key: prev_device_spec,
+                            self._op_role_key: op_role
+                        })
+                    extra_index += 1
+                    block._insert_op(
+                        index=index + extra_index,
+                        type='dequeue',
+                        outputs={'Out': [var]},
+                        attrs={
+                            self._op_device_key: cur_device_spec,
+                            'queue_name': queue_name,
+                            self._op_role_key: op_role
+                        })
+                    extra_index += 1
+
+    def _add_dequeue_ops_for_optimize(self, block, startup_program):
+        startup_block = startup_program.global_block()
+        grad_queue_map = dict()
+        grad_device_map = dict()
+        optimize_index = None
+        grad_names_to_dequeue = []
+
+        for index, op in reversed(list(enumerate(block.ops))):
+            device = op.attr(self._op_device_key)
+            # Optimizer pass
+            if not self._is_optimize_op(op):
+                optimize_index = index + 1
+                break
+            if not self._is_update_op(op): continue
+            assert self._op_role_var_key in op.attr_names
+            op_role_var = op.all_attrs()[self._op_role_var_key]
+            assert len(op_role_var) == 2
+            grad_name = op_role_var[1]
+            assert grad_name not in grad_device_map
+            assert grad_name not in grad_names_to_dequeue
+            grad_device_map[grad_name] = device
+            grad_names_to_dequeue.append(grad_name)
+
+        for grad_name in grad_names_to_dequeue:
+            device = grad_device_map[grad_name]
+            grad_names = []
+            grads = []
+            queue_name = grad_name + "_blocking_queue"
+            queue_name = unique_name.generate(queue_name)
+            grad_queue_map[grad_name] = queue_name
+            ref_var = block.vars[grad_name]
+            queue_var = startup_block.create_var(
+                name=queue_name,
+                persistable=True,
+                type=core.VarDesc.VarType.RAW)
+            startup_block.append_op(
+                type='queue_generator',
+                attrs={
+                    'names': [queue_name],
+                    'capacity': self._num_microbatches
+                })
+            orig_var_name = self._strip_grad_suffix(grad_name)
+            for _ in range(self._num_microbatches):
+                u_name = unique_name.generate(orig_var_name)
+                u_grad_name = self._append_grad_suffix(u_name)
+                grad_var = self._create_var(block, ref_var, u_grad_name)
+                grad_names.append(u_grad_name)
+                grads.append(grad_var)
+            block._insert_op(
+                index=optimize_index,
+                type='dequeue',
+                outputs={'Out': grads},
+                attrs={
+                    self._op_device_key: device,
+                    'queue_name': queue_name,
+                    self._op_role_key: self._op_role.Optimize
+                })
+            block._insert_op(
+                index=optimize_index + 1,
+                type='sum',
+                inputs={'X': grad_names},
+                outputs={'Out': ref_var},
+                attrs={
+                    self._op_device_key: device,
+                    self._op_role_key: self._op_role.Optimize
+                })
+        return grad_queue_map
+
+    def _insert_enq_deq_ops_for_update(self, block, startup_program):
+        """
+        Insert enqueue and dequeue ops for gradients of parameters.
+        """
+        startup_block = startup_program.global_block()
+        grad_queue_map = self._add_dequeue_ops_for_optimize(block,
+                                                            startup_program)
+
+        for index, op in reversed(list(enumerate(block.ops))):
+            offset = index
+            device = op.attr(self._op_device_key)
+
+            # Backward pass
+            if self._is_loss_grad_op(op):
+                loss_grad_var = block.vars[op.output_arg_names[0]]
+                scale_factor = self._num_microbatches
+                block._insert_op(
+                    index=index + 1,
+                    type='scale',
+                    inputs={'X': loss_grad_var},
+                    outputs={'Out': loss_grad_var},
+                    attrs={
+                        'scale': 1.0 / scale_factor,
+                        self._op_device_key: device,
+                        self._op_role_key: self._op_role.Backward
+                    })
+                break
+            if self._is_backward_op(op) and (
+                    self._op_role_var_key in op.attr_names):
+                op_role_var = op.all_attrs()[self._op_role_var_key]
+
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0
+                for i in range(0, len(op_role_var), 2):
+                    grad_name = op_role_var[i + 1]
+                    grad_var = block.vars[grad_name]
+                    assert grad_name in grad_queue_map
+                    queue_name = grad_queue_map[grad_name]
+                    block._insert_op(
+                        index=offset + 1,
+                        type='enqueue',
+                        inputs={'X': block.vars[grad_name]},
+                        attrs={
+                            'queue_name': queue_name,
+                            self._op_device_key: device,
+                            self._op_role_key: self._op_role.Backward
+                        })
+                    offset += 1
+
+    def _add_sub_blocks(self, main_block, program_list):
+        main_program = main_block.program
+        for prog_info in program_list:
+            prog = prog_info['program']
+            for op in prog.block(0).ops:
+                if not op.has_attr('sub_block'):
+                    continue
+                origin_sub_block_id = op.attr('sub_block').id
+                origin_sub_block = main_program.block(origin_sub_block_id)
+                new_sub_block = prog._create_block(parent_idx=0)
+                for op in origin_sub_block.ops:
+                    op_desc = op.desc
+                    ap_op = new_sub_block.desc.append_op()
+                    ap_op.copy_from(op_desc)
+                new_sub_block._sync_with_cpp()
+                op._set_attr('sub_block:', new_sub_block)
+
+    def _get_device_info(self, block):
+        for op in block.ops:
+            if not op._has_kernel(op.type): continue
+            op_device = op.attr(self._op_device_key)
+            return op_device
+
+    def _process_persistable_vars_in_multi_sections(self, main_program,
+                                                    startup_prog, program_list):
+        """
+        Special Case: process persistable vars that exist in
+        multiple sections, e.g., shared weight
+        """
+        # var_info = {var_name: [program1, program2...]},
+        # persistable var only
+        var_info = dict()
+        for prog_info in program_list:
+            prog = prog_info['program']
+            block = prog.block(0)
+            for var_name in block.vars:
+                var = block.var(var_name)
+                if not var.persistable: continue
+                if not var_name in var_info:
+                    var_info[var_name] = []
+                if not prog in var_info[var_name]:
+                    var_info[var_name].append(prog)
+        for var_name in list(var_info.keys()):
+            if len(var_info[var_name]) == 1:
+                var_info.pop(var_name)
+
+        # write_info = {var_name: program}, where program is the only program
+        # in which the var named var_name is written.
+        write_info = dict()
+        for var_name in var_info.keys():
+            for prog in var_info[var_name]:
+                block = prog.block(0)
+                for op in block.ops:
+                    if op.type == "dequeue": continue
+                    # We have processed lr related vars
+                    if op.attr(self._op_role_key) == int(
+                            self._op_role.Optimize.LRSched):
+                        continue
+                    if var_name in op.desc.output_arg_names():
+                        assert var_name not in write_info, (
+                            "two sections write the same var({}): second "
+                            "op {}.".format(var_name, op))
+                        write_info[var_name] = prog
+                        break
+
+        for var_name in var_info.keys():
+            # Case 1: read only variables, no special process
+            if not var_name in write_info: continue
+
+            # Case 2: one write multiple reads
+            write_prog = write_info[var_name]
+            write_block = write_prog.block(0)
+            write_device = self._get_device_info(write_block)
+            all_progs = var_info[var_name]
+            for prog in all_progs:
+                if prog == write_prog: continue
+
+                queue_name = var_name + "_blocking_queue"
+                queue_name = unique_name.generate(queue_name)
+                queue_var = startup_prog.block(0).create_var(
+                    name=queue_name,
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW)
+                startup_prog.block(0).append_op(
+                    type='queue_generator',
+                    attrs={
+                        'names': [queue_name],
+                        'capacity': self._num_microbatches
+                    })
+                write_block._insert_op(
+                    index=0,
+                    type='enqueue',
+                    inputs={'X': write_block.var(var_name), },
+                    attrs={
+                        'queue_name': queue_name,
+                        self._op_device_key: write_device,
+                        # A trick to make the role LRSched to avoid copy every
+                        # microbatch
+                        self._op_role_key: self._op_role.LRSched
+                    })
+                read_block = prog.block(0)
+                read_device = self._get_device_info(read_block)
+                read_block._insert_op(
+                    index=0,
+                    type='dequeue',
+                    outputs={'Out': [read_block.var(var_name)]},
+                    attrs={
+                        self._op_device_key: read_device,
+                        # A trick to make the role LRSched to avoid copy every
+                        # microbatch
+                        self._op_role_key: self._op_role.LRSched,
+                        'queue_name': queue_name,
+                    })
 
     def minimize(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        self._optimizer.minimize(loss, startup_program, parameter_list,
-                                 no_grad_set)
-        program = loss.block.program
-        if len(self._cut_list) == 0:
+        main_block = loss.block
+        if startup_program is None:
+            startup_program = default_startup_program()
+        optimize_ops, params_grads = self._optimizer.minimize(
+            loss, startup_program, parameter_list, no_grad_set)
+        self._update_param_device_map(params_grads, main_block)
+
+        # Step1: add default op_device attribute for regulization and clip ops
+        self._add_opdevice_attr_for_regularization_clip(main_block)
+
+        # Step2: add default op_device attribute for ops whose op_device
+        # attribute have not been set yet.
+        self._add_default_opdevice_attr(main_block)
+        device_specs = self._check_validation(main_block)
+
+        # Step3: add enqueue and dequeue ops between section boundaries
+        origin_prog = main_block.program.clone(for_test=False)
+        origin_main_block = origin_prog.global_block()
+        self._insert_enq_deq_ops_for_boundaries(main_block, origin_main_block,
+                                                startup_program)
+
+        # Step4: add a pair of enqueue and dequeueN for parameter gradients
+        self._insert_enq_deq_ops_for_update(main_block, startup_program)
+
+        main_program = main_block.program
+
+        place_list = []
+        place_id_list = []
+        for dev_spec in device_specs:
+            if dev_spec == "cpu":
+                place_list.append(core.CPUPlace())
+                place_id_list.append(-1)
+            elif "gpu" in dev_spec and ":" in dev_spec:
+                dev_index = dev_spec.split(":")[1]
+                place_list.append(core.CUDAPlace(int(dev_index)))
+                place_id_list.append(int(dev_index))
+            else:
+                raise ValueError("Unknown device type: %s", dev_spec)
+
+        # Step5: split program into sections and add pairs of
+        # enqueue and dequeue ops for data var.
+        if len(place_list) == 0:
             program_list = []
-            ptmp = {"program": program, "input_set": set(), "output_set": set()}
+            ptmp = {
+                "program": main_program,
+                "input_set": set(),
+                "output_set": set()
+            }
             program_list.append(ptmp)
         else:
-            program_list = self._split_program(program, self._cut_list)
+            program_list = self._split_program(main_program)
             for p in program_list:
-                self._create_vars(p["program"].block(0), program)
-        whole_parameters = [e.name for e in program.block(0).all_parameters()]
-        param_need_sync = []
-        for i, section_p in enumerate(program_list):
-            if not isinstance(self._place_list[i], core.CUDAPlace):
-                continue
-            section_var = [e for e in section_p["program"].block(0).vars]
-            for p in section_var:
-                if p in whole_parameters:
-                    param_need_sync.append(p)
-        program._pipeline_opt = {
+                self._create_vars(p["program"].block(0), main_program)
+        self._insert_enq_deq_for_data_var(main_block, program_list,
+                                          startup_program, device_specs)
+
+        # Step6: Special Case: process persistable vars that exist in
+        # multiple sections
+        self._process_persistable_vars_in_multi_sections(
+            main_program, startup_program, program_list)
+
+        # Step7: Add sub blocks for section programs
+        self._add_sub_blocks(main_block, program_list)
+
+        main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
             "section_program_list": program_list,
-            "place_list": self._place_list,
-            "concurrency_list": self._concurrency_list,
-            "queue_size": self._queue_size,
+            "place_list": place_list,
+            "place_id_list": place_id_list,
+            "sync_steps": -1,
+            "num_microbatches": self._num_microbatches,
             "start_cpu_core_id": self._start_cpu_core_id,
-            "sync_steps": self._sync_steps,
-            "param_need_sync": param_need_sync
         }
+        return optimize_ops, params_grads, program_list
 
 
 class RecomputeOptimizer(Optimizer):
     """
+	:api_attr: Static Graph
+
     Recompute Optimizer Wrapper
 
     Normally, a training step contains three sub-steps: first, run forward
@@ -3843,12 +4550,16 @@ class RecomputeOptimizer(Optimizer):
             raise Exception("In dygraph, don't support RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
+        self._learning_rate = self._optimizer._learning_rate
+        self._learning_rate_map = self._optimizer._learning_rate_map
 
     def _set_checkpoints(self, checkpoints):
         self._checkpoints = checkpoints
 
     def load(self, stat_dict):
         """
+	:api_attr: Static Graph
+
         load function is not supported by Recompute Optimizer for now.
         :return: None
 
@@ -3994,7 +4705,8 @@ class RecomputeOptimizer(Optimizer):
                 checkpoints=self._checkpoints)
             # Note: since we can't use all_reduce_op now,
             #  dgc_op should be the last op of one grad.
-            self._optimizer._append_dgc_ops(params_grads)
+            if hasattr(self._optimizer, "_append_dgc_ops"):
+                self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -4043,20 +4755,13 @@ class RecomputeOptimizer(Optimizer):
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None,
-                 grad_clip=None):
+                 no_grad_set=None):
         assert isinstance(loss, Variable), "The loss should be an Variable."
         assert (self._checkpoints is not None
                 ), "You should call _set_checkpoints first"
         if framework.in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute")
-        if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
-                raise TypeError(
-                    "'grad_clip' should be an instance of GradientClipBase's derived class"
-                )
-            self._optimizer._grad_clip = grad_clip
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -4071,6 +4776,8 @@ class RecomputeOptimizer(Optimizer):
 
 class LookaheadOptimizer(object):
     """
+	:api_attr: Static Graph
+
     This implements the Lookahead optimizer of the
     paper : https://arxiv.org/abs/1907.08610.
 

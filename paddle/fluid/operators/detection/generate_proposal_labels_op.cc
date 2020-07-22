@@ -38,42 +38,64 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("RpnRois"),
-                   "Input(RpnRois) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("GtClasses"),
-                   "Input(GtClasses) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("IsCrowd"),
-                   "Input(IsCrowd) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("GtBoxes"),
-                   "Input(GtBoxes) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ImInfo"), "Input(ImInfo) shouldn't be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("RpnRois"), true,
+        platform::errors::NotFound("Input(RpnRois) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("GtClasses"), true,
+        platform::errors::NotFound("Input(GtClasses) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("IsCrowd"), true,
+        platform::errors::NotFound("Input(IsCrowd) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("GtBoxes"), true,
+        platform::errors::NotFound("Input(GtBoxes) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("ImInfo"), true,
+        platform::errors::NotFound("Input(ImInfo) shouldn't be null."));
 
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Rois"),
-        "Output(Rois) of GenerateProposalLabelsOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("LabelsInt32"),
-        "Output(LabelsInt32) of GenerateProposalLabelsOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("BboxTargets"),
-        "Output(BboxTargets) of GenerateProposalLabelsOp should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("BboxInsideWeights"),
-                   "Output(BboxInsideWeights) of GenerateProposalLabelsOp "
-                   "should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("BboxOutsideWeights"),
-                   "Output(BboxOutsideWeights) of GenerateProposalLabelsOp "
-                   "should not be null");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Rois"), true,
+        platform::errors::NotFound(
+            "Output(Rois) of GenerateProposalLabelsOp should not be null"));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("LabelsInt32"), true,
+                      platform::errors::NotFound("Output(LabelsInt32) of "
+                                                 "GenerateProposalLabelsOp "
+                                                 "should not be null"));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("BboxTargets"), true,
+                      platform::errors::NotFound("Output(BboxTargets) of "
+                                                 "GenerateProposalLabelsOp "
+                                                 "should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("BboxInsideWeights"), true,
+        platform::errors::NotFound(
+            "Output(BboxInsideWeights) of GenerateProposalLabelsOp "
+            "should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("BboxOutsideWeights"), true,
+        platform::errors::NotFound(
+            "Output(BboxOutsideWeights) of GenerateProposalLabelsOp "
+            "should not be null"));
 
     auto rpn_rois_dims = ctx->GetInputDim("RpnRois");
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
 
     PADDLE_ENFORCE_EQ(rpn_rois_dims.size(), 2,
-                      "The rank of Input(RpnRois) must be 2.");
+                      platform::errors::InvalidArgument(
+                          "The dimensions size of Input(RpnRois) must be 2. "
+                          "But received dimensions size=[%d], dimensions=[%s].",
+                          rpn_rois_dims.size(), rpn_rois_dims));
     PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
-                      "The rank of Input(GtBoxes) must be 2.");
+                      platform::errors::InvalidArgument(
+                          "The dimensions size of Input(GtBoxes) must be 2. "
+                          "But received dimensions size=[%d], dimensions=[%s].",
+                          gt_boxes_dims.size(), gt_boxes_dims));
     PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
-                      "The rank of Input(ImInfo) must be 2.");
+                      platform::errors::InvalidArgument(
+                          "The dimensions size of Input(ImInfo) must be 2. But "
+                          "received dimensions size=[%d], dimensions=[%s].",
+                          im_info_dims.size(), im_info_dims));
 
     int class_nums = ctx->Attrs().Get<int>("class_nums");
 
@@ -399,15 +421,30 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     bool use_random = context.Attr<bool>("use_random");
     bool is_cascade_rcnn = context.Attr<bool>("is_cascade_rcnn");
     bool is_cls_agnostic = context.Attr<bool>("is_cls_agnostic");
-    PADDLE_ENFORCE_EQ(rpn_rois->lod().size(), 1UL,
-                      "GenerateProposalLabelsOp rpn_rois needs 1 level of LoD");
+    PADDLE_ENFORCE_EQ(
+        rpn_rois->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "GenerateProposalLabelsOp rpn_rois needs 1 level of LoD. But "
+            "received level of LoD is [%d], LoD is [%s].",
+            rpn_rois->lod().size(), rpn_rois->lod()));
     PADDLE_ENFORCE_EQ(
         gt_classes->lod().size(), 1UL,
-        "GenerateProposalLabelsOp gt_classes needs 1 level of LoD");
-    PADDLE_ENFORCE_EQ(is_crowd->lod().size(), 1UL,
-                      "GenerateProposalLabelsOp is_crowd needs 1 level of LoD");
-    PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
-                      "GenerateProposalLabelsOp gt_boxes needs 1 level of LoD");
+        platform::errors::InvalidArgument(
+            "GenerateProposalLabelsOp gt_classes needs 1 level of LoD. But "
+            "received level of LoD is [%d], LoD is [%s].",
+            gt_classes->lod().size(), gt_classes->lod()));
+    PADDLE_ENFORCE_EQ(
+        is_crowd->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "GenerateProposalLabelsOp is_crowd needs 1 level of LoD. But "
+            "received level of LoD is [%d], LoD is [%s].",
+            is_crowd->lod().size(), is_crowd->lod()));
+    PADDLE_ENFORCE_EQ(
+        gt_boxes->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "GenerateProposalLabelsOp gt_boxes needs 1 level of LoD. But "
+            "received level of LoD is [%d], LoD is [%s].",
+            gt_boxes->lod().size(), gt_boxes->lod()));
     int64_t n = static_cast<int64_t>(rpn_rois->lod().back().size() - 1);
 
     rois->mutable_data<T>({n * batch_size_per_im, kBoxDim}, context.GetPlace());

@@ -308,7 +308,6 @@ class OpTest(unittest.TestCase):
                 else:
                     tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
-
         return feed_map
 
     def _append_ops(self, block):
@@ -630,24 +629,23 @@ class OpTest(unittest.TestCase):
             # computational consistency.
             # When inplace_atol is not None, the inplace check uses numpy.allclose
             # to check inplace result instead of numpy.array_equal.
+            expect_out = np.array(expect_outs[i])
+            actual_out = np.array(actual_outs[i])
             if inplace_atol is not None:
                 self.assertTrue(
                     np.allclose(
-                        np.array(expect_outs[i]),
-                        np.array(actual_outs[i]),
-                        atol=inplace_atol),
+                        expect_out, actual_out, atol=inplace_atol),
                     "Output (" + name + ") has diff at " + str(place) +
                     " when using and not using inplace" + "\nExpect " +
-                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
-                    + " in class " + self.__class__.__name__)
+                    str(expect_out) + "\n" + "But Got" + str(actual_out) +
+                    " in class " + self.__class__.__name__)
             else:
                 self.assertTrue(
-                    np.array_equal(
-                        np.array(expect_outs[i]), np.array(actual_outs[i])),
+                    np.array_equal(expect_out, actual_out),
                     "Output (" + name + ") has diff at " + str(place) +
                     " when using and not using inplace" + "\nExpect " +
-                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
-                    + " in class " + self.__class__.__name__ + '\n')
+                    str(expect_out) + "\n" + "But Got" + str(actual_out) +
+                    " in class " + self.__class__.__name__ + '\n')
 
     def _construct_grad_program_from_forward(self, fwd_program, grad_op_desc,
                                              op_grad_to_var):
@@ -1221,9 +1219,9 @@ class OpTest(unittest.TestCase):
 
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
-                return ("%s error, %s variable %s max gradient diff %f over limit %f, "
-                    "the first error element is %d, expected %f, but got %f.") \
-                    % (self.op_type, msg_prefix, name, max_diff, max_relative_error,
+                return ("Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
+                    "the first error element is %d, expected %e, but got %e.") \
+                    % (self.op_type, msg_prefix, name, str(a.shape), self.dtype, max_diff, max_relative_error,
                     offset, a.flatten()[offset], b.flatten()[offset])
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
