@@ -76,6 +76,7 @@ def concat(x, axis=0, name=None):
 
     Examples:
         .. code-block:: python
+            
             import paddle
             import numpy as np
             

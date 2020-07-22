@@ -134,7 +134,7 @@ def ones(shape, dtype=None, name=None):
 
     Raises:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None
-        and the data type of out Tensor must be the same as the dtype. 
+            and the data type of out Tensor must be the same as the dtype. 
         TypeError: The `shape` must be one of list, tuple and Variable.
     
     Examples:

@@ -655,7 +655,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
     Raises:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-        and the data type of out Tensor must be the same as the dtype. 
+            and the data type of out Tensor must be the same as the dtype. 
         TypeError: The shape must be one of list, tuple and Variable.
 
     Examples:
