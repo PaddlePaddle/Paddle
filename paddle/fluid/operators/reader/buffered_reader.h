@@ -62,13 +62,8 @@ class BufferedReader : public framework::DecoratedReader {
   // malloc tensors every time is extremely slow. Here we store all data in
   // buffers and prevent alloc every time.
   std::vector<TensorVec> cpu_buffer_;
-  std::vector<TensorVec> gpu_buffer_;
+  std::vector<TensorVec> cuda_pinned_buffer_;
   size_t prev_pos_{-1UL};
-#ifdef PADDLE_WITH_CUDA
-  cudaStream_t compute_stream_;
-  std::shared_ptr<platform::CudaStreamObject> stream_;
-  std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
-#endif
 };
 
 }  // namespace reader
