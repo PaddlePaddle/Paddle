@@ -61,6 +61,32 @@ class TestFleetMetric(unittest.TestCase):
 
     def test_metric_1(self):
         """test cases for metrics"""
+        train = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(train, startup):
+            t = fluid.layers.create_global_var(shape=[1,1], value=1, dtype='int64', persistable=True, force_cpu=True)
+            t1 = fluid.layers.create_global_var(shape=[1,1], value=1, dtype='int64', persistable=True, force_cpu=True)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            exe.run(startup)
+            metric.sum(t, scope)
+            metric.max(t, scope)
+            metric.min(t, scope)
+            metric.auc(t, t1, scope)
+            metric.mae(t1, 3, scope)
+            metric.rmse(t1, 3, scope)
+            metric.mse(t1, 3, scope)
+            metric.acc(t, t1, scope)
+            metric.sum(str(t.name), scope)
+            metric.max(str(t.name), scope)
+            metric.min(str(t.name), scope)
+            metric.auc(str(t1.name), str(t.name), scope)
+            metric.mae(t1.name, 3, scope)
+            metric.rmse(t1.name, 3, scope)
+            metric.mse(t1.name, 3, scope)
+            metric.acc(t.name, t1.name, scope)
         arr = np.array([1, 2, 3, 4])
         metric.sum(arr)
         metric.max(arr)
