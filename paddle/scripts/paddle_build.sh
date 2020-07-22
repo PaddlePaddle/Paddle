@@ -1326,7 +1326,7 @@ function main() {
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         example
         assert_api_spec_approvals
-	check_qa_approvals
+        check_qa_approvals
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
