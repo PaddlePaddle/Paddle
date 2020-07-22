@@ -15,5 +15,27 @@
 # TODO: define distributed api under this directory, 
 from .base.distributed_strategy import DistributedStrategy
 from .dataset import DatasetFactory
+from .base.fleet_base import Fleet
+from .base.util_factory import UtilBase
 
-__all__ = ['DistributedStrategy', 'DatasetFactory']
+__all__ = ["DistributedStrategy", "UtilBase", 'DatasetFactory']
+
+fleet = Fleet()
+init = fleet.init
+is_first_worker = fleet.is_first_worker
+worker_index = fleet.worker_index
+worker_num = fleet.worker_num
+is_worker = fleet.is_worker
+worker_endpoints = fleet.worker_endpoints
+server_num = fleet.server_num
+server_index = fleet.server_index
+server_endpoints = fleet.server_endpoints
+is_server = fleet.is_server
+util = fleet.util
+barrier_worker = fleet.barrier_worker
+init_worker = fleet.init_worker
+init_server = fleet.init_server
+run_server = fleet.run_server
+stop_worker = fleet.stop_worker
+distributed_optimizer = fleet.distributed_optimizer
+minimize = fleet.minimize

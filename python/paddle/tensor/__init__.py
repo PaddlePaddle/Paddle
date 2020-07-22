@@ -112,14 +112,12 @@ from .math import elementwise_floordiv  #DEFINE_ALIAS
 from .math import elementwise_max  #DEFINE_ALIAS
 from .math import elementwise_min  #DEFINE_ALIAS
 from .math import elementwise_mod  #DEFINE_ALIAS
-from .math import elementwise_mul  #DEFINE_ALIAS
 from .math import elementwise_pow  #DEFINE_ALIAS
 from .math import elementwise_sub  #DEFINE_ALIAS
 from .math import exp  #DEFINE_ALIAS
 from .math import floor  #DEFINE_ALIAS
 from .math import increment  #DEFINE_ALIAS
 from .math import log  #DEFINE_ALIAS
-from .math import mul  #DEFINE_ALIAS
 from .math import multiplex  #DEFINE_ALIAS
 from .math import pow  #DEFINE_ALIAS
 from .math import reciprocal  #DEFINE_ALIAS
@@ -143,6 +141,7 @@ from .math import max  #DEFINE_ALIAS
 from .math import min  #DEFINE_ALIAS
 from .math import mm  #DEFINE_ALIAS
 from .math import div  #DEFINE_ALIAS
+from .math import multiply  #DEFINE_ALIAS
 from .math import add  #DEFINE_ALIAS
 from .math import atan  #DEFINE_ALIAS
 from .math import logsumexp  #DEFINE_ALIAS

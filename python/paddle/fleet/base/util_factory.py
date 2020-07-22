@@ -16,13 +16,30 @@
 """basic collective operations in python"""
 """remote file system"""
 
-# __all__ = ['UtilBase']
-'''
-class UtilBase(object):
-    def __init__(self, role_maker, fleet_obj):
-        self.role_maker = roke_maker
-        self.fleet_obj = fleet_obj
+__all__ = ['UtilBase']
 
+
+class UtilFactory(object):
+    def _create_util(self, dist_strategy, role_maker, optimize_ops,
+                     params_grads):
+        util = UtilBase()
+        util._set_strategy(dist_strategy)
+        util._set_role_maker(role_maker)
+        return util
+
+
+class UtilBase(object):
+    def __init__(self):
+        self.role_maker = None
+        self.dist_strategy = None
+
+    def _set_strategy(self, dist_strategy):
+        self.dist_strategy = dist_strategy
+
+    def _set_role_maker(self, role_maker):
+        self.role_maker = role_maker
+
+    '''
     def set_file_system(self, fs_client):
         self.fs_client = fs_client
 
@@ -61,4 +78,4 @@ class UtilBase(object):
 
     def print_on_rank(self):
         pass
-'''
+    '''

@@ -76,7 +76,6 @@ __all__ = [
         'elementwise_max',
         'elementwise_min',
         'elementwise_mod',
-        'elementwise_mul',
         'elementwise_pow',
         'elementwise_sub',
         'exp',
@@ -107,6 +106,7 @@ __all__ = [
         'min',
         'mm',
         'div',
+        'multiply',
         'add',
         'atan',
         'logsumexp',
@@ -257,94 +257,6 @@ def pow(input, exponent, out=None, name=None):
 
     helper.append_op(
         type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-    return out
-
-
-def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
-    """
-	:alias_main: paddle.mul
-	:alias: paddle.mul,paddle.tensor.mul,paddle.tensor.math.mul
-
-    Mul Operator.
-    This operator is used to perform matrix multiplication for input $x$ and $y$.
-    The equation is:
-
-    ..  math::
-        Out = x * y
-
-    Both the input $x$ and $y$ can carry the LoD (Level of Details) information, or not. 
-    But the output only shares the LoD information with input $x$.
-
-    Args:
-        x (Variable): The first input Tensor/LoDTensor of mul_op.
-        y (Variable): The second input Tensor/LoDTensor of mul_op.
-        x_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. 
-            If the input $x$ is a tensor with more than two dimensions, $x$ will be flattened into a two-dimensional 
-            matrix first. The flattening rule is: the first `num_col_dims` will be flattened to form the first 
-            dimension of the final matrix (the height of the matrix), and the rest `rank(x) - num_col_dims` 
-            dimensions are flattened to form the second dimension of the final matrix (the width of the matrix). 
-            As a result, height of the flattened matrix is equal to the product of $x$'s first `x_num_col_dims` dimensions' 
-            sizes, and width of the flattened matrix is equal to the product of $x$'s last `rank(x) - num_col_dims` 
-            dimensions' size. For example, suppose $x$ is a 6-dimensional tensor with the shape [2, 3, 4, 5, 6], 
-            and `x_num_col_dims` = 3. Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default is 1. 
-        y_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the 
-            input $y$ is a tensor with more than two dimensions, $y$ will be flattened into a two-dimensional matrix first. 
-            The attribute `y_num_col_dims` determines how $y$ is flattened. See comments of `x_num_col_dims` for more details. 
-            Default is 1. 
-        out(Variable, optinal): The Variable that stores results of the operation. If out is None, 
-            a new Variable will be created to store the results.
-        name (str, optional): Name of the output. Normally there is no need for user to set this property. 
-            For more information, please refer to :ref:`api_guide_Name`. Default is None. If both of out and name are not None, 
-            the output name will be same as out. 
-
-    Returns:
-        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of mul op.
-
-    Examples:
-        ..  code-block:: python
-            
-            import paddle
-            import paddle.fluid as fluid
-            dataX = fluid.data(name="dataX", shape=[2, 5], dtype="float32")
-            dataY = fluid.data(name="dataY", shape=[5, 3], dtype="float32")
-            
-            res = fluid.data(name="output", shape=[2, 3], dtype="float32")
-            output = paddle.mul(dataX, dataY,
-                                      x_num_col_dims = 1,
-                                      y_num_col_dims = 1, 
-                                      out=res)
-            
-
-    """
-    inputs = {"X": [x], "Y": [y]}
-    attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
-    if in_dygraph_mode():
-        outs = core.ops.mul(inputs, attrs)
-        return outs['Out'][0]
-
-    helper = LayerHelper("mul", **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mul')
-    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'mul')
-
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        check_dtype(
-            out.dtype, out.name,
-            convert_dtype(x.dtype), 'mul',
-            '(The out data type in pow must be the same with input data type.)')
-        if name:
-            warnings.warn(
-                "The output Variable name of the paddle.tensor.pow operation can only be given by parameter out or name.\
-                When parameter out and name are set at the same time, out has a higher priority than name. \
-                Finally, the output Variable name is same as the out name %s"
-                                                                              %
-                out.name,
-                category=UserWarning,
-                stacklevel=2)
-    helper.append_op(
-        type="mul", inputs={"X": x,
-                            "Y": y}, attrs=attrs, outputs={"Out": out})
     return out
 
 
@@ -668,11 +580,49 @@ Examples:
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+def multiply(x, y, axis=-1, name=None):
+    """
+	:alias_main: paddle.multiply
+	:alias: paddle.multiply,paddle.tensor.multiply,paddle.tensor.math.multiply
+
+Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.enable_imperative()
+        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
+        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.multiply(x, y)
+        print(res.numpy()) # [[5, 12], [21, 32]]
+
+        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
+        y_data = np.array([1, 2], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.multiply(x, y, axis=1)
+        print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
+
+    """
+    op_type = 'elementwise_mul'
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
 for func in [
         add,
         div,
+        multiply,
 ]:
-    proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div'}
+    proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div', 'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
     if func.__name__ in ['add']:
         alias_main = ':alias_main: paddle.%(func)s' % {'func': func.__name__}
@@ -689,9 +639,6 @@ for func in [
         ]
     else:
         additional_args_lines = [
-            "out (Variable, optinal): The Variable that stores results of the operation. If out is None, \
-            a new Variable will be created to store the results."
-                                                                 ,
             "name (string, optional): Name of the output. \
             Default is None. It's used to print debug info for developers. Details: \
             :ref:`api_guide_Name` "
