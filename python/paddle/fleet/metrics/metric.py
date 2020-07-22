@@ -50,7 +50,7 @@ def sum(input, scope=None):
         scope = fluid.global_scope()
     if isinstance(input, Variable):
         input = np.array(scope.find_var(input.name).get_tensor())
-    elif isinstance(input, str) or isinstance(input, unicode):
+    elif isinstance(input, str):
         input = np.array(scope.find_var(input).get_tensor())
     old_shape = np.array(input.shape)
     output = np.copy(input) * 0
@@ -89,7 +89,7 @@ def max(input, scope=None):
         scope = fluid.global_scope()
     if isinstance(input, Variable):
         input = np.array(scope.find_var(input.name).get_tensor())
-    elif isinstance(input, str) or isinstance(input, unicode):
+    elif isinstance(input, str):
         input = np.array(scope.find_var(input).get_tensor())
     old_shape = np.array(input.shape)
     output = np.copy(input) * 0
@@ -128,7 +128,7 @@ def min(input, scope=None):
         scope = fluid.global_scope()
     if isinstance(input, Variable):
         input = np.array(scope.find_var(input.name).get_tensor())
-    elif isinstance(input, str) or isinstance(input, unicode):
+    elif isinstance(input, str):
         input = np.array(scope.find_var(input).get_tensor())
     old_shape = np.array(input.shape)
     output = np.copy(input) * 0
@@ -169,11 +169,11 @@ def auc(stat_pos, stat_neg, scope=None):
         scope = fluid.global_scope()
     if isinstance(stat_pos, Variable):
         stat_pos = np.array(scope.find_var(stat_pos.name).get_tensor())
-    elif isinstance(stat_pos, str) or isinstance(stat_pos, unicode):
+    elif isinstance(stat_pos, str):
         stat_pos = np.array(scope.find_var(stat_pos).get_tensor())
     if isinstance(stat_neg, Variable):
         stat_neg = np.array(scope.find_var(stat_neg.name).get_tensor())
-    elif isinstance(stat_neg, str) or isinstance(stat_neg, unicode):
+    elif isinstance(stat_neg, str):
         stat_neg = np.array(scope.find_var(stat_neg).get_tensor())
     # auc pos bucket shape
     old_pos_shape = np.array(stat_pos.shape)
@@ -247,7 +247,7 @@ def mae(abserr, total_ins_num, scope=None):
         scope = fluid.global_scope()
     if isinstance(abserr, Variable):
         abserr = np.array(scope.find_var(abserr.name).get_tensor())
-    elif isinstance(abserr, str) or isinstance(abserr, unicode):
+    elif isinstance(abserr, str):
         abserr = np.array(scope.find_var(abserr).get_tensor())
     old_metric_shape = np.array(abserr.shape)
     abserr = abserr.reshape(-1)
@@ -285,7 +285,7 @@ def rmse(sqrerr, total_ins_num, scope=None):
         scope = fluid.global_scope()
     if isinstance(sqrerr, Variable):
         sqrerr = np.array(scope.find_var(sqrerr.name).get_tensor())
-    elif isinstance(sqrerr, str) or isinstance(sqrerr, unicode):
+    elif isinstance(sqrerr, str):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)
     sqrerr = sqrerr.reshape(-1)
@@ -323,7 +323,7 @@ def mse(sqrerr, total_ins_num, scope=None):
         scope = fluid.global_scope()
     if isinstance(sqrerr, Variable):
         sqrerr = np.array(scope.find_var(sqrerr.name).get_tensor())
-    elif isinstance(sqrerr, str) or isinstance(sqrerr, unicode):
+    elif isinstance(sqrerr, str):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)
     sqrerr = sqrerr.reshape(-1)
@@ -372,11 +372,11 @@ def acc(correct, total, scope=None):
         scope = fluid.global_scope()
     if isinstance(correct, Variable):
         correct = np.array(scope.find_var(correct.name).get_tensor())
-    elif isinstance(correct, str) or isinstance(correct, unicode):
+    elif isinstance(correct, str):
         correct = np.array(scope.find_var(correct).get_tensor())
     if isinstance(total, Variable):
         total = np.array(scope.find_var(total.name).get_tensor())
-    elif isinstance(total, str) or isinstance(total, unicode):
+    elif isinstance(total, str):
         total = np.array(scope.find_var(total).get_tensor())
     global_correct_num = np.copy(correct) * 0
     global_total_num = np.copy(total) * 0
