@@ -37,6 +37,29 @@ logger = get_logger()
 
 
 class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
+    def setUp(self):
+        get_logger()
+        logger.info("enter tests")
+
+        self._old_environ = dict(os.environ)
+        proc_env = {
+            "PADDLE_RUNNING_ENV": "PADDLE_EDL_AUTO_CHECKPOINT",
+            "PADDLE_EDL_TRAINER_ID": "0",
+            "PADDLE_RUNNING_PLATFORM": "PADDLE_CLOUD",
+            "PADDLE_JOB_ID": "test_job_dataloader",
+            "PADDLE_EDL_HDFS_HOME": "/usr/local/hadoop-2.7.7",
+            "PADDLE_EDL_HDFS_NAME": "",
+            "PADDLE_EDL_HDFS_UGI": "",
+            "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "dataloader_auto_checkpoint",
+            "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+        }
+        os.environ.update(proc_env)
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self._old_environ)
+
     def _run_must_acp(self):
         """
         check acp_type muast acp.
