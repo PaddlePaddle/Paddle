@@ -41,11 +41,16 @@ add_subdirectory(api)
 
 # Create static inference library if needed
 # All static libs in inference/api
-set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor zero_copy_tensor reset_tensor_array
-              analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
-create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
+set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
+     zero_copy_tensor reset_tensor_array 
+        analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
+if(WIN32)
+  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_API}) 
+else()
+ create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API}) 
+endif()
 
-if(NOT APPLE)
+if(NOT APPLE AND NOT WIN32)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
   set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")

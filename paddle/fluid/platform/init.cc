@@ -117,14 +117,18 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                 \
-  {                                                               \
-    PADDLE_ENFORCE(!platform::dynload::cuptiActivityGetAttribute( \
-        attr, &attrValueSize, &attrValue));                       \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
-    PADDLE_ENFORCE(!platform::dynload::cuptiActivitySetAttribute( \
-        attr, &attrValueSize, &attrValue));                       \
+#define MULTIPLY_ATTR_VALUE(attr)                                            \
+  {                                                                          \
+    PADDLE_ENFORCE_EQ(                                                       \
+        !platform::dynload::cuptiActivityGetAttribute(attr, &attrValueSize,  \
+                                                      &attrValue),           \
+        true, platform::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                        \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";                \
+    PADDLE_ENFORCE_EQ(                                                       \
+        !platform::dynload::cuptiActivitySetAttribute(attr, &attrValueSize,  \
+                                                      &attrValue),           \
+        true, platform::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);

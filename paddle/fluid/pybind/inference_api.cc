@@ -433,6 +433,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
+           py::arg("zero_copy") = false,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("passes_filter") = std::vector<std::string>(),
            py::arg("ops_filter") = std::vector<std::string>())
@@ -501,6 +502,8 @@ void BindAnalysisPredictor(py::module *m) {
       .def("get_output_names", &AnalysisPredictor::GetOutputNames)
       .def("get_input_tensor_shape", &AnalysisPredictor::GetInputTensorShape)
       .def("zero_copy_run", &AnalysisPredictor::ZeroCopyRun)
+      .def("clear_intermediate_tensor",
+           &AnalysisPredictor::ClearIntermediateTensor)
       .def("create_feed_fetch_var", &AnalysisPredictor::CreateFeedFetchVar)
       .def("prepare_feed_fetch", &AnalysisPredictor::PrepareFeedFetch)
       .def("prepare_argument", &AnalysisPredictor::PrepareArgument)

@@ -57,7 +57,9 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
       auto *op = *(pair.second.ops().begin());
       const std::string &op_type = op->GetOp()->Type();
       const framework::OpDesc *op_desc = op->Node()->Op();
-      PADDLE_ENFORCE_NOT_NULL(op_desc);
+      PADDLE_ENFORCE_NOT_NULL(
+          op_desc, platform::errors::NotFound("Op(%s) can not find opdesc.",
+                                              op->Name()));
 
       auto &infer_inplace = OpInfoMap::Instance().Get(op_type).infer_inplace_;
       if (!infer_inplace) {

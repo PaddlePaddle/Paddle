@@ -219,14 +219,14 @@ class FakeQuantOrWithDequantAbsMaxOpMaker
                                 bit_length));
         });
     AddComment(R"DOC(
-This is a Base Op which support FakeQuantAbsMaxOpMaker and FakeQuantDequantAbsMaxOpMaker.
+This is a Base Op which supports FakeQuantAbsMaxOpMaker and FakeQuantDequantAbsMaxOpMaker.
 FakeQuantAbsMaxOp operator is used in the dynamic quantization.
 
 $$scale = max(abs(X))$$
 $$range = 2^{bit_length - 1} - 1$$
 $$Out = round(X/scale * range)$$
 
-FakeQuantDequantAbsMaxOp operator do the abs_max quant and then dequant.
+FakeQuantDequantAbsMaxOp operator does the abs_max quantization and then dequantization.
 
 $$scale = max(abs(X))$$
 $$range = 2^{bit\_length - 1} - 1$$
@@ -423,14 +423,14 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
     AddComment(R"DOC(
-This is a Base Op which support FakeQuantMovingAverageAbsMaxOp and FakeQuantDequantMovingAverageAbsMaxOp.
+This is a Base Op which supports FakeQuantMovingAverageAbsMaxOp and FakeQuantDequantMovingAverageAbsMaxOp.
 FakeQuantMovingAverageAbsMaxOp operator is used in the static quantization.
 
 $$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
 $$range = 2^{bit\_length - 1} - 1$$
 $$Out = round(X/scale * range)$$
 
-FakeQuantDequantMovingAverageAbsMaxOp operator do the moving_average_abs_max quant and then dequant.
+FakeQuantDequantMovingAverageAbsMaxOp operator does the moving_average_abs_max quant and then dequant.
 
 $$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
 $$range = 2^{bit\_length - 1} - 1$$
@@ -505,15 +505,12 @@ class FakeQuantDequantGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
+    auto x_grad_name = framework::GradVarName("X");
     OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
                    "FakeQuantDequantGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
+                   "FakeQuantDequantGradOp");
 
-    auto x_grad_name = framework::GradVarName("X");
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(x_grad_name), true,
-        platform::errors::PreconditionNotMet(
-            "FakeQuantDequantGradOp doesn't have the output named %s.",
-            x_grad_name));
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim(out_grad_name));
   }
 

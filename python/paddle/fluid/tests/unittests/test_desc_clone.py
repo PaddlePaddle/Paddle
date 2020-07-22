@@ -18,6 +18,7 @@ import numpy as np
 import argparse
 import time
 import math
+import sys
 
 import paddle
 import paddle.fluid as fluid
@@ -178,6 +179,8 @@ def program_equal(a, b):
 
 
 class TestDistMnist(unittest.TestCase):
+    @unittest.skipIf(sys.platform == "win32",
+                     "Windows does not support distribution")
     def test_desc_clone(self):
         get_model(batch_size=20)
 
