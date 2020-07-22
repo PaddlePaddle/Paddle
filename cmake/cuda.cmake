@@ -188,12 +188,6 @@ endif()
 
 add_definitions("-DPADDLE_CUDA_BINVER=\"${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}\"")
 
-if(NOT WITH_DSO)
-    if(WIN32)
-      set_property(GLOBAL PROPERTY CUDA_MODULES ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusolver_LIBRARY})
-    endif(WIN32)
-endif(NOT WITH_DSO)
-
 # setting nvcc arch flags
 select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
@@ -205,7 +199,7 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # So, don't set these flags here.
 if (NOT WIN32) # windows msvc2015 support c++11 natively.
     # -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++11")
+  set(CMAKE_CUDA_STANDARD 11)
 endif(NOT WIN32)
 
 # in cuda9, suppress cuda warning on eigen

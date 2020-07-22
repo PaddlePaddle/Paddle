@@ -98,7 +98,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
 
       return;
     }
-    if (!(ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList"))) {
+    if (!ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList")) {
       PADDLE_ENFORCE_GT(
           shape.size(), 0UL,
           platform::errors::InvalidArgument(

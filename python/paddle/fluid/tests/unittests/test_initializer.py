@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 
+import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.initializer as initializer
 from paddle.fluid.core import VarDesc
@@ -520,6 +521,66 @@ class TestNumpyArrayInitializer(unittest.TestCase):
         """
         block = self.test_numpy_array_initializer("float16")
         self.assertTrue(block.ops[1])
+
+
+class TestSetGlobalInitializer(unittest.TestCase):
+    def test_set_global_weight_initilizer(self):
+        """Test Set Global Param initilizer with UniformInitializer
+        """
+        main_prog = framework.Program()
+        startup_prog = framework.Program()
+        fluid.set_global_initializer(initializer.Uniform(low=-0.5, high=0.5))
+        with fluid.program_guard(main_prog, startup_prog):
+            x = fluid.data(name="x", shape=[1, 3, 32, 32])
+            # default initilizer of param in layers.conv2d is NormalInitializer
+            conv = fluid.layers.conv2d(x, 5, 3)
+
+        block = startup_prog.global_block()
+        self.assertEqual(len(block.ops), 2)
+
+        # init bias is the first op, and weight is the second
+        bias_init_op = block.ops[0]
+        self.assertEqual(bias_init_op.type, 'fill_constant')
+        self.assertAlmostEqual(bias_init_op.attr('value'), 0.0, delta=DELTA)
+
+        param_init_op = block.ops[1]
+        self.assertEqual(param_init_op.type, 'uniform_random')
+        self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
+        self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
+        self.assertEqual(param_init_op.attr('seed'), 0)
+        fluid.set_global_initializer(None)
+
+    def test_set_global_bias_initilizer(self):
+        """Test Set Global Bias initilizer with NormalInitializer
+        """
+        main_prog = framework.Program()
+        startup_prog = framework.Program()
+        fluid.set_global_initializer(
+            initializer.Uniform(
+                low=-0.5, high=0.5),
+            bias_init=initializer.Normal(
+                loc=0.0, scale=2.0))
+        with fluid.program_guard(main_prog, startup_prog):
+            x = fluid.data(name="x", shape=[1, 3, 32, 32])
+            # default initilizer of bias in layers.conv2d is ConstantInitializer
+            conv = fluid.layers.conv2d(x, 5, 3)
+
+        block = startup_prog.global_block()
+        self.assertEqual(len(block.ops), 2)
+
+        # init bias is the first op, and weight is the second
+        bias_init_op = block.ops[0]
+        self.assertEqual(bias_init_op.type, 'gaussian_random')
+        self.assertAlmostEqual(bias_init_op.attr('mean'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(bias_init_op.attr('std'), 2.0, delta=DELTA)
+        self.assertEqual(bias_init_op.attr('seed'), 0)
+
+        param_init_op = block.ops[1]
+        self.assertEqual(param_init_op.type, 'uniform_random')
+        self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
+        self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
+        self.assertEqual(param_init_op.attr('seed'), 0)
+        fluid.set_global_initializer(None)
 
 
 if __name__ == '__main__':

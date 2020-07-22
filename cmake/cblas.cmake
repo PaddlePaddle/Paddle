@@ -22,9 +22,7 @@
 #    CBLAS_LIBS      # a list of libraries should be linked by paddle.
 #                    # Each library should be full path to object file.
 
-set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
-file(WRITE ${dummyfile} "const char *dummy_cblas = \"${dummyfile}\";")
-add_library(cblas STATIC ${dummyfile})
+generate_dummy_static_lib(LIB_NAME "cblas" GENERATOR "cblas.cmake")
 
 if(WITH_LIBXSMM)
   target_link_libraries(cblas ${LIBXSMM_LIBS})
@@ -130,3 +128,4 @@ include_directories(${CBLAS_INC_DIR})
 if(NOT ${CBLAS_PROVIDER} STREQUAL MKLML)
   target_link_libraries(cblas ${CBLAS_LIBRARIES})
 endif()
+

@@ -26,8 +26,10 @@ class TestLRNMKLDNNOp(TestLRNOp):
         return attrs
 
     def test_check_output(self):
+        # We cannot validate MidOut as LRN REF has diffrent meaning in it
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(atol=0.002, check_dygraph=False)
+        self.check_output(
+            atol=0.002, no_check_set=['MidOut'], check_dygraph=False)
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode

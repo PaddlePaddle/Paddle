@@ -47,8 +47,8 @@ int test_main(const AnalysisConfig& config, Barrier* barrier = nullptr) {
   std::vector<PaddleTensor> outputs;
   predictor->Run(inputs, &outputs);
   const std::vector<float> truth_values = {
-      -0.00621776, -0.00620937, 0.00990623,  -0.0039817, -0.00074315,
-      0.61229795,  -0.00491806, -0.00068755, 0.18409646, 0.30090684};
+      -0.00621776f, -0.00620937f, 0.00990623f,  -0.0039817f, -0.00074315f,
+      0.61229795f,  -0.00491806f, -0.00068755f, 0.18409646f, 0.30090684f};
   const size_t expected_size = 1;
   EXPECT_EQ(outputs.size(), expected_size);
   float* data_o = static_cast<float*>(outputs[0].data.data());

@@ -6,6 +6,7 @@ import shutil
 import sys
 import fnmatch
 import errno
+import platform
 
 from contextlib import contextmanager
 from setuptools import Command
@@ -142,6 +143,13 @@ packages=['paddle',
           'paddle.incubate',
           'paddle.incubate.complex',
           'paddle.incubate.complex.tensor',
+          'paddle.fleet',
+          'paddle.fleet.base',
+          'paddle.fleet.meta_optimizers',
+          'paddle.fleet.runtime',
+          'paddle.fleet.dataset',
+          'paddle.fleet.metrics',
+          'paddle.fleet.proto',
           'paddle.framework',
           'paddle.fluid',
           'paddle.fluid.dygraph',
@@ -187,6 +195,7 @@ packages=['paddle',
           'paddle.nn.initializer',
           'paddle.metric',
           'paddle.imperative',
+          'paddle.imperative.jit',
           'paddle.tensor',
           ]
 
@@ -256,6 +265,10 @@ else:
         shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
 
+if '${WITH_LITE}' == 'ON':
+    shutil.copy('${LITE_SHARED_LIB}', libs_path)
+    package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
+
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
     if os.path.exists('${PSLIB_VERSION_PY}'):
@@ -304,8 +317,9 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
         else:
             command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
-        if os.system(command) != 0:
-            raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
+        if platform.machine() != 'aarch64':
+          if os.system(command) != 0:
+              raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 
 ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':

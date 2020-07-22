@@ -185,6 +185,7 @@ __all__ = [
     'filter_by_instag',
     'shard_index',
     'hard_swish',
+    'mish',
     'gather_tree',
     'uniform_random',
     'unbind',
@@ -3113,15 +3114,17 @@ def instance_norm(input,
             The data type is float32 or float64.
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
-        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+        param_attr(ParamAttr|None|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
 	     If the Initializer of the param_attr is not set, the parameter is initialized
-	     with Xavier. Default: None.
-        bias_attr(ParamAttr|None): The parameter attribute for the bias of instance_norm.
+	     with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
+             Default: None.
+        bias_attr(ParamAttr|None|bool, optional): The parameter attribute for the bias of instance_norm.
              If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
+             If the bias_attr is set to False, instance_norm will not create bias_attr.
 	     Default: None.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -3141,7 +3144,9 @@ def instance_norm(input,
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'instance_norm')
-    assert bias_attr is not False, "bias_attr should not be False in instance_norm."
+    if param_attr is False:
+        assert bias_attr is False, "param_attr and bias_attr must be set to Fasle at the same time in instance_norm"
+
     helper = LayerHelper('instance_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -3154,18 +3159,19 @@ def instance_norm(input,
 
     param_shape = [channel_num]
 
-    # create parameter
-    scale = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=param_shape,
-        dtype=dtype,
-        default_initializer=Constant(1.0))
-    bias = helper.create_parameter(
-        attr=helper.bias_attr,
-        shape=param_shape,
-        dtype=dtype,
-        is_bias=True,
-        default_initializer=Constant(0.0))
+    if param_attr and bias_attr:
+        # create parameter
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0))
+        bias = helper.create_parameter(
+            attr=helper.bias_attr,
+            shape=param_shape,
+            dtype=dtype,
+            is_bias=True,
+            default_initializer=Constant(0.0))
 
     # create output
     saved_mean = helper.create_variable_for_type_inference(
@@ -3175,13 +3181,14 @@ def instance_norm(input,
 
     instance_norm_out = helper.create_variable_for_type_inference(dtype)
 
+    inputs = {"X": input}
+    if param_attr and bias_attr:
+        inputs["Scale"] = scale
+        inputs["Bias"] = bias
+
     helper.append_op(
         type="instance_norm",
-        inputs={
-            "X": input,
-            "Scale": scale,
-            "Bias": bias,
-        },
+        inputs=inputs,
         outputs={
             "Y": instance_norm_out,
             "SavedMean": saved_mean,
@@ -6200,7 +6207,7 @@ def squeeze(input, axes, name=None):
     check_variable_and_dtype(
         input, 'input',
         ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
-    check_type(axes, 'axes', list, 'squeeze')
+    check_type(axes, 'axes', (list, tuple), 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -9626,10 +9633,20 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
     alpha_shape = [1]
+    # NOTE(): The input of this API should be ``N,C,...`` format, 
+    # which means x.shape[0] is batch_size and x.shape[0] is channel.
     if mode == 'channel':
-        alpha_shape = [1, x.shape[1], 1, 1]
+        assert len(
+            x.shape
+        ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
+        #NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
+        # To be consistent with Prelu, it is simplified.
+        alpha_shape = [1, x.shape[1]]
     elif mode == 'element':
-        alpha_shape = [1, x.shape[1], x.shape[2], x.shape[3]]
+        assert len(
+            x.shape
+        ) >= 1, "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
+        alpha_shape = [1] + list(x.shape)[1:]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
@@ -10399,20 +10416,28 @@ def uniform_random_batch_size_like(input,
 
 
 @templatedoc()
-def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
+def gaussian_random(shape,
+                    mean=0.0,
+                    std=1.0,
+                    seed=0,
+                    dtype='float32',
+                    name=None):
     """
     Generate a random tensor whose data is drawn from a Gaussian distribution.
 
     Args:
-        shape (tuple[int] | list[int] | Variable | list[Variable]): Shape of the generated random tensor.
-        
-        mean (float): Mean of the random tensor, defaults to 0.0.
-            
-        std (float): Standard deviation of the random tensor, defaults to 1.0.
-        
-        seed (int): ${seed_comment}
-        
-        dtype(np.dtype | core.VarDesc.VarType | str): Output data type, float32 or float64.
+        shape(list|tuple|Variable): Shape of the Tensor to be created. The data
+            type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+            the elements of it should be integers or Tensors with shape [1]. If
+            ``shape`` is a Variable, it should be an 1-D Tensor .
+        mean(float): Mean of the random tensor, defaults to 0.0.
+        std(float): Standard deviation of the random tensor, defaults to 1.0.
+        seed(int): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output
+            tensor, which can be float32, float64. Default is float32.
+        name(str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            Default is None.
 
     Returns:
         Variable: Random tensor whose data is drawn from a Gaussian distribution, dtype: flaot32 or float64 as specified.
@@ -10475,30 +10500,33 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
            # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
-    helper = LayerHelper('gaussian_random', **locals())
-    out = helper.create_variable_for_type_inference(dtype)
-    if not isinstance(shape, (list, tuple, Variable)):
-        raise TypeError(
-            "The type of 'shape' in fill_constant must be Variable, list or tuple, but "
-            "received %s." % (type(shape)))
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    if in_dygraph_mode():
+        shape = utils._convert_shape_to_list(shape)
+        return core.ops.gaussian_random('shape', shape, 'mean', mean, 'std',
+                                        std, 'seed', seed, 'dtype', dtype)
+
+    check_type(shape, 'shape', (list, tuple, Variable), 'gaussian_random/randn')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'gaussian_random/randn')
+
+    inputs = {}
     attrs = {
         'mean': mean,
         'std': std,
         'seed': seed,
-        'dtype': c_dtype,
+        'dtype': dtype,
         'use_mkldnn': False
     }
-
-    inputs = {}
     utils._get_shape_tensor_inputs(
         inputs=inputs,
-        helper=helper,
         attrs=attrs,
         shape=shape,
-        op_type='gaussian_random')
+        op_type='gaussian_random/randn')
 
+    helper = LayerHelper('gaussian_random', **locals())
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='gaussian_random',
         inputs=inputs,
@@ -11897,8 +11925,10 @@ for func in [
             Default is None. It's used to print debug info for developers. Details: \
             :ref:`api_guide_Name` "
         ],
-        skip_attrs_set={"x_data_format", "y_data_format", "axis"
-                        }) + """\n""" + str(func.__doc__)
+        skip_attrs_set={
+            "x_data_format", "y_data_format", "axis", "use_quantizer",
+            "Scale_x", "Scale_y", "Scale_out"
+        }) + """\n""" + str(func.__doc__)
 
 for func in []:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
@@ -11976,23 +12006,21 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
 def logical_and(x, y, out=None, name=None):
     """
     :alias_main: paddle.logical_and
-	:alias: paddle.logical_and,paddle.tensor.logical_and,paddle.tensor.logic.logical_and
-	:old_api: paddle.fluid.layers.logical_and
+    :alias: paddle.logical_and, paddle.tensor.logical_and, paddle.tensor.logic.logical_and
+    :old_api: paddle.fluid.layers.logical_and
 
-    logical_and Operator
-
-    It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
-    Each element of Out is calculated by
+    ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Variable``.
+    Each element of ``out`` is calculated by
 
     .. math::
 
-        Out = X \land Y
+        out = x \&\& y
 
     Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
-        out(LoDTensor or Tensor): The LoDTensor or Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        x(${x_type}): ${x_comment}.
+        y(${y_type}): ${y_comment}.
+        out(Variable): The ``Variable`` that specifies the output of the operator, which can be any ``Variable`` that has been created in the program. The default value is None, and a new ``Variable`` will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         ${out_type}: ${out_comment}
@@ -12000,25 +12028,16 @@ def logical_and(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
-            # Graph organizing
-            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
-            y = fluid.layers.data(name='y', shape=[2], dtype='bool')
-            res = fluid.layers.logical_and(x=x, y=y)
-            # The comment lists another available method.
-            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
-            # fluid.layers.logical_and(x=x, y=y, out=res)
-
-            # Create an executor using CPU as an example
-            exe = fluid.Executor(fluid.CPUPlace())
-
-            # Execute
-            x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
-            y_i = np.array([[1, 1], [0, 0]]).astype(np.bool)
-            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[res])
-            print(res_val) # [[True, False], [False, False]]
+            paddle.enable_imperative()
+            x_data = np.array([True, True, False, False], dtype=np.bool)
+            y_data = np.array([True, False, True, False], dtype=np.bool)
+            x = paddle.imperative.to_variable(x_data)
+            y = paddle.imperative.to_variable(y_data)
+            res = paddle.logical_and(x, y)
+            print(res.numpy()) # [True False False False]
     """
 
     return _logical_op(
@@ -12029,23 +12048,21 @@ def logical_and(x, y, out=None, name=None):
 def logical_or(x, y, out=None, name=None):
     """
     :alias_main: paddle.logical_or
-	:alias: paddle.logical_or,paddle.tensor.logical_or,paddle.tensor.logic.logical_or
-	:old_api: paddle.fluid.layers.logical_or
+    :alias: paddle.logical_or, paddle.tensor.logical_or, paddle.tensor.logic.logical_or
+    :old_api: paddle.fluid.layers.logical_or
 
-    logical_or Operator
-
-    It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
-    Each element of Out is calculated by
+    ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Variable``.
+    Each element of ``out`` is calculated by
 
     .. math::
 
-        Out = X \lor Y
+        out = x || y
 
     Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
-        out(LoDTensor or Tensor): The LoDTensor or Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        x(${x_type}): ${x_comment}.
+        y(${y_type}): ${y_comment}.
+        out(Variable): The ``Variable`` that specifies the output of the operator, which can be any ``Variable`` that has been created in the program. The default value is None, and a new ``Variable`` will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         ${out_type}: ${out_comment}
@@ -12053,25 +12070,16 @@ def logical_or(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
-            # Graph organizing
-            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
-            y = fluid.layers.data(name='y', shape=[2], dtype='bool')
-            res = fluid.layers.logical_or(x=x, y=y)
-            # The comment lists another available method.
-            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
-            # fluid.layers.logical_or(x=x, y=y, out=res)
-
-            # Create an executor using CPU as an example
-            exe = fluid.Executor(fluid.CPUPlace())
-
-            # Execute
-            x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
-            y_i = np.array([[1, 1], [0, 0]]).astype(np.bool)
-            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[res])
-            print(res_val) # [[True, True], [False, True]]
+            paddle.enable_imperative()
+            x_data = np.array([True, True, False, False], dtype=np.bool)
+            y_data = np.array([True, False, True, False], dtype=np.bool)
+            x = paddle.imperative.to_variable(x_data)
+            y = paddle.imperative.to_variable(y_data)
+            res = paddle.logical_or(x, y)
+            print(res.numpy()) # [True  True  True False]
     """
 
     return _logical_op(
@@ -12082,23 +12090,21 @@ def logical_or(x, y, out=None, name=None):
 def logical_xor(x, y, out=None, name=None):
     """
     :alias_main: paddle.logical_xor
-	:alias: paddle.logical_xor,paddle.tensor.logical_xor,paddle.tensor.logic.logical_xor
-	:old_api: paddle.fluid.layers.logical_xor
+    :alias: paddle.logical_xor, paddle.tensor.logical_xor, paddle.tensor.logic.logical_xor
+    :old_api: paddle.fluid.layers.logical_xor
 
-    logical_xor Operator
-
-    It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
-    Each element of Out is calculated by
+    ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Variable``.
+    Each element of ``out`` is calculated by
 
     .. math::
 
-        Out = (X \lor Y) \land \lnot (X \land Y)
+        out = (x || y) \&\& !(x \&\& y)
 
     Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
-        out(LoDTensor or Tensor): The LoDTensor or Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        x(${x_type}): ${x_comment}.
+        y(${y_type}): ${y_comment}.
+        out(Variable): The ``Variable`` that specifies the output of the operator, which can be any ``Variable`` that has been created in the program. The default value is None, and a new ``Variable`` will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         ${out_type}: ${out_comment}
@@ -12106,25 +12112,16 @@ def logical_xor(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
-            # Graph organizing
-            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
-            y = fluid.layers.data(name='y', shape=[2], dtype='bool')
-            res = fluid.layers.logical_xor(x=x, y=y)
-            # The comment lists another available method.
-            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
-            # fluid.layers.logical_xor(x=x, y=y, out=res)
-
-            # Create an executor using CPU as an example
-            exe = fluid.Executor(fluid.CPUPlace())
-
-            # Execute
-            x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
-            y_i = np.array([[1, 1], [0, 0]]).astype(np.bool)
-            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[res])
-            print(res_val) # [[False, True], [False, True]]
+            paddle.enable_imperative()
+            x_data = np.array([True, True, False, False], dtype=np.bool)
+            y_data = np.array([True, False, True, False], dtype=np.bool)
+            x = paddle.imperative.to_variable(x_data)
+            y = paddle.imperative.to_variable(y_data)
+            res = paddle.logical_xor(x, y)
+            print(res.numpy()) # [False  True  True False]
     """
 
     return _logical_op(
@@ -12135,46 +12132,34 @@ def logical_xor(x, y, out=None, name=None):
 def logical_not(x, out=None, name=None):
     """
     :alias_main: paddle.logical_not
-	:alias: paddle.logical_not,paddle.tensor.logical_not,paddle.tensor.logic.logical_not
-	:old_api: paddle.fluid.layers.logical_not
+    :alias: paddle.logical_not, paddle.tensor.logical_not, paddle.tensor.logic.logical_not
+    :old_api: paddle.fluid.layers.logical_not
 
-    logical_not Operator
-
-    It operates element-wise on X, and returns the Out. X and Out are N-dim boolean LoDTensor or Tensor.
-    Each element of Out is calculated by
+    ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``x`` and ``out`` are N-dim boolean ``Variable``.
+    Each element of ``out`` is calculated by
 
     .. math::
 
-        Out = \lnot X
+        out = !x
 
     Args:
-        x(${x_type}): ${x_comment}
-        out(LoDTensor/Tensor): The LoDTensor/Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        x(${x_type}): ${x_comment}.
+        out(Variable): The ``Variable`` that specifies the output of the operator, which can be any ``Variable`` that has been created in the program. The default value is None, and a new ``Variable` will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         ${out_type}: ${out_comment}
 
     Examples:
         .. code-block:: python
-
-            import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
-            # Graph organizing
-            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
-            res = fluid.layers.logical_not(x)
-            # The comment lists another avaliable method.
-            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
-            # fluid.layers.logical_not(x, out=res)
-
-            # Create an executor using CPU as an example
-            exe = fluid.Executor(fluid.CPUPlace())
-
-            # Execute
-            x_i = np.array([[1, 0]]).astype(np.bool)
-            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
-            print(res_val) # [[False, True]]
+            paddle.enable_imperative()
+            x_data = np.array([True, False, True, False], dtype=np.bool)
+            x = paddle.imperative.to_variable(x_data)
+            res = paddle.logical_not(x)
+            print(res.numpy()) # [False  True False  True]
     """
 
     return _logical_op(
@@ -12784,16 +12769,14 @@ def hash(input, hash_size, num_hash=1, name=None):
 
             place = fluid.core.CPUPlace()
 
-            x = fluid.data(name="x", shape=[1], dtype="int32", lod_level=1)
-            res = fluid.layers.hash(name="res",input=x, hash_size=1000, num_hash=4)
+            x = fluid.data(name="x", shape=[2,2], dtype="int32", lod_level=1)
+            res = fluid.layers.hash(name="res", input=x, hash_size=1000, num_hash=4)
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             in1 = np.array([[1,2],[3,4]]).astype("int32")
             print(in1)
-            x_i = fluid.core.LoDTensor()
-            x_i.set(in1,place)
-            x_i.set_recursive_sequence_lengths([[0,2]])
+            x_i = fluid.create_lod_tensor(in1, [[0, 2]], place)
             res = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res], return_numpy=False)
             print(np.array(res[0]))
             # [[[722]
@@ -12806,8 +12789,8 @@ def hash(input, hash_size, num_hash=1, name=None):
             #   [901]]]
     """
     check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'hash')
-    check_type(hash_size, 'hash_size', ['int32', 'int64'], 'hash')
-    check_type(num_hash, 'num_hash', ['int32', 'int64'], 'hash')
+    check_type(hash_size, 'hash_size', int, 'hash')
+    check_type(num_hash, 'num_hash', int, 'hash')
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
         helper.input_dtype(), stop_gradient=True)
@@ -14026,7 +14009,7 @@ def unique(x, dtype='int32'):
 
              import numpy as np
              import paddle.fluid as fluid
-             x = fluid.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
+             x = fluid.layers.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
              out, index = fluid.layers.unique(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
     """
 
@@ -14772,6 +14755,81 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
     return out
 
 
+@templatedoc()
+def mish(x, threshold=20, name=None):
+    """
+    This operator implements the mish activation function.
+    Refer to `Mish: A Self Regularized Non-Monotonic Neural
+    Activation Function <https://arxiv.org/abs/1908.08681>`_
+
+
+    The formula is as follows if :attr:`threshold` is :code:`None` or negative:
+
+    .. math::
+
+        out = x * \\tanh(\\ln(1 + e^{x}))
+
+    The formula is as follows if :attr:`threshold` is set as positive value:
+
+    .. math::
+
+	out = \\begin{cases}
+		x \\ast \\tanh(x), \\text{if } x > \\text{threshold} \\\\
+		x \\ast \\tanh(e^{x}), \\text{if } x < -\\text{threshold} \\\\
+		x \\ast \\tanh(\\ln(1 + e^{x})),  \\text{otherwise}
+	      \\end{cases}
+
+    Args:
+        x (Variable): Input feature, multi-dimensional Tensor. The data type
+                      should be float16, float32 or float64.
+        threshold (float|None): threshold for softplus in Mish operator.
+                Approximate value of softplus will be used if absolute value
+                of input is greater than :attr:threshold and :attr:threshold
+                is set as positive value. For none or negative threshold,
+                approximate value is not used. Default 20.
+        name (str, optional): The default value is None. Normally there is no
+                need for user to set this property. For more information, please
+                refer to :ref:`api_guide_Name`
+
+    Returns:
+        Variable: The output tensor with the same shape and data type as input.
+
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        DATATYPE='float32'
+
+        x_data = np.array([i for i in range(1,5)]).reshape([1,1,4]).astype(DATATYPE)
+
+        x = fluid.data(name="x", shape=[None,1,4], dtype=DATATYPE)
+        y = fluid.layers.mish(x)
+
+        place = fluid.CPUPlace()
+        # place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
+        print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
+    """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
+    check_type(threshold, 'threshold', (float, int), 'mish')
+    assert threshold > 0, "threshold of mish should be greater than 0, " \
+                          "but got {}".format(threshold)
+
+    helper = LayerHelper('mish', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='mish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold or -1})
+    return out
+
+
 def gather_tree(ids, parents):
     """
     To be used after beam search. After beam search, we get selected ids at
@@ -14851,7 +14909,8 @@ def gather_tree(ids, parents):
 
 
 @templatedoc()
-def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
+def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
+                   name=None):
     """
     This OP initializes a variable with random values sampled from a
     uniform distribution in the range [min, max).
@@ -14866,18 +14925,24 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape (list|tuple|Variable): The shape of the output Tensor,  if the shape is a list or tuple,
-                                     its elements can be an integer
-                                     or a Tensor with the shape [1], and the type of the Tensor must be int32 or int64.
-                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor must be int32 or int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the output Tensor. Supported data types: float32, float64.
-                                                  Default: float32.
-        min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
-        max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
-        seed (int, optional): Random seed used for generating samples. 0 means use a
-            seed generated by the system. Note that if seed is not 0, this
-            operator will always generate the same random numbers every time.
-            Default 0.
+        shape (list|tuple|Variable): The shape of the output Tensor,  if the
+            shape is a list or tuple, its elements can be an integer or a
+            Tensor with the shape [1], and the type of the Tensor must be
+            int32 or int64. If the shape is a Variable, it is a 1-D Tensor, and
+            the type of the Tensor must be int32 or int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the
+            output Tensor. Supported data types: float32, float64. Default: float32.
+        min (float, optional): The lower bound on the range of random values
+            to generate, the min is included in the range. Default -1.0.
+        max (float, optional): The upper bound on the range of random values
+            to generate, the max is excluded in the range. Default 1.0.
+        seed (int, optional): Random seed used for generating samples. 0 means
+            use a seed generated by the system. Note that if seed is not 0,
+            this operator will always generate the same random numbers every
+            time. Default 0.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: A Tensor of the specified shape filled with uniform_random values.
@@ -14907,62 +14972,30 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
             result_4 = fluid.layers.uniform_random(var_shape_int32)
 
-
-
     """
-    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random')
 
-    def get_new_shape_tensor(list_shape):
-        new_shape_tensor = []
-        for dim in list_shape:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_shape_tensor.append(dim)
-            else:
-                assert (isinstance(dim, int))
-                temp_out = helper.create_variable_for_type_inference('int64')
-                fill_constant([1], 'int64', dim, force_cpu=True, out=temp_out)
-                new_shape_tensor.append(temp_out)
-        return new_shape_tensor
+    if in_dygraph_mode():
+        shape = utils._convert_shape_to_list(shape)
+        return core.ops.uniform_random('shape', shape, 'min',
+                                       float(min), 'max',
+                                       float(max), 'seed', seed, 'dtype', dtype)
 
-    def get_attr_shape(list_shape):
-        unk_dim_idx = -1
-        attrs_shape = []
-        for dim_idx, dim_size in enumerate(list_shape):
-            if isinstance(dim_size, Variable):
-                attrs_shape.append(-1)
-            else:
-                attrs_shape.append(dim_size)
-                assert dim_size > 0, (
-                    "Each dimension size given in shape must not be negative "
-                    "except one unknown dimension.")
-        return attrs_shape
+    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
+    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random/rand')
 
-    helper = LayerHelper("uniform_random", **locals())
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
-    if in_dygraph_mode():
-        attrs['shape'] = shape
-    else:
-        if isinstance(shape, Variable):
-            shape.stop_gradient = True
-            inputs["ShapeTensor"] = shape
-        elif isinstance(shape, (list, tuple)):
-            assert len(shape) > 0, (
-                "The size of argument(shape) can't be zero.")
-            attrs["shape"] = get_attr_shape(shape)
-            if utils._contain_var(shape):
-                inputs['ShapeTensorList'] = get_new_shape_tensor(shape)
+    utils._get_shape_tensor_inputs(
+        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random/rand')
 
+    helper = LayerHelper("uniform_random", **locals())
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
         outputs={"Out": out})
-
-    return helper.append_activation(out)
+    return out
 
 
 def unbind(input, axis=0):

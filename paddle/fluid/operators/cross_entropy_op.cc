@@ -145,11 +145,10 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
             "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
             dy_dims.size(), label_dims.size()));
 
-    bool check = true;
-    if ((!ctx->IsRuntime()) &&
-        (framework::product(x_dims) <= 0 || framework::product(dy_dims) <= 0)) {
-      check = false;
-    }
+    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
+                               framework::contain_unknown_dim(dy_dims);
+
+    bool check = ctx->IsRuntime() || !contain_unknown_dim;
 
     if (check) {
       PADDLE_ENFORCE_EQ(
