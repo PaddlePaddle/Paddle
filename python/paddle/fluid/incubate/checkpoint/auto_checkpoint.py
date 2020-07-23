@@ -93,8 +93,12 @@ class AutoCheckpointChecker(object):
             self._hdfs_ugi = os.environ["PADDLE_EDL_HDFS_UGI"]
             self._hdfs_checkpoint_path = os.environ[
                 "PADDLE_EDL_HDFS_CHECKPOINT_PATH"]
-            self._trainer_id = int(os.environ["PADDLE_EDL_TRAINER_ID"])
-            self._ce_test = bool(os.environ["PADDLE_EDL_ONLY_FOR_CE_TEST"])
+            self._trainer_id = int(os.environ["PADDLE_TRAINER_ID"])
+
+            self._ce_test = os.getenv("PADDLE_EDL_ONLY_FOR_CE_TEST")
+            if self._ce_test is not None:
+                self._ce_test = bool(self._ce_test)
+
             self._save_checkpoint_inter = int(
                 os.getenv("PADDLE_EDL_SAVE_CHECKPOINT_INTER", "900"))  #s
 
@@ -108,7 +112,7 @@ class AutoCheckpointChecker(object):
                     len(self._hdfs_checkpoint_path) > 0, "hdfs environ must set"
 
         except Exception as e:
-            logger.fatal("exception:", e)
+            logger.fatal("exception:{}".format(e))
             sys.exit(1)
 
     def get_range_checkpoint_path(self, name):

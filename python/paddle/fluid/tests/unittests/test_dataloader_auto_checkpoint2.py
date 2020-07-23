@@ -45,7 +45,7 @@ class DataLoaderAutoCheckpointTest2(DataLoaderAutoCheckpointTestBase):
         self._old_environ = dict(os.environ)
         proc_env = {
             "PADDLE_RUNNING_ENV": "PADDLE_EDL_AUTO_CHECKPOINT",
-            "PADDLE_EDL_TRAINER_ID": "0",
+            "PADDLE_TRAINER_ID": "0",
             "PADDLE_RUNNING_PLATFORM": "PADDLE_CLOUD",
             "PADDLE_JOB_ID": "test_job_dataloader",
             "PADDLE_EDL_HDFS_HOME": "/usr/local/hadoop-2.7.7",
