@@ -139,6 +139,17 @@ class DistributedStrategy(object):
             print("WARNING: amp should have value of bool type")
 
     @property
+    def amp_loss_scaling(self):
+        return self.strategy.amp_loss_scaling
+
+    @amp_loss_scaling.setter
+    def amp_loss_scaling(self, value):
+        if isinstance(value, int):
+            self.strategy.amp_loss_scaling = value
+        else:
+            print("WARNING: amp_loss_scaling should have value of int type")
+
+    @property
     def amp_configs(self):
         return self.amp_configs
 
@@ -169,6 +180,38 @@ class DistributedStrategy(object):
         self.strategy.recompute_checkpoints = configs["recompute_checkpoints"]
 
     @property
+    def recompute_checkpoints(self):
+        return self.strategy.recompute_checkpoints
+
+    @recompute_checkpoints.setter
+    def recompute_checkpoints(self, checkpoints):
+        if isinstance(checkpoints, list):
+            str_list = True
+            var_list = True
+            for item in checkpoints:
+                if not isinstance(item, str):
+                    str_list = False
+                if not isinstance(item, Variable):
+                    var_list = False
+
+                assert (str_list and var_list) == False
+                if str_list:
+                    self.strategy.ClearField("recompute_checkpoints")
+                    self.strategy.recompute_checkpoints.extend(checkpoints)
+                elif var_list:
+                    names = [x.name for x in checkpoints]
+                    self.strategy.ClearField("recompute_checkpoints")
+                    self.strategy.recompute_checkpoints.extend(names)
+                else:
+                    print(
+                        "WARNING: recompute_checkpoints should have value of list[Variable] or list[name] type"
+                    )
+        else:
+            print(
+                "WARNING: recompute_checkpoints should have value of list[Variable] or list[name] type"
+            )
+
+    @property
     def pipeline(self):
         return self.strategy.pipeline
 
@@ -178,6 +221,17 @@ class DistributedStrategy(object):
             self.strategy.pipeline = flag
         else:
             print("WARNING: pipeline should have value of bool type")
+
+    @property
+    def pipeline_micro_batch(self):
+        return self.strategy.pipeline_micro_batch
+
+    @pipeline_micro_batch.setter
+    def pipeline_micro_batch(self, value):
+        if isinstance(value, int):
+            self.strategy.pipeline_micro_batch = value
+        else:
+            print("WARNING: pipeline micro batch should have value of int type")
 
     @property
     def pipeline_configs(self):
@@ -200,6 +254,17 @@ class DistributedStrategy(object):
             self.strategy.localsgd = flag
         else:
             print("WARNING: localsgd should have value of bool type")
+
+    @property
+    def localsgd_k_step(self):
+        return self.strategy.localsgd_k_step
+
+    @localsgd_k_step.setter
+    def localsgd_k_step(self, value):
+        if isinstance(value, int):
+            self.strategy.localsgd_k_step = value
+        else:
+            print("WARNING: localsgd_k_step should have value of int type")
 
     @property
     def localsgd_configs(self):
