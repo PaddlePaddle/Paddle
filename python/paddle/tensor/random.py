@@ -43,7 +43,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 	:alias: paddle.tensor.randint, paddle.tensor.random.randint
 
     This OP returns a Tensor filled with random integers from a discrete uniform
-    distribution in the range [``low``, ``high``), with ``shape``, with ``dtype``.
+    distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
     If ``high`` is None (the default), the range is [0, ``low``).
 
     Args:
@@ -67,8 +67,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
     Returns: 
         Tensor: A Tensor filled with random integers from a discrete uniform
-        distribution in the range [``low``, ``high``), with ``shape``, with
-        ``dtype``.
+        distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
 
     Raises:
         TypeError: If ``shape`` is not list, tuple, Tensor.
@@ -154,7 +153,7 @@ def randn(shape, dtype=None, name=None):
 
     This OP returns a Tensor filled with random values sampled from a normal
     distribution with mean 0 and standard deviation 1 (also called the standard
-    normal distribution), with ``shape``, with ``dtype``.
+    normal distribution), with ``shape`` and ``dtype``.
 
     Args:
         shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
@@ -172,7 +171,7 @@ def randn(shape, dtype=None, name=None):
     Returns:
         Tensor: A Tensor filled with random values sampled from a normal
         distribution with mean 0 and standard deviation 1 (also called the
-        standard normal distribution), with ``shape``, with ``dtype``.
+        standard normal distribution), with ``shape`` and ``dtype``.
 
     Raises:
         TypeError: If ``shape`` is not list, tuple, Tensor.
@@ -284,7 +283,7 @@ def rand(shape, dtype=None, name=None):
 	:alias: paddle.tensor.rand, paddle.tensor.random.rand
 
     This OP returns a Tensor filled with random values sampled from a uniform
-    distribution in the range [0, 1), with ``shape``, with ``dtype``.
+    distribution in the range [0, 1), with ``shape`` and ``dtype``.
 
     Examples:
     ::
@@ -310,7 +309,7 @@ def rand(shape, dtype=None, name=None):
 
     Returns:
         Tensor: A Tensor filled with random values sampled from a uniform
-        distribution in the range [0, 1), with ``shape``, with ``dtype``.
+        distribution in the range [0, 1), with ``shape`` and ``dtype``.
 
     Raises:
         TypeError: If ``shape`` is not list, tuple, Tensor.

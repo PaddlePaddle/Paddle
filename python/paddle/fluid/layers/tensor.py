@@ -1324,7 +1324,7 @@ def isfinite(x):
 
 def range(start, end, step, dtype, name=None):
     """
-    This OP returns a 1-D Tensor spaced values within a given interval.
+    This OP returns a 1-D Tensor with spaced values within a given interval.
 
     Values are generated into the half-open interval [``start``, ``end``) with
     the ``step``. (the interval including ``start`` but excluding ``end``).

@@ -422,7 +422,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 	:alias_main: paddle.arange
 	:alias: paddle.tensor.arange, paddle.tensor.creation.arange
 
-    This OP returns a 1-D Tensor spaced values within a given interval.
+    This OP returns a 1-D Tensor with spaced values within a given interval.
 
     Values are generated into the half-open interval [``start``, ``end``) with
     the ``step``. (the interval including ``start`` but excluding ``end``).
