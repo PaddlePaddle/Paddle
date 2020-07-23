@@ -122,6 +122,7 @@ inline std::string TensorDTypeToPyDTypeStr(
     if (std::is_same<T, platform::float16>::value) {                        \
       return "e";                                                           \
     } else if (std::is_same<T, platform::bfloat16>::value) {                \
+      /* NumPy character code of uint16 due to no support for bfloat16 */   \
       return "H";                                                           \
     } else {                                                                \
       constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
@@ -266,7 +267,7 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
                                                         zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
-    // since there is still no support for bfloat16 in py,
+    // since there is still no support for bfloat16 in NumPy,
     // uint16 is used for casting bfloat16
     SetTensorFromPyArrayT<paddle::platform::bfloat16, P>(self, array, place,
                                                          zero_copy);
