@@ -4945,9 +4945,11 @@ class GradientMergeOptimizer(object):
     to the parameters.
 
     Args:
-        inner_optimizer (Optimizer): The specific optimization (such as SGD, Adam) which update the parameters
+        inner_optimizer (Optimizer): The specific optimization (such as SGD, Adam)
+            which update the parameters
         k_steps (int): the update period of the parameters
-        avg (bool): whether to average the gradients of each mini-batch, the default value is `True`
+        avg (bool): whether to average the gradients of each mini-batch,
+            the default value is `True`
 
     Examples:
         .. code-block:: python
