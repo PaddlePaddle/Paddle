@@ -175,7 +175,7 @@ class HDFSClient(FS):
 
         return True
 
-    @_handle_errors
+    @_handle_errors()
     def upload(self, local_path, fs_path):
         if self.is_exist(fs_path):
             raise FSFileExistsError
@@ -189,7 +189,7 @@ class HDFSClient(FS):
         if ret != 0:
             raise ExecuteError
 
-    @_handle_errors
+    @_handle_errors()
     def download(self, fs_path, local_path):
         if self.is_exist(local_path):
             logging.fatal("{} exits".format(fs_path))
@@ -204,7 +204,7 @@ class HDFSClient(FS):
         if ret != 0:
             raise ExecuteError
 
-    @_handle_errors
+    @_handle_errors()
     def mkdirs(self, fs_path):
         if self.is_exist(fs_path):
             return
@@ -227,7 +227,7 @@ class HDFSClient(FS):
             if ret != 0:
                 raise ExecuteError
 
-    @_handle_errors
+    @_handle_errors()
     def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
         if overwrite and self.is_exist(fs_dst_path):
             self.delete(fs_dst_path)
@@ -244,14 +244,14 @@ class HDFSClient(FS):
         if ret != 0:
             raise ExecuteError
 
-    @_handle_errors
+    @_handle_errors()
     def _rmr(self, fs_path):
         cmd = "{} -rmr {}".format(self._base_cmd, fs_path)
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError
 
-    @_handle_errors
+    @_handle_errors()
     def _rm(self, fs_path):
         cmd = "{} -rm {}".format(self._base_cmd, fs_path)
         ret, _ = self._run_cmd(cmd)
