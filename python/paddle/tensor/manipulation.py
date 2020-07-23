@@ -434,10 +434,9 @@ def split(input, num_or_sections, dim=-1, name=None):
 def squeeze(x, axis=None, name=None):
     """
 	:alias_main: paddle.squeeze
-	:alias: paddle.squeeze,paddle.tensor.squeeze,paddle.tensor.manipulation.squeeze
-    :update_api: paddle.fluid.layers.squeeze
+	:alias: paddle.squeeze, paddle.tensor.squeeze, paddle.tensor.manipulation.squeeze
 
-    This OP will squeeze the dimension(s) of size 1 of input tensor's shape. 
+    This OP will squeeze the dimension(s) of size 1 of input tensor x's shape. 
 
     If axis is provided, it will remove the dimension(s) by given axis that of size 1. 
     If the dimension of given axis is not of size 1, the dimension remain unchanged. 
@@ -472,21 +471,21 @@ def squeeze(x, axis=None, name=None):
         Case4:
 
           Input:
-            x.shape = [1, 3, 1, 5]  # If axis is negative, axis = axis + rank(input)
+            x.shape = [1, 3, 1, 5]  # If axis is negative, axis = axis + ndim (number of dimensions in x). 
             axis = [-2]
           Output:
             out.shape = [1, 3, 5]
 
     Args:
-        input (Variable): The input Tensor. Support data type: float32, float64, int8, int32, int64.
+        input (Tensor): The input Tensor. Support data type: float32, float64, int8, int32, int64.
         axis (int|list|tuple, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
-                          The range of axis is :math:`[-rank(input), rank(input))`.
-                          If axis is negative, :math:`axis = axis + rank(input)`.
+                          The range of axis is :math:`[-ndim(input), ndim(input))`.
+                          If axis is negative, :math:`axis = axis + ndim(input)`.
                           If axis is None, all the dimensions of input of size 1 will be removed.
         name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Variable: Output squeezed Tensor. Data type is same as input Tensor.
+        Tensor: Output squeezed Tensor. Data type is same as input Tensor.
 
     Examples:
         .. code-block:: python
