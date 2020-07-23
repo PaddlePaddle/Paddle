@@ -1324,35 +1324,38 @@ def isfinite(x):
 
 def range(start, end, step, dtype, name=None):
     """
-    Return evenly spaced values within a given interval.
+    This OP returns a 1-D Tensor spaced values within a given interval.
 
-    Values are generated within the half-open interval [start, stop) (in other
-    words, the interval including start but excluding stop).
+    Values are generated into the half-open interval [``start``, ``end``) with
+    the ``step``. (the interval including ``start`` but excluding ``end``).
 
-    If dtype is float32 or float64, we advise adding a small epsilon to end to
-    avoid floating point rounding errors when comparing against end.
+    If ``dtype`` is float32 or float64, we advise adding a small epsilon to
+    ``end`` to avoid floating point rounding errors when comparing against ``end``.
 
     Parameters:
-        start(float|int|Variable): Start of interval. The interval includes
-            this value. If start is Variable, it is a 1-D Tensor with shape [1],
-            and it's data type should be one of int32, int64, float32, float64.
+        start(float|int|Variable): Start of interval. The interval includes this
+            value. If ``start`` is a Tensor, it is a 1-D Tensor with shape [1],
+            with data type int32, int64, float32, float64.
         end(float|int|Variable): End of interval. The interval does not include
-            this value. When end is Variable, it is a 1-D Tensor with shape [1],
-            and it's data type should be int32, int64, float32, float64.
-        step(float|int|Variable): Spacing between values. For any out, this is
-            the istance between two adjacent values, out[i+1] - out[i].
-            When end is Variable, it is a 1-D Tensor with shape [1], and it's
-            data type should be one of int32, int64, float32, float64.
-        dtype(str|np.dtype|core.VarDesc.VarType): The data type of the output
-            tensor, can be float32, float64, int32, int64.
-        name(str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-            Default is None.
+            this value. If ``end`` is a Tensor, it is a 1-D Tensor with shape
+            [1], with data type int32, int64, float32, float64.
+        step(float|int|Variable): Spacing between values. For any out, it is
+            the istance between two adjacent values, out[i+1] - out[i]. If
+            ``step`` is a Tensor, it is a 1-D Tensor with shape [1], with data
+            type int32, int64, float32, float64.
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+            output tensor. Supported data types: int32, int64, float32, float64.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
-    Returns: a 1-D Tensor which is evenly spaced values within a given interval.
-        Its data type is set by dtype.
-    
-    Return type: Variable
+    Returns: 
+        Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
+            taken with common difference ``step`` beginning from ``start``. Its
+            data type is set by ``dtype``.
+
+    Raises:
+        TypeError: If ``dtype`` is not int32, int64, float32, float64.
 
     examples:
 

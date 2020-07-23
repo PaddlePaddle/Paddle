@@ -10423,24 +10423,29 @@ def gaussian_random(shape,
                     dtype='float32',
                     name=None):
     """
-    Generate a random tensor whose data is drawn from a Gaussian distribution.
+    This OP returns a Tensor filled with random values sampled from a Gaussian
+    distribution, with ``shape``, with ``dtype``.
 
     Args:
-        shape(list|tuple|Variable): Shape of the Tensor to be created. The data
-            type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
-            the elements of it should be integers or Tensors with shape [1]. If
-            ``shape`` is a Variable, it should be an 1-D Tensor .
-        mean(float): Mean of the random tensor, defaults to 0.0.
-        std(float): Standard deviation of the random tensor, defaults to 1.0.
-        seed(int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output
-            tensor, which can be float32, float64. Default is float32.
-        name(str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-            Default is None.
+        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+            is a list or tuple, the elements of it should be integers or Tensors
+            (with the shape [1], and the data type int32 or int64). If ``shape``
+            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
+            int64).
+        mean(float, optional): Mean of the output tensor, defaults is 0.0.
+        std(float, optional): Standard deviation of the output tensor, defaults
+            is 1.0.
+        seed(int, optional): ${seed_comment}
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
+            the output Tensor. Supported data types: float32, float64.
+            Default is float32.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Random tensor whose data is drawn from a Gaussian distribution, dtype: flaot32 or float64 as specified.
+        Tensor: A Tensor filled with random values sampled from a Gaussian
+        distribution, with ``shape``, with ``dtype``.
 
     Examples:
 
@@ -10449,17 +10454,17 @@ def gaussian_random(shape,
             import paddle.fluid as fluid
 
             # example 1:
-            # attr shape is a list which doesn't contain tensor Variable.
+            # attr shape is a list which doesn't contain Tensor.
             result_1 = fluid.layers.gaussian_random(shape=[3, 4])
 
             # example 2:
-            # attr shape is a list which contains tensor Variable.
-            dim_1 = fluid.layers.fill_constant([1],"int64",3)
-            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            # attr shape is a list which contains Tensor.
+            dim_1 = fluid.layers.fill_constant([1], "int64", 3)
+            dim_2 = fluid.layers.fill_constant([1], "int32", 5)
             result_2 = fluid.layers.gaussian_random(shape=[dim_1, dim_2])
 
             # example 3:
-            # attr shape is a Variable, the data type must be int64 or int32.
+            # attr shape is a Tensor, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = fluid.layers.gaussian_random(var_shape)
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
@@ -14912,8 +14917,8 @@ def gather_tree(ids, parents):
 def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
                    name=None):
     """
-    This OP initializes a variable with random values sampled from a
-    uniform distribution in the range [min, max).
+    This OP returns a Tensor filled with random values sampled from a uniform
+    distribution in the range [``min``, ``max``), with ``shape``, with ``dtype``.
 
     Examples:
     ::
@@ -14925,30 +14930,34 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape (list|tuple|Variable): The shape of the output Tensor,  if the
-            shape is a list or tuple, its elements can be an integer or a
-            Tensor with the shape [1], and the type of the Tensor must be
-            int32 or int64. If the shape is a Variable, it is a 1-D Tensor, and
-            the type of the Tensor must be int32 or int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the
-            output Tensor. Supported data types: float32, float64. Default: float32.
-        min (float, optional): The lower bound on the range of random values
-            to generate, the min is included in the range. Default -1.0.
-        max (float, optional): The upper bound on the range of random values
-            to generate, the max is excluded in the range. Default 1.0.
-        seed (int, optional): Random seed used for generating samples. 0 means
+        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+            is a list or tuple, the elements of it should be integers or Tensors
+            (with the shape [1], and the data type int32 or int64). If ``shape``
+            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
+            int64).
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
+            the output Tensor. Supported data types: float32, float64.
+            Default is float32.
+        min(float, optional): The lower bound on the range of random values
+            to generate, ``min`` is included in the range. Default is -1.0.
+        max(float, optional): The upper bound on the range of random values
+            to generate, ``max`` is excluded in the range. Default is 1.0.
+        seed(int, optional): Random seed used for generating samples. 0 means
             use a seed generated by the system. Note that if seed is not 0,
             this operator will always generate the same random numbers every
-            time. Default 0.
+            time. Default is 0.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor of the specified shape filled with uniform_random values.
+        Tensor: A Tensor filled with random values sampled from a uniform
+        distribution in the range [``min``, ``max``), with ``shape``,
+        with ``dtype``.
 
     Raises:
-        TypeError: The shape type should be list or tuple or variable.
+        TypeError: If ``shape`` is not list, tuple, Tensor.
+        TypeError: If ``dtype`` is not float32, float64.
 
     Examples:
         .. code-block:: python
@@ -14956,17 +14965,17 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
             import paddle.fluid as fluid
 
             # example 1:
-            # attr shape is a list which doesn't contain tensor Variable.
+            # attr shape is a list which doesn't contain Tensor.
             result_1 = fluid.layers.uniform_random(shape=[3, 4])
 
             # example 2:
-            # attr shape is a list which contains tensor Variable.
-            dim_1 = fluid.layers.fill_constant([1],"int64",3)
-            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            # attr shape is a list which contains Tensor.
+            dim_1 = fluid.layers.fill_constant([1], "int64", 3)
+            dim_2 = fluid.layers.fill_constant([1], "int32", 5)
             result_2 = fluid.layers.uniform_random(shape=[dim_1, dim_2])
 
             # example 3:
-            # attr shape is a Variable, the data type must be int64 or int32.
+            # attr shape is a Tensor, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = fluid.layers.uniform_random(var_shape)
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
