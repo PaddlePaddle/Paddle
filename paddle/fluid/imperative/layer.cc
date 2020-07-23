@@ -32,6 +32,8 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace imperative {
 
@@ -196,7 +198,7 @@ void VarBase::ClearGradient() {
           grad_var_->MutableVar()->GetMutable<framework::SelectedRows>();
       if (grad_t->mutable_value()->IsInitialized()) {
 #ifdef PADDLE_WITH_MKLDNN
-        ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
 #endif
         grad_t->mutable_rows()->clear();
         grad_t->mutable_value()->clear();
@@ -209,7 +211,7 @@ void VarBase::ClearGradient() {
             platform::DeviceContextPool::Instance().Get(grad_t->place());
         operators::math::set_constant(*dev_ctx, grad_t, 0.0);
 #ifdef PADDLE_WITH_MKLDNN
-        ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
 #endif
       }
     }

@@ -42,7 +42,7 @@ limitations under the License. */
 #endif
 
 DECLARE_bool(benchmark);
-DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
