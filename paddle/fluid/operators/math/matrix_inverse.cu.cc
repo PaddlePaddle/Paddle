@@ -60,7 +60,8 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
         reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()) + batch_size;
 
     // Allocate device memory for info and pivots.
-    int num_ints = batch_size;
+    // int num_ints = batch_size;
+    int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
     memory::allocation::AllocationPtr tmp_gpu_info_data =
         memory::Alloc(context, num_ints * sizeof(int));
     int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
@@ -68,7 +69,7 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
 
     std::vector<int> info;  // only for singular checking
-    info.resize(num_ints);
+    info.resize(batch_size);
     // This functions in cuBLAS is intended to be used for matrices of small
     // sizes where the launch overhead is a significant factor.
     // TODO(Xreki): call function in cusolver for large matrices.
@@ -81,9 +82,9 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
                          reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
                          gpu_inv_ptrs, gpu_info_ptr, batch_size);
 
-      cudaMemcpy(info.data(), gpu_info_ptr, sizeof(int) * num_ints,
+      cudaMemcpy(info.data(), gpu_info_ptr, sizeof(int) * batch_size,
                  cudaMemcpyDeviceToHost);
-      for (int i = 0; i < num_ints; ++i) {
+      for (int i = 0; i < batch_size; ++i) {
         PADDLE_ENFORCE_EQ(
             info[i], 0, platform::errors::PreconditionNotMet(
                             "For batch [%d]: U(%d, %d) is zero, singular U.", i,
@@ -101,9 +102,9 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
       blas.BatchedGETRI(n,
                         reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
                         gpu_pivot_ptr, gpu_inv_ptrs, gpu_info_ptr, batch_size);
-      cudaMemcpy(info.data(), gpu_info_ptr, sizeof(int) * num_ints,
+      cudaMemcpy(info.data(), gpu_info_ptr, sizeof(int) * batch_size,
                  cudaMemcpyDeviceToHost);
-      for (int i = 0; i < num_ints; ++i) {
+      for (int i = 0; i < batch_size; ++i) {
         PADDLE_ENFORCE_EQ(
             info[i], 0, platform::errors::PreconditionNotMet(
                             "For batch [%d]: U(%d, %d) is zero, singular U.", i,
