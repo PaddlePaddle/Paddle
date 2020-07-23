@@ -256,11 +256,11 @@ class TestConcatAPI(unittest.TestCase):
         x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
         positive_1_int32 = paddle.fill_constant([1], "int32", 1)
         positive_1_int64 = paddle.fill_constant([1], "int64", 1)
-        negative_1_int64 = paddle.fill_constant([1], "int64", -3)
+        negative_int64 = paddle.fill_constant([1], "int64", -3)
         out_1 = paddle.concat(x=[x_2, x_3], axis=1)
         out_2 = paddle.concat(x=[x_2, x_3], axis=positive_1_int32)
         out_3 = paddle.concat(x=[x_2, x_3], axis=positive_1_int64)
-        out_4 = paddle.concat(x=[x_2, x_3], axis=negative_1_int64)
+        out_4 = paddle.concat(x=[x_2, x_3], axis=negative_int64)
 
         exe = paddle.Executor(place=paddle.CPUPlace())
         [res_1, res_2, res_3, res_4] = exe.run(
