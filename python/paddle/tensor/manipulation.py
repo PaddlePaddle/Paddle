@@ -58,7 +58,8 @@ def concat(x, axis=0, name=None):
     This OP concatenates the input along the axis.
 
     Args:
-        x(list): List of input Tensors with data type float16, float32, float64, int32, int64, the data type of ``x`` must  be same.
+        x(list): List of input Tensors with data type float16, float32, float64, int32, int64.
+            All Tensor in ``x`` must have same data type.
         axis(int|Variable, optional):  A scalar with type ``int32`` or a ``Tensor`` 
             with shape [1] and type ``int32``. Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when ``axis < 0``, it works the same way
@@ -69,6 +70,7 @@ def concat(x, axis=0, name=None):
     Raises:
         TypeError: The dtype of `x` must be one of float16, float32, float64, int32 and int64. 
         TypeError: The `axis` must be int or Variable.
+        TypeError: All the tensor in ``x`` must have the same data type.
 
     Returns:
         Variable: A Tensor with the same data type as ``x``.

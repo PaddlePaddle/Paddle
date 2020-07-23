@@ -211,6 +211,7 @@ class TestConcatOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.concat, [x4, x5])
             x6 = fluid.layers.data(shape=[4], dtype='float16', name='x6')
             x7 = fluid.layers.data(shape=[4], dtype='float16', name='x7')
+            x8 = fluid.layers.data(shape=[4], dtype='float32', name='x8')
             fluid.layers.concat([x6, x7])
 
             # The type of axis in concat_op should be int or Variable.
@@ -218,6 +219,11 @@ class TestConcatOpError(unittest.TestCase):
                 fluid.layers.concat([x6, x7], 3.2)
 
             self.assertRaises(TypeError, test_axis_type)
+
+            def test_input_same_dtype():
+                fluid.layers.concat([x7, x8])
+
+            self.assertRaises(TypeError, test_input_same_dtype)
 
 
 class TestConcatAPI(unittest.TestCase):
@@ -305,11 +311,17 @@ class TestConcatAPI(unittest.TestCase):
             # The type of axis in concat_op should be int or Variable.
             x6 = fluid.layers.data(shape=[4], dtype='float16', name='x6')
             x7 = fluid.layers.data(shape=[4], dtype='float16', name='x7')
+            x8 = fluid.layers.data(shape=[4], dtype='float32', name='x8')
 
             def test_axis_type():
                 paddle.concat([x6, x7], 3.2)
 
             self.assertRaises(TypeError, test_axis_type)
+
+            def test_input_same_dtype():
+                paddle.concat([x7, x8])
+
+            self.assertRaises(TypeError, test_input_same_dtype)
 
 
 class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
