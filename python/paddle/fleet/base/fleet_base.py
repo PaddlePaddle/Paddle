@@ -210,6 +210,9 @@ class Fleet(object):
         assert self._runtime_handle is not None
         self._runtime_handle._stop_worker()
 
+    def _update_flags(self, strategy):
+        pass
+
     def distributed_optimizer(self, optimizer, strategy):
         """
         distirbuted_optimizer
@@ -309,6 +312,9 @@ class Fleet(object):
                     loss, self._role_maker, self.user_defined_optimizer,
                     self.user_defined_strategy, valid_optimizer_list,
                     valid_graph_optimizer_list)
+
+        self._update_flags(final_dist_strategy)
+
         optimize_ops = []
         params_grads = []
         if meta_optimizer:
