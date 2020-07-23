@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fleet.proto import distributed_strategy_pb2
 from paddle.fluid.framework import Variable
 import google.protobuf.text_format
@@ -68,6 +69,65 @@ class DistributedStrategy(object):
             str(f.read()), self.strategy)
 
     @property
+    def execution_strategy(self):
+        # return a strategy dict
+        return None
+
+    @execution_strategy.setter
+    def execution_strategy(self, strategy):
+        self.execution_strategy.num_iteration_per_drop_scope = \
+                    strategy.num_iteration_per_drop_scope
+        self.execution_strategy.num_iteration_per_run = \
+                    strategy.num_iteration_per_run
+        self.execution_strategy.num_threads = \
+                    strategy.num_threads
+
+    @property
+    def build_strategy(self):
+        # return a strategy dict
+        build_strategy = paddle.fluid.BuildStrategy()
+        build_strategy.enable_sequential_execution = \
+                    self.strategy.enable_sequential_execution
+        build_strategy.fuse_broadcast_ops = \
+                    self.strategy.fuse_broadcast_ops
+        build_strategy.fuse_elewise_add_act_ops = \
+                    self.strategy.fuse_elewise_add_act_ops
+        build_strategy.fuse_relu_depthwise_conv = \
+                    self.strategy.fuse_relu_depthwise_conv
+        build_strategy.sync_batch_norm = \
+                    self.strategy.sync_batch_norm
+        build_strategy.nccl_comm_num = \
+                    self.strategy.nccl_comm_num
+        build_strategy.use_hierarchical_allreduce = \
+                    self.strategy.use_hierarchical_allreduce
+        build_strategy.hierarchical_allreduce_inter_nranks = \
+                    self.strategy.hierarchical_allreduce_inter_nranks
+        build_strategy.fuse_all_reduce_ops = \
+                    self.strategy.fuse_all_reduce_ops
+        return build_strategy
+
+    @build_strategy.setter
+    def build_strategy(self, strategy):
+        self.strategy.enable_sequential_execution = \
+                    strategy.enable_sequential_execution
+        self.strategy.fuse_broadcast_ops = \
+                    strategy.fuse_broadcast_ops
+        self.strategy.fuse_elewise_add_act_ops = \
+                    strategy.fuse_elewise_add_act_ops
+        self.strategy.fuse_relu_depthwise_conv = \
+                    strategy.fuse_relu_depthwise_conv
+        self.strategy.sync_batch_norm = \
+                    strategy.sync_batch_norm
+        self.strategy.nccl_comm_num = \
+                    strategy.nccl_comm_num
+        self.strategy.use_hierarchical_allreduce = \
+                    strategy.use_hierarchical_allreduce
+        self.strategy.hierarchical_allreduce_inter_nranks = \
+                    strategy.hierarchical_allreduce_inter_nranks
+        self.strategy.fuse_all_reduce_ops = \
+                    strategy.fuse_all_reduce_ops
+
+    @property
     def amp(self):
         return self.strategy.amp
 
@@ -79,15 +139,13 @@ class DistributedStrategy(object):
             print("WARNING: amp should have value of bool type")
 
     @property
-    def amp_loss_scaling(self):
-        return self.strategy.amp_loss_scaling
+    def amp_configs(self):
+        return self.amp_configs
 
-    @amp_loss_scaling.setter
-    def amp_loss_scaling(self, value):
-        if isinstance(value, int):
-            self.strategy.amp_loss_scaling = value
-        else:
-            print("WARNING: amp_loss_scaling should have value of int type")
+    @amp_configs.setter
+    def amp_configs(self, configs):
+        self.amp_configs = configs
+        self.strategy.amp_loss_scaling = configs["amp_loss_scaling"]
 
     @property
     def recompute(self):
@@ -101,36 +159,14 @@ class DistributedStrategy(object):
             print("WARNING: recompute should have value of bool type")
 
     @property
-    def recompute_checkpoints(self):
-        return self.strategy.recompute_checkpoints
+    def recompute_configs(self):
+        configs = {}
+        configs["recompute_checkpoints"] = self.strategy.recompute_checkpoints
+        return configs
 
-    @recompute_checkpoints.setter
-    def recompute_checkpoints(self, checkpoints):
-        if isinstance(checkpoints, list):
-            str_list = True
-            var_list = True
-            for item in checkpoints:
-                if not isinstance(item, str):
-                    str_list = False
-                if not isinstance(item, Variable):
-                    var_list = False
-
-            assert (str_list and var_list) == False
-            if str_list:
-                self.strategy.ClearField("recompute_checkpoints")
-                self.strategy.recompute_checkpoints.extend(checkpoints)
-            elif var_list:
-                names = [x.name for x in checkpoints]
-                self.strategy.ClearField("recompute_checkpoints")
-                self.strategy.recompute_checkpoints.extend(names)
-            else:
-                print(
-                    "WARNING: recompute_checkpoints should have value of list[Variable] or list[name] type"
-                )
-        else:
-            print(
-                "WARNING: recompute_checkpoints should have value of list[Variable] or list[name] type"
-            )
+    def recompute_configs(self, configs):
+        self.strategy.recompute_configs = configs
+        self.strategy.recompute_checkpoints = configs["recompute_checkpoints"]
 
     @property
     def pipeline(self):
@@ -144,15 +180,15 @@ class DistributedStrategy(object):
             print("WARNING: pipeline should have value of bool type")
 
     @property
-    def pipeline_micro_batch(self):
-        return self.strategy.pipeline_micro_batch
+    def pipeline_configs(self):
+        configs = {}
+        configs["pipeline_macro_batch"] = \
+            self.strategy.pipeline_macro_batch
 
-    @pipeline_micro_batch.setter
-    def pipeline_micro_batch(self, value):
-        if isinstance(value, int):
-            self.strategy.pipeline_micro_batch = value
-        else:
-            print("WARNING: pipeline micro batch should have value of int type")
+    @pipeline_configs.setter
+    def pipeline_configs(self, configs):
+        self.pipeline_configs = configs
+        self.strategy.pipeline_micro_batch = configs["pipeline_macro_batch"]
 
     @property
     def localsgd(self):
@@ -166,15 +202,15 @@ class DistributedStrategy(object):
             print("WARNING: localsgd should have value of bool type")
 
     @property
-    def localsgd_k_step(self):
-        return self.strategy.localsgd_k_step
+    def localsgd_configs(self):
+        configs = {}
+        configs["localsgd_k_step"] = \
+            self.strategy.localsgd_k_step
+        return configs
 
-    @localsgd_k_step.setter
-    def localsgd_k_step(self, value):
-        if isinstance(value, int):
-            self.strategy.localsgd_k_step = value
-        else:
-            print("WARNING: localsgd_k_step should have value of int type")
+    @localsgd.setter
+    def localsgd_configs(self, configs):
+        self.strategy.localsgd_k_step = configs["k_step"]
 
     @property
     def dgc(self):
