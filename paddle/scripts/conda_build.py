@@ -72,7 +72,6 @@ requirements:
     - py-cpuinfo==5.0.0
     - opencv>=3.4.2
 """
-"""
 
         self.test = r"""
 test:
