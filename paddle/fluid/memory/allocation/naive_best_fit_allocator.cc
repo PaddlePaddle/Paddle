@@ -29,6 +29,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_header.h"
+#endif
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -99,6 +102,65 @@ void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
 template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
+}
+
+template <>
+void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
+#ifdef PADDLE_WITH_XPU
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  void *p = nullptr;
+  int dev_id = -1;
+  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  if (dev_id >= 64) {
+    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
+    dev_id -= 64;
+  }
+  PADDLE_ENFORCE(xpu_set_device(place.device) == XPU_SUCCESS);
+  PADDLE_ENFORCE(xpu_malloc(reinterpret_cast<void **>(&p), size) ==
+                 XPU_SUCCESS);
+  if (FLAGS_init_allocated_mem) {
+    PADDLE_THROW("xpu memory FLAGS_init_allocated_mem is not implemented.");
+  }
+  PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+  VLOG(10) << "  pointer=" << p;
+  return p;
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("'XPUPlace' is not supported."));
+  return nullptr;
+#endif
+}
+
+template <>
+void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
+                              size_t size) {
+#ifdef PADDLE_WITH_XPU
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  int dev_id = -1;
+  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  if (dev_id >= 64) {
+    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
+    dev_id -= 64;
+  }
+  PADDLE_ENFORCE(xpu_set_device(place.device) == XPU_SUCCESS);
+  xpu_free(p);
+  PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("'XPUPlace' is not supported."));
+#endif
+}
+
+template <>
+size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
+#ifdef PADDLE_WITH_XPU
+  printf("Used func return 0 for XPUPlace\n");
+  return 0;
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("'XPUPlace' is not supported."));
+#endif
 }
 
 #ifdef PADDLE_WITH_CUDA
