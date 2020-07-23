@@ -17,6 +17,9 @@ limitations under the License. */
 
 #ifdef _WIN32
 #include <malloc.h>
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>  // VirtualLock/VirtualUnlock
 #else
 #include <sys/mman.h>  // for mlock and munlock
