@@ -60,15 +60,12 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
         reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()) + batch_size;
 
     // Allocate device memory for info and pivots.
-    int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
+    int num_ints = batch_size;
     memory::allocation::AllocationPtr tmp_gpu_info_data =
         memory::Alloc(context, num_ints * sizeof(int));
     int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
-
-    memory::allocation::AllocationPtr tmp_cpu_info_data =
-        memory::Alloc(context, num_ints * sizeof(int));
 
     std::vector<int> info;  // only for singular checking
     info.resize(num_ints);
