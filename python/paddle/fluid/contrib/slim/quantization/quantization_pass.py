@@ -1037,6 +1037,8 @@ class QuantizationFreezePass(object):
             op_name = op_node.name()
             if op_name in self._fake_quant_op_names:
                 input_arg_name = op_node.input('X')[0]
+                if input_arg_name.endswith("_elementwise_add_0.tmp_0"):
+                    input_arg_name = self._original_arg_name(input_arg_name)
                 if input_arg_name in persistable_vars:
                     if self._weight_quantize_type == 'abs_max':
                         param = self._load_var(input_arg_name)
@@ -1243,6 +1245,22 @@ class QuantizationFreezePass(object):
                             graph.all_var_nodes())
         }
         graph.safe_remove_nodes(all_unused_vars)
+
+    def _original_arg_name(self, arg_name):
+        '''
+        Return the origin input_arg_name.
+        '''
+        arg_name = arg_name[:-24]
+        arg_name_list = arg_name.split('_')
+        original_node_name = arg_name_list[0]
+        for start in range(1, len(arg_name_list)):
+            if(arg_name_list[start]==arg_name_list[0]):
+                for i in range(1, len(arg_name_list)-start):
+                    if(arg_name_list[i]==arg_name_list[start+i]):
+                        original_node_name = original_node_name+"_"+arg_name_list[i]
+                    else:
+                        return original_node_name
+        return original_node_name
 
     def _original_var_name(self, var_name):
         """
