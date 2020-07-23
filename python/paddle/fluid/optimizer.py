@@ -4933,6 +4933,55 @@ class LookaheadOptimizer(object):
 
 class GradientMergeOptimizer(object):
     """
+    Gradient Merge, also called as Gradient Accumulation,
+    is a training strategy for bigger batches. With this strategy,
+    the parameter will not be updated until specific steps.
+
+    For each step, the forward network and the backward network
+    will run to calculate the gradient of the parameters.
+
+    For every k step, the optimization network will run,
+    applying a specific optimization method (such as SGD, Adam)
+    to the parameters.
+
+    Args:
+        inner_optimizer (Optimizer): The specific optimization (such as SGD, Adam) which update the parameters
+        k_steps (int): the update period of the parameters
+        avg (bool): whether to average the gradients of each mini-batch, the default value is `True`
+
+    Examples:
+        .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data(batch_size):
+            return {"x": np.random.random(size=(batch_size, 32)).astype('float32'),
+                    "y": np.random.random(size=(batch_size, 1)).astype('int64')}
+
+        def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+            fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+            prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            sum_cost = fluid.layers.reduce_mean(cost)
+            return sum_cost, fc_1, prediction
+
+        input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+        input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+        cost, fc_1, pred = mlp(input_x, input_y)
+        sgd = fluid.optimizer.Adam(learning_rate=0.01)
+        sgd = fluid.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
+        sgd.minimize(cost)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+
+        for i in range(10):
+            cost_val = exe.run(feed=gen_data(32),
+                       program=fluid.default_main_program(),
+                       fetch_list=[cost.name])
+            print("step=%d, cost=%f" % (i, cost_val[0]))
     """
 
     def __init__(self, inner_optimizer, k_steps=1, avg=True):
@@ -4957,7 +5006,6 @@ class GradientMergeOptimizer(object):
                  parameter_list=None,
                  no_grad_set=None):
 
-        #TODO(mapingshuo) support sparse embedding
         assert isinstance(loss, Variable), "The loss should be an Variable."
         assert (
             parameter_list is None
@@ -4969,6 +5017,7 @@ class GradientMergeOptimizer(object):
         params_grads = self.inner_optimizer.backward(
             loss, startup_program=startup_program)
 
+        #TODO(mapingshuo) support sparse embedding
         for k, v in params_grads:
             assert (
                 v.type != core.VarDesc.VarType.SELECTED_ROWS
