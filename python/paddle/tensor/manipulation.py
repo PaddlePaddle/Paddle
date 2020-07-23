@@ -54,12 +54,11 @@ def concat(x, axis=0, name=None):
     """
 	:alias_main: paddle.concat
 	:alias: paddle.concat,paddle.tensor.concat,paddle.tensor.manipulation.concat
-	:old_api: paddle.fluid.layers.concat
 
     This OP concatenates the input along the axis.
 
     Args:
-        x(list): List of input Tensors with data type float16, float32, float64, int32, int64.
+        x(list): List of input Tensors with data type float16, float32, float64, int32, int64, the data type of x must  be same.
         axis(int|Variable, optional):  A scalar with type ``int32`` or a ``Tensor`` 
             with shape [1] and type ``int32``. Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when ``axis < 0``, it works the same way
@@ -92,6 +91,7 @@ def concat(x, axis=0, name=None):
             x3 = paddle.imperative.to_variable(in3)
             zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             #when the axis is negative, the real axis is (axis + Rank(x))
+            #As follow, axis is -1, Rank(x) is 2, the real axis is 1
             out1 = paddle.concat(x=[x1,x2,x3], axis=-1)
             out2 = paddle.concat(x=[x1,x2], axis=0)
             out3 = paddle.concat(x=[x1,x2], axis=zero)

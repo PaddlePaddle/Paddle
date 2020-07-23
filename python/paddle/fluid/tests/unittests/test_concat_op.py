@@ -176,8 +176,6 @@ create_test_AxisTensor(TestConcatOp6)
 
 
 def create_test_fp16(parent):
-    @unittest.skipIf(not core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
     class TestConcatFp16(parent):
         def get_dtype(self):
             return np.float16
@@ -258,7 +256,7 @@ class TestConcatAPI(unittest.TestCase):
         x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
         positive_1_int32 = paddle.fill_constant([1], "int32", 1)
         positive_1_int64 = paddle.fill_constant([1], "int64", 1)
-        negative_1_int64 = paddle.fill_constant([1], "int64", -1)
+        negative_1_int64 = paddle.fill_constant([1], "int64", -3)
         out_1 = paddle.concat(x=[x_2, x_3], axis=1)
         out_2 = paddle.concat(x=[x_2, x_3], axis=positive_1_int32)
         out_3 = paddle.concat(x=[x_2, x_3], axis=positive_1_int64)
