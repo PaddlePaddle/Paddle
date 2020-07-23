@@ -37,8 +37,8 @@ fluid.default_main_program().random_seed = 1
 def fake_ctr_reader():
     def reader():
         for _ in range(1000):
-            deep = np.random.random_integers(0, 1e5, size=16).tolist()
-            wide = np.random.random_integers(0, 1e5, size=8).tolist()
+            deep = np.random.random_integers(0, 1e5 - 1, size=16).tolist()
+            wide = np.random.random_integers(0, 1e5 - 1, size=8).tolist()
             label = np.random.random_integers(0, 1, size=1).tolist()
             yield [deep, wide, label]
 
