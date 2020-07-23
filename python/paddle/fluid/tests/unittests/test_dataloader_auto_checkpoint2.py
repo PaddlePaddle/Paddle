@@ -33,11 +33,11 @@ import numpy as np
 from paddle.io import Dataset, BatchSampler, DataLoader
 
 from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
-from paddle.fluid.tests.unittests.test_dataloader_auto_checkpoint import DataLoaderAutoCheckpointTest
+from paddle.fluid.tests.unittests.test_dataloader_auto_checkpoint import DataLoaderAutoCheckpointTestBase
 logger = get_logger()
 
 
-class DataLoaderAutoCheckpointTest2(DataLoaderAutoCheckpointTest):
+class DataLoaderAutoCheckpointTest2(DataLoaderAutoCheckpointTestBase):
     def setUp(self):
         get_logger()
         logger.info("enter tests")

@@ -36,7 +36,7 @@ from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBas
 logger = get_logger()
 
 
-class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
+class DataLoaderAutoCheckpointTestBase(AutoCheckpointBase):
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -213,6 +213,11 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         logger.info("leave _run_load_basic")
 
+    def _get_model_dir(self, model_dir, epoch_no):
+        return "{}_{}".format(model_dir, epoch_no)
+
+
+class DataLoaderAutoCheckpointTest(DataLoaderAutoCheckpointTestBase):
     def test_basic_type(self):
         checker = acp._get_checker()
         fs = HDFSClient(checker.hdfs_home, None)
@@ -238,9 +243,6 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self._run_load_basic()
 
         fs.delete(checker.hdfs_checkpoint_path)
-
-    def _get_model_dir(self, model_dir, epoch_no):
-        return "{}_{}".format(model_dir, epoch_no)
 
     def test_invalid_save_model(self):
         checker = acp._get_checker()
