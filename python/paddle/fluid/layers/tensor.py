@@ -270,7 +270,7 @@ def concat(input, axis=0, name=None):
 
     Args:
         input(list): List of input Tensors with data type float16, float32, float64, int32,
-            int64. The data type of input must be same.
+            int64. The data type of ``input`` must be same.
         axis(int|Variable, optional): Specify the axis to operate on the input Tensor.
             It's a scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``.
             The effective range is [-R, R), where R is Rank(x). when ``axis < 0``, it works the same way
