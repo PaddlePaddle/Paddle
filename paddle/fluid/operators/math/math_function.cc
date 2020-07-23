@@ -77,7 +77,7 @@ template <>
 void set_constant_with_place<platform::XPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
-  PADDLE_THROW("Not supported");
+  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
 }
 
 template <>

@@ -631,7 +631,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
         "Please recompile or reinstall Paddle with CUDA support."));
 #endif
   }
-  PADDLE_THROW("Not supported place");
+  PADDLE_THROW(platform::errors::Unimplemented("Place is not supported"));
   return py::array();
 }
 

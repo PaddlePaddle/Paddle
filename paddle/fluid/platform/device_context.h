@@ -44,7 +44,7 @@ limitations under the License. */
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu_header.h"
 #endif
 
 namespace paddle {

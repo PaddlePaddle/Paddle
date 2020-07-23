@@ -62,11 +62,13 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::CPUPlace>();
   } else if (py::isinstance<platform::CUDAPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPlace>();
+  } else if (py::isinstance<platform::XPUPlace>(place_obj)) {
+    return place_obj.cast<platform::XPUPlace>();
   } else if (py::isinstance<platform::CUDAPinnedPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place should be one of CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
   }
 }
 
@@ -84,6 +86,9 @@ static void InitTensorForVarBase(imperative::VarBase *self,
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(
         tensor, array, BOOST_GET_CONST(platform::CPUPlace, place), zero_copy);
+  } else if (platform::is_xpu_place(place)) {
+    SetTensorFromPyArray<platform::XPUPlace>(
+        tensor, array, BOOST_GET_CONST(platform::XPUPlace, place), zero_copy);
   } else if (platform::is_gpu_place(place)) {
     SetTensorFromPyArray<platform::CUDAPlace>(
         tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place), zero_copy);
@@ -93,7 +98,7 @@ static void InitTensorForVarBase(imperative::VarBase *self,
         zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place should be one of CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
   }
   self->SetPersistable(persistable);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -565,6 +570,9 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CPUPlace>,
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "")
+      .def("__init__", &InitVarBaseFromNumpyWithArg<platform::XPUPlace>,
+           py::arg("value"), py::arg("place"), py::arg("persistable") = false,
+           py::arg("zero_copy") = false, py::arg("name") = "")
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CUDAPlace>,
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "")
@@ -794,6 +802,10 @@ void BindImperative(py::module *m_ptr) {
               bool blocking) { return self.NewVarBase(place, blocking); },
            py::return_value_policy::copy)
       .def("_copy_to",
+           [](const imperative::VarBase &self, const platform::XPUPlace &place,
+              bool blocking) { return self.NewVarBase(place, blocking); },
+           py::return_value_policy::copy)
+      .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CUDAPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },
            py::return_value_policy::copy)
@@ -856,6 +868,9 @@ void BindImperative(py::module *m_ptr) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
               self.SetExpectedPlace(*p);
+            } else if (py::isinstance<platform::XPUPlace>(obj)) {
+              auto p = obj.cast<platform::XPUPlace *>();
+              self.SetExpectedPlace(*p);
             } else if (py::isinstance<platform::CPUPlace>(obj)) {
               auto p = obj.cast<platform::CPUPlace *>();
               self.SetExpectedPlace(*p);
@@ -864,7 +879,8 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
-                  "Incompatible Place Type: supports CUDAPlace, CPUPlace, "
+                  "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
+                  "CPUPlace, "
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }

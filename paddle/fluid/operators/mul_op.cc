@@ -364,7 +364,6 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
                         : static_cast<const Tensor&>(*y);
     auto* dout = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     Tensor dout_mat;
-    dout_mat.ShareDataWith(*dout);
     dout_mat.Resize({framework::flatten_to_2d(x->dims(), x_num_col_dims)[0],
                      framework::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
     auto* dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
@@ -396,7 +395,7 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       int ldc = n;
       T alpha = static_cast<T>(1.0);
       T beta = static_cast<T>(0.0);
-      const T* data_a = dout_mat.data<T>();
+      const T* data_a = dout->data<T>();
       const T* data_b = y_matrix.data<T>();
       T* data_c = dx_matrix.data<T>();
       int ret =
@@ -428,7 +427,7 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       T alpha = static_cast<T>(1.0);
       T beta = static_cast<T>(0.0);
       const T* data_a = x_matrix.data<T>();
-      const T* data_b = dout_mat.data<T>();
+      const T* data_b = dout->data<T>();
       T* data_c = dy_matrix.data<T>();
       int ret =
           xpu::gemm_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k, alpha,

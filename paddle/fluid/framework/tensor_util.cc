@@ -55,7 +55,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                  BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
   }
 #ifdef PADDLE_WITH_XPU
-  else if (platform::is_xpu_place(src_place) && a  // NOLINT
+  else if (platform::is_xpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
