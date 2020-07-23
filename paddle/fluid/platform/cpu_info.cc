@@ -23,7 +23,9 @@ limitations under the License. */
 #include <sys/sysctl.h>
 #include <sys/types.h>
 #elif defined(_WIN32)
+#ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 #else
 #include <unistd.h>

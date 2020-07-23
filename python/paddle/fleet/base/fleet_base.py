@@ -309,6 +309,7 @@ class Fleet(object):
                     loss, self._role_maker, self.user_defined_optimizer,
                     self.user_defined_strategy, valid_optimizer_list,
                     valid_graph_optimizer_list)
+
         optimize_ops = []
         params_grads = []
         if meta_optimizer:
