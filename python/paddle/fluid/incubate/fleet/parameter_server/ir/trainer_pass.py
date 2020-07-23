@@ -14,13 +14,23 @@
 
 from __future__ import print_function
 
+import six
+import warnings
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
+from paddle.fluid.framework import Block
+from paddle.fluid import Program
 from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_heter_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import add_vars_by_op_map
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_block_input_output
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import replace_ops_by_communicate_op
+from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import add_listen_and_serv_pass, _get_input_map_from_op, _get_output_map_from_op
+
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -249,7 +259,7 @@ def fake_init_ops_pass(program, config):
         return list(set(dist_varnames + sparse_varnames))
 
     def _fake_init_sparsetable(sparse_table_names):
-        #delete table init op
+        # delete table init op
         for table_name in sparse_table_names:
             table_var = program.global_block().vars[table_name]
             table_param_init_op = []
@@ -308,14 +318,112 @@ def delet_extra_optimizes_pass(program, config):
     return program
 
 
-def find_heter_ops_pass(program, config):
-    pass
+def split_heter_ops_pass(program, config):
+    default_deveice = "cpu"
+    current_device = "gpu"
+    program, heter_ops = find_heter_ops(program, default_deveice)
 
-def split_heter_program_pass(program, config):
-    pass
+    if len(heter_ops) == 0:
+        return program
+
+    if current_device not in heter_ops:
+        raise ValueError(
+            "Op which run on device {} not exist.".format(current_device))
+
+    origin_program = program.clone()
+    heter_program = Program()
+
+    # add heter op
+    pre_block_idx = program.num_blocks - 1
+    for index, heter_block_ops in enumerate(heter_ops[current_device]):
+        heter_block = heter_program._create_block(pre_block_idx)
+        for _, op in enumerate(heter_block_ops):
+            heter_block.append_op(
+                type=op.type,
+                inputs=op.inputs,
+                outputs=op.outputs,
+                attrs=op.all_attrs()
+            )
+
+            # add relate variables
+            inputs = _get_input_map_from_op(
+                origin_program.global_block().vars, op)
+            add_vars_by_op_map(inputs, heter_program)
+
+            outputs = _get_output_map_from_op(
+                origin_program.global_block().vars, op)
+            add_vars_by_op_map(outputs, heter_program)
+
+    return heter_program
+
 
 def append_heter_communicate_ops_pass(program, config):
+    # find block inputs & outputs
+    block_nums = program.num_blocks
+    for block_index in range(1, block_nums):
+        current_block = program.block(block_index)
+        block_input, block_output = find_block_input_output(
+            program, current_block)
+        # find entrance & exit
+        block_private_vars = list(set(block_input) & set(block_output))
+        block_entrance = list(set(block_input)-set(block_private_vars))
+        block_exit = list(set(block_output)-set(block_private_vars))
+        # Todo: 不同异构设备间的通信，需要加send
+        # 一期默认只有一个异构设备
+
+    # attrs = {
+    #     "optimize_blocks": optimize_block,
+    #     "endpoint": endpoint,
+    #     "Fanin": self.trainer_num,
+    #     "distributed_mode": DistributedMode.GEO,
+    #     "grad_to_block_id": param_to_block_id,
+    #     "sparse_grad_to_param": sparse_grad_to_param,
+    #     "rpc_get_thread_num": self.server_config._rpc_get_thread_num,
+    #     "rpc_send_thread_num": self.server_config._rpc_send_thread_num,
+    #     "rpc_prefetch_thread_num":
+    #         self.server_config._rpc_prefetch_thread_num
+    # }
+
+    # append the listen_and_serv op
+    program.global_block().append_op(
+        type="listen_and_serv",
+        inputs={'X': []},
+        outputs={},
+        attrs={})
+
+    return program
+
+
+def split_trainer_ops_pass(program, config):
+    default_deveice = "cpu"
+    # 复用XPU-Trainer逻辑找到连接点
+    origin_program = program.clone()
+    heter_program = split_heter_ops_pass(origin_program, config)
+
+    block_nums = heter_program.num_blocks
+    for block_index in range(1, block_nums):
+        current_block = heter_program.block(block_index)
+        block_input, block_output = find_block_input_output(
+            heter_program, current_block)
+        # find entrance & exit
+        block_private_vars = list(set(block_input) & set(block_output))
+        block_entrance = list(set(block_input)-set(block_private_vars))
+        block_exit = list(set(block_output)-set(block_private_vars))
+
+        # delete useless op & add communicate op
+        replace_ops_by_communicate_op(origin_program.global_block(),
+                                      current_block.ops, origin_program, block_entrance, block_exit, config)
+        # delete useless var
+        for var in block_private_vars:
+            if origin_program.global_block().has_var(var):
+                origin_program.global_block()._remove_var(var)
+
+    return origin_program
+
+
+def append_trainer_communicate_ops_pass(program, config):
     pass
+
 
 def delete_extra_ops_pass(program, config):
     pass

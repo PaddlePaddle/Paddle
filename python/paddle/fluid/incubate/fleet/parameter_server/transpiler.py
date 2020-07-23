@@ -962,12 +962,17 @@ class ParameterServerOptimizer(DistributedOptimizer):
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
 
-        if self.is_heter_parameter_server:
+        if fleet.is_heter_parameter_server:
             # for main program
-            _main = worker.find_heter_ops_pass(_main, compiled_config)
-            _main = worker.split_heter_program_pass(_main, compiled_config)
-            _main = worker.append_heter_communicate_ops_pass(
-                _main, compiled_config)
+            if fleet._is_heter_worker():
+                _main = worker.split_heter_program_pass(_main, compiled_config)
+                _main = worker.append_heter_communicate_ops_pass(
+                    _main, compiled_config)
+            else:
+                _main = worker.split_trainer_program_pass(
+                    _main, compiled_config)
+                _main = worker.append_trainer_communicate_ops_pass(
+                    _main, compiled_config)
 
             # for startup
             _startup = worker.delet_extra_ops_pass(_startup, compiled_config)

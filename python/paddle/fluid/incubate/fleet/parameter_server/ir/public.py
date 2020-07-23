@@ -34,11 +34,14 @@ import math
 import os
 
 import six
+import warnings
 from paddle.fluid import core
 from paddle.fluid.core import CommContext
+import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
+from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import delete_ops
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -49,6 +52,8 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
+DEVICE_LIST = ["cpu", "gpu", "xpu"]
+COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
 
 
 def _get_lr_ops(program):
@@ -56,8 +61,8 @@ def _get_lr_ops(program):
     for index, op in enumerate(program.global_block().ops):
         role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
         if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                        role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                        int(OPT_OP_ROLE_ATTR_VALUE):
+                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                int(OPT_OP_ROLE_ATTR_VALUE):
             lr_ops.append(op)
     return lr_ops
 
@@ -135,6 +140,158 @@ def pretty_print_envs(envs, header=None):
 
     _str = "\n{}\n".format(draws)
     return _str
+
+
+def _is_heter_op(op, current_heter_device, default_device="cpu"):
+    heter_deivces = DEVICE_LIST.remove(default_device)
+    op_device = op.attr("op_device")
+    op_type = op.type
+    if op_device in heter_deivces:
+        return True
+    elif op_type in COMMUNICATE_OPS_TYPE and current_heter_device != default_device:
+        # for distributed communciate ops: send & recv & barrier
+        op._set_attr('op_device', current_heter_device)
+        return True
+    elif op_device == None or op_device == default_device:
+        op._set_attr('op_device', default_device)
+        return False
+    return False
+
+
+def _is_same_device(op, device, default_device):
+    op_device = op.attr("op_device")
+    if op_device == device:
+        return True
+    elif op_device != default_device:
+        return True
+    return False
+
+
+def _append_heter_op(op, current_heter_block_ops, heter_ops):
+    op_device = op.attr("op_device")
+    if op_device not in heter_ops:
+        heter_ops[op_device] = []
+    current_heter_block_ops.append(op)
+
+
+def _append_heter_ops_block(current_heter_block_ops, heter_ops):
+    op_device = current_heter_block_ops[0].attr("op_device")
+    heter_ops[op_device].append(current_heter_block_ops)
+
+
+def find_heter_ops(program, default_device="cpu"):
+    if default_device not in DEVICE_LIST:
+        raise ValueError("Given device {} is not in default device list {}".format(
+            default_device, DEVICE_LIST))
+
+    block = program.global_block()
+    heter_ops = {}
+    # heter_ops: {"gpu": [ [op1, op2, ...], [op1, op2, ...] ]; "xpu": [ [op1, op2, ...], [op1, op2, ...] ]}
+    current_heter_block_ops = []
+    current_heter_device = default_device
+    is_heter = False
+    for op in block.ops:
+        if _is_heter_op(op, current_heter_device, default_device):
+            # for gpu/xpu-op
+            is_heter = True
+            if _is_same_device(op, current_heter_device, default_device):
+                # for gpu-op, gpu-op, gpu-op,...
+                current_heter_device = op.attr("op_device")
+                _append_heter_op(op, current_heter_block_ops, heter_ops)
+            else:
+                # for gpu-op, xpu-op, ...
+                _append_heter_ops_block(current_heter_block_ops, heter_ops)
+                current_heter_block_ops = []
+                current_heter_device = op.attr("op_device")
+                _append_heter_op(op, current_heter_block_ops, heter_ops)
+        elif is_heter:
+            # for gpu/xpu-op, cpu-op
+            _append_heter_ops_block(current_heter_block_ops, heter_ops)
+            current_heter_block_ops = []
+            is_heter = False
+
+    if len(heter_ops) == 0:
+        warnings.warn(
+            "No heterogeneous OP was found in your program , "
+            " please using fluid.device_guard() to run OPs on different device.")
+
+    total_heter_ops = 0
+    for heter_block in heter_ops:
+        total_heter_ops += len(heter_block)
+    warnings.warn(
+        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, len(heter_ops)))
+    return program, heter_ops
+
+
+def add_vars_by_op_map(var_map, program):
+    for key, varlist in six.iteritems(var_map):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for i in range(len(varlist)):
+            var = varlist[i]
+            if var.name not in program.global_block().vars:
+                program.global_block()._clone_variable(var)
+
+
+def get_varlist_from_op_map(var_map):
+    var_list = []
+    for key, varlist in six.iteritems(var_map):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for i in range(len(varlist)):
+            var = varlist[i]
+            var_list.append(var.name)
+    return var_list
+
+
+def find_block_input_output(program, block):
+    from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import _get_input_map_from_op, _get_output_map_from_op
+    input_var_list = []
+    output_var_list = []
+    for op in block.ops:
+        inputs = _get_input_map_from_op(
+            block.vars, op)
+        input_var_list += get_varlist_from_op_map(inputs)
+        outputs = _get_output_map_from_op(
+            block.vars, op)
+        output_var_list += get_varlist_from_op_map(outputs)
+
+    input_var_list = list(set(input_var_list))
+    output_var_list = list(set(output_var_list))
+    return input_var_list, output_var_list
+
+
+def replace_ops_by_communicate_op(block, ops, program, entrance_var, exit_var, config):
+    if ops == []:
+        raise ValueError("Not find op in heter block")
+
+    first_op_idx = list(block.ops).index(ops[0])
+    delete_ops(block, ops)
+
+    mode = config.get_distributed_mode()
+    # Todo: replace XPU endpoints
+    pserver_endpoints = config.get_ps_endpoints()
+    send_input_vars = [
+        program.global_block().vars[union_var]
+        for union_var in entrance_var
+    ]
+    dummy_output = []
+    if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
+        dummy_output = program.global_block().create_var(
+            name=framework.generate_control_dev_var_name())
+    block._insert_op(
+        index=first_op_idx,
+        type="send",
+        inputs={"X": send_input_vars},
+        outputs={"Out": dummy_output},
+        attrs={
+            "send_varnames": [entrance_var],
+            "merge_add": True,
+            "use_send_handler": False,
+            "endpoints": pserver_endpoints,
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+        }
+    )
 
 
 class ServerRuntimeConfig(object):
@@ -880,7 +1037,7 @@ def _is_opt_role_op(op):
     op_maker = core.op_proto_and_checker_maker
     optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
     if op_maker.kOpRoleAttrName() in op.attr_names and \
-                    int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
         return True
     return False
 
