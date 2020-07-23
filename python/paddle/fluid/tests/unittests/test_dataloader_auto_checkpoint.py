@@ -134,12 +134,6 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         compiled, data_loader, optimizer, loss, image, label = \
             self._init_env(exe, main_prog, startup_prog)
-        """
-        print("main_progam:", main_prog)
-        for var in main_prog.list_vars():
-            if fluid.io.is_persistable(var):
-                print("vars:", var)
-        """
 
         i = 0
         name = None
@@ -168,15 +162,16 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
 
+        if break_epoch_no is None:
+            self.assertEqual(i, 2)
+        else:
+            self.assertEqual(i, break_epoch_no)
+
         # delete model path.
         for i in range(3):
             path = self._get_model_dir("dacp_save_basic", i)
             fs.delete(path)
 
-        if break_epoch_no is None:
-            self.assertEqual(i, 2)
-        else:
-            self.assertEqual(i, break_epoch_no)
         logger.info("leave _run_save_basic")
 
     def _run_load_basic(self, break_epoch_no=None, model_dir=None):
