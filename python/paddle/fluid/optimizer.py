@@ -5032,9 +5032,11 @@ class GradientMergeOptimizer(object):
             startup_program = default_startup_program()
         main_block = loss.block
 
-        # add some vars to the main_program
+        # add some vars to the main_program and startup_program
+        startup_block = startup_program.global_block()
         param_names = param_to_grad.keys()
         param_to_gradient_merge = {}
+
         for param_name in param_names:
             param_var = main_block.var(param_name)
             assert (param_var is not None)
@@ -5044,90 +5046,87 @@ class GradientMergeOptimizer(object):
                 dtype=param_var.dtype,
                 persistable=True)
             param_to_gradient_merge[param_name] = gradient_merge_var
-
-        # add some vars to the startup_program
-        startup_block = startup_program.global_block()
-        for param_name in param_names:
-            param_var = startup_block.var(param_name)
-            assert (param_var is not None)
-            gradient_merge_var = startup_block.create_var(
+            startup_gradient_merge_var = startup_block.create_var(
                 name=param_name + "@GRAD@GradientMerge",
                 shape=param_var.shape,
                 dtype=param_var.dtype,
                 persistable=True)
-
             startup_block.append_op(
                 type="fill_constant",
-                outputs={"Out": gradient_merge_var},
+                outputs={"Out": startup_gradient_merge_var},
                 attrs={
                     "shape": param_var.shape,
                     "dtype": param_var.dtype,
                     "value": float(0),
                 })
 
-        # Add Var k to main prog and startup prog
-        gradient_merge_k = layers.create_global_var(
-            name="gradient_merge_k",
-            shape=[1],
-            value=int(self.k_steps),
-            dtype='int32',
-            persistable=True)
+        with framework.program_guard(main_block.program, startup_program):
+            # Add Var k to main prog and startup prog
+            gradient_merge_k = layers.create_global_var(
+                name="gradient_merge_k",
+                shape=[1],
+                value=int(self.k_steps),
+                dtype='int32',
+                persistable=True)
 
-        # Add Var step
-        gradient_merge_step = layers.create_global_var(
-            name="gradient_merge_step",
-            shape=[1],
-            value=int(0),
-            dtype='int32',
-            persistable=True)
-        layers.increment(x=gradient_merge_step, value=1.0, in_place=True)
+            # Add Var step
+            gradient_merge_step = layers.create_global_var(
+                name="gradient_merge_step",
+                shape=[1],
+                value=int(0),
+                dtype='int32',
+                persistable=True)
+            layers.increment(x=gradient_merge_step, value=1.0, in_place=True)
 
-        # gradient merge
-        zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
-        one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
+            # gradient merge
+            zero_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=0.0)
+            one_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=1.0)
 
-        mod = layers.elementwise_mod(gradient_merge_step, gradient_merge_k)
-        with layers.control_flow.Switch() as switch:
-            with switch.case(mod != zero_var):
-                # 1. update the gradient_merge_vars
-                #  gradient_merge_vars += gradient_vars
-                for param_name in param_names:
-                    grad = param_to_grad[param_name]
-                    grad_merge = param_to_gradient_merge[param_name]
-                    tmp_var = layers.elementwise_add(grad, grad_merge)
-                    layers.assign(input=tmp_var, output=grad_merge)
+            mod = layers.elementwise_mod(gradient_merge_step, gradient_merge_k)
+            with layers.control_flow.Switch() as switch:
+                with switch.case(mod != zero_var):
+                    # 1. update the gradient_merge_vars
+                    #  gradient_merge_vars += gradient_vars
+                    for param_name in param_names:
+                        grad = param_to_grad[param_name]
+                        grad_merge = param_to_gradient_merge[param_name]
+                        tmp_var = layers.elementwise_add(grad, grad_merge)
+                        layers.assign(input=tmp_var, output=grad_merge)
 
-            with switch.default():
-                # 1. update the graient_vars
-                #     gradient_vars += gradient_merge_vars
-                for param_name in param_names:
-                    grad = param_to_grad[param_name]
-                    grad_merge = param_to_gradient_merge[param_name]
-                    tmp_var = layers.elementwise_add(grad, grad_merge)
-                    if self.avg:
-                        tmp_var = layers.scale(tmp_var, 1.0 / self.k_steps)
-                    layers.assign(input=tmp_var, output=grad)
+                with switch.default():
+                    # 1. update the graient_vars
+                    #     gradient_vars += gradient_merge_vars
+                    for param_name in param_names:
+                        grad = param_to_grad[param_name]
+                        grad_merge = param_to_gradient_merge[param_name]
+                        tmp_var = layers.elementwise_add(grad, grad_merge)
+                        if self.avg:
+                            tmp_var = layers.scale(tmp_var, 1.0 / self.k_steps)
+                        layers.assign(input=tmp_var, output=grad)
 
-                # 2. apply_optimize
-                cur_block_idx = main_block.program.current_block_idx
-                cur_block = main_block.program.current_block()
+                    # 2. apply_optimize
+                    cur_block_idx = main_block.program.current_block_idx
+                    cur_block = main_block.program.current_block()
 
-                target_grad_block = main_block.program._create_block(
-                    parent_idx=cur_block.parent_idx)
-                target_grad_block._set_forward_block_idx(cur_block_idx)
-                main_block.program.current_block_idx = cur_block_idx
+                    target_grad_block = main_block.program._create_block(
+                        parent_idx=cur_block.parent_idx)
+                    target_grad_block._set_forward_block_idx(cur_block_idx)
+                    main_block.program.current_block_idx = cur_block_idx
 
-                optimize_ops = self.inner_optimizer.apply_optimize(
-                    loss,
-                    startup_program=startup_program,
-                    params_grads=params_grads)
+                    optimize_ops = self.inner_optimizer.apply_optimize(
+                        loss,
+                        startup_program=startup_program,
+                        params_grads=params_grads)
 
-                # 3. clear gradient_merge_vars
-                for param_name in param_names:
-                    grad_merge = param_to_gradient_merge[param_name]
-                    layers.fill_constant(
-                        shape=grad_merge.shape,
-                        dtype=grad_merge.dtype,
-                        value=0.0,
-                        out=grad_merge)
+                    # 3. clear gradient_merge_vars
+                    for param_name in param_names:
+                        grad_merge = param_to_gradient_merge[param_name]
+                        layers.fill_constant(
+                            shape=grad_merge.shape,
+                            dtype=grad_merge.dtype,
+                            value=0.0,
+                            out=grad_merge)
+
         return optimize_ops, params_grads
