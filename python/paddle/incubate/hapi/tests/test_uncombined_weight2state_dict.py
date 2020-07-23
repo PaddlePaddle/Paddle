@@ -24,7 +24,6 @@ import tempfile
 from paddle import fluid
 from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
 
-from paddle.incubate.hapi.datasets import MNIST
 from paddle.incubate.hapi.utils import uncombined_weight_to_state_dict
 
 

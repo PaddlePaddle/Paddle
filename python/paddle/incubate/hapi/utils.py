@@ -33,6 +33,73 @@ def uncombined_weight_to_state_dict(weight_dir):
 
     Returns:
         OrderDict: weight dict.
+
+    Examples:
+        .. code-block:: python
+
+            import os
+
+            from paddle import fluid
+            from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
+            from paddle.incubate.hapi.utils import uncombined_weight_to_state_dict
+
+
+            class LeNetDygraph(fluid.dygraph.Layer):
+                def __init__(self, num_classes=10, classifier_activation='softmax'):
+                    super(LeNetDygraph, self).__init__()
+                    self.num_classes = num_classes
+                    self.features = Sequential(
+                        Conv2D(
+                            1, 6, 3, stride=1, padding=1),
+                        ReLU(),
+                        Pool2D(2, 'max', 2),
+                        Conv2D(
+                            6, 16, 5, stride=1, padding=0),
+                        ReLU(),
+                        Pool2D(2, 'max', 2))
+
+                    if num_classes > 0:
+                        self.fc = Sequential(
+                            Linear(400, 120),
+                            Linear(120, 84),
+                            Linear(
+                                84, 10, act=classifier_activation))
+
+                def forward(self, inputs):
+                    x = self.features(inputs)
+
+                    if self.num_classes > 0:
+                        x = fluid.layers.flatten(x, 1)
+                        x = self.fc(x)
+                    return x
+
+            # save weight use fluid.io.save_params
+            save_dir = 'temp'
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+
+            start_prog = fluid.Program()
+            train_prog = fluid.Program()
+
+            x = fluid.data(name='x', shape=[None, 1, 28, 28], dtype='float32')
+
+            with fluid.program_guard(train_prog, start_prog):
+                with fluid.unique_name.guard():
+                    x = fluid.data(
+                        name='x', shape=[None, 1, 28, 28], dtype='float32')
+                    model = LeNetDygraph()
+                    output = model.forward(x)
+
+            excutor = fluid.Executor()
+            excutor.run(start_prog)
+
+            test_prog = train_prog.clone(for_test=True)
+
+            fluid.io.save_params(excutor, save_dir, test_prog)
+
+            # convert uncombined weight to state dict
+
+            state_dict = uncombined_weight_to_state_dict(save_dir)
     """
 
     def _get_all_params_name(dir):
