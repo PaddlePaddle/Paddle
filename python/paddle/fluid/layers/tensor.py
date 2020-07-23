@@ -650,9 +650,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     Returns:
         Variable: Tensor which is created according to shape and dtype.
 
-    Raise:
+    Raises:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
         and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The shape must be one of list, tuple and Variable.
 
     Examples:
         .. code-block:: python
@@ -665,7 +666,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-          data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[1.5, 1.5]
+          data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[[1.5, 1.5]]
 
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([2], "int32", 2) # shape=[2,2]
@@ -1424,6 +1425,12 @@ def linspace(start, stop, num, dtype=None, name=None):
         the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
         the value with input :attr:`start`. 
 
+    Raises:
+        TypeError: The dtype must be one of float32 and float64.
+        TypeError: The dtype of `start` and `stop`  must be one of float32 and float64.
+        TypeError: The dtype of `num` must be one of int32 and int64.
+
+
     Examples:
         .. code-block:: python
 
@@ -1551,7 +1558,11 @@ def diag(diagonal):
     return out
 
 
-def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
+def eye(num_rows,
+        num_columns=None,
+        batch_shape=None,
+        dtype='float32',
+        name=None):
     """
 	:alias_main: paddle.eye
 	:alias: paddle.eye,paddle.tensor.eye,paddle.tensor.creation.eye
@@ -1559,19 +1570,25 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
 
     **eye**
 
-    This function constructs an identity tensor, or a batch of tensor.
+    This function constructs a or a batch of 2-D tensor with ones on the diagonal and zeros elsewhere. 
 
     Args:
         num_rows(int): the number of rows in each batch tensor.
-        num_columns(int): the number of columns in each batch tensor.
-                          If None, default: num_rows.
-        batch_shape(list(int)): If provided, the returned tensor will have a leading
-                                batch size of this shape.
-        dtype(string): The data type of the returned tensor.
-                       It should be int32, int64, float16, float32, float64.
+        num_columns(int, optional): the number of columns in each batch tensor.
+            If None, default: num_rows.
+        batch_shape(list(int), optional): If provided, the returned tensor will have a leading
+            batch size of this shape, default is None.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the returned tensor.
+            It should be int32, int64, float16, float32, float64, default is 'float32'.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: An identity Tensor or LoDTensor of shape batch_shape + [num_rows, num_columns].
+    Raises:
+        TypeError: The `dtype` must be one of float16, float32, float64, int32 and int64.
+        TypeError: The `num_columns` must be non-negative int.
 
     Examples:
         .. code-block:: python
@@ -1592,38 +1609,55 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
 
     """
 
-    helper = LayerHelper("eye", **locals())
-    if not isinstance(num_rows, int) or num_rows < 0:
-        raise TypeError("num_rows should be a non-negative int")
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
         if not isinstance(num_columns, int) or num_columns < 0:
             raise TypeError("num_columns should be a non-negative int")
     else:
         num_columns = num_rows
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
-    helper.append_op(
-        type='eye',
-        inputs={},
-        outputs={'Out': [out]},
-        attrs={
-            'num_rows': num_rows,
-            'num_columns': num_columns,
-            'dtype': c_dtype
-        },
-        stop_gradient=True)
-    out.stop_gradient = True
+
+    if in_dygraph_mode():
+        out = core.ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
+                           num_columns)
+
+    else:
+        helper = LayerHelper("eye", **locals())
+        check_dtype(dtype, 'dtype',
+                    ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
+        if not isinstance(num_rows, int) or num_rows < 0:
+            raise TypeError("num_rows should be a non-negative int")
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+        helper.append_op(
+            type='eye',
+            inputs={},
+            outputs={'Out': [out]},
+            attrs={
+                'num_rows': num_rows,
+                'num_columns': num_columns,
+                'dtype': dtype
+            },
+            stop_gradient=True)
 
     if batch_shape is not None:
+        re_shape = [1] * len(batch_shape)
+        re_shape = re_shape + [num_rows, num_columns]
+        expand_times = batch_shape + [1, 1]
+        if in_dygraph_mode():
+            out = core.ops.reshape(out, 'shape', re_shape)
+            return core.ops.expand(out, 'expand_times', expand_times)
+
         if not isinstance(batch_shape, list):
             raise TypeError("batch_shape should be a list")
-        from .nn import stack
-        for batch_val in reversed(batch_shape):
+        for batch_val in (batch_shape):
             if batch_val <= 0:
                 raise TypeError("batch_shape should be a positive int list")
-            else:
-                stack_vars = [out for _ in numpy.arange(batch_val)]
-                out = stack(stack_vars, axis=0)
+
+        from .nn import reshape, expand
+        out = reshape(x=out, shape=re_shape)
+        out = expand(x=out, expand_times=expand_times)
+
+    out.stop_gradient = True
     return out
 
 
