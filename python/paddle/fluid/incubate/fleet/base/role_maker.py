@@ -488,113 +488,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def generate_role(self):
         """Generate role."""
         if not self._role_is_generated:
-            eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
-            training_role = os.environ["TRAINING_ROLE"]
-            worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(",")
-            trainers_num = len(worker_endpoints)
-            if training_role not in ["TRAINER", "PSERVER"]:
-                raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
-            self._is_barrier_all = 1
-            if "PADDLE_IS_BARRIER_ALL_ROLE" in os.environ:
-                self._is_barrier_all = int(os.environ[
-                    "PADDLE_IS_BARRIER_ALL_ROLE"])
-            if training_role == "TRAINER":
-                role = Role.WORKER
-                current_id = int(os.environ["PADDLE_TRAINER_ID"])
-                if current_id == 0 and len(self._http_ip_port) != 0:
-                    size_d = {
-                        "trainer": len(worker_endpoints),
-                        "pserver": len(eplist),
-                        "all": len(worker_endpoints) + len(eplist)
-                    }
-                    # child process for http server
-                    self._http_server = Process(
-                        target=self.__start_kv_server,
-                        args=(self._http_server_d, size_d))
-                    self._http_server.daemon = True
-                    # set running status to True
-                    self._http_server_d["running"] = True
-                    # start child process
-                    self._http_server.start()
-                self._node_type = 1
-                self._cur_endpoint = worker_endpoints[current_id]
-                if self._is_barrier_all:
-                    gloo = fluid.core.Gloo()
-                    gloo.set_rank(current_id)
-                    gloo.set_size(len(worker_endpoints))
-                    gloo.set_prefix(self._prefix)
-                    gloo.set_iface(self._iface)
-                    gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                             self._run_timeout_seconds)
-                    if len(self._http_ip_port) != 0:
-                        gloo.set_http_store(self._http_ip_port[0],
-                                            int(self._http_ip_port[1]),
-                                            "trainer")
-                    else:
-                        gloo.set_hdfs_store(self._hdfs_path + "/trainer",
-                                            self._hdfs_name, self._hdfs_ugi)
-                    gloo.init()
-                    self._node_type_comm = gloo
-                else:
-                    self._all_comm = MockBarrier()
-            elif training_role == "PSERVER":
-                role = Role.SERVER
-                if os.environ.get("PADDLE_PSERVER_ID") is not None:
-                    current_id = int(os.environ["PADDLE_PSERVER_ID"])
-                    cur_endpoint = eplist[current_id]
-                else:
-                    # this is for compatible with paddlecloud
-                    cur_ip = os.environ["POD_IP"]
-                    cur_port = os.environ["PADDLE_PORT"]
-                    cur_endpoint = ":".join([cur_ip, cur_port])
-                    current_id = eplist.index(cur_endpoint)
-                self._node_type = 0
-                self._cur_endpoint = cur_endpoint
-                gloo = fluid.core.Gloo()
-                gloo.set_rank(current_id)
-                gloo.set_size(len(eplist))
-                gloo.set_prefix(self._prefix)
-                gloo.set_iface(self._iface)
-                gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                         self._run_timeout_seconds)
-                if len(self._http_ip_port) != 0:
-                    gloo.set_http_store(self._http_ip_port[0],
-                                        int(self._http_ip_port[1]), "pserver")
-                else:
-                    gloo.set_hdfs_store(self._hdfs_path + "/pserver",
-                                        self._hdfs_name, self._hdfs_ugi)
-                gloo.init()
-                self._node_type_comm = gloo
-                gloo = fluid.core.Gloo()
-                all_list = worker_endpoints + eplist
-                gloo.set_rank(all_list.index(self._cur_endpoint))
-                gloo.set_size(len(all_list))
-                gloo.set_prefix(self._prefix)
-                gloo.set_iface(self._iface)
-                gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                         self._run_timeout_seconds)
-                if len(self._http_ip_port) != 0:
-                    gloo.set_http_store(self._http_ip_port[0],
-                                        int(self._http_ip_port[1]), "all")
-                else:
-                    gloo.set_hdfs_store(self._hdfs_path + "/all",
-                                        self._hdfs_name, self._hdfs_ugi)
-                gloo.init()
-                self._all_comm = gloo
-                self._trainers_num = trainers_num
-                self._server_endpoints = eplist
-                self._role = role
-                self._current_id = current_id
-                self._rank = all_list.index(self._cur_endpoint)
-                self._size = len(all_list)
-                self._worker_endpoints = worker_endpoints
-                if self._http_server is not None:
-                    # set running status to False
-                    self._http_server_d["running"] = False
-                    # wait until child process exits
-                    self._http_server.join()
-                self._role_is_generated = True
-            '''if not self._is_collective:
+            if not self._is_collective:
                 try:
                     # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
                     # format: string(ip:port), eg. 127.0.0.1:6001
@@ -614,12 +508,39 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     if training_role == "TRAINER":
                         role = Role.WORKER
                         current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                        #add gloo support for PaddleCloudRoleMaker
+                        self._node_type = 1
+                        self._cur_endpoint = worker_endpoints[current_id]
+                        if self._is_barrier_all:
+                            gloo = fluid.core.Gloo()
+                            gloo.set_rank(current_id)
+                            gloo.set_size(len(worker_endpoints))
+                            gloo.set_prefix(self._prefix)
+                            gloo.set_iface(self._iface)
+                            gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                                     self._run_timeout_seconds)
+                            gloo.init()
+                            self._node_type_comm = gloo
+                        else:
+                            self._all_comm = MockBarrier()
                     elif training_role == "PSERVER":
                         role = Role.SERVER
                         cur_ip = os.environ["POD_IP"]
                         curr_port = os.environ["PADDLE_PORT"]
                         curr_endpoint = ":".join([cur_ip, curr_port])
                         current_id = eplist.index(curr_endpoint)
+                        #add gloo support for PaddleCloudRoleMaker
+                        self._node_type = 0
+                        self._cur_endpoint = cur_endpoint
+                        gloo = fluid.core.Gloo()
+                        gloo.set_rank(current_id)
+                        gloo.set_size(len(eplist))
+                        gloo.set_prefix(self._prefix)
+                        gloo.set_iface(self._iface)
+                        gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                                 self._run_timeout_seconds)
+                        gloo.init()
+                        self._node_type_comm = gloo
                     else:
                         raise ValueError(
                             "TRAINING_ROLE must be PSERVER or TRAINER")
@@ -643,7 +564,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 self._worker_endpoints = self._worker_endpoints.split(",")
                 self._trainers_num = len(self._worker_endpoints)
 
-            self._role_is_generated = True'''
+            self._role_is_generated = True
 
     def get_pserver_endpoints(self):
         if not self._role_is_generated:
