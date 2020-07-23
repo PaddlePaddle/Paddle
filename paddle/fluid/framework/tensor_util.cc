@@ -73,7 +73,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
   } else {
-    PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
 #ifdef PADDLE_WITH_CUDA
@@ -127,7 +128,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     }
   }
   else {  // NOLINT
-    PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
 }
@@ -192,7 +194,8 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
   } else {
-    PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
 #endif
 #ifdef PADDLE_WITH_CUDA
   }
@@ -223,7 +226,8 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                  nullptr);
   }
   else {  // NOLINT
-    PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
 #endif
   }
 }
@@ -417,7 +421,7 @@ struct BothFalseVisitor : public boost::static_visitor<> {
   }
 
   void VisitorImpl(const platform::XPUPlace& xpu) const {
-    PADDLE_THROW("Not supported");
+    PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
   }
 
   void VisitorImpl(const platform::CUDAPlace& gpu) const {
@@ -523,7 +527,8 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
       PADDLE_THROW(platform::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
 #endif
-      PADDLE_THROW("Not supported");
+      PADDLE_THROW(
+          platform::errors::Unimplemented("XPUPlace is not supported"));
     } else {
       os.write(static_cast<const char*>(data_ptr),
                static_cast<std::streamsize>(size));
@@ -754,7 +759,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
   }
 #endif
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW("Not supported");
+  PADDLE_THROW(platform::errors::Unimplemented("GPUPlace is not supported"));
 #endif
 }
 

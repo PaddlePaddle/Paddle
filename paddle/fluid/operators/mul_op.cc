@@ -329,16 +329,19 @@ class MulXPUKernel : public framework::OpKernel<T> {
     int k = x_matrix.dims()[1];
     int k1 = y_matrix.dims()[0];
     int n = y_matrix.dims()[1];
-    PADDLE_ENFORCE(k == k1, "Shape mistake.");
+    PADDLE_ENFORCE_EQ(
+        k, k1, platform::errors::InvalidArgument("Shape mistake in mul_op"));
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
     const T* data_a = x_matrix.data<T>();
     const T* data_b = y_matrix.data<T>();
     T* data_c = z->data<T>();
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::fc_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k, alpha,
-                          data_a, data_b, beta, data_c);
-    PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+    int ret = xpu::fc_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k,
+                            alpha, data_a, data_b, beta, data_c);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
     if (z_dim.size() != 2) {
       z->Resize(z_dim);
     }
@@ -386,7 +389,8 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       int k = dout_mat.dims()[1];
       int n = y_matrix.dims()[0];
       int k1 = y_matrix.dims()[1];
-      PADDLE_ENFORCE(k == k1, "Shape mistake.");
+      PADDLE_ENFORCE_EQ(
+          k, k1, platform::errors::InvalidArgument("Shape mistake in mul_op"));
       int lda = (!trans_a) ? k : m;
       int ldb = (!trans_b) ? n : k;
       int ldc = n;
@@ -395,10 +399,12 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       const T* data_a = dout_mat.data<T>();
       const T* data_b = y_matrix.data<T>();
       T* data_c = dx_matrix.data<T>();
-      int r =
+      int ret =
           xpu::gemm_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k, alpha,
                           data_a, lda, data_b, ldb, beta, data_c, ldc);
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+      PADDLE_ENFORCE_EQ(
+          ret, XPU_SUCCESS,
+          platform::errors::External("XPU API return wrong value[%d]", ret));
     }
 
     if (dy) {
@@ -414,7 +420,8 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       int m = x_matrix.dims()[1];
       int k1 = dout_mat.dims()[0];
       int n = dout_mat.dims()[1];
-      PADDLE_ENFORCE(k == k1, "Shape mistake.");
+      PADDLE_ENFORCE_EQ(
+          k, k1, platform::errors::InvalidArgument("Shape mistake in mul_op"));
       int lda = (!trans_a) ? k : m;
       int ldb = (!trans_b) ? n : k;
       int ldc = n;
@@ -423,10 +430,12 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       const T* data_a = x_matrix.data<T>();
       const T* data_b = dout_mat.data<T>();
       T* data_c = dy_matrix.data<T>();
-      int r =
+      int ret =
           xpu::gemm_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k, alpha,
                           data_a, lda, data_b, ldb, beta, data_c, ldc);
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+      PADDLE_ENFORCE_EQ(
+          ret, XPU_SUCCESS,
+          platform::errors::External("XPU API return wrong value[%d]", ret));
     }
   }
 };

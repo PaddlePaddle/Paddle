@@ -150,14 +150,26 @@ XPUDeviceContext::~XPUDeviceContext() { xpu::destroy_context(context_); }
 
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
   int dev_id = -1;
-  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
-  PADDLE_ENFORCE(xpu_set_device(place.device) == XPU_SUCCESS);
+  int ret = xpu_current_device(&dev_id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
+  ret = xpu_set_device(place.device);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   context_ = xpu::create_context();
-  PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+  ret = xpu_set_device(dev_id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
 }
 
 void XPUDeviceContext::Wait() const {
-  PADDLE_ENFORCE(xpu_set_device(place_.device) == XPU_SUCCESS);
+  int ret = xpu_set_device(place_.device);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   xpu_wait();
 }
 

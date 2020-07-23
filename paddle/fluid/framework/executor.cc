@@ -458,7 +458,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
             BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
       }
 #else
-      PADDLE_THROW("No GPU gc found");
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
 #endif
     } else if (platform::is_cpu_place(place_)) {
       gc.reset(new CPUGarbageCollector(
@@ -468,7 +469,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       gc.reset(new XPUGarbageCollector(
           BOOST_GET_CONST(platform::XPUPlace, place_), max_memory_size));
 #else
-      PADDLE_THROW("No XPU gc found");
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
     }
   }

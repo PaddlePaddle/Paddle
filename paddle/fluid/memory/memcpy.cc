@@ -44,18 +44,29 @@ void Copy<platform::XPUPlace, platform::CPUPlace>(platform::XPUPlace dst_place,
     return;
   }
   int dev_id = -1;
-  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  int ret = xpu_current_device(&dev_id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   if (dev_id >= 64) {
     // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
     dev_id -= 64;
   }
-  if (dev_id != boost::get<platform::XPUPlace>(dst_place).device) {
-    PADDLE_ENFORCE(xpu_set_device(dst_place.device) == XPU_SUCCESS);
-  }
-  int r = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-  PADDLE_ENFORCE(r == 0, "xpu_memcpy error");
   if (dev_id != dst_place.device) {
-    PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+    ret = xpu_set_device(dst_place.device);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
+  }
+  ret = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
+  if (dev_id != dst_place.device) {
+    ret = xpu_set_device(dev_id);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
   }
 }
 
@@ -69,18 +80,29 @@ void Copy<platform::CPUPlace, platform::XPUPlace>(platform::CPUPlace dst_place,
     return;
   }
   int dev_id = -1;
-  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  int ret = xpu_current_device(&dev_id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   if (dev_id >= 64) {
     // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
     dev_id -= 64;
   }
   if (dev_id != src_place.device) {
-    PADDLE_ENFORCE(xpu_set_device(src_place.device) == XPU_SUCCESS);
+    ret = xpu_set_device(src_place.device);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
   }
-  int r = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-  PADDLE_ENFORCE(r == 0, "xpu_memcpy error");
+  ret = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   if (dev_id != src_place.device) {
-    PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+    ret = xpu_set_device(dev_id);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
   }
 }
 
@@ -94,24 +116,42 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
     return;
   }
   int dev_id = -1;
-  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  int ret = xpu_current_device(&dev_id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   if (dev_id >= 64) {
     // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
     dev_id -= 64;
   }
   if (dev_id != src_place.device || dev_id != dst_place.device) {
-    PADDLE_ENFORCE(xpu_set_device(src_place.device) == XPU_SUCCESS);
+    ret = xpu_set_device(src_place.device);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
     void* tmp = malloc(num);
-    int r = xpu_memcpy(tmp, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-    PADDLE_ENFORCE(r == 0, "xpu_memcpy error");
-    PADDLE_ENFORCE(xpu_set_device(dst_place.device) == XPU_SUCCESS);
-    r = xpu_memcpy(dst, tmp, num, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-    PADDLE_ENFORCE(r == 0, "xpu_memcpy error");
-    PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+    ret = xpu_memcpy(tmp, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
+    ret = xpu_set_device(dst_place.device);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
+    ret = xpu_memcpy(dst, tmp, num, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
+    ret = xpu_set_device(dev_id);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
     free(tmp);
   } else {
-    int r = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_DEVICE_TO_DEVICE);
-    PADDLE_ENFORCE(r == 0, "xpu_memcpy error");
+    int ret = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_DEVICE_TO_DEVICE);
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External("XPU API return wrong value[%d]", ret));
   }
 }
 #endif

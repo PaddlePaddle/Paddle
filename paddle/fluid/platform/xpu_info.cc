@@ -43,8 +43,10 @@ static int GetXPUDeviceCountImpl() {
   }
 
   int count = 0;
-  PADDLE_ENFORCE(xpu_device_count(&count) == XPU_SUCCESS,
-                 "xpu_device_count failed");
+  int ret = xpu_device_count(&count);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   return count;
 }
 
@@ -55,8 +57,10 @@ int GetXPUDeviceCount() {
 
 int GetXPUCurrentDeviceId() {
   int dev_id;
-  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS,
-                 "xpu_current_device failed");
+  int ret = xpu_current_device(&dev_id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
 
   if (dev_id >= 64) {
     // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
@@ -84,8 +88,13 @@ std::vector<int> GetXPUSelectedDevices() {
 }
 
 void SetXPUDeviceId(int id) {
-  PADDLE_ENFORCE_LT(id, GetXPUDeviceCount(), "id must less than XPU count");
-  PADDLE_ENFORCE(xpu_set_device(id) == XPU_SUCCESS, "xpu_set_device failed");
+  PADDLE_ENFORCE_LT(
+      id, GetXPUDeviceCount(),
+      platform::errors::InvalidArgument("id must less than XPU count"));
+  int ret = xpu_set_device(id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
 }
 
 }  // namespace platform

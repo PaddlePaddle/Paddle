@@ -169,7 +169,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
     } else if (platform::is_xpu_place(place)) {
 #ifndef PADDLE_WITH_XPU
-      PADDLE_THROW("Cannot run operator on place %s", place);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Cannot run operator on place %s", place));
 #else
       auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
       platform::SetXPUDeviceId(dev_id);

@@ -110,18 +110,30 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = nullptr;
   int dev_id = -1;
-  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  int ret = xpu_current_device(&dev_id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   if (dev_id >= 64) {
     // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
     dev_id -= 64;
   }
-  PADDLE_ENFORCE(xpu_set_device(place.device) == XPU_SUCCESS);
-  PADDLE_ENFORCE(xpu_malloc(reinterpret_cast<void **>(&p), size) ==
-                 XPU_SUCCESS);
+  ret = xpu_set_device(place.device);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
+  ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   if (FLAGS_init_allocated_mem) {
-    PADDLE_THROW("xpu memory FLAGS_init_allocated_mem is not implemented.");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "xpu memory FLAGS_init_allocated_mem is not implemented."));
   }
-  PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+  ret = xpu_set_device(dev_id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   VLOG(10) << "  pointer=" << p;
   return p;
 #else
@@ -138,14 +150,23 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   int dev_id = -1;
-  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  int ret = xpu_current_device(&dev_id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   if (dev_id >= 64) {
     // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
     dev_id -= 64;
   }
-  PADDLE_ENFORCE(xpu_set_device(place.device) == XPU_SUCCESS);
+  ret = xpu_set_device(place.device);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
   xpu_free(p);
-  PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+  ret = xpu_set_device(dev_id);
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External("XPU API return wrong value[%d]", ret));
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
