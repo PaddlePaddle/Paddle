@@ -108,12 +108,9 @@ class MNIST(fluid.dygraph.Layer):
             loss = fluid.layers.cross_entropy(x, label)
             avg_loss = fluid.layers.mean(loss)
 
-        # TODO: Uncomment code after "return" statement can be transformed correctly.
-
-        #     return x, acc, avg_loss
-        # else:
-        #     return x
-        return x, acc, avg_loss
+            return x, acc, avg_loss
+        else:
+            return x
 
     def inference(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
