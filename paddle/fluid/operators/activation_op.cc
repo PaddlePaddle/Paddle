@@ -250,6 +250,20 @@ $$out = sin(x)$$
 
 )DOC";
 
+UNUSED constexpr char SinhDoc[] = R"DOC(
+Sinh Activation Operator.
+
+$$out = sinh(x)$$
+
+)DOC";
+
+UNUSED constexpr char CoshDoc[] = R"DOC(
+Cosh Activation Operator.
+
+$$out = cosh(x)$$
+
+)DOC";
+
 UNUSED constexpr char RoundDoc[] = R"DOC(
 The OP rounds the values in the input to the nearest integer value.
 
@@ -642,6 +656,8 @@ REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cos, CosDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
+REGISTER_ACTIVATION_OP_MAKER(Sinh, SinhDoc);
+REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
