@@ -239,20 +239,6 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
 
         fs.delete(checker.hdfs_checkpoint_path)
 
-    def test_corener_epochno(self):
-        checker = acp._get_checker()
-        fs = HDFSClient(checker.hdfs_home, None)
-
-        # test break at some epoch_nos
-        for i in range(3):
-            fs.delete(checker.hdfs_checkpoint_path)
-            self._reset_generator()
-            self._run_save_basic(break_epoch_no=i)
-            self._reset_generator()
-            self._run_load_basic(break_epoch_no=i)
-
-        fs.delete(checker.hdfs_checkpoint_path)
-
     def _get_model_dir(self, model_dir, epoch_no):
         return "{}_{}".format(model_dir, epoch_no)
 
