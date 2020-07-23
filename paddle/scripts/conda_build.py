@@ -99,6 +99,7 @@ pip install C:\package\objgraph-3.4.1.tar.gz
 pip install C:\package\prettytable-0.7.tar.gz
 pip install C:\package\funcsigs-1.0.2.tar.gz
 pip install C:\package\rarfile-3.0.tar.gz --no-deps
+pip install C:\package\opencv_python-4.2.0.32-cp27-cp27m-win32.whl
 git clone https://github.com/PaddlePaddle/recordio.git
 cd recordio\python
 python setup.py install
