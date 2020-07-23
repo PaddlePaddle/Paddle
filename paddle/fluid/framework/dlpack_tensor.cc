@@ -90,7 +90,7 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
     return ctx;
 #else
     PADDLE_THROW(platform::errors::Unavailable(
-        "platform::CUDAPinnedPlace is not supported in CPU only version"));
+        "platform::CUDAPinnedPlace is not supported in CPU only version."));
 #endif
   }
 };

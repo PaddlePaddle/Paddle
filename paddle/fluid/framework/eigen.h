@@ -30,7 +30,7 @@ struct EigenDim {
                       platform::errors::InvalidArgument(
                           "Input dimension size should be equal to %d, but "
                           "received dimension size is %d.",
-                          D));
+                          arity(dims), D));
     Type ret;
     for (int64_t d = 0; d < arity(dims); d++) {
       ret[d] = dims[d];
