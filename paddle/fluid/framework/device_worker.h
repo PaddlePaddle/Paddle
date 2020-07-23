@@ -59,14 +59,14 @@ class PullDenseWorker {
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
   #ifdef PADDLE_WITH_CUDA
-  void AddStream(const cudaStream_t stream) { 
+  void AddStream(const cudaStream_t stream) {
     copy_streams_.push_back(stream);
   }
 
   void AddPlace(const paddle::platform::Place place) {
       places_.push_back(place);
   }
-  
+
   void AddThreadScope(Scope* scope) {
     thread_scopes_.push_back(scope);
   }
@@ -122,7 +122,7 @@ class PullDenseWorker {
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
   std::unordered_map<const Scope*, int> scope_to_thread_id_;
-  
+
   #ifdef PADDLE_WITH_CUDA
   std::vector<cudaStream_t> copy_streams_;
   std::vector<paddle::platform::Place> places_;
@@ -149,9 +149,9 @@ class DeviceWorker {
   virtual void BindingDataFeedMemory() = 0;
   virtual void SetRootScope(Scope* root_scope);
   virtual void SetDataFeed(DataFeed* data_feed);
-  virtual void SetWorkerNum(int num) {};
-  virtual void CacheProgram(const ProgramDesc &main_program) {};
-  virtual void Schedule(int taskid) {};
+  virtual void SetWorkerNum(int num) {}
+  virtual void CacheProgram(const ProgramDesc &main_program) {}
+  virtual void Schedule(int taskid) {}
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
   }
@@ -365,7 +365,6 @@ class HeterCpuWorker : public HogwildWorker {
   void CopyDenseVars();
 
  private:
-  //std::string recv_var;
   int mpi_rank_;
   int worker_num_;
   int xpu_begin_op_index_;

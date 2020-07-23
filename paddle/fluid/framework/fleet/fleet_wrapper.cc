@@ -155,7 +155,7 @@ void FleetWrapper::CreateClient2ClientConnection() {
 }
 
 void FleetWrapper::HeterPullSparseVars(
-    int workerid, 
+    int workerid,
     std::shared_ptr<HeterTask> task, const uint64_t table_id,
     const std::vector<std::string>& var_names,
     int fea_value_dim,
@@ -201,7 +201,9 @@ void FleetWrapper::HeterPullSparseVars(
     pull_result_ptr.push_back(t.data());
   }
   auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(workerid,
-      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(), task->taskid_);
+      pull_result_ptr.data(), table_id,
+      fea_keys.data(),
+      fea_keys.size(), task->taskid_);
   pull_sparse_status.push_back(std::move(status));
   for (auto& t : pull_sparse_status) {
     t.wait();
@@ -222,7 +224,7 @@ void FleetWrapper::HeterPushSparseVars(
     std::vector<::std::future<int32_t>>* push_sparse_status,
     const bool use_cvm, const bool dump_slot,
     const bool no_cvm) {
-  
+
   auto& scope = *(task->scope_);
   int batch_size = task->cur_batch_;
   int offset = 2;
@@ -722,10 +724,11 @@ void FleetWrapper::PushDenseVarsAsync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int count = tensor->numel();
     float* g_data = tensor->data<float>();
-    
+
     Variable *pin_var = scope.FindVar(t + "pin");
     LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
-    float *pin_g = pin_tensor->mutable_data<float>(tensor->dims(), platform::CUDAPinnedPlace());
+    float *pin_g = pin_tensor->mutable_data<float>(
+                   tensor->dims(), platform::CUDAPinnedPlace());
     memory::Copy(
         platform::CUDAPinnedPlace(),
         pin_g,
@@ -733,7 +736,7 @@ void FleetWrapper::PushDenseVarsAsync(
         g_data, sizeof(float) * count, stream);
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
     cudaEventSynchronize(event);
-    
+
     float* g = pin_g;
     if (scale_datanorm >= 0) {
       if (t.find(".batch_size@GRAD") != std::string::npos ||
@@ -1362,7 +1365,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
   push_status.wait();
   auto status = push_status.get();
   if (status != 0) {
-    //PADDLE_THORW(platform::errors::Fatal(
+    // PADDLE_THORW(platform::errors::Fatal(
     //    "push shrink dense param failed, status is [%d].", status));
     sleep(sleep_seconds_before_fail_exit_);
     exit(-1);

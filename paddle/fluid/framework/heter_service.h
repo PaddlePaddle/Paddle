@@ -32,14 +32,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-typedef std::function<int (const HeterRequest*, HeterResponse*)> HeterServiceHandler;
+typedef std::function<int (const HeterRequest*, HeterResponse*)>
+    HeterServiceHandler;
 class DataFeed;
 
 class HeterXpuService : public HeterService {
-public:
+ public:
   HeterXpuService() {}
   virtual ~HeterXpuService() {}
-  
   void service(::google::protobuf::RpcController* controller,
                const HeterRequest* request, HeterResponse* response,
                ::google::protobuf::Closure* done) {
@@ -48,16 +48,14 @@ public:
     int cmd = request->cmd();
     auto itr = handler_map_.find(cmd);
     if (itr == handler_map_.end()) {
-    
-    }
-    else {
+    } else {
       ret = itr->second(request, response);
     }
-    //response->set_err_code(0);
-    //response->set_err_msg("");
+    // response->set_err_code(0);
+    // response->set_err_msg("");
     if (ret != 0) {
-        //response->set_err_code(-1);
-        //response->set_err_msg("xpu service error");
+        // response->set_err_code(-1);
+        // response->set_err_msg("xpu service error");
     }
   }
 
@@ -65,7 +63,8 @@ public:
     VLOG(0) << "register heter service";
     handler_map_[cmd] = func;
   }
-private:
+
+ private:
   std::unordered_map<int, HeterServiceHandler> handler_map_;
 };
 
@@ -79,23 +78,19 @@ enum HeterTaskState {
 };
 
 class HeterTask {
-public:
+ public:
   void Update() {
     if (state_ == PULL_SPARSE) {
       state_ = OP_RUN;
-    }
-    else if (state_ == OP_RUN) {
+    } else if (state_ == OP_RUN) {
       state_ = XPU;
-      //state_ = PUSH_GRAD;
-      //state_ = PUSH_GRAD;
-    }
-    else if (state_ == XPU) {
+      // state_ = PUSH_GRAD;
+      // state_ = PUSH_GRAD;
+    } else if (state_ == XPU) {
       state_ = OP_RUN_END;
-    }
-    else if (state_ == OP_RUN_END) {
+    } else if (state_ == OP_RUN_END) {
       state_ = PUSH_GRAD;
-    }
-    else if (state_ == PUSH_GRAD) {
+    } else if (state_ == PUSH_GRAD) {
       state_ = DONE;
     }
   }
@@ -115,10 +110,12 @@ public:
   void Show() {
     std::cout << "features size " << features_.size() << std::endl;
     for (size_t i = 0; i < features_.size(); ++i) {
-      std::cout << "features[" << i << "] size " << features_[i].size() << std::endl;
+      std::cout << "features[" << i << "] size " << features_[i].size()
+          << std::endl;
     }
   }
-  void PackTask(Scope* scope, int taskid, DataFeed* reader, int cur_batch, const ProgramDesc& program);
+  void PackTask(Scope* scope, int taskid, DataFeed* reader, int cur_batch,
+      const ProgramDesc& program);
 
   Scope* scope_{nullptr};
   int taskid_;
@@ -145,7 +142,7 @@ public:
 
 template <class T>
 class HeterObjectPool {
-public:
+ public:
   HeterObjectPool() {}
   virtual ~HeterObjectPool() {};
   std::shared_ptr<T> Get() {
@@ -156,8 +153,7 @@ public:
       VLOG(0) << "pool construct size: " << num_;
       #endif
       return std::make_shared<T>();
-    }
-    else {
+    } else {
       auto ret =  pool_.back();
       pool_.pop_back();
       return ret;
@@ -174,7 +170,8 @@ public:
   std::shared_ptr<T>& GetElement(int i) {
     return pool_[i];
   }
-private:
+
+ private:
   std::vector<std::shared_ptr<T>> pool_;
   std::mutex mutex_;
   int num_{0};
@@ -193,17 +190,17 @@ struct BthreadMutextGuard {
 
 template <class T>
 class BtObjectPool {
-public:
+ public:
   BtObjectPool() {
     bthread_mutex_init(&mutex_, NULL);
     bthread_cond_init(&cond_, NULL);
   }
-  
+
   virtual ~BtObjectPool() {
     bthread_cond_destroy(&cond_);
     bthread_mutex_destroy(&mutex_);
   };
-  
+
   std::shared_ptr<T> Get() {
     BthreadMutextGuard guard(&mutex_);
     while (pool_.empty()) {
@@ -213,22 +210,22 @@ public:
     pool_.pop_back();
     return ret;
   }
-  
+
   void Push(std::shared_ptr<T> data) {
     BthreadMutextGuard guard(&mutex_);
     pool_.push_back(std::move(data));
     bthread_cond_signal(&cond_);
   }
-  
+
   int Size() {
     return pool_.size();
   }
-  
+
   std::shared_ptr<T>& GetElement(int i) {
     return pool_[i];
   }
 
-private:
+ private:
   std::vector<std::shared_ptr<T>> pool_;
   bthread_mutex_t mutex_;
   bthread_cond_t cond_;
@@ -245,8 +242,8 @@ struct HeterNode {
 
 template <class K, class T>
 class HeterList {
-public:
-  HeterList() 
+ public:
+  HeterList()
     : head_(new HeterNode<K, T>)
     , tail_(new HeterNode<K, T>) {
     head_->prev = NULL;
@@ -256,12 +253,12 @@ public:
     size = 0;
     cap_ = 1e9;
   }
-  
+
   ~HeterList() {
     delete head_;
     delete tail_;
   }
-  
+
   void SetCap(int num) {
     cap_ = num;
   }
@@ -270,17 +267,16 @@ public:
     std::unique_lock<std::mutex> lock(mutex_);
     cond_.wait(lock, [this] { return size < cap_; });
     if (task_map_.find(key) != task_map_.end()) {
-      //std::cout << "try put key=" << key << " false" << std::endl;
+      // std::cout << "try put key=" << key << " false" << std::endl;
       task_map_.erase(key);
       return false;
-    }
-    else {
+    } else {
       HeterNode<K, T>* node = new HeterNode<K, T>;
       node->key = key;
       node->value = value;
       map_[node->key] = node;
       attach(node);
-      //std::cout << "try put key=" << key << " true" << std::endl;
+      // std::cout << "try put key=" << key << " true" << std::endl;
       return true;
     }
   }
@@ -289,19 +285,19 @@ public:
     std::unique_lock<std::mutex> lock(mutex_);
     cond_.wait(lock, [this] { return size < cap_; });
     HeterNode<K, T>* node = new HeterNode<K, T>;
-    //std::cout << "put key=" << key << " true" << std::endl;
+    // std::cout << "put key=" << key << " true" << std::endl;
     node->key = key;
     node->value = value;
     map_[node->key] = node;
     attach(node);
     return true;
   }
-  
+
   T TryGet(const K &key) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto iter = map_.find(key);
     if (iter != map_.end()) {
-      //std::cout << "try get key=" << key << " true" << std::endl;
+      // std::cout << "try get key=" << key << " true" << std::endl;
       HeterNode<K, T>* node = iter->second;
       detach(node);
       cond_.notify_one();
@@ -311,15 +307,15 @@ public:
       return ret;
     }
     task_map_.insert(key);
-    //std::cout << "try get key=" << key << " false" << std::endl;
+    // std::cout << "try get key=" << key << " false" << std::endl;
     return nullptr;
   }
-  
+
   T Get(const K &key) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto iter = map_.find(key);
     if (iter != map_.end()) {
-      //std::cout << "get key=" << key << " true" << std::endl;
+      // std::cout << "get key=" << key << " true" << std::endl;
       HeterNode<K, T>* node = iter->second;
       detach(node);
       cond_.notify_one();
@@ -328,23 +324,22 @@ public:
       delete node;
       return ret;
     }
-    //std::cout << "get key=" << key << " false" << std::endl;
+    // std::cout << "get key=" << key << " false" << std::endl;
     return nullptr;
   }
-  
+
   T Get() {
     std::lock_guard<std::mutex> lock(mutex_);
     HeterNode<K, T>* node = head_->next;
     if (node == tail_) {
-      //std::cout << "get2 false" << std::endl;
+      // std::cout << "get2 false" << std::endl;
       return nullptr;
-    }
-    else {
+    } else {
       detach(node);
       cond_.notify_one();
       T ret = std::move(node->value);
       map_.erase(node->key);
-      //std::cout << "get2 key=" << node->key << " true" << std::endl;
+      // std::cout << "get2 key=" << node->key << " true" << std::endl;
       delete node;
       return ret;
     }
@@ -360,7 +355,7 @@ public:
     return size;
   }
 
-private:
+ private:
     void detach(HeterNode<K, T> *node) {
       node->prev->next = node->next;
       node->next->prev = node->prev;
@@ -375,7 +370,7 @@ private:
       size++;
     }
 
-private:
+ private:
     HeterNode<K, T> *head_;
     HeterNode<K, T> *tail_;
     std::unordered_map<K, HeterNode<K, T>*> map_;

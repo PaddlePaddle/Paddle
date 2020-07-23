@@ -54,7 +54,7 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
       paddle::framework::fs_remove(tmp);
       if (i == retry_times_) {
         VLOG(0) << "fs_open_write failed, retry times reaches limit";
-        //PADDLE_THROW(platform::errors::PreconditionNotMet(
+        // PADDLE_THROW(platform::errors::PreconditionNotMet(
         //    "fs_open_write failed, retry times reaches"
         //    " limit ",
         //    retry_times_));
@@ -143,8 +143,9 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
           break;
         }
       }
-      //PADDLE_THROW(platform::errors::ExecutionTimeout(
-      VLOG(0) << "TIMEOUT self_rank = " << self_rank_ <<  " pair_rank = " << last_check_rank;
+      // PADDLE_THROW(platform::errors::ExecutionTimeout(
+      VLOG(0) << "TIMEOUT self_rank = " << self_rank_ <<
+                 " pair_rank = " << last_check_rank;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }

@@ -130,7 +130,7 @@ class DistMultiTrainer : public MultiTrainer {
 
 #ifdef PADDLE_WITH_CUDA
 class HeterServiceContext {
-public:
+ public:
   HeterServiceContext() {}
   virtual ~HeterServiceContext() {
     for (OperatorBase* op : ops_) {
@@ -179,6 +179,7 @@ class HeterXpuTrainer : public TrainerBase {
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
   int EndPass(const HeterRequest* request, HeterResponse* response);
   int StopService(const HeterRequest* request, HeterResponse* response);
+
  protected:
   DownpourWorkerParameter param_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;

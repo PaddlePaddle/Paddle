@@ -65,7 +65,7 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
 
 void PullDenseWorker::CreatePinVar() {
   #ifdef PADDLE_WITH_CUDA
-  //for (auto& v : dense_value_names_) {
+  // for (auto& v : dense_value_names_) {
   //  for (auto& name : v.second) {
   for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
        ++i) {
@@ -74,12 +74,13 @@ void PullDenseWorker::CreatePinVar() {
     for (size_t j = 0; j < dense_value_names_[tid].size(); j++) {
       auto& name =  dense_value_names_[tid][j];
       Variable* var = root_scope_->FindVar(name);
-      
+
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
       auto *ptr = root_scope_->Var(name + "pin");
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       LoDTensor* pin_tensor = ptr->GetMutable<LoDTensor>();
-      pin_tensor->mutable_data<float>(tensor->dims(), platform::CUDAPinnedPlace());
+      pin_tensor->mutable_data<float>(tensor->dims(),
+                                      platform::CUDAPinnedPlace());
     }
   }
   #endif
@@ -105,8 +106,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
   #ifdef PADDLE_WITH_CUDA
 
   for (size_t i = 0; i < places_.size(); ++i) {
-    
-    //for (auto& v : dense_value_names_) { 
+    // for (auto& v : dense_value_names_) {
     //  for (auto& name : v.second) {
     for (int x = 0; x < dwp_param_.program_config(0).pull_dense_table_id_size();
          ++x) {
@@ -114,7 +114,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
           dwp_param_.program_config(0).pull_dense_table_id(x));
       for (size_t j = 0; j < dense_value_names_[tid].size(); j++) {
         auto& name =  dense_value_names_[tid][j];
-        
+
         Variable* pin_var = root_scope_->FindVar(name + "pin");
         LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
         float* pin_w = pin_tensor->data<float>();
@@ -148,8 +148,6 @@ void PullDenseWorker::PullDense(bool force_update) {
         dwp_param_.program_config(0).pull_dense_table_id(i));
     if (force_update || CheckUpdateParam(tid)) {
       #ifdef PADDLE_WITH_CUDA
-      
-      
       VLOG(3) << "pull dense " << force_update << " " << tid;
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, false);

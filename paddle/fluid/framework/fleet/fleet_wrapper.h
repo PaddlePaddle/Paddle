@@ -81,10 +81,12 @@ class FleetWrapper {
     pull_local_thread_num_ = thread_num;
   }
 
-  void HeterPullSparseVars(int workerid, std::shared_ptr<HeterTask> task, const uint64_t table_id,
-                          const std::vector<std::string>& var_names,
-                          int fea_dim,
-                          const std::vector<std::string>& var_emb_names);
+  void HeterPullSparseVars(int workerid,
+                           std::shared_ptr<HeterTask> task,
+                           const uint64_t table_id,
+                           const std::vector<std::string>& var_names,
+                           int fea_dim,
+                           const std::vector<std::string>& var_emb_names);
 
   void HeterPushSparseVars(
       std::shared_ptr<HeterTask> task, const uint64_t table_id,
@@ -93,9 +95,9 @@ class FleetWrapper {
       std::vector<::std::future<int32_t>>* push_sparse_status,
       const bool use_cvm, const bool dump_slot,
       const bool no_cvm);
-  
+
   typedef std::function<void (int, int)> HeterCallBackFunc;
-  
+
   int RegisterHeterCallback(HeterCallBackFunc handler);
 
   // Pull sparse variables from server in sync mode
