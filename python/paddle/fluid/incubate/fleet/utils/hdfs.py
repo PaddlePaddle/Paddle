@@ -163,7 +163,7 @@ class HDFSClient(FS):
 
         return not self.is_dir(fs_path)
 
-    @_handle_errors(max_time_out=30 * 1000)
+    @_handle_errors(max_time_out=60 * 1000)
     def is_exist(self, fs_path):
         cmd = "{} -ls {} ".format(self._base_cmd, fs_path)
         ret, out = self._run_cmd(cmd, redirect_stderr=True)
