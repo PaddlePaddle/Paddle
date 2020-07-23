@@ -207,7 +207,7 @@ class TestConcatOpError(unittest.TestCase):
             x3 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.concat, [x2])
-            # The input dtype of concat_op must be float16(only support on GPU), float32, float64, int32, int64.
+            # The input dtype of concat_op must be float16, float32, float64, int32, int64.
             x4 = fluid.layers.data(shape=[4], dtype='uint8', name='x4')
             x5 = fluid.layers.data(shape=[4], dtype='uint8', name='x5')
             self.assertRaises(TypeError, fluid.layers.concat, [x4, x5])
@@ -262,7 +262,7 @@ class TestConcatAPI(unittest.TestCase):
         out_1 = paddle.concat(x=[x_2, x_3], axis=1)
         out_2 = paddle.concat(x=[x_2, x_3], axis=positive_1_int32)
         out_3 = paddle.concat(x=[x_2, x_3], axis=positive_1_int64)
-        out_4 = paddle.concat(x=[x_2, x_3], axis=positive_1_int64)
+        out_4 = paddle.concat(x=[x_2, x_3], axis=negative_1_int64)
 
         exe = paddle.Executor(place=paddle.CPUPlace())
         [res_1, res_2, res_3, res_4] = exe.run(
@@ -299,7 +299,7 @@ class TestConcatAPI(unittest.TestCase):
             x3 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, paddle.concat, [x2])
-            # The input dtype of concat_op must be float16(only support on GPU), float32, float64, int32, int64.
+            # The input dtype of concat_op must be float16, float32, float64, int32, int64.
             x4 = paddle.data(shape=[4], dtype='uint8', name='x4')
             x5 = paddle.data(shape=[4], dtype='uint8', name='x5')
             self.assertRaises(TypeError, fluid.layers.concat, [x4, x5])
