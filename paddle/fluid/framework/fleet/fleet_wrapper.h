@@ -81,6 +81,7 @@ class FleetWrapper {
     pull_local_thread_num_ = thread_num;
   }
 
+#ifdef PADDLE_WITH_PSLIB
   void HeterPullSparseVars(int workerid,
                            std::shared_ptr<HeterTask> task,
                            const uint64_t table_id,
@@ -95,9 +96,9 @@ class FleetWrapper {
       std::vector<::std::future<int32_t>>* push_sparse_status,
       const bool use_cvm, const bool dump_slot,
       const bool no_cvm);
+#endif
 
   typedef std::function<void (int, int)> HeterCallBackFunc;
-
   int RegisterHeterCallback(HeterCallBackFunc handler);
 
   // Pull sparse variables from server in sync mode

@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#ifdef PADDLE_WITH_PSLIB
 #include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -128,3 +129,4 @@ class HeterWrapper {
 
 }  // end namespace framework
 }  // end namespace paddle
+#endif

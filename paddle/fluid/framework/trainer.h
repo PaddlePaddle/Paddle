@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/framework/heter_service.h"
-#include <timer.h>
+#include <ctime>
 
 namespace paddle {
 namespace framework {
@@ -128,7 +128,7 @@ class DistMultiTrainer : public MultiTrainer {
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
 class HeterServiceContext {
  public:
   HeterServiceContext() {}

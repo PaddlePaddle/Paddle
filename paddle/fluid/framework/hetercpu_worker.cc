@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 
+#ifdef PADDLE_WITH_PSLIB
+
 #if defined _WIN32 || defined __APPLE__
 #else
 #define _LINUX
@@ -1249,3 +1251,4 @@ void HeterCpuWorker::TrainFiles() {
 
 }  // end namespace framework
 }  // end namespace paddle
+#endif

@@ -206,7 +206,7 @@ if(WITH_DISTRIBUTE)
   heter_service_proto)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-else()
+elseif(WITH_PSLIB)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
@@ -215,6 +215,19 @@ else()
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor pslib_brpc )
+  # TODO: Fix these unittest failed on Windows
+  if(NOT WIN32)
+    cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
+  endif()
+else()
+  cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
+  dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+  heterxpu_trainer.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc downpour_worker.cc downpour_worker_opt.cc
+  pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+  device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
+  lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
+  graph_to_program_pass variable_helper timer monitor)
   # TODO: Fix these unittest failed on Windows
   if(NOT WIN32)
     cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)

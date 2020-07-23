@@ -154,13 +154,13 @@ void FleetWrapper::CreateClient2ClientConnection() {
 #endif
 }
 
+#ifdef PADDLE_WITH_PSLIB
 void FleetWrapper::HeterPullSparseVars(
     int workerid,
     std::shared_ptr<HeterTask> task, const uint64_t table_id,
     const std::vector<std::string>& var_names,
     int fea_value_dim,
     const std::vector<std::string>& var_emb_names) {
-#ifdef PADDLE_WITH_PSLIB
   std::vector<::std::future<int32_t>> pull_sparse_status;
   pull_sparse_status.resize(0);
   auto& scope = *(task->scope_);
@@ -214,7 +214,6 @@ void FleetWrapper::HeterPullSparseVars(
       exit(-1);
     }
   }
-#endif
 }
 
 void FleetWrapper::HeterPushSparseVars(
@@ -358,6 +357,7 @@ void FleetWrapper::HeterPushSparseVars(
       sparse_push_keys.size());
   push_sparse_status->push_back(std::move(status));
 }
+#endif
 
 int FleetWrapper::RegisterHeterCallback(HeterCallBackFunc handler) {
 #ifdef PADDLE_WITH_PSLIB

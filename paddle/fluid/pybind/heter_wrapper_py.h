@@ -22,7 +22,8 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
+#ifdef PADDLE_WITH_PSLIB
 void BindHeterWrapper(py::module* m);
-
+#endif
 }  // namespace pybind
 }  // namespace paddle

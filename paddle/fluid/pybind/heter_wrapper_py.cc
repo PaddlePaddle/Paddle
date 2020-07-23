@@ -33,6 +33,7 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
+#ifdef PADDLE_WITH_PSLIB
 void BindHeterWrapper(py::module* m) {
   py::class_<framework::HeterWrapper, std::shared_ptr<framework::HeterWrapper>>(*m, "Heter")
       .def(py::init([]() {
@@ -44,5 +45,6 @@ void BindHeterWrapper(py::module* m) {
       .def("end_pass", &framework::HeterWrapper::EndPass)
       .def("stop_xpu_service", &framework::HeterWrapper::StopXpuService);
 }  // end HeterWrapper
+#endif
 }  // end namespace pybind
 }  // end namespace paddle

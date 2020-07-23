@@ -52,7 +52,9 @@ bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
+#ifdef PADDLE_WITH_PSLIB
 class HeterWrapper;
+#endif
 
 class PullDenseWorker {
  public:
@@ -334,6 +336,7 @@ class DownpourWorkerOpt : public DownpourWorker {
   uint64_t async_tid_ = 0;
 };
 
+#ifdef PADDLE_WITH_PSLIB
 class HeterCpuWorker : public HogwildWorker {
  public:
   HeterCpuWorker() {}
@@ -412,6 +415,7 @@ class HeterCpuWorker : public HogwildWorker {
   std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
+#endif
 
 #if defined(PADDLE_WITH_NCCL)
 class SectionWorker : public DeviceWorker {

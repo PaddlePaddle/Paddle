@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
-#ifdef PADDLE_WITH_CUDA
+#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
 namespace paddle {

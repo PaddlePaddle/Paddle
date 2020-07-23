@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/timer.h"
+#ifdef PADDLE_WITH_PSLIB
 
 namespace paddle {
 namespace framework {
@@ -313,3 +314,4 @@ void HeterWrapper::CallRemoteXpuSync(std::shared_ptr<HeterTask> task,
 
 }  // end namespace framework
 }  // end namespace paddle
+#endif

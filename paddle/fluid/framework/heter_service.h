@@ -22,12 +22,13 @@ limitations under the License. */
 #include <vector>
 #include <unordered_map>  // NOLINT
 #include <unordered_set>  // NOLINT
-#include "brpc/channel.h"
-#include "brpc/controller.h"
-#include "brpc/server.h"
 #include "paddle/fluid/framework/heter_service.pb.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/program_desc.h"
+#ifdef PADDLE_WITH_PSLIB
+#include "brpc/channel.h"
+#include "brpc/controller.h"
+#include "brpc/server.h"
 
 namespace paddle {
 namespace framework {
@@ -383,3 +384,4 @@ class HeterList {
 
 }  // namespace framework
 }  // namespace paddle
+#endif
