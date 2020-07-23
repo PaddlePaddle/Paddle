@@ -1248,16 +1248,17 @@ class QuantizationFreezePass(object):
 
     def _original_arg_name(self, arg_name):
         '''
-        Return the origin input_arg_name.
+        Return the origin name of input_arg.
         '''
         arg_name = arg_name[:-24]
         arg_name_list = arg_name.split('_')
         original_node_name = arg_name_list[0]
         for start in range(1, len(arg_name_list)):
-            if(arg_name_list[start]==arg_name_list[0]):
-                for i in range(1, len(arg_name_list)-start):
-                    if(arg_name_list[i]==arg_name_list[start+i]):
-                        original_node_name = original_node_name+"_"+arg_name_list[i]
+            if (arg_name_list[start] == arg_name_list[0]):
+                for i in range(1, len(arg_name_list) - start):
+                    if (arg_name_list[i] == arg_name_list[start + i]):
+                        original_node_name = original_node_name + "_" + arg_name_list[
+                            i]
                     else:
                         return original_node_name
         return original_node_name

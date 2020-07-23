@@ -195,6 +195,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
 
         freeze_pass.apply(test_graph)
         freezed_program = test_graph.to_program()
+
         convert_int8_pass = ConvertToInt8Pass(scope=scope, place=place)
         convert_int8_pass.apply(test_graph)
         freezed_program_int8 = test_graph.to_program()
@@ -240,6 +241,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
                 weight_quant_type='channel_wise_abs_max',
                 for_ci=True,
                 weight_preprocess_func=pact)
+
 
 if __name__ == '__main__':
     unittest.main()
