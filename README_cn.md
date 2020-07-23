@@ -1,6 +1,6 @@
 ﻿
 <p align="center">
-<img align="center" src="doc/imgs/logo.png", width=300>
+<img align="center" src="doc/imgs/logo.png", width=400>
 <p>
 
 [English](./README.md) | 简体中文
