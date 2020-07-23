@@ -81,6 +81,7 @@ class HDFSClient(FS):
         if configs:
             for k, v in six.iteritems(configs):
                 config_command = '-D%s=%s' % (k, v)
+                self.pre_commands.append(config_command)
 
         self._time_out = time_out
         self._sleep_inter = sleep_inter
