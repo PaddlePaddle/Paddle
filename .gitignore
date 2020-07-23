@@ -26,6 +26,7 @@ third_party/
 bazel-*
 third_party/
 
+build_*
 # clion workspace.
 cmake-build-*
 paddle/fluid/operators/distributed/send_recv.proto
