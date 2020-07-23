@@ -283,7 +283,7 @@ def concat(input, axis=0, name=None):
         TypeError: The `axis` must be int or Variable.
 
     Returns:
-        Variable: A Tensor with the same data type as input's.
+        Variable: A Tensor with the same data type as ``input``.
 
     Examples:
         .. code-block:: python
