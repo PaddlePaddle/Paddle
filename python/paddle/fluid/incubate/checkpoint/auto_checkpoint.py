@@ -95,9 +95,7 @@ class AutoCheckpointChecker(object):
                 "PADDLE_EDL_HDFS_CHECKPOINT_PATH"]
             self._trainer_id = int(os.environ["PADDLE_TRAINER_ID"])
 
-            self._ce_test = os.getenv("PADDLE_EDL_ONLY_FOR_CE_TEST")
-            if self._ce_test is not None:
-                self._ce_test = bool(self._ce_test)
+            self._ce_test = int(os.getenv("PADDLE_EDL_ONLY_FOR_CE_TEST", "0"))
 
             self._save_checkpoint_inter = int(
                 os.getenv("PADDLE_EDL_SAVE_CHECKPOINT_INTER", "900"))  #s

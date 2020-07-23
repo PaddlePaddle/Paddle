@@ -36,21 +36,30 @@ import shutil
 __all__ = ["HDFSClient"]
 
 
-def _handle_errors(f):
-    def handler(*args, **kwargs):
-        start = time.time()
-        while True:
-            try:
-                return f(*args, **kwargs)
-            except ExecuteError as e:
-                o = args[0]
+def _handle_errors(max_time_out=None):
+    def decorator(f):
+        @functools.wraps(f)
+        def handler(*args, **kwargs):
+            o = args[0]
+            time_out = max_time_out
+            if time_out is None:
                 time_out = float(o._time_out) / 1000.0
-                inter = float(o._sleep_inter) / 1000.0
-                if time.time() - start >= time_out:
-                    raise FSTimeOut
-                time.sleep(inter)
+            else:
+                time_out /= 1000.0
+            inter = float(o._sleep_inter) / 1000.0
 
-    return functools.wraps(f)(handler)
+            start = time.time()
+            while True:
+                try:
+                    return f(*args, **kwargs)
+                except ExecuteError as e:
+                    if time.time() - start >= time_out:
+                        raise FSTimeOut
+                    time.sleep(inter)
+
+        return handler
+
+    return decorator
 
 
 class HDFSClient(FS):
@@ -90,7 +99,7 @@ class HDFSClient(FS):
         dirs, _ = self.ls_dir(fs_path)
         return dirs
 
-    @_handle_errors
+    @_handle_errors(max_time_out=60 * 1000)
     def ls_dir(self, fs_path):
         """	
         list directory under fs_path, and only give the pure name, not include the fs_path	
@@ -130,7 +139,7 @@ class HDFSClient(FS):
 
         return None
 
-    @_handle_errors
+    @_handle_errors(max_time_out=60 * 1000)
     def is_dir(self, fs_path):
         if not self.is_exist(fs_path):
             return False
@@ -153,7 +162,7 @@ class HDFSClient(FS):
 
         return not self.is_dir(fs_path)
 
-    @_handle_errors
+    @_handle_errors(max_time_out=30 * 1000)
     def is_exist(self, fs_path):
         cmd = "{} -ls {} ".format(self._base_cmd, fs_path)
         ret, out = self._run_cmd(cmd, redirect_stderr=True)
