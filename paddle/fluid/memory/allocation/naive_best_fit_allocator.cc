@@ -29,6 +29,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_header.h"
+#endif
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -100,6 +103,50 @@ template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
 }
+
+#ifdef PADDLE_WITH_XPU
+template <>
+void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  void *p = nullptr;
+  int dev_id = -1;
+  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  if (dev_id >= 64) {
+    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
+    dev_id -= 64;
+  }
+  PADDLE_ENFORCE(xpu_set_device(place.device) == XPU_SUCCESS);
+  PADDLE_ENFORCE(xpu_malloc(reinterpret_cast<void **>(&p), size) ==
+                 XPU_SUCCESS);
+  if (FLAGS_init_allocated_mem) {
+    PADDLE_THROW("xpu memory FLAGS_init_allocated_mem is not implemented.");
+  }
+  PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+  VLOG(10) << "  pointer=" << p;
+  return p;
+}
+
+template <>
+void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
+                              size_t size) {
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  int dev_id = -1;
+  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
+  if (dev_id >= 64) {
+    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
+    dev_id -= 64;
+  }
+  PADDLE_ENFORCE(xpu_set_device(place.device) == XPU_SUCCESS);
+  xpu_free(p);
+  PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
+}
+
+template <>
+size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
+  printf("Used func return 0 for XPUPlace\n");
+  return 0;
+}
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 class GPUBuddyAllocatorList {

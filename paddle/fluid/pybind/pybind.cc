@@ -88,6 +88,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_info.h"
+#endif
+
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/pybind/communicator_py.h"
 #endif
@@ -110,6 +114,14 @@ namespace paddle {
 namespace pybind {
 bool IsCompiledWithCUDA() {
 #ifndef PADDLE_WITH_CUDA
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithXPU() {
+#ifndef PADDLE_WITH_XPU
   return false;
 #else
   return true;
@@ -466,6 +478,10 @@ PYBIND11_MODULE(core_noavx, m) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
+           [](Tensor &self, paddle::platform::XPUPlace &place) {
+             self.mutable_data<float>(place);
+           })
+      .def("_alloc_float",
            [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
@@ -475,6 +491,10 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_alloc_int",
            [](Tensor &self, paddle::platform::CPUPlace &place) {
+             self.mutable_data<int>(place);
+           })
+      .def("_alloc_int",
+           [](Tensor &self, paddle::platform::XPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
@@ -495,6 +515,11 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_mutable_data",
+           [](Tensor &self, paddle::platform::XPUPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+           })
+      .def("_mutable_data",
            [](Tensor &self, paddle::platform::CUDAPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
@@ -507,6 +532,8 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_clear", &Tensor::clear)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::XPUPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
@@ -516,7 +543,7 @@ PYBIND11_MODULE(core_noavx, m) {
         
         Args:
           lod (numpy.ndarray): The data to set.
-          place (CPUPlace|CUDAPlace|CUDAPinnedPlace): The place where the 
+          place (CPUPlace|CUDAPlace|XPUPlace|CUDAPinnedPlace): The place where the 
           LoDTensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.
@@ -1227,6 +1254,18 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CPUDeviceContext();
                   })
       .def_static("create",
+                  [](paddle::platform::XPUPlace& place)
+                      -> paddle::platform::DeviceContext* {
+#ifndef PADDLE_WITH_XPU
+             PADDLE_THROW(
+                 platform::errors::PermissionDenied(
+                 "Cannot use XPUPlace in CPU/GPU version, "
+                 "Please recompile or reinstall Paddle with XPU support."));
+#else
+                    return new paddle::platform::XPUDeviceContext(place);
+#endif
+                  })
+      .def_static("create",
                   [](paddle::platform::CUDAPlace& place)
                       -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_CUDA
@@ -1324,9 +1363,64 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CPUPlace>)
+      .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::XPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
+
+  py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
+    **Note**:
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
+          xpu_place = fluid.XPUPlace(0)
+        )DOC")
+      .def("__init__",
+           [](platform::XPUPlace &self, int dev_id) {
+#ifdef PADDLE_WITH_XPU
+             if (UNLIKELY(dev_id < 0)) {
+               LOG(ERROR) << string::Sprintf(
+                   "Invalid XPUPlace(%d), device id must be 0 or "
+                   "positive integer",
+                   dev_id);
+               std::exit(-1);
+             }
+             if (UNLIKELY(dev_id >= platform::GetXPUDeviceCount())) {
+               if (platform::GetXPUDeviceCount() == 0) {
+                 LOG(ERROR) << "Cannot use XPU because there is no XPU "
+                               "detected on your "
+                               "machine.";
+                 std::exit(-1);
+               } else {
+                 LOG(ERROR) << string::Sprintf(
+                     "Invalid XPUPlace(%d), must inside [0, %d), because XPU "
+                     "number on your machine is %d",
+                     dev_id, platform::GetXPUDeviceCount(),
+                     platform::GetXPUDeviceCount());
+                 std::exit(-1);
+               }
+             }
+             new (&self) platform::XPUPlace(dev_id);
+#else
+             LOG(ERROR) << string::Sprintf(
+                 "Cannot use XPU because you have installed CPU/GPU version "
+                 "PaddlePaddle.\n"
+                 "If you want to use XPU, please try to install XPU version "
+                 "PaddlePaddle by: pip install paddlepaddle-xpu\n"
+                 "If you only have CPU, please change XPUPlace(%d) to be "
+                 "CPUPlace().\n",
+                 dev_id);
+             std::exit(-1);
+#endif
+           })
+      .def("_type", &PlaceIndex<platform::XPUPlace>)
+      .def("_equals", &IsSamePlace<platform::XPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<platform::XPUPlace, platform::CUDAPlace>)
+      .def("_equals", &IsSamePlace<platform::XPUPlace, platform::CPUPlace>)
+      .def("_equals", &IsSamePlace<platform::XPUPlace, platform::XPUPlace>)
+      .def("_equals",
+           &IsSamePlace<platform::XPUPlace, platform::CUDAPinnedPlace>)
+      .def("__str__", string::to_string<const platform::XPUPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
@@ -1342,6 +1436,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("_type", &PlaceIndex<platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<platform::CPUPlace, platform::XPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
       .def("_equals",
@@ -1377,6 +1472,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPlace>)
       .def("_equals",
+           &IsSamePlace<platform::CUDAPinnedPlace, platform::XPUPlace>)
+      .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPinnedPlace>)
@@ -1388,11 +1485,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::Place, platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CPUPlace>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::XPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
       .def("is_cpu_place",
            [](platform::Place &self) { return platform::is_cpu_place(self); })
+      .def("is_xpu_place",
+           [](platform::Place &self) { return platform::is_xpu_place(self); })
       .def("is_cuda_pinned_place",
            [](platform::Place &self) {
              return platform::is_cuda_pinned_place(self);
@@ -1401,11 +1501,19 @@ All parameter, weight, gradient are variables in Paddle.
            [](platform::Place &self) {
              return BOOST_GET_CONST(platform::CUDAPlace, self).device;
            })
+      .def("xpu_device_id",
+           [](platform::Place &self) {
+             return BOOST_GET_CONST(platform::XPUPlace, self).device;
+           })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
       .def("set_place",
            [](platform::Place &self, const platform::CPUPlace &cpu_place) {
              self = cpu_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::XPUPlace &xpu_place) {
+             self = xpu_place;
            })
       .def("set_place",
            [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
@@ -1434,6 +1542,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CPUPlace &place) { self.Run(scope, place); })
+      .def("run",
+           [](OperatorBase &self, const Scope &scope,
+              const platform::XPUPlace &place) { self.Run(scope, place); })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CUDAPlace &place) { self.Run(scope, place); })

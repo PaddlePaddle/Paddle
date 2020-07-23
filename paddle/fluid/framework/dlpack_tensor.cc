@@ -66,6 +66,10 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
     return ctx;
   }
 
+  inline ::DLContext operator()(const platform::XPUPlace &place) const {
+    PADDLE_THROW("platform::XPUPlace is not supported");
+  }
+
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {
 #ifdef PADDLE_WITH_CUDA
     ::DLContext ctx;

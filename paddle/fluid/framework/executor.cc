@@ -448,8 +448,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
   if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
-#ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
+#ifdef PADDLE_WITH_CUDA
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
             BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
@@ -457,13 +457,20 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
         gc.reset(new DefaultStreamGarbageCollector(
             BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
       }
-    } else if (platform::is_cpu_place(place_)) {
+#else
+      PADDLE_THROW("No GPU gc found");
 #endif
+    } else if (platform::is_cpu_place(place_)) {
       gc.reset(new CPUGarbageCollector(
           BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
-#ifdef PADDLE_WITH_CUDA
-    }
+    } else if (platform::is_xpu_place(place_)) {
+#ifdef PADDLE_WITH_XPU
+      gc.reset(new XPUGarbageCollector(
+          BOOST_GET_CONST(platform::XPUPlace, place_), max_memory_size));
+#else
+      PADDLE_THROW("No XPU gc found");
 #endif
+    }
   }
 
   for (int64_t i = start_op_index; i < end_op_index; ++i) {
