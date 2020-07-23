@@ -40,7 +40,7 @@ diffs = []
 for each_diff in result:
     if each_diff[0] == '+':
         api_name = each_diff.split(' ')[1].strip()
-        if api_name in api_without_ops:
+        if api_name in api_without_ops and api_name.find('sequence') == -1:
             error = True
             diffs += [api_name]
 
