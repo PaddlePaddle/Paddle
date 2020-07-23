@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/framework/heter_service.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -51,10 +52,25 @@ bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
+class HeterWrapper;
+
 class PullDenseWorker {
  public:
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
+  #ifdef PADDLE_WITH_CUDA
+  void AddStream(const cudaStream_t stream) { 
+    copy_streams_.push_back(stream);
+  }
+
+  void AddPlace(const paddle::platform::Place place) {
+      places_.push_back(place);
+  }
+  
+  void AddThreadScope(Scope* scope) {
+    thread_scopes_.push_back(scope);
+  }
+  #endif
   int Start();
   void Stop();
   void SetRootScope(Scope* scope) { root_scope_ = scope; }
@@ -62,6 +78,7 @@ class PullDenseWorker {
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
   void PullDense(bool force_update = false);
+  void CreatePinVar();
   int GetThreadIdByScope(const Scope* scope);
   void SetThreadIdByScope(const Scope* scope, int tid);
   static std::shared_ptr<PullDenseWorker> GetInstance() {
@@ -105,6 +122,12 @@ class PullDenseWorker {
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
   std::unordered_map<const Scope*, int> scope_to_thread_id_;
+  
+  #ifdef PADDLE_WITH_CUDA
+  std::vector<cudaStream_t> copy_streams_;
+  std::vector<paddle::platform::Place> places_;
+  std::vector<Scope*> thread_scopes_;
+  #endif
 };
 
 // should incorporate different type of device
@@ -126,6 +149,9 @@ class DeviceWorker {
   virtual void BindingDataFeedMemory() = 0;
   virtual void SetRootScope(Scope* root_scope);
   virtual void SetDataFeed(DataFeed* data_feed);
+  virtual void SetWorkerNum(int num) {};
+  virtual void CacheProgram(const ProgramDesc &main_program) {};
+  virtual void Schedule(int taskid) {};
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
   }
@@ -148,6 +174,7 @@ class DeviceWorker {
     device_reader_->SetPlace(place);
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
+  virtual void GetXpuOpIndex() {}
 
  protected:
   virtual void DumpParam(const Scope& scope, const int batch_id);
@@ -161,6 +188,7 @@ class DeviceWorker {
   FetchConfig fetch_config_;
   bool use_cvm_;
   bool no_cvm_;
+  TrainerDesc trainer_desc_;
 
   // dump params or grads for debug
   bool need_dump_param_;
@@ -304,6 +332,86 @@ class DownpourWorkerOpt : public DownpourWorker {
   std::string async_wait_name_;
   int async_index_ = -1;
   uint64_t async_tid_ = 0;
+};
+
+class HeterCpuWorker : public HogwildWorker {
+ public:
+  HeterCpuWorker() {}
+  virtual ~HeterCpuWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
+  virtual void SetNeedDump(bool need_dump_field);
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
+  virtual void SetWorkerNum(int num) { worker_num_ = num; }
+  virtual void Schedule(int taskid);
+  virtual void JumpContext(std::shared_ptr<HeterTask> task);
+  virtual void CacheProgram(const ProgramDesc &main_program) {
+    new(&program_) ProgramDesc(main_program);
+  }
+  virtual void GetXpuOpIndex();
+
+ protected:
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::framework::HeterWrapper> heter_ptr_;
+  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  void FillSparseValue(std::shared_ptr<HeterTask> task, size_t table_id);
+  void PushGradients();
+  void CollectLabelInfo(std::shared_ptr<HeterTask> task, size_t table_id);
+  void AdjustInsWeight(std::shared_ptr<HeterTask> task);
+  void DumpParam();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
+
+ private:
+  //std::string recv_var;
+  int mpi_rank_;
+  int worker_num_;
+  int xpu_begin_op_index_;
+  int xpu_end_op_index_;
+  ProgramDesc program_;
+  HeterObjectPool<HeterTask> object_pool_;
+  HeterList<int, std::shared_ptr<HeterTask>> run_queue_;
+  HeterList<int, std::shared_ptr<HeterTask>> wait_queue_;
+  bool need_dump_param_;
+  std::vector<std::string> dump_param_;
+  bool need_to_push_dense_;
+  bool need_dump_field_;
+  bool dump_slot_;
+  bool need_to_push_sparse_;
+  std::vector<std::string> dump_fields_;
+  ChannelWriter<std::string> writer_;
+  DownpourWorkerParameter param_;
+  float scale_datanorm_;
+  // just save the value in param_ for easy access
+  std::map<uint64_t, std::string> label_var_name_;
+  std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  platform::Place root_place_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
+
+  // skipped ops
+  std::vector<std::string> skip_ops_;
+
+  std::vector<::std::future<int32_t>> push_sparse_status_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+
+  // adjust ins weight
+  AdjustInsWeightConfig adjust_ins_weight_config_;
+  std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
 
 #if defined(PADDLE_WITH_NCCL)
