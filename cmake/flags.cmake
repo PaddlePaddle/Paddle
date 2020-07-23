@@ -187,10 +187,8 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
-if (NOT WITH_NV_JETSON)
-  if (NOT WITH_ARM)
+if (NOT WITH_NV_JETSON AND NOT WITH_ARM)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  endif()
 endif()
 endif(NOT WIN32)
 
