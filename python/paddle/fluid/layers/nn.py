@@ -6203,6 +6203,10 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
+    if in_dygraph_mode():
+        out, _ = core.ops.squeeze2(input, 'axes', axes)
+        return out
+
     helper = LayerHelper("squeeze", **locals())
     check_variable_and_dtype(
         input, 'input',
