@@ -125,7 +125,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         self.assertEqual(i, 1)
         logger.info("exit _run_must_dacp")
 
-    def _run_save_basic(self, break_epoch_no=None):
+    def _run_save_basic(self, break_epoch_no=None, model_dir=None):
         """
         save checkpoint
         """
@@ -141,10 +141,11 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
                                                        dacp.g_ranges))
 
         # delete model path.
-        fs = LocalFS()
-        for i in range(3):
-            path = self._get_model_dir("dacp_save_basic", i)
-            fs.delete(path)
+        if model_dir is not None:
+            fs = LocalFS()
+            for i in range(3):
+                path = self._get_model_dir(model_dir, i)
+                fs.delete(path)
 
         for i in range(3):
             for data in data_loader():
@@ -155,9 +156,10 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
                 if i == break_epoch_no:
                     break
 
-            path = self._get_model_dir("dacp_save_basic", i)
-            fluid.io.save_persistables(exe, path, main_program=main_prog)
-            self.assertTrue(fs.is_exist(path))
+            if model_dir is not None:
+                path = self._get_model_dir(model_dir, i)
+                fluid.io.save_persistables(exe, path, main_program=main_prog)
+                self.assertTrue(fs.is_exist(path))
 
         self.assertEqual(acp.g_acp_type, acp.CONST_DACP_TYPE)
         self.assertEqual(len(dacp.g_ranges), 1, "There must be one element")
@@ -168,9 +170,10 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
             self.assertEqual(i, break_epoch_no)
 
         # delete model path.
-        for i in range(3):
-            path = self._get_model_dir("dacp_save_basic", i)
-            fs.delete(path)
+        if model_dir is not None:
+            for i in range(3):
+                path = self._get_model_dir(model_dir, i)
+                fs.delete(path)
 
         logger.info("leave _run_save_basic")
 
@@ -260,7 +263,7 @@ class DataLoaderAutoCheckpointTest(AutoCheckpointBase):
         # test save and load epoch_no must be right
         fs.delete(checker.hdfs_checkpoint_path)
         self._reset_generator()
-        self._run_save_basic()
+        self._run_save_basic(model_dir="dacp_save_basic")
         self._reset_generator()
 
         model_dir = "dacp_load_basic"
