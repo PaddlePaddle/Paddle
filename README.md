@@ -1,5 +1,7 @@
 ﻿ 
-# PaddlePaddle
+<p align="center">
+<img align="center" src="doc/imgs/logo.png">
+<p>
 
 English | [简体中文](./README_cn.md)
 
