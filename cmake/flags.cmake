@@ -188,7 +188,7 @@ set(GPU_COMMON_FLAGS
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
 if (NOT WITH_NV_JETSON AND NOT WITH_ARM)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 endif()
 endif(NOT WIN32)
 
