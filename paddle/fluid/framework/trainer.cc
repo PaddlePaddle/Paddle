@@ -80,9 +80,6 @@ void TrainerBase::DumpWork(int tid) {
 }
 
 void TrainerBase::FinalizeDumpEnv() {
-  if (!need_dump_field_ && !need_dump_param_) {
-    return;
-  }
   queue_->Close();
   for (auto& th : dump_thread_) {
     th.join();
