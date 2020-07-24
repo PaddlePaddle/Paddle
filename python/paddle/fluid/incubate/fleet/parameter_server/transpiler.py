@@ -39,6 +39,7 @@ from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerCo
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.fluid.incubate.fleet.base.role_maker import Device
 
 from paddle.fluid.incubate.fleet.parameter_server import version
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_all_get_sparse_tablenames
@@ -91,8 +92,11 @@ class FleetTranspiler(Fleet):
             role_maker = MPISymetricRoleMaker()
         super(FleetTranspiler, self).init(role_maker)
         if role_maker._is_heter_worker():
-            gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            self._executor = Executor(fluid.CUDAPlace(gpu_id))
+            if role_maker._get_heter_worker_device() == Device.GPU:
+                gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+                self._executor = Executor(fluid.CUDAPlace(gpu_id))
+            elif role_maker._get_heter_worker_device() == Device.XPU:
+                raise ValueError("XPU Distributed not supported.")
         self._fleet_ptr = core.Fleet()
 
     def _init_transpiler_worker(self):
@@ -962,20 +966,20 @@ class ParameterServerOptimizer(DistributedOptimizer):
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
 
-        if fleet.is_heter_parameter_server:
+        if fleet._role_maker.is_heter_parameter_server:
             # for main program
-            if fleet._is_heter_worker():
-                _main = worker.split_heter_program_pass(_main, compiled_config)
-                _main = worker.append_heter_communicate_ops_pass(
+            if fleet._role_maker._is_heter_worker():
+                _main = worker.split_heter_trainer_ops_pass(
+                    _main, compiled_config)
+                _main = worker.append_heter_worker_communicate_ops_pass(
                     _main, compiled_config)
             else:
-                _main = worker.split_trainer_program_pass(
-                    _main, compiled_config)
-                _main = worker.append_trainer_communicate_ops_pass(
+                _main = worker.split_trainer_ops_pass(
                     _main, compiled_config)
 
             # for startup
-            _startup = worker.delet_extra_ops_pass(_startup, compiled_config)
+            _startup = worker.delete_startup_useless_ops_var_pass(
+                _startup, compiled_config)
 
         return _main, _startup
 

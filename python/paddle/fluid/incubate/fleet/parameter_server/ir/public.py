@@ -42,6 +42,7 @@ from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
 from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import delete_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import _get_input_map_from_op, _get_output_map_from_op
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -245,7 +246,6 @@ def get_varlist_from_op_map(var_map):
 
 
 def find_block_input_output(program, block):
-    from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import _get_input_map_from_op, _get_output_map_from_op
     input_var_list = []
     output_var_list = []
     for op in block.ops:
@@ -259,6 +259,24 @@ def find_block_input_output(program, block):
     input_var_list = list(set(input_var_list))
     output_var_list = list(set(output_var_list))
     return input_var_list, output_var_list
+
+
+def find_op_input_output(program, block, op):
+    input_var_list = []
+    output_var_list = []
+    inputs = _get_input_map_from_op(
+        block.vars, op)
+    input_var_list += get_varlist_from_op_map(inputs)
+    outputs = _get_output_map_from_op(
+        block.vars, op)
+    output_var_list += get_varlist_from_op_map(outputs)
+    return input_var_list, output_var_list
+
+
+def get_vars_name_in_block(block):
+    vars_list = block.vars
+    vars_name_list = [var.name for var in vars_list]
+    return vars_name_list
 
 
 def replace_ops_by_communicate_op(block, ops, program, entrance_var, exit_var, config):
@@ -370,6 +388,12 @@ class CompileTimeStrategy(object):
 
     def get_ps_endpoints(self):
         return self.role_maker.get_pserver_endpoints()
+
+    def get_heter_worker_endpoint(self):
+        return self.role_maker._get_heter_worker_endpoint()
+
+    def get_heter_worker_endpoints(self):
+        return self.role_maker._get_heter_worker_endpoints()
 
     def get_origin_programs(self):
         return self.origin_main_program, self.origin_startup_program

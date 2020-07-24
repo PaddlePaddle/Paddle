@@ -31,6 +31,12 @@ class Role:
     HETER_WORKER = 3
 
 
+class Device:
+    CPU = 1
+    GPU = 2
+    XPU = 3
+
+
 class MockBarrier(object):
     """
     MockBarrier is a empty impletation for barrier
@@ -78,6 +84,7 @@ class RoleMakerBase(object):
         self._worker_endpoints = []
         self._server_endpoints = []
         self._hetet_trainer_endpoints = []
+        self._heter_trainer_device = Device.CPU
         self._role_is_generated = False
         self._role = None
         self._current_id = -1
@@ -170,11 +177,23 @@ class RoleMakerBase(object):
         """
         return self._server_endpoints
 
-    def _get_heter_trainer_endpoints(self):
+    def _get_heter_worker_endpoints(self):
         """
         return heter_trainer endpoints
         """
         return self._hetet_trainer_endpoints
+
+    def _get_heter_worker_endpoint(self):
+        """
+        return Corresponding heter equipment's endpoint
+        """
+        return self._hetet_trainer_endpoints[self._current_id % self._heter_worker_num]
+
+    def _get_heter_worker_device(self):
+        """
+        return heter_trainer's device of current node
+        """
+        return self._heter_trainer_device
 
     def to_string(self):
         return "role: {}, current_id: {}, worker_endpoints: {}, server_endpoints: {}".format(
@@ -543,15 +562,27 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                             "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER")
 
                     heter_trainer_eplist = os.environ["PADDLE_HETER_TRAINER_IP_PORT_LIST"]
-                    if heter_trainer_eplist:
+                    heter_trainer_device = os.environ["PADDLE_HETER_TRAINER_DEVICE"]
+                    if heter_trainer_eplist and heter_trainer_device:
                         try:
                             heter_trainer_eplist = os.environ["PADDLE_HETER_TRAINER_IP_PORT_LIST"].split(
                                 ",")
                         except:
                             raise ValueError(
                                 "Didn't Find PADDLE_HETER_TRAINER_IP_PORT_LIST in env or its format does not match the requirement.")
+
                         self.is_heter_parameter_server = True
                         heter_trainers_num = len(heter_trainer_eplist)
+                        current_node_device = heter_trainer_device.upper()
+                        if current_node_device == "CPU":
+                            self._heter_trainer_device = Device.CPU
+                        elif current_node_device == "GPU":
+                            self._heter_trainer_device = Device.GPU
+                        elif current_node_device == "XPU":
+                            self._heter_trainer_device = Device.XPU
+                        else:
+                            raise ValueError(
+                                "Heter Trainer doesn't support {} now, please use cpu / gpu / xpu".format(heter_trainer_device))
                     else:
                         self.is_heter_parameter_server = False
                         heter_trainers_num = 0
@@ -574,7 +605,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     else:
                         raise ValueError(
                             "TRAINING_ROLE must be PSERVER or TRAINER")
-                except ValueError as ve:
+                except ValueError as e:
                     raise ValueError(
                         "something wrong with PaddleCloud, please check environment"
                     )

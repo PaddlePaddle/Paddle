@@ -28,6 +28,8 @@ from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_heter_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import add_vars_by_op_map
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_block_input_output
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_op_input_output
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_vars_name_in_block
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import replace_ops_by_communicate_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import add_listen_and_serv_pass, _get_input_map_from_op, _get_output_map_from_op
 
@@ -318,7 +320,7 @@ def delet_extra_optimizes_pass(program, config):
     return program
 
 
-def split_heter_ops_pass(program, config):
+def split_heter_worker_ops_pass(program, config):
     default_deveice = "cpu"
     current_device = "gpu"
     program, heter_ops = find_heter_ops(program, default_deveice)
@@ -334,7 +336,7 @@ def split_heter_ops_pass(program, config):
     heter_program = Program()
 
     # add heter op
-    pre_block_idx = program.num_blocks - 1
+    pre_block_idx = heter_program.num_blocks - 1
     for index, heter_block_ops in enumerate(heter_ops[current_device]):
         heter_block = heter_program._create_block(pre_block_idx)
         for _, op in enumerate(heter_block_ops):
@@ -357,7 +359,7 @@ def split_heter_ops_pass(program, config):
     return heter_program
 
 
-def append_heter_communicate_ops_pass(program, config):
+def append_heter_worker_communicate_ops_pass(program, config):
     # find block inputs & outputs
     block_nums = program.num_blocks
     for block_index in range(1, block_nums):
@@ -398,7 +400,7 @@ def split_trainer_ops_pass(program, config):
     default_deveice = "cpu"
     # 复用XPU-Trainer逻辑找到连接点
     origin_program = program.clone()
-    heter_program = split_heter_ops_pass(origin_program, config)
+    heter_program = split_heter_worker_ops_pass(origin_program, config)
 
     block_nums = heter_program.num_blocks
     for block_index in range(1, block_nums):
@@ -421,9 +423,27 @@ def split_trainer_ops_pass(program, config):
     return origin_program
 
 
-def append_trainer_communicate_ops_pass(program, config):
-    pass
+def delete_startup_useless_ops_var_pass(startup_program, main_program, config):
+    # find all op and its var
+    vars_in_main_program = get_vars_name_in_block(main_program.global_block())
 
+    block_nums = startup_program.num_blocks
+    for block_index in range(1, block_nums):
+        current_block = startup_program.block(block_index)
+        # delete useless op
+        need_delete_op = []
+        for op in current_block.ops:
+            inputs, outputs = find_op_input_output(
+                startup_program, current_block, op)
+            inputs += outputs
+            # Todo: delete some concat op
+            if list(set(inputs) & set(vars_in_main_program)) == None:
+                need_delete_op.append(op)
+        delete_ops(current_block, need_delete_op)
 
-def delete_extra_ops_pass(program, config):
-    pass
+        # delete useless var
+        for var in current_block.vars:
+            if var.name not in vars_in_main_program:
+                startup_program._remove_var(var.name)
+
+    return startup_program
