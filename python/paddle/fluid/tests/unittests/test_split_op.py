@@ -296,7 +296,7 @@ class API_TestSplit(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[4, 6, 6], dtype='float64')
             data2 = fluid.layers.data('data2', shape=[1], dtype='int32')
-            x0, x1, x2 = paddle.split(data1, num_or_sections=3, dim=data2)
+            x0, x1, x2 = paddle.split(data1, num_or_sections=3, axis=data2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
@@ -314,7 +314,7 @@ class API_TestSplit2(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[4, 6, 6], dtype='float64')
-            x0, x1, x2 = paddle.split(data1, num_or_sections=3, dim=2)
+            x0, x1, x2 = paddle.split(data1, num_or_sections=3, axis=2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
@@ -330,7 +330,7 @@ class API_TestSplit3(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
-            x0, x1 = paddle.split(data, num_or_sections=(3, 7), dim=1)
+            x0, x1 = paddle.split(data, num_or_sections=(3, 7), axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([1, 10]).astype('float64')
@@ -345,7 +345,7 @@ class API_TestSplit4(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
             index = fluid.layers.data('index', shape=[1], dtype='int32')
-            x0, x1 = paddle.split(data, num_or_sections=(3, index), dim=1)
+            x0, x1 = paddle.split(data, num_or_sections=(3, index), axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([1, 10]).astype('float64')
@@ -364,7 +364,7 @@ class API_TestDygraphSplit(unittest.TestCase):
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = fluid.dygraph.to_variable(input_1)
-            x0, x1, x2 = paddle.split(input, num_or_sections=3, dim=1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
             x0_out = x0.numpy()
             x1_out = x1.numpy()
             x2_out = x2.numpy()
