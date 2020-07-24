@@ -178,6 +178,9 @@ class TestFP16MulOp2(TestMulOp2):
 @unittest.skipIf(not core.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestXPUMulOp1(TestMulOp):
+    def init_dtype_type(self):
+        self.dtype = np.float32
+
     def test_check_output(self):
         place = core.XPUPlace(0)
         self.check_output_with_place(place, atol=1e-1)
@@ -201,6 +204,9 @@ class TestXPUMulOp1(TestMulOp):
 @unittest.skipIf(not core.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestXPUMulOp2(TestMulOp2):
+    def init_dtype_type(self):
+        self.dtype = np.float32
+
     def test_check_output(self):
         place = core.XPUPlace(0)
         self.check_output_with_place(place, atol=2e-1)
