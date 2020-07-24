@@ -1442,7 +1442,6 @@ class OutScaleForTrainingPass(object):
         for op in target_ops:
             for output_var_name in _get_op_output_var_names(op):
                 in_node = graph._find_node_by_name(op.outputs, output_var_name)
-                out_node = graph.create_var_node_from_desc(in_node.var())
                 scale_node = graph.create_persistable_node(
                     name=self._scale_name(in_node.name()),
                     var_type=core.VarDesc.VarType.LOD_TENSOR,
@@ -1457,7 +1456,7 @@ class OutScaleForTrainingPass(object):
                     self._scope,
                     self._place)
                 ins = {'X': in_node}
-                outs = {'Out': out_node, 'OutScale': scale_node}
+                outs = {'OutScale': scale_node}
                 if not self._is_test:
                     state_in_node = graph.create_persistable_node(
                         name=unique_name.generate('scale_state@'),
@@ -1502,7 +1501,6 @@ class OutScaleForTrainingPass(object):
                     inputs=ins,
                     outputs=outs)
                 graph.link_to(in_node, scale_op_node)
-                graph.link_to(scale_op_node, out_node)
                 graph.link_to(scale_op_node, scale_node)
                 if not self._is_test:
                     graph.link_to(state_in_node, scale_op_node)
