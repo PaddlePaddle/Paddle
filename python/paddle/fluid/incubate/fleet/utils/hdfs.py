@@ -154,7 +154,8 @@ class HDFSClient(FS):
         ret, lines = self._run_cmd(cmd)
         if ret:
             # other error
-            if self._test_match(lines) != None:
+            if self._test_match(lines) != None \
+                    or ret == 134: # aborted
                 raise ExecuteError("test -d {} error".format(fs_path))
 
             return False
