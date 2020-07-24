@@ -63,7 +63,7 @@ class TestReaderReset(unittest.TestCase):
                 self.prepare_data(), batch_size=self.batch_size))
 
         train_cp = compiler.CompiledProgram(main_prog).with_data_parallel(
-            places=fluid.cuda_places(0))
+            places=[place])
 
         batch_id = 0
         pass_count = 0
