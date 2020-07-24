@@ -86,16 +86,13 @@ class CrossEntropy(Loss):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.model import Input
-            from paddle.incubate.hapi.vision.models import LeNet
-            from paddle.incubate.hapi.loss import CrossEntropy
+            import paddle.fluid as fluid
+            import paddle.incubate.hapi as hapi
 
-            inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
-            labels = [Input([None, 1], 'int64', name='label')]
+            fluid.enable_dygraph()
 
-            model = LeNet()
-            loss = CrossEntropy()
-            model.prepare(loss_function=loss, inputs=inputs, labels=labels)
+            model = hapi.Model(hapi.vision.LeNet())
+            model.prepare(loss_function=hapi.loss.CrossEntropy())
             
     """
 
@@ -123,16 +120,14 @@ class SoftmaxWithCrossEntropy(Loss):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.model import Input
-            from paddle.incubate.hapi.vision.models import LeNet
-            from paddle.incubate.hapi.loss import SoftmaxWithCrossEntropy
+            import paddle.fluid as fluid
+            import paddle.incubate.hapi as hapi
 
-            inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
-            labels = [Input([None, 1], 'int64', name='label')]
+            fluid.enable_dygraph()
 
-            model = LeNet(classifier_activation=None)
-            loss = SoftmaxWithCrossEntropy()
-            model.prepare(loss_function=loss, inputs=inputs, labels=labels)
+            model = hapi.Model(hapi.vision.LeNet(classifier_activation=None))
+            loss = hapi.loss.SoftmaxWithCrossEntropy()
+            model.prepare(loss_function=loss)
     """
 
     def __init__(self, average=True):
