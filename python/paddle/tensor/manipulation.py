@@ -69,8 +69,8 @@ def concat(x, axis=0, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Raises:
-        TypeError: The dtype of `x` must be one of float16, float32, float64, int32 and int64. 
-        TypeError: The `axis` must be int or Variable.
+        TypeError: The dtype of ``x`` must be one of float16, float32, float64, int32 and int64. 
+        TypeError: The ``axis`` must be int or Variable.
         TypeError: All the Tensors in ``x`` must have the same data type.
 
     Returns:

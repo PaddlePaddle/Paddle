@@ -280,7 +280,7 @@ def concat(input, axis=0, name=None):
             refer to :ref:`api_guide_Name`.
     Raises:
         TypeError: The dtype of input must be one of float16, float32, float64, int32 and int64. 
-        TypeError: The `axis` must be int or Variable.
+        TypeError: The ``axis`` must be int or Variable.
         TypeError: All the Tensors in ``input`` must have the same data type.
 
     Returns:
@@ -333,7 +333,7 @@ def concat(input, axis=0, name=None):
         check_variable_and_dtype(
             x, 'input[' + str(id) + ']',
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
-        if convert_dtype(x.dtype) != convert_dtype(input[0].dtype):
+        if x.dtype != input[0].dtype:
             raise TypeError(
                 "All the Tensors in the input must have the same data type.")
     check_type(axis, 'axis', (int, Variable), 'concat')
