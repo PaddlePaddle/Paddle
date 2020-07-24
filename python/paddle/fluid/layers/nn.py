@@ -6075,6 +6075,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             # the shape of reshaped_3 is [6,8].
     """
     if in_dygraph_mode():
+        #TODO(zhiqiu): enable inplace in dygraph mode.
         if inplace:
             warnings.warn(
                 "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
@@ -6084,8 +6085,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 item.numpy()[0] if isinstance(item, Variable) else item
                 for item in shape
             ]
-        core.ops.reshape2(x, x, 'shape', shape)
-        return dygraph_utils._append_activation_in_dygraph(x, act)
+            out, _ = core.ops.reshape2(x, 'shape', shape)
+            return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'reshape')
@@ -6203,13 +6204,8 @@ def squeeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
-        if isinstance(axes, (list, tuple)):
-            axes = [
-                item.numpy()[0] if isinstance(item, Variable) else item
-                for item in axes
-            ]
-        core.ops.squeeze2(input, input, 'axes', axes)
-        return input
+        out, _ = core.ops.squeeze2(input, 'axes', axes)
+        return out
 
     helper = LayerHelper("squeeze", **locals())
     check_variable_and_dtype(
@@ -6258,13 +6254,8 @@ def unsqueeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
-        if isinstance(axes, (list, tuple)):
-            axes = [
-                item.numpy()[0] if isinstance(item, Variable) else item
-                for item in axes
-            ]
-        core.ops.unsqueeze2(input, input, 'axes', axes)
-        return input
+        out, _ = core.ops.unsqueeze2(input, 'axes', axes)
+        return out
 
     if not isinstance(axes, (int, list, tuple, Variable)):
         raise TypeError(
