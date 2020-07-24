@@ -102,7 +102,7 @@ def _current(name):
     return t, init
 
 
-def _begin(name):
+def _init_checkpoint(name):
     if not _check_env():
         return False
 
@@ -119,15 +119,22 @@ def _begin(name):
     return True
 
 
-def _next(name):
-    if not _check_env():
-        return False
-
+def _beyond_restored(name):
     t, init = _current(name)
     assert not init, "internal error, {} must be initted".format(name)
 
     if not t.beyond_restored():
-        raise StopIteration
+        return False
+
+    return True
+
+
+def _ignore_epoch(name):
+    if not _init_checkpoint(name):
+        return False
+
+    if _beyond_restored(name):
+        return False
 
     return True
 
