@@ -115,6 +115,10 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
     """
     if high is None:
+        if low <= 0:
+            raise ValueError(
+                "If high is None, low must be greater than 0, but received low = {0}.".
+                format(low))
         high = low
         low = 0
     if dtype is None:
