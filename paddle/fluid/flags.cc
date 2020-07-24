@@ -14,4 +14,16 @@
 
 #include "gflags/gflags.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+
+/**
+ * MKLDNN related FLAG
+ * Name: use_mkldnn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note:
+ */
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+
+#endif

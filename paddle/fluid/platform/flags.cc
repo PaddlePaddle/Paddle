@@ -473,17 +473,3 @@ DEFINE_double(local_exe_sub_scope_limit, 256.0,  // MBytes
               "each CUDAPlace. If you don't need to limit the memory, "
               "you should set FLAGS_local_exe_sub_scope_limit=-1. "
               "The default value is 256 MBytes.");
-
-#ifdef PADDLE_WITH_MKLDNN
-
-/**
- * MKLDNN related FLAG
- * Name: use_mkldnn
- * Since Version:
- * Value Range: bool, default=false
- * Example:
- * Note:
- */
-DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
-
-#endif
