@@ -1006,16 +1006,17 @@ class TestGradientMergeOptimizer(unittest.TestCase):
         ])
 
         # merge block
-        self.assertEqual(len(main_program.block(1).ops), 4)
+        self.assertEqual(len(main_program.block(1).ops), 2)
         self.assertEqual([op.type for op in main_program.block(1).ops], [
-            'elementwise_add', 'assign', 'elementwise_add', 'assign'
+            'elementwise_add',
+            'elementwise_add',
         ])
 
         # reset block
-        self.assertEqual(len(main_program.block(2).ops), 8)
+        self.assertEqual(len(main_program.block(2).ops), 6)
         self.assertEqual([op.type for op in main_program.block(2).ops], [
-            'elementwise_add', 'scale', 'assign', 'elementwise_add', 'scale',
-            'assign', 'fill_constant', 'fill_constant'
+            'elementwise_add', 'scale', 'elementwise_add', 'scale',
+            'fill_constant', 'fill_constant'
         ])
 
         # optimize block

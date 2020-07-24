@@ -4934,7 +4934,7 @@ class LookaheadOptimizer(object):
 class GradientMergeOptimizer(object):
     """
     Gradient Merge, also called as Gradient Accumulation,
-    is a training strategy for bigger batches. With this strategy,
+    is a training strategy for larger batches. With this strategy,
     the parameter will not be updated until specific steps.
 
     For each step, the forward network and the backward network
@@ -5089,27 +5089,47 @@ class GradientMergeOptimizer(object):
                 with switch.case(mod != zero_var):
                     # 1. update the gradient_merge_vars
                     #  gradient_merge_vars += gradient_vars
+                    cur_block = main_block.program.current_block()
                     for param_name in param_names:
                         grad = param_to_grad[param_name]
                         grad_merge = param_to_gradient_merge[param_name]
-                        tmp_var = layers.elementwise_add(grad, grad_merge)
-                        layers.assign(input=tmp_var, output=grad_merge)
+                        cur_block.append_op(
+                            type="elementwise_add",
+                            inputs={'X': grad,
+                                    'Y': grad_merge},
+                            outputs={'Out': grad_merge},
+                            attrs={'axis': -1,
+                                   'use_mkldnn': False})
 
                 with switch.default():
                     # 1. update the graient_vars
                     #     gradient_vars += gradient_merge_vars
+                    cur_block_idx = main_block.program.current_block_idx
+                    cur_block = main_block.program.current_block()
                     for param_name in param_names:
                         grad = param_to_grad[param_name]
                         grad_merge = param_to_gradient_merge[param_name]
-                        tmp_var = layers.elementwise_add(grad, grad_merge)
                         if self.avg:
-                            tmp_var = layers.scale(tmp_var, 1.0 / self.k_steps)
-                        layers.assign(input=tmp_var, output=grad)
+                            tmp_var = layers.elementwise_add(grad, grad_merge)
+                            cur_block.append_op(
+                                type='scale',
+                                inputs={'X': tmp_var},
+                                outputs={'Out': grad},
+                                attrs={
+                                    'scale': 1.0 / self.k_steps,
+                                    'bias': 0.0,
+                                    'bias_after_scale': False
+                                })
+                        else:
+                            cur_block.append_op(
+                                type="elementwise_add",
+                                inputs={'X': grad,
+                                        'Y': grad_merge},
+                                outputs={'Out': grad},
+                                attrs={'axis': -1,
+                                       'use_mkldnn': False})
 
                     # 2. apply_optimize
-                    cur_block_idx = main_block.program.current_block_idx
-                    cur_block = main_block.program.current_block()
-
                     target_grad_block = main_block.program._create_block(
                         parent_idx=cur_block.parent_idx)
                     target_grad_block._set_forward_block_idx(cur_block_idx)
@@ -5128,5 +5148,4 @@ class GradientMergeOptimizer(object):
                             dtype=grad_merge.dtype,
                             value=0.0,
                             out=grad_merge)
-
         return optimize_ops, params_grads
