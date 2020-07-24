@@ -169,7 +169,7 @@ def ones_like(x, dtype=None, name=None):
 	:alias_main: paddle.ones_like
 	:alias: paddle.tensor.ones_like, paddle.tensor.creation.ones_like
 
-    This OP returns a tensor filled with value 1, with the same shape of ``x``.
+    This OP returns a tensor filled with the value 1, with the same shape of ``x``.
     The data type of the output is the same as ``x``, or if ``dtype`` is not
     None, it is the same as ``dtype``.
 
