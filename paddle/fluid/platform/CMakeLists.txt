@@ -25,7 +25,7 @@ if (WITH_PYTHON)
   endif(NOT WIN32)
 endif()
 
-cc_library(flags SRCS flags.cc DEPS gflags common_flags)
+cc_library(flags SRCS flags.cc DEPS gflags)
 
 cc_library(errors SRCS errors.cc DEPS error_codes_proto)
 cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
