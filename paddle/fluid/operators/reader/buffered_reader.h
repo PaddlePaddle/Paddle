@@ -61,6 +61,7 @@ class BufferedReader : public framework::DecoratedReader {
   // buffer, just read async and create futures as buffer size. However, to
   // malloc tensors every time is extremely slow. Here we store all data in
   // buffers and prevent alloc every time.
+  bool is_same_place_;
   std::vector<TensorVec> cpu_buffer_;
   std::vector<TensorVec> cuda_pinned_buffer_;
   size_t prev_pos_{-1UL};

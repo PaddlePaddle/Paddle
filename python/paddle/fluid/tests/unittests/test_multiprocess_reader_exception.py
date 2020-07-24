@@ -77,7 +77,7 @@ class TestMultiprocessReaderException(unittest.TestCase):
                     reader.decorate_sample_generator(
                         decorated_reader,
                         batch_size=batch_size,
-                        places=fluid.cuda_places())
+                        places=fluid.cuda_places(0))
                 else:
                     reader.decorate_sample_generator(
                         decorated_reader,
@@ -94,6 +94,7 @@ class TestMultiprocessReaderException(unittest.TestCase):
                     num = 0
                     try:
                         for data in reader():
+                            print(data)
                             exe.run(feed=data, fetch_list=[image_p_1])
                             num += 1
                         self.assertEquals(num, batch_num)

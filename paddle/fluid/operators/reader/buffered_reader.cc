@@ -42,6 +42,7 @@ BufferedReader::BufferedReader(
       place_(place),
       buffer_size_(buffer_size) {
   VLOG(1) << "BufferedReader";
+  is_same_place_ = false;
   cpu_buffer_.resize(buffer_size);
   cuda_pinned_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
@@ -64,6 +65,16 @@ void BufferedReader::ReadAsync(size_t i) {
 
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
+      // NOTE: [Copy processing of different input devices]
+      // We may accept input tensor in three different devices:
+      //   - CPUPlace
+      //   - CUDAPinnedPlace
+      //   - CUDAPlace
+      // CUDA Stream Synchronizing is slow, in order to avoid Synchronizing
+      // in BufferedReader thread, we do data copy as follows:
+      //   - If src Tensor on CPU memory, we copy it to CUDAPinned memory
+      //   - IF src Tensor on CUDAPinned memory, we use it directly
+      //   - IF src Tensor on CUDA memory, we use it directly
       platform::CUDAPinnedPlace cuda_pinned_place;
       TensorVec &cuda_pinned = cuda_pinned_buffer_[i];
       if (cuda_pinned.empty()) {
@@ -77,25 +88,24 @@ void BufferedReader::ReadAsync(size_t i) {
 
       std::vector<void *> cuda_pinned_ptrs;
       cuda_pinned_ptrs.reserve(cpu.size());
-      for (size_t i = 0; i < cpu.size(); ++i) {
-        cuda_pinned[i].Resize(cpu[i].dims());
-        cuda_pinned[i].set_layout(cpu[i].layout());
-        cuda_pinned_ptrs.emplace_back(
-            cuda_pinned[i].mutable_data(cuda_pinned_place, cpu[i].type()));
-      }
-
       platform::RecordEvent record_event("BufferedReader:MemoryCopy");
       for (size_t i = 0; i < cpu.size(); ++i) {
-        auto cpu_place = cpu[i].place();
-        auto cpu_ptr = cpu[i].data<void>();
-        auto cuda_pinned_ptr = cuda_pinned_ptrs[i];
-        auto size =
-            cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
+        if (platform::is_cpu_place(cpu[i].place())) {
+          cuda_pinned[i].Resize(cpu[i].dims());
+          cuda_pinned[i].set_layout(cpu[i].layout());
+          cuda_pinned_ptrs.emplace_back(
+              cuda_pinned[i].mutable_data(cuda_pinned_place, cpu[i].type()));
+          auto size =
+              cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
 
-        memory::Copy(cuda_pinned_place, cuda_pinned_ptr,
-                     BOOST_GET_CONST(platform::CPUPlace, cpu_place), cpu_ptr,
-                     size);
-        cuda_pinned[i].set_lod(cpu[i].lod());
+          memory::Copy(cuda_pinned_place, cuda_pinned_ptrs[i],
+                       BOOST_GET_CONST(platform::CPUPlace, cpu[i].place()),
+                       cpu[i].data<void>(), size);
+          cuda_pinned[i].set_lod(cpu[i].lod());
+        } else {
+          // we set same place flag & use cpu[i] directly
+          is_same_place_ = true;
+        }
       }
     }
 #endif
@@ -130,8 +140,9 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
     return;
   }
 
-  *out = std::move(platform::is_gpu_place(place_) ? cuda_pinned_buffer_[i]
-                                                  : cpu_buffer_[i]);
+  *out = std::move((platform::is_gpu_place(place_) && !is_same_place_)
+                       ? cuda_pinned_buffer_[i]
+                       : cpu_buffer_[i]);
 
   // Do not push current position into ReadAsync. Push the previous position
   // Since all computation in fluid are async, change the data of

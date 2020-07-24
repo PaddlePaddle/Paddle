@@ -173,6 +173,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
     InitP2P(devices);
   }
   places.emplace_back(platform::CPUPlace());
+  places.emplace_back(platform::CUDAPinnedPlace());
   platform::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_MKLDNN
