@@ -261,6 +261,7 @@ class TestFleetBase(unittest.TestCase):
             time.sleep(0.1)
             if stat0 is not None:
                 break
+
         while True:
             stat1 = tr1.poll()
             time.sleep(0.1)
