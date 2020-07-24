@@ -97,7 +97,7 @@ class HDFSClient(FS):
         if not self.is_exist(fs_path):
             return []
 
-        dirs, _ = self.ls_dir(fs_path)
+        dirs, files = self.ls_dir(fs_path)
         return dirs
 
     @_handle_errors(max_time_out=60 * 1000)
@@ -119,9 +119,6 @@ class HDFSClient(FS):
         for line in lines:
             arr = line.split()
             if len(arr) != 8:
-                continue
-
-            if fs_path not in arr[7]:
                 continue
 
             p = PurePosixPath(arr[7])
