@@ -10436,8 +10436,8 @@ def gaussian_random(shape,
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
             int64).
-        mean(float|int, optional): Mean of the output tensor, defaults is 0.0.
-        std(float|int, optional): Standard deviation of the output tensor, defaults
+        mean(float|int, optional): Mean of the output tensor, default is 0.0.
+        std(float|int, optional): Standard deviation of the output tensor, default
             is 1.0.
         seed(int, optional): ${seed_comment}
         dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
