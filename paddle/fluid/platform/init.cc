@@ -166,14 +166,15 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
       LOG(WARNING) << "Invalid devices id.";
       continue;
     }
-
     places.emplace_back(platform::CUDAPlace(devices[i]));
   }
   if (init_p2p) {
     InitP2P(devices);
   }
   places.emplace_back(platform::CPUPlace());
+#ifdef PADDLE_WITH_CUDA
   places.emplace_back(platform::CUDAPinnedPlace());
+#endif
   platform::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_MKLDNN
