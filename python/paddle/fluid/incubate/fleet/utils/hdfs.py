@@ -112,7 +112,7 @@ class HDFSClient(FS):
         ret, lines = self._run_cmd(cmd)
 
         if ret != 0:
-            raise ExecuteError
+            raise ExecuteError("ls {} error".format(fs_path))
 
         dirs = []
         files = []
@@ -151,7 +151,7 @@ class HDFSClient(FS):
         if ret:
             # other error
             if self._test_match(lines) != None:
-                raise ExecuteError
+                raise ExecuteError("test -d {} error".format(fs_path))
 
             return False
 
@@ -171,38 +171,36 @@ class HDFSClient(FS):
             for l in out:
                 if "No such file or directory" in l:
                     return False
-            raise ExecuteError
+            raise ExecuteError("ls {} error".format(fs_path))
 
         return True
 
     @_handle_errors()
     def upload(self, local_path, fs_path):
         if self.is_exist(fs_path):
-            raise FSFileExistsError
+            raise FSFileExistsError("{} exists".format(fs_path))
 
         local = LocalFS()
         if not local.is_exist(local_path):
-            raise FSFileNotExistsError
+            raise FSFileNotExistsError("{} not exists".format(local_path))
 
         cmd = "{} -put {} {}".format(self._base_cmd, local_path, fs_path)
         ret, lines = self._run_cmd(cmd)
         if ret != 0:
-            raise ExecuteError
+            raise ExecuteError("put {} {} error".format(local_path, fs_path))
 
     @_handle_errors()
     def download(self, fs_path, local_path):
         if self.is_exist(local_path):
-            logging.fatal("{} exits".format(fs_path))
-            raise FSFileExistsError
+            raise FSFileExistsError("{} exists".format(local_path))
 
         if not self.is_exist(fs_path):
-            logging.fatal("{} not exits".format(fs_path))
-            raise FSFileNotExistsError
+            raise FSFileNotExistsError("{} not exits".format(fs_path))
 
         cmd = "{} -get {} {}".format(self._base_cmd, fs_path, local_path)
         ret, lines = self._run_cmd(cmd)
         if ret != 0:
-            raise ExecuteError
+            raise ExecuteError("get {} {} error".format(fs_path, local_path))
 
     @_handle_errors()
     def mkdirs(self, fs_path):
@@ -219,13 +217,13 @@ class HDFSClient(FS):
                     out_hdfs = True
                     break
             if not out_hdfs:
-                raise ExecuteError
+                raise ExecuteError("mkdir {} error".format(fs_path))
 
         if out_hdfs and not self.is_exist(fs_path):
             cmd = "{} -mkdir -p {}".format(self._base_cmd, fs_path)
             ret, lines = self._run_cmd(cmd)
             if ret != 0:
-                raise ExecuteError
+                raise ExecuteError("mkdir -p {} error".format(fs_path))
 
     @_handle_errors()
     def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
@@ -234,29 +232,33 @@ class HDFSClient(FS):
 
         if test_exists:
             if not self.is_exist(fs_src_path):
-                raise FSFileNotExistsError
+                raise FSFileNotExistsError("{} is not exists".format(
+                    fs_src_path))
 
             if self.is_exist(fs_dst_path):
-                raise FSFileExistsError
+                raise FSFileExistsError(
+                    "mv {} to {}, but {} exists already".format(
+                        fs_src_path, fs_dst_path, fs_dst_path))
 
         cmd = "{} -mv {} {}".format(self._base_cmd, fs_src_path, fs_dst_path)
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
-            raise ExecuteError
+            raise ExecuteError("mv {} {} error".format(fs_src_path,
+                                                       fs_dst_path))
 
     @_handle_errors()
     def _rmr(self, fs_path):
         cmd = "{} -rmr {}".format(self._base_cmd, fs_path)
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
-            raise ExecuteError
+            raise ExecuteError("rmr {} error".format(fs_path))
 
     @_handle_errors()
     def _rm(self, fs_path):
         cmd = "{} -rm {}".format(self._base_cmd, fs_path)
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
-            raise ExecuteError
+            raise ExecuteError("rm {} error".format(fs_path))
 
     def delete(self, fs_path):
         if not self.is_exist(fs_path):
