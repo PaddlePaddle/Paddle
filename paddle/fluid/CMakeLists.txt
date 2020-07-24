@@ -1,3 +1,5 @@
+cc_library(common_flags SRCS flags.cc DEPS gflags)
+
 add_subdirectory(memory)
 add_subdirectory(platform)
 add_subdirectory(framework)
