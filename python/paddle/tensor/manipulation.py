@@ -593,40 +593,41 @@ def squeeze(x, axis=None, name=None):
 def unsqueeze(x, axis, name=None):
     """
 	:alias_main: paddle.unsqueeze
-	:alias: paddle.unsqueeze,paddle.tensor.unsqueeze,paddle.tensor.manipulation.unsqueeze
+	:alias: paddle.unsqueeze, paddle.tensor.unsqueeze, paddle.tensor.manipulation.unsqueeze
 
-    Insert single-dimensional entries to the shape of a Tensor. Takes one
-    required argument axes, a list of dimensions that will be inserted.
-    Dimension indices in axes are as seen in the output tensor.
+    Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
+    required argument axis, a dimension or list of dimensions that will be inserted.
+    Dimension indices in axis are as seen in the output tensor.
 
     For example:
 
     .. code-block:: text
 
       Given a tensor such that tensor with shape [3, 4, 5],
-      then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
+      then unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
 
     Args:
-        input (Variable): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
-        axis (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
+        x (Tensor): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
+        axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
         name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Variable: Output unsqueezed Tensor. Data type is same as input Tensor.
+        Variable: Output unsqueezed Tensor with the same data type as input Tensor.
 
     Examples:
         .. code-block:: python
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
-            with fluid.dygraph.guard():
-                input_1 = np.random.random([5, 10]).astype("int32")
-                # input is a variable which shape is [5, 10]
-                input = fluid.dygraph.to_variable(input_1)
-
-                output = paddle.unsqueeze(input, axes=[1])
-                # output.shape [5, 1, 10]
+            paddle.enable_imperative()
+            x = paddle.rand([5, 10])
+            
+            out1 = paddle.unsqueeze(x, axis=0)
+            print(out1.shape)  # [1, 5, 10]
+            
+            out2 = paddle.unsqueeze(x, axis=[0, 2]) 
+            print(out2.shape)  # [1, 5, 1, 10]
+            
     """
     if axis == None:
         axis = []
