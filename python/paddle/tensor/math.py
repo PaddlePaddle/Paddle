@@ -281,7 +281,6 @@ def _elementwise_op(helper):
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
-    out = helper.kwargs.get('out', None)
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
