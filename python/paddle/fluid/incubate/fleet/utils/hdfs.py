@@ -52,7 +52,7 @@ def _handle_errors(max_time_out=None):
             while True:
                 try:
                     return f(*args, **kwargs)
-                except ExecuteError as e:
+                except Exception as e:
                     if time.time() - start >= time_out:
                         raise FSTimeOut
                     time.sleep(inter)
