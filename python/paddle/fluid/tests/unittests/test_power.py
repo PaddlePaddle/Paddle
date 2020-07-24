@@ -20,7 +20,7 @@ from paddle.fluid import Program, program_guard
 import numpy as np
 import unittest
 
-def _run(mode, x, y):
+def _run_power(mode, x, y):
     # dynamic mode
     if mode=='dynamic':
         paddle.enable_imperative()
@@ -70,81 +70,81 @@ class TestPowerAPI(unittest.TestCase):
         dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = np.random.rand() * 10
-        res = _run('dynamic', x, y)
+        res = _run_power('dynamic', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
-        res = _run('static', x, y)
+        res = _run_power('static', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
 
         # test 1-d float tensor ** int scalar
         dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = int(np.random.rand() * 10)
-        res = _run('dynamic', x, y)
+        res = _run_power('dynamic', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
-        res = _run('static', x, y)
+        res = _run_power('static', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
 
 #        # test 1-d int tensor ** float scalar
 #        dims = (np.random.randint(200, 300),)
 #        x = (np.random.rand(*dims) * 10).astype(np.int64)
 #        y = np.random.rand() * 10
-#        res = _run('dynamic', x, y)
+#        res = _run_power('dynamic', x, y)
 #        self.assertTrue(np.allclose(res, np.power(x, y)))
-#        res = _run('static', x, y)
+#        res = _run_power('static', x, y)
 #        self.assertTrue(np.allclose(res, np.power(x, y)))
 
         # test 1-d int tensor ** int scalar
         dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.int64)
         y = int(np.random.rand() * 10)
-        res = _run('dynamic', x, y)
+        res = _run_power('dynamic', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
-        res = _run('static', x, y)
+        res = _run_power('static', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
 
         # test 1-d float tensor ** 1-d float tensor
         dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.rand(*dims) * 10).astype(np.float64)
-        res = _run('dynamic', x, y)
+        res = _run_power('dynamic', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
-        res = _run('static', x, y)
+        res = _run_power('static', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
 
 #        # test 1-d float tensor ** 1-d int tensor
 #        dims = (np.random.randint(200, 300),)
 #        x = (np.random.rand(*dims) * 10).astype(np.float64)
 #        y = (np.random.rand(*dims) * 10).astype(np.int64)
-#        res = _run('dynamic', x, y)
+#        res = _run_power('dynamic', x, y)
 #        self.assertTrue(np.allclose(res, np.power(x, y)))
-#        res = _run('static', x, y)
+#        res = _run_power('static', x, y)
 #        self.assertTrue(np.allclose(res, np.power(x, y)))
 
 #        # test 1-d int tensor ** 1-d float tensor
 #        dims = (np.random.randint(200, 300),)
 #        x = (np.random.rand(*dims) * 10).astype(np.int64)
 #        y = (np.random.rand(*dims) * 10).astype(np.float64)
-#        res = _run('dynamic', x, y)
+#        res = _run_power('dynamic', x, y)
 #        self.assertTrue(np.allclose(res, np.power(x, y)))
-#        res = _run('static', x, y)
+#        res = _run_power('static', x, y)
 #        self.assertTrue(np.allclose(res, np.power(x, y)))
 
         # test 1-d int tensor ** 1-d int tensor
         dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.int64)
         y = (np.random.rand(*dims) * 10).astype(np.int64)
-        res = _run('dynamic', x, y)
+        res = _run_power('dynamic', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
-        res = _run('static', x, y)
+        res = _run_power('static', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
 
         # test broadcast
         dims = (np.random.randint(1, 10), np.random.randint(5, 10), np.random.randint(5, 10))
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.rand(dims[-1]) * 10).astype(np.float64)
-        res = _run('dynamic', x, y)
+        res = _run_power('dynamic', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
-        res = _run('static', x, y)
+        res = _run_power('static', x, y)
         self.assertTrue(np.allclose(res, np.power(x, y)))
 
 
@@ -159,8 +159,8 @@ class TestPowerError(unittest.TestCase):
         dims = (np.random.randint(1, 10), np.random.randint(5, 10), np.random.randint(5, 10))
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.rand(dims[-1] + 1) * 10).astype(np.float64)
-        self.assertRaises(fluid.core.EnforceNotMet, _run, 'dynamic', x, y)
-        self.assertRaises(fluid.core.EnforceNotMet, _run, 'static', x, y)
+        self.assertRaises(fluid.core.EnforceNotMet, _run_power, 'dynamic', x, y)
+        self.assertRaises(fluid.core.EnforceNotMet, _run_power, 'static', x, y)
 
 
 if __name__ == '__main__':
