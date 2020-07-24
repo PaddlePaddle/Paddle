@@ -79,7 +79,6 @@ __all__ = [
         'elementwise_max',
         'elementwise_min',
         'elementwise_mod',
-        'elementwise_pow',
         'elementwise_sub',
         'exp',
         'floor',
@@ -87,7 +86,7 @@ __all__ = [
         'log',
         'mul',
         'multiplex',
-        'pow',
+        'power',
         'reciprocal',
         'reduce_max',
         'reduce_min',
@@ -192,24 +191,21 @@ Examples:
 """ % op_type
     return func
 
-@templatedoc()
-def pow(x, exponent, name=None):
+def power(x, exponent, name=None):
     """
-	:alias_main: paddle.pow
-	:alias: paddle.pow,paddle.tensor.pow,paddle.tensor.math.pow
-
-    This is Pow activation operator.
+	:alias_main: paddle.power
+	:alias: paddle.power,paddle.tensor.power,paddle.tensor.math.power
 
     :math:``out = x^{exponent}``
 
     Args:
-        x(Variable): A ``Variable`` with type ``float32`` or ``float64``.
-        exponent(float32|Variable): A scalar with type ``float32`` or a ``Variable`` with shape [1] and type ``float32``.
+        x(Tensor): A ``Tensor`` with type ``float32`` or ``float64``.
+        exponent(float32|Tensor): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A ``Variable`` with type same as ``x``.
+        Tensor: A ``Tensor`` with type same as ``x``.
 
     Examples:
 
@@ -224,29 +220,39 @@ def pow(x, exponent, name=None):
             x_data = np.array([1, 2, 3])
             exponent = 2
             x = paddle.imperative.to_variable(x_data)
-            res = paddle.pow(x, exponent)
+            res = paddle.power(x, exponent)
             print(res.numpy()) # [1 4 9]
             
             # example 2: exponent is a Variable
             exponent = paddle.fill_constant(shape=[1], value=2, dtype='float32')
-            res = paddle.pow(x, exponent)
+            res = paddle.power(x, exponent)
             print(res.numpy()) # [1 4 9]
     """
 
+    # in dynamic graph mode
     if in_dygraph_mode():
-        return core.ops.pow(x, 'factor', exponent)
-
-    inputs = {'X': x}
-    attrs = {}
-    if isinstance(exponent, Variable):
-        exponent.stop_gradient = True
-        inputs['FactorTensor'] = exponent
+        # exponent is scalar
+        if isinstance(exponent, (int, long, float)):
+            return core.ops.pow(x, 'factor', exponent)
+        # exponent is Tensor
+        else:
+            return _elementwise_op_in_dygraph(
+                x, exponent, axis=-1, act=None, op_name='elementwise_pow')
+    # in static graph mode
     else:
-        attrs['factor'] = exponent
-
-    helper = LayerHelper('pow', **locals())
-    helper.append_op(
-        type='pow', inputs=inputs, outputs={}, attrs=attrs)
+        # exponent is scalar
+        if isinstance(exponent, (int, long, float)):
+            helper = LayerHelper('pow', **locals())
+            inputs = {'X': x}
+            attrs = {'factor': exponent}
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+            return out
+        # exponent is Tensor
+        else:
+            y = exponent
+            return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 __ops__noattr__ = [
     'atan',
