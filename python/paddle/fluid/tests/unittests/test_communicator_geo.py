@@ -127,6 +127,9 @@ class RunServer(TestCommunicatorGeoEnd2End):
         pass
 
 os.environ["TRAINING_ROLE"] = "PSERVER"
+os.environ["http_proxy"] = ""
+os.environ["https_proxy"] = ""
+
 half_run_server = RunServer()
 half_run_server.run_ut()
 """
@@ -135,6 +138,9 @@ half_run_server.run_ut()
         with open(server_file, "w") as wb:
             wb.write(run_server_cmd)
         os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["http_proxy"] = ""
+        os.environ["https_proxy"] = ""
+
         _python = sys.executable
 
         ps_cmd = "{} {}".format(_python, server_file)
@@ -146,6 +152,8 @@ half_run_server.run_ut()
         time.sleep(5)
 
         os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["http_proxy"] = ""
+        os.environ["https_proxy"] = ""
 
         self.run_ut()
         ps_proc.kill()
