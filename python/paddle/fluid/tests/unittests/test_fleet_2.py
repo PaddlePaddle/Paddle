@@ -82,7 +82,8 @@ class TestFleet2(unittest.TestCase):
             print("do not support pslib test, skip")
             return
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "InMemoryDataset")
         dataset.set_batch_size(1)
         dataset.set_thread(2)
         dataset.set_filelist([

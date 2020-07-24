@@ -14,11 +14,17 @@
 
 # TODO: define distributed api under this directory, 
 from .base.distributed_strategy import DistributedStrategy
-from .dataset import DatasetFactory
+from .dataset import *
 from .base.fleet_base import Fleet
 from .base.util_factory import UtilBase
 
-__all__ = ["DistributedStrategy", "UtilBase", 'DatasetFactory']
+__all__ = [
+    "DistributedStrategy",
+    "UtilBase",
+    'DatasetFactory',
+    'DatasetBase',
+    'InMemoryDataset',
+    'QueueDataset']
 
 fleet = Fleet()
 init = fleet.init

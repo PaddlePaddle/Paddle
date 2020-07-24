@@ -190,7 +190,8 @@ class TestPipeline(unittest.TestCase):
         # The following dataset is only used for the 
         # interface 'train_from_dataset'.
         # And it has no actual meaning.
-        dataset = paddle.fleet.DatasetFactory().create_dataset('FileInstantDataset')
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            'FileInstantDataset')
         dataset.set_batch_size(1)
         dataset.set_thread(1)
         dataset.set_filelist(['/tmp/tmp_2.txt'])
