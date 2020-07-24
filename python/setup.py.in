@@ -145,10 +145,10 @@ packages=['paddle',
           'paddle.incubate.complex.tensor',
           'paddle.fleet',
           'paddle.fleet.base',
-          'paddle.fleet.collective',
+          'paddle.fleet.meta_optimizers',
+          'paddle.fleet.runtime',
           'paddle.fleet.dataset',
           'paddle.fleet.metrics',
-          'paddle.fleet.parameter_server',
           'paddle.fleet.proto',
           'paddle.framework',
           'paddle.fluid',
@@ -324,6 +324,8 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
         else:
             command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
+        # The dynamic library compiled under aarch64 is greater than 64M,
+        # and an oversize error will be reported when using patchelf.
         if platform.machine() != 'aarch64':
           if os.system(command) != 0:
               raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))

@@ -163,6 +163,148 @@ class TestAtan(TestActivation, TestParameter):
             self.assertEqual(z, z_expected)
 
 
+class TestSinh(TestActivation):
+    def setUp(self):
+        self.op_type = "sinh"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.sinh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([0.1])
+            x = fluid.dygraph.to_variable(np_x)
+            z = fluid.layers.sinh(x).numpy()
+            z_expected = np.sinh(np_x)
+            self.assertTrue(np.allclose(z, z_expected))
+
+    def test_api(self):
+        test_data_shape = [11, 17]
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_x = np.random.uniform(0.1, 1,
+                                        test_data_shape).astype("float32")
+            data_x = fluid.layers.data(
+                name="data_x",
+                shape=test_data_shape,
+                append_batch_size=False,
+                dtype="float32")
+
+            pd_sinh_out = fluid.layers.sinh(data_x)
+            exe = fluid.Executor(place=fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            np_sinh_res = exe.run(fluid.default_main_program(),
+                                  feed={"data_x": input_x},
+                                  fetch_list=[pd_sinh_out])
+
+        expected_res = np.sinh(input_x)
+        self.assertTrue(np.allclose(np_sinh_res, expected_res))
+
+    def test_backward(self):
+        test_data_shape = [11, 17]
+        with fluid.dygraph.guard():
+            input_x = np.random.uniform(0.1, 1,
+                                        test_data_shape).astype("float32")
+            var = fluid.dygraph.to_variable(input_x)
+            var.stop_gradient = False
+            loss = fluid.layers.sinh(var)
+            loss.backward()
+            grad_var = var.gradient()
+            self.assertEqual(grad_var.shape, input_x.shape)
+
+
+class TestSinhOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.sinh, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.sinh, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.sinh(x_fp16)
+
+
+class TestCosh(TestActivation):
+    def setUp(self):
+        self.op_type = "cosh"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.cosh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([0.1])
+            x = fluid.dygraph.to_variable(np_x)
+            z = fluid.layers.cosh(x).numpy()
+            z_expected = np.cosh(np_x)
+            self.assertTrue(np.allclose(z, z_expected))
+
+    def test_api(self):
+        test_data_shape = [11, 17]
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_x = np.random.uniform(0.1, 1,
+                                        test_data_shape).astype("float32")
+            data_x = fluid.layers.data(
+                name="data_x",
+                shape=test_data_shape,
+                append_batch_size=False,
+                dtype="float32")
+
+            pd_cosh_out = paddle.cosh(data_x)
+            exe = fluid.Executor(place=fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            np_cosh_res = exe.run(fluid.default_main_program(),
+                                  feed={"data_x": input_x},
+                                  fetch_list=[pd_cosh_out])
+
+        expected_res = np.cosh(input_x)
+        self.assertTrue(np.allclose(np_cosh_res, expected_res))
+
+    def test_backward(self):
+        test_data_shape = [11, 17]
+        with fluid.dygraph.guard():
+            input_x = np.random.uniform(0.1, 1,
+                                        test_data_shape).astype("float32")
+            var = fluid.dygraph.to_variable(input_x)
+            var.stop_gradient = False
+            loss = fluid.layers.cosh(var)
+            loss.backward()
+            grad_var = var.gradient()
+            self.assertEqual(grad_var.shape, input_x.shape)
+
+
+class TestCoshOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.cosh, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.cosh, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.cosh(x_fp16)
+
+
 class TestTanhShrink(TestActivation):
     def setUp(self):
         self.op_type = "tanh_shrink"
@@ -1181,8 +1323,10 @@ create_test_act_fp16_class(TestAbs)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, grad_check=False)
 create_test_act_fp16_class(TestCos, grad_atol=0.85)
+create_test_act_fp16_class(TestCosh, grad_atol=0.85)
 create_test_act_fp16_class(TestAcos, grad_atol=0.85)
 create_test_act_fp16_class(TestSin)
+create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
 create_test_act_fp16_class(TestAtan)
 create_test_act_fp16_class(TestRound, grad_check=False)
