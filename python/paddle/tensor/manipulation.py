@@ -631,7 +631,7 @@ def unsqueeze(x, axis, name=None):
     """
     if axis == None:
         axis = []
-    elif isinstance(axis):
+    elif isinstance(axis, int):
         axis = [axis]
 
     return layers.unsqueeze(x, axis, name)
