@@ -125,6 +125,8 @@ class RunServer(TestCommunicatorHalfAsyncEnd2End):
     def runTest(self):
         pass
 
+os.environ["http_proxy"] = ""
+os.environ["https_proxy"] = ""
 os.environ["TRAINING_ROLE"] = "PSERVER"
 half_run_server = RunServer()
 half_run_server.run_ut()
@@ -142,6 +144,8 @@ half_run_server.run_ut()
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
+        os.environ["http_proxy"] = ""
+        os.environ["https_proxy"] = ""
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["FLAGS_communicator_send_queue_size"] = "1"
         os.environ["FLAGS_communicator_max_merge_var_num"] = "1"
