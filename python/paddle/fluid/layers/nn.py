@@ -4807,14 +4807,14 @@ def split(input, num_or_sections, dim=-1, name=None):
     Split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
+        input (Variable): A N-D Tensor or LoDTensor. The data type is float32, float64, int32 or int64..
         num_or_sections (int|list|tuple): If :attr:`num_or_sections` is an integer,
             then the integer indicates the number of equal sized sub-Tensors
             that the Tensor will be divided into. If :attr:`num_or_sections`
             is a list or tuple, the length of it indicates the number of
             sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
             :attr:`dim` dimension orderly. The length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
-        dim (int32|Varible, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. The dimension along which to split. If :math:`dim < 0`, the
+        dim (int32|Variable, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`. Default is -1.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
@@ -4822,8 +4822,8 @@ def split(input, num_or_sections, dim=-1, name=None):
         list(Variable): The list of segmented Tensor variables.
 
     Raises:
-        TypeError: num_or_sections is not int, list or tuple.
-        TypeError: dim is not int or Variable.
+        TypeError: ``num_or_sections`` is not int, list or tuple.
+        TypeError: ``dim`` is not int or Variable.
 
     Example:
         .. code-block:: python
