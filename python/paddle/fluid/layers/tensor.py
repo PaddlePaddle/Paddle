@@ -270,7 +270,7 @@ def concat(input, axis=0, name=None):
 
     Args:
         input(list): List of input Tensors with data type float16, float32, float64, int32,
-            int64. All tensor in ``input`` must have same data type.
+            int64. All the Tensors in ``input`` must have the same data type.
         axis(int|Variable, optional): Specify the axis to operate on the input Tensor.
             It's a scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``.
             The effective range is [-R, R), where R is Rank(x). when ``axis < 0``, it works the same way
@@ -281,7 +281,7 @@ def concat(input, axis=0, name=None):
     Raises:
         TypeError: The dtype of input must be one of float16, float32, float64, int32 and int64. 
         TypeError: The `axis` must be int or Variable.
-        TypeError: All the tensor in ``input`` must have the same data type.
+        TypeError: All the Tensors in ``input`` must have the same data type.
 
     Returns:
         Variable: A Tensor with the same data type as ``input``.
@@ -334,7 +334,8 @@ def concat(input, axis=0, name=None):
             x, 'input[' + str(id) + ']',
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
         if convert_dtype(x.dtype) != convert_dtype(input[0].dtype):
-            raise TypeError("All Tensor in the input must has same data type.")
+            raise TypeError(
+                "All the Tensors in the input must have the same data type.")
     check_type(axis, 'axis', (int, Variable), 'concat')
 
     helper = LayerHelper('concat', **locals())
