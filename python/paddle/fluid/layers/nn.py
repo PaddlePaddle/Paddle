@@ -1,4 +1,18 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -4807,19 +4821,20 @@ def split(input, num_or_sections, dim=-1, name=None):
     Split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Variable): A N-D Tensor or LoDTensor. The data type is float32, float64, int32 or int64..
-        num_or_sections (int|list|tuple): If :attr:`num_or_sections` is an integer,
-            then the integer indicates the number of equal sized sub-Tensors
-            that the Tensor will be divided into. If :attr:`num_or_sections`
-            is a list or tuple, the length of it indicates the number of
-            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
-            :attr:`dim` dimension orderly. The length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
-        dim (int32|Variable, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. The dimension along which to split. If :math:`dim < 0`, the
-            dimension to split along is :math:`rank(input) + dim`. Default is -1.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+        input (Variable): A N-D Tensor or LoDTensor. The data type is float32, float64, int32 or int64.
+        num_or_sections (int|list|tuple): If ``num_or_sections`` is an integer,
+            then the integer indicates the number of equal sized sub-Tensors that the Tensor 
+            will be divided into. If ``num_or_sections`` is a list or tuple, the length of it 
+            indicates the number of sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
+            dimension orderly. The length of the list mustn't be larger than the Tensor's size of specified dim.
+        dim (int32|Variable, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. 
+            The dimension along which to split. If :math:`dim < 0`, the dimension to split along is 
+            ``rank(input) + dim``. Default is -1.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        list(Variable): The list of segmented Tensor variables.
+        list(Variable): The list of segmented Tensors.
 
     Raises:
         TypeError: ``num_or_sections`` is not int, list or tuple.
@@ -4867,8 +4882,9 @@ def split(input, num_or_sections, dim=-1, name=None):
             if utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
                     if isinstance(item, Variable):
-                        num_or_sections[index] = num_or_section[index].numpy()[
+                        num_or_sections[index] = num_or_sections[index].numpy()[
                             0]
+                attrs += ('sections', list(num_or_sections))
             else:
                 attrs += ('sections', list(num_or_sections))
         else:

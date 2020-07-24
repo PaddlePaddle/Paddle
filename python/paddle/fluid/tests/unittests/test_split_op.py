@@ -373,6 +373,22 @@ class API_TestDygraphSplit(unittest.TestCase):
         self.assertTrue(np.allclose(ex_x1, x1_out))
         self.assertTrue(np.allclose(ex_x2, x2_out))
 
+    def test_out_tensor_input(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = fluid.dygraph.to_variable(input_1)
+            num1 = paddle.full(shape=[1], fill_value=2, dtype='int32')
+            x0, x1, x2 = paddle.split(
+                input, num_or_sections=[num1, 2, 2], axis=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
+        self.assertTrue(np.allclose(ex_x0, x0_out))
+        self.assertTrue(np.allclose(ex_x1, x1_out))
+        self.assertTrue(np.allclose(ex_x2, x2_out))
+
 
 if __name__ == '__main__':
     unittest.main()
