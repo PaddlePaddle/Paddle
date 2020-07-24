@@ -4884,48 +4884,52 @@ class LookaheadOptimizer(object):
                 inputs={"X": fast_var},
                 outputs={"Out": slow_var})
 
-        # Add Var k to main prog and startup prog
-        k = layers.create_global_var(
-            name="lookahead_k",
-            shape=[1],
-            value=int(self.k),
-            dtype='int32',
-            persistable=True)
+        with framework.program_guard(main_block.program, startup_program):
+            # Add Var k to main prog and startup prog
+            k = layers.create_global_var(
+                name="lookahead_k",
+                shape=[1],
+                value=int(self.k),
+                dtype='int32',
+                persistable=True)
 
-        # Add Var alpha to main prog and startup prog
-        alpha = layers.create_global_var(
-            name="lookahead_alpha",
-            shape=[1],
-            value=float(self.alpha),
-            dtype='float32',
-            persistable=True)
+            # Add Var alpha to main prog and startup prog
+            alpha = layers.create_global_var(
+                name="lookahead_alpha",
+                shape=[1],
+                value=float(self.alpha),
+                dtype='float32',
+                persistable=True)
 
-        # Add Var step
-        step = layers.create_global_var(
-            name="lookahead_step",
-            shape=[1],
-            value=int(0),
-            dtype='int32',
-            persistable=True)
-        layers.increment(x=step, value=1.0, in_place=True)
+            # Add Var step
+            step = layers.create_global_var(
+                name="lookahead_step",
+                shape=[1],
+                value=int(0),
+                dtype='int32',
+                persistable=True)
+            layers.increment(x=step, value=1.0, in_place=True)
 
-        # lookahead
-        zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
+            # lookahead
+            zero_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=0.0)
 
-        one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
+            one_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=1.0)
 
-        mod = layers.elementwise_mod(step, k)
-        with layers.control_flow.Switch() as switch:
-            with switch.case(mod == zero_var):
-                for param_name in params:
-                    fast_var = main_block.var(param_name)
-                    slow_var = param_to_slow[param_name]
-                    tmp_var = layers.elementwise_add(
-                        layers.elementwise_mul(fast_var, alpha),
-                        layers.elementwise_mul(
-                            slow_var, layers.elementwise_sub(one_var, alpha)))
-                    layers.assign(input=tmp_var, output=slow_var)
-                    layers.assign(input=tmp_var, output=fast_var)
-            with switch.default():
-                pass
+            mod = layers.elementwise_mod(step, k)
+            with layers.control_flow.Switch() as switch:
+                with switch.case(mod == zero_var):
+                    for param_name in params:
+                        fast_var = main_block.var(param_name)
+                        slow_var = param_to_slow[param_name]
+                        tmp_var = layers.elementwise_add(
+                            layers.elementwise_mul(fast_var, alpha),
+                            layers.elementwise_mul(
+                                slow_var,
+                                layers.elementwise_sub(one_var, alpha)))
+                        layers.assign(input=tmp_var, output=slow_var)
+                        layers.assign(input=tmp_var, output=fast_var)
+                with switch.default():
+                    pass
         return mini_out
