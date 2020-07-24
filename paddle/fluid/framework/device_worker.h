@@ -349,6 +349,7 @@ class SectionWorker : public DeviceWorker {
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   static std::mutex thread_mutex;
+  static std::mutex cout_mutex;
   static std::condition_variable thread_condition;
   static bool threads_completed;
   std::shared_ptr<framework::ProgramDesc> program_;

@@ -126,6 +126,7 @@ void PipelineTrainer::CopyParameters(int section_id, int microbatch_id,
   for (auto& var : global_block.AllVars()) {
     int is_feed_var =
         std::count(feed_var_names_.begin(), feed_var_names_.end(), var->Name());
+    VLOG(3) << "Var name: " << var->Name();
     if ((var->Persistable() || is_feed_var) && microbatch_id == 0) {
       if (is_feed_var) {
         auto* new_ptr = minibatch_scopes_[section_id]->Var(var->Name());
