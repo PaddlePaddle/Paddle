@@ -93,11 +93,12 @@ class HDFSClient(FS):
         ret, output = core.shell_execute_cmd(cmd, 0, 0, redirect_stderr)
         return int(ret), output.splitlines()
 
+    @_handle_errors(max_time_out=60 * 1000)
     def list_dirs(self, fs_path):
         if not self.is_exist(fs_path):
             return []
 
-        dirs, files = self.ls_dir(fs_path)
+        dirs, files = self._ls_dir(fs_path)
         return dirs
 
     @_handle_errors(max_time_out=60 * 1000)
@@ -108,6 +109,9 @@ class HDFSClient(FS):
         if not self.is_exist(fs_path):
             return [], []
 
+        return self._ls_dir(fs_path)
+
+    def _ls_dir(self, fs_path):
         cmd = "{} -ls {}".format(self._base_cmd, fs_path)
         ret, lines = self._run_cmd(cmd)
 
@@ -142,6 +146,9 @@ class HDFSClient(FS):
         if not self.is_exist(fs_path):
             return False
 
+        return self._is_dir(fs_path)
+
+    def _is_dir(self, fs_path):
         cmd = "{} -test -d {}".format(
             self._base_cmd, fs_path, redirect_stderr=True)
         ret, lines = self._run_cmd(cmd)
@@ -158,7 +165,7 @@ class HDFSClient(FS):
         if not self.is_exist(fs_path):
             return False
 
-        return not self.is_dir(fs_path)
+        return not self._is_dir(fs_path)
 
     @_handle_errors(max_time_out=60 * 1000)
     def is_exist(self, fs_path):
@@ -261,7 +268,7 @@ class HDFSClient(FS):
         if not self.is_exist(fs_path):
             return
 
-        is_dir = self.is_dir(fs_path)
+        is_dir = self._is_dir(fs_path)
         if is_dir:
             return self._rmr(fs_path)
 
