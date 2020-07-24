@@ -13,7 +13,7 @@ function(op_library TARGET)
     set(CUDNN_FILE)
     set(mkldnn_cc_srcs)
     set(MKLDNN_FILE)
-    set(op_common_deps operator op_registry math_function layer)
+    set(op_common_deps operator op_registry math_function layer common_infershape_functions)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
@@ -104,7 +104,10 @@ function(op_library TARGET)
     endif()
     if (WITH_GPU)
         nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${cudnn_cu_srcs} ${mkldnn_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
-                ${op_common_deps})
+                ${
+                    
+                    
+                })
     elseif (WITH_AMD_GPU)
         hip_library(${TARGET} SRCS ${cc_srcs} ${hip_cu_srcs} ${miopen_hip_cc_srcs} ${mkldnn_cc_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
