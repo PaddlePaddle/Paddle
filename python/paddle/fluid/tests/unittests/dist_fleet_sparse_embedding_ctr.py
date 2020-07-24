@@ -18,8 +18,6 @@ Distribute CTR model for test fleet api
 from __future__ import print_function
 
 import os
-import shutil
-import tempfile
 import time
 
 import random
@@ -89,6 +87,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         # build dnn model
         initializer = int(os.getenv("INITIALIZER", "0"))
+        inference = bool(int(os.getenv("INFERENCE", "0")))
 
         if initializer == 0:
             init = fluid.initializer.Constant(value=0.01)
@@ -103,6 +102,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         dnn_embedding = fluid.contrib.layers.sparse_embedding(
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
+            is_test=inference,
             param_attr=fluid.ParamAttr(
                 name="deep_embedding", initializer=init))
         dnn_pool = fluid.layers.sequence_pool(
@@ -122,12 +122,12 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         lr_embbding = fluid.contrib.layers.sparse_embedding(
             input=lr_data,
             size=[lr_input_dim, 1],
+            is_test=inference,
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)))
 
         lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
-
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
 
@@ -151,7 +151,6 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
 
         exe = fluid.Executor(fluid.CPUPlace())
-
         fleet.init_worker()
         exe.run(fleet.startup_program)
 
@@ -169,21 +168,20 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         for epoch_id in range(1):
             self.reader.start()
             try:
-                pass_start = time.time()
                 while True:
                     loss_val = exe.run(program=compiled_prog,
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
                     print("TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
                                                                   loss_val))
-                pass_time = time.time() - pass_start
             except fluid.core.EOFException:
                 self.reader.reset()
 
-        model_dir = tempfile.mkdtemp()
-        fleet.save_inference_model(
-            exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
-        shutil.rmtree(model_dir)
+        model_dir = os.getenv("MODEL_DIR", None)
+        if model_dir:
+            fleet.save_inference_model(exe, model_dir,
+                                       [feed.name for feed in self.feeds],
+                                       self.avg_cost)
         fleet.stop_worker()
 
 

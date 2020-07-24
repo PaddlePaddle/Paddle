@@ -445,20 +445,6 @@ class SparseVariable {
     rwlock_.reset(new framework::RWLock);
   }
 
-  void GetAndInit(const std::vector<int64_t> &ids,
-                  const std::vector<std::string> &value_names,
-                  std::vector<std::vector<std::vector<float> *>> *values) {
-    rwlock_->RDLock();
-    for (auto &id : ids) {
-      std::vector<std::vector<float> *> id_values;
-      auto *block = GetShard(id);
-      block->InitFromInitializer(id, value_names);
-      id_values = block->Get(id, value_names);
-      values->push_back(id_values);
-    }
-    rwlock_->UNLock();
-  }
-
   void Init(const std::vector<int64_t> &ids) {
     rwlock_->RDLock();
     for (auto &id : ids) {

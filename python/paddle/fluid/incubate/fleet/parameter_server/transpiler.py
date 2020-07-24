@@ -126,13 +126,24 @@ class FleetTranspiler(Fleet):
                 opt_init_map[
                     "truncated_gaussian_random"] = ["seed", "mean", "std"]
 
-                table_names = get_all_get_sparse_tablenames(
-                    self._origin_main_program)
+                dist_varnames = get_sparse_tablenames(self._origin_main_program,
+                                                      True)
+                sparse_varnames = get_sparse_tablenames(
+                    self._origin_main_program, False)
+
+                if len(dist_varnames) != 0:
+                    raise ValueError(
+                        "GeoStrategy can not support large scale embeding now, please use fluid.layers.embedding"
+                    )
+
                 init_attrs = []
-                for value_name in table_names:
+                for value_name in sparse_varnames:
                     value_var = self._origin_main_program.global_block().vars[
                         value_name]
-                    value_attr = [value_name, str(value_var.shape[1])]
+                    value_attr = [
+                        value_name,
+                        ",".join([str(dim) for dim in value_var.shape])
+                    ]
                     for op in self._origin_startup_program.global_block().ops:
                         if op.type in opt_init_map.keys(
                         ) and value_name == op.output("Out")[0]:
@@ -171,7 +182,7 @@ class FleetTranspiler(Fleet):
 
         if self.compiled_config.is_geo_mode():
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
-                recv_type=3)
+                recv_type=4)
         else:
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
                 recv_type=1)
@@ -521,25 +532,175 @@ class FleetTranspiler(Fleet):
             sparse_dir = os.path.join(dirname, origin_varname, varname)
             scale_kv.load(varname, sparse_dir)
 
+    def _get_optimizer_status(self, op, param_name):
+        supported_opts = [
+            "sgd", "adam", "adagrad", "adamax", "momentum", "lars_momentum",
+            "rmsprop", "decayed_adagrad", "ftrl"
+        ]
+
+        reshaped_val_map = {}
+        reshaped_val_map["sgd"] = []
+        reshaped_val_map["adam"] = ["moment1_0", "moment2_0"]
+        reshaped_val_map["adagrad"] = ["moment_0"]
+        reshaped_val_map["adamax"] = ["moment_0", "inf_norm_0"]
+        reshaped_val_map["momentum"] = ["velocity_0"]
+        reshaped_val_map["lars_momentum"] = ["velocity_0"]
+        reshaped_val_map[
+            "rmsprop"] = ["momentum_0", "mean_square_0", "mean_grad_0"]
+        reshaped_val_map["decayed_adagrad"] = ["moment_0"]
+        reshaped_val_map["ftrl"] = ["squared_0", "linear_0"]
+
+        orishaped_val_map = {}
+        orishaped_val_map["adam"] = ["beta1_pow_acc_0", "beta2_pow_acc_0"]
+        orishaped_val_map["adamax"] = ["beta1_pow_acc_0"]
+
+        if op not in supported_opts:
+            raise ValueError(
+                "fleet can not support optimizer: {}, only this can be supported: {}".
+                format(op, supported_opts))
+
+        reshaped_names = [
+            param_name + "_" + val for val in reshaped_val_map[op]
+        ]
+
+        if op not in orishaped_val_map:
+            origin_names = []
+        else:
+            origin_names = [
+                param_name + "_" + val for val in orishaped_val_map[op]
+            ]
+        return reshaped_names, origin_names
+
+    def _get_optimizer_op(self, param_name):
+        opts = public._get_optimize_ops(self._origin_main_program)
+        for op in opts:
+            if "Param" in op.input_names and \
+                    "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
+                return op
+
     def _save_dense_params(self, executor, dirname, context, main_program):
+        self._communicator.recv()
+
+        prog = Program()
+        block = prog.global_block()
         local_vars = []
 
         for name, var_ctx in context.items():
-            for varname in var_ctx.origin_varnames():
-                local_vars.append(main_program.global_block().vars[varname])
+            if len(var_ctx.origin_varnames()) != 1:
+                raise ValueError("Dense can not support split now.")
 
-        # todo: find why?
-        # self._communicator.recv()
+            varname = var_ctx.origin_varnames()[0]
+            local_vars.append(varname)
 
-        fluid.io.save_vars(
-            executor,
-            main_program=main_program,
-            dirname=dirname,
-            vars=local_vars)
+            optimizer = self._get_optimizer_op(varname)
+            reshaped_varnames, origin_varnames = self._get_optimizer_status(
+                optimizer.type, varname)
 
-        return [var.name for var in local_vars]
+            for var_name in [varname] + reshaped_varnames + origin_varnames:
+                var = self._origin_main_program.global_block().vars[var_name]
+                block.append_op(
+                    type='recv_save',
+                    attrs={
+                        "trainer_id": self._role_maker.worker_id(),
+                        "shape": var.shape,
+                        "slice_shapes":
+                        [",".join([str(i) for i in var.shape])],
+                        "slice_varnames": [var.name],
+                        "remote_varnames": [var.name],
+                        "is_sparse": False,
+                        "endpoints": var_ctx.split_endpoints(),
+                        "file_path": os.path.join(dirname, var.name)
+                    })
+
+        executor.run(prog)
+        return local_vars
 
     def _save_sparse_params(self, executor, dirname, context, main_program):
+        prog = Program()
+        block = prog.global_block()
+        local_vars = []
+
+        for name, var_ctx in context.items():
+            if len(var_ctx.origin_varnames()) != 1:
+                raise ValueError("Dense can not support split now.")
+
+            varname = var_ctx.origin_varnames()[0]
+            local_vars.append(varname)
+
+            optimizer = self._get_optimizer_op(varname)
+            reshaped_varnames, origin_varnames = self._get_optimizer_status(
+                optimizer.type, varname)
+
+            var = self._origin_main_program.global_block().vars[varname]
+            slice_shapes = []
+            dims1 = ",".join([str(i) for i in var.shape[1:]])
+
+            for section in var_ctx.sections():
+                slice_shapes.append(str(section) + dims1)
+
+            block.append_op(
+                type='recv_save',
+                attrs={
+                    "trainer_id": self._role_maker.worker_id(),
+                    "shape": var.shape,
+                    "slice_shapes": slice_shapes,
+                    "slice_varnames": var_ctx.split_varnames(),
+                    "remote_varnames": var_ctx.split_varnames(),
+                    "is_sparse": True,
+                    "endpoints": var_ctx.split_endpoints(),
+                    "pserver_num":
+                    len(self._role_maker.get_pserver_endpoints()),
+                    "file_path": os.path.join(dirname, var.name)
+                })
+
+            for reshaped_varname in reshaped_varnames:
+                var = self._origin_main_program.global_block().vars[
+                    reshaped_varname]
+
+                slice_varnames = []
+                remote_varnames = []
+                for i in range(len(var_ctx.split_varnames())):
+                    slice_varnames.append("{}.block{}".format(reshaped_varname,
+                                                              i))
+                    remote_varnames.append(reshaped_varname)
+
+                block.append_op(
+                    type='recv_save',
+                    attrs={
+                        "trainer_id": self._role_maker.worker_id(),
+                        "shape": var.shape,
+                        "slice_shapes": slice_shapes,
+                        "slice_varnames": slice_varnames,
+                        "remote_varnames": remote_varnames,
+                        "is_sparse": True,
+                        "endpoints": var_ctx.split_endpoints(),
+                        "pserver_num":
+                        len(self._role_maker.get_pserver_endpoints()),
+                        "file_path": os.path.join(dirname, var.name)
+                    })
+
+            for origin_varname in origin_varnames:
+                var = self._origin_main_program.global_block().vars[
+                    origin_varname]
+
+                block.append_op(
+                    type='recv_save',
+                    attrs={
+                        "trainer_id": self._role_maker.worker_id(),
+                        "shape": var.shape,
+                        "slice_shapes":
+                        [",".join([str(i) for i in var.shape])],
+                        "slice_varnames": [origin_varname],
+                        "remote_varnames": [origin_varname],
+                        "is_sparse": False,
+                        "endpoints": var_ctx.split_endpoints()[:1],
+                        "file_path": os.path.join(dirname, var.name)
+                    })
+        executor.run(prog)
+        return context.keys()
+
+    def _save_distributed_params(self, executor, dirname, context,
+                                 main_program):
         prog = Program()
         block = prog.global_block()
 
@@ -559,19 +720,26 @@ class FleetTranspiler(Fleet):
         return context.keys()
 
     def _save_distributed_persistables(self, executor, dirname, main_program):
+        dense_ctx = fleet.compiled_config.get_communicator_recv_context(
+            recv_type=1)
 
         sparse_ctx = fleet.compiled_config.get_communicator_recv_context(
             recv_type=2)
 
-        dense_ctx = fleet.compiled_config.get_communicator_recv_context(
-            recv_type=1)
+        distributed_ctx = fleet.compiled_config.get_communicator_recv_context(
+            recv_type=3)
 
         recv_dense_varnames = self._save_dense_params(executor, dirname,
                                                       dense_ctx, main_program)
+
         recv_sparse_varnames = self._save_sparse_params(
             executor, dirname, sparse_ctx, main_program)
 
-        saved_varnames = recv_dense_varnames + recv_sparse_varnames
+        recv_distributed_varnames = self._save_distributed_params(
+            executor, dirname, distributed_ctx, main_program)
+
+        saved_varnames = recv_dense_varnames + \
+            recv_sparse_varnames + recv_distributed_varnames
 
         remaining_vars = list(
             filter(

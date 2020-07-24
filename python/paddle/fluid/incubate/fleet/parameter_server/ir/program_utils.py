@@ -71,7 +71,8 @@ def variable_to_code(var):
     """
     if var.type == core.VarDesc.VarType.SELECTED_ROWS or var.type == core.VarDesc.VarType.LOD_TENSOR:
         var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
-            format(i="{", e="}", name=var.name, type=var.type, shape=var.shape, dtype=var.dtype)
+            format(i="{", e="}", name=var.name, type=var.type,
+                   shape=var.shape, dtype=var.dtype)
     else:
         var_str = "{name} : fluid.{type})".\
             format(i="{", e="}", name=var.name, type=var.type)
@@ -152,7 +153,8 @@ def op_to_code(op, skip_op_callstack=True):
 
     if outputs_str != "{}":
         op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
-            format(outputs = outputs_str, op_type=op.type, inputs=inputs_str, attrs=attrs_str)
+            format(outputs=outputs_str, op_type=op.type,
+                   inputs=inputs_str, attrs=attrs_str)
     else:
         op_str = "{op_type}(inputs={inputs}, {attrs})".\
             format(op_type=op.type, inputs=inputs_str, attrs=attrs_str)
@@ -201,3 +203,31 @@ def program_to_code(prog, fout=None, skip_op_callstack=True):
     for block in prog.blocks:
         block_to_code(block, block_idx, fout, skip_op_callstack)
         block_idx += 1
+
+
+def _get_input_map_from_op(varmap, op):
+    """Returns a dict from op input name to the vars in varmap."""
+    iomap = collections.OrderedDict()
+    for key in op.input_names:
+        vars = []
+        for varname in op.input(key):
+            vars.append(varmap[varname])
+        if len(vars) == 1:
+            iomap[key] = vars[0]
+        else:
+            iomap[key] = vars
+    return iomap
+
+
+def _get_output_map_from_op(varmap, op):
+    """Returns a dict from op output name to the vars in varmap."""
+    iomap = collections.OrderedDict()
+    for key in op.output_names:
+        vars = []
+        for varname in op.output(key):
+            vars.append(varmap[varname])
+        if len(vars) == 1:
+            iomap[key] = vars[0]
+        else:
+            iomap[key] = vars
+    return iomap

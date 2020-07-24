@@ -27,6 +27,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distribute
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablename
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import _get_input_map_from_op, _get_output_map_from_op
 
 LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
@@ -37,7 +38,7 @@ LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 
 def _is_optimizer_op(op):
     if "Param" in op.input_names and \
-                    "LearningRate" in op.input_names:
+            "LearningRate" in op.input_names:
         return True
     return False
 
@@ -422,7 +423,8 @@ def add_optimizer_pass(program, config):
             dtype=grad_block.dtype,
             shape=grad_block.shape)
 
-        grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
+        grad_to_block_id.append(
+            merged_var.name + ":" + str(optimize_block.idx))
         if config.is_sync_mode() and trainers > 1:
             vars2merge = []
             for i in range(trainers):
@@ -587,7 +589,7 @@ def add_optimizer_pass(program, config):
             for _, op in enumerate(optimize_ops):
                 # optimizer is connected to itself
                 if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
-                                op not in global_ops:
+                        op not in global_ops:
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
                                            merged_var, lr_ops)
 
@@ -624,7 +626,8 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
     opt_value_map["lars_momentum"] = ["Param", "Velocity"]
     opt_value_map["rmsprop"] = ["Param", "Moment", "MeanSquare"]
     opt_value_map["decayed_adagrad"] = ["Param", "Moment"]
-    opt_value_map["ftrl"] = ["Param", "SquaredAccumulator", "LinearAccumulator"]
+    opt_value_map["ftrl"] = [
+        "Param", "SquaredAccumulator", "LinearAccumulator"]
 
     geo_value_map = {}
     geo_value_map["sum"] = "Param"
@@ -784,7 +787,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
 
             grad, opt_idx, value_names, value_dims, acture_names = \
                 get_geo_values(opt_block) if config.is_geo_mode() \
-                    else get_optimizer_values(opt_block)
+                else get_optimizer_values(opt_block)
 
             entry_attr = get_entry_attr(param)
             is_entry = False if entry_attr == "none" else True
@@ -798,7 +801,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             opt_block = main_program.block(blockid)
             grad, _, value_names, value_dims, acture_names = \
                 get_geo_values(opt_block) if config.is_geo_mode() \
-                    else get_optimizer_values(opt_block)
+                else get_optimizer_values(opt_block)
 
             entry_attr = get_entry_attr(param)
 

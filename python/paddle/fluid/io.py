@@ -826,7 +826,7 @@ def load_vars(executor,
 
             new_var = _clone_var_in_block_(load_block, each_var)
 
-            var_path = os.path.join(load_dirname, new_var.name)
+            var_path = os.path.join(dirname, new_var.name)
             if not os.path.exists(var_path):
                 raise ValueError("SelectedRows var {} can not find at {}".
                                  format(new_var.name, var_path))
@@ -836,9 +836,7 @@ def load_vars(executor,
                     type='load',
                     inputs={},
                     outputs={'Out': [new_var]},
-                    attrs={
-                        'file_path': os.path.join(load_dirname, new_var.name)
-                    })
+                    attrs={'file_path': os.path.join(dirname, new_var.name)})
             else:
                 blocks = []
                 block_paths = os.listdir(var_path)

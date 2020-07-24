@@ -146,7 +146,8 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("pserver_num", "the number of pserver").SetDefault(0);
 
     AddAttr<bool>("is_distributed",
-                  "(boolean, default false) distributed lookup table.");
+                  "(boolean, default false) distributed lookup table.")
+        .SetDefault(false);
 
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
 

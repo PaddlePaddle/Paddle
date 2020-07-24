@@ -489,7 +489,7 @@ def embedding(input,
     if is_distributed:
         is_distributed = False
         warnings.warn(
-            "is_distributed is go out of use，`fluid.contrib.layers.sparse_embedding` is your needed"
+            "is_distributed is go out of use, `fluid.contrib.layers.sparse_embedding` is your needed"
         )
 
     remote_prefetch = True if is_sparse else False
@@ -6209,11 +6209,15 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
+    if in_dygraph_mode():
+        out, _ = core.ops.squeeze2(input, 'axes', axes)
+        return out
+
     helper = LayerHelper("squeeze", **locals())
     check_variable_and_dtype(
         input, 'input',
         ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
-    check_type(axes, 'axes', list, 'squeeze')
+    check_type(axes, 'axes', (list, tuple), 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -11107,7 +11111,7 @@ def shape(input):
                 input.shape = [3, 2]
 
     Args:
-        input (Variable): The input can be N-D Tensor or SelectedRows with data type float32, float64, int32, int64.
+        input (Variable): The input can be N-D Tensor or SelectedRows with data type float16, float32, float64, int32, int64.
                           If input variable is type of SelectedRows, returns the shape of it's inner tensor.
 
     Returns:
@@ -11130,8 +11134,9 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
-    check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int32', 'int64'], 'shape')
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'shape')
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(

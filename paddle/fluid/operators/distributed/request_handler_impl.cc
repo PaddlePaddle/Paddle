@@ -87,27 +87,25 @@ bool RequestSendHandler::Handle(const std::string &varname,
 
       // for sparse ids
       if (var->IsType<framework::SelectedRows>()) {
-        auto *ins = distributed::LargeScaleKV::GetInstance();
+        if (distributed_mode_ == DistributedMode::kAsync ||
+            distributed_mode_ == DistributedMode::kHalfAsync) {
+          auto *ins = distributed::LargeScaleKV::GetInstance();
+          if (ins->GradInLargeScale(run_varname)) {
+            auto *large_scale_var = ins->GetByGrad(run_varname);
 
-        if (ins->GradInLargeScale(run_varname)) {
-          auto *large_scale_var = ins->GetByGrad(run_varname);
-
-          for (auto name : large_scale_var->CachedVarnames()) {
-            scope->Var(name);
+            for (auto name : large_scale_var->CachedVarnames()) {
+              scope->Var(name);
+            }
           }
         }
-
-        if (distributed_mode_ == DistributedMode::kGeo &&
-            AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(
-                run_varname)) {
-          auto &grad_slr =
-              scope->FindVar(run_varname)->Get<framework::SelectedRows>();
-
-          auto *large_scale_var = ins->GetByGrad(run_varname);
-          ins->Get(large_scale_var->GetMeta()->name)->Init(grad_slr.rows());
-
-          AsyncSparseParamUpdateRecorder::GetInstance()->Update(
-              run_varname, grad_slr.rows());
+        if (distributed_mode_ == DistributedMode::kGeo) {
+          if (AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(
+                  run_varname)) {
+            auto &grad_slr =
+                scope->FindVar(run_varname)->Get<framework::SelectedRows>();
+            AsyncSparseParamUpdateRecorder::GetInstance()->Update(
+                run_varname, grad_slr.rows());
+          }
         }
       }
 
@@ -159,17 +157,13 @@ bool RequestGetHandler::Handle(const std::string &varname,
         VLOG(3) << "copying " << varname << " to " << param_bak_name;
         framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }
-      VLOG(1) << "Table name empty? " << table_name.empty();
-      if (distributed_mode_ == DistributedMode::kGeo) {
-        VLOG(1) << "AsyncSparseParamUpdateRecorder " << varname << " exist "
-                << AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(
-                       varname);
-      }
+
       if (distributed_mode_ == DistributedMode::kGeo &&
           AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
           !table_name.empty()) {
-        std::vector<int64_t> updated_rows;
+        VLOG(3) << "AsyncSparseParamUpdateRecorder " << varname << " exist ";
 
+        std::vector<int64_t> updated_rows;
         AsyncSparseParamUpdateRecorder::GetInstance()->GetAndClear(
             varname, trainer_id, &updated_rows);
 
@@ -184,25 +178,22 @@ bool RequestGetHandler::Handle(const std::string &varname,
                   << sstream.str();
         }
 
-        auto *ins = distributed::LargeScaleKV::GetInstance();
-        auto *large_scale_var = ins->Get(varname);
-        std::vector<std::vector<std::vector<float> *>> update_values;
-        large_scale_var->Get(updated_rows, {"Param"}, &update_values);
-
+        auto &origin_tensor =
+            scope_->FindVar(varname)->Get<framework::LoDTensor>();
+        auto *origin_tensor_data = origin_tensor.data<float>();
+        auto &dims = origin_tensor.dims();
         *outvar = scope->Var();
         auto *out_slr = (*outvar)->GetMutable<framework::SelectedRows>();
-
         out_slr->set_rows(updated_rows);
-        out_slr->set_height(updated_rows.size());
-        auto width = large_scale_var->GetMeta()->value_dims[0];
-
+        out_slr->set_height(dims[0]);
         auto out_dims = framework::make_ddim(
-            {static_cast<int64_t>(updated_rows.size()), width});
+            {static_cast<int64_t>(updated_rows.size()), dims[1]});
         auto *data = out_slr->mutable_value()->mutable_data<float>(
-            out_dims, platform::CPUPlace());
-
+            out_dims, origin_tensor.place());
+        auto width = dims[1];
         for (size_t i = 0; i < updated_rows.size(); ++i) {
-          memcpy(data + i * width, update_values[i][0]->data(),
+          PADDLE_ENFORCE_LT(updated_rows[i], dims[0]);
+          memcpy(data + i * width, origin_tensor_data + updated_rows[i] * width,
                  sizeof(float) * width);
         }
       } else {

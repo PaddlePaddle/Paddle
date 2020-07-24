@@ -74,14 +74,14 @@ class Fleet(object):
         """
         return self._role_maker.is_first_worker()
 
-    def worker_index(self):
+    def worker_id(self):
         """
         Get current worker index.
 
         Returns:
             int: node id
         """
-        return self._role_maker.worker_index()
+        return self._role_maker.worker_id()
 
     def worker_num(self):
         """
@@ -309,6 +309,7 @@ class Fleet(object):
                 loss, self._role_maker, self.user_defined_optimizer,
                 self.user_defined_strategy, valid_optimizer_list,
                 valid_graph_optimizer_list)
+
         optimize_ops = []
         params_grads = []
         if meta_optimizer:

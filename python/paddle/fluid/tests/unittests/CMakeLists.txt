@@ -61,7 +61,6 @@ if(WIN32)
     list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
     list(REMOVE_ITEM TEST_OPS test_split_ids_op)
     LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
-    LIST(REMOVE_ITEM TEST_OPS test_math_op_patch_var_base)
 endif()
 
 if(APPLE OR WIN32)

@@ -487,10 +487,6 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
     std::vector<int64_t> ids;
     auto &rows = var->Get<framework::SelectedRows>().rows();
     ids.assign(rows.begin(), rows.end());
-
-    std::vector<std::vector<std::vector<float> *>> values;
-    auto *ins = distributed::LargeScaleKV::GetInstance();
-    ins->Get(table_name)->Init(ids);
     queue->Push(ids);
   }
 }
@@ -667,8 +663,8 @@ void GeoCommunicator::RecvSparse(const std::string &varname) {
   auto t_psrever = var_psrever->Get<framework::SelectedRows>().value();
 
   std::vector<std::vector<std::vector<float> *>> old_values;
+
   auto *ins = distributed::LargeScaleKV::GetInstance();
-  ins->Get(varname)->Init(ids);
   ins->Get(varname)->Get(ids, {"Param"}, &old_values);
 
   auto *t_latest = var_latest->GetMutable<framework::LoDTensor>();
@@ -761,6 +757,7 @@ void GeoCommunicator::InitSparse() {
   auto sparse_metas = string::split_string<std::string>(sparse_attrs_, "#");
 
   std::vector<distributed::SparseMeta> metas;
+  std::vector<int64_t> dicts;
 
   for (auto &sparse_meta : sparse_metas) {
     auto attrs = string::split_string<std::string>(sparse_meta, ":");
@@ -768,7 +765,10 @@ void GeoCommunicator::InitSparse() {
     auto meta = distributed::SparseMeta();
     meta.name = attrs[0];
     meta.value_names = {"Param"};
-    meta.value_dims = {std::stoi(attrs[1])};
+
+    auto dic = string::split_string<std::string>(attrs[1], ",");
+    dicts.push_back(std::stoi(dic[0]));
+    meta.value_dims = {std::stoi(dic[1])};
     meta.mode = distributed::Mode::training;
     meta.grad_name = "none";
     meta.cached_varnames = {};
@@ -780,7 +780,26 @@ void GeoCommunicator::InitSparse() {
   }
 
   LargeScaleKV::Init(metas);
-  VLOG(1) << "init sparse variable done";
+
+  for (size_t i = 0; i < metas.size(); i++) {
+    auto &varname = metas[i].name;
+    auto &dict = dicts[i];
+
+    std::vector<int64_t> ids;
+    ids.reserve(dict);
+
+    for (auto j = 0; j < dict; ++j) {
+      ids.push_back(j);
+    }
+
+    auto *ins = distributed::LargeScaleKV::GetInstance();
+    ins->Get(varname)->Init(ids);
+
+    VLOG(3) << "GeoCommunicator init sparse " << varname << " with size "
+            << ids.size();
+  }
+
+  VLOG(3) << "init sparse variable done";
 }
 
 }  // namespace distributed

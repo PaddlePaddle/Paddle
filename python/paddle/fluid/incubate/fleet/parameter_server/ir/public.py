@@ -42,7 +42,7 @@ from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
 from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import delete_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import _get_input_map_from_op, _get_output_map_from_op
+from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import _get_input_map_from_op, _get_output_map_from_op
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -488,7 +488,9 @@ class CompileTimeStrategy(object):
                 param = merged[0]
                 grad = merged[1]
 
-                is_distributed = True if param in distibuted_varnames else False
+                param_name = param.merged_var.name
+
+                is_distributed = True if param_name in distibuted_varnames else False
 
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
                                      True, is_distributed)
@@ -500,8 +502,8 @@ class CompileTimeStrategy(object):
         else:
             for pairs in self.origin_sparse_pairs:
                 param, grad = pairs
-
-                is_distributed = True if param in distibuted_varnames else False
+                param_name = param.name
+                is_distributed = True if param_name in distibuted_varnames else False
 
                 param_ctx = self.build_ctx(param, self.param_var_mapping, False,
                                            True, True, is_distributed)
@@ -525,6 +527,9 @@ class CompileTimeStrategy(object):
 
     def get_communicator_send_context(self):
         send_ctx = {}
+        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
+                                                    True)
+
         if self.is_geo_mode():
             for pairs in self.merged_dense_pairs:
                 param = pairs[0]
@@ -534,8 +539,11 @@ class CompileTimeStrategy(object):
 
             for pairs in self.merged_sparse_pairs:
                 param = pairs[0]
+                param_name = param.merged_var.name
+                is_distributed = True if param_name in distibuted_varnames else False
+
                 ctx = self.build_ctx(param, self.param_var_mapping, False, True,
-                                     True)
+                                     True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
             name, ctx = self._step_ctx()
             send_ctx[name] = ctx
@@ -547,9 +555,13 @@ class CompileTimeStrategy(object):
                 send_ctx[ctx.var_name()] = ctx
 
             for merged in self.merged_sparse_pairs:
-                grad = merged[1]
+                param, grad = merged
+                param_name = param.merged_var.name
+
+                is_distributed = True if param_name in distibuted_varnames else False
+
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True, False,
-                                     True)
+                                     True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
 
             name, ctx = self._step_ctx()
@@ -558,15 +570,17 @@ class CompileTimeStrategy(object):
 
     def get_communicator_recv_context(self, recv_type=1):
         # recv_type
-        # 1 : DENSE 2. SPARSE 3. ALL
+        # 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL
+        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
+                                                    True)
         sparse_varnames = []
-
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
             sparse_varnames.append(param.name)
 
         dense_recv_ctx = {}
         sparse_recv_ctx = {}
+        distributed_recv_ctx = {}
 
         for merged in self.merged_variables_pairs:
             params = merged[0]
@@ -579,18 +593,29 @@ class CompileTimeStrategy(object):
 
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
-            ctx = self.build_ctx(param, self.param_var_mapping, False, True,
-                                 False)
-            sparse_recv_ctx[ctx.var_name()] = ctx
+
+            if param.name in distibuted_varnames:
+                ctx = self.build_ctx(param, self.param_var_mapping, False, True,
+                                     False, True)
+                distributed_recv_ctx[ctx.var_name()] = ctx
+            else:
+                ctx = self.build_ctx(param, self.param_var_mapping, False, True,
+                                     False, False)
+                sparse_recv_ctx[ctx.var_name()] = ctx
 
         if recv_type == 1:
             return dense_recv_ctx
         if recv_type == 2:
             return sparse_recv_ctx
         if recv_type == 3:
+            return distributed_recv_ctx
+        if recv_type == 4:
             dense_recv_ctx.update(sparse_recv_ctx)
+            dense_recv_ctx.update(distributed_recv_ctx)
             return dense_recv_ctx
-        assert ValueError("recv_type can only be 1/2/3")
+        assert ValueError(
+            "recv_type can only be 1/2/3/4, 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL"
+        )
 
     def get_server_runtime_config(self):
         return self.strategy.get_server_runtime_config()

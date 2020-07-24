@@ -79,13 +79,14 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
     def _setup_nccl_op(self, startup_program, main_program):
         trainer_endpoints = self.role_maker.get_trainer_endpoints()
         trainers = trainer_endpoints
-        trainer_id = self.role_maker.worker_index()
+        trainer_id = self.role_maker.worker_id()
         current_endpoint = self.role_maker.get_trainer_endpoints()[trainer_id]
         trainer_endpoints_env = ",".join(trainer_endpoints)
         trainers_num = self.role_maker.worker_num()
-        trainer_endpoints.remove(current_endpoint)
         if trainer_id == 0:
-            wait_server_ready(trainer_endpoints)
+            other_trainer_endpoints = trainer_endpoints[:]
+            other_trainer_endpoints.remove(current_endpoint)
+            wait_server_ready(other_trainer_endpoints)
         nccl_id_var = startup_program.global_block().create_var(
             name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
         for i in range(1, self.user_defined_strategy.nccl_comm_num):
@@ -110,7 +111,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             inputs={},
             outputs={"NCCLID": nccl_id_var},
             attrs={
-                "trainers": trainers,
+                "trainers": trainer_endpoints,
                 "trainer_id": trainer_id,
                 "nccl_comm_num": self.user_defined_strategy.nccl_comm_num,
                 "use_hierarchical_allreduce":
@@ -164,7 +165,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         self._setup_nccl_op(startup_program, main_program)
 
         build_strategy.num_trainers = self.role_maker.worker_num()
-        build_strategy.trainer_id = self.role_maker.worker_index()
+        build_strategy.trainer_id = self.role_maker.worker_id()
         build_strategy.trainers_endpoints = self.role_maker.get_trainer_endpoints(
         )
         build_strategy.enable_backward_optimizer_op_deps = True
