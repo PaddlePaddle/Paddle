@@ -758,8 +758,8 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
         reinterpret_cast<const platform::CUDADeviceContext&>(*ctx).stream());
   }
 #endif
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(platform::errors::Unimplemented("GPUPlace is not supported"));
+#ifdef PADDLE_WITH_XPU_
+  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
 #endif
 }
 
