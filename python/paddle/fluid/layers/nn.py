@@ -9347,8 +9347,6 @@ def relu6(x, threshold=6.0, name=None, use_mkldnn=False):
                 #  [2.5 6. ]]
     """
 
-    if not isinstance(use_mkldnn, bool):
-        raise ValueError("use_mkldnn should be True or False")
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu6')
 
     helper = LayerHelper('relu6', **locals())
