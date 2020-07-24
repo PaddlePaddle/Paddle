@@ -169,29 +169,27 @@ def ones_like(x, dtype=None, name=None):
 	:alias_main: paddle.ones_like
 	:alias: paddle.tensor.ones_like, paddle.tensor.creation.ones_like
 
-    This OP returns a tensor filled with the value 1, with the same shape of ``x``.
-    The data type of the output is the same as ``x``, or if ``dtype`` is not
-    None, it is the same as ``dtype``.
+    This OP returns a Tensor filled with the value 0, with the same shape and
+    data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Args:
-        x(Variable): The input tensor which specifies shape and dtype. The
+        x(Tensor): The input tensor which specifies shape and dtype. The
             dtype of ``x`` can be bool, float16, float32, float64, int32, int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of
-            the output tensor. The ``dtype`` supports bool, float16, float32,
-            float64, int32, int64. If ``dtype`` is None, the dtype is the same
-            as input. Default is None.
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+            output tensor. Supported data types: bool, float16, float32, float64,
+            int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
+            Default is None.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A tensor filled with the value 1, with the same shape as ``x``.
-            The data type of the output is the same as ``x``, or if ``dtype`` is
-            not None, it is the same as ``dtype``.
+        Tensor: A Tensor filled with the value 1, with the same shape and
+        data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Raise:
-        TypeError: If ``dtype`` is not None and is not one of bool, float16,
-            float32, float64, int32 or int64.
+        TypeError: If ``dtype`` is not None and is not bool, float16, float32,
+            float64, int32 or int64.
 
     Examples:
         .. code-block:: python
@@ -202,8 +200,8 @@ def ones_like(x, dtype=None, name=None):
         paddle.enable_imperative()
 
         x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
-        out1 = paddle.ones_like(x) # [1., 1., 1.]
-        out2 = paddle.ones_like(x, dtype='int32') # [1, 1, 1]
+        out1 = paddle.zeros_like(x) # [1., 1., 1.]
+        out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
 
     """
     return full_like(x=x, fill_value=1, dtype=dtype, name=name)
