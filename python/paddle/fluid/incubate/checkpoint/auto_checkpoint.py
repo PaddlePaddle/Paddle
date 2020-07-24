@@ -263,22 +263,26 @@ class TrainEpochRange(SerializableBase):
     def __init__(self,
                  max_epoch_num,
                  name,
-                 checkpoint_inter=15 * 60,
+                 checkpoint_inter=None,
                  restored=True):
         self._max_epoch_num = max_epoch_num
         self._epoch_no = -1  # current epoch_no
         self._name = name
         self._restored_from = None
         self._exe_status = {}
-        self._save_checkpoint_inter = checkpoint_inter
-        assert checkpoint_inter >= 0, "checkpointer:{} must >=0".format(
-            checkpointer)
+
+        self._checker = g_checker
+        if checkpoint_inter is not None:
+            self._save_checkpoint_inter = checkpoint_inter
+        else:
+            self._save_checkpoint_inter = self._checker.save_checkpoint_inter
+        assert self._save_checkpoint_inter >= 0, "checkpointer:{} must >=0".format(
+            self._save_checkpoint_inter)
         self._last_checkpoint_time = time.time()
 
         self._load_cp_nos = None
         self._checkpoint_epoch_no = None
 
-        self._checker = g_checker
         if not self._checker.valid():
             return
 
@@ -563,7 +567,7 @@ def _normal_yield(max_epoch_num):
     return
 
 
-def train_epoch_range(max_epoch_num, save_checkpoint_inter=300):
+def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
     global g_acp_type
     if not _get_checker().valid():
         logger.warning(
