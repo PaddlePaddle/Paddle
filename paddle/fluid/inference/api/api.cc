@@ -15,6 +15,7 @@
 #include <sstream>
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/commit.h"
+#include "paddle/fluid/framework/load_op_lib.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -37,6 +38,10 @@ int PaddleDtypeSize(PaddleDType dtype) {
       assert(false);
       return -1;
   }
+}
+
+void LoadCustomOpLibrary(std::string lib_path) {
+  framework::LoadOpLib(lib_path);
 }
 
 PaddleBuf::PaddleBuf(PaddleBuf &&other)

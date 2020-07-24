@@ -84,6 +84,7 @@ if (WITH_GPU)
 endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
+cc_library(load_op_lib SRCS load_op_lib.cc DEPS op_info proto_desc device_context enforce)
 cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
 cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope)
 cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)

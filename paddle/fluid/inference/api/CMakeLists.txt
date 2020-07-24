@@ -31,7 +31,7 @@ cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} 
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-          analysis_config zero_copy_tensor trainer_desc_proto)
+          analysis_config zero_copy_tensor trainer_desc_proto load_op_lib)
 
 if(WIN32)
     target_link_libraries(paddle_inference_api gflags)
