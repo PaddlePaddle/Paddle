@@ -43,9 +43,11 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
   // ops linked from it
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    PADDLE_ENFORCE_EQ(subgraph.count(input_act_node), true,
-                      platform::errors::NotFound(
-                          "Input act node not found in Delete Quant fusion."));
+    PADDLE_ENFORCE_EQ(
+        subgraph.count(input_act_node), true,
+        platform::errors::NotFound(
+            "Input act node(%s) not found in QuantDequantFuse pass.",
+            input_act_node->name()));
     Node* input_act = subgraph.at(input_act_node);
     Node* input_scale = subgraph.at(pattern.GetPDNode("input_scale_node"));
     Node* quant = subgraph.at(pattern.GetPDNode("quant_node"));
@@ -58,7 +60,7 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
     std::string input_scale_var_name = quant->Op()->Input("InScale").front();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument(
-                   "scope in DeleteQuantOpFuse pass should not be null."));
+                   "Scope in QuantDequantFuse pass should not be null."));
     const LoDTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
@@ -84,8 +86,8 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
       } else if (quantized_op_type == "mul") {
         op_desc->SetAttr("X_scale", scale_value);
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unsupported quantized op type %s", quantized_op_type));
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported quantized op type %s.", quantized_op_type));
       }
       op_desc->SetAttr("bit_length", bit_length);
       op_desc->RenameInput(output_act_name, input_act_name);
@@ -119,9 +121,9 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
     weight_name = "W";
     input_name = "Input";
   } else {
-    PADDLE_ENFORCE(
+    PADDLE_THROW(platform::errors::Unimplemented(
         "QuantDequantFuse: We only support conv2d, conv2d_fusion, fc, mul for "
-        "now.");
+        "now."));
   }
   const std::string pattern_name = "dequant_fuse";
   GraphPatternDetector gpd;
@@ -141,8 +143,9 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
                      Graph* g) {
     PADDLE_ENFORCE_EQ(
         subgraph.count(quantized_op_input), true,
-        platform::errors::NotFound(
-            "Quantized op input node not found in Delete Quant fusion."));
+        platform::errors::NotFound("Quantized op input node(%s) did not find "
+                                   "in QuantDequantFuse pass.",
+                                   quantized_op_input->name()));
     Node* quantized_op_input_node = subgraph.at(quantized_op_input);
     Node* quantized_op_weight_node =
         subgraph.at(pattern.GetPDNode("quantized_op_weight"));
@@ -165,7 +168,7 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
       PADDLE_ENFORCE_EQ(
           scales_name.size(), 2,
           platform::errors::InvalidArgument(
-              "Scales size in channel-wise dequantize op should be 2, got %d",
+              "Scales size in channel-wise dequantize op should be 2, got %d.",
               scales_name.size()));
       const LoDTensor& channel_scale_tensor =
           scope->FindVar(scales_name[0])->Get<LoDTensor>();
@@ -193,9 +196,10 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
     bool valid_scale_size =
         (weight_scale.size() == 1 ||
          weight_scale.size() == static_cast<size_t>(w_dims[0]));
-    PADDLE_ENFORCE_EQ(valid_scale_size, true,
-                      platform::errors::InvalidArgument(
-                          "TRT int8 quant: invalid scale size"));
+    PADDLE_ENFORCE_EQ(
+        valid_scale_size, true,
+        platform::errors::InvalidArgument(
+            "TRT int8 quant: invalid scale size(%d).", weight_scale.size()));
     float* quantized_weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
     for (int j = 0; j < weight_tensor->numel(); j++) {
