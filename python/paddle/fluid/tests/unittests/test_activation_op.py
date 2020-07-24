@@ -70,6 +70,18 @@ class TestActivation(OpTest):
 
 
 class TestParameter(object):
+    def test_out_name(self):
+        with fluid.program_guard(fluid.Program()):
+            np_x = np.array([0.1])
+            data = fluid.layers.data(name="X", shape=[1])
+            out = eval("paddle.%s(data, name='Y')" % self.op_type)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(feed={"X": np_x},
+                             fetch_list=[out])
+            expected = eval("np.%s(np_x)" % self.op_type)
+            self.assertEqual(result, expected)
+
     def test_dygraph(self):
         with fluid.dygraph.guard():
             np_x = np.array([0.1])
@@ -153,7 +165,19 @@ class TestAtan(TestActivation, TestParameter):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
-
+        
+    def test_out_name(self):
+        with fluid.program_guard(fluid.Program()):
+            np_x = np.array([0.1])
+            data = fluid.layers.data(name="X", shape=[1])
+            out = paddle.atan(data, name='Y')
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(feed={"X": np_x},
+                             fetch_list=[out])
+            expected = np.arctan(np_x)
+            self.assertEqual(result, expected)
+        
     def test_dygraph(self):
         with fluid.dygraph.guard():
             np_x = np.array([0.1])
