@@ -70,7 +70,7 @@ class HDFSClient(FS):
             hadoop_home,
             configs,
             time_out=5 * 60 * 1000,  #ms
-            sleep_inter=1000):  #ms
+            sleep_inter=100):  #ms
         # Raise exception if JAVA_HOME not exists.
         java_home = os.environ["JAVA_HOME"]
 
@@ -95,6 +95,7 @@ class HDFSClient(FS):
         exe_cmd = "{} -{}".format(self._base_cmd, cmd)
         ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
         if ret == 134:
+            print("run aborted:", cmd, output.splitlines())
             raise FSShellCmdAborted(cmd)
         return int(ret), output.splitlines()
 
@@ -249,7 +250,6 @@ class HDFSClient(FS):
             if ret != 0:
                 raise ExecuteError(cmd)
 
-    @_handle_errors(60 * 1000)
     def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
         if overwrite and self.is_exist(fs_dst_path):
             self.delete(fs_dst_path)
@@ -263,25 +263,34 @@ class HDFSClient(FS):
                 raise FSFileExistsError("{} exists already".format(
                     fs_src_path, fs_dst_path, fs_dst_path))
 
+        return self._try_mv(fs_src_path, fs_dst_path)
+
+    @_handle_errors(60 * 1000)
+    def _try_mv(self, fs_src_path, fs_dst_path):
         cmd = "mv {} {}".format(fs_src_path, fs_dst_path)
-        ret, _ = self._run_cmd(cmd)
+        try:
+            ret, _ = self._run_cmd(cmd)
+        except FSShellCmdAborted as e:
+            if not fs.is_exist(fs_src_path) and \
+                    fs.is_exist(fs_dst_path):
+                return
+
         if ret != 0:
             raise ExecuteError(cmd)
 
-    @_handle_errors(60 * 1000)
     def _rmr(self, fs_path):
         cmd = "rmr {}".format(fs_path)
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError(cmd)
 
-    @_handle_errors(60 * 1000)
     def _rm(self, fs_path):
         cmd = "rm {}".format(fs_path)
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError(cmd)
 
+    @_handle_errors(60 * 1000)
     def delete(self, fs_path):
         if not self.is_exist(fs_path):
             return
