@@ -148,7 +148,10 @@ class FSTest(unittest.TestCase):
 
     def test_exists(self):
         fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000, sleep_inter=0)
+            "/usr/local/hadoop-2.7.7/",
+            None,
+            time_out=15 * 1000,
+            sleep_inter=100)
         self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
         self.assertFalse(fs.is_dir(os.path.abspath("./xxxx")))
         self.assertTrue(fs.is_dir(os.path.abspath("./xxx/..")))
@@ -159,7 +162,10 @@ class FSTest(unittest.TestCase):
 
     def test_hdfs(self):
         fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000, sleep_inter=0)
+            "/usr/local/hadoop-2.7.7/",
+            None,
+            time_out=15 * 1000,
+            sleep_inter=100)
         self._test_dirs(fs)
         self._test_upload(fs)
 
@@ -176,7 +182,10 @@ class FSTest(unittest.TestCase):
 
     def test_timeout(self):
         fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/", None, time_out=6 * 1000, sleep_inter=0)
+            "/usr/local/hadoop-2.7.7/",
+            None,
+            time_out=6 * 1000,
+            sleep_inter=100)
         src = "hdfs_test_timeout"
         dst = "new_hdfs_test_timeout"
         fs.delete(dst)
@@ -198,7 +207,10 @@ class FSTest(unittest.TestCase):
 
     def test_is_dir(self):
         fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000, sleep_inter=0)
+            "/usr/local/hadoop-2.7.7/",
+            None,
+            time_out=15 * 1000,
+            sleep_inter=100)
         self.assertFalse(fs.is_dir("./test_hdfs.py"))
         s = """
 java.io.IOException: Input/output error
@@ -224,11 +236,14 @@ java.io.IOException: Input/output error
             "/usr/local/hadoop-2.7.7/",
             config,
             time_out=15 * 1000,
-            sleep_inter=0)
+            sleep_inter=100)
 
     def _test_list_dir(self, fs):
         fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000, sleep_inter=0)
+            "/usr/local/hadoop-2.7.7/",
+            None,
+            time_out=15 * 1000,
+            sleep_inter=100)
         fs.ls_dir("test_not_exists")
 
 

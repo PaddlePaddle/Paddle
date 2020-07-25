@@ -96,6 +96,7 @@ class AutoCheckpointChecker(object):
             self._trainer_id = int(os.environ["PADDLE_TRAINER_ID"])
 
             self._ce_test = int(os.getenv("PADDLE_EDL_ONLY_FOR_CE_TEST", "0"))
+            self._fs_cache = int(os.getenv("PADDLE_EDL_FS_CACHE", ".cache"))
 
             self._save_checkpoint_inter = int(
                 os.getenv("PADDLE_EDL_SAVE_CHECKPOINT_INTER", "900"))  #s
@@ -317,7 +318,8 @@ class TrainEpochRange(SerializableBase):
             self._cper.load_checkpoint(
                 self._checkpoint_path, [t],
                 self._checker.trainer_id,
-                checkpoint_no=i)
+                checkpoint_no=i,
+                local_cache_path=self._checker._fs_cache)
             cps.append(t)
             logger.debug("look for valid:{} t:{}".format(i, t._serialize()))
             if epoch_no < 0:
@@ -337,8 +339,10 @@ class TrainEpochRange(SerializableBase):
 
         if g_acp_type == CONST_ACP_TYPE:
             # get the last one
-            self._cper.load_checkpoint(self._checkpoint_path, [self],
-                                       self._checker.trainer_id)
+            self._cper.load_checkpoint(
+                self._checkpoint_path, [self],
+                self._checker.trainer_id,
+                local_cache_path=self._checker._fs_cache)
             self._restored_from = CONST_CHECKPOINT
             self._checkpoint_epoch_no = self._epoch_no
 
@@ -354,7 +358,8 @@ class TrainEpochRange(SerializableBase):
             self._cper.load_checkpoint(
                 self._checkpoint_path, [self],
                 self._checker.trainer_id,
-                checkpoint_no=i)
+                checkpoint_no=i,
+                local_cache_path=self._checker._fs_cache)
 
             self._restored_from = CONST_CHECKPOINT
             self._checkpoint_epoch_no = self._epoch_no
@@ -475,7 +480,9 @@ class TrainEpochRange(SerializableBase):
             p = self._checker.get_exe_checkpoint_path(t._hash_key)
             t._epoch_no = self.get()
             path, checkpoint_no = self._cper.save_checkpoint(
-                p, [m], self._checker.trainer_id)
+                p, [m],
+                self._checker.trainer_id,
+                local_cache_path=self._checker._fs_cache)
             # index info
             t._checkpoint_path = path
             t._checkpoint_no = checkpoint_no

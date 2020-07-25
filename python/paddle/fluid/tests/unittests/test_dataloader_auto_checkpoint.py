@@ -52,6 +52,7 @@ class DataLoaderAutoCheckpointTestBase(AutoCheckpointBase):
             "PADDLE_EDL_HDFS_UGI": "",
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "dataloader_auto_checkpoint",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
+            "PADDLE_EDL_FS_CACHE": ".dataloader_auto_checkpoint_test",
             "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
         }
         os.environ.update(proc_env)

@@ -49,6 +49,7 @@ def _handle_errors(max_time_out=None):
             inter = float(o._sleep_inter) / 1000.0
 
             start = time.time()
+            last_print_time = start
             while True:
                 try:
                     return f(*args, **kwargs)
@@ -57,7 +58,13 @@ def _handle_errors(max_time_out=None):
                     if time.time() - start >= time_out:
                         raise FSTimeOut("args:{} timeout:{}".format(
                             args, time.time() - start))
+
                     time.sleep(inter)
+
+                if time.time() - last_print_time > 30:
+                    print("hadoop operator timeout:args:{} timeout:{}".format(
+                        args, time.time() - start))
+                    last_print_time = time.time()
 
         return handler
 
@@ -198,6 +205,7 @@ class HDFSClient(FS):
     @_handle_errors()
     def _try_upload(self, local_path, fs_path):
         cmd = "put {} {}".format(local_path, fs_path)
+        ret = 0
         try:
             ret, lines = self._run_cmd(cmd)
         except FSShellCmdAborted as e:
@@ -219,6 +227,7 @@ class HDFSClient(FS):
     @_handle_errors()
     def _try_download(self, fs_path, local_path):
         cmd = "get {} {}".format(fs_path, local_path)
+        ret = 0
         try:
             ret, lines = self._run_cmd(cmd)
         except FSShellCmdAborted as e:
@@ -227,7 +236,7 @@ class HDFSClient(FS):
         if ret != 0:
             raise ExecuteError(cmd)
 
-    @_handle_errors(60 * 1000)
+    @_handle_errors()
     def mkdirs(self, fs_path):
         if self.is_exist(fs_path):
             return
@@ -265,9 +274,10 @@ class HDFSClient(FS):
 
         return self._try_mv(fs_src_path, fs_dst_path)
 
-    @_handle_errors(60 * 1000)
+    @_handle_errors()
     def _try_mv(self, fs_src_path, fs_dst_path):
         cmd = "mv {} {}".format(fs_src_path, fs_dst_path)
+        ret = 0
         try:
             ret, _ = self._run_cmd(cmd)
         except FSShellCmdAborted as e:
@@ -290,7 +300,7 @@ class HDFSClient(FS):
         if ret != 0:
             raise ExecuteError(cmd)
 
-    @_handle_errors(60 * 1000)
+    @_handle_errors()
     def delete(self, fs_path):
         if not self.is_exist(fs_path):
             return
