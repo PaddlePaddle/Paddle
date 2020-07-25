@@ -33,6 +33,8 @@ def YoloBox(x, img_size, attrs):
     conf_thresh = attrs['conf_thresh']
     downsample = attrs['downsample']
     clip_bbox = attrs['clip_bbox']
+    scale_x_y = attrs['scale_x_y']
+    bias_x_y = -0.5 * (scale_x_y - 1.)
     input_size = downsample * h
 
     x = x.reshape((n, an_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
@@ -40,8 +42,10 @@ def YoloBox(x, img_size, attrs):
     pred_box = x[:, :, :, :, :4].copy()
     grid_x = np.tile(np.arange(w).reshape((1, w)), (h, 1))
     grid_y = np.tile(np.arange(h).reshape((h, 1)), (1, w))
-    pred_box[:, :, :, :, 0] = (grid_x + sigmoid(pred_box[:, :, :, :, 0])) / w
-    pred_box[:, :, :, :, 1] = (grid_y + sigmoid(pred_box[:, :, :, :, 1])) / h
+    pred_box[:, :, :, :, 0] = (
+        grid_x + sigmoid(pred_box[:, :, :, :, 0]) * scale_x_y + bias_x_y) / w
+    pred_box[:, :, :, :, 1] = (
+        grid_y + sigmoid(pred_box[:, :, :, :, 1]) * scale_x_y + bias_x_y) / h
 
     anchors = [(anchors[i], anchors[i + 1]) for i in range(0, len(anchors), 2)]
     anchors_s = np.array(
@@ -90,6 +94,7 @@ class TestYoloBoxOp(OpTest):
             "conf_thresh": self.conf_thresh,
             "downsample": self.downsample,
             "clip_bbox": self.clip_bbox,
+            "scale_x_y": self.scale_x_y,
         }
 
         self.inputs = {
@@ -115,6 +120,7 @@ class TestYoloBoxOp(OpTest):
         self.clip_bbox = True
         self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 13)
         self.imgsize_shape = (self.batch_size, 2)
+        self.scale_x_y = 1.
 
 
 class TestYoloBoxOpNoClipBbox(TestYoloBoxOp):
@@ -128,6 +134,21 @@ class TestYoloBoxOpNoClipBbox(TestYoloBoxOp):
         self.clip_bbox = False
         self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 13)
         self.imgsize_shape = (self.batch_size, 2)
+        self.scale_x_y = 1.
+
+
+class TestYoloBoxOpScaleXY(TestYoloBoxOp):
+    def initTestCase(self):
+        self.anchors = [10, 13, 16, 30, 33, 23]
+        an_num = int(len(self.anchors) // 2)
+        self.batch_size = 32
+        self.class_num = 2
+        self.conf_thresh = 0.5
+        self.downsample = 32
+        self.clip_bbox = True
+        self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 13)
+        self.imgsize_shape = (self.batch_size, 2)
+        self.scale_x_y = 1.2
 
 
 if __name__ == "__main__":
