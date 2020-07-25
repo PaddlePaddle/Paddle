@@ -71,6 +71,7 @@ class TestActivation(OpTest):
 
 class TestParameter(object):
     def test_out_name(self):
+        """test_out_name"""
         with fluid.program_guard(fluid.Program()):
             np_x = np.array([0.1])
             data = fluid.layers.data(name="X", shape=[1])
@@ -166,6 +167,7 @@ class TestAtan(TestActivation, TestParameter):
         self.check_grad(['X'], 'Out')
 
     def test_out_name(self):
+        """test_out_name""
         with fluid.program_guard(fluid.Program()):
             np_x = np.array([0.1])
             data = fluid.layers.data(name="X", shape=[1])
