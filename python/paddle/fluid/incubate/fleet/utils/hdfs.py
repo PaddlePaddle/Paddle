@@ -231,7 +231,8 @@ class HDFSClient(FS):
         try:
             ret, lines = self._run_cmd(cmd)
         except FSShellCmdAborted as e:
-            fs.delete(local_path)
+            local_fs = LocalFS()
+            local_fs.delete(local_path)
 
         if ret != 0:
             raise ExecuteError(cmd)
@@ -281,8 +282,8 @@ class HDFSClient(FS):
         try:
             ret, _ = self._run_cmd(cmd)
         except FSShellCmdAborted as e:
-            if not fs.is_exist(fs_src_path) and \
-                    fs.is_exist(fs_dst_path):
+            if not self.is_exist(fs_src_path) and \
+                    self.is_exist(fs_dst_path):
                 return
 
         if ret != 0:

@@ -492,7 +492,9 @@ class TrainEpochRange(SerializableBase):
             logger.debug("save executor checkpoint:{}".format(t._serialize()))
 
         if len(self._exe_status) > 0:
-            self._cper.save_checkpoint(self._checkpoint_path, [self])
+            self._cper.save_checkpoint(
+                self._checkpoint_path, [self],
+                local_cache_path=self._checker._fs_cache)
             logger.info("save train_epoch_range checkpoint:{}".format(
                 self._serialize()))
 
@@ -648,7 +650,8 @@ def _auto_checkpoint(exe, prog):
             a.load_checkpoint(
                 g_checker.get_exe_checkpoint_path(key), [m],
                 trainer_id=g_checker.trainer_id,
-                checkpoint_no=t._checkpoint_no)
+                checkpoint_no=t._checkpoint_no,
+                local_cache_path=self._checker._fs_cache)
             t._restored_from = CONST_CHECKPOINT
             logger.info("load executor checkpoint {}".format(t))
         t._exe = exe
