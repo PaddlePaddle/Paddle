@@ -52,9 +52,11 @@ def _handle_errors(max_time_out=None):
             while True:
                 try:
                     return f(*args, **kwargs)
-                except Exception as e:
+                #important: only ExecuteError need to retry
+                except ExecuteError as e:
                     if time.time() - start >= time_out:
-                        raise FSTimeOut
+                        raise FSTimeOut("timeout:{}".format(time.time() -
+                                                            start))
                     time.sleep(inter)
 
         return handler
@@ -91,6 +93,8 @@ class HDFSClient(FS):
 
     def _run_cmd(self, cmd, redirect_stderr=False):
         ret, output = core.shell_execute_cmd(cmd, 0, 0, redirect_stderr)
+        if ret == 134:
+            raise FSShellCmdAborted()
         return int(ret), output.splitlines()
 
     @_handle_errors(max_time_out=60 * 1000)

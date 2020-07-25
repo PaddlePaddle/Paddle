@@ -45,6 +45,10 @@ class FSTimeOut(Exception):
     pass
 
 
+class FSShellCmdAborted(ExecuteError):
+    pass
+
+
 class FS(object):
     @abc.abstractmethod
     def ls_dir(self, fs_path):
