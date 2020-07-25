@@ -26,7 +26,7 @@ import time
 import logging
 import six
 from . import fs
-from .fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut
+from .fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut, FSShellCmdAborted
 from paddle.fluid import core
 import functools
 
@@ -94,10 +94,10 @@ class HDFSClient(FS):
     def _run_cmd(self, cmd, redirect_stderr=False):
         exe_cmd = "{} -{}".format(self._base_cmd, cmd)
         ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
+        ret = int(ret)
         if ret == 134:
-            print("run aborted:", cmd, output.splitlines())
             raise FSShellCmdAborted(cmd)
-        return int(ret), output.splitlines()
+        return ret, output.splitlines()
 
     @_handle_errors(max_time_out=60 * 1000)
     def list_dirs(self, fs_path):
