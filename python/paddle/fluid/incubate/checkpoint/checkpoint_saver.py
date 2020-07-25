@@ -94,9 +94,8 @@ class CheckpointSaver(object):
             if not local_fs.is_exist(cache_path):
                 local_fs.mkdirs(cache_path)
             else:
-                assert self._fs.is_dir(
-                    path), "cache path:{} must be a directory".format(
-                        cache_path)
+                assert local_fs.is_dir(cache_path), \
+                    "cache path:{} must be a directory".format(cache_path)
 
             saved_path = cache_path
 
@@ -106,6 +105,7 @@ class CheckpointSaver(object):
         if self._fs.need_upload_download():
             self._fs.delete(tmp_path)
             self._fs.upload(cache_path, tmp_path)
+            local_fs.delete(cache_path)
         self._fs.mv(tmp_path, real_path)
 
         return real_path, max_no
@@ -158,6 +158,9 @@ class CheckpointSaver(object):
 
         for s in slists:
             s.deserialize(load_path)
+
+        if self._fs.need_upload_download() and cache_path:
+            local_fs.delete(cache_path)
 
         return real_path
 

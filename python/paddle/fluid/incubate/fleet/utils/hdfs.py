@@ -55,8 +55,8 @@ def _handle_errors(max_time_out=None):
                 #important: only ExecuteError need to retry
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
-                        raise FSTimeOut("timeout:{}".format(time.time() -
-                                                            start))
+                        raise FSTimeOut("args:{} timeout:{}".format(
+                            args, time.time() - start))
                     time.sleep(inter)
 
         return handler
@@ -70,7 +70,7 @@ class HDFSClient(FS):
             hadoop_home,
             configs,
             time_out=5 * 60 * 1000,  #ms
-            sleep_inter=100):  #ms
+            sleep_inter=1000):  #ms
         # Raise exception if JAVA_HOME not exists.
         java_home = os.environ["JAVA_HOME"]
 
@@ -99,7 +99,7 @@ class HDFSClient(FS):
             raise FSShellCmdAborted(cmd)
         return ret, output.splitlines()
 
-    @_handle_errors(max_time_out=60 * 1000)
+    @_handle_errors()
     def list_dirs(self, fs_path):
         if not self.is_exist(fs_path):
             return []
@@ -107,7 +107,7 @@ class HDFSClient(FS):
         dirs, files = self._ls_dir(fs_path)
         return dirs
 
-    @_handle_errors(max_time_out=60 * 1000)
+    @_handle_errors()
     def ls_dir(self, fs_path):
         """	
         list directory under fs_path, and only give the pure name, not include the fs_path	
@@ -147,7 +147,7 @@ class HDFSClient(FS):
 
         return None
 
-    @_handle_errors(max_time_out=60 * 1000)
+    @_handle_errors()
     def is_dir(self, fs_path):
         if not self.is_exist(fs_path):
             return False
@@ -172,7 +172,7 @@ class HDFSClient(FS):
 
         return not self._is_dir(fs_path)
 
-    @_handle_errors(max_time_out=60 * 1000)
+    @_handle_errors()
     def is_exist(self, fs_path):
         cmd = "ls {} ".format(fs_path)
         ret, out = self._run_cmd(cmd, redirect_stderr=True)

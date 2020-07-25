@@ -147,7 +147,8 @@ class FSTest(unittest.TestCase):
         fs.mkdirs(dir_name)
 
     def test_exists(self):
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000, sleep_inter=0)
         self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
         self.assertFalse(fs.is_dir(os.path.abspath("./xxxx")))
         self.assertTrue(fs.is_dir(os.path.abspath("./xxx/..")))
@@ -157,7 +158,8 @@ class FSTest(unittest.TestCase):
         dirs, files = fs.ls_dir(os.path.abspath("./xxx/.."))
 
     def test_hdfs(self):
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000, sleep_inter=0)
         self._test_dirs(fs)
         self._test_upload(fs)
 
@@ -174,10 +176,7 @@ class FSTest(unittest.TestCase):
 
     def test_timeout(self):
         fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/",
-            None,
-            time_out=6 * 1000,
-            sleep_inter=2000)
+            "/usr/local/hadoop-2.7.7/", None, time_out=6 * 1000, sleep_inter=0)
         src = "hdfs_test_timeout"
         dst = "new_hdfs_test_timeout"
         fs.delete(dst)
@@ -198,7 +197,8 @@ class FSTest(unittest.TestCase):
         print("second mv ret:{} output:{}".format(ret, output))
 
     def test_is_dir(self):
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000, sleep_inter=0)
         self.assertFalse(fs.is_dir("./test_hdfs.py"))
         s = """
 java.io.IOException: Input/output error
@@ -220,10 +220,15 @@ java.io.IOException: Input/output error
 
     def test_config(self):
         config = {"fs.default.name": "hdfs://xxx", "hadoop.job.ugi": "ugi"}
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/", config, time_out=15 * 1000)
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/",
+            config,
+            time_out=15 * 1000,
+            sleep_inter=0)
 
     def _test_list_dir(self, fs):
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000, sleep_inter=0)
         fs.ls_dir("test_not_exists")
 
 
