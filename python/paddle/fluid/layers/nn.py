@@ -4818,19 +4818,22 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
 
 def split(input, num_or_sections, dim=-1, name=None):
     """
+    :alias_main: paddle.split
+	:alias: paddle.split,paddle.tensor.split,paddle.tensor.manipulation.split
+    
     Split the input tensor into multiple sub-Tensors.
 
     Args:
-        input(Variable): A N-D Tensor or LoDTensor. The data type is float32, float64, int32 or int64.
-        num_or_sections(int|list|tuple): If ``num_or_sections`` is an integer,
-            then the integer indicates the number of equal sized sub-Tensors that the Tensor 
+        input (Variable): A N-D Tensor or LoDTensor. The data type is float32, float64, int32 or int64.
+        num_or_sections (int|list|tuple): If ``num_or_sections`` is int, then the ``num_or_sections`` 
+            indicates the number of equal sized sub-Tensors that the Tensor 
             will be divided into. If ``num_or_sections`` is a list or tuple, the length of it 
             indicates the number of sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
             dimension orderly. The length of the list mustn't be larger than the Tensor's size of specified dim.
-        dim(int32|Variable, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. 
+        dim (int32|Variable, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. 
             The dimension along which to split. If :math:`dim < 0`, the dimension to split along is 
             ``rank(input) + dim``. Default is -1.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property. 
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:

@@ -311,9 +311,10 @@ def split(x, num_or_sections, axis=0, name=None):
 	:alias: paddle.split,paddle.tensor.split,paddle.tensor.manipulation.split
 
     Split the input tensor into multiple sub-Tensors.
+    
     Args:
-        x (Variable): A N-D Tensor or LoDTensor. The data type is float32, float64, int32 or int64..
-        num_or_sections (int|list|tuple): If :attr:`num_or_sections` is an integer, then the integer
+        x (Variable): A N-D Tensor or LoDTensor. The data type is float32, float64, int32 or int64.
+        num_or_sections (int|list|tuple): If ``num_or_sections` is an int, then ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the Tensor will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
             sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
@@ -321,7 +322,7 @@ def split(x, num_or_sections, axis=0, name=None):
         axis (int|Variable, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``.
             The axis along which to split. If ``axis < 0``, the axis to split along is ``rank(x) + axis``.
             Default is 0.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Variable): The list of segmented Tensors.
