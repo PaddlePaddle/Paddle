@@ -183,7 +183,7 @@ class HDFSClient(FS):
 
         return True
 
-    @_handle_errors()
+    # can't retry
     def upload(self, local_path, fs_path):
         if self.is_exist(fs_path):
             raise FSFileExistsError("{} exists".format(fs_path))
@@ -205,7 +205,7 @@ class HDFSClient(FS):
         if ret != 0:
             raise ExecuteError(cmd)
 
-    @_handle_errors()
+    # can't retry
     def download(self, fs_path, local_path):
         if self.is_exist(local_path):
             raise FSFileExistsError("{} exists".format(local_path))
