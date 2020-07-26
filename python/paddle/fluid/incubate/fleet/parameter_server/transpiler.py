@@ -174,12 +174,10 @@ class FleetTranspiler(Fleet):
 
         if isinstance(self._strategy, GeoStrategy):
             geo_kwargs = geo_strategy_envs()
-            if kwargs:
-                kwargs.update(geo_kwargs)
+            kwargs.update(geo_kwargs)
         if isinstance(self._strategy, SyncStrategy):
             sync_kwargs = sync_strategy_envs()
-            if kwargs:
-                kwargs.update(sync_kwargs)
+            kwargs.update(sync_kwargs)
 
         kwargs = kwargs if kwargs else None
 
