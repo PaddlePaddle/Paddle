@@ -95,6 +95,15 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.dgc = "True"
         self.assertEqual(strategy.dgc, False)
 
+    def test_sync_nccl_allreduce(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.sync_nccl_allreduce = True
+        self.assertEqual(strategy.sync_nccl_allreduce, True)
+        strategy.sync_nccl_allreduce = False
+        self.assertEqual(strategy.sync_nccl_allreduce, False)
+        strategy.sync_nccl_allreduce = "True"
+        self.assertEqual(strategy.sync_nccl_allreduce, False)
+
     def test_gradient_merge(self):
         strategy = paddle.fleet.DistributedStrategy()
         strategy.gradient_merge = True

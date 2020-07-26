@@ -93,7 +93,8 @@ message DistributedStrategy {
   optional bool pipeline = 9 [ default = false ];
   optional bool elastic = 10 [ default = false ];
   optional bool auto = 11 [ default = false ];
-  optional bool async = 12 [ default = false ];
+  optional bool async = 12 [ default = true ];
+  optional bool sync_nccl_allreduce = 13 [ default = true ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;

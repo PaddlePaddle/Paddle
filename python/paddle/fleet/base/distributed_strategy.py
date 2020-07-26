@@ -319,6 +319,17 @@ class DistributedStrategy(object):
         """
         return self.strategy.recompute
 
+    @property
+    def sync_nccl_allreduce(self):
+        return self.strategy.sync_nccl_allreduce
+
+    @sync_nccl_allreduce.setter
+    def sync_nccl_allreduce(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.sync_nccl_allreduce = flag
+        else:
+            print("WARNING: sync_nccl_allreduce should have value of bool type")
+
     @recompute.setter
     def recompute(self, flag):
         if isinstance(flag, bool):
