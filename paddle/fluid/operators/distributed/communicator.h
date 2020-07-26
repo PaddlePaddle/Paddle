@@ -266,6 +266,8 @@ class AsyncCommunicator : public Communicator {
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
+    need_global_step_ =
+        static_cast<bool>(std::stoi(envs.at("need_global_step")));
     VLOG(0) << "AsyncCommunicator Initialized";
   }
 
@@ -335,6 +337,8 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
+    need_global_step_ =
+        static_cast<bool>(std::stoi(envs.at("need_global_step")));
     VLOG(0) << "HalfAsyncCommunicator Initialized";
   }
 
@@ -372,6 +376,8 @@ class SyncCommunicator : public HalfAsyncCommunicator {
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
+    need_global_step_ =
+        static_cast<bool>(std::stoi(envs.at("need_global_step")));
 
     trainer_id_ = std::stoi(envs.at("trainer_id"));
     auto pserver_strings = envs.at("pserver_endpoints");

@@ -42,6 +42,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 from paddle.fluid.incubate.fleet.parameter_server import version
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.checkport import wait_server_ready
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
@@ -164,12 +165,23 @@ class FleetTranspiler(Fleet):
 
         print(trainer_config)
 
-        kwargs = None
+        lrs = _get_lr_ops(self._origin_main_program)
+
+        if len(lrs) > 0:
+            kwargs = {"need_global_step": "1"}
+        else:
+            kwargs = {}
 
         if isinstance(self._strategy, GeoStrategy):
-            kwargs = geo_strategy_envs()
+            geo_kwargs = geo_strategy_envs()
+            if kwargs:
+                kwargs.update(geo_kwargs)
         if isinstance(self._strategy, SyncStrategy):
-            kwargs = sync_strategy_envs()
+            sync_kwargs = sync_strategy_envs()
+            if kwargs:
+                kwargs.update(sync_kwargs)
+
+        kwargs = kwargs if kwargs else None
 
         send_ctx = fleet.compiled_config.get_communicator_send_context()
 
