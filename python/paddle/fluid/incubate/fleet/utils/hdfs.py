@@ -208,12 +208,11 @@ class HDFSClient(FS):
         ret = 0
         try:
             ret, lines = self._run_cmd(cmd)
+            if ret != 0:
+                raise ExecuteError(cmd)
         except Exception as e:
             self.delete(fs_path)
             raise e
-
-        if ret != 0:
-            raise ExecuteError(cmd)
 
     # can't retry
     def download(self, fs_path, local_path):
@@ -231,13 +230,12 @@ class HDFSClient(FS):
         ret = 0
         try:
             ret, lines = self._run_cmd(cmd)
+            if ret != 0:
+                raise ExecuteError(cmd)
         except Exception as e:
             local_fs = LocalFS()
             local_fs.delete(local_path)
             raise e
-
-        if ret != 0:
-            raise ExecuteError(cmd)
 
     @_handle_errors()
     def mkdirs(self, fs_path):
@@ -283,14 +281,13 @@ class HDFSClient(FS):
         ret = 0
         try:
             ret, _ = self._run_cmd(cmd)
+            if ret != 0:
+                raise ExecuteError(cmd)
         except Exception as e:
             if not self.is_exist(fs_src_path) and \
                     self.is_exist(fs_dst_path):
                 return
             raise e
-
-        if ret != 0:
-            raise ExecuteError(cmd)
 
     def _rmr(self, fs_path):
         cmd = "rmr {}".format(fs_path)
