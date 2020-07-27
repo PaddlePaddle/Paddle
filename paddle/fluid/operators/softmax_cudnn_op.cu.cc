@@ -12,60 +12,95 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/softmax_op.h"
+#include "paddle/fluid/platform/cudnn_desc.h"
+#include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 
+static inline int SizeOutAxis(const int axis, DDim dims) {
+  int size = 1;
+  for (int i = axis + 1; i < dims.size(); i++) {
+    size *= dims[i];
+  }
+  return size;
+}
+
 template <typename T>
 class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<Tensor>("X");
-    auto* Out = context.Output<Tensor>("Out");
-
-    // allocate memory on device.
-    Out->mutable_data<T>(context.GetPlace());
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* X = ctx.Input<Tensor>("X");
+    auto* Out = ctx.Output<Tensor>("Out");
 
     auto dims = X->dims();
-    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-    framework::LoDTensor flattened_x;
-    framework::LoDTensor flattened_out;
-    flattened_x.ShareDataWith(*X).Resize(flattened_dims);
-    flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
+    const int rank = dims.size();
+    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int axis_dim = dims[axis];
+    const int N = SizeToAxis(axis, dims);
+    const int D = SizeOutAxis(axis, dims);
 
-    math::SoftmaxCUDNNFunctor<T>()(
-        context.template device_context<platform::CUDADeviceContext>(),
-        &flattened_x, &flattened_out);
+    // allocate memory on device.
+    Out->mutable_data<T>(ctx.GetPlace());
+    auto* out_data = Out->data<T>();
+    cudnnTensorDescriptor_t desc_;
+    cudnnDataType_t type = platform::ToCudnnDataType(
+        framework::ToDataType(std::type_index(typeid(T))));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensor4dDescriptor(
+        desc_, CUDNN_TENSOR_NCHW, type, N, axis_dim, D, 1));
+
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+        handle, CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL,
+        platform::CudnnDataType<T>::kOne(), desc_, X->data<T>(),
+        platform::CudnnDataType<T>::kZero(), desc_, out_data));
   }
 };
 
 template <typename T>
 class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* Out = context.Input<Tensor>("Out");
-    auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
-
-    // allocate memory on device.
-    dX->mutable_data<T>(context.GetPlace());
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* Out = ctx.Input<Tensor>("Out");
+    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto dims = Out->dims();
-    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-    framework::LoDTensor flattened_out;
-    framework::LoDTensor flattened_d_out;
-    framework::LoDTensor flattened_d_x;
-    flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
-    flattened_d_out.ShareDataWith(*dOut).Resize(flattened_dims);
-    flattened_d_x.ShareDataWith(*dX).Resize(flattened_dims);
+    const int rank = dims.size();
+    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int axis_dim = dims[axis];
+    const int N = SizeToAxis(axis, dims);
+    const int D = SizeOutAxis(axis, dims);
 
-    math::SoftmaxGradCUDNNFunctor<T>()(
-        context.template device_context<platform::CUDADeviceContext>(),
-        &flattened_out, &flattened_d_out, &flattened_d_x);
+    // allocate memory on device.
+    dX->mutable_data<T>(ctx.GetPlace());
+    auto* dx_data = dX->data<T>();
+
+    cudnnTensorDescriptor_t desc_;
+    cudnnDataType_t type = platform::ToCudnnDataType(
+        framework::ToDataType(std::type_index(typeid(T))));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensor4dDescriptor(
+        desc_, CUDNN_TENSOR_NCHW, type, N, axis_dim, D, 1));
+
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+        handle, CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL,
+        platform::CudnnDataType<T>::kOne(), desc_, Out->data<T>(), desc_,
+        dOut->data<T>(), platform::CudnnDataType<T>::kZero(), desc_, dx_data));
   }
 };
 

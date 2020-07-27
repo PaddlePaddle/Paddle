@@ -1181,7 +1181,7 @@ def chunk_eval(input,
             num_correct_chunks)
 
 
-def softmax(input, use_cudnn=False, name=None, axis=-1):
+def softmax(input, use_cudnn=True, name=None, axis=-1):
     """
     :alias_main: paddle.nn.functional.softmax
 	:alias: paddle.nn.functional.softmax,paddle.nn.functional.activation.softmax

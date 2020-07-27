@@ -156,7 +156,37 @@ class TestSoftmaxCUDNNOp2(TestSoftmaxCUDNNOp):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
+class TestSoftmaxCUDNNOp3(TestSoftmaxCUDNNOp):
+    def get_x_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 0
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSoftmaxCUDNNOp4(TestSoftmaxCUDNNOp):
+    def get_x_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 1
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp5(TestSoftmaxCUDNNOp):
+    def get_x_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 2
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSoftmaxCUDNNOp6(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
 
