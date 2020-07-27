@@ -16,20 +16,37 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.framework import default_main_program
 from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
 
 
 class EntryAttrChecks(unittest.TestCase):
+    def base(self):
+        with self.assertRaises(NotImplementedError):
+            import paddle.fluid.entry_attr as entry
+            base = entry.EntryAttr()
+            base.to_attr()
+
     def probability_entry(self):
         prob = ProbabilityEntry(0.5)
         ss = prob.to_attr()
         self.assertEqual("probability_entry:0.5", ss)
 
+        with self.assertRaises(ValueError):
+            prob1 = ProbabilityEntry("none")
+
+        with self.assertRaises(ValueError):
+            prob2 = ProbabilityEntry(-1)
+
     def countfilter_entry(self):
         counter = CountFilterEntry(20)
         ss = counter.to_attr()
         self.assertEqual("count_filter_entry:20", ss)
+
+        with self.assertRaises(ValueError):
+            counter1 = CountFilterEntry("none")
+
+        with self.assertRaises(ValueError):
+            counter2 = CountFilterEntry(-1)
 
     def spaese_layer(self):
         prog = fluid.Program()
@@ -68,6 +85,9 @@ class EntryAttrChecks(unittest.TestCase):
 
 
 class TestEntryAttrs(EntryAttrChecks):
+    def test_base(self):
+        self.base()
+
     def test_prob(self):
         self.probability_entry()
 

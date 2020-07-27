@@ -35,8 +35,7 @@ class EntryAttr(object):
         Returns:
             Parameter attributes(map): The attributes of this parameter.
         """
-        kwargs = ""
-        return kwargs
+        raise NotImplementedError("EntryAttr is base class")
 
 
 class ProbabilityEntry(EntryAttr):

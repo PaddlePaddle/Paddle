@@ -43,7 +43,7 @@ class PSDispatcher(object):
         Returns:
             a map of pserver endpoint -> varname
         """
-        AssertionError("Interface has not been implemented.")
+        raise NotImplementedError("Interface has not been implemented.")
 
 
 class HashName(PSDispatcher):
