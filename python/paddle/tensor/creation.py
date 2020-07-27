@@ -58,22 +58,21 @@ __all__ = [
 def full_like(x, fill_value, dtype=None, name=None):
     """
 	:alias_main: paddle.full_like
-	:alias: paddle.full_like,paddle.tensor.full_like,paddle.tensor.creation.full_like
+	:alias: paddle.tensor.full_like, paddle.tensor.creation.full_like
 
-    **full_like**
-    This function creates a tensor filled with `fill_value` which has identical shape and dtype 
-    with `input`.
+    This function creates a tensor filled with ``fill_value`` which has identical shape and dtype 
+    with ``x``.
 
     Args:
-        x(Variable): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
-        fill_value(bool|float|int|Variable): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
+        x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
+        fill_value(bool|float|int|Tensor): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The data type can be one
             of bool, float16, float32, float64, int32, int64. The default value is None, which means the output 
             data type is the same as input.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
     
     Returns:
-        out(Variable): The Tensor variable storing the output.
+        out(Tensor): The Tensor variable storing the output.
     
     Raises:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None.
@@ -119,23 +118,24 @@ def full_like(x, fill_value, dtype=None, name=None):
 def ones(shape, dtype=None, name=None):
     """
 	:alias_main: paddle.ones
-	:alias: paddle.ones,paddle.tensor.ones,paddle.tensor.creation.ones
+	:alias: paddle.tensor.ones, paddle.tensor.creation.ones
 
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
 
     Args:
-        shape(tuple|list|Variable): Shape of output tensor, the data type of shape is int32 or int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output tensor, it supports
+        shape(tuple|list|Tensor): Shape of output Tensor, the data type of shape is int32 or int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the data type is 'float32'.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
     
     Returns:
-        Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
+        Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
 
     Raises:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None
-        and the data type of out Tensor must be the same as the dtype. 
-        TypeError: The `shape` must be one of list, tuple and Variable.
+            and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The `shape` must be one of list, tuple and Tensor. The data type of ``shape`` must
+            be int32 or int64 when it's a Tensor.
     
     Examples:
         .. code-block:: python
@@ -153,7 +153,7 @@ def ones(shape, dtype=None, name=None):
           # [[1 1]
           #  [1 1]]
           
-          #shape is a Variable
+          #shape is a Tensor
           shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
           data3 = paddle.ones(shape=shape, dtype='int32') 
           # [[1 1]
@@ -237,20 +237,26 @@ def ones_like(input, dtype=None, device=None, name=None):
 def zeros(shape, dtype=None, name=None):
     """
 	:alias_main: paddle.zeros
-	:alias: paddle.zeros,paddle.tensor.zeros,paddle.tensor.creation.zeros
+	:alias: paddle.tensor.zeros, paddle.tensor.creation.zeros
 
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
     Args:
-        shape(tuple|list): Shape of output tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output tensor, it supports
+        shape(tuple|list|Tensor): Shape of output Tensor, the data type of ``shape`` is int32 or int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
+        Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
+    Raises:
+        TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None
+            and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The `shape` must be one of list, tuple and Tensor. The data type of ``shape`` must
+            be int32 or int64 when it's a Tensor.
+    
     Examples:
         .. code-block:: python
 
@@ -320,7 +326,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: An identity Tensor or LoDTensor of shape [num_rows, num_columns].
+        Tensor: An identity Tensor or LoDTensor of shape [num_rows, num_columns].
     
     Raises:
         TypeError: The `dtype` must be one of float16, float32, float64, int32 int64 and None.
@@ -354,29 +360,30 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 def full(shape, fill_value, dtype=None, name=None):
     """
 	:alias_main: paddle.full
-	:alias: paddle.full,paddle.tensor.full,paddle.tensor.creation.full
+	:alias: paddle.tensor.full, paddle.tensor.creation.full
 
     This Op return a Tensor with the `fill_value` which size is same as `shape`
     
     Args:
-        shape(list|tuple|Variable): Shape of the Tensor to be created.
+        shape(list|tuple|Tensor): Shape of the Tensor to be created.
                 The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
                 the elements of it should be integers or Tensors with shape [1].
-                If ``shape`` is an Variable, it should be an 1-D Tensor .
-        fill_value(bool|float16|float32|float64|int32|int64|Variable): The constant value
-            used to initialize the Tensor to be created. If fill_value is an Variable, it must be an 1-D Tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
+                If ``shape`` is an Tensor, it should be an 1-D Tensor .
+        fill_value(bool|float|int|Tensor): The constant value
+            used to initialize the Tensor to be created. If ``fill_value`` is an Tensor, it must be an 1-D Tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output Tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created tensor is `float32`
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
-        Variable: Tensor which is created according to shape and dtype.
+        Tensor: Tensor which is created according to shape and dtype.
 
     Raises:
         TypeError: The `dtype` must be one of None, bool, float16, float32, float64, int32 and int64.
-        TypeError: The `shape` must be one of Variable, list and tuple.
+        TypeError: The `shape` must be one of Variable, list and tuple. the data type of ``shape`` must
+            be int32 or int64 when the it's a Tensor
     
     Examples:
         .. code-block:: python
@@ -388,18 +395,18 @@ def full(shape, fill_value, dtype=None, name=None):
           #[[0]
           # [0]]
 
-          # attr shape is a list which contains Variable Tensor.
+          # attr shape is a list which contains Tensor.
           positive_2 = paddle.fill_constant([1], "int32", 2)
           data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5)
           # [[1.5 1.5]]
 
-          # attr shape is an Variable Tensor.
+          # attr shape is a Tensor.
           shape = paddle.fill_constant([2], "int32", 2)
           data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
           # [[True True] 
           #  [True True]]
           
-          # attr fill_value is an Variable Tensor.
+          # attr fill_value is a Tensor.
           val = paddle.fill_constant([1], "float32", 2.0)
           data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
           # [[2.0] 
