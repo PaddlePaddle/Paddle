@@ -56,7 +56,7 @@ class Executor {
   explicit Executor(const platform::DeviceContext& device)
       : Executor(device.GetPlace()) {}
 
-  explicit Executor(const platform::Place& place);
+  explicit Executor(const platform::Place& place, bool is_block_op = false);
 
   ~Executor();
   /*
@@ -138,6 +138,7 @@ class Executor {
 
  private:
   const platform::Place place_;
+  bool is_block_op_;
 };
 
 }  // namespace framework

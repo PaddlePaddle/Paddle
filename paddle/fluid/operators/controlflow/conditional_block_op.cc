@@ -63,7 +63,7 @@ class ConditionalBlockOp : public ConditionalOp {
       scopes->resize(1);
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
-      framework::Executor exec(dev_place);
+      framework::Executor exec(dev_place, true);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
