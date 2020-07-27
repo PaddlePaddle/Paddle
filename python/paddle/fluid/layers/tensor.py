@@ -1334,13 +1334,13 @@ def range(start, end, step, dtype, name=None):
     ``end`` to avoid floating point rounding errors when comparing against ``end``.
 
     Parameters:
-        start(float|int|Variable): Start of interval. The interval includes this
+        start(float|int|Tensor): Start of interval. The interval includes this
             value. If ``start`` is a Tensor, it is a 1-D Tensor with shape [1],
             with data type int32, int64, float32, float64.
-        end(float|int|Variable): End of interval. The interval does not include
+        end(float|int|Tensor): End of interval. The interval does not include
             this value. If ``end`` is a Tensor, it is a 1-D Tensor with shape
             [1], with data type int32, int64, float32, float64.
-        step(float|int|Variable): Spacing between values. For any out, it is
+        step(float|int|Tensor): Spacing between values. For any out, it is
             the istance between two adjacent values, out[i+1] - out[i]. If
             ``step`` is a Tensor, it is a 1-D Tensor with shape [1], with data
             type int32, int64, float32, float64.
