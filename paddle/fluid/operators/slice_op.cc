@@ -148,9 +148,14 @@ class SliceOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    auto *in_var = ctx.InputVar("Input");
+    bool is_tensor = in_var->IsType<framework::LoDTensor>();
+    platform::Place place = ctx.device_context().GetPlace();
+    if (is_tensor) {
+      place = in_var->Get<framework::LoDTensor>().place();
+    }
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.Input<Tensor>("Input")->place());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"), place);
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
