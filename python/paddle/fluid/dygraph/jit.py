@@ -44,10 +44,13 @@ def create_program_from_desc(program_desc):
 def _extract_vars(inputs, result_list):
     if isinstance(inputs, Variable):
         result_list.append(inputs)
-
-    if isinstance(inputs, (list, tuple)):
+    elif isinstance(inputs, (list, tuple)):
         for var in inputs:
             _extract_vars(var, result_list)
+    else:
+        raise TypeError(
+            "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received {}.".
+            format(type(inputs)))
 
 
 def extract_vars(inputs):
@@ -1064,7 +1067,8 @@ class TracedLayer(object):
 
         Args:
             layer (dygraph.Layer): the layer object to be traced.
-            inputs (list(Variable)): the input variables of the layer object.
+            inputs (list(Variable)|tuple(Variable)|Variable): the input
+                variables of the layer object.
 
         Returns:
             tuple: A tuple of 2 items, whose the first item is the output of
@@ -1105,15 +1109,6 @@ class TracedLayer(object):
             layer, Layer
         ), "The type of 'layer' in fluid.dygraph.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received {}.".format(
             type(layer))
-        assert isinstance(
-            inputs, list
-        ), "The type of 'inputs' in fluid.dygraph.jit.TracedLayer.trace must be {}, but received {}.".format(
-            list, type(inputs))
-        for inp in inputs:
-            assert isinstance(
-                inp, (Variable, core.VarBase)
-            ), "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received {}.".format(
-                type(inp))
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)
         traced = TracedLayer(prog, parameters, feed, fetch)
         return outs, traced
