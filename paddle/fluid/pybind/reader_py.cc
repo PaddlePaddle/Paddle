@@ -188,6 +188,14 @@ class MultiDeviceFeedReader {
 
       result.emplace_back();
       auto &ret = result.back();
+      PADDLE_ENFORCE_EQ(names_.size(), ret_[i].size(),
+                        platform::errors::InvalidArgument(
+                            "The sample number of reader's input data and the "
+                            "input number of feed list are not equal.\n"
+                            "Possible reasons are:\n"
+                            "  The generator is decorated by `paddle.batch` "
+                            "and configured by `set_batch_generator`, but here "
+                            "need to used `set_sample_list_generator`."));
       for (size_t j = 0; j < names_.size(); ++j) {
         ret.emplace(names_[j], std::move(ret_[i][j]));
       }
