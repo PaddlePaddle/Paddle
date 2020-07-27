@@ -27,6 +27,9 @@ limitations under the License. */
 
 #if defined(_WIN32)
 #include <intrin.h>
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 #endif  // _WIN32
 

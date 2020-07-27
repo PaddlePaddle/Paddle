@@ -114,8 +114,11 @@ class TestJitSaveLoad(unittest.TestCase):
     def train_and_save_model(self):
         layer = LinearNet(784, 1)
         example_inputs, layer, _ = train(layer)
+        orig_input_types = [type(x) for x in example_inputs]
         fluid.dygraph.jit.save(
             layer=layer, model_path=self.model_path, input_spec=example_inputs)
+        new_input_types = [type(x) for x in example_inputs]
+        self.assertEqual(orig_input_types, new_input_types)
         return layer
 
     def test_save(self):
