@@ -25,6 +25,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
 SEED = 2020
 
@@ -53,7 +54,7 @@ class DynamicGRU(fluid.dygraph.Layer):
             origin_mode=origin_mode)
 
         self.size = size
-        self.h_0 = h_0
+        self.register_buffer("h_0", h_0)
         self.is_reverse = is_reverse
 
     def forward(self, inputs):
@@ -494,8 +495,13 @@ def do_train(args, to_static):
                 step += 1
         # save inference model
         if to_static:
-            program_translator.save_inference_model(
-                dirname=args.model_save_dir, feed=[0, 2], fetch=[1])
+            configs = fluid.dygraph.jit.SaveLoadConfig()
+            configs.output_spec = [crf_decode]
+            fluid.dygraph.jit.save(
+                layer=model,
+                model_path=args.model_save_dir,
+                input_spec=[words, length],
+                configs=configs)
         else:
             fluid.dygraph.save_dygraph(model.state_dict(), args.dy_param_path)
 
@@ -558,7 +564,9 @@ class TestLACModel(unittest.TestCase):
         # load inference model
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(
-             self.args.model_save_dir, executor=exe)
+             self.args.model_save_dir,
+             executor=exe,
+             params_filename=VARIABLE_FILENAME)
 
         words, targets, length = batch
         pred_res = exe.run(

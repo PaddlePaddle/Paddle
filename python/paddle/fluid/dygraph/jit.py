@@ -27,7 +27,7 @@ from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Program, Block, Variable, ParamBase, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.dygraph.io import TranslatedLayer, VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
+from paddle.fluid.dygraph.io import TranslatedLayer, VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME, _get_persistable_var_names
 
 __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
@@ -668,7 +668,7 @@ def save(layer, model_path, input_spec=None, configs=None):
         else:
             result_list = valid_vars
         if return_name:
-            result_list = [var.name for var in target_vars]
+            result_list = [var.name for var in result_list]
 
         return result_list
 
@@ -703,9 +703,30 @@ def save(layer, model_path, input_spec=None, configs=None):
     layer_func = FunctionSpec(type(layer).forward, [layer], {})
     concrete_program, _ = prog_cache.get_program(layer_func)
 
+    # NOTE: check users model buffers config
+    # In old dygraph model, users may creater Layer's buffer,
+    # but not using Layer.register_buffer, we remind users 
+    # to modify the model correctly here
+    state_dict = layer.state_dict()
+    state_dict_var_names = [var.name for var in state_dict.values()]
+
+    def in_state_dict(name):
+        return (name not in state_dict_var_names)
+
+    persistable_var_names = _get_persistable_var_names(
+        concrete_program.main_program.desc)
+    none_register_buffers = list(filter(in_state_dict, persistable_var_names))
+    if none_register_buffers:
+        raise RuntimeError(
+            "The persistable variables {} used in inference program are not "
+            "registered by `Layer.register_buffer`.\n"
+            "  Please confirm whether there is an implementation like `self.***=***` "
+            "in the `__init__` method of your Layer, if such variables needs to be "
+            "used by inference process, please use `self.register_buffer` to declare "
+            "these variables.".format(none_register_buffers))
+
     # 3. share parameters from Layer to scope & record var info
     scope = core.Scope()
-    state_dict = layer.state_dict()
     extra_var_info = dict()
     for structured_name, param_or_buffer in state_dict.items():
         # share to scope
