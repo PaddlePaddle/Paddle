@@ -191,18 +191,13 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
   // PINNED memory is visible to all CUDA contexts.
-  cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaHostAlloc(&p, size, cudaHostAllocPortable));
 
-  if (result == cudaSuccess) {
-    *index = 1;  // PINNED memory
-    cuda_pinnd_alloc_size_ += size;
-    return p;
-  } else {
-    LOG(WARNING) << "cudaHostAlloc failed.";
-    return nullptr;
-  }
+  // Update state
+  *index = 1;
+  cuda_pinnd_alloc_size_ += size;
 
-  return nullptr;
+  return p;
 }
 
 void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
