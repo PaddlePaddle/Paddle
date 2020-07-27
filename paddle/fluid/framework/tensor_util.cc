@@ -88,9 +88,18 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
         BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place);
     auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true);
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Device context place mismatch. When copying Tensor "
+                          "data from CUDA Pinned memory to GPU memory, current "
+                          "device context place should be GPU."));
     auto ctx_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx_place);
-    PADDLE_ENFORCE_EQ(dst_gpu_place, ctx_gpu_place);
+    PADDLE_ENFORCE_EQ(dst_gpu_place, ctx_gpu_place,
+                      platform::errors::PreconditionNotMet(
+                          "The target GPU device and current device context do "
+                          "not match. The target GPU device number is %d, but "
+                          "device context GPU number is %d.",
+                          dst_gpu_place.device, ctx_gpu_place.device));
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     memory::Copy(dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size,
