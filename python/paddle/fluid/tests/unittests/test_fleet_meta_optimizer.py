@@ -92,6 +92,30 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
+    def test_gradient_merge_optimizer(self):
+        import paddle.fleet as fleet
+        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        fleet.init(role)
+        input_x = paddle.fluid.layers.data(
+            name="x", shape=[32], dtype='float32')
+        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+
+        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+        cost = paddle.fluid.layers.cross_entropy(
+            input=prediction, label=input_y)
+        avg_cost = paddle.fluid.layers.mean(x=cost)
+
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.gradient_merge = True
+        strategy.gradient_merge_k_step = 2
+
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize(avg_cost)
+
 
 if __name__ == "__main__":
     unittest.main()
