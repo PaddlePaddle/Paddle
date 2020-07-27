@@ -16,7 +16,8 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import numpy as np
-from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer
+import six
+from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
 
 
 class SimpleConv(fluid.dygraph.Layer):
@@ -156,6 +157,89 @@ class TestAmpScaler(unittest.TestCase):
             self.assertEqual(
                 np.allclose(outs_with_scaler[1][i][0].numpy(),
                             outs_no_scaler[1][i][0].numpy()), True)
+
+
+class TestResnet(unittest.TestCase):
+    def reader_decorator(self, reader):
+        def _reader_imple():
+            for item in reader():
+                doc = np.array(item[0]).reshape(3, 224, 224)
+                label = np.array(item[1]).astype('int64').reshape(1)
+                yield doc, label
+
+        return _reader_imple
+
+    def train_resnet(self, enable_amp=True):
+        seed = 90
+
+        batch_size = train_parameters["batch_size"]
+        batch_num = 1
+
+        with fluid.dygraph.guard():
+            paddle.manual_seed(seed)
+
+            resnet = ResNet(use_cudnn=True)
+            optimizer = optimizer_setting(
+                train_parameters, parameter_list=resnet.parameters())
+            np.random.seed(seed)
+            train_reader = paddle.batch(
+                paddle.dataset.flowers.train(use_xmap=False),
+                batch_size=batch_size)
+
+            dy_param_init_value = {}
+            for param in resnet.parameters():
+                dy_param_init_value[param.name] = param.numpy()
+
+            program = None
+            scaler = paddle.fluid.dygraph.AmpScaler(
+                enable=enable_amp, init_loss_scaling=2.**10)
+            for batch_id, data in enumerate(train_reader()):
+                if batch_id >= batch_num:
+                    break
+                dy_x_data = np.array(
+                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
+                if len(np.array([x[1]
+                                 for x in data]).astype('int64')) != batch_size:
+                    continue
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    -1, 1)
+                img = fluid.dygraph.to_variable(dy_x_data)
+                label = fluid.dygraph.to_variable(y_data)
+                label.stop_gradient = True
+                with paddle.fluid.dygraph.amp_guard(enable=enable_amp):
+                    out = resnet(img)
+
+                loss = fluid.layers.cross_entropy(input=out, label=label)
+                avg_loss = fluid.layers.mean(x=loss)
+
+                dy_out = avg_loss.numpy()
+
+                scaled_loss = scaler.scale(avg_loss)
+                scaled_loss.backward()
+
+                scaler.minimize(optimizer, scaled_loss)
+
+                dy_grad_value = {}
+                for param in resnet.parameters():
+                    if param.trainable:
+                        np_array = np.array(param._grad_ivar().value()
+                                            .get_tensor())
+                        dy_grad_value[param.name + fluid.core.grad_var_suffix(
+                        )] = np_array
+
+                resnet.clear_gradients()
+
+                dy_param_value = {}
+                for param in resnet.parameters():
+                    dy_param_value[param.name] = param.numpy()
+
+        return dy_out, dy_param_value, dy_grad_value
+
+    def test_resnet(self):
+        out_fp32 = self.train_resnet(enable_amp=False)
+        out_amp = self.train_resnet(enable_amp=True)
+        print(out_fp32[0], out_amp[0])
+        self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
 
 
 if __name__ == '__main__':
