@@ -91,10 +91,6 @@ class Communicator(object):
         self.envs = envs
         self.communicator_ = None
 
-    def init_with_program(self, program):
-        self.communicator_ = core.DistCommunicator(self.mode, program.desc,
-                                                   global_scope(), self.envs)
-
     def init_with_ctx(self, send_ctx, recv_ctx):
         self.communicator_ = core.DistCommunicator(self.mode, send_ctx,
                                                    recv_ctx,
