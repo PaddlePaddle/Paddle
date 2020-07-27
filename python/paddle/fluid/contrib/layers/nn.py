@@ -991,7 +991,7 @@ def sparse_embedding(input,
     entry_str = "none"
 
     if entry is not None:
-        if not isinstance(entry, ProbabilityEntry) or not isinstance(
+        if not isinstance(entry, ProbabilityEntry) and not isinstance(
                 entry, CountFilterEntry):
             raise ValueError(
                 "entry must be instance in [ProbabilityEntry, CountFilterEntry]")
