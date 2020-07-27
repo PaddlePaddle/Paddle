@@ -337,8 +337,9 @@ def concat(input, axis=0, name=None):
     check_type(axis, 'axis', (int, Variable), 'concat')
 
     if isinstance(axis, Variable):
-        check_dtype(axis.dtype, 'axis', ['int32', 'int64'], 'concat',
-                    "the data tyeo of axis must be int32 when axis is a Tensor")
+        check_dtype(
+            axis.dtype, 'axis', ['int32', 'int64'], 'concat',
+            "the data type of axis must be int32 or int64 when axis is a Tensor")
 
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
