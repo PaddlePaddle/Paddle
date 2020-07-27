@@ -222,6 +222,9 @@ def pow(input, exponent, name=None):
             y_2 = paddle.pow(x, exponent_tensor)
             # y_2 is x^{3.0}
     """
+    if in_dygraph_mode():
+        return core.ops.pow(input, "exponent", exponent)
+
     helper = LayerHelper('pow', **locals())
     inputs = {'X': input}
     attrs = {}
@@ -1399,6 +1402,9 @@ def clamp(input, min=None, max=None, name=None):
     """
 
     assert min is not None or max is not None, "either min or max should be defined."
+
+    if in_dygraph_mode():
+        return core.ops.clamp(input, "min", min, "max", max)
 
     if min is not None:
         check_type(min, 'min', (float, Variable), 'clamp')
