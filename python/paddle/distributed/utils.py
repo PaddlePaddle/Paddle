@@ -381,7 +381,7 @@ def start_local_trainers(cluster,
         tp.rank = t.rank
         tp.local_rank = idx
         tp.log_fn = fn
-        tp.log_offset = 0 if fn else None
+        tp.log_offset = fn.tell() if fn else None
         tp.cmd = cmd
 
         procs.append(tp)
