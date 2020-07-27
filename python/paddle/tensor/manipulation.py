@@ -327,8 +327,9 @@ def split(x, num_or_sections, axis=0, name=None):
     Returns:
         list(Variable): The list of segmented Tensors.
     Raises:
+        TypeError: The data type of ``x`` must be one of float32, float64, int32, int64.
         TypeError: ``num_or_sections`` is not int, list or tuple.
-        TypeError: ``axis`` is not int or Variable.
+        TypeError: ``axis`` is not int or Variable. the data type of ``axis`` must be int32 or int46 when it's a Variable.
     Example:
         .. code-block:: python
             

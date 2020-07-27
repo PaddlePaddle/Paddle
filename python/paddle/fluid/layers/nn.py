@@ -4840,8 +4840,9 @@ def split(input, num_or_sections, dim=-1, name=None):
         list(Variable): The list of segmented Tensors.
 
     Raises:
+        TypeError: The data type of ``input`` must be one of float32, float64, int32, int64.
         TypeError: ``num_or_sections`` is not int, list or tuple.
-        TypeError: ``dim`` is not int or Variable.
+        TypeError: ``dim`` is not int or Variable. The data type of ``dim`` must be int32 or int64 when it's a Variable.
 
     Example:
         .. code-block:: python
@@ -4896,6 +4897,8 @@ def split(input, num_or_sections, dim=-1, name=None):
                 "received %s." % (type(num_or_sections)))
         return core.ops.split(input, num, *attrs)
 
+    check_variable_and_dtype(input, 'input',
+                             ['float32, float64', 'int32', 'in64'], 'split')
     if not isinstance(num_or_sections, (int, list, tuple)):
         raise TypeError(
             "The type of 'num_or_sections' in split must be int, list or "
@@ -4904,8 +4907,11 @@ def split(input, num_or_sections, dim=-1, name=None):
         raise TypeError(
             "The type of 'dim' in split must be int or Variable, but "
             "received %s." % (type(dim)))
+    if isinstance(dim, Variable):
+        check_dtype(dim.dtype, 'dim', ['int32', 'int64'], 'split')
 
     helper = LayerHelper('split', **locals())
+
     input_shape = input.shape
     inputs = {'X': input}
     attrs = {'num': num_or_sections if isinstance(num_or_sections, int) else 0}
