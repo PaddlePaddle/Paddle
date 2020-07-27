@@ -102,61 +102,11 @@ def get_sparse_tablenames(program, is_distributed):
     return list(tablenames)
 
 
-def pretty_print_envs(envs, header=None):
-    spacing = 5
-    max_k = 45
-    max_v = 20
-
-    for k, v in envs.items():
-        max_k = max(max_k, len(k))
-        max_v = max(max_v, len(str(v)))
-
-    h_format = "{{:^{}s}}{}{{:<{}s}}\n".format(max_k, " " * spacing, max_v)
-    l_format = "{{:<{}s}}{{}}{{:<{}s}}\n".format(max_k, max_v)
-    length = max_k + max_v + spacing
-
-    border = "".join(["="] * length)
-    line = "".join(["-"] * length)
-
-    draws = ""
-    draws += border + "\n"
-
-    if header and isinstance(header, tuple):
-        draws += h_format.format(header[0], header[1])
-    else:
-        draws += h_format.format("Global Envs", "Value")
-
-    draws += line + "\n"
-
-    for k, v in envs.items():
-        draws += l_format.format(k, " " * spacing, str(v))
-
-    draws += border
-
-    _str = "\n{}\n".format(draws)
-    return _str
-
-
-class ServerRuntimeConfig(object):
-    def __init__(self):
-        self._rpc_send_thread_num = int(
-            os.getenv("FLAGS_rpc_send_thread_num", "12"))
-        self._rpc_get_thread_num = int(
-            os.getenv("FLAGS_rpc_get_thread_num", "12"))
-        self._rpc_prefetch_thread_num = int(
-            os.getenv("FLAGS_rpc_prefetch_thread_num", "12"))
-
-
 class MergedVariable:
     def __init__(self, merged, ordered, offsets):
         self.merged_var = merged
         self.ordered_vars = ordered
         self.offsets = offsets
-
-    def __str__(self):
-        ordered_varnames = ",".join([var.name for var in self.ordered_vars])
-        return "merged: {}\norderd: {}\n".format(self.merged_var.name,
-                                                 ordered_varnames)
 
 
 class CompileTimeStrategy(object):
@@ -458,28 +408,6 @@ class CompileTimeStrategy(object):
                     if g.name in grad_varnames:
                         var_distributed.append((g.name, ep, g.shape[0]))
         return var_distributed
-
-    def display(self):
-        header = ("Fleet Compiled Config", "Value")
-        maps = {}
-
-        for ep, pairs in self.param_grad_ep_mapping.items():
-
-            vs = []
-
-            params, grads = pairs
-
-            vs.append("P: ")
-            for p in params:
-                vs.append(p.name)
-
-            vs.append(", G: ")
-            for g in grads:
-                vs.append(g.name)
-
-            maps[ep] = " ".join(vs)
-
-        pretty_print_envs(maps, header)
 
     def _step_ctx(self):
         name = STEP_COUNTER
