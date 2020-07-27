@@ -82,9 +82,9 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_localsgd_configs(self):
         strategy = paddle.fleet.DistributedStrategy()
-        configs = {"k_step": 4}
+        configs = {"k_steps": 4}
         strategy.localsgd_configs = configs
-        self.assertEqual(strategy.localsgd_configs["k_step"], 4)
+        self.assertEqual(strategy.localsgd_configs["k_steps"], 4)
 
     def test_dgc(self):
         strategy = paddle.fleet.DistributedStrategy()
@@ -104,6 +104,47 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.sync_nccl_allreduce = "True"
         self.assertEqual(strategy.sync_nccl_allreduce, False)
 
+    def test_nccl_comm_num(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.nccl_comm_num = 1
+        self.assertEqual(strategy.nccl_comm_num, 1)
+        strategy.nccl_comm_num = "2"
+        self.assertEqual(strategy.nccl_comm_num, 1)
+
+    def test_use_hierarchical_allreduce(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.use_hierarchical_allreduce = True
+        self.assertEqual(strategy.use_hierarchical_allreduce, True)
+        strategy.use_hierarchical_allreduce = False
+        self.assertEqual(strategy.use_hierarchical_allreduce, False)
+        strategy.use_hierarchical_allreduce = "True"
+        self.assertEqual(strategy.use_hierarchical_allreduce, False)
+
+    def test_hierarchical_allreduce_inter_nranks(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.hierarchical_allreduce_inter_nranks = 8
+        self.assertEqual(strategy.hierarchical_allreduce_inter_nranks, 8)
+        strategy.hierarchical_allreduce_inter_nranks = "4"
+        self.assertEqual(strategy.hierarchical_allreduce_inter_nranks, 8)
+
+    def test_sync_batch_norm(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.sync_batch_norm = True
+        self.assertEqual(strategy.sync_batch_norm, True)
+        strategy.sync_batch_norm = False
+        self.assertEqual(strategy.sync_batch_norm, False)
+        strategy.sync_batch_norm = "True"
+        self.assertEqual(strategy.sync_batch_norm, False)
+
+    def test_fuse_all_reduce_ops(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.fuse_all_reduce_ops = True
+        self.assertEqual(strategy.fuse_all_reduce_ops, True)
+        strategy.fuse_all_reduce_ops = False
+        self.assertEqual(strategy.fuse_all_reduce_ops, False)
+        strategy.fuse_all_reduce_ops = "True"
+        self.assertEqual(strategy.fuse_all_reduce_ops, False)
+
     def test_gradient_merge(self):
         strategy = paddle.fleet.DistributedStrategy()
         strategy.gradient_merge = True
@@ -115,9 +156,9 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_gradient_merge_configs(self):
         strategy = paddle.fleet.DistributedStrategy()
-        configs = {"k_step": 4}
+        configs = {"k_steps": 4}
         strategy.gradient_merge_configs = configs
-        self.assertEqual(strategy.gradient_merge_configs["k_step"], 4)
+        self.assertEqual(strategy.gradient_merge_configs["k_steps"], 4)
 
     def test_lars(self):
         strategy = paddle.fleet.DistributedStrategy()
@@ -148,9 +189,9 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_async_configs(self):
         strategy = paddle.fleet.DistributedStrategy()
-        configs = {"k_step": 1000}
+        configs = {"k_steps": 1000}
         strategy.async_update_configs = configs
-        self.assertEqual(strategy.async_update_configs["k_step"], 1000)
+        self.assertEqual(strategy.async_update_configs["k_steps"], 1000)
 
     def test_elastic(self):
         strategy = paddle.fleet.DistributedStrategy()
@@ -175,7 +216,7 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.async_update = True
         strategy.localsgd = True
         strategy.dgc = True
-        localsgd_configs = {"k_step": 5}
+        localsgd_configs = {"k_steps": 5}
         strategy.localsgd_configs = localsgd_configs
         build_strategy = paddle.fluid.BuildStrategy()
         build_strategy.enable_sequential_execution = True

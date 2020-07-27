@@ -162,25 +162,21 @@ class DistributedStrategy(object):
     def build_strategy(self):
         """
         Configure BuildStrategy for DistributedStrategy
+        Note that the properties of BuildStrategy are valid in DistributedStrategy
+        only if the property is non-distributed strategy.
 
         Examples:
           .. code-block:: python
 
             build_strategy = paddle.fluid.BuildStrategy()
             build_strategy.enable_sequential_execution = True
-            build_strategy.nccl_comm_num = 10
-            build_strategy.use_hierarchical_allreduce = True
-            build_strategy.hierarchical_allreduce_inter_nranks = 1
             build_strategy.fuse_elewise_add_act_ops = True
             build_strategy.fuse_bn_act_ops = True
             build_strategy.enable_auto_fusion = True
             build_strategy.fuse_relu_depthwise_conv = True
             build_strategy.fuse_broadcast_ops = True
             build_strategy.fuse_all_optimizer_ops = True
-            build_strategy.sync_batch_norm = True
             build_strategy.enable_inplace = True
-            build_strategy.fuse_all_reduce_ops = True
-            build_strategy.enable_backward_optimizer_op_deps = True
             
             strategy = paddle.fleet.DistributedStrategy()
             strategy.build_strategy = build_strategy
@@ -332,6 +328,65 @@ class DistributedStrategy(object):
             self.strategy.sync_nccl_allreduce = flag
         else:
             print("WARNING: sync_nccl_allreduce should have value of bool type")
+
+    @property
+    def use_hierarchical_allreduce(self):
+        return self.strategy.use_hierarchical_allreduce
+
+    @use_hierarchical_allreduce.setter
+    def use_hierarchical_allreduce(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.use_hierarchical_allreduce = flag
+        else:
+            print(
+                "WARNING: use_hierarchical_allreduce should have value of bool type"
+            )
+
+    @property
+    def hierarchical_allreduce_inter_nranks(self):
+        return self.strategy.hierarchical_allreduce_inter_nranks
+
+    @hierarchical_allreduce_inter_nranks.setter
+    def hierarchical_allreduce_inter_nranks(self, value):
+        if isinstance(value, int):
+            self.strategy.hierarchical_allreduce_inter_nranks = value
+        else:
+            print(
+                "WARNING: hierarchical_allreduce_inter_nranks should have value of int type"
+            )
+
+    @property
+    def sync_batch_norm(self):
+        return self.strategy.sync_batch_norm
+
+    @sync_batch_norm.setter
+    def sync_batch_norm(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.sync_batch_norm = flag
+        else:
+            print("WARNING: sync_batch_norm should have value of bool type")
+
+    @property
+    def fuse_all_reduce_ops(self):
+        return self.strategy.fuse_all_reduce_ops
+
+    @fuse_all_reduce_ops.setter
+    def fuse_all_reduce_ops(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.fuse_all_reduce_ops = flag
+        else:
+            print("WARNING: fuse_all_reduce_ops should have value of bool type")
+
+    @property
+    def nccl_comm_num(self):
+        return self.strategy.nccl_comm_num
+
+    @nccl_comm_num.setter
+    def nccl_comm_num(self, value):
+        if isinstance(value, int):
+            self.strategy.nccl_comm_num = value
+        else:
+            print("WARNING: nccl_comm_num should have value of int type")
 
     @recompute.setter
     def recompute(self, flag):

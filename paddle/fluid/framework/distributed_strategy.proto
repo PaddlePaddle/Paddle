@@ -42,27 +42,19 @@ message GradientMergeConfig {
 
 message BuildStrategy {
   optional bool enable_sequential_execution = 1 [ default = false ];
-  optional int32 num_trainers = 2 [ default = 0 ];
-  repeated string trainers_endpoints = 3;
-  optional int32 trainer_id = 4;
-  optional int32 nccl_comm_num = 5;
-  optional bool use_hierarchical_allreduce = 6 [ default = false ];
-  optional int32 hierarchical_allreduce_inter_nranks = 7 [ default = 1 ];
-  optional bool fuse_elewise_add_act_ops = 8 [ default = false ];
-  optional bool fuse_bn_act_ops = 9 [ default = false ];
-  optional bool fuse_relu_depthwise_conv = 10 [ default = false ];
-  optional bool fuse_broadcast_ops = 11 [ default = false ];
-  optional bool fuse_all_optimizer_ops = 12 [ default = false ];
-  optional bool sync_batch_norm = 13 [ default = false ];
-  optional bool enable_inplace = 14 [ default = false ];
-  optional bool fuse_all_reduce_ops = 15 [ default = false ];
-  optional bool enable_backward_optimizer_op_deps = 16 [ default = false ];
-  optional bool cache_runtime_context = 17 [ default = false ];
+  optional bool fuse_elewise_add_act_ops = 2 [ default = false ];
+  optional bool fuse_bn_act_ops = 3 [ default = false ];
+  optional bool fuse_relu_depthwise_conv = 4 [ default = false ];
+  optional bool fuse_broadcast_ops = 5 [ default = false ];
+  optional bool fuse_all_optimizer_ops = 6 [ default = false ];
+  optional bool enable_inplace = 7 [ default = false ];
+  optional bool enable_backward_optimizer_op_deps = 8 [ default = true ];
+  optional bool cache_runtime_context = 9 [ default = false ];
 }
 
 message ExecutionStrategy {
   optional int32 num_threads = 1 [ default = 1 ];
-  optional int32 num_iteration_per_drop_scope = 2 [ default = 1 ];
+  optional int32 num_iteration_per_drop_scope = 2 [ default = 10 ];
   optional int32 num_iteration_per_run = 3 [ default = 1 ];
   optional bool use_thread_barrier = 4 [ default = false ];
 }
@@ -95,6 +87,12 @@ message DistributedStrategy {
   optional bool auto = 11 [ default = false ];
   optional bool async = 12 [ default = true ];
   optional bool sync_nccl_allreduce = 13 [ default = true ];
+  optional int32 nccl_comm_num = 14 [ default = 1 ];
+  optional bool use_hierarchical_allreduce = 15 [ default = false ];
+  optional int32 hierarchical_allreduce_inter_nranks = 16 [ default = 1 ];
+  optional bool sync_batch_norm = 17 [ default = false ];
+  optional bool fuse_all_reduce_ops = 18 [ default = true ];
+  // optional bool enable_backward_optimizer_op_deps = 19 [ default = true ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
