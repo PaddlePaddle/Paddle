@@ -235,13 +235,11 @@ class TestFleetBase(unittest.TestCase):
 
     def _run_cluster(self, model, envs):
         env = {'GRAD_CLIP': str(self._grad_clip_mode)}
-        env.update(envs)
-
         python_path = self._python_interp
-
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             python_path += " -m coverage run --branch -p"
+        env.update(envs)
 
         tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {6}".format(
             python_path, model, self._ps_endpoints, self._trainers, self._mode,
