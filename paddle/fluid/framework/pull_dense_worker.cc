@@ -56,15 +56,15 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     current_version_[tid] = 0;
   }
   fleet_ptr_ = FleetWrapper::GetInstance();
-  #ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
   copy_streams_.clear();
   places_.clear();
   thread_scopes_.clear();
-  #endif
+#endif
 }
 
 void PullDenseWorker::CreatePinVar() {
-  #ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
   // for (auto& v : dense_value_names_) {
   //  for (auto& name : v.second) {
   for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
@@ -72,18 +72,18 @@ void PullDenseWorker::CreatePinVar() {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     for (size_t j = 0; j < dense_value_names_[tid].size(); j++) {
-      auto& name =  dense_value_names_[tid][j];
+      auto& name = dense_value_names_[tid][j];
       Variable* var = root_scope_->FindVar(name);
 
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      auto *ptr = root_scope_->Var(name + "pin");
+      auto* ptr = root_scope_->Var(name + "pin");
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       LoDTensor* pin_tensor = ptr->GetMutable<LoDTensor>();
       pin_tensor->mutable_data<float>(tensor->dims(),
                                       platform::CUDAPinnedPlace());
     }
   }
-  #endif
+#endif
 }
 
 void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
@@ -103,7 +103,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
     exit(-1);
   }
   status_vec->resize(0);
-  #ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
 
   for (size_t i = 0; i < places_.size(); ++i) {
     // for (auto& v : dense_value_names_) {
@@ -121,16 +121,13 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         Variable* var = thread_scopes_[i]->FindVar(name);
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         float* w = tensor->data<float>();
-        memory::Copy(
-            boost::get<platform::CUDAPlace>(places_[i]),
-            w,
-            platform::CUDAPinnedPlace(),
-            pin_w, sizeof(float) * tensor->numel(),
-            copy_streams_[i]);
+        memory::Copy(boost::get<platform::CUDAPlace>(places_[i]), w,
+            platform::CUDAPinnedPlace(), pin_w,
+            sizeof(float) * tensor->numel(), copy_streams_[i]);
       }
     }
   }
-  #endif
+#endif
 }
 
 void PullDenseWorker::Stop() {
@@ -147,14 +144,14 @@ void PullDenseWorker::PullDense(bool force_update) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     if (force_update || CheckUpdateParam(tid)) {
-      #ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
       VLOG(3) << "pull dense " << force_update << " " << tid;
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, false);
-      #else
+#else
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, true);
-      #endif
+#endif
       ResetThreadVersion(tid);
     }
   }

@@ -31,8 +31,8 @@ limitations under the License. */
 #include <utility>
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/timer.h"
@@ -80,8 +80,8 @@ void HeterWrapper::StartXpuService(const std::string& ip, uint32_t port) {
 
   server_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
-  if (server_.Start(ip_port.c_str(),  &options) != 0) {
-      VLOG(0) << "xpu server start fail";
+  if (server_.Start(ip_port.c_str(), &options) != 0) {
+    VLOG(0) << "xpu server start fail";
   }
 }
 
@@ -89,8 +89,7 @@ void HeterWrapper::StartXpuService(const std::string& ip, uint32_t port) {
 // Scope* scope, HeterRequest& request) {
 //  auto* req_var = request.mutable_vars();
 
-void HeterWrapper::SerializeToReq(const std::string& varname,
-                                  Scope* scope,
+void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope,
                                   VariableMessage* req_var) {
   Variable* var = scope->FindVar(varname);
   if (var == nullptr) {
@@ -124,16 +123,14 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
     memcpy(data_ptr, tensor->data<void>(),
            tensor->numel() * SizeOfType(tensor->type()));
   }
-  #ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
   else {
-    memory::Copy(
-        platform::CPUPlace(),
-        data_ptr,
-        boost::get<platform::CUDAPlace>(tensor->place()),
-        tensor->data<void>(),
-        tensor->numel() * SizeOfType(tensor->type()), nullptr);
+    memory::Copy(platform::CPUPlace(), data_ptr,
+                 boost::get<platform::CUDAPlace>(tensor->place()),
+                 tensor->data<void>(),
+                 tensor->numel() * SizeOfType(tensor->type()), nullptr);
   }
-  #endif
+#endif
 }
 
 // void HeterWrapper::DeSerializeToTensor(Scope* scope,
@@ -171,17 +168,14 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   void* tensor_data =
       tensor->mutable_data(place, ToVarType(req_var.data_type()));
 
-  #ifdef PADDLE_WITH_CUDA
-  memory::Copy(
-      boost::get<platform::CUDAPlace>(place),
-      tensor_data,
-      platform::CPUPlace(),
-      req_var.data().data(),
+#ifdef PADDLE_WITH_CUDA
+  memory::Copy(boost::get<platform::CUDAPlace>(place), tensor_data,
+      platform::CPUPlace(), req_var.data().data(),
       tensor->numel() * SizeOfType(tensor->type()), stream);
-  #else
+#else
   memcpy(tensor_data, req_var.data().data(),
          tensor->numel() * SizeOfType(tensor->type()));
-  #endif
+#endif
 }
 
 framework::proto::VarType::Type HeterWrapper::ToVarType(
@@ -238,14 +232,13 @@ void HeterWrapper::EndPass(Scope* scope, int num) {
 }
 
 void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
-                                 HeterCpuWorker* worker,
-                                 int mpi_rank,
+                                 HeterCpuWorker* worker, int mpi_rank,
                                  std::vector<std::string>& send_vars) {
   HeterRequest request;
   request.set_cmd(0);
   request.set_cur_batch(task->cur_batch_);
 
-  OnHeterRpcDone *done = new OnHeterRpcDone([this, task, worker] (void* done) {
+  OnHeterRpcDone* done = new OnHeterRpcDone([this, task, worker] (void* done) {
     auto* closure = (OnHeterRpcDone*)done;
     if (closure->cntl.Failed()) {
       VLOG(0) << "call xpu fail: " << closure->cntl.ErrorText();
@@ -255,21 +248,20 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
     // DeSerializeToTensor(task->scope_,
     // closure->response.vars(), platform::CPUPlace());
     for (int i = 0; i < closure->response.vars_size(); ++i) {
-      DeSerializeToTensor(task->scope_,
-                          closure->response.vars(i),
+      DeSerializeToTensor(task->scope_, closure->response.vars(i),
                           platform::CPUPlace());
     }
 
     worker->Schedule(task->taskid_);
   });
 
-//  std::vector<std::string> varnames = {"click", "12345"};
-//  //varnames.push_back(send_var);
-//  //if (send_var == "_generated_var_412") {
-//  varnames.push_back("filter_by_instag_0.tmp_0");
-//  varnames.push_back("filter_by_instag_2.tmp_0");
-//  varnames.push_back("filter_by_instag_0.tmp_1");
-//  varnames.push_back("concat_1.tmp_0");
+  //  std::vector<std::string> varnames = {"click", "12345"};
+  //  //varnames.push_back(send_var);
+  //  //if (send_var == "_generated_var_412") {
+  //  varnames.push_back("filter_by_instag_0.tmp_0");
+  //  varnames.push_back("filter_by_instag_2.tmp_0");
+  //  varnames.push_back("filter_by_instag_0.tmp_1");
+  //  varnames.push_back("concat_1.tmp_0");
   // }
   for (auto& varname : send_vars) {
     auto* req_var = request.add_vars();
@@ -285,8 +277,7 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
 }
 
 void HeterWrapper::CallRemoteXpuSync(std::shared_ptr<HeterTask> task,
-                                     HeterCpuWorker* worker,
-                                     int mpi_rank,
+                                     HeterCpuWorker* worker, int mpi_rank,
                                      std::vector<std::string>& send_vars) {
   HeterRequest request;
   HeterResponse response;

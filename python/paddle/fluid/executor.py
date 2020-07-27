@@ -1462,26 +1462,26 @@ class Executor(object):
                                       print_period, fetch_handler)
 
     def start_heter_trainer(self,
-                           program=None,
-                           scope=None,
-                           debug=False,
-                           fetch_list=None,
-                           fetch_info=None,
-                           print_period=100,
-                           fetch_handler=None):
-        return self._start_heter_trainer(program, scope, False,
-                                      debug, fetch_list, fetch_info,
-                                      print_period, fetch_handler)
+                            program=None,
+                            scope=None,
+                            debug=False,
+                            fetch_list=None,
+                            fetch_info=None,
+                            print_period=100,
+                            fetch_handler=None):
+        return self._start_heter_trainer(program, scope, False, debug,
+                                         fetch_list, fetch_info, print_period,
+                                         fetch_handler)
     
     def _start_heter_trainer(self,
-                          program=None,
-                          scope=None,
-                          is_infer=False,
-                          debug=False,
-                          fetch_list=None,
-                          fetch_info=None,
-                          print_period=100,
-                          fetch_handler=None):
+                             program=None,
+                             scope=None,
+                             is_infer=False,
+                             debug=False,
+                             fetch_list=None,
+                             fetch_info=None,
+                             print_period=100,
+                             fetch_handler=None):
 
         scope, trainer = self._prepare_trainer(
             program=program,

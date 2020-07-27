@@ -15,7 +15,9 @@
 
 import sys
 import os
-__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer', 'HeterXpuTrainer']
+__all__ = [
+    'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
+    'HeterXpuTrainer']
 
 
 class TrainerDesc(object):
@@ -71,9 +73,9 @@ class TrainerDesc(object):
         #for i in ret[1]:  #end_list[1]:
         #    self.proto_desc.o_end_idx.append(i)
         self.proto_desc.xpu_end_idx = ret[1]
-        for i in ret[2]:  #send_list[1]:
+        for i in ret[2]:  # send_list[1]:
             self.proto_desc.xpu_send_list.append(i)
-        for i in ret[3]: # recv_list[1]:
+        for i in ret[3]:  # recv_list[1]:
             self.proto_desc.xpu_recv_list.append(i)
 
         #for i in start_list[2]:
@@ -84,7 +86,6 @@ class TrainerDesc(object):
         #    self.proto_desc.op_run_end_send_list.append(i)
         #for i in recv_list[2]:
         #    self.proto_desc.op_run_end_recv_list.append(i)
-
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         # convert fetch_info to list
@@ -163,7 +164,7 @@ class TrainerDesc(object):
     def _set_worker_places(self, worker_places):
         for place in worker_places:
             self.proto_desc.worker_places.append(place)
-    
+
     def _set_thread_barrier(self, thread_barrier):
         self.proto_desc.thread_barrier = thread_barrier
 

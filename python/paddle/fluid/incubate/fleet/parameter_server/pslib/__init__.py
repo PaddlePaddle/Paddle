@@ -86,7 +86,8 @@ class PSLib(Fleet):
                 if self._role_maker.is_xpu():
                     local_endpoint = self._role_maker.get_local_endpoint()
                     local_endpoint = local_endpoint.split(":")
-                    self._heter_ptr.start_xpu_service(str(local_endpoint[0]), int(local_endpoint[1]))
+                    self._heter_ptr.start_xpu_service(
+                        str(local_endpoint[0]), int(local_endpoint[1]))
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             # worker_index * 2 is for compatible with older versions of pslib
@@ -95,7 +96,8 @@ class PSLib(Fleet):
                                         self._role_maker.worker_index() * 2)
             if isinstance(self._role_maker, HeterRoleMaker):
                 if self._role_maker.is_worker():
-                    self._heter_ptr.set_xpu_list(self._role_maker._xpu_endpoints)
+                    self._heter_ptr.set_xpu_list(
+                        self._role_maker._xpu_endpoints)
                     self._heter_ptr.create_client2xpu_connection()
             # barrier_all for init_worker
             self._role_maker._barrier_all()
@@ -213,7 +215,7 @@ class PSLib(Fleet):
         if self._role_maker.worker_index() < self._role_maker.xpu_num():
             self._heter_ptr.end_pass(scope, self._role_maker.worker_index())
             self._heter_ptr.stop_xpu_service(self._role_maker.worker_index())
-        
+
     def train_from_dataset(self,
                            executor,
                            program=None,
@@ -231,26 +233,26 @@ class PSLib(Fleet):
 
         if self._role_maker.is_worker():
             self._role_maker._barrier_heter()
-        executor.train_from_dataset(program, dataset, scope, thread,
-                                      debug, fetch_list, fetch_info,
-                                      print_period, fetch_handler)
+        executor.train_from_dataset(program, dataset, scope, thread, debug,
+                                    fetch_list, fetch_info, print_period,
+                                    fetch_handler)
     
     def start_heter_trainer(self,
-                           executor,
-                           program=None,
-                           scope=None,
-                           debug=False,
-                           fetch_list=None,
-                           fetch_info=None,
-                           print_period=100,
-                           fetch_handler=None):
+                            executor,
+                            program=None,
+                            scope=None,
+                            debug=False,
+                            fetch_list=None,
+                            fetch_info=None,
+                            print_period=100,
+                            fetch_handler=None):
         """
 
         """
 
-        trainer_instance = executor.start_heter_trainer(program, scope,
-                                debug, fetch_list, fetch_info,
-                                print_period, fetch_handler)
+        trainer_instance = executor.start_heter_trainer(
+            program, scope, debug, fetch_list, fetch_info, print_period,
+            fetch_handler)
         if self._role_maker.is_xpu():
             print("barrier heter")
             self._role_maker._barrier_heter()

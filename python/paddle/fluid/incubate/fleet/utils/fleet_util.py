@@ -1626,7 +1626,9 @@ class FleetUtil(object):
             if op.has_attr("op_device"):
                 if pre is None or pre != op.attr("op_device"):
                     ops_list.append([])
-                    type_list.append(op.attr("op_device") if op.attr("op_device") != "" else type_cpu)
+                    type_list.append(
+                        op.attr("op_device")
+                        if op.attr("op_device") != "" else type_cpu)
                 ops_list[-1].append(op)
                 pre = op.attr("op_device")
         l = len(type_list)
@@ -1713,7 +1715,8 @@ class FleetUtil(object):
                 send_list[i].extend(list(in_from_pre[i + 1]))
             prog = program.clone()
             if merged_type_list[i] != type_cpu:
-                prog = prog._prune_with_input(list(in_from_pre[i]), list(send_list[i]))
+                prog = prog._prune_with_input(
+                    list(in_from_pre[i]), list(send_list[i]))
                 program_list.append(prog)
             else:
                 program_list.append(prog)

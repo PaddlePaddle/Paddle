@@ -82,8 +82,7 @@ class FleetWrapper {
   }
 
 #ifdef PADDLE_WITH_PSLIB
-  void HeterPullSparseVars(int workerid,
-                           std::shared_ptr<HeterTask> task,
+  void HeterPullSparseVars(int workerid, std::shared_ptr<HeterTask> task,
                            const uint64_t table_id,
                            const std::vector<std::string>& var_names,
                            int fea_dim,
@@ -98,7 +97,7 @@ class FleetWrapper {
       const bool no_cvm);
 #endif
 
-  typedef std::function<void (int, int)> HeterCallBackFunc;
+  typedef std::function<void(int, int)> HeterCallBackFunc;
   int RegisterHeterCallback(HeterCallBackFunc handler);
 
   // Pull sparse variables from server in sync mode
@@ -139,26 +138,24 @@ class FleetWrapper {
   void PullDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
-      std::vector<::std::future<int32_t>>* pull_dense_status,
-      bool in_cpu);
+      std::vector<::std::future<int32_t>>* pull_dense_status, bool in_cpu);
 
   // push dense parameters(not gradients) to server in sync mode
   void PushDenseParamSync(const Scope& scope, const uint64_t table_id,
                           const std::vector<std::string>& var_names);
 
-  // Push dense variables to server in async mode
-  // Param<in>: scope, table_id, var_names, scale_datanorm, batch_size
-  // Param<out>: push_sparse_status
-  #ifdef PADDLE_WITH_CUDA
+// Push dense variables to server in async mode
+// Param<in>: scope, table_id, var_names, scale_datanorm, batch_size
+// Param<out>: push_sparse_status
+#ifdef PADDLE_WITH_CUDA
   void PushDenseVarsAsync(
-    const Scope& scope, const uint64_t table_id,
-    const std::vector<std::string>& var_names,
-    std::vector<::std::future<int32_t>>* push_sparse_status,
-    float scale_datanorm, int batch_size,
-    const paddle::platform::Place& place,
-    cudaStream_t stream,
-    cudaEvent_t event);
-  #endif
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      float scale_datanorm, int batch_size,
+      const paddle::platform::Place& place, cudaStream_t stream,
+      cudaEvent_t event);
+#endif
   void PushDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,

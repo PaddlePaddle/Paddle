@@ -985,6 +985,7 @@ class GeneralRoleMaker(RoleMakerBase):
             time.sleep(wait_seconds)
         http_server.stop()
 
+
 class HeterRoleMaker(GeneralRoleMaker):
     """
     This role maker is for general use, you can set os.environ to customize:
@@ -1009,7 +1010,8 @@ class HeterRoleMaker(GeneralRoleMaker):
             xpu_endpoints = os.environ["PADDLE_XPU_ENDPOINTS"].split(",")
             xpu_num = len(xpu_endpoints)
             if training_role not in ["TRAINER", "PSERVER", "XPU"]:
-                raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER or XPU")
+                raise ValueError(
+                    "TRAINING_ROLE must be PSERVER or TRAINER or XPU")
             if training_role == "TRAINER":
                 role = Role.WORKER
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
@@ -1030,9 +1032,8 @@ class HeterRoleMaker(GeneralRoleMaker):
                 gloo = fluid.core.Gloo()
                 gloo.init(current_id,
                           len(xpu_endpoints),
-                          self._hdfs_path.rstrip("/") + "/xpu",
-                          self._hdfs_name, self._hdfs_ugi, self._iface,
-                          self._prefix)
+                          self._hdfs_path.rstrip("/") + "/xpu", self._hdfs_name,
+                          self._hdfs_ugi, self._iface, self._prefix)
                 self._node_type_comm = gloo
             elif training_role == "PSERVER":
                 role = Role.SERVER
@@ -1054,17 +1055,17 @@ class HeterRoleMaker(GeneralRoleMaker):
                           self._hdfs_name, self._hdfs_ugi, self._iface,
                           self._prefix)
                 self._node_type_comm = gloo
-            
+
             if training_role == "TRAINER" or training_role == "XPU":
                 gloo = fluid.core.Gloo()
                 heter_list = worker_endpoints + xpu_endpoints
-                gloo.init(heter_list.index(self._cur_endpoint),
-                          len(heter_list),
-                          self._hdfs_path.rstrip("/") + "/heter",
-                          self._hdfs_name, self._hdfs_ugi, self._iface,
-                          self._prefix)
+                gloo.init(
+                    heter_list.index(self._cur_endpoint),
+                    len(heter_list),
+                    self._hdfs_path.rstrip("/") + "/heter", self._hdfs_name,
+                    self._hdfs_ugi, self._iface, self._prefix)
                 self._heter_comm = gloo
-                
+
             gloo = fluid.core.Gloo()
             all_list = worker_endpoints + eplist + xpu_endpoints
             gloo.init(
@@ -1072,7 +1073,7 @@ class HeterRoleMaker(GeneralRoleMaker):
                 len(all_list),
                 self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
                 self._hdfs_ugi, self._iface, self._prefix)
-            
+
             self._all_comm = gloo
             self._trainers_num = trainers_num
             self._server_endpoints = eplist
@@ -1091,7 +1092,7 @@ class HeterRoleMaker(GeneralRoleMaker):
         if not self._role_is_generated:
             self.generate_role()
         return self._role == Role.XPU
-    
+
     def is_first_xpu(self):
         """
         whether current process is worker of rank 0

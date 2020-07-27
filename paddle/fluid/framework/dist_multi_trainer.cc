@@ -67,8 +67,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
 
 void DistMultiTrainer::RegisterHeterCallback() {
   auto fleet_ptr = FleetWrapper::GetInstance();
-  fleet_ptr->RegisterHeterCallback(
-    [this](int worker, int taskid) {
+  fleet_ptr->RegisterHeterCallback([this](int worker, int taskid) {
       // workers_[worker]->Schedule(taskid);
     }
   );
@@ -100,7 +99,9 @@ void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
+#ifdef PADDLE_WITH_PSLIB
     workers_[i]->CacheProgram(main_program);
+#endif
   }
   // Scope* -> thread id, it will be used in push_dense op
   for (int i = 0; i < thread_num_; ++i) {
@@ -115,9 +116,11 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   }
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->Start();
+#ifdef PADDLE_WITH_PSLIB
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->GetXpuOpIndex();
   }
+#endif
   VLOG(3) << "init other env done.";
 }
 

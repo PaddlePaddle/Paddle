@@ -29,21 +29,19 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void HeterTask::PackTask(Scope* thread_scope,
-                         int taskid, DataFeed* reader,
-                         int cur_batch,
-                         const ProgramDesc& program) {
+void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader,
+                         int cur_batch, const ProgramDesc& program) {
   // total_time = 0;
   // read_time = 0;
   // pack_time = 0;
   // pull_sparse_local_time = 0;
   taskid_ = taskid;
-  auto &block = program.Block(0);
+  auto& block = program.Block(0);
   if (!scope_) {
     scope_ = &(thread_scope->NewScope());
-    for (auto &var : block.AllVars()) {
+    for (auto& var : block.AllVars()) {
       if (!var->Persistable()) {
-        auto *ptr = scope_->Var(var->Name());
+        auto* ptr = scope_->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
       }
     }
@@ -64,73 +62,10 @@ void HeterTask::PackTask(Scope* thread_scope,
 }
 
 void HeterCpuWorker::GetXpuOpIndex() {
-//  xpu_begin_op_index_ = xpu_end_op_index_ = -1;
-//  for (size_t i = 0; i < ops_.size(); ++i) {
-    //  first = 1;
-    //  xpu_begin_op_index_ = i;
-    //  auto& in_map = ops_[i]->Inputs();
-    //  auto it = in_map.find("X");
-    //  if (it != in_map.end()) {
-    //    for (auto& x : it->second) {
-    //      send_var_ = x;
-    //    }
-    //  }
-    // }
-    // if (ops_[i]->Type() == "mul_grad") {
-    //   xpu_end_op_index_ = i;
-    //   //auto& out_map = ops_[i]->Outputs();
-    //   //auto it = out_map.find("X@GRAD");
-    //   //if (it != out_map.end()) {
-    //   //  for (auto& x : it->second) {
-    //   //    recv_var = x;
-    //   //  }
-    //   //}
-    // }
-
-/*
-    auto& out_map = ops_[i]->Outputs();
-    
-    {
-      auto it = out_map.find("Out");
-      if (it != out_map.end()) {
-        for (auto& x : it->second) {
-          if (x == "concat_1.tmp_0") {
-            xpu_begin_op_index_ = i + 1;
-          }
-        }
-      }
-    }
-    
-    {
-      auto it = out_map.find("X@GRAD");
-      if (it != out_map.end()) {
-        for (auto& x : it->second) {
-          if (x == "concat_1.tmp_0@GRAD") {
-            xpu_end_op_index_ = i;
-          }
-        }
-      }
-    }
-    
-    {
-      auto it = out_map.find("Out");
-      if (it != out_map.end()) {
-        for (auto& x : it->second) {
-          if (x == "concat_1.tmp_0@GRAD") {
-            xpu_end_op_index_ = i;
-          }
-        }
-      }
-    }
-  }
-  
-  if (xpu_end_op_index_ == -1) {
-    xpu_end_op_index_ = ops_.size() - 1;
-  }*/
   xpu_begin_op_index_ = trainer_desc_.xpu_start_idx();
   xpu_end_op_index_ = trainer_desc_.xpu_end_idx();
-  VLOG(0) << "xpu begin: " << xpu_begin_op_index_ <<
-             " xpu end: " << xpu_end_op_index_;
+  VLOG(0) << "xpu begin: " << xpu_begin_op_index_
+          << " xpu end: " << xpu_end_op_index_;
   // CHECK(xpu_begin_op_index_ == trainer_desc_.xpu_start_idx());
   // CHECK(xpu_end_op_index_ == trainer_desc_.xpu_end_idx());
   // CHECK(trainer_desc_.op_run_start_idx() == 0);
@@ -329,19 +264,19 @@ void HeterCpuWorker::SetNeedDump(bool need_dump_field) {
 // }
 
 void HeterCpuWorker::DumpParam() {
-//  std::string os;
-//  for (auto& param : dump_param_) {
-//    os.clear();
-//    os = param;
-//    Variable* var = thread_scope_->FindVar(param);
-//    if (var == nullptr) {
-//      continue;
-//    }
-//    LoDTensor* tensor = var->GetMutable<LoDTensor>();
-//    int64_t len = tensor->numel();
-//    os += PrintLodTensor(tensor, 0, len);
-//    writer_ << os;
-//  }
+  //  std::string os;
+  //  for (auto& param : dump_param_) {
+  //    os.clear();
+  //    os = param;
+  //    Variable* var = thread_scope_->FindVar(param);
+  //    if (var == nullptr) {
+  //      continue;
+  //    }
+  //    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+  //    int64_t len = tensor->numel();
+  //    os += PrintLodTensor(tensor, 0, len);
+  //    writer_ << os;
+  //  }
 }
 
 void HeterCpuWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
@@ -380,8 +315,7 @@ void HeterCpuWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
                              << sparse_key_names_[table_id][i] << " is null";
 
     // skip slots which do not have embedding
-    Variable* emb_var =
-        scope->FindVar(sparse_value_names_[table_id][i]);
+    Variable* emb_var = scope->FindVar(sparse_value_names_[table_id][i]);
     if (emb_var == nullptr) {
       continue;
     }
@@ -437,8 +371,8 @@ void HeterCpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
       continue;
     }
     LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
-    float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
-                                                 place_);
+    float* ptr =
+        tensor_emb->mutable_data<float>({len, table.emb_dim()}, place_);
     // memset(ptr, 0, sizeof(float) * len * table.emb_dim());
     auto& tensor_lod = tensor->lod()[0];
     LoD data_lod{tensor_lod};
@@ -501,8 +435,7 @@ void HeterCpuWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
     VLOG(0) << "need_adjust=false, skip adjust ins weight";
     return;
   }
-  Variable* nid_var =
-      scope->FindVar(adjust_ins_weight_config_.nid_slot());
+  Variable* nid_var = scope->FindVar(adjust_ins_weight_config_.nid_slot());
   if (nid_var == nullptr) {
     VLOG(0) << "nid slot var " << adjust_ins_weight_config_.nid_slot()
             << " is nullptr, skip adjust ins weight";
@@ -631,7 +564,6 @@ void HeterCpuWorker::CopyDenseTable() {
   }
 }
 
-
 void HeterCpuWorker::CopyDenseVars() {
   if (thread_id_ != 0) {
     return;
@@ -731,9 +663,8 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
       timeline.Start();
       task = object_pool_.Get();
       task->Reset();
-      task->PackTask(thread_scope_, taskid,
-                     device_reader_,
-                     cur_batch, program_);
+      task->PackTask(thread_scope_, taskid, device_reader_, cur_batch,
+                     program_);
       timeline.Pause();
       task->read_time = tmp_read_time;
       task->pack_time = timeline.ElapsedSec();
@@ -744,8 +675,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
       if (task->state_ == PULL_SPARSE) {
         timeline.Start();
         for (int i = 0;
-             i < param_.program_config(0).pull_sparse_table_id_size();
-             ++i) {
+             i < param_.program_config(0).pull_sparse_table_id_size(); ++i) {
           uint64_t tid = static_cast<uint64_t>(
               param_.program_config(0).pull_sparse_table_id(i));
           TableParameter table;
@@ -755,9 +685,9 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
               break;
             }
           }
-          fleet_ptr_->HeterPullSparseVars(thread_id_,
-              task, tid, sparse_key_names_[tid],
-              table.fea_dim(), sparse_value_names_[tid]);
+          fleet_ptr_->HeterPullSparseVars(
+              thread_id_, task, tid, sparse_key_names_[tid], table.fea_dim(),
+              sparse_value_names_[tid]);
         }
         task->Update();
         // JumpContext(task);
@@ -770,8 +700,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
         // pack_time += task->pack_time;
         // pull_sparse_local_time += task->pull_sparse_local_time;
         for (int i = 0;
-             i < param_.program_config(0).pull_sparse_table_id_size();
-             ++i) {
+             i < param_.program_config(0).pull_sparse_table_id_size(); ++i) {
           uint64_t tid = static_cast<uint64_t>(
               param_.program_config(0).pull_sparse_table_id(i));
           timeline.Start();
@@ -823,7 +752,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
         VLOG(3) << "call remote xpu taskid = " << task->taskid_;
         std::vector<std::string> send_var_list;
         for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
-            send_var_list.push_back(trainer_desc_.xpu_recv_list(i));
+          send_var_list.push_back(trainer_desc_.xpu_recv_list(i));
         }
         heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, send_var_list);
         timeline.Pause();
@@ -874,8 +803,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
         if (need_to_push_sparse_) {
           // push gradients here
           for (int i = 0;
-               i < param_.program_config(0).push_sparse_table_id_size();
-               ++i) {
+               i < param_.program_config(0).push_sparse_table_id_size(); ++i) {
             uint64_t tid = static_cast<uint64_t>(
                 param_.program_config(0).push_sparse_table_id(i));
             TableParameter table;
@@ -887,11 +815,9 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
             }
             timeline.Start();
             fleet_ptr_->HeterPushSparseVars(
-                task, tid,
-                sparse_key_names_[tid], sparse_grad_names_[tid],
-                table.emb_dim(),
-                &push_sparse_status_, use_cvm_,
-                dump_slot_, no_cvm_);
+                task, tid, sparse_key_names_[tid], sparse_grad_names_[tid],
+                table.emb_dim(), &push_sparse_status_, use_cvm_, dump_slot_,
+                no_cvm_);
             timeline.Pause();
             task->push_sparse_time += timeline.ElapsedSec();
             task->total_time += timeline.ElapsedSec();
@@ -961,8 +887,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
             fprintf(stderr, "xpu wait total time: %fs\n",
                     xpu_wait_time / done_cnt);
             fprintf(stderr, "pack task time: %fs\n", pack_time / done_cnt);
-            fprintf(stderr, "train total time: %fs\n",
-                    total_time / done_cnt);
+            fprintf(stderr, "train total time: %fs\n", total_time / done_cnt);
             fprintf(stderr, "pull sparse local time: %fs\n",
                     pull_sparse_local_time / done_cnt);
             fprintf(stderr, "fill sparse time: %fs\n",
@@ -1052,8 +977,7 @@ void HeterCpuWorker::TrainFiles() {
       if (task->state_ == PULL_SPARSE) {
         VLOG(3) << "pull sparse taskid = " << task->taskid_;
         for (int i = 0;
-             i < param_.program_config(0).pull_sparse_table_id_size();
-             ++i) {
+             i < param_.program_config(0).pull_sparse_table_id_size(); ++i) {
           uint64_t tid = static_cast<uint64_t>(
               param_.program_config(0).pull_sparse_table_id(i));
           TableParameter table;
@@ -1063,9 +987,9 @@ void HeterCpuWorker::TrainFiles() {
               break;
             }
           }
-          fleet_ptr_->HeterPullSparseVars(thread_id_,
-              task, tid, sparse_key_names_[tid],
-              table.fea_dim(), sparse_value_names_[tid]);
+          fleet_ptr_->HeterPullSparseVars(
+              thread_id_, task, tid, sparse_key_names_[tid], table.fea_dim(),
+              sparse_value_names_[tid]);
         }
         task->Update();
         // JumpContext(task);
@@ -1073,8 +997,7 @@ void HeterCpuWorker::TrainFiles() {
       } else if (task->state_ == OP_RUN) {
         VLOG(3) << "oprun taskid = " << task->taskid_;
         for (int i = 0;
-             i < param_.program_config(0).pull_sparse_table_id_size();
-             ++i) {
+             i < param_.program_config(0).pull_sparse_table_id_size(); ++i) {
           uint64_t tid = static_cast<uint64_t>(
               param_.program_config(0).pull_sparse_table_id(i));
           CollectLabelInfo(task, i);
@@ -1107,7 +1030,7 @@ void HeterCpuWorker::TrainFiles() {
         VLOG(3) << "call remote xpu taskid = " << task->taskid_;
         std::vector<std::string> send_var_list;
         for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
-            send_var_list.push_back(trainer_desc_.xpu_recv_list(i));
+          send_var_list.push_back(trainer_desc_.xpu_recv_list(i));
         }
         heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, send_var_list);
         task->Update();
@@ -1148,8 +1071,7 @@ void HeterCpuWorker::TrainFiles() {
         if (need_to_push_sparse_) {
           // push gradients here
           for (int i = 0;
-               i < param_.program_config(0).push_sparse_table_id_size();
-               ++i) {
+               i < param_.program_config(0).push_sparse_table_id_size(); ++i) {
             uint64_t tid = static_cast<uint64_t>(
                 param_.program_config(0).push_sparse_table_id(i));
             TableParameter table;
@@ -1160,11 +1082,9 @@ void HeterCpuWorker::TrainFiles() {
               }
             }
             fleet_ptr_->HeterPushSparseVars(
-                task, tid,
-                sparse_key_names_[tid], sparse_grad_names_[tid],
-                table.emb_dim(),
-                &push_sparse_status_, use_cvm_,
-                dump_slot_, no_cvm_);
+                task, tid, sparse_key_names_[tid], sparse_grad_names_[tid],
+                table.emb_dim(), &push_sparse_status_, use_cvm_, dump_slot_,
+                no_cvm_);
           }
         }
 
@@ -1240,7 +1160,7 @@ void HeterCpuWorker::TrainFiles() {
     }
   }
   if (need_dump_field_) {
-  // writer_.Flush();
+    // writer_.Flush();
   }
   if (copy_table_config_.need_copy()) {
     CopySparseTable();

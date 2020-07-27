@@ -27,6 +27,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -37,7 +38,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/framework/heter_service.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -60,19 +60,15 @@ class PullDenseWorker {
  public:
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
-  #ifdef PADDLE_WITH_CUDA
-  void AddStream(const cudaStream_t stream) {
-    copy_streams_.push_back(stream);
-  }
+#ifdef PADDLE_WITH_CUDA
+  void AddStream(const cudaStream_t stream) { copy_streams_.push_back(stream); }
 
   void AddPlace(const paddle::platform::Place place) {
-      places_.push_back(place);
+    places_.push_back(place);
   }
 
-  void AddThreadScope(Scope* scope) {
-    thread_scopes_.push_back(scope);
-  }
-  #endif
+  void AddThreadScope(Scope* scope) { thread_scopes_.push_back(scope); }
+#endif
   int Start();
   void Stop();
   void SetRootScope(Scope* scope) { root_scope_ = scope; }
@@ -125,11 +121,11 @@ class PullDenseWorker {
   float total_batch_num_ = 0;
   std::unordered_map<const Scope*, int> scope_to_thread_id_;
 
-  #ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
   std::vector<cudaStream_t> copy_streams_;
   std::vector<paddle::platform::Place> places_;
   std::vector<Scope*> thread_scopes_;
-  #endif
+#endif
 };
 
 // should incorporate different type of device
@@ -152,8 +148,7 @@ class DeviceWorker {
   virtual void SetRootScope(Scope* root_scope);
   virtual void SetDataFeed(DataFeed* data_feed);
   virtual void SetWorkerNum(int num) {}
-  virtual void CacheProgram(const ProgramDesc &main_program) {}
-  virtual void Schedule(int taskid) {}
+  virtual void CacheProgram(const ProgramDesc& main_program) {}
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
   }
@@ -176,7 +171,6 @@ class DeviceWorker {
     device_reader_->SetPlace(place);
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
-  virtual void GetXpuOpIndex() {}
 
  protected:
   virtual void DumpParam(const Scope& scope, const int batch_id);
@@ -350,7 +344,7 @@ class HeterCpuWorker : public HogwildWorker {
   virtual void Schedule(int taskid);
   virtual void JumpContext(std::shared_ptr<HeterTask> task);
   virtual void CacheProgram(const ProgramDesc &main_program) {
-    new(&program_) ProgramDesc(main_program);
+    new (&program_) ProgramDesc(main_program);
   }
   virtual void GetXpuOpIndex();
 

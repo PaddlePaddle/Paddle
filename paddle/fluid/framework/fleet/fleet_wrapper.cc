@@ -156,10 +156,8 @@ void FleetWrapper::CreateClient2ClientConnection() {
 
 #ifdef PADDLE_WITH_PSLIB
 void FleetWrapper::HeterPullSparseVars(
-    int workerid,
-    std::shared_ptr<HeterTask> task, const uint64_t table_id,
-    const std::vector<std::string>& var_names,
-    int fea_value_dim,
+    int workerid, std::shared_ptr<HeterTask> task, const uint64_t table_id,
+    const std::vector<std::string>& var_names, int fea_value_dim,
     const std::vector<std::string>& var_emb_names) {
   std::vector<::std::future<int32_t>> pull_sparse_status;
   pull_sparse_status.resize(0);
@@ -200,9 +198,8 @@ void FleetWrapper::HeterPullSparseVars(
   for (auto& t : fea_values) {
     pull_result_ptr.push_back(t.data());
   }
-  auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(workerid,
-      pull_result_ptr.data(), table_id,
-      fea_keys.data(),
+  auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(
+      workerid, pull_result_ptr.data(), table_id, fea_keys.data(),
       fea_keys.size(), task->taskid_);
   pull_sparse_status.push_back(std::move(status));
   for (auto& t : pull_sparse_status) {
@@ -220,9 +217,8 @@ void FleetWrapper::HeterPushSparseVars(
     std::shared_ptr<HeterTask> task, const uint64_t table_id,
     const std::vector<std::string>& sparse_key_names,
     const std::vector<std::string>& sparse_grad_names, const int emb_dim,
-    std::vector<::std::future<int32_t>>* push_sparse_status,
-    const bool use_cvm, const bool dump_slot,
-    const bool no_cvm) {
+    std::vector<::std::future<int32_t>>* push_sparse_status, const bool use_cvm,
+    const bool dump_slot, const bool no_cvm) {
 
   auto& scope = *(task->scope_);
   int batch_size = task->cur_batch_;
@@ -639,8 +635,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
 void FleetWrapper::PullDenseVarsAsync(
     const Scope& scope, const uint64_t tid,
     const std::vector<std::string>& var_names,
-    std::vector<::std::future<int32_t>>* pull_dense_status,
-    bool in_cpu) {
+    std::vector<::std::future<int32_t>>* pull_dense_status, bool in_cpu) {
 #ifdef PADDLE_WITH_PSLIB
   auto& regions = _regions[tid];
   regions.clear();
@@ -708,16 +703,13 @@ void FleetWrapper::PushDenseVarsSync(
     Scope* scope, const uint64_t table_id,
     const std::vector<std::string>& var_names) {}
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    float scale_datanorm, int batch_size,
-    const paddle::platform::Place& place,
-    cudaStream_t stream,
-    cudaEvent_t event) {
-#ifdef PADDLE_WITH_PSLIB
+    float scale_datanorm, int batch_size, const paddle::platform::Place& place,
+    cudaStream_t stream, cudaEvent_t event) {
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
@@ -725,15 +717,13 @@ void FleetWrapper::PushDenseVarsAsync(
     int count = tensor->numel();
     float* g_data = tensor->data<float>();
 
-    Variable *pin_var = scope.FindVar(t + "pin");
+    Variable* pin_var = scope.FindVar(t + "pin");
     LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
-    float *pin_g = pin_tensor->mutable_data<float>(
-                   tensor->dims(), platform::CUDAPinnedPlace());
-    memory::Copy(
-        platform::CUDAPinnedPlace(),
-        pin_g,
-        boost::get<platform::CUDAPlace>(place),
-        g_data, sizeof(float) * count, stream);
+    float* pin_g = pin_tensor->mutable_data<float>(tensor->dims(),
+                                                   platform::CUDAPinnedPlace());
+    memory::Copy(platform::CUDAPinnedPlace(), pin_g,
+                 boost::get<platform::CUDAPlace>(place), g_data,
+                 sizeof(float) * count, stream);
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
     cudaEventSynchronize(event);
 
@@ -761,7 +751,6 @@ void FleetWrapper::PushDenseVarsAsync(
   if (push_sparse_status) {
     push_sparse_status->push_back(std::move(status));
   }
-#endif
 }
 
 #endif

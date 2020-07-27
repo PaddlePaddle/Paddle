@@ -18,13 +18,13 @@ limitations under the License. */
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
-#include <thread>  // NOLINT
-#include <vector>
+#include <thread>         // NOLINT
 #include <unordered_map>  // NOLINT
 #include <unordered_set>  // NOLINT
+#include <vector>
 #include "paddle/fluid/framework/heter_service.pb.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
 #ifdef PADDLE_WITH_PSLIB
 #include "brpc/channel.h"
 #include "brpc/controller.h"
@@ -33,7 +33,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-typedef std::function<int (const HeterRequest*, HeterResponse*)>
+typedef std::function<int(const HeterRequest*, HeterResponse*)>
     HeterServiceHandler;
 class DataFeed;
 
@@ -55,8 +55,8 @@ class HeterXpuService : public HeterService {
     // response->set_err_code(0);
     // response->set_err_msg("");
     if (ret != 0) {
-        // response->set_err_code(-1);
-        // response->set_err_msg("xpu service error");
+      // response->set_err_code(-1);
+      // response->set_err_msg("xpu service error");
     }
   }
 
@@ -69,14 +69,7 @@ class HeterXpuService : public HeterService {
   std::unordered_map<int, HeterServiceHandler> handler_map_;
 };
 
-enum HeterTaskState {
-  PULL_SPARSE,
-  OP_RUN,
-  XPU,
-  OP_RUN_END,
-  PUSH_GRAD,
-  DONE
-};
+enum HeterTaskState { PULL_SPARSE, OP_RUN, XPU, OP_RUN_END, PUSH_GRAD, DONE };
 
 class HeterTask {
  public:
@@ -112,11 +105,11 @@ class HeterTask {
     std::cout << "features size " << features_.size() << std::endl;
     for (size_t i = 0; i < features_.size(); ++i) {
       std::cout << "features[" << i << "] size " << features_[i].size()
-          << std::endl;
+                << std::endl;
     }
   }
   void PackTask(Scope* scope, int taskid, DataFeed* reader, int cur_batch,
-      const ProgramDesc& program);
+                const ProgramDesc& program);
 
   Scope* scope_{nullptr};
   int taskid_;
@@ -145,17 +138,17 @@ template <class T>
 class HeterObjectPool {
  public:
   HeterObjectPool() {}
-  virtual ~HeterObjectPool() {};
+  virtual ~HeterObjectPool(){};
   std::shared_ptr<T> Get() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (pool_.empty()) {
       num_ += 1;
-      #ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
       VLOG(0) << "pool construct size: " << num_;
-      #endif
+#endif
       return std::make_shared<T>();
     } else {
-      auto ret =  pool_.back();
+      auto ret = pool_.back();
       pool_.pop_back();
       return ret;
     }
@@ -168,9 +161,7 @@ class HeterObjectPool {
     std::lock_guard<std::mutex> lock(mutex_);
     return pool_.size();
   }
-  std::shared_ptr<T>& GetElement(int i) {
-    return pool_[i];
-  }
+  std::shared_ptr<T>& GetElement(int i) { return pool_[i]; }
 
  private:
   std::vector<std::shared_ptr<T>> pool_;
@@ -183,9 +174,7 @@ struct BthreadMutextGuard {
     mutex_ = rho;
     bthread_mutex_lock(mutex_);
   }
-  ~BthreadMutextGuard() {
-    bthread_mutex_unlock(mutex_);
-  }
+  ~BthreadMutextGuard() { bthread_mutex_unlock(mutex_); }
   bthread_mutex_t* mutex_;
 };
 
@@ -207,7 +196,7 @@ class BtObjectPool {
     while (pool_.empty()) {
       bthread_cond_wait(&cond_, &mutex_);
     }
-    auto ret =  pool_.back();
+    auto ret = pool_.back();
     pool_.pop_back();
     return ret;
   }
@@ -218,13 +207,9 @@ class BtObjectPool {
     bthread_cond_signal(&cond_);
   }
 
-  int Size() {
-    return pool_.size();
-  }
+  int Size() { return pool_.size(); }
 
-  std::shared_ptr<T>& GetElement(int i) {
-    return pool_[i];
-  }
+  std::shared_ptr<T>& GetElement(int i) { return pool_[i]; }
 
  private:
   std::vector<std::shared_ptr<T>> pool_;
@@ -237,16 +222,14 @@ template <class K, class T>
 struct HeterNode {
   K key;
   T value;
-  HeterNode *prev;
-  HeterNode *next;
+  HeterNode* prev;
+  HeterNode* next;
 };
 
 template <class K, class T>
 class HeterList {
  public:
-  HeterList()
-    : head_(new HeterNode<K, T>)
-    , tail_(new HeterNode<K, T>) {
+  HeterList() : head_(new HeterNode<K, T>), tail_(new HeterNode<K, T>) {
     head_->prev = NULL;
     head_->next = tail_;
     tail_->prev = head_;
@@ -260,9 +243,7 @@ class HeterList {
     delete tail_;
   }
 
-  void SetCap(int num) {
-    cap_ = num;
-  }
+  void SetCap(int num) { cap_ = num; }
 
   bool TryPut(K& key, T& value) {
     std::unique_lock<std::mutex> lock(mutex_);
@@ -294,7 +275,7 @@ class HeterList {
     return true;
   }
 
-  T TryGet(const K &key) {
+  T TryGet(const K& key) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto iter = map_.find(key);
     if (iter != map_.end()) {
@@ -312,7 +293,7 @@ class HeterList {
     return nullptr;
   }
 
-  T Get(const K &key) {
+  T Get(const K& key) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto iter = map_.find(key);
     if (iter != map_.end()) {
@@ -357,29 +338,29 @@ class HeterList {
   }
 
  private:
-    void detach(HeterNode<K, T> *node) {
-      node->prev->next = node->next;
-      node->next->prev = node->prev;
-      size--;
-    }
+  void detach(HeterNode<K, T> *node) {
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
+    size--;
+  }
 
-    void attach(HeterNode<K, T> *node) {
-      node->prev = head_;
-      node->next = head_->next;
-      head_->next->prev = node;
-      head_->next = node;
-      size++;
-    }
+  void attach(HeterNode<K, T> *node) {
+    node->prev = head_;
+    node->next = head_->next;
+    head_->next->prev = node;
+    head_->next = node;
+    size++;
+  }
 
  private:
-    HeterNode<K, T> *head_;
-    HeterNode<K, T> *tail_;
-    std::unordered_map<K, HeterNode<K, T>*> map_;
-    std::unordered_set<K> task_map_;
-    std::mutex mutex_;
-    std::condition_variable cond_;
-    int cap_;
-    int size;
+  HeterNode<K, T> *head_;
+  HeterNode<K, T> *tail_;
+  std::unordered_map<K, HeterNode<K, T>*> map_;
+  std::unordered_set<K> task_map_;
+  std::mutex mutex_;
+  std::condition_variable cond_;
+  int cap_;
+  int size;
 };
 
 }  // namespace framework

@@ -21,9 +21,12 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
+#include <ctime>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/fleet/heter_wrapper.h"
+#include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/reader.h"
@@ -31,9 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/port.h"
-#include "paddle/fluid/framework/fleet/heter_wrapper.h"
-#include "paddle/fluid/framework/heter_service.h"
-#include <ctime>
 
 namespace paddle {
 namespace framework {
@@ -138,9 +138,7 @@ class HeterServiceContext {
     }
     std::vector<OperatorBase*>().swap(ops_);
   }
-  void Reset() {
-    push_dense_status_.clear();
-  }
+  void Reset() { push_dense_status_.clear(); }
   int place_num_;
   Scope* scope_{nullptr};
   cudaEvent_t event_;
@@ -167,13 +165,13 @@ class HeterXpuTrainer : public TrainerBase {
   virtual void RegisterServiceHandler();
   virtual int RunTask(const HeterRequest* request, HeterResponse* response);
   virtual Scope* GetWorkerScope(int thread_id);
-  virtual void CacheProgram(const ProgramDesc &main_program) {
-    new(&program_) ProgramDesc(main_program);
+  virtual void CacheProgram(const ProgramDesc& main_program) {
+    new (&program_) ProgramDesc(main_program);
   }
   template <typename T>
   void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
-              const paddle::platform::Place& thread_place,
-              cudaStream_t stream);
+                   const paddle::platform::Place& thread_place,
+                   cudaStream_t stream);
   void CreateThreadParam(const ProgramDesc& program, int num);
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);

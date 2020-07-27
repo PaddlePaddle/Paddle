@@ -54,7 +54,6 @@ message TrainerDesc {
   optional int32 dump_interval = 26 [ default = 10000 ];
   repeated int32 worker_places = 27;
   
-  
   repeated string xpu_send_list = 28;
   repeated string xpu_recv_list = 29;
   optional int32 xpu_start_idx = 30;

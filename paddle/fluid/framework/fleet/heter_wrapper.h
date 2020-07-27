@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
 #include <atomic>
 #include <ctime>
 #include <map>
+#include <memory>
 #include <random>
 #include <string>
 #include <unordered_map>
@@ -37,7 +37,7 @@ class HeterCpuWorker;
 
 typedef std::function<void(void*)> HeterRpcCallbackFunc;
 
-class OnHeterRpcDone: public google::protobuf::Closure {
+class OnHeterRpcDone : public google::protobuf::Closure {
  public:
   OnHeterRpcDone(HeterRpcCallbackFunc func) : handler_(func) {}
   virtual ~OnHeterRpcDone() {}
@@ -58,11 +58,9 @@ class HeterWrapper {
     server_.Join();
   }
 
-  HeterWrapper() {
-  }
+  HeterWrapper() {}
 
-  static void HeterRpcCallBack(HeterResponse* response,
-                               brpc::Controller* cntl,
+  static void HeterRpcCallBack(HeterResponse* response, brpc::Controller* cntl,
                                HeterCpuWorker* worker,
                                std::shared_ptr<HeterTask> task);
 
@@ -72,14 +70,11 @@ class HeterWrapper {
 
   void StartXpuService(const std::string& ip, uint32_t port);
 
-  void CallRemoteXpu(std::shared_ptr<HeterTask> task,
-                     HeterCpuWorker* worker,
-                     int mpi_rank,
-                     std::vector<std::string>& send_vars);
+  void CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker,
+                     int mpi_rank, std::vector<std::string>& send_vars);
 
   void CallRemoteXpuSync(std::shared_ptr<HeterTask> task,
-                         HeterCpuWorker* worker,
-                         int mpi_rank,
+                         HeterCpuWorker* worker, int mpi_rank,
                          std::vector<std::string>& send_vars);
 
   void StopXpuService(int num);
@@ -92,13 +87,11 @@ class HeterWrapper {
   framework::proto::VarType::Type ToVarType(VariableMessage::Type type);
 
 #ifdef PADDLE_WITH_CUDA
-  void DeSerializeToTensor(Scope* scope,
-                           const VariableMessage& req_var,
+  void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var,
                            platform::Place place,
                            cudaStream_t stream = nullptr);
 #else
-  void DeSerializeToTensor(Scope* scope,
-                           const VariableMessage& req_var,
+  void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var,
                            platform::Place place);
 #endif
   // HeterWrapper singleton
@@ -109,9 +102,7 @@ class HeterWrapper {
     return s_instance_;
   }
 
-  std::vector<std::string>& GetXpuList() {
-    return xpu_list_;
-  }
+  std::vector<std::string>& GetXpuList() { return xpu_list_; }
 
   void SetXpuList(const std::vector<std::string>& xpu_list);
 
