@@ -80,6 +80,7 @@ endif()
 if(APPLE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_hdfs)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
 endif()
 
 if (NOT ${WITH_GPU})
