@@ -653,8 +653,9 @@ def save(layer, model_path, input_spec=None, configs=None):
     """
 
     def get_inout_spec(all_vars, target_vars, return_name=False):
-        valid_vars = [var for var in all_vars if isinstance(var, Variable)]
+        result_list = []
         valid_var_dict = {}
+        valid_vars = [var for var in all_vars if isinstance(var, Variable)]
         for var in valid_vars:
             valid_var_dict[var.name] = var
         if target_vars:
@@ -663,13 +664,13 @@ def save(layer, model_path, input_spec=None, configs=None):
                 if var.name not in valid_var_dict:
                     raise RuntimeError(
                         "The variable to feed/fetch are not exist.")
-                target_vars[i] = valid_var_dict[var.name]
+                result_list.append(valid_var_dict[var.name])
         else:
-            target_vars = valid_vars
+            result_list = valid_vars
         if return_name:
-            target_vars = [var.name for var in target_vars]
+            result_list = [var.name for var in target_vars]
 
-        return target_vars
+        return result_list
 
     # 1. input check
     prog_translator = ProgramTranslator()

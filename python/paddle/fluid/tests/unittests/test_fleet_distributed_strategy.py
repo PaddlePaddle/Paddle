@@ -109,6 +109,13 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.hierachical_allreduce = "True"
         self.assertEqual(strategy.hierachical_allreduce, False)
 
+    def test_hierachical_allreduce_inter_ranks(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.hierachical_allreduce_inter_ranks = 1
+        self.assertEqual(strategy.hierachical_allreduce_inter_ranks, 1)
+        strategy.hierachical_allreduce_inter_ranks = "2"
+        self.assertEqual(strategy.hierachical_allreduce_inter_ranks, 1)
+
     def test_nccl_comm_num(self):
         strategy = paddle.fleet.DistributedStrategy()
         strategy.nccl_comm_num = 1
@@ -219,6 +226,13 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.num_iteration_per_drop_scope, 1)
         strategy.num_iteration_per_drop_scope = 0.1
         self.assertEqual(strategy.num_iteration_per_drop_scope, 1)
+
+    def test_num_iteration_per_run(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.num_iteration_per_run = 1
+        self.assertEqual(strategy.num_iteration_per_run, 1)
+        strategy.num_iteration_per_run = 0.1
+        self.assertEqual(strategy.num_iteration_per_run, 1)
 
     def test_sync_batch_norm(self):
         strategy = paddle.fleet.DistributedStrategy()
@@ -335,6 +349,40 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.auto, False)
         strategy.auto = "True"
         self.assertEqual(strategy.auto, False)
+
+    def test_sync_nccl_allreduce(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.sync_nccl_allreduce = True
+        self.assertEqual(strategy.sync_nccl_allreduce, True)
+        strategy.sync_nccl_allreduce = False
+        self.assertEqual(strategy.sync_nccl_allreduce, False)
+        strategy.sync_nccl_allreduce = "True"
+        self.assertEqual(strategy.sync_nccl_allreduce, False)
+
+    def test_fuse_broadcast_ops(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.fuse_broadcast_ops = True
+        self.assertEqual(strategy.fuse_broadcast_ops, True)
+        strategy.fuse_broadcast_ops = False
+        self.assertEqual(strategy.fuse_broadcast_ops, False)
+        strategy.fuse_broadcast_ops = "True"
+        self.assertEqual(strategy.fuse_broadcast_ops, False)
+
+    def test_num_threads(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.num_threads = 1
+        self.assertEqual(strategy.num_threads, 1)
+        strategy.num_threads = 0.1
+        self.assertEqual(strategy.num_threads, 1)
+
+    def test_strategy_prototxt(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.sync_nccl_allreduce = True
+        strategy.save_to_prototxt("dist_strategy.prototxt")
+        strategy2 = paddle.fleet.DistributedStrategy()
+        strategy2.load_from_prototxt("dist_strategy.prototxt")
+        self.assertEqual(strategy.sync_nccl_allreduce,
+                         strategy2.sync_nccl_allreduce)
 
 
 if __name__ == '__main__':

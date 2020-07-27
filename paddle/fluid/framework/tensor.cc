@@ -108,8 +108,15 @@ const DDim& Tensor::dims() const { return dims_; }
 int64_t Tensor::numel() const { return product(dims_); }
 
 void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
+  PADDLE_ENFORCE_EQ(
+      offset_, 0,
+      platform::errors::Fatal(
+          "Only the offset is supported to zero when the holder is reset."));
   if (holder_) {
-    PADDLE_ENFORCE_EQ(numel() * SizeOfType(type()), holder->size());
+    PADDLE_ENFORCE_LE(
+        numel() * SizeOfType(type()) + offset_, holder->size(),
+        paddle::platform::errors::InvalidArgument(
+            "The size of Holder is not enough to store the Tensor."));
   }
   holder_ = holder;
 }

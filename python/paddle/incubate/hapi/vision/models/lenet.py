@@ -15,12 +15,10 @@
 import paddle.fluid as fluid
 from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
 
-from ...model import Model
-
 __all__ = ['LeNet']
 
 
-class LeNet(Model):
+class LeNet(fluid.dygraph.Layer):
     """LeNet model from
     `"LeCun Y, Bottou L, Bengio Y, et al. Gradient-based learning applied to document recognition[J]. Proceedings of the IEEE, 1998, 86(11): 2278-2324.`_
 
