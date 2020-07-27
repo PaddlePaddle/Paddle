@@ -103,7 +103,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     helper = LayerHelper("full_like", **locals())
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full_like')
+                'full_like/zeros_like/ones_like')
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
@@ -169,7 +169,7 @@ def ones_like(x, dtype=None, name=None):
 	:alias_main: paddle.ones_like
 	:alias: paddle.tensor.ones_like, paddle.tensor.creation.ones_like
 
-    This OP returns a Tensor filled with the value 0, with the same shape and
+    This OP returns a Tensor filled with the value 1, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Args:
