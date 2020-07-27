@@ -20,7 +20,8 @@ import pickle
 
 import warnings
 from paddle.fluid import core
-from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
+from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
 from paddle.fluid.dygraph.layers import Layer
@@ -1100,6 +1101,19 @@ class TracedLayer(object):
                     # save the static graph model for inference
                     static_layer.save_inference_model(dirname='./saved_infer_model')
         """
+        assert isinstance(
+            layer, Layer
+        ), "The type of 'layer' in fluid.dygraph.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received {}.".format(
+            type(layer))
+        assert isinstance(
+            inputs, list
+        ), "The type of 'inputs' in fluid.dygraph.jit.TracedLayer.trace must be {}, but received {}.".format(
+            list, type(inputs))
+        for inp in inputs:
+            assert isinstance(
+                inp, (Variable, core.VarBase)
+            ), "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received {}.".format(
+                type(inp))
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)
         traced = TracedLayer(prog, parameters, feed, fetch)
         return outs, traced
@@ -1149,6 +1163,14 @@ class TracedLayer(object):
                     out_static_graph = static_layer([in_var])
         """
         assert self._compiled_program is None, "Cannot set strategy after run"
+        assert isinstance(
+            build_strategy, (type(None), BuildStrategy)
+        ), "The type of 'build_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received {}.".format(
+            type(build_strategy))
+        assert isinstance(
+            exec_strategy, (type(None), ExecutionStrategy)
+        ), "The type of 'exec_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received {}.".format(
+            type(exec_strategy))
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
 
@@ -1239,6 +1261,21 @@ class TracedLayer(object):
                 fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
                 print(fetch.shape) # (2, 10)
         """
+        check_type(dirname, "dirname", str,
+                   "fluid.dygraph.jit.TracedLayer.save_inference_model")
+        check_type(feed, "feed", (type(None), list),
+                   "fluid.dygraph.jit.TracedLayer.save_inference_model")
+        if isinstance(feed, list):
+            for f in feed:
+                check_type(f, "each element of feed", int,
+                           "fluid.dygraph.jit.TracedLayer.save_inference_model")
+        check_type(fetch, "fetch", (type(None), list),
+                   "fluid.dygraph.jit.TracedLayer.save_inference_model")
+        if isinstance(fetch, list):
+            for f in fetch:
+                check_type(f, "each element of fetch", int,
+                           "fluid.dygraph.jit.TracedLayer.save_inference_model")
+
         from paddle.fluid.io import save_inference_model
 
         def get_feed_fetch(all_vars, partial_vars):
