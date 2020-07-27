@@ -206,8 +206,8 @@ class TestUserDefinedQuantization(unittest.TestCase):
 
         mapping_table = load_dict()
         test_graph.out_node_mapping_table = mapping_table
-
-        freeze_pass.apply(test_graph)
+        if act_quantize_func == None and weight_quantize_func == None:
+            freeze_pass.apply(test_graph)
 
     def test_act_preprocess_cuda(self):
         if fluid.core.is_compiled_with_cuda():
@@ -250,6 +250,48 @@ class TestUserDefinedQuantization(unittest.TestCase):
                 weight_quant_type='channel_wise_abs_max',
                 for_ci=True,
                 weight_preprocess_func=pact)
+
+    def test_act_quantize_cuda(self):
+        if fluid.core.is_compiled_with_cuda():
+            with fluid.unique_name.guard():
+                self.quantization_scale(
+                    True,
+                    seed=1,
+                    activation_quant_type='moving_average_abs_max',
+                    weight_quant_type='channel_wise_abs_max',
+                    for_ci=True,
+                    act_quantize_func=pact)
+
+    def test_act_quantize_cpu(self):
+        with fluid.unique_name.guard():
+            self.quantization_scale(
+                False,
+                seed=2,
+                activation_quant_type='moving_average_abs_max',
+                weight_quant_type='channel_wise_abs_max',
+                for_ci=True,
+                act_quantize_func=pact)
+
+    def test_weight_quantize_cuda(self):
+        if fluid.core.is_compiled_with_cuda():
+            with fluid.unique_name.guard():
+                self.quantization_scale(
+                    True,
+                    seed=1,
+                    activation_quant_type='moving_average_abs_max',
+                    weight_quant_type='channel_wise_abs_max',
+                    for_ci=True,
+                    weight_quantize_func=pact)
+
+    def test_weight_quantize_cpu(self):
+        with fluid.unique_name.guard():
+            self.quantization_scale(
+                False,
+                seed=2,
+                activation_quant_type='moving_average_abs_max',
+                weight_quant_type='channel_wise_abs_max',
+                for_ci=True,
+                weight_quantize_func=pact)
 
 
 if __name__ == '__main__':
