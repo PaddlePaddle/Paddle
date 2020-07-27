@@ -60,6 +60,9 @@ class ConditionalBlockInferOp : public ConditionalOp {
       auto &cur_scope = *scopes->front();
 
       framework::Executor exec(dev_place);
+#ifdef PADDLE_WITH_MKLDNN
+      exec.KeepMKLDNNCache(true);
+#endif
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
       scope.DeleteScope(scopes->front());

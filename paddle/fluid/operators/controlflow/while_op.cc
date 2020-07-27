@@ -62,6 +62,9 @@ class WhileOp : public framework::OperatorBase {
             cond.dims().to_str(), ".\n"));
 
     framework::Executor executor(dev_place);
+#ifdef PADDLE_WITH_MKLDNN
+    executor.KeepMKLDNNCache(true);
+#endif
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
     auto *program = block->Program();
@@ -177,6 +180,9 @@ class WhileGradOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     framework::Executor executor(dev_place);
+#ifdef PADDLE_WITH_MKLDNN
+    executor.KeepMKLDNNCache(true);
+#endif
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
 

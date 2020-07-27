@@ -401,6 +401,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                         "should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
+#ifdef PADDLE_WITH_MKLDNN
+  exec.KeepMKLDNNCache(true);
+#endif
 
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
   if (checkpoint_block_id != -1) {

@@ -99,6 +99,9 @@ class CGenNCCLIdOp : public framework::OperatorBase {
 
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
+#ifdef PADDLE_WITH_MKLDNN
+    exec.KeepMKLDNNCache(true);
+#endif
     rpc_h.SetScope(scope);
     rpc_h.SetDevCtx(&dev_ctx);
     rpc_h.SetProgram(&empty_program);

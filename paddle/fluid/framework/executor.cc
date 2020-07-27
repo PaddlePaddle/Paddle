@@ -77,14 +77,13 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
-Executor::Executor(const platform::Place& place, bool is_block_op)
-    : place_(place), is_block_op_(is_block_op) {}
+Executor::Executor(const platform::Place& place) : place_(place) {}
 
 Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  if (!is_block_op_) {
+  if (clear_mkldnn_cache_) {
     if (platform::is_cpu_place(place_)) {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();

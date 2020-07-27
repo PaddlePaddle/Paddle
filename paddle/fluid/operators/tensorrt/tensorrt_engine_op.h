@@ -134,6 +134,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
   void RunNativeImpl(const framework::Scope &scope,
                      const platform::Place &dev_place) const {
     framework::Executor executor(dev_place);
+#ifdef PADDLE_WITH_MKLDNN
+    exec.KeepMKLDNNCache(true);
+#endif
     auto *block = Attr<framework::BlockDesc *>("sub_block");
     auto *program = block->Program();
     auto &current_scope = scope.NewScope();

@@ -223,6 +223,9 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     // Step 2. prepare executor and init persistable variables
     framework::Executor exe(ctx.GetPlace());
+#ifdef PADDLE_WITH_MKLDNN
+    exe.KeepMKLDNNCache(true);
+#endif
 
     // skip delete vars
     std::vector<std::string> skip_vars;
@@ -319,6 +322,9 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     // Step 2. prepare executor and scope
     framework::Executor exe(ctx.GetPlace());
+#ifdef PADDLE_WITH_MKLDNN
+    exe.KeepMKLDNNCache(true);
+#endif
 
     // skip delete vars
     std::vector<std::string> skip_vars;

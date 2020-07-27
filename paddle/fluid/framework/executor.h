@@ -56,7 +56,7 @@ class Executor {
   explicit Executor(const platform::DeviceContext& device)
       : Executor(device.GetPlace()) {}
 
-  explicit Executor(const platform::Place& place, bool is_block_op = false);
+  explicit Executor(const platform::Place& place);
 
   ~Executor();
   /*
@@ -136,9 +136,17 @@ class Executor {
 
   const platform::Place GetPlace() const { return place_; }
 
+#ifdef PADDLE_WITH_MKLDNN
+  void KeepMKLDNNCache(bool keep_mkldnn_cache) {
+    clear_mkldnn_cache_ = !keep_mkldnn_cache;
+  }
+#endif
+
  private:
   const platform::Place place_;
-  bool is_block_op_;
+#ifdef PADDLE_WITH_MKLDNN
+  bool clear_mkldnn_cache_ = true;
+#endif
 };
 
 }  // namespace framework

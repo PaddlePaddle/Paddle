@@ -218,6 +218,9 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
       "optimize blocks should be 1 at least on the pserver side.");
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
+#ifdef PADDLE_WITH_MKLDNN
+  exec.KeepMKLDNNCache(true);
+#endif
 
   auto f = std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope,
                      &dev_ctx, &executor, program, rpc_service_.get());

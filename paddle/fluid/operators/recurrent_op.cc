@@ -200,6 +200,9 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
   auto reverse = Attr<bool>(kReverse);
 
   framework::Executor executor(place);
+#ifdef PADDLE_WITH_MKLDNN
+  executor.KeepMKLDNNCache(true);
+#endif
   auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
   auto *program = block->Program();
@@ -312,6 +315,9 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
   auto reverse = Attr<bool>(kReverse);
 
   framework::Executor executor(place);
+#ifdef PADDLE_WITH_MKLDNN
+  executor.KeepMKLDNNCache(true);
+#endif
   auto *block = Attr<framework::BlockDesc *>(kStepBlock);
   auto *program = block->Program();
   auto ctx = executor.Prepare(
