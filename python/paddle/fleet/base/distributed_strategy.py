@@ -163,24 +163,27 @@ class DistributedStrategy(object):
         """
         Configure BuildStrategy for DistributedStrategy
 
-        build_strategy = paddle.fluid.BuildStrategy()
-        build_strategy.enable_sequential_execution = True
-        build_strategy.nccl_comm_num = 10
-        build_strategy.use_hierarchical_allreduce = True
-        build_strategy.hierarchical_allreduce_inter_nranks = 1
-        build_strategy.fuse_elewise_add_act_ops = True
-        build_strategy.fuse_bn_act_ops = True
-        build_strategy.enable_auto_fusion = True
-        build_strategy.fuse_relu_depthwise_conv = True
-        build_strategy.fuse_broadcast_ops = True
-        build_strategy.fuse_all_optimizer_ops = True
-        build_strategy.sync_batch_norm = True
-        build_strategy.enable_inplace = True
-        build_strategy.fuse_all_reduce_ops = True
-        build_strategy.enable_backward_optimizer_op_deps = True
-        
-        strategy = paddle.fleet.DistributedStrategy()
-        strategy.build_strategy = build_strategy
+        Examples:
+          .. code-block:: python
+
+            build_strategy = paddle.fluid.BuildStrategy()
+            build_strategy.enable_sequential_execution = True
+            build_strategy.nccl_comm_num = 10
+            build_strategy.use_hierarchical_allreduce = True
+            build_strategy.hierarchical_allreduce_inter_nranks = 1
+            build_strategy.fuse_elewise_add_act_ops = True
+            build_strategy.fuse_bn_act_ops = True
+            build_strategy.enable_auto_fusion = True
+            build_strategy.fuse_relu_depthwise_conv = True
+            build_strategy.fuse_broadcast_ops = True
+            build_strategy.fuse_all_optimizer_ops = True
+            build_strategy.sync_batch_norm = True
+            build_strategy.enable_inplace = True
+            build_strategy.fuse_all_reduce_ops = True
+            build_strategy.enable_backward_optimizer_op_deps = True
+            
+            strategy = paddle.fleet.DistributedStrategy()
+            strategy.build_strategy = build_strategy
         """
 
         build_strategy = paddle.fluid.BuildStrategy()
@@ -306,7 +309,7 @@ class DistributedStrategy(object):
     def recompute(self):
         """
         Indicating whether we are using forward recomputation for memory optimization
-        Default value: True
+        Default value: False
 
         Examples:
           .. code-block:: python

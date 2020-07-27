@@ -25,7 +25,7 @@ enum Mode {
 message RecomputeConfig { repeated string checkpoints = 1; }
 
 message AMPConfig {
-  optional int32 init_loss_scaling = 1 [ default = 32768 ];
+  optional float init_loss_scaling = 1 [ default = 32768.0 ];
   optional int32 incr_every_n_steps = 2 [ default = 1000 ];
   optional int32 decr_every_n_nan_or_inf = 3 [ default = 2 ];
   optional float incr_ratio = 4 [ default = 2.0 ];
@@ -33,11 +33,11 @@ message AMPConfig {
   optional bool use_dynamic_loss_scaling = 6 [ default = true ];
 }
 
-message LocalSGDConfig { optional int32 k_step = 1 [ default = 4 ]; }
+message LocalSGDConfig { optional int32 k_steps = 1 [ default = 4 ]; }
 
 message GradientMergeConfig {
-  optional int32 k_step = 1 [ default = 1 ];
-  optional bool avg = 2 [ default = false ];
+  optional int32 k_steps = 1 [ default = 1 ];
+  optional bool avg = 2 [ default = true ];
 }
 
 message BuildStrategy {
@@ -68,7 +68,7 @@ message ExecutionStrategy {
 }
 
 message AsyncConfig {
-  optional int32 k_step = 1 [ default = 1 ];
+  optional int32 k_steps = 1 [ default = 1 ];
   optional int32 max_merge_var_num = 2 [ default = 1 ];
   optional int32 send_queue_size = 3 [ default = 16 ];
   optional bool independent_recv_thread = 4 [ default = false ];
