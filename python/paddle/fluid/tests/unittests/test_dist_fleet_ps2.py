@@ -14,7 +14,11 @@
 
 from __future__ import print_function
 
+import os
 import unittest
+import tempfile
+import shutil
+
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server import fleet
@@ -145,10 +149,7 @@ class TestPSPassWithBow(unittest.TestCase):
         return [avg_cost, acc, cos_q_pt]
 
     def test(self):
-        endpoints = [
-            "127.0.0.1:36004", "127.0.0.1:36005", "127.0.0.1:36006",
-            "127.0.0.1:36007"
-        ]
+        endpoints = ["127.0.0.1:36004"]
 
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
@@ -162,6 +163,28 @@ class TestPSPassWithBow(unittest.TestCase):
         strategy = StrategyFactory.create_async_strategy()
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
+
+        fleet.startup_program_bak = fleet.startup_program
+        fleet.startup_program = None
+
+        with self.assertRaises(ValueError):
+            fleet.init_server()
+
+        model_dir = tempfile.mkdtemp()
+
+        with self.assertRaises(ValueError):
+            fleet.init_server(os.path.join(model_dir, "temp"))
+
+        fleet.startup_program = fleet.startup_program_bak
+        fleet.init_server()
+
+        from paddle.fluid.communicator import LargeScaleKV
+        kv = LargeScaleKV()
+        kv.save("__emb__", os.path.join(model_dir, "__emb__", "__emb__"))
+
+        fleet.main_program = fluid.Program()
+        fleet.init_server(model_dir)
+        shutil.rmtree(model_dir)
 
 
 if __name__ == '__main__':

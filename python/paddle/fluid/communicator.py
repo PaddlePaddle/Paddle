@@ -63,9 +63,6 @@ class Communicator(object):
         """
         # set all recv op to not_run mode
 
-        if envs is None:
-            envs = {}
-
         if mode == DistributedMode.SYNC:
             envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
             envs["trainer_id"] = str(kwargs["trainer_id"])
