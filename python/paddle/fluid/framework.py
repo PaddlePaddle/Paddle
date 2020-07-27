@@ -3937,6 +3937,9 @@ class Program(object):
         # appending gradients times
         self._appending_grad_times = 0
 
+        # compiled program, i.e. Graph
+        self._graph = None
+
     def global_seed(self, seed=0):
         """
         Set global seed for Program
