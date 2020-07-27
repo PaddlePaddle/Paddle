@@ -269,7 +269,7 @@ class TestDygraphResnet(unittest.TestCase):
 
                 out = None
                 if batch_id % 5 == 0:
-                    out, traced_layer = TracedLayer.trace(resnet, img)
+                    out, traced_layer = TracedLayer.trace(resnet, [img])
                     if program is not None:
                         self.assertTrue(
                             is_equal_program(program, traced_layer.program))
