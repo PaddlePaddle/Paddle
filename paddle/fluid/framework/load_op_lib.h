@@ -66,9 +66,9 @@ void LoadOpLib(const std::string &dso_name) {
         type == "conditional_block" || type == "conditional_block_grad") {
       continue;
     }
-    PADDLE_ENFORCE_NE(
-        info_map.Has(n.first), true,
-        platform::errors::AlreadyExists("Operator (%s) has been registered."));
+    PADDLE_ENFORCE_NE(info_map.Has(n.first), true,
+                      platform::errors::AlreadyExists(
+                          "Operator (%s) has been registered.", type));
     OpInfo info;
     info.creator_ = n.second.creator_;
 
