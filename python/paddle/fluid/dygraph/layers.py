@@ -16,9 +16,12 @@ import collections
 import contextlib
 import sys
 import numpy as np
-import collections
 import six
 import re
+import copy
+import weakref
+import warnings
+
 from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
@@ -26,9 +29,6 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
-import copy
-import weakref
-import warnings
 
 __all__ = ['Layer']
 

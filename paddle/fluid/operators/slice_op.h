@@ -350,7 +350,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto& dev_ctx = *pool.Get(context.GetPlace());
-      T value = 0.0;
+      T value = T(0);
       math::SetConstant<DeviceContext, T> functor;
       for (int i = 0; i < d_in_size; ++i) {
         auto dim = input_array->at(i).dims();
@@ -440,7 +440,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
     auto d_out_t =
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *d_out, out_dims);
-    d_in_t.device(place) = d_out_t.pad(paddings, 0);
+    d_in_t.device(place) = d_out_t.pad(paddings, T(0));
   }
 };
 }  // namespace operators

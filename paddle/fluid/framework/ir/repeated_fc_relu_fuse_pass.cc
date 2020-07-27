@@ -278,11 +278,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   auto retrieve_node = [](const std::string& name,
                           const GraphPatternDetector::subgraph_t& subgraph,
                           const PDPattern& pat) -> Node* {
-    PADDLE_ENFORCE(subgraph.count(pat.RetrieveNode(name)),
-                   "pattern has no Node called %s", name.c_str());
+    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)), 0,
+                      platform::errors::NotFound(
+                          "Pattern has no node called %s.", name.c_str()));
     Node* p = subgraph.at(pat.RetrieveNode(name));
-    PADDLE_ENFORCE_NOT_NULL(
-        p, platform::errors::NotFound("subgraph has no node %s", name.c_str()));
+    PADDLE_ENFORCE_NOT_NULL(p, platform::errors::NotFound(
+                                   "Subgraph has no node %s.", name.c_str()));
     return p;
   };
 
@@ -365,7 +366,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 }
 
 void RepeatedFCReluFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = 0;
