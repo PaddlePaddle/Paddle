@@ -434,7 +434,7 @@ void LoDTensor::MergeLoDTensor(
       PADDLE_ENFORCE_EQ(
           new_layout, t->layout(),
           platform::errors::InvalidArgument(
-              "LoDTensor layout type does not match, expected layout is %s, "
+              "LoDTensor layout does not match, expected layout is %s, "
               "actual layout is %s.",
               DataLayoutToString(new_layout), DataLayoutToString(t->layout())));
       PADDLE_ENFORCE_EQ(

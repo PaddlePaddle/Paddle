@@ -38,7 +38,7 @@ T *DynLoad(void *handle, std::string name) {
   PADDLE_ENFORCE_NOT_NULL(
       func,
       platform::errors::NotFound(
-          "Failed to load dynamic operator lib, error code(%s).", errorno));
+          "Failed to load dynamic operator library, error code(%s).", errorno));
   return func;
 }
 

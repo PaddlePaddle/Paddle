@@ -39,7 +39,7 @@ inline std::string LibraryTypeToString(const LibraryType& library_type) {
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unknown LibraryType code (%d), only supports library type include "
-          "PLAIN, MKLDNN, CUDNN.",
+          "PLAIN(0), MKLDNN(1), CUDNN(2).",
           static_cast<int>(library_type)));
   }
 }
