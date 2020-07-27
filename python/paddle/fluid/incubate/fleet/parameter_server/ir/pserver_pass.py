@@ -663,32 +663,6 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
 
         return l_sep.join(init_attrs)
 
-    def get_geo_values(block):
-        value_names = []
-        acture_names = []
-        value_dims = []
-        opt_idx = -1
-
-        for op in block.ops:
-            opt_idx += 1
-
-            if op.type not in geo_value_map.keys():
-                continue
-
-            param = main_program.global_block().vars[op.output("Out")[0]]
-            varnams = op.input("X")
-            recv_varname = varnams[1] if varnams[0] == param.name else varnams[
-                0]
-            recv_var = main_program.global_block().vars[recv_varname]
-
-            value_names.append(geo_value_map[op.type])
-            value_dims.append(param.shape[1])
-            acture_names.append(param.name)
-
-            if value_names:
-                break
-        return recv_var, opt_idx, value_names, value_dims, acture_names
-
     def get_optimizer_values(block):
         value_names = []
         acture_names = []
@@ -783,8 +757,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             opt_block = program.block(blockid)
 
             grad, opt_idx, value_names, value_dims, acture_names = \
-                get_geo_values(opt_block) if config.is_geo_mode() \
-                    else get_optimizer_values(opt_block)
+                get_optimizer_values(opt_block)
 
             entry_attr = get_entry_attr(param)
             is_entry = False if entry_attr == "none" else True
@@ -797,8 +770,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         for param, blockid in param_blockid_map.items():
             opt_block = main_program.block(blockid)
             grad, _, value_names, value_dims, acture_names = \
-                get_geo_values(opt_block) if config.is_geo_mode() \
-                    else get_optimizer_values(opt_block)
+                get_optimizer_values(opt_block)
 
             entry_attr = get_entry_attr(param)
 
