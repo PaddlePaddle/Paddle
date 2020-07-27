@@ -307,27 +307,24 @@ def stack(x, axis=0, out=None, name=None):
 
 def split(x, num_or_sections, axis=0, name=None):
     """
-	:alias_main: paddle.split
-	:alias: paddle.split,paddle.tensor.split,paddle.tensor.manipulation.split
-
     Split the input tensor into multiple sub-Tensors.
     
     Args:
-        x (Variable): A N-D Tensor or LoDTensor. The data type is float32, float64, int32 or int64.
+        x (Variable): A N-D Tensor or LoDTensor. The data type is float16, float32, float64, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections` is an int, then ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the Tensor will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
             sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
             The length of the list must not  be larger than the Tensor's size of specified ``dim``.
-        axis (int|Variable, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``.
-            The axis along which to split. If ``axis < 0``, the axis to split along is ``rank(x) + axis``.
-            Default is 0.
+        axis (int|Variable, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and data type 
+            ``int32`` or ``int64``. The axis along which to split. If ``axis < 0``, the axis to split along
+            is ``rank(x) + axis``. Default is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Variable): The list of segmented Tensors.
     Raises:
-        TypeError: The data type of ``x`` must be one of float32, float64, int32, int64.
+        TypeError: The data type of ``x`` must be one of float16, float32, float64, int32, int64.
         TypeError: ``num_or_sections`` is not int, list or tuple.
         TypeError: ``axis`` is not int or Variable. the data type of ``axis`` must be int32 or int46 when it's a Variable.
     Example:

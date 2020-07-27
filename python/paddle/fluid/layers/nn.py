@@ -1,5 +1,4 @@
 # Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -4805,20 +4804,17 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
 
 def split(input, num_or_sections, dim=-1, name=None):
     """
-    :alias_main: paddle.split
-	:alias: paddle.split,paddle.tensor.split,paddle.tensor.manipulation.split
-    
     Split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Variable): A N-D Tensor or LoDTensor. The data type is float32, float64, int32 or int64.
+        input (Variable): A N-D Tensor or LoDTensor. The data type is float16, float32, float64, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is int, then the ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the Tensor 
             will be divided into. If ``num_or_sections`` is a list or tuple, the length of it 
             indicates the number of sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
             dimension orderly. The length of the list mustn't be larger than the Tensor's size of specified dim.
-        dim (int32|Variable, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. 
-            The dimension along which to split. If :math:`dim < 0`, the dimension to split along is 
+        dim (int32|Variable, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and data type ``int32`` 
+            or ``int64``. The dimension along which to split. If :math:`dim < 0`, the dimension to split along is 
             ``rank(input) + dim``. Default is -1.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name` .
@@ -4827,7 +4823,7 @@ def split(input, num_or_sections, dim=-1, name=None):
         list(Variable): The list of segmented Tensors.
 
     Raises:
-        TypeError: The data type of ``input`` must be one of float32, float64, int32, int64.
+        TypeError: The data type of ``input`` must be one of float16, float32, float64, int32, int64.
         TypeError: ``num_or_sections`` is not int, list or tuple.
         TypeError: ``dim`` is not int or Variable. The data type of ``dim`` must be int32 or int64 when it's a Variable.
 
@@ -4884,16 +4880,11 @@ def split(input, num_or_sections, dim=-1, name=None):
                 "received %s." % (type(num_or_sections)))
         return core.ops.split(input, num, *attrs)
 
-    check_variable_and_dtype(input, 'input',
-                             ['float32, float64', 'int32', 'in64'], 'split')
-    if not isinstance(num_or_sections, (int, list, tuple)):
-        raise TypeError(
-            "The type of 'num_or_sections' in split must be int, list or "
-            "tuple, but received %s." % (type(num_or_sections)))
-    if not isinstance(dim, (int, Variable)):
-        raise TypeError(
-            "The type of 'dim' in split must be int or Variable, but "
-            "received %s." % (type(dim)))
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'in64'],
+        'split')
+    check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
+    check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):
         check_dtype(dim.dtype, 'dim', ['int32', 'int64'], 'split')
 
