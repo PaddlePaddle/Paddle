@@ -134,7 +134,7 @@ def ones(shape, dtype=None, name=None):
 
     Raises:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None
-        and the data type of out Tensor must be the same as the dtype. 
+            and the data type of out Tensor must be the same as the dtype. 
         TypeError: The `shape` must be one of list, tuple and Variable.
     
     Examples:
@@ -242,7 +242,7 @@ def zeros(shape, dtype=None, name=None):
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
     Args:
-        shape(tuple|list): Shape of output tensor.
+        shape(tuple|list|Variable): Shape of output tensor. The data type of shape is int32 or int64.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
