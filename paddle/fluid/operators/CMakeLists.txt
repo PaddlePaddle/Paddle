@@ -87,6 +87,7 @@ if (WITH_DGC)
 endif()
 
 cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEPS operator)
+cc_library(common_infer_kernel_type_functions SRCS common_infer_kernel_type_functions.cc DEPS operator)
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor device_memory_aligment)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)

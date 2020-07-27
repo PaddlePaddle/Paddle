@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/operators/common_infer_kernel_type_functions.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
@@ -125,7 +126,8 @@ class ActivationOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return GetKernelType(ctx, *this, "X");
+    return UnaryOpInferKernelType(ctx);
+    // return GetKernelType(ctx, *this, "X");
   }
 };
 
