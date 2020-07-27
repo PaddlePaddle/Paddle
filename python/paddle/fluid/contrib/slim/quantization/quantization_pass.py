@@ -435,6 +435,8 @@ class QuantizationTransformPass(object):
             if op.name() in self._quantizable_ops or \
                     op.name() in self._quantizable_grad_ops:
                 _quant_preprocess(op)
+        # Insert mapping table to solve the problem in saving inference model.
+        graph.out_node_mapping_table = dict()
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
         for op in ops:
@@ -853,6 +855,7 @@ class QuantizationTransformPass(object):
                     shape=var_node.shape(),
                     dtype='float32')
                 out_node = func(in_node)
+                graph.out_node_mapping_table[out_node.name] = var_node.name()
                 # loss shape must be 1 when minimize
                 loss = mean(out_node)
                 if not graph._for_test:
@@ -1037,6 +1040,10 @@ class QuantizationFreezePass(object):
             op_name = op_node.name()
             if op_name in self._fake_quant_op_names:
                 input_arg_name = op_node.input('X')[0]
+                if hasattr(graph, 'out_node_mapping_table'):
+                    if input_arg_name in graph.out_node_mapping_table.keys():
+                        input_arg_name = graph.out_node_mapping_table[
+                            input_arg_name]
                 if input_arg_name in persistable_vars:
                     if self._weight_quantize_type == 'abs_max':
                         param = self._load_var(input_arg_name)
