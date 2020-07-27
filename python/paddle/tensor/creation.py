@@ -60,8 +60,8 @@ def full_like(x, fill_value, dtype=None, name=None):
 	:alias_main: paddle.full_like
 	:alias: paddle.tensor.full_like, paddle.tensor.creation.full_like
 
-    This function creates a tensor filled with ``fill_value`` which has identical shape and dtype 
-    with ``x``.
+    This function creates a tensor filled with ``fill_value`` which has identical shape of ``x`` and ``dtype``.
+    If the ``dtype`` is None, the data type of Tensor is same with ``x``.
 
     Args:
         x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
@@ -72,10 +72,11 @@ def full_like(x, fill_value, dtype=None, name=None):
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
     
     Returns:
-        out(Tensor): The Tensor variable storing the output.
+        Tensor: Tensor which is created according to ``x``, ``fill_value`` and ``dtype``.
     
     Raises:
-        TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None.
+        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
+        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None.
     
     Examples:
         .. code-block:: python
@@ -100,6 +101,9 @@ def full_like(x, fill_value, dtype=None, name=None):
         return core.ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
 
     helper = LayerHelper("full_like", **locals())
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'full_like')
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'full_like')
@@ -378,7 +382,7 @@ def full(shape, fill_value, dtype=None, name=None):
             property.  For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
-        Tensor: Tensor which is created according to shape and dtype.
+        Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
 
     Raises:
         TypeError: The `dtype` must be one of None, bool, float16, float32, float64, int32 and int64.
