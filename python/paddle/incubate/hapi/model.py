@@ -518,7 +518,7 @@ class DynamicGraphAdapter(object):
         else:
             outputs = self.model.network.forward(
                 * [to_variable(x) for x in inputs])
-            losses = self.model._loss_function(outputs, labels)
+            losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
@@ -579,7 +579,7 @@ class DynamicGraphAdapter(object):
             return [to_numpy(l) for l in losses], metrics
         elif self.model._loss_function:
             return [to_numpy(l) for l in losses]
-        elif self.model._loss_function:
+        else:
             return metrics
 
     def test_batch(self, inputs):

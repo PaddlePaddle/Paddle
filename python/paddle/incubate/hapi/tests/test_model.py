@@ -271,8 +271,8 @@ class TestModel(unittest.TestCase):
 
 
 class MyModel(fluid.dygraph.Layer):
-    def __init__(self, call):
-        super(MyModel, self).__init__(classifier_activation='softmax')
+    def __init__(self, classifier_activation='softmax'):
+        super(MyModel, self).__init__()
         self._fc = Linear(20, 10, act=classifier_activation)
 
     def forward(self, x):
