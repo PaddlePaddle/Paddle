@@ -74,6 +74,8 @@ class Communicator(object):
             envs["trainers"] = str(kwargs["trainers"])
             envs["sparse_attrs"] = str(kwargs["sparse_attrs"])
 
+        envs["need_global_step"] = str(kwargs["need_global_step"])
+
         mode_str = None
 
         if mode == DistributedMode.SYNC:

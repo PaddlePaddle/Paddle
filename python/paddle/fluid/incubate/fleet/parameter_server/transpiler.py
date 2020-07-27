@@ -170,7 +170,7 @@ class FleetTranspiler(Fleet):
         if len(lrs) > 0:
             kwargs = {"need_global_step": "1"}
         else:
-            kwargs = {}
+            kwargs = {"need_global_step": "0"}
 
         if isinstance(self._strategy, GeoStrategy):
             geo_kwargs = geo_strategy_envs()
