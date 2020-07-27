@@ -175,8 +175,8 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
   void serializeBase(void*& buffer) const;  // NOLINT
 
  private:
-  std::string name_space_{"paddle_trt"};
-  std::string plugin_base_{"plugin_dynamic"};
+  std::string name_space_;
+  std::string plugin_base_;
 };
 #endif
 
