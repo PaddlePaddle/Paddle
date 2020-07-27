@@ -67,7 +67,7 @@ class TestPSPassWithBow(unittest.TestCase):
         q = fluid.layers.data(
             name="query_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
-        q_emb = fluid.embedding(
+        q_emb = fluid.layers.embedding(
             input=q,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
@@ -94,7 +94,7 @@ class TestPSPassWithBow(unittest.TestCase):
         pt = fluid.layers.data(
             name="pos_title_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
-        pt_emb = fluid.embedding(
+        pt_emb = fluid.layers.embedding(
             input=pt,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
@@ -120,7 +120,7 @@ class TestPSPassWithBow(unittest.TestCase):
         nt = fluid.layers.data(
             name="neg_title_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
-        nt_emb = fluid.embedding(
+        nt_emb = fluid.layers.embedding(
             input=nt,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
@@ -166,7 +166,8 @@ class TestPSPassWithBow(unittest.TestCase):
         loss, acc, _ = self.net()
         optimizer = fluid.optimizer.SGD(base_lr)
         strategy = StrategyFactory.create_async_strategy()
-        fleet.distributed_optimizer(optimizer, strategy)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(loss)
 
 
 if __name__ == '__main__':
