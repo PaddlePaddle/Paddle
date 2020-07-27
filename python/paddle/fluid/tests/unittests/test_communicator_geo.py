@@ -88,7 +88,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             role=role_maker.Role.WORKER
             if training_role == "TRAINER" else role_maker.Role.SERVER,
             worker_num=1,
-            server_endpoints=["127.0.0.1:8099"])
+            server_endpoints=["127.0.0.1:18099"])
 
         strategy = StrategyFactory.create_geo_strategy(10)
 
@@ -97,7 +97,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         else:
             self.run_pserver(role, strategy)
 
-    def skip_test_communicator(self):
+    def test_communicator(self):
         run_server_cmd = """
 from __future__ import print_function
 
