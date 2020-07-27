@@ -310,7 +310,7 @@ def split(x, num_or_sections, axis=0, name=None):
     Split the input tensor into multiple sub-Tensors.
     
     Args:
-        x (Tensor): A N-D Tensor or LoDTensor. The data type is float16, float32, float64, int32 or int64.
+        x (Tensor): A N-D Tensor. The data type is float16, float32, float64, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections` is an int, then ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the Tensor will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
@@ -334,14 +334,31 @@ def split(x, num_or_sections, axis=0, name=None):
             import paddle
             
             paddle.enable_imperative()
-            input_1 = np.random.random([4, 6, 6]).astype("int32")
-            # input is a variable which shape is [4, 6, 6]
+            # input is a variable which shape is [3, 9, 5]
+            input_1 = np.random.random([3, 9, 5]).astype("int32")
             input = paddle.imperative.to_variable(input_1)
 
-            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
-            # x0.shape [4, 2, 6]
-            # x1.shape [4, 2, 6]
-            # x2.shape [4, 2, 6]
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, dim=1)
+            # x0.shape [3, 3, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 3, 5]
+
+            x0, x1, x2 = paddle.split(input, num_or_sections=[2, 3, 4], dim=1)
+            # x0.shape [3, 2, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 4, 5]
+
+            x0, x1, x2 = paddle.split(input, num_or_sections=[2, 3, -1], dim=1)
+            # x0.shape [3, 2, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 4, 5]
+            
+            # dim is negative, the real dim is (rank(input) + axis) which real
+            # value is 1.
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, dim=-2)
+            # x0.shape [3, 3, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 3, 5]
     """
     return paddle.fluid.layers.split(
         input=x, num_or_sections=num_or_sections, dim=axis, name=name)

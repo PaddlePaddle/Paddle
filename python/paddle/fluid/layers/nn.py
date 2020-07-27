@@ -4807,13 +4807,13 @@ def split(input, num_or_sections, dim=-1, name=None):
     Split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Tensor): A N-D Tensor or LoDTensor. The data type is float16, float32, float64, int32 or int64.
+        input (Tensor): A N-D Tensor. The data type is float16, float32, float64, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is int, then the ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the Tensor 
             will be divided into. If ``num_or_sections`` is a list or tuple, the length of it 
             indicates the number of sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
             dimension orderly. The length of the list mustn't be larger than the Tensor's size of specified dim.
-        dim (int32|Tensor, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and data type ``int32`` 
+        dim (int|Tensor, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and data type ``int32`` 
             or ``int64``. The dimension along which to split. If :math:`dim < 0`, the dimension to split along is 
             ``rank(input) + dim``. Default is -1.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property. 
@@ -4850,6 +4850,14 @@ def split(input, num_or_sections, dim=-1, name=None):
             # x0.shape [3, 2, 5]
             # x1.shape [3, 3, 5]
             # x2.shape [3, 4, 5]
+            
+            # dim is negative, the real dim is (rank(input) + axis) which real
+            # value is 1.
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=-2)
+            # x0.shape [3, 3, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 3, 5]
+
     """
     if in_dygraph_mode():
         num = None
@@ -4876,7 +4884,7 @@ def split(input, num_or_sections, dim=-1, name=None):
                 attrs += ('sections', list(num_or_sections))
         else:
             raise TypeError(
-                "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
+                "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
         return core.ops.split(input, num, *attrs)
 
