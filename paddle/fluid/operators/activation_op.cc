@@ -20,7 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/operators/common_infershape_functions.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
 #ifdef PADDLE_WITH_CUDA
@@ -119,9 +119,7 @@ class ActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    return UnaryOpUnchagedInferShape(ctx);
-    //  ctx->ShareDim("X", /*->*/ "Out");
-    // ctx->ShareLoD("X", /*->*/ "Out");
+    return UnaryOpUnchangedInferShape(ctx);
   }
 
  protected:

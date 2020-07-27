@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 
 // shape input(0) -> output(0) without change.
-void UnaryOpUnchagedInferShape(framework::InferShapeContext* ctx);
+void UnaryOpUnchangedInferShape(framework::InferShapeContext* ctx);
 
 // broadcast input(0) and input(1) -> output(0)
 void BinaryOpBroadcastInferShape(framework::InferShapeContext* ctx);

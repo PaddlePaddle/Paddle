@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/common_infershape_functions.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 
 #include <algorithm>
 #include <vector>
@@ -74,7 +74,7 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
 }  // namespace details
 
 // shape input(0) -> output(0) without change.
-void UnaryOpUnchagedInferShape(framework::InferShapeContext *ctx) {
+void UnaryOpUnchangedInferShape(framework::InferShapeContext *ctx) {
   ctx->ShareDim(ctx->GetInputNameByIdx(0), /*->*/ ctx->GetOutputNameByIdx(0));
   ctx->ShareLoD(ctx->GetInputNameByIdx(0), /*->*/ ctx->GetOutputNameByIdx(0));
 }
