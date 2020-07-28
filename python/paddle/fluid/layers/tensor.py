@@ -1044,6 +1044,11 @@ def ones(shape, dtype, force_cpu=False):
 
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
+    Raises:
+        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None
+            and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
+            be int32 or int64 when it's a Tensor.
 
     Examples:
         .. code-block:: python
@@ -1076,6 +1081,11 @@ def zeros(shape, dtype, force_cpu=False, name=None):
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
+    Raises:
+        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None
+            and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
+            be int32 or int64 when it's a Tensor.
     Examples:
         .. code-block:: python
 

@@ -140,21 +140,21 @@ def index_select(x, index, axis=0, name=None):
 	:alias_main: paddle.index_select
 	:alias: paddle.tensor.index_select, paddle.tensor.search.index_select
 
-    Returns a new tensor which indexes the ``input`` tensor along dimension ``dim`` using 
+    Returns a new tensor which indexes the ``input`` tensor along dimension ``axis`` using 
     the entries in ``index`` which is a Tensor. The returned tensor has the same number 
     of dimensions as the original ``x`` tensor. The dim-th dimension has the same 
-    size as the length of ``index``; other dimensions have the same size as in the `input` tensor. 
+    size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor. 
 
     Args:
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
         index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
-        axis (int, optional): The dimension in which we index. Default: if None, the axis is 0.
+        axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor with same data type as `x`.
+        Tensor: A Tensor with same data type as ``x``.
     
     Raises:
         TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.

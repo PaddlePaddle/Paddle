@@ -136,9 +136,9 @@ def ones(shape, dtype=None, name=None):
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
 
     Raises:
-        TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None
+        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None
             and the data type of out Tensor must be the same as the dtype. 
-        TypeError: The `shape` must be one of list, tuple and Tensor. The data type of ``shape`` must
+        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
             be int32 or int64 when it's a Tensor.
     
     Examples:
@@ -229,9 +229,9 @@ def zeros(shape, dtype=None, name=None):
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
     Raises:
-        TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None
+        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None
             and the data type of out Tensor must be the same as the dtype. 
-        TypeError: The `shape` must be one of list, tuple and Tensor. The data type of ``shape`` must
+        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
             be int32 or int64 when it's a Tensor.
     
     Examples:
@@ -320,8 +320,8 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         Tensor: An identity Tensor or LoDTensor of shape [num_rows, num_columns].
     
     Raises:
-        TypeError: The `dtype` must be one of float16, float32, float64, int32 int64 and None.
-        TypeError: The `num_columns` must be non-negative int.
+        TypeError: The ``dtype`` must be one of float16, float32, float64, int32 int64 and None.
+        TypeError: The ``num_columns`` must be non-negative int.
 
     Examples:
         .. code-block:: python
@@ -353,7 +353,7 @@ def full(shape, fill_value, dtype=None, name=None):
 	:alias_main: paddle.full
 	:alias: paddle.tensor.full, paddle.tensor.creation.full
 
-    This Op return a Tensor with the `fill_value` which size is same as `shape`
+    This Op return a Tensor with the ``fill_value`` which size is same as ``shape``.
     
     Args:
         shape(list|tuple|Tensor): Shape of the Tensor to be created.
@@ -372,8 +372,8 @@ def full(shape, fill_value, dtype=None, name=None):
         Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
 
     Raises:
-        TypeError: The `dtype` must be one of None, bool, float16, float32, float64, int32 and int64.
-        TypeError: The `shape` must be one of Variable, list and tuple. the data type of ``shape`` must
+        TypeError: The ``dtype`` must be one of None, bool, float16, float32, float64, int32 and int64.
+        TypeError: The ``shape`` must be one of Variable, list and tuple. the data type of ``shape`` must
             be int32 or int64 when the it's a Tensor
     
     Examples:
