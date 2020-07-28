@@ -111,6 +111,102 @@ class IterableDataset(Dataset):
             for img, lbl in iter(dataset):
                 print(img, lbl)
 
+    When :attr:`num_workers > 0`, each worker has a different copy of the dataset object and
+    will yield whole dataset samples, which means samples in dataset will be repeat in
+    :attr:`num_workers` times. If it is require that each sample to be yield only once, there
+    are two methods to configure different copy in each worker process to avoid duplicate data
+    among workers as follows. In both the two methods, worker information that can be get in
+    a worker process by `paddle.io.get_worker_info` will be needed.
+
+    Example 1: splitting data copy in each worker in :code:`__iter__`
+
+        .. code-block:: python
+
+            import math
+            import numpy as np
+            import paddle.fluid as fluid
+            from paddle.io import IterableDataset, DataLoader, get_worker_info
+
+            class SplitedIterableDataset(IterableDataset):
+                def __init__(self, start, end):
+                    self.start = start
+                    self.end = end
+
+                def __iter__(self):
+                    worker_info = get_worker_info()
+                    if worker_info is None:
+                        iter_start = self.start
+                        iter_end = self.end
+                    else:
+                        per_worker = int(
+                            math.ceil((self.end - self.start) / float(
+                                worker_info.num_workers)))
+                        worker_id = worker_info.id
+                        iter_start = self.start + worker_id * per_worker
+                        iter_end = min(iter_start + per_worker, self.end)
+
+                    for i in range(iter_start, iter_end):
+                        yield np.array([i])
+
+            place = fluid.CPUPlace()
+            with fluid.dygraph.guard(place):
+                dataset = SplitedIterableDataset(start=2, end=9)
+                dataloader = DataLoader(
+                    dataset,
+                    places=place,
+                    num_workers=2,
+                    batch_size=1,
+                    drop_last=True)
+
+                print(list(dataloader))
+                # outputs: [2, 5, 3, 6, 4, 7]
+
+    Example 2: splitting data copy in each worker by :code:`worker_init_fn`
+
+        .. code-block:: python
+
+            import math
+            import numpy as np
+            import paddle.fluid as fluid
+            from paddle.io import IterableDataset, DataLoader
+
+            class RangeIterableDataset(IterableDataset):
+                def __init__(self, start, end):
+                    self.start = start
+                    self.end = end
+
+                def __iter__(self):
+                    for i in range(self.start, self.end):
+                        yield np.array([i])
+
+            place = fluid.CPUPlace()
+            with fluid.dygraph.guard(place):
+                dataset = RangeIterableDataset(start=2, end=9)
+
+                def worker_init_fn(worker_id):
+                    worker_info = get_worker_info()
+
+                    dataset = worker_info.dataset
+                    start = dataset.start
+                    end = dataset.end
+                    num_per_worker = int(
+                        math.ceil((end - start) / float(worker_info.num_workers)))
+
+                    worker_id = worker_info.id
+                    dataset.start = start + worker_id * num_per_worker
+                    dataset.end = min(dataset.start + num_per_worker, end)
+
+                dataloader = DataLoader(
+                    dataset,
+                    places=place,
+                    num_workers=2,
+                    batch_size=1,
+                    drop_last=True,
+                    worker_init_fn=worker_init_fn)
+
+                print(list(dataloader))
+                # outputs: [2, 5, 3, 6, 4, 7]
+
     """
 
     def __init__(self):

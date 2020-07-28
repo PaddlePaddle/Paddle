@@ -16,7 +16,6 @@ from __future__ import division
 
 import math
 import unittest
-import multiprocessing
 import numpy as np
 
 import paddle.fluid as fluid
@@ -70,7 +69,6 @@ class RangeIterableDataset(IterableDataset):
         self.end = end
 
     def __iter__(self):
-        # return iter(range(self.start, self.end))
         for i in range(self.start, self.end):
             yield np.array([i])
 

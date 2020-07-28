@@ -128,7 +128,8 @@ class DataLoader(object):
 
     Args:  
         dataset(Dataset): the dataset to load data from, should be an
-            instance of subclass of :code:`paddle.io.Dataset`.
+            instance of subclass of :code:`paddle.io.Dataset` or
+            :code:`paddle.io.IterableDataset`.
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
             The variables should be created by :code:`fluid.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is
