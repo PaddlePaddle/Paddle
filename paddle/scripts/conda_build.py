@@ -220,15 +220,16 @@ package:
     - matplotlib"""
     if not (cuda_str == None):
         meta_str = meta_str + cuda_str
-    meta_str = meta_str + var.test + var.about
+    
+    blt_str = var.blt_const + blt_var
     if (python_str == var.python27):
         blt_str = blt_str + """
-    - pip install C:\package\opencv_python-4.2.0.32-cp27-cp27m-win_amd64.whl"""
+    pip install C:\package\opencv_python-4.2.0.32-cp27-cp27m-win_amd64.whl"""
     else:
         meta_str = meta_str + """
     - opencv>=3.4.2"""
-    blt_str = var.blt_const + blt_var
-
+    
+    meta_str = meta_str + var.test + var.about
     meta_filename = "meta.yaml"
     build_filename = "bld.bat"
     with open(meta_filename, 'w') as f:
