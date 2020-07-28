@@ -29,7 +29,7 @@ namespace paddle {
 namespace framework {
 
 void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
-                                 Dataset *dataset) {
+                                 Dataset* dataset) {
   srand((unsigned)time(NULL));
   param_ = trainer_desc.downpour_param();
   for (int i = 0; i < param_.dense_table_size(); ++i) {
