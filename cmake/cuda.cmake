@@ -188,12 +188,6 @@ endif()
 
 add_definitions("-DPADDLE_CUDA_BINVER=\"${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}\"")
 
-if(NOT WITH_DSO)
-    if(WIN32)
-      set_property(GLOBAL PROPERTY CUDA_MODULES ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusolver_LIBRARY})
-    endif(WIN32)
-endif(NOT WITH_DSO)
-
 # setting nvcc arch flags
 select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
@@ -205,7 +199,7 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # So, don't set these flags here.
 if (NOT WIN32) # windows msvc2015 support c++11 natively.
     # -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++11")
+  set(CMAKE_CUDA_STANDARD 11)
 endif(NOT WIN32)
 
 # in cuda9, suppress cuda warning on eigen
@@ -213,24 +207,28 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
 
-if (WIN32)
-  list(APPEND CUDA_NVCC_FLAGS  "-Xcompiler \"/wd 4244 /wd 4267 /wd 4819\"")
-  list(APPEND CUDA_NVCC_FLAGS  "--compiler-options;/bigobj")
-  if(MSVC_STATIC_CRT)
-    list(APPEND CUDA_NVCC_FLAGS "-Xcompiler" "-MT$<$<CONFIG:Debug>:d>")
-  else()
-    list(APPEND CUDA_NVCC_FLAGS "-Xcompiler" "-MD$<$<CONFIG:Debug>:d>")
-  endif()
+if(WIN32)
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler \"/wd4244 /wd4267 /wd4819 \"")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler /bigobj")
   if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
-    list(APPEND CUDA_NVCC_FLAGS  "-g -G")
     # match the cl's _ITERATOR_DEBUG_LEVEL
-    list(APPEND CUDA_NVCC_FLAGS  "-D_DEBUG")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler \"-g -G -D_DEBUG\"")
+    if(MSVC_STATIC_CRT)
+      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler /MTd")
+    else()
+      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler /MDd")
+    endif()
   elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-    list(APPEND CUDA_NVCC_FLAGS "-O3 -DNDEBUG")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler \"-DNDEBUG\"")
+    if(MSVC_STATIC_CRT)
+      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler /MT")
+    else()
+      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler /MD")
+    endif()
   else()
     message(FATAL "Windows only support Release or Debug build now. Please set visual studio build type to Release/Debug, x64 build.")
   endif()
-endif(WIN32)
+endif()
 
 mark_as_advanced(CUDA_BUILD_CUBIN CUDA_BUILD_EMULATION CUDA_VERBOSE_BUILD)
 mark_as_advanced(CUDA_SDK_ROOT_DIR CUDA_SEPARABLE_COMPILATION)

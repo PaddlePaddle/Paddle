@@ -19,10 +19,12 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_set>
-#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace framework {
+
+class OperatorBase;
+class Scope;
 
 std::unordered_set<std::string>* GetThreadLocalUsedVarNameSet();
 

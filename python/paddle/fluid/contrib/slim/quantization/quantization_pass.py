@@ -55,6 +55,7 @@ _out_scale_op_list = [
 _op_real_in_out_name = {
     "conv2d": [["Input", "Filter"], ["Output"]],
     "depthwise_conv2d": [["Input", "Filter"], ["Output"]],
+    "conv2d_transpose": [["Input", "Filter"], ["Output"]],
     "mul": [["X", "Y"], ["Out"]],
     "matmul": [["X", "Y"], ["Out"]],
     "pool2d": [["X"], ["Out"]],
@@ -126,6 +127,22 @@ def _get_op_output_var_names(op):
     return var_names
 
 
+def _get_output_name_index(op, output_var_name):
+    """Get the output name and index of the var_name in the op"""
+    assert isinstance(op, (IrNode, Operator)), \
+        "The input op should be IrNode or Operator."
+    op_name = op.name() if isinstance(op, IrNode) \
+        else op.type
+    name_list = _op_real_in_out_name[op_name][1]
+    res = None
+    for name in name_list:
+        var_name = op.output(name)
+        for index, val in enumerate(var_name):
+            if val == output_var_name:
+                res = (name, index)
+    return res
+
+
 def _init_var_node(var_node, value, scope, place):
     assert isinstance(value,
                       np.ndarray), 'The type of value should be numpy array.'
@@ -155,7 +172,7 @@ class QuantizationTransformPass(object):
     ops's inputs.
     """
     _supported_quantizable_op_type = [
-        'conv2d', 'depthwise_conv2d', 'mul', 'matmul'
+        'conv2d', 'depthwise_conv2d', 'conv2d_transpose', 'mul', 'matmul'
     ]
 
     def __init__(self,
@@ -205,32 +222,34 @@ class QuantizationTransformPass(object):
             quantizable_op_type(list[str]): List the type of ops that will be quantized. 
                 Default is ["conv2d", "depthwise_conv2d", "mul"]. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
-            weight_quantize_func(function): Function that defines how to quantize weight. Using this
-                can quickly test if user's quantization method works or not. In this function, user should
-                both define quantization function and dequantization function, that is, the function's input
-                is non-quantized weight and function returns dequantized weight. If None, will use
-                quantization op defined by 'weight_quantize_type'.
+            weight_quantize_func(function): Function that defines how to quantize weight.
+                Using this can quickly test if user's quantization method works or not.
+                In this function, user should both define quantization function and
+                dequantization function, that is, the function's input is non-quantized
+                weight and function returns dequantized weight. If None, will use
+                quantization op defined by 'weight_quantize_type'. Default is None.
+            act_quantize_func(function): Function that defines how to quantize activation.
+                Using this can quickly test if user's quantization method works or not.
+                In this function, user should both define quantization and dequantization
+                process, that is, the function's input is non-quantized activation and
+                function returns dequantized activation. If None, will use quantization
+                op defined by 'activation_quantize_type'. Default is None.
+            weight_preprocess_func(function): Function that defines how to preprocess
+                weight before quantization. Using this can quickly test if user's preprocess
+                method works or not. The function's input is non-quantized weight and
+                function returns processed weight to be quantized. If None, the weight will
+                be quantized directly. Default is None.
+            act_preprocess_func(function): Function that defines how to preprocess
+                activation before quantization. Using this can quickly test if user's
+                preprocess method works or not. The function's input is non-quantized
+                activation and function returns processed activation to be quantized.
+                If None, the activation will be quantized directly. Default is None.
+            optimizer_func(function): Fuction return a optimizer. When 'is_test' is
+                False and user want to use self-defined quantization function and
+                preprocess function, this function must be set. Default is None.
+            executor(Fluid.Executor): If user want to use self-defined quantization
+                function and preprocess function, executor must be set for initialization.
                 Default is None.
-            act_quantize_func(function): Function that defines how to quantize activation. Using this
-                can quickly test if user's quantization method works or not. In this function, user should
-                both define quantization and dequantization process, that is, the function's input
-                is non-quantized activation and function returns dequantized activation. If None, will use 
-                quantization op defined by 'activation_quantize_type'.
-                Default is None.
-            weight_preprocess_func(function): Function that defines how to preprocess weight before quantization. Using this
-                can quickly test if user's preprocess method works or not. The function's input
-                is non-quantized weight and function returns processed weight to be quantized. If None, the weight will
-                be quantized directly.
-                Default is None.
-            act_preprocess_func(function): Function that defines how to preprocess activation before quantization. Using this
-                can quickly test if user's preprocess method works or not. The function's input
-                is non-quantized activation and function returns processed activation to be quantized. If None, the activation will
-                be quantized directly.
-                Default is None.
-            optimizer_func(function): Fuction return a optimizer. When 'is_test' is False and user want to use self-defined 
-            quantization function and preprocess function, this function must be set. Default is None.
-            executor(Fluid.Executor): If user want to use self-defined quantization function and preprocess function, 
-                executor must be set for initialization. Default is None.
 
 
         Examples:
@@ -294,180 +313,6 @@ class QuantizationTransformPass(object):
 
         self.create_var_map = {}
         self.create_op_map = {}
-
-    def _create_new_node(self, graph, in_node):
-        """
-        create a node that same with in_node in graph
-        Args:
-            graph(IrGraph): create node in graph.
-            in_node(IrVarNode): create node that same with in_node.
-        Returns:
-            created new node
-        """
-        key = ''
-        for inp in in_node.inputs:
-            key = key + inp.name()
-        key = key + in_node.name()
-        for inp in in_node.outputs:
-            key = key + inp.name()
-
-        if key in self.create_var_map.keys():
-            new_node = self.create_var_map[key]
-        elif in_node.is_ctrl_var():
-            new_node = graph.create_control_dep_var()
-            self.create_var_map[key] = new_node
-        else:
-            new_node = graph.create_var_node_from_desc(in_node.node.var())
-            self.create_var_map[key] = new_node
-        return new_node
-
-    def _copy_graph(self, graph, source_graph, op_node):
-        """
-        copy op_node in source_graph to graph. And will run recursively 
-        for next ops that link to op_node's outputs.
-        Args:
-            graph(IrGraph): target graph to copy.
-            source_graph(IrGraph): source graph to copy.
-            op_node(IrOpNode): op node in source_graph.
-        Returns:
-            None
-
-        """
-        key = ''
-        for inp in op_node.inputs:
-            key = key + inp.name()
-        key = key + op_node.name()
-        for inp in op_node.outputs:
-            key = key + inp.name()
-        has_created = False
-        if key in self.create_op_map.keys():
-            new_op_node = self.create_op_map[key]
-            has_created = True
-        else:
-            new_op_node = graph.create_op_node_from_desc(op_node.node.op())
-            self.create_op_map[key] = new_op_node
-        if has_created:
-            return
-        for in_node in op_node.inputs:
-            new_node = self._create_new_node(graph, in_node)
-            graph.link_to(new_node, new_op_node)
-        for in_node in op_node.outputs:
-            new_node = self._create_new_node(graph, in_node)
-            graph.link_to(new_op_node, new_node)
-        for var_node in op_node.outputs:
-            for next_op_node in var_node.outputs:
-                self._copy_graph(graph, source_graph, next_op_node)
-        return
-
-    def _insert_func(self, graph, func, var_node, op):
-        """
-        Insert a tmp program that returned by func between var_node and op.
-
-        Args:
-            graph(IrGraph): target graph to insert tmp program.
-            func(Function): function to define a tmp program
-            var_node(IrVarNode): node in target graph.
-            op(IrOpNode): op in target graph.
-        Returns:
-            op's new input that replaces var_node
-        """
-        tmp_program = Program()
-        startup_program = Program()
-        with program_guard(tmp_program, startup_program):
-            with unique_name.guard(var_node.name() + "_"):
-                in_node = data(
-                    var_node.name() + '_tmp_input',
-                    shape=var_node.shape(),
-                    dtype='float32')
-                out_node = func(in_node)
-                # loss shape must be 1 when minimize
-                loss = mean(out_node)
-                if not graph._for_test:
-                    assert self._optimizer, "optimizer_func must be set when graph is test graph"
-                    in_node.stop_gradient = False
-                    optimizer = self._optimizer()
-                    optimizer.minimize(loss)
-        with scope_guard(self._scope):
-            self._exe.run(startup_program)
-
-        tmp_graph = IrGraph(
-            core.Graph(tmp_program.desc), for_test=graph._for_test)
-        in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
-                                               in_node.name)
-        out_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
-                                                out_node.name)
-
-        in_node_params = []
-        in_op_node = []
-        # copy tmp graph to graph, after that, we can insert tmp graph's copy to graph.
-        for node in tmp_graph.all_var_nodes():
-            if node.inputs == [] and node.persistable():
-                in_node_params.append(node)
-        for node in tmp_graph.all_op_nodes():
-            if node.inputs == []:
-                in_op_node.append(node)
-        for node in in_node.outputs:
-            self._copy_graph(graph, tmp_graph, node)
-        for node in in_node_params:
-            for op_node in node.outputs:
-                self._copy_graph(graph, tmp_graph, op_node)
-        for node in in_op_node:
-            self._copy_graph(graph, tmp_graph, node)
-
-        target_in_node = graph._find_node_by_name(graph.all_var_nodes(),
-                                                  in_node.name())
-        target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
-                                                   out_node.name())
-        loss_node = graph._find_node_by_name(graph.all_var_nodes(), loss.name)
-        outputs = target_in_node.outputs
-        for node in outputs:
-            graph.update_input_link(target_in_node, var_node, node)
-        graph.update_input_link(var_node, target_out_node, op)
-
-        # update grad
-        if not graph._for_test:
-            op_out = op.outputs[0]
-            op_out_grad = graph._find_node_by_name(graph.all_var_nodes(),
-                                                   op_out.name() + "@GRAD")
-            # find op's gradient op, such as conv2d_grad
-            op_grad = op_out_grad.outputs[0]
-            target_out_grad_node = graph._find_node_by_name(
-                graph.all_var_nodes(), target_out_node.name() + "@GRAD")
-            in_node_grad = graph._find_node_by_name(
-                graph.all_var_nodes(), target_in_node.name() + "@GRAD")
-            in_node_grad_op = in_node_grad.inputs
-            # update op_grad's input
-            graph.update_input_link(var_node, target_out_node, op_grad)
-
-            op_grad_out = None
-            # find var_node's corresponding grad node
-            for node in op_grad.outputs:
-                if var_node.name() + "@GRAD" in node.name():
-                    op_grad_out = node
-            # update op_grad's output
-            if op_grad_out is not None:
-                graph.update_output_link(op_grad_out, target_out_grad_node,
-                                         op_grad)
-            else:
-                graph.link_to(op_grad, target_out_grad_node)
-
-            for node in in_node_grad_op:
-                graph.update_input_link(target_in_node, var_node, node)
-                if op_grad_out:
-                    graph.update_output_link(in_node_grad, op_grad_out, node)
-            # remove useless nodes
-            mean_grad = target_out_grad_node.inputs[0]
-            mean_out_grad = mean_grad.inputs[0]
-            fill_constant_node = mean_out_grad.inputs[0]
-            graph.safe_remove_nodes(mean_grad)
-            graph.safe_remove_nodes(mean_out_grad)
-            graph.safe_remove_nodes(fill_constant_node)
-            graph.safe_remove_nodes(in_node_grad)
-
-        graph.safe_remove_nodes(loss_node.inputs[0])
-        graph.safe_remove_nodes(loss_node)
-        graph.safe_remove_nodes(target_in_node)
-        return target_out_node
 
     def apply(self, graph):
         """
@@ -590,6 +435,8 @@ class QuantizationTransformPass(object):
             if op.name() in self._quantizable_ops or \
                     op.name() in self._quantizable_grad_ops:
                 _quant_preprocess(op)
+        # Insert mapping table to solve the problem in saving inference model.
+        graph.out_node_mapping_table = dict()
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
         for op in ops:
@@ -923,6 +770,181 @@ class QuantizationTransformPass(object):
         graph.link_to(dequant_op_node, dequant_var_node)
         return dequant_var_node
 
+    def _create_new_node(self, graph, in_node):
+        """
+        create a node that same with in_node in graph
+        Args:
+            graph(IrGraph): create node in graph.
+            in_node(IrVarNode): create node that same with in_node.
+        Returns:
+            created new node
+        """
+        key = ''
+        for inp in in_node.inputs:
+            key = key + inp.name()
+        key = key + in_node.name()
+        for inp in in_node.outputs:
+            key = key + inp.name()
+
+        if key in self.create_var_map.keys():
+            new_node = self.create_var_map[key]
+        elif in_node.is_ctrl_var():
+            new_node = graph.create_control_dep_var()
+            self.create_var_map[key] = new_node
+        else:
+            new_node = graph.create_var_node_from_desc(in_node.node.var())
+            self.create_var_map[key] = new_node
+        return new_node
+
+    def _copy_graph(self, graph, source_graph, op_node):
+        """
+        copy op_node in source_graph to graph. And will run recursively 
+        for next ops that link to op_node's outputs.
+        Args:
+            graph(IrGraph): target graph to copy.
+            source_graph(IrGraph): source graph to copy.
+            op_node(IrOpNode): op node in source_graph.
+        Returns:
+            None
+
+        """
+        key = ''
+        for inp in op_node.inputs:
+            key = key + inp.name()
+        key = key + op_node.name()
+        for inp in op_node.outputs:
+            key = key + inp.name()
+        has_created = False
+        if key in self.create_op_map.keys():
+            new_op_node = self.create_op_map[key]
+            has_created = True
+        else:
+            new_op_node = graph.create_op_node_from_desc(op_node.node.op())
+            self.create_op_map[key] = new_op_node
+        if has_created:
+            return
+        for in_node in op_node.inputs:
+            new_node = self._create_new_node(graph, in_node)
+            graph.link_to(new_node, new_op_node)
+        for in_node in op_node.outputs:
+            new_node = self._create_new_node(graph, in_node)
+            graph.link_to(new_op_node, new_node)
+        for var_node in op_node.outputs:
+            for next_op_node in var_node.outputs:
+                self._copy_graph(graph, source_graph, next_op_node)
+        return
+
+    def _insert_func(self, graph, func, var_node, op):
+        """
+        Insert a tmp program that returned by func between var_node and op.
+
+        Args:
+            graph(IrGraph): target graph to insert tmp program.
+            func(Function): function to define a tmp program
+            var_node(IrVarNode): node in target graph.
+            op(IrOpNode): op in target graph.
+        Returns:
+            op's new input that replaces var_node
+        """
+        tmp_program = Program()
+        startup_program = Program()
+        with program_guard(tmp_program, startup_program):
+            with unique_name.guard(var_node.name() + "_"):
+                in_node = data(
+                    var_node.name() + '_tmp_input',
+                    shape=var_node.shape(),
+                    dtype='float32')
+                out_node = func(in_node)
+                graph.out_node_mapping_table[out_node.name] = var_node.name()
+                # loss shape must be 1 when minimize
+                loss = mean(out_node)
+                if not graph._for_test:
+                    assert self._optimizer, "optimizer_func must be set when graph is test graph"
+                    in_node.stop_gradient = False
+                    optimizer = self._optimizer()
+                    optimizer.minimize(loss)
+        with scope_guard(self._scope):
+            self._exe.run(startup_program)
+
+        tmp_graph = IrGraph(
+            core.Graph(tmp_program.desc), for_test=graph._for_test)
+        in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
+                                               in_node.name)
+        out_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
+                                                out_node.name)
+
+        in_node_params = []
+        in_op_node = []
+        # copy tmp graph to graph, after that, we can insert tmp graph's copy to graph.
+        for node in tmp_graph.all_var_nodes():
+            if node.inputs == [] and node.persistable():
+                in_node_params.append(node)
+        for node in tmp_graph.all_op_nodes():
+            if node.inputs == []:
+                in_op_node.append(node)
+        for node in in_node.outputs:
+            self._copy_graph(graph, tmp_graph, node)
+        for node in in_node_params:
+            for op_node in node.outputs:
+                self._copy_graph(graph, tmp_graph, op_node)
+        for node in in_op_node:
+            self._copy_graph(graph, tmp_graph, node)
+
+        target_in_node = graph._find_node_by_name(graph.all_var_nodes(),
+                                                  in_node.name())
+        target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
+                                                   out_node.name())
+        loss_node = graph._find_node_by_name(graph.all_var_nodes(), loss.name)
+        outputs = target_in_node.outputs
+        for node in outputs:
+            graph.update_input_link(target_in_node, var_node, node)
+        graph.update_input_link(var_node, target_out_node, op)
+
+        # update grad
+        if not graph._for_test:
+            op_out = op.outputs[0]
+            op_out_grad = graph._find_node_by_name(graph.all_var_nodes(),
+                                                   op_out.name() + "@GRAD")
+            # find op's gradient op, such as conv2d_grad
+            op_grad = op_out_grad.outputs[0]
+            target_out_grad_node = graph._find_node_by_name(
+                graph.all_var_nodes(), target_out_node.name() + "@GRAD")
+            in_node_grad = graph._find_node_by_name(
+                graph.all_var_nodes(), target_in_node.name() + "@GRAD")
+            in_node_grad_op = in_node_grad.inputs
+            # update op_grad's input
+            graph.update_input_link(var_node, target_out_node, op_grad)
+
+            op_grad_out = None
+            # find var_node's corresponding grad node
+            for node in op_grad.outputs:
+                if var_node.name() + "@GRAD" in node.name():
+                    op_grad_out = node
+            # update op_grad's output
+            if op_grad_out is not None:
+                graph.update_output_link(op_grad_out, target_out_grad_node,
+                                         op_grad)
+            else:
+                graph.link_to(op_grad, target_out_grad_node)
+
+            for node in in_node_grad_op:
+                graph.update_input_link(target_in_node, var_node, node)
+                if op_grad_out:
+                    graph.update_output_link(in_node_grad, op_grad_out, node)
+            # remove useless nodes
+            mean_grad = target_out_grad_node.inputs[0]
+            mean_out_grad = mean_grad.inputs[0]
+            fill_constant_node = mean_out_grad.inputs[0]
+            graph.safe_remove_nodes(mean_grad)
+            graph.safe_remove_nodes(mean_out_grad)
+            graph.safe_remove_nodes(fill_constant_node)
+            graph.safe_remove_nodes(in_node_grad)
+
+        graph.safe_remove_nodes(loss_node.inputs[0])
+        graph.safe_remove_nodes(loss_node)
+        graph.safe_remove_nodes(target_in_node)
+        return target_out_node
+
     def _quantized_var_name(self, var_name):
         """
         Return quantized variable name for the input `var_name`.
@@ -995,7 +1017,7 @@ class QuantizationFreezePass(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._weight_quantize_type = weight_quantize_type
-        self._conv_ops = ['conv2d', 'depthwise_conv2d']
+        self._conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
         self._fake_quant_op_names = _fake_quant_op_list
         self._fake_dequant_op_names = _fake_dequant_op_list
         self._op_input_rename_map = collections.OrderedDict()
@@ -1018,6 +1040,10 @@ class QuantizationFreezePass(object):
             op_name = op_node.name()
             if op_name in self._fake_quant_op_names:
                 input_arg_name = op_node.input('X')[0]
+                if hasattr(graph, 'out_node_mapping_table'):
+                    if input_arg_name in graph.out_node_mapping_table.keys():
+                        input_arg_name = graph.out_node_mapping_table[
+                            input_arg_name]
                 if input_arg_name in persistable_vars:
                     if self._weight_quantize_type == 'abs_max':
                         param = self._load_var(input_arg_name)
@@ -1525,13 +1551,19 @@ class OutScaleForInferencePass(object):
         op_nodes = graph.all_op_nodes()
         for op_node in op_nodes:
             if op_node.name() in self._teller_set:
-                output_var_name = _get_op_output_var_names(op_node)
-                assert len(output_var_name) == 1, "Only support collecting " \
-                    "output for op that only has an activation output for now."
-                scale_name = self._scale_name(output_var_name[0])
-                scale_v = np.array(
-                    self._scope.find_var(scale_name).get_tensor())[0]
-                op_node.op()._set_attr("out_threshold", float(scale_v))
+                var_names = _get_op_output_var_names(op_node)
+                for var_name in var_names:
+                    # For compatibility, we save output threshold by two methods.
+                    scale_name = self._scale_name(var_name)
+                    scale_v = np.array(
+                        self._scope.find_var(scale_name).get_tensor())[0]
+                    op_node.op()._set_attr("out_threshold", float(scale_v))
+
+                    argname_index = _get_output_name_index(op_node, var_name)
+                    assert argname_index is not None, \
+                        var_name + " is not the output of the op"
+                    op_node.op()._set_attr(argname_index[0] + str(argname_index[1]) \
+                        + "_threshold", float(scale_v))
         graph.resolve_hazard()
         return graph
 

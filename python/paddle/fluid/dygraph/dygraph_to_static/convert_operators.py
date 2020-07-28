@@ -14,7 +14,8 @@
 
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
-from paddle.fluid.framework import Variable, core
+from paddle.fluid.framework import core, Variable
+from paddle.fluid.layers import Assert, Print
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 
 
@@ -43,6 +44,7 @@ def convert_while_loop(cond, body, loop_vars):
 
 
 def _run_paddle_while_loop(cond, body, loop_vars):
+    # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Variable.
     loop_vars = [to_static_variable(var) for var in loop_vars]
     loop_vars = control_flow.while_loop(cond, body, loop_vars)
     return loop_vars
@@ -146,7 +148,7 @@ def _run_py_logical_not(x):
     return not x
 
 
-def convert_ifelse(pred, true_fn, false_fn):
+def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
     """
     A function representation of a Python ``if/else`` statement.
 
@@ -154,25 +156,45 @@ def convert_ifelse(pred, true_fn, false_fn):
         pred(bool|Variable): A boolean variable which determines whether to return the result of ``true_fn`` or ``false_fn`` .
         true_fn(callable): A callable to be performed if ``pred`` is true.
         false_fn(callable): A callable to be performed if ``pred`` is false.
+        true_args(tuple): Parameters of ``true_fn``.
+        false_args(tuple): Parameters of ``false_fn``.
+        return_vars(tuple): Return variables of ``true_fn`` and ``false_fn``.
 
     Returns:
-        ``true_fn()`` if the predicate ``pred`` is true else ``false_fn()`` .
+        ``true_fn(true_args)`` if the predicate ``pred`` is true else ``false_fn(false_args)`` .
 
     """
     if isinstance(pred, Variable):
-        return _run_paddle_cond(pred, true_fn, false_fn)
+        return _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
+                                return_vars)
     else:
-        return _run_py_ifelse(pred, true_fn, false_fn)
+        return _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
 
 
-def _run_paddle_cond(pred, true_fn, false_fn):
+def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
+                     return_vars):
+
+    return_var_ids = [id(var) for var in return_vars]
+    # NOTE 1: return vars of Paddle op `control_flow.cond` must be Paddle Variable
+    # NOTE 2: Here uses id(var) not var, because `if var in return_var` use operator `==`,
+    #  which will call `fluid.layers.equal` and causes error when var in return_vars is not initialized.
+    true_args = [
+        to_static_variable(var) if id(var) in return_var_ids else var
+        for var in true_args
+    ]
+    false_args = [
+        to_static_variable(var) if id(var) in return_var_ids else var
+        for var in false_args
+    ]
+
     pred = cast_bool_if_necessary(pred)
-    return control_flow.cond(pred, true_fn, false_fn)
+    return control_flow.cond(pred, lambda: true_fn(*true_args),
+                             lambda: false_fn(*false_args))
 
 
-def _run_py_ifelse(pred, true_fn, false_fn):
+def _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args):
 
-    return true_fn() if pred else false_fn()
+    return true_fn(*true_args) if pred else false_fn(*false_args)
 
 
 def convert_len(var):
@@ -202,8 +224,64 @@ def convert_len(var):
         return len(var)
 
 
+def convert_var_shape(x):
+    """
+    A function representation of the shape of variable.
+    """
+    if isinstance(x, Variable):
+        return nn.shape(x)
+    else:
+        return x.shape
+
+
 def cast_bool_if_necessary(var):
     assert isinstance(var, Variable)
     if convert_dtype(var.dtype) not in ['bool']:
         var = cast(var, dtype="bool")
     return var
+
+
+def convert_var_dtype(var, dtype):
+    if isinstance(var, Variable):
+        src_dtype = convert_dtype(var.dtype)
+        assert src_dtype in [
+            'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'
+        ], "The dtype of var {} is {}, which is not supported in the cast op.".format(
+            var.name, src_dtype)
+        assert dtype in [
+            'bool', 'int', 'float'
+        ], "The casted target dtype is {}, which is not supported in type casting.".format(
+            dtype)
+        cast_map = {
+            'bool': 'bool',
+            'int': 'int32',
+            'float': 'float32',
+        }
+        return cast(var, dtype=cast_map[dtype])
+    else:
+        return eval('{}(var)'.format(dtype))
+
+
+def convert_assert(cond, message=""):
+    """
+    A function representation of a Python ``assert`` statement.
+    """
+    if isinstance(cond, Variable):
+        cond = cast(cond, "bool")
+        # NOTE: message is not used because Paddle Assert has no corresponding parameter to use.
+        return Assert(cond)
+    else:
+        assert cond, message
+
+
+def convert_print(*args):
+    """
+    A function representing Python ``print`` statement. Note: this is a basic
+    python function so we haven't handle sep, end, file and flush parameters of
+    python function.
+    """
+    for var in args:
+        if isinstance(var, Variable):
+            var = Print(var)
+        else:
+            print(var)

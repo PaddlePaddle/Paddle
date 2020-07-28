@@ -260,7 +260,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   while (true) {
     GetProcessor* s = new GetProcessor(ch);
     VarHandlePtr h(new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
-    s->Prepare(h, time_out);
+    s->Prepare(h, kPrefetchTimeout);
 
     framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope,
                         p_ctx, s, method, h, table_name_val, this] {
@@ -487,6 +487,18 @@ bool GRPCClient::Wait() {
   return ok_;
 }
 
+inline bool ShouldRetry(const std::string& method, int error_code) {
+  if (method == kPrefetchRPC) {
+    return true;
+  }
+
+  if (error_code == grpc::StatusCode::DEADLINE_EXCEEDED) {
+    return true;
+  }
+
+  return false;
+}
+
 void GRPCClient::Proceed() {
   void* tag = nullptr;
   bool ok = false;
@@ -500,19 +512,9 @@ void GRPCClient::Proceed() {
     if (c->status_.ok()) {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
-    } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      PADDLE_THROW(platform::errors::External(
-          "%s meets grpc error, error_code is %d, error message is %s, error "
-          "details is %s.",
-          c->GetVarHandlePtr()->String(), c->status_.error_code(),
-          c->status_.error_message(), c->status_.error_details()));
-      {
-        std::lock_guard<std::mutex> lk(sync_mutex_);
-        ok_ = false;
-      }
-      c->Finish(false);
-    } else if (c->status_.error_code() == grpc::StatusCode::UNAVAILABLE) {
-      VLOG(3) << c->GetVarHandlePtr()->String()
+    } else if (ShouldRetry(c->GetVarHandlePtr()->method(),
+                           c->status_.error_code())) {
+      VLOG(0) << c->GetVarHandlePtr()->String()
               << " meets grpc error, error_code:" << c->status_.error_code()
               << " error_message:" << c->status_.error_message()
               << " error_details:" << c->status_.error_details()

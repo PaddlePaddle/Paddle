@@ -54,7 +54,7 @@ class MKLDNNHandlerT {
   }
 
   std::shared_ptr<TForward> AcquireForwardPrimitive() {
-    const std::string key_p = key_ + "@forward_p";
+    const std::string key_p = key_ + "@fwd_p";
     auto forward_p =
         std::static_pointer_cast<TForward>(dev_ctx_.GetBlob(key_p));
     if (forward_p == nullptr) {
@@ -65,7 +65,7 @@ class MKLDNNHandlerT {
   }
 
   std::shared_ptr<TBackward> AcquireBackwardPrimitive() {
-    const std::string key_p = key_ + "@backward_p";
+    const std::string key_p = key_ + "@bwd_p";
     auto backward_p =
         std::static_pointer_cast<TBackward>(dev_ctx_.GetBlob(key_p));
     if (backward_p == nullptr) {
@@ -112,20 +112,24 @@ class MKLDNNHandlerT {
 
  protected:
   bool isCached() {
-    const std::string key_pd = key_common_ + "@forward_pd";
+    const std::string key_pd = key_common_ + "@fwd_pd";
     fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
 
-    const std::string key_p = key_ + "@forward_p";
+    const std::string key_p = key_ + "@fwd_p";
     return (dev_ctx_.GetBlob(key_p) != nullptr);
   }
 
-  template <typename... Args>
-  void AcquireForwardPrimitiveDescriptor(Args&&... args) {
+  // If your primitive descriptor requires attributes, pass them as a
+  // first argument and paramters to descriptor constructor in the following
+  // arguments. Otherwise, all arguments will be forwarded to descriptor
+  // constructor, including the first one.
+  template <typename Arg, typename... Args>
+  void AcquireForwardPrimitiveDescriptor(Arg&& first_arg, Args&&... args) {
     // Forward PD has to be passed to Grad op that
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
-    const std::string key_pd = key_common_ + "@forward_pd";
+    const std::string key_pd = key_common_ + "@fwd_pd";
     fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
     if (fwd_pd_ == nullptr) {
@@ -135,21 +139,43 @@ class MKLDNNHandlerT {
       fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
           dev_ctx_.GetBlob(key_pd));
       if (fwd_pd_ == nullptr) {
-        auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
-        fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(fwd_desc,
-                                                                      engine_);
+        CreateForwardPrimitiveDescriptor(first_arg,
+                                         std::forward<Args>(args)...);
         dev_ctx_.SetBlob(key_pd, fwd_pd_);
       }
     }
   }
 
+  // Using sfinae to specialise variadic function. Workaround for not having
+  // if constexpr in C++ 11.
+  template <class First, class... Args>
+  typename std::enable_if<std::is_same<typename std::decay<First>::type,
+                                       dnnl::primitive_attr>::value>::type
+  CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
+    auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
+    fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
+        fwd_desc, first, engine_);
+  }
+
+  template <class First, class... Args>
+  typename std::enable_if<!std::is_same<typename std::decay<First>::type,
+                                        dnnl::primitive_attr>::value>::type
+  CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
+    auto fwd_desc = typename TForward::desc(std::forward<First>(first),
+                                            std::forward<Args>(args)...);
+    fwd_pd_ =
+        std::make_shared<typename TForward::primitive_desc>(fwd_desc, engine_);
+  }
+
   template <typename... Args>
   void AcquireBackwardPrimitiveDescriptor(Args&&... args) {
-    const std::string key_fwd_pd = key_common_ + "@forward_pd";
+    const std::string key_fwd_pd = key_common_ + "@fwd_pd";
     fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
         dev_ctx_.GetBlob(key_fwd_pd));
-    PADDLE_ENFORCE_NOT_NULL(fwd_pd_);
-    const std::string key_pd = key_ + "@backward_pd";
+    PADDLE_ENFORCE_NOT_NULL(
+        fwd_pd_, platform::errors::Unavailable(
+                     "Get MKLDNN Forward primitive %s failed.", key_fwd_pd));
+    const std::string key_pd = key_ + "@bwd_pd";
     bwd_pd_ = std::static_pointer_cast<typename TBackward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
     if (bwd_pd_ == nullptr) {
@@ -184,6 +210,73 @@ class MKLDNNHandlerT {
       dev_ctx_.SetBlob(local_key, mem_p);
     }
     return mem_p;
+  }
+
+  void AcquireReorder(const std::shared_ptr<mkldnn::memory>& user_memory_p,
+                      const std::shared_ptr<mkldnn::memory>& target_memory_p,
+                      const std::string& suffix) {
+    const auto key_reorder_p = key_ + suffix + "reorder_p";
+
+    auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
+        dev_ctx_.GetBlob(key_reorder_p));
+
+    if (reorder_p == nullptr) {
+      reorder_p =
+          std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
+      dev_ctx_.SetBlob(key_reorder_p, reorder_p);
+    }
+
+    mkldnn::stream astream(engine_);
+    reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
+                                 {MKLDNN_ARG_TO, *target_memory_p}});
+    astream.wait();
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorder(
+      const mkldnn::memory::desc& user_md,
+      const mkldnn::memory::desc& target_md, void* ptr,
+      const std::string& suffix, bool is_persistent = false) {
+    const auto target_key = key_ + suffix + "_target";
+    const auto key_reorder_p = key_ + suffix + "reorder_p";
+    const auto user_key = key_ + suffix + "_user";
+
+    auto target_memory_p =
+        std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(target_key));
+
+    if (target_memory_p == nullptr) {
+      auto user_memory_p =
+          std::make_shared<dnnl::memory>(user_md, engine_, ptr);
+      if (user_md != target_md) {
+        target_memory_p = std::make_shared<mkldnn::memory>(target_md, engine_);
+        auto reorder_p =
+            std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
+        dev_ctx_.SetBlob(key_reorder_p, reorder_p);
+
+        mkldnn::stream astream(engine_);
+        reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
+                                     {MKLDNN_ARG_TO, *target_memory_p}});
+        astream.wait();
+      } else {
+        target_memory_p = user_memory_p;
+      }
+      dev_ctx_.SetBlob(user_key, user_memory_p);
+      dev_ctx_.SetBlob(target_key, target_memory_p);
+    } else if (!is_persistent) {
+      mkldnn::stream astream(engine_);
+
+      auto user_memory_p =
+          std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(user_key));
+      user_memory_p->set_data_handle(ptr);
+
+      auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
+          dev_ctx_.GetBlob(key_reorder_p));
+      if (reorder_p != nullptr) {
+        reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
+                                     {MKLDNN_ARG_TO, *target_memory_p}});
+        astream.wait();
+      }
+    }
+    return target_memory_p;
   }
 
   std::shared_ptr<mkldnn::memory> AcquireMemory(const std::string& suffix) {
@@ -385,34 +478,39 @@ class MKLDNNHandler {
 template <typename T>
 class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
  public:
-  BinaryMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
+  BinaryMKLDNNHandler(const dnnl::algorithm algo, const int axis,
+                      const MKLDNNDeviceContext& dev_ctx,
                       const mkldnn::engine engine, platform::Place cpu_place,
                       const Tensor* x, const Tensor* y, Tensor* z,
+                      float scale_x, float scale_y, float scale_z,
                       const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
-            platform::CreateKey(framework::vectorize(x->dims()), uniq_name)) {
-    // bradcasting combined with in-place may require longer key
+            platform::CreateKey(
+                framework::vectorize(x->dims()),
+                uniq_name + (algo == dnnl::algorithm::binary_mul ? "M" : ""))) {
+    // bradcasting combined with in-place may require
     auto rankdiff = x->dims().size() - y->dims().size();
     if (rankdiff > 0) {
-      this->key_ += std::to_string(rankdiff);
-      this->key_common_ += std::to_string(rankdiff);
+      auto suffix = std::to_string(rankdiff);
+      this->key_ += suffix;
+      this->key_common_ += suffix;
     }
 
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
           x->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for X tensor"));
+          platform::errors::InvalidArgument("Wrong layout set for X tensor."));
       PADDLE_ENFORCE_NE(
           x->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for X tensor"));
+          platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
       PADDLE_ENFORCE_EQ(
           y->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for Y tensor"));
+          platform::errors::InvalidArgument("Wrong layout set for Y tensor."));
       PADDLE_ENFORCE_NE(
           y->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for Y tensor"));
+          platform::errors::InvalidArgument("Wrong format set for Y tensor."));
 
       const auto src_x_tz = framework::vectorize(x->dims());
       const auto src_y_tz = framework::vectorize(y->dims());
@@ -423,16 +521,17 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       auto src1_md = dnnl::memory::desc(
           src_y_tz, platform::MKLDNNGetDataType<T>(), y->format());
       if (rankdiff > 0) {
-        std::vector<int64_t> ones(rankdiff, 1);
-        std::vector<int64_t> dims1_ex(src_y_tz);
-        dims1_ex.insert(dims1_ex.begin(), ones.begin(), ones.end());
+        std::vector<int64_t> dims1_ex(rankdiff, 1);
+        dims1_ex.insert(next(dims1_ex.begin(), (axis == -1 ? rankdiff : axis)),
+                        src_y_tz.begin(), src_y_tz.end());
         src1_md = src1_md.reshape(dims1_ex);
       }
       const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
                                        MKLDNNMemoryFormat::any);
 
-      this->AcquireForwardPrimitiveDescriptor(dnnl::algorithm::binary_add,
-                                              src0_md, src1_md, dst_md);
+      auto attributes = CreateAttributes(algo, scale_x, scale_y, scale_z);
+      this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md,
+                                              src1_md, dst_md);
     }
   }
 
@@ -441,6 +540,38 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
     const T* input_data = input->data<T>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->src1_desc(), to_void_cast<T>(input_data), "@src1_mem_p");
+  }
+
+ private:
+  static inline dnnl::primitive_attr CreateAttributes(dnnl::algorithm op,
+                                                      float scale_x,
+                                                      float scale_y,
+                                                      float scale_z) {
+    // Scales set in attributes for inputs contibute to the output equation
+    // in the following way (assuming no broadcasting takes place):
+    // output_i = scale_0 * x_i <+ or *> scale_1 * y_i;
+    // Hence we have to create scales that will:
+    // 1. Dequantize both values, by multiplying with (1.0 / scale_x_or_y)
+    // 2. Quantize their result to output scale range, by multiplying with
+    // (scale_z)
+    // If we combine these two, we end up with following equation
+    // output = scale_out * (1/scale_x * x <* or +> 1/scale_y * y)
+    // Hence, to mimic such behaviour using provided interface,
+    // For add operation the equation is equal to:
+    // output = (scale_out / scale_x) * x + (scale_out / scale_y) * y
+    //                <scale_0>                  <scale_1>
+    // For mul operation on the other hand
+    // output = (scale_out / scale_x) * x * (1.0 / scale_y) * y
+    //                <scale_0>                 <scale_1>
+    float scale_0 = scale_z / scale_x;
+    float scale_1 =
+        op == dnnl::algorithm::binary_add ? scale_z / scale_y : 1.0 / scale_y;
+    dnnl::primitive_attr attributes;
+    attributes.set_scales(/* input_x_id = */ DNNL_ARG_SRC_0, /* mask = */ 0,
+                          {scale_0});
+    attributes.set_scales(/* input_y_id = */ DNNL_ARG_SRC_1, /* mask = */ 0,
+                          {scale_1});
+    return attributes;
   }
 };
 
@@ -643,10 +774,10 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
                         platform::errors::InvalidArgument(
-                            "Wrong layout set for Input tensor"));
+                            "Wrong layout set for Input tensor."));
       PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
                         platform::errors::InvalidArgument(
-                            "Wrong format set for Input tensor"));
+                            "Wrong format set for Input tensor."));
 
       const std::string pooling_type = ctx.Attr<std::string>("pooling_type");
 
@@ -664,15 +795,21 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
           ctx.Attr<std::string>("padding_algorithm");
 
       // Only 2D pooling is supported now
-      PADDLE_ENFORCE_EQ(ksize.size(), 2,
-                        platform::errors::InvalidArgument(
-                            "ksize must be 2D, i.e. 2D pooling"));
-      PADDLE_ENFORCE_EQ(pooling_type == "max" || pooling_type == "avg", true,
-                        platform::errors::InvalidArgument(
-                            "pooling_type must be 'max' or 'avg'"));
-      PADDLE_ENFORCE_EQ(input->dims().size(), 4,
-                        platform::errors::InvalidArgument(
-                            "Input dim must be with 4, i.e. NCHW"));
+      PADDLE_ENFORCE_EQ(
+          ksize.size(), 2,
+          platform::errors::InvalidArgument(
+              "The ksize must be 2D, i.e. 2D pooling, but received %dD.",
+              ksize.size()));
+      PADDLE_ENFORCE_EQ(
+          pooling_type == "max" || pooling_type == "avg", true,
+          platform::errors::InvalidArgument(
+              "The pooling_type must be 'max' or 'avg', but received %s.",
+              pooling_type));
+      PADDLE_ENFORCE_EQ(
+          input->dims().size(), 4,
+          platform::errors::InvalidArgument(
+              "Input dim must be with 4, i.e. NCHW, but received %d.",
+              input->dims().size()));
 
       const auto input_dims = input->dims();
       framework::DDim data_dims =
@@ -1290,7 +1427,7 @@ static std::shared_ptr<mkldnn::memory> SetDstMemory(
       residual_param_data,
       platform::errors::PreconditionNotMet("Residual parameter is required for "
                                            "the DNNL conv+elementwise_add "
-                                           "fusion, but now it is missing"));
+                                           "fusion, but now it is missing."));
   std::shared_ptr<mkldnn::memory> user_residual_memory_p =
       handler->AcquireResidualDataMemory(user_residual_md,
                                          to_void_cast<T>(residual_param_data));
@@ -1321,8 +1458,10 @@ static void SetDstMemoryQuantized(
   T* output_data = output->mutable_data<T>(ctx.GetPlace());
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
-  PADDLE_ENFORCE_LE(dst_dims, 5,
-                    "Dst memory for quantization can not have dims > 5");
+  PADDLE_ENFORCE_LE(dst_dims, 5, platform::errors::InvalidArgument(
+                                     "Dst memory for quantization can not have "
+                                     "dims > 5. But received dst_dims is %d.",
+                                     dst_dims));
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
   auto tmp_dst_md = platform::MKLDNNMemDesc(

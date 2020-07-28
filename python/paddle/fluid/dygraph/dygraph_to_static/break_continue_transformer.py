@@ -49,7 +49,7 @@ class ForToWhileTransformer(gast.NodeTransformer):
                 new_stmts = self.get_for_stmt_nodes(body_list[i])
                 body_list[i:i + 1] = new_stmts
                 i += len(new_stmts)
-                return
+                return new_stmts
         if hasattr(self.parent_node, 'orelse'):
             body_list = self.parent_node.orelse
             i = index_in_list(body_list, self.loop_node)
@@ -57,7 +57,7 @@ class ForToWhileTransformer(gast.NodeTransformer):
                 new_stmts = self.get_for_stmt_nodes(body_list[i])
                 body_list[i:i + 1] = new_stmts
                 i += len(new_stmts)
-                return
+                return new_stmts
         raise ValueError(
             "parent_node doesn't contain the loop_node in ForToWhileTransformer")
 

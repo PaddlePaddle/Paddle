@@ -49,5 +49,24 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestInstanceNormDoubleGradCheckWithoutParamBias(
+        TestInstanceNormDoubleGradCheck):
+    @prog_scope()
+    def func(self, place):
+        prog = fluid.Program()
+        with fluid.program_guard(prog):
+            np.random.seed()
+            shape = [2, 3, 4, 5]
+            dtype = "float32"
+            eps = 0.005
+            atol = 1e-4
+            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            z = fluid.layers.instance_norm(
+                input=x, param_attr=False, bias_attr=False)
+            x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+            gradient_checker.double_grad_check(
+                [x], z, x_init=x_arr, atol=atol, place=place, eps=eps)
+
+
 if __name__ == "__main__":
     unittest.main()

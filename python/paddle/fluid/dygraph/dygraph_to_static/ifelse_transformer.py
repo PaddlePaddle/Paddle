@@ -24,23 +24,14 @@ from collections import defaultdict
 import gast
 from paddle.fluid import unique_name
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import compare_with_none
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_candidate_node
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node
-from paddle.fluid.dygraph.dygraph_to_static.utils import IsControlFlowVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
-LOGIC_AND_PREFIX = 'logic_and'
-LOGIC_OR_PREFIX = 'logic_or'
-LOGIC_NOT_PREFIX = 'logic_not'
-PLAIN_TENSOR_PREFIX = 'bool_tensor'
 
 
 class IfElseTransformer(gast.NodeTransformer):
@@ -66,8 +57,9 @@ class IfElseTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         new_vars_stmts, true_func_node, false_func_node, return_name_ids = transform_if_else(
             node, self.root)
-        new_node = create_cond_node(return_name_ids, node.test, true_func_node,
-                                    false_func_node)
+
+        new_node = create_convert_ifelse_node(return_name_ids, node.test,
+                                              true_func_node, false_func_node)
 
         return new_vars_stmts + [true_func_node, false_func_node] + [new_node]
 
@@ -86,8 +78,8 @@ class IfElseTransformer(gast.NodeTransformer):
         """
         self.generic_visit(node)
 
-        new_node = create_cond_node(None, node.test, node.body, node.orelse,
-                                    True)
+        new_node = create_convert_ifelse_node(None, node.test, node.body,
+                                              node.orelse, True)
         # Note: A blank line will be added separately if transform gast.Expr
         # into source code. Using gast.Expr.value instead to avoid syntax error
         # in python.
@@ -108,6 +100,7 @@ class NameVisitor(gast.NodeVisitor):
         # Available only when end_node is set.
         self._is_finished = False
         self._candidate_ctxs = (gast.Store, gast.Load, gast.Param)
+        self._def_func_names = set()
 
     def visit(self, node):
         """Visit a node."""
@@ -173,6 +166,8 @@ class NameVisitor(gast.NodeVisitor):
     def visit_Name(self, node):
         blacklist = {'True', 'False', 'None'}
         if node.id in blacklist: return
+        if node.id in self._def_func_names:
+            return
         if not self._is_call_func_name_node(node):
             if isinstance(node.ctx, self._candidate_ctxs):
                 self.name_ids[node.id].append(node.ctx)
@@ -183,6 +178,7 @@ class NameVisitor(gast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
+        self._def_func_names.add(node.name)
         if not self.end_node:
             self.generic_visit(node)
         else:
@@ -274,6 +270,7 @@ def parse_cond_args(var_ids_dict, return_ids=None, ctx=gast.Load):
         kw_defaults=None,
         kwarg=None,
         defaults=[])
+
     return arguments
 
 
@@ -453,56 +450,59 @@ def transform_if_else(node, root):
         name=unique_name.generate(FALSE_FUNC_PREFIX),
         input_args=parse_cond_args(orelse_name_ids, modified_name_ids),
         return_name_ids=return_name_ids)
-
     return create_new_vars_in_parent_stmts, true_func_node, false_func_node, return_name_ids
 
 
-def create_cond_node(return_name_ids,
-                     pred,
-                     true_func,
-                     false_func,
-                     is_if_expr=False):
+def create_convert_ifelse_node(return_name_ids,
+                               pred,
+                               true_func,
+                               false_func,
+                               is_if_expr=False):
     """
-    Create `fluid.layers.cond(pred, true_fn, false_fn)` to replace
-    original `python if/else` statement.
+    Create `fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse(
+            pred, true_fn, false_fn, true_args, false_args, return_vars)`
+    to replace original `python if/else` statement.
     """
 
-    def create_lambda_node(func_or_expr_node, is_if_expr=False):
-        body = func_or_expr_node
-        if not is_if_expr:
-            body = gast.Call(
-                func=gast.Name(
-                    id=func_or_expr_node.name,
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None),
-                args=[func_or_expr_node.args],
-                keywords=[])
+    def create_name_nodes(name_ids):
+        if not name_ids:
+            return gast.Tuple(elts=[], ctx=gast.Load())
 
-        lambda_node = gast.Lambda(
-            args=gast.arguments(
-                args=[],
-                posonlyargs=[],
-                vararg=None,
-                kwonlyargs=[],
-                kw_defaults=None,
-                kwarg=None,
-                defaults=[]),
-            body=body)
-        return lambda_node
+        gast_names = [
+            gast.Name(
+                id=name_id, ctx=gast.Load(), annotation=None, type_comment=None)
+            for name_id in name_ids
+        ]
+        name_node = gast.Tuple(elts=gast_names, ctx=gast.Load())
+        return name_node
 
-    cond_api = gast.parse(
-        'fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse'
-    ).body[0].value
-    true_func_lambda = create_lambda_node(true_func, is_if_expr)
-    false_func_lambda = create_lambda_node(false_func, is_if_expr)
-    cond_layer = gast.Call(
-        func=cond_api,
-        args=[pred, true_func_lambda, false_func_lambda],
-        keywords=[])
+    if is_if_expr:
+        true_args = gast.Tuple(elts=[], ctx=gast.Load())
+        false_args = gast.Tuple(elts=[], ctx=gast.Load())
+        true_func_source = "lambda : {}".format(ast_to_source_code(true_func))
+        false_func_source = "lambda : {}".format(ast_to_source_code(false_func))
+    else:
+        true_args = gast.Tuple(elts=true_func.args.args, ctx=gast.Load())
+        false_args = gast.Tuple(elts=false_func.args.args, ctx=gast.Load())
+        true_func_source = true_func.name
+        false_func_source = false_func.name
+
+    return_vars = create_name_nodes(return_name_ids)
+
+    convert_ifelse_layer = gast.parse(
+        'fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse('
+        '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args}, {return_vars})'.
+        format(
+            pred=ast_to_source_code(pred),
+            true_fn=true_func_source,
+            false_fn=false_func_source,
+            true_args=ast_to_source_code(true_args),
+            false_args=ast_to_source_code(false_args),
+            return_vars=ast_to_source_code(return_vars))).body[0].value
+
     if return_name_ids:
-        _, cond_node = create_assign_node(return_name_ids, cond_layer)
+        _, cond_node = create_assign_node(return_name_ids, convert_ifelse_layer)
     else:  # No variables can be returned if no assign statement in if.body.
-        cond_node = gast.Expr(value=cond_layer)
+        cond_node = gast.Expr(value=convert_ifelse_layer)
 
     return cond_node

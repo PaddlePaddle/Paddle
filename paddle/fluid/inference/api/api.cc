@@ -120,12 +120,19 @@ std::string get_version() {
   return ss.str();
 }
 
-#if defined(_WIN32) && defined(PADDLE_ON_INFERENCE)
-
 std::string UpdateDllFlag(const char *name, const char *value) {
-  return google::SetCommandLineOption(name, value);
-}
+  std::string ret;
+  LOG(WARNING)
+      << "The function \"UpdateDllFlag\" is only used to update the flag "
+         "on the Windows shared library";
+  ret = google::SetCommandLineOption(name, value);
 
-#endif
+  PADDLE_ENFORCE_EQ(
+      ret.empty(), false,
+      platform::errors::InvalidArgument(
+          "Fail to update flag: %s, please make sure the flag exists.", name));
+  LOG(INFO) << ret;
+  return ret;
+}
 
 }  // namespace paddle

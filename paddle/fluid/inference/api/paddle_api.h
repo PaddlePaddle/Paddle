@@ -27,10 +27,10 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "crypto/cipher.h"
 #include "paddle_infer_declare.h"  // NOLINT
-
-/*! \namespace paddle
- */
+                                   /*! \namespace paddle
+                                    */
 namespace paddle {
 
 /// \brief Paddle data type.
@@ -313,6 +313,12 @@ class PD_INFER_DECL PaddlePredictor {
   /// \return Whether the run is successful
   virtual bool ZeroCopyRun() { return false; }
 
+  ///
+  /// \brief Clear the intermediate tensors of the predictor
+  ///
+  ///
+  virtual void ClearIntermediateTensor() {}
+
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,
   /// and the parameters between them are shared.
@@ -429,8 +435,8 @@ PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
 PD_INFER_DECL std::string get_version();
 
-#if defined(_WIN32) && defined(PADDLE_ON_INFERENCE)
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
-#endif
 
+PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
+    const std::string& config_file);
 }  // namespace paddle
