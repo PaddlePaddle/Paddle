@@ -227,10 +227,34 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 }
 
 #ifndef _WIN32
+// Description Quoted from
+// https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html
+const struct {
+  const char *name;
+  const char *error_string;
+} SignalErrorStrings[] = {
+    {"SIGSEGV", "Segmentation fault"},
+    {"SIGILL", "Illegal instruction"},
+    {"SIGFPE", "Erroneous arithmetic operation"},
+    {"SIGABRT", "Process abort signal"},
+    {"SIGBUS", "Access to an undefined portion of a memory object"},
+    {"SIGTERM", "Termination signal"},
+};
+
 bool StartsWith(const char *str, const char *prefix) {
   size_t len_prefix = strlen(prefix);
   size_t len_str = strlen(str);
   return len_str < len_prefix ? false : memcmp(prefix, str, len_prefix) == 0;
+}
+
+const char *ParseSignalErrorString(const std::string &str) {
+  for (size_t i = 0;
+       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings))); ++i) {
+    if (std::string::npos != str.find(SignalErrorStrings[i].name)) {
+      return SignalErrorStrings[i].error_string;
+    }
+  }
+  return "Unknown signal";
 }
 
 // Handle SIGSEGV, SIGILL, SIGFPE, SIGABRT, SIGBUS, and SIGTERM.
@@ -245,13 +269,17 @@ void SignalHandle(const char *data, int size) {
       signal_msg_dumper << "  [TimeInfo: " << std::string(data, size - 1)
                         << "]\n";
     } else if (StartsWith(data, "***")) {
-      signal_msg_dumper << "  [SignalInfo: " << std::string(data, size - 1)
-                        << "]\n";
+      std::string signal_info(data, size - 1);
+      std::string useless_substr("; stack trace:");
+      size_t start_pos = signal_info.rfind(useless_substr);
+      signal_info.replace(start_pos, useless_substr.length(), "");
+      signal_msg_dumper << "  [SignalInfo: " << signal_info << "]\n";
       // NOTE3: Here does not throw an exception,
       // otherwise it will casue "terminate called recursively"
       auto exp = platform::EnforceNotMet(
           platform::errors::Fatal(
-              "A serious error is detected by the operating system."),
+              "A serious error (%s) is detected by the operating system.",
+              ParseSignalErrorString(signal_info)),
           __FILE__, __LINE__);
       std::cout << exp.what() << signal_msg_dumper.str() << std::endl;
     }
