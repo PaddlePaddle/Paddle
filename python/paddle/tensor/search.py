@@ -50,7 +50,7 @@ def argsort(x, axis=-1, descending=False, name=None):
     data Varibale and its corresponding index Variable with the same shape as ``x``.
 
     Args:
-        x(Variable): An input N-D Tensor with type float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -63,7 +63,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: sorted indices(with the same shape as ``x``
+        Tensor: sorted indices(with the same shape as ``x``
         and with data type int64).
 
     Examples:
@@ -377,10 +377,10 @@ def sort(x, axis=-1, descending=False, name=None):
 	:alias: paddle.sort,paddle.tensor.sort,paddle.tensor.search.sort
 
     This OP sorts the input along the given axis, and returns sorted output
-    data Varibale and its corresponding index Variable with the same shape as ``x``.
+    data Tensor and its corresponding index Tensor with the same shape as ``x``.
 
     Args:
-        x(Variable): An input N-D Tensor with type float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -392,7 +392,7 @@ def sort(x, axis=-1, descending=False, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        tuple: A tuple of sorted data Variable(with the same shape and data
+        tuple: A tuple of sorted data tensor(with the same shape and data
         type as ``x``) and the sorted indices(with the same shape as ``x``
         and with data type int64).
     Examples:
