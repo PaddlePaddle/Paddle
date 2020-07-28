@@ -124,6 +124,22 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     return num_cast_ops
 
 
+def _move_op_to_end(block, op):
+    OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+    op._set_attr('op_role', OPTIMIZE)
+    if op == block.ops[-1]:
+        return
+    new_op_desc = block.desc.append_op()
+    new_op_desc.copy_from(op.desc)
+
+    op_idx = find_op_index(block.desc, op.desc)
+    if op_idx == -1:
+        raise ValueError("The op {0} is not in program".format(op))
+    block.desc._remove_op(op_idx, op_idx + 1)
+    block._sync_with_cpp()
+    return
+
+
 def find_true_prev_op(ops, cur_op, var_name):
     """
     Find the true prev op that outputs var_name variable.
@@ -316,25 +332,7 @@ def update_role_var_grad(main_prog, params_grads):
             if op_for_fp16_grad.has_attr(op_role_var_attr_name):
                 attr_val.extend(op_for_fp16_grad.attr(op_role_var_attr_name))
             op_for_fp16_grad._set_attr(op_role_var_attr_name, attr_val)
-
-            # Maximize the all_reduce overlap, and perform the cast
-            # operation after gradients transfer.
-            op._set_attr('op_role', OPTIMIZE)
-            # optimize op should stay behind forward and backward ops
-            if op == block.ops[-1]:
-                continue
-            post_ops = find_true_post_op(block.ops, op, g.name)
-            if post_ops is not None:
-                raise ValueError("The cast op {0}'s output should not be"
-                                 "used by a non-optimize op, however, it"
-                                 "is used by {1}".format(op, post_ops[0]))
-            new_op_desc = block.desc.append_op()
-            new_op_desc.copy_from(op.desc)
-            op_idx = find_op_index(block.desc, op.desc)
-            if op_idx == -1:
-                raise ValueError("The op {0} is not in program".format(op))
-            block.desc._remove_op(op_idx, op_idx + 1)
-            block._sync_with_cpp()
+            _move_op_to_end(block, op)
 
         elif g.dtype == core.VarDesc.VarType.FP32 and op.type == 'sum':
             move_sum = False
@@ -342,37 +340,9 @@ def update_role_var_grad(main_prog, params_grads):
                 op_for_sum = find_true_prev_op(block.ops, op, input_name)
                 if op_for_sum.type == 'cast':
                     move_sum = True
-                    #             # Maximize the all_reduce overlap, and perform the cast
-                    #             # operation after gradients transfer.
-                    op_for_sum._set_attr('op_role', OPTIMIZE)
-                    #             # optimize op should stay behind forward and backward ops
-                    if op_for_sum == block.ops[-1]:
-                        continue
-                    post_ops = find_true_post_op(block.ops, op_for_sum,
-                                                 input_name)
-
-                    new_op_desc = block.desc.append_op()
-                    new_op_desc.copy_from(op_for_sum.desc)
-
-                    op_idx = find_op_index(block.desc, op_for_sum.desc)
-                    if op_idx == -1:
-                        raise ValueError("The op {0} is not in program".format(
-                            op_for_sum))
-                    block.desc._remove_op(op_idx, op_idx + 1)
-                    block._sync_with_cpp()
-
+                    _move_op_to_end(block, op_for_sum)
             if move_sum:
-                op._set_attr('op_role', OPTIMIZE)
-                if op == block.ops[-1]:
-                    continue
-                new_op_desc = block.desc.append_op()
-                new_op_desc.copy_from(op.desc)
-
-                op_idx = find_op_index(block.desc, op.desc)
-                if op_idx == -1:
-                    raise ValueError("The op {0} is not in program".format(op))
-                block.desc._remove_op(op_idx, op_idx + 1)
-                block._sync_with_cpp()
+                _move_op_to_end(block, op)
 
 
 def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
