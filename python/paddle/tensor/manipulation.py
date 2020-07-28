@@ -307,8 +307,8 @@ def stack(x, axis=0, out=None, name=None):
 
 def split(x, num_or_sections, axis=0, name=None):
     """
-      :alias_main: paddle.split
-      :alias: paddle.tensor.split, paddle.tensor.manipulation.split
+	:alias_main: paddle.split
+        :alias: paddle.tensor.split, paddle.tensor.manipulation.split
     
     Split the input tensor into multiple sub-Tensors.
     
@@ -319,7 +319,7 @@ def split(x, num_or_sections, axis=0, name=None):
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
             sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
             The length of the list must not  be larger than the Tensor's size of specified ``dim``.
-        axis (int|Tensor, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and data type 
+        axis (int|Tensor, optional): A scalar with type ``int`` or a ``Tensor`` with shape [1] and data type 
             ``int32`` or ``int64``. The axis along which to split. If :math::`axis < 0`, the axis to split along
             is :math:`rank(x) + axis`. Default is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.

@@ -4813,7 +4813,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             will be divided into. If ``num_or_sections`` is a list or tuple, the length of it 
             indicates the number of sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
             dimension orderly. The length of the list mustn't be larger than the Tensor's size of specified dim.
-        dim (int|Tensor, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and data type ``int32`` 
+        dim (int|Tensor, optional): A scalar with type ``int`` or a ``Tensor`` with shape [1] and data type ``int32`` 
             or ``int64``. The dimension along which to split. If :math:`dim < 0`, the dimension to split along is 
             :math:`rank(input) + dim`. Default is -1.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property. 
