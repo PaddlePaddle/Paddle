@@ -1472,7 +1472,7 @@ class Executor(object):
         return self._start_heter_trainer(program, scope, False, debug,
                                          fetch_list, fetch_info, print_period,
                                          fetch_handler)
-    
+
     def _start_heter_trainer(self,
                              program=None,
                              scope=None,

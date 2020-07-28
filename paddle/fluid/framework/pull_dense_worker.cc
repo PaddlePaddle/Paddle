@@ -113,7 +113,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
       uint64_t tid = static_cast<uint64_t>(
           dwp_param_.program_config(0).pull_dense_table_id(x));
       for (size_t j = 0; j < dense_value_names_[tid].size(); j++) {
-        auto& name =  dense_value_names_[tid][j];
+        auto& name = dense_value_names_[tid][j];
 
         Variable* pin_var = root_scope_->FindVar(name + "pin");
         LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
@@ -122,8 +122,8 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         float* w = tensor->data<float>();
         memory::Copy(boost::get<platform::CUDAPlace>(places_[i]), w,
-            platform::CUDAPinnedPlace(), pin_w,
-            sizeof(float) * tensor->numel(), copy_streams_[i]);
+                     platform::CUDAPinnedPlace(), pin_w,
+                     sizeof(float) * tensor->numel(), copy_streams_[i]);
       }
     }
   }

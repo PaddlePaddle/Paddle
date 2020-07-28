@@ -29,7 +29,7 @@ namespace paddle {
 namespace framework {
 
 void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
-                                Dataset *dataset) {
+                                 Dataset *dataset) {
   srand((unsigned)time(NULL));
   param_ = trainer_desc.downpour_param();
   for (int i = 0; i < param_.dense_table_size(); ++i) {
@@ -133,21 +133,21 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 }
 
 template <typename T>
-void HeterXpuTrainer::HeterMemCpy(LoDTensor *thread_tensor,
-                                  LoDTensor *root_tensor,
+void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
+                                  LoDTensor* root_tensor,
                                   const paddle::platform::Place& thread_place,
                                   cudaStream_t stream) {
-  T* thread_ptr = thread_tensor->mutable_data<T>(
-                  root_tensor->dims(), thread_place);
+  T* thread_ptr =
+      thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
   if (platform::is_cpu_place(root_tensor->place())) {
     memory::Copy(boost::get<platform::CUDAPlace>(thread_place), thread_ptr,
-        platform::CPUPlace(), root_ptr,
-        sizeof(T) * root_tensor->numel(), stream);
+                 platform::CPUPlace(), root_ptr,
+                 sizeof(T) * root_tensor->numel(), stream);
   } else {
     memory::Copy(boost::get<platform::CUDAPlace>(thread_place), thread_ptr,
-        boost::get<platform::CUDAPlace>(root_tensor->place()), root_ptr,
-        sizeof(T) * root_tensor->numel(), stream);
+                 boost::get<platform::CUDAPlace>(root_tensor->place()), root_ptr,
+                 sizeof(T) * root_tensor->numel(), stream);
   }
 }
 
@@ -211,28 +211,28 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
       context->place_num_ = num;
       auto place = places_[num];
       context->scope_ = &(place_scopes_[num]->NewScope());
-      auto &block = program_.Block(0);
-      for (auto &var : block.AllVars()) {
+      auto& block = program_.Block(0);
+      for (auto& var : block.AllVars()) {
         if (!var->Persistable()) {
-          auto *ptr = context->scope_->Var(var->Name());
+          auto* ptr = context->scope_->Var(var->Name());
           InitializeVariable(ptr, var->GetType());
         }
       }
       for (auto& v : dense_grad_names_) {
         for (auto& name : v.second) {
-          auto *ptr = context->scope_->Var(name + "pin");
+          auto* ptr = context->scope_->Var(name + "pin");
           InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
         }
       }
-      for (auto &op_desc : block.AllOps()) {
+      for (auto& op_desc : block.AllOps()) {
         std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
-        OperatorBase *local_op_ptr = local_op.release();
+        OperatorBase* local_op_ptr = local_op.release();
         (context->ops_).push_back(local_op_ptr);
       }
       auto dev_id = boost::get<platform::CUDAPlace>(place).device;
       platform::CUDADeviceGuard guard(dev_id);
-      PADDLE_ENFORCE(cudaEventCreateWithFlags(
-                     &context->event_, cudaEventDisableTiming));
+      PADDLE_ENFORCE(
+          cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));
       object_pool_.Push(context);
     }
   }
@@ -305,8 +305,8 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 }
 
 template <typename T>
-void HeterXpuTrainer::MergeToRootScope(LoDTensor *root_tensor,
-                                       LoDTensor *tensor) {
+void HeterXpuTrainer::MergeToRootScope(LoDTensor* root_tensor,
+                                       LoDTensor* tensor) {
   LoDTensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
@@ -338,9 +338,9 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
     auto place = places_[num];
     context->scope_ = &(place_scopes_[num]->NewScope());
     auto& block = program_.Block(0);
-    for (auto &var : block.AllVars()) {
+    for (auto& var : block.AllVars()) {
       if (!var->Persistable()) {
-        auto *ptr = context->scope_->Var(var->Name());
+        auto* ptr = context->scope_->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
       }
     }
@@ -350,7 +350,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       }
     }
-    for (auto &op_desc : block.AllOps()) {
+    for (auto& op_desc : block.AllOps()) {
       std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
       OperatorBase* local_op_ptr = local_op.release();
       (context->ops_).push_back(local_op_ptr);
@@ -387,7 +387,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
       op->Run(*(context->scope_), place);
     }
   }
-  auto* dev_ctx = static_cast<platform::CUDADeviceContext *>(
+  auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
       platform::DeviceContextPool::Instance().Get(place));
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaEventRecord(context->event_, dev_ctx->stream()));
@@ -414,8 +414,8 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
   // heter_ptr_->SerializeToReq(varname, context->scope_, res_var);
   for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
        ++i) {
-    uint64_t tid = static_cast<uint64_t>(
-        param_.program_config(0).push_dense_table_id(i));
+    uint64_t tid =
+        static_cast<uint64_t>(param_.program_config(0).push_dense_table_id(i));
     fleet_ptr_->PushDenseVarsAsync(
         *(context->scope_), tid, dense_grad_names_[tid],
         &(context->push_dense_status_), scale_datanorm_, request->cur_batch(),

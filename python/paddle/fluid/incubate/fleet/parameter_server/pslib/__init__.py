@@ -236,7 +236,7 @@ class PSLib(Fleet):
         executor.train_from_dataset(program, dataset, scope, thread, debug,
                                     fetch_list, fetch_info, print_period,
                                     fetch_handler)
-    
+
     def start_heter_trainer(self,
                             executor,
                             program=None,

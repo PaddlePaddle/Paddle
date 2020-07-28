@@ -969,8 +969,8 @@ void HeterCpuWorker::TrainFiles() {
       int taskid = batch_cnt * worker_num_ + thread_id_;
       task = object_pool_.Get();
       task->Reset();
-      task->PackTask(thread_scope_, taskid, device_reader_,
-                     cur_batch, program_);
+      task->PackTask(thread_scope_, taskid, device_reader_, cur_batch,
+                     program_);
     }
     for (;;) {
       // pull sparse here

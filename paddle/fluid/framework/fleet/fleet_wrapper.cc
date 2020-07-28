@@ -219,7 +219,6 @@ void FleetWrapper::HeterPushSparseVars(
     const std::vector<std::string>& sparse_grad_names, const int emb_dim,
     std::vector<::std::future<int32_t>>* push_sparse_status, const bool use_cvm,
     const bool dump_slot, const bool no_cvm) {
-
   auto& scope = *(task->scope_);
   int batch_size = task->cur_batch_;
   int offset = 2;

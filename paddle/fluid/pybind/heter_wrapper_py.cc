@@ -39,7 +39,7 @@ void BindHeterWrapper(py::module* m) {
       *m, "Heter")
       .def(py::init([]() { return framework::HeterWrapper::GetInstance(); }))
       .def("create_client2xpu_connection",
-          &framework::HeterWrapper::CreateClient2XpuConnection)
+           &framework::HeterWrapper::CreateClient2XpuConnection)
       .def("set_xpu_list", &framework::HeterWrapper::SetXpuList)
       .def("start_xpu_service", &framework::HeterWrapper::StartXpuService)
       .def("end_pass", &framework::HeterWrapper::EndPass)

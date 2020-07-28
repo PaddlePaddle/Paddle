@@ -338,13 +338,13 @@ class HeterList {
   }
 
  private:
-  void detach(HeterNode<K, T> *node) {
+  void detach(HeterNode<K, T>* node) {
     node->prev->next = node->next;
     node->next->prev = node->prev;
     size--;
   }
 
-  void attach(HeterNode<K, T> *node) {
+  void attach(HeterNode<K, T>* node) {
     node->prev = head_;
     node->next = head_->next;
     head_->next->prev = node;
@@ -353,8 +353,8 @@ class HeterList {
   }
 
  private:
-  HeterNode<K, T> *head_;
-  HeterNode<K, T> *tail_;
+  HeterNode<K, T>* head_;
+  HeterNode<K, T>* tail_;
   std::unordered_map<K, HeterNode<K, T>*> map_;
   std::unordered_set<K> task_map_;
   std::mutex mutex_;

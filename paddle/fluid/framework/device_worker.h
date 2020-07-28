@@ -343,7 +343,7 @@ class HeterCpuWorker : public HogwildWorker {
   virtual void SetWorkerNum(int num) { worker_num_ = num; }
   virtual void Schedule(int taskid);
   virtual void JumpContext(std::shared_ptr<HeterTask> task);
-  virtual void CacheProgram(const ProgramDesc &main_program) {
+  virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
   virtual void GetXpuOpIndex();

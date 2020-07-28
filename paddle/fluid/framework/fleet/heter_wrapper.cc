@@ -170,8 +170,8 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
 
 #ifdef PADDLE_WITH_CUDA
   memory::Copy(boost::get<platform::CUDAPlace>(place), tensor_data,
-      platform::CPUPlace(), req_var.data().data(),
-      tensor->numel() * SizeOfType(tensor->type()), stream);
+               platform::CPUPlace(), req_var.data().data(),
+               tensor->numel() * SizeOfType(tensor->type()), stream);
 #else
   memcpy(tensor_data, req_var.data().data(),
          tensor->numel() * SizeOfType(tensor->type()));
@@ -202,13 +202,13 @@ void HeterWrapper::StopXpuService(int num) {
   brpc::Controller cntl;
   request.set_cmd(2);
   // for (size_t i = 0; i < xpu_channels_.size(); ++i) {
-    HeterService_Stub stub(xpu_channels_[num].get());
-    stub.service(&cntl, &request, &response, NULL);
-    if (cntl.Failed()) {
-      VLOG(0) << "call stop xpu service fail: " << cntl.ErrorText();
-    } else {
-      VLOG(3) << "call stop xpu service success";
-    }
+  HeterService_Stub stub(xpu_channels_[num].get());
+  stub.service(&cntl, &request, &response, NULL);
+  if (cntl.Failed()) {
+    VLOG(0) << "call stop xpu service fail: " << cntl.ErrorText();
+  } else {
+    VLOG(3) << "call stop xpu service success";
+  }
   // }
 }
 
@@ -238,7 +238,7 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
   request.set_cmd(0);
   request.set_cur_batch(task->cur_batch_);
 
-  OnHeterRpcDone* done = new OnHeterRpcDone([this, task, worker] (void* done) {
+  OnHeterRpcDone* done = new OnHeterRpcDone([this, task, worker](void* done) {
     auto* closure = (OnHeterRpcDone*)done;
     if (closure->cntl.Failed()) {
       VLOG(0) << "call xpu fail: " << closure->cntl.ErrorText();
