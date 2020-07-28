@@ -44,8 +44,19 @@ class GeluOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+    auto it = this->Attrs().find("use_mkldnn");
+    if (library == framework::LibraryType::kPlain &&
+        it != this->Attrs().end() && platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+    }
+#endif
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout, library);
   }
 };
 
@@ -73,8 +84,19 @@ class GeluGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+    auto it = this->Attrs().find("use_mkldnn");
+    if (library == framework::LibraryType::kPlain &&
+        it != this->Attrs().end() && platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+    }
+#endif
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout, library);
   }
 };
 

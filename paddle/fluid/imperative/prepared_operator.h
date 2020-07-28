@@ -47,24 +47,12 @@ class PreparedOp {
                             const platform::Place& place,
                             const framework::AttributeMap& attrs);
 
-  inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx_; }
-
   void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
            const framework::AttributeMap& attrs);
 
   void Run(const NameVarMap<VariableWrapper>& ins,
            const NameVarMap<VariableWrapper>& outs,
            const framework::AttributeMap& attrs);
-
-  static void PrepareData(const platform::Place& place,
-                          const NameVarMap<VarBase>& ins,
-                          const framework::OperatorWithKernel& op,
-                          const framework::OpKernelType& expected_kernel_key);
-
-  static void PrepareData(const platform::Place& place,
-                          const NameVarMap<VariableWrapper>& ins,
-                          const framework::OperatorWithKernel& op,
-                          const framework::OpKernelType& expected_kernel_key);
 
  private:
   const framework::OperatorBase& op_;

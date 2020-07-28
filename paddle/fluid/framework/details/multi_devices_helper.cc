@@ -210,6 +210,32 @@ std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
     g->Set(kGraphDepVars, new GraphDepVars());
   }
 
+  std::vector<VarHandle *> isolated_var_handles;
+  for (auto *node : graph->Nodes()) {
+    if (!node->IsWrappedBy<VarHandleBase>()) {
+      continue;
+    }
+
+    auto &var_handle_base = node->Wrapper<VarHandleBase>();
+    auto *var_handle = dynamic_cast<VarHandle *>(&var_handle_base);
+    if (var_handle && var_handle->PendingOps().empty() &&
+        var_handle->GeneratedOp() == nullptr) {
+      isolated_var_handles.emplace_back(var_handle);
+    }
+  }
+
+  for (auto *var_handle : isolated_var_handles) {
+    auto dev_idx = var_handle->scope_idx();
+    auto &src_vars = graph->Get<GraphVars>(kGraphVars)[dev_idx];
+    auto *dst_graph = graphs[dev_idx].get();
+    auto &dst_vars = dst_graph->Get<GraphVars>(kGraphVars)[0];
+    VLOG(10) << "Move isolated var " << var_handle->Name() << " at device "
+             << dev_idx;
+    dst_graph->AddNode(graph->RemoveNode(var_handle->Node()).release());
+    dst_vars[var_handle->Name()].emplace_back(var_handle);
+    src_vars.erase(var_handle->Name());
+  }
+
   for (auto &pair : op_to_dev_idx) {
     auto *op = pair.first;
     auto dev_idx = pair.second;

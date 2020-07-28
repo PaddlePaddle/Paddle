@@ -18,6 +18,7 @@ import numpy as np
 import argparse
 import time
 import math
+import sys
 
 import paddle
 import paddle.fluid as fluid
@@ -109,11 +110,8 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
     return t
 
 
-from paddle.fluid.transpiler.details import op_to_code
-
-
 def operator_equal(a, b):
-    if op_to_code(a) != op_to_code(b):
+    if a.__str__() != b.__str__():
         raise ValueError("In operator_equal not equal\n")
 
     for k, v in six.iteritems(a.__dict__):
@@ -180,6 +178,8 @@ def program_equal(a, b):
 
 
 class TestDistMnist(unittest.TestCase):
+    @unittest.skipIf(sys.platform == "win32",
+                     "Windows does not support distribution")
     def test_desc_clone(self):
         get_model(batch_size=20)
 

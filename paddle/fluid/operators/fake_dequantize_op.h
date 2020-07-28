@@ -71,19 +71,25 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
     if (scale_num == 1) {
       PADDLE_ENFORCE_EQ(
           scales[0]->numel(), in->dims()[0],
-          "The number of first scale values must be the same with "
-          "first dimension value of Input(X) when the `Scales` has only one "
-          "element.");
+          platform::errors::PreconditionNotMet(
+              "The number of first scale values must be the same with "
+              "first dimension value of Input(X) when the `Scales` has only "
+              "one element, but %ld != %ld here.",
+              scales[0]->numel(), in->dims()[0]));
       max_range *= (std::pow(2, quant_bits[0] - 1) - 1);
     } else if (scale_num == 2) {
       PADDLE_ENFORCE_EQ(
           scales[0]->numel(), in->dims()[1],
-          "The number of first scale values must be the same with "
-          "second dimension value of Input(X) when the `Scales` has two "
-          "elements.");
-      PADDLE_ENFORCE_EQ(
-          scales[1]->numel(), 1,
-          "The second scale tensor should only have one value at now.");
+          platform::errors::PreconditionNotMet(
+              "The number of first scale values must be the same with "
+              "second dimension value of Input(X) when the `Scales` has two "
+              "elements, but %ld != %ld here.",
+              scales[0]->numel(), in->dims()[1]));
+      PADDLE_ENFORCE_EQ(scales[1]->numel(), 1,
+                        platform::errors::PreconditionNotMet(
+                            "The second scale tensor should only have one "
+                            "value at now, but it has %ld values here.",
+                            scales[1]->numel()));
       max_range *= (std::pow(2, quant_bits[0] - 1) - 1) *
                    (std::pow(2, quant_bits[1] - 1) - 1);
     }

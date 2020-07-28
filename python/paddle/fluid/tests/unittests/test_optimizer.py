@@ -16,10 +16,14 @@ from __future__ import print_function
 
 import unittest
 
+import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
+import paddle.fluid.core as core
 import paddle.compat as cpt
+import numpy as np
 from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestOptimizer(unittest.TestCase):
@@ -840,6 +844,185 @@ class TestRecomputeOptimizer(unittest.TestCase):
             "dropout", "elementwise_add_grad", "dropout_grad", "mul_grad",
             "sgd", "sgd", "sgd"
         ])
+
+    def test_dropout_with_seed(self):
+        """
+        when we recompute a dropout op, make sure that the recomputed one
+	    is the same as the original var.
+	    """
+
+        def gen_data():
+            return {
+                "x": np.random.random(size=(100, 3)).astype('float32'),
+                "y": np.random.randint(
+                    2, size=(100, 1)).astype('int64')
+            }
+
+        def mlp(input_x, input_y):
+            drop_res = fluid.layers.dropout(
+                input_x, dropout_prob=0.5, name="dropout_with_seed_cpu")
+            prediction = fluid.layers.fc(input=[drop_res],
+                                         size=2,
+                                         act='softmax')
+            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            sum_cost = fluid.layers.reduce_mean(cost)
+            return drop_res, prediction, sum_cost
+
+        main_program = Program()
+        startup_program = Program()
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            with program_guard(main_program, startup_program):
+                input_x = fluid.layers.data(
+                    name="x", shape=[3], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                drop_res, prediction, cost = mlp(input_x, input_y)
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([prediction])
+                sgd.minimize(cost)
+
+                place = fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                feed_data = gen_data()
+                drop_vec = exe.run(feed=feed_data,
+                                   program=fluid.default_main_program(),
+                                   fetch_list=[
+                                       "dropout_with_seed_cpu.tmp_1",
+                                       "dropout_with_seed_cpu.tmp_1.subprog_0"
+                                   ])
+                self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestRecomputeOptimizerCUDA(unittest.TestCase):
+    def test_dropout_with_seed(self):
+        """
+        when we recompute a dropout op, make sure that the recomputed one
+        is the same as the original var.
+        """
+
+        def gen_data():
+            return {
+                "x": np.random.random(size=(100, 3)).astype('float32'),
+                "y": np.random.randint(
+                    2, size=(100, 1)).astype('int64')
+            }
+
+        def mlp(input_x, input_y):
+            drop_res = fluid.layers.dropout(
+                input_x, dropout_prob=0.5, name="dropout_with_seed_gpu")
+            prediction = fluid.layers.fc(input=[drop_res],
+                                         size=2,
+                                         act='softmax')
+            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            sum_cost = fluid.layers.reduce_mean(cost)
+            return drop_res, prediction, sum_cost
+
+        main_program = Program()
+        startup_program = Program()
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            with program_guard(main_program, startup_program):
+                input_x = fluid.layers.data(
+                    name="x", shape=[3], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                drop_res, prediction, cost = mlp(input_x, input_y)
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([prediction])
+                sgd.minimize(cost)
+
+                place = fluid.CUDAPlace(0)
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                feed_data = gen_data()
+                drop_vec = exe.run(feed=feed_data,
+                                   program=fluid.default_main_program(),
+                                   fetch_list=[
+                                       "dropout_with_seed_gpu.tmp_1",
+                                       "dropout_with_seed_gpu.tmp_1.subprog_0"
+                                   ])
+                self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
+
+
+class TestGradientMergeOptimizer(unittest.TestCase):
+    def net(self):
+        program = framework.Program()
+        block = program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        b1 = block.create_parameter(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1")
+        b1_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1_out")
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        block.append_op(
+            type="elementwise_add",
+            inputs={"X": mul_out,
+                    "Y": b1},
+            outputs={"Out": b1_out})
+        block.append_op(
+            type="mean", inputs={"X": b1_out}, outputs={"Out": mean_out})
+        return mean_out
+
+    def test_program_desc(self, ):
+        cost = self.net()
+        main_program = cost.block.program
+        init_program = framework.Program()
+        self.assertEqual(main_program.num_blocks, 1)
+        self.assertEqual(len(cost.block.ops), 3)
+        self.assertEqual([op.type for op in cost.block.ops],
+                         ["mul", "elementwise_add", "mean"])
+
+        opt = optimizer.SGD(learning_rate=1.0)
+        opt = optimizer.GradientMergeOptimizer(opt, k_steps=4)
+        with framework.program_guard(main_program, init_program):
+            ops, params_grads = opt.minimize(cost)
+
+        self.assertEqual(main_program.num_blocks, 4)
+
+        # main block
+        self.assertEqual(len(cost.block.ops), 17)
+        self.assertEqual([op.type for op in cost.block.ops], [
+            'mul', 'elementwise_add', 'mean', 'fill_constant', 'mean_grad',
+            'elementwise_add_grad', 'mul_grad', 'increment', 'fill_constant',
+            'fill_constant', 'elementwise_mod', 'cast', 'not_equal',
+            'logical_not', 'conditional_block', 'conditional_block',
+            'conditional_block_grad'
+        ])
+
+        # merge block
+        self.assertEqual(len(main_program.block(1).ops), 2)
+        self.assertEqual([op.type for op in main_program.block(1).ops], [
+            'elementwise_add',
+            'elementwise_add',
+        ])
+
+        # reset block
+        self.assertEqual(len(main_program.block(2).ops), 6)
+        self.assertEqual([op.type for op in main_program.block(2).ops], [
+            'elementwise_add', 'scale', 'elementwise_add', 'scale',
+            'fill_constant', 'fill_constant'
+        ])
+
+        # optimize block
+        self.assertEqual(len(main_program.block(3).ops), 2)
+        self.assertEqual([op.type for op in main_program.block(3).ops],
+                         ['sgd', 'sgd'])
 
 
 if __name__ == '__main__':

@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
+#include "paddle/fluid/string/string_helper.h"
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -37,14 +38,23 @@ TEST(TEST_GLOO, store_1) {
   }
   store.wait(std::vector<std::string>{"test"});
   store.wait(std::vector<std::string>{"test"}, std::chrono::milliseconds(0));
+  store.SetTimeoutSeconds(100000);
   store.EncodeName("1");
   store.TmpPath("1");
   store.ObjectPath("1");
-  store.Check(std::vector<std::string>{"test"});
+  std::vector<bool> status(1, false);
+  store.Check(std::vector<std::string>{"test"}, &status);
 
   auto gw = paddle::framework::GlooWrapper();
-  gw.Init(0, 1, "", "", "", "", "");
-  gw.Init(0, 1, "", "", "", "", "");
+  gw.SetTimeoutSeconds(1000, 1000);
+  gw.SetRank(0);
+  gw.SetSize(1);
+  gw.SetPrefix("");
+  gw.SetIface("lo");
+  gw.SetHdfsStore("", "", "");
+  gw.Init();
+  gw.SetHttpStore("", 8099, "");
+  gw.Init();
   gw.Rank();
   gw.Size();
   gw.Barrier();
@@ -61,5 +71,10 @@ TEST(TEST_FLEET, fleet_1) {
 #ifdef PADDLE_WITH_PSLIB
 #else
   fleet->RunServer("", 0);
+  fleet->SaveModelOneTable(0, "", 0);
+  fleet->SaveModelOneTablePrefix(0, "", 0, "");
+  fleet->Confirm();
+  fleet->Revert();
+  paddle::string::erase_spaces("1 2");
 #endif
 }

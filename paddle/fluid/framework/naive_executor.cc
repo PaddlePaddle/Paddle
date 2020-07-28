@@ -25,6 +25,9 @@
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -116,6 +119,14 @@ void NaiveExecutor::CleanFeedFetchOps() {
     }
   }
   ops_.swap(ops);
+}
+
+NaiveExecutor::~NaiveExecutor() {
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache,
+  // this is needed to have mkl-dnn unit tests working
+  ClearMKLDNNCache(place_);
+#endif
 }
 
 }  // namespace framework

@@ -88,6 +88,12 @@ void AnalysisConfig::DisableFCPadding() {
   Update();
 }
 
+void AnalysisConfig::EnableXpu(int l3_workspace_size) {
+  use_xpu_ = true;
+  xpu_l3_workspace_size_ = l3_workspace_size;
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
@@ -116,8 +122,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
-  // NGRAPH related.
-  CP_MEMBER(use_ngraph_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -134,6 +138,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(lite_precision_mode_);
   CP_MEMBER(lite_passes_filter_);
   CP_MEMBER(lite_ops_filter_);
+  CP_MEMBER(lite_zero_copy_);
+
+  CP_MEMBER(use_xpu_);
+  CP_MEMBER(xpu_l3_workspace_size_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -150,6 +158,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(cpu_math_library_num_threads_);
 
   CP_MEMBER(serialized_info_cache_);
+
+  CP_MEMBER(thread_local_stream_);
 
   if (use_gpu_) {
     pass_builder_.reset(new GpuPassStrategy(
@@ -206,16 +216,6 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 #endif
 
   Update();
-}
-
-void AnalysisConfig::EnableNgraph() {
-#ifdef PADDLE_WITH_NGRAPH
-  pass_builder()->EnableNgraph();
-  use_ngraph_ = true;
-#else
-  LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
-  use_ngraph_ = false;
-#endif
 }
 
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
@@ -292,6 +292,10 @@ void AnalysisConfig::Update() {
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
+      if (tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
+          (pass == "conv_bn_fuse_pass" || pass == "fc_fuse_pass")) {
+        continue;
+      }
       pass_builder()->AppendPass(pass);
     }
   }
@@ -302,20 +306,6 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder()->EnableCUDNN();
     }
-#endif
-  }
-
-  if (use_ngraph_) {
-    if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableNgraph() only works when IR optimization is enabled.";
-    }
-#ifdef PADDLE_WITH_NGRAPH
-    pass_builder()->EnableNgraph();
-    use_ngraph_ = true;
-#else
-    LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
-    use_ngraph_ = false;
 #endif
   }
 
@@ -364,6 +354,22 @@ void AnalysisConfig::Update() {
     }
   }
 
+  if (use_xpu_) {
+#ifndef PADDLE_WITH_XPU
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use an XPU device, but Paddle was not compiled "
+        "with XPU-runtime."));
+#endif
+    if (!use_lite_) {
+      LOG(WARNING) << "Because XPU currently only works in Paddle-Lite "
+                      "subgraph mode, please make sure you have enabled it.";
+    }
+    PADDLE_ENFORCE_EQ(use_gpu_, false,
+                      platform::errors::Unavailable(
+                          "Currently, XPU and GPU cannot be enabled in the "
+                          "same analysis configuration."));
+  }
+
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
@@ -387,8 +393,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << enable_memory_optim_;
 
-  ss << use_ngraph_;
-
   ss << use_mkldnn_;
   ss << mkldnn_cache_capacity_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
@@ -409,6 +413,10 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << cpu_math_library_num_threads_;
 
   ss << use_lite_;
+  ss << use_xpu_;
+  ss << xpu_l3_workspace_size_;
+
+  ss << thread_local_stream_;
 
   return ss.str();
 }
@@ -484,13 +492,14 @@ void AnalysisConfig::DisableGlogInfo() {
 }
 
 void AnalysisConfig::EnableLiteEngine(
-    AnalysisConfig::Precision precision_mode,
+    AnalysisConfig::Precision precision_mode, bool zero_copy,
     const std::vector<std::string> &passes_filter,
     const std::vector<std::string> &ops_filter) {
   use_lite_ = true;
   lite_precision_mode_ = precision_mode;
   lite_passes_filter_ = passes_filter;
   lite_ops_filter_ = ops_filter;
+  lite_zero_copy_ = zero_copy;
   Update();
 }
 
@@ -500,5 +509,7 @@ void AnalysisConfig::PartiallyRelease() {
   params_file_.clear();
   params_file_.shrink_to_fit();
 }
+
+void AnalysisConfig::EnableGpuMultiStream() { thread_local_stream_ = true; }
 
 }  // namespace paddle

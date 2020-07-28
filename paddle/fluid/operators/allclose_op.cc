@@ -103,8 +103,7 @@ class AllcloseOp : public framework::OperatorWithKernel {
 class AllcloseOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto out_var_name = ctx->Output("Out").front();
-    ctx->SetDataType(out_var_name, framework::proto::VarType::BOOL);
+    ctx->SetOutputDataType("Out", framework::proto::VarType::BOOL);
   }
 };
 

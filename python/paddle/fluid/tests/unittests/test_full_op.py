@@ -37,72 +37,54 @@ class TestFullAPI(unittest.TestCase):
         shape_tensor_int64 = fluid.data(
             name="shape_tensor_int64", shape=[2], dtype="int64")
 
-        out_1 = paddle.full(
-            shape=[1, 2], dtype="float32", fill_value=1.1, device='gpu')
+        out_1 = paddle.full(shape=[1, 2], dtype="float32", fill_value=1.1)
 
         out_2 = paddle.full(
-            shape=[1, positive_2_int32],
-            dtype="float32",
-            fill_value=1.1,
-            device='cpu')
+            shape=[1, positive_2_int32], dtype="float32", fill_value=1.1)
 
         out_3 = paddle.full(
-            shape=[1, positive_2_int64],
-            dtype="float32",
-            fill_value=1.1,
-            device='gpu')
+            shape=[1, positive_2_int64], dtype="float32", fill_value=1.1)
 
         out_4 = paddle.full(
-            shape=shape_tensor_int32,
-            dtype="float32",
-            fill_value=1.2,
-            out=out_3)
+            shape=shape_tensor_int32, dtype="float32", fill_value=1.2)
 
         out_5 = paddle.full(
-            shape=shape_tensor_int64,
-            dtype="float32",
-            fill_value=1.1,
-            device='gpu',
-            stop_gradient=False)
+            shape=shape_tensor_int64, dtype="float32", fill_value=1.1)
 
         out_6 = paddle.full(
             shape=shape_tensor_int64, dtype=np.float32, fill_value=1.1)
 
+        val = fluid.layers.fill_constant(shape=[1], dtype=np.float32, value=1.1)
+        out_7 = paddle.full(
+            shape=shape_tensor_int64, dtype=np.float32, fill_value=val)
+
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
+        res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
             fluid.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([1, 2]).astype("int32"),
                 "shape_tensor_int64": np.array([1, 2]).astype("int64"),
             },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6])
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7])
 
         assert np.array_equal(res_1, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_2, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_3, np.full([1, 2], 1.2, dtype="float32"))
+        assert np.array_equal(res_3, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_4, np.full([1, 2], 1.2, dtype="float32"))
         assert np.array_equal(res_5, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_6, np.full([1, 2], 1.1, dtype="float32"))
+        assert np.array_equal(res_7, np.full([1, 2], 1.1, dtype="float32"))
 
 
 class TestFullOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             #for ci coverage
-            x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
             self.assertRaises(
                 ValueError, paddle.full, shape=[1], fill_value=5, dtype='uint4')
-            self.assertRaises(
-                TypeError,
-                paddle.full,
-                shape=[1],
-                fill_value=5,
-                dtype='int16',
-                out=x1)
 
             # The argument dtype of full must be one of bool, float16,
             #float32, float64, int32 or int64
-            x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
 
             self.assertRaises(
                 TypeError, paddle.full, shape=[1], fill_value=5, dtype='uint8')

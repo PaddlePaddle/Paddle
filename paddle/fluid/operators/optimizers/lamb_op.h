@@ -177,11 +177,12 @@ class LambOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.InputNames("Param").front(),
-                   framework::ToTypeName(param_var->Type()));
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Param").front(),
+                          framework::ToTypeName(param_var->Type())));
 
     using paddle::framework::LoDTensor;
 
@@ -274,7 +275,10 @@ class LambOpKernel : public framework::OpKernel<T> {
           row_numel, grad_merge.rows().size());
       for_range(moment_update_functor);
     } else {
-      PADDLE_THROW("Variable type not supported by lamb_op.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Variable type not supported by lamb_op. Expect LoDTensor or "
+          "SelectedRows, but got %s",
+          framework::ToTypeName(param_var->Type())));
     }
 
     // Update parameter

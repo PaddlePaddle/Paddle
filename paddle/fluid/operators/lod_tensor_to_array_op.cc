@@ -221,9 +221,8 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
 class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    for (auto &out_var : ctx->Output("Out")) {
-      ctx->SetType(out_var, framework::proto::VarType::LOD_TENSOR_ARRAY);
-    }
+    ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR_ARRAY,
+                       framework::ALL_ELEMENTS);
   }
 };
 

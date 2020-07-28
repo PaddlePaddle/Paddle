@@ -45,9 +45,10 @@ void TransformData(const OpKernelType &expected_kernel_type,
   if (NeedTransformLayout(lout, lin)) {
 #ifdef PADDLE_WITH_MKLDNN
     if (lin == DataLayout::kMKLDNN || lout == DataLayout::kMKLDNN) {
-      PADDLE_ENFORCE(
-          !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN),
-          "No layout transform needed between two MKLDNN OPKernels");
+      PADDLE_ENFORCE_EQ(
+          !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN), true,
+          platform::errors::PreconditionNotMet(
+              "No layout transform needed between two MKLDNN OPKernels."));
 
       if (lin != DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN) {
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
@@ -59,7 +60,8 @@ void TransformData(const OpKernelType &expected_kernel_type,
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
         platform::MatchShapeToLayout(&out, lin, lout);
-        paddle::platform::set_cur_paddle_data_layout(lin);
+        paddle::platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+            lin);
         out.set_layout(DataLayout::kMKLDNN);
         out.set_format(out_format);
       } else {
@@ -95,7 +97,10 @@ void TransformData(const OpKernelType &expected_kernel_type,
     PassTensorData(&out, &in);
   }
 
-  PADDLE_ENFORCE(transformed, "No transform is applied, please check!");
+  PADDLE_ENFORCE_EQ(
+      transformed, true,
+      platform::errors::PreconditionNotMet(
+          "No transform is applied for the data needs to be transformed."));
   // get output data
   output_tensor->ShareDataWith(in);
 }
@@ -115,7 +120,10 @@ void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
     trans_selected_rows->set_rows(in_selected_rows.rows());
     trans_selected_rows->mutable_value()->ShareDataWith(tensor);
   } else {
-    PADDLE_THROW("unknown var type");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported variable type, only supports LoDTensor or SelectedRows, "
+        "but the input variable type is %s.",
+        ToTypeName(in_var.Type())));
   }
 }
 

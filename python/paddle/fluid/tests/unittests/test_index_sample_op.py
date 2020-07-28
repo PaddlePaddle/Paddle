@@ -32,6 +32,7 @@ class TestIndexSampleOp(OpTest):
         for i in range(self.index_shape[0]):
             for j in indexnp[i]:
                 index_array.append(xnp[i, j])
+        index_array = np.array(index_array).astype(self.x_type)
         out = np.reshape(index_array, self.index_shape)
         self.outputs = {'Out': out}
 

@@ -41,39 +41,41 @@ void IndexSampleInner(const framework::ExecutionContext &context,
   auto value_length = input_dims[1];
   auto index_length = index_dims[1];
   int index_ids_num = index.numel();
-  auto *input_data = input.data<T>();
-  auto *index_data = index.data<IndexT>();
 
-  std::vector<T> res{};
+  std::vector<T> input_vec;
+  std::vector<IndexT> index_vec;
+  TensorToVector(input, context.device_context(), &input_vec);
+  TensorToVector(index, context.device_context(), &index_vec);
+
+  std::vector<T> res(index_ids_num);
   for (int i = 0; i < index_ids_num; i++) {
     int b = floor(i / index_length);
     PADDLE_ENFORCE_GE(
-        index_data[i], 0,
+        index_vec[i], 0,
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_sample) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            value_length, index_data[i]));
+            value_length, index_vec[i]));
     PADDLE_ENFORCE_LT(
-        index_data[i], value_length,
+        index_vec[i], value_length,
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_sample) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            value_length, index_data[i]));
+            value_length, index_vec[i]));
 
-    int v_i = b * value_length + static_cast<int>(index_data[i]);
-    T v = input_data[v_i];
+    int v_i = b * value_length + static_cast<int>(index_vec[i]);
+    T v = input_vec[v_i];
     VLOG(4) << "Index Sample: batch = " << b << " index = " << v_i
             << " value = " << v;
-    res.push_back(v);
+    res[i] = v;
   }
 
   auto ddim = framework::make_ddim({batch_size, index_length});
+  output->mutable_data<T>(context.GetPlace());
+  framework::TensorFromVector(res, context.device_context(), output);
   output->Resize(ddim);
-  T *out_data = output->mutable_data<T>(context.GetPlace());
-
-  memcpy(out_data, &res[0], sizeof(T) * index_ids_num);
 }
 
 template <typename DeviceContext, typename T>
@@ -113,39 +115,42 @@ template <typename T, typename IndexT = int>
 void IndexSampleGradInner(const framework::ExecutionContext &context,
                           const LoDTensor &out_grad, const LoDTensor &index,
                           LoDTensor *x_grad) {
+  std::vector<T> out_grad_vec;
+  std::vector<IndexT> index_vec;
+  TensorToVector(out_grad, context.device_context(), &out_grad_vec);
+  TensorToVector(index, context.device_context(), &index_vec);
+
   auto index_dims = index.dims();
   auto x_grad_dims = x_grad->dims();
 
-  int batch_size = x_grad_dims[0];
   auto value_length = x_grad_dims[1];
   auto index_length = index_dims[1];
   int index_ids_num = index.numel();
 
-  T *x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
-  auto *out_grad_data = out_grad.data<T>();
-  auto *index_data = index.data<IndexT>();
-
-  memset(x_grad_data, 0, batch_size * value_length * sizeof(T));
+  std::vector<T> x_grad_vec(x_grad->numel(), 0);
 
   for (int i = 0; i < index_ids_num; i++) {
     int b = floor(i / index_length);
     PADDLE_ENFORCE_GE(
-        index_data[i], 0,
+        index_vec[i], 0,
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_sample_grad) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            value_length, index_data[i]));
+            value_length, index_vec[i]));
     PADDLE_ENFORCE_LT(
-        index_data[i], value_length,
+        index_vec[i], value_length,
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_sample_grad) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            value_length, index_data[i]));
-    int v_i = b * value_length + static_cast<int>(index_data[i]);
-    x_grad_data[v_i] += out_grad_data[i];
+            value_length, index_vec[i]));
+    int v_i = b * value_length + static_cast<int>(index_vec[i]);
+    x_grad_vec[v_i] += out_grad_vec[i];
   }
+  x_grad->mutable_data<T>(context.GetPlace());
+  framework::TensorFromVector(x_grad_vec, context.device_context(), x_grad);
+  x_grad->Resize(x_grad_dims);
 }
 
 template <typename DeviceContext, typename T>

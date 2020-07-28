@@ -49,9 +49,12 @@ __all__ = [
     'in_dygraph_mode',
     'is_compiled_with_cuda',
     'Variable',
+    'ComplexVariable',
     'load_op_library',
     'require_version',
     'device_guard',
+    'set_flags',
+    'get_flags',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -63,6 +66,7 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
 _current_device = None
+global_prog_seed = 0
 
 
 def require_version(min_version, max_version=None):
@@ -174,6 +178,10 @@ def require_version(min_version, max_version=None):
 
 def in_dygraph_mode():
     """
+    :alias_main: paddle.in_dygraph_mode
+	:alias: paddle.in_dygraph_mode
+	:old_api: paddle.fluid.framework.in_dygraph_mode
+
     This function checks whether the program runs in dynamic graph mode or not.
     You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
     or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
@@ -198,7 +206,7 @@ def in_dygraph_mode():
 def _dygraph_not_support_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We don't support %s in Dygraph mode" % func.__name__
+        ), "We don't support %s in imperative mode" % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -207,14 +215,31 @@ def _dygraph_not_support_(func):
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
         assert in_dygraph_mode(
-        ), "We Only support %s in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode" % func.__name__
+        ), "We Only support %s in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative Mode" % func.__name__
         return func(*args, **kwargs)
+
+    return __impl__
+
+
+# NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
+# used to make Variable and VarBase has same interfaces, like numpy. Since VarBase is not exposed in our
+# official docments, logically, we want to keep VarBase and logically consistent. While, actually,
+# in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
+# So, those APIs are listed under class Variable to generate docs only.
+# TODO(zhiqiu): We should make VarBase consistent with Variable in future, for example, by inheritting
+# same base class. 
+def _fake_interface_only_(func):
+    def __impl__(*args, **kwargs):
+        raise AssertionError(
+            "'%s' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
+            % func.__name__)
 
     return __impl__
 
 
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
+fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 
 def _dygraph_tracer():
@@ -414,6 +439,8 @@ _name_scope = NameScope()
 @signature_safe_contextmanager
 def name_scope(prefix=None):
     """
+    :api_attr: Static Graph
+
     Generate hierarchical name prefix for the operators.
 
     Note: 
@@ -465,8 +492,10 @@ def name_scope(prefix=None):
         assert prefix, "namescope prefix can not be empty."
         global _name_scope
         _name_scope = _name_scope.child(prefix)
-        yield
-        _name_scope = _name_scope.parent()
+        try:
+            yield
+        finally:
+            _name_scope = _name_scope.parent()
 
 
 def _full_name_scope():
@@ -587,7 +616,6 @@ class VariableMetaClass(type):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
-
             return issubclass(t, core.VarBase)
         else:
             return issubclass(t, Variable)
@@ -624,6 +652,7 @@ def _getitem_impl_(var, item):
     slice_step = []
     use_strided_slice = False
     reverse_axis = []
+    target_block = default_main_program().current_block()
 
     def fill_constant(shape, value, force_cpu=False, out=None):
         var.block.append_op(
@@ -635,8 +664,7 @@ def _getitem_impl_(var, item):
                 'dtype': out.dtype,
                 'value': float(value),
                 'force_cpu': force_cpu
-            },
-            stop_gradient=True)
+            })
         out.stop_gradient = True
         return out
 
@@ -676,10 +704,10 @@ def _getitem_impl_(var, item):
             slice_start.append(slice_item)
             slice_step.append(1)
             if isinstance(slice_item, Variable):
-                temp_1 = var.block.create_var(dtype='int32')
+                temp_1 = var.block.create_var(dtype=slice_item.dtype)
                 fill_constant([1], 1, force_cpu=True, out=temp_1)
-                temp_end = var.block.create_var(dtype='int32')
-                var.block.append_op(
+                temp_end = target_block.create_var(dtype=slice_item.dtype)
+                target_block.append_op(
                     type='elementwise_add',
                     inputs={'X': slice_item,
                             'Y': temp_1},
@@ -762,11 +790,11 @@ def _getitem_impl_(var, item):
     out = var
     if use_strided_slice == False and len(slice_axis) > 0:
         # append slice_op here
-        slice_out_var = var.block.create_var(
+        slice_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name + "_slice"),
             dtype=var.dtype)
 
-        var.block.append_op(
+        target_block.append_op(
             type="slice",
             inputs=inputs,
             outputs={'Out': [slice_out_var]},
@@ -774,11 +802,11 @@ def _getitem_impl_(var, item):
 
         out = slice_out_var
     elif use_strided_slice == True and len(slice_axis) > 0:
-        strided_slice_out_var = var.block.create_var(
+        strided_slice_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name +
                                                          "_strided_slice"),
             dtype=var.dtype)
-        var.block.append_op(
+        target_block.append_op(
             type="strided_slice",
             inputs=inputs,
             outputs={'Out': [strided_slice_out_var]},
@@ -787,11 +815,11 @@ def _getitem_impl_(var, item):
         out = strided_slice_out_var
 
     if len(reverse_axis) > 0:
-        reverse_out_var = var.block.create_var(
+        reverse_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name +
                                                          "_slice_reverse"),
             dtype=var.dtype)
-        var.block.append_op(
+        target_block.append_op(
             type="reverse",
             inputs={'X': out},
             outputs={'Out': [reverse_out_var]},
@@ -949,7 +977,7 @@ class Variable(object):
         self._stop_gradient = stop_gradient
         self.is_data = is_data
 
-    @dygraph_only
+    @fake_interface_only
     def detach(self):
         """
         **Notes**:
@@ -979,7 +1007,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def numpy(self):
         """
         **Notes**:
@@ -1011,7 +1039,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def set_value(self, value):
         """
         **Notes**:
@@ -1042,7 +1070,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def backward(self, backward_strategy=None):
         """
         **Notes**:
@@ -1080,7 +1108,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def gradient(self):
         """
         **Notes**:
@@ -1128,7 +1156,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def clear_gradient(self):
         """
         **Notes**:
@@ -1166,7 +1194,50 @@ class Variable(object):
         pass
 
     def __str__(self):
-        return self.to_string(True)
+        return self._to_readable_code()
+
+    def _to_readable_code(self):
+        """
+        Get readable debug string of Variable.
+
+        .. note::
+            If you want to get the debug string in protobuf format,
+            please use :code:`to_string` method.
+
+        Returns:
+            string: The formatted Variable string.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                cur_program = fluid.Program()
+                cur_block = cur_program.current_block()
+                new_variable = cur_block.create_var(name="X",
+                                                    shape=[-1, 23, 48],
+                                                    dtype='float32')
+                print(new_variable._to_readable_code())
+        """
+        if self.type == core.VarDesc.VarType.SELECTED_ROWS or self.type == core.VarDesc.VarType.LOD_TENSOR:
+            var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
+                format(i="{", e="}", name=self.name, type=self.type, shape=self.shape, dtype=self.dtype)
+        else:
+            var_str = "{name} : fluid.{type})".\
+                format(i="{", e="}", name=self.name, type=self.type)
+
+        if type(self) == Parameter:
+            if self.trainable:
+                var_str = "trainable param " + var_str
+            else:
+                var_str = "param " + var_str
+        else:
+            var_str = "var " + var_str
+
+        if self.persistable:
+            var_str = "persist " + var_str
+
+        return var_str
 
     def to_string(self, throw_on_error, with_details=False):
         """
@@ -1195,9 +1266,6 @@ class Variable(object):
                 print("=============with detail===============")
                 print(new_variable.to_string(True, True))
         """
-        if in_dygraph_mode():
-            return
-
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
         protostr = self.desc.serialize_to_string()
@@ -1244,17 +1312,11 @@ class Variable(object):
                 assert linear.weight.gradient() is None
                 assert (out1.gradient() == 0).all()
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self._stop_gradient
+        return self._stop_gradient
 
     @stop_gradient.setter
     def stop_gradient(self, s):
-        if in_dygraph_mode():
-            pass
-        else:
-            self._stop_gradient = s
+        self._stop_gradient = s
 
     @property
     def persistable(self):
@@ -1279,19 +1341,11 @@ class Variable(object):
                                                 dtype='float32')
             print("persistable of current Var is: {}".format(new_variable.persistable))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self.desc.persistable()
+        return self.desc.persistable()
 
     @persistable.setter
     def persistable(self, p):
-        if in_dygraph_mode():
-            logging.warn(
-                "There will be no use to set persistable in Dygraph Mode, since "
-                "you can just do it by hold it as normal Python variable")
-        else:
-            self.desc.set_persistable(p)
+        self.desc.set_persistable(p)
 
     @property
     def name(self):
@@ -1311,10 +1365,7 @@ class Variable(object):
                                                 dtype='float32')
             print("name of current Var is: {}".format(new_variable.name))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return cpt.to_text(self.desc.name())
+        return cpt.to_text(self.desc.name())
 
     @property
     def grad_name(self):
@@ -1338,10 +1389,7 @@ class Variable(object):
 
     @name.setter
     def name(self, new_name):
-        if in_dygraph_mode():
-            pass
-        else:
-            self.desc.set_name(new_name)
+        self.desc.set_name(new_name)
 
     @property
     def shape(self):
@@ -1363,10 +1411,7 @@ class Variable(object):
 
         """
         # convert to tuple, make it as same as numpy API.
-        if in_dygraph_mode():
-            pass
-        else:
-            return tuple(self.desc.shape())
+        return tuple(self.desc.shape())
 
     @property
     def dtype(self):
@@ -1386,13 +1431,9 @@ class Variable(object):
                                                 dtype='float32')
             print("Dtype of current Var is: {}".format(new_variable.dtype))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self.desc.dtype()
+        return self.desc.dtype()
 
     @property
-    @dygraph_not_support
     def lod_level(self):
         """
         Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_fluid_LoDTensor_en` to check the meaning
@@ -1415,10 +1456,6 @@ class Variable(object):
                                                 dtype='float32')
             print("LoD Level of current Var is: {}".format(new_variable.lod_level))
         """
-        # TODO(minqiyang): Support lod_level in dygraph mode
-        if in_dygraph_mode():
-            raise Exception("Dygraph model DO NOT supprt lod")
-
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
             raise Exception("SelectedRows DO NOT supprt lod")
 
@@ -1442,10 +1479,7 @@ class Variable(object):
                                                 dtype='float32')
             print("Type of current Var is: {}".format(new_variable.type))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self.desc.type()
+        return self.desc.type()
 
     def _set_error_clip(self, error_clip):
         """
@@ -1653,6 +1687,87 @@ def get_all_op_protos():
     return ret_values
 
 
+class ComplexVariable(object):
+    """
+    The Variable defined on the complex number domain. It contains two common 
+    real number Variables as its members, :attr:`real` and :attr:`imag` 
+    holding the real part and imaginary part of complex numbers respectively.
+    
+    **Notes**:
+        **The constructor of ComplexVariable should not be invoked directly.**
+
+        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph ComplexVariable with complex number data.**
+
+    Args:
+        real (Variable): The Variable holding real-part data.
+        imag (Variable): The Variable holding imaginery-part data.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            a = np.array([1.0+2.0j, 0.2])
+            with fluid.dygraph.guard():
+                var = fluid.dygraph.to_variable(a, name="new_var")
+                print(var.name, var.dtype, var.shape)
+                # ({'real': u'new_var.real', 'imag': u'new_var.imag'}, 'complex128', [2L]) 
+                print(var.numpy())
+                # [1. +2.j 0.2+0.j]
+    """
+
+    def __init__(self, real, imag):
+        assert real.shape == imag.shape, "The real part and imaginary part " \
+            "of a ComplexVariable should have the same shape!"
+        assert real.dtype == imag.dtype, "The real part and imaginary part " \
+            "of a ComplexVariable should have the same data type!"
+
+        self.real = real
+        self.imag = imag
+        if self.real.dtype in [
+                core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32
+        ]:
+            self._dtype = "complex64"
+        else:
+            self._dtype = "complex128"
+        self._shape = self.real.shape
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def name(self):
+        return {"real": self.real.name, "imag": self.imag.name}
+
+    @name.setter
+    def name(self, name):
+        # rename
+        if isinstance(name, str):
+            self.real.name = name + ".real"
+            self.imag.name = name + ".imag"
+        elif (isinstance(name, tuple) or isinstance(name,
+                                                    list)) and len(name) == 2:
+            self.real.name, self.imag.name = name[0], name[1]
+        else:
+            raise ValueError(
+                "An invalid name assigned to the ComplexVariable, "
+                "which must be a string, or a tuple or a list with length 2!")
+
+    def numpy(self):
+        return self.real.numpy() + 1j * self.imag.numpy()
+
+    def __str__(self):
+        return "REAL: " + self.real.__str__() + "IMAG: " + self.imag.__str__()
+
+    __repr__ = __str__
+
+
 class OpProtoHolder(object):
     """
     A global variable to hold all OpProtos from C++ as a map
@@ -1751,7 +1866,7 @@ class Operator(object):
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
         'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream'
+        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue'
     }
 
     def __init__(self,
@@ -1850,7 +1965,7 @@ class Operator(object):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            elif isinstance(arg, Variable):
+                            elif isinstance(arg, (Variable, core.VarBase)):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
                                 raise TypeError(
@@ -1924,17 +2039,107 @@ class Operator(object):
         proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
         return _debug_string_(proto, throw_on_error)
 
+    def _to_readable_code(self, skip_op_callstack=True):
+        """
+        Get readable debug string of Operator.
+
+        .. note::
+            If you want to get the debug string in protobuf format,
+            please use :code:`to_string` method.
+
+        Args:
+            skip_op_callstack(bool): whether to skip parsing Operator's attribute
+                op_callstack, default value is True
+
+        Returns:
+            string: The formatted Operator string.
+
+        Examples:
+            .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            var = cur_block.create_var(name="X",
+                                       shape=[-1, 23, 48],
+                                       dtype='float32')
+            new_op = cur_block.append_op(type="abs",
+                                inputs={"X": [var]},
+                                outputs={"Out": [var]})
+            print(new_op._to_readable_code())
+        """
+        assert isinstance(
+            skip_op_callstack, bool
+        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+            type(skip_op_callstack))
+        outputs_str = "{"
+        for i in range(0, len(self.output_names)):
+            outputs_str += "{name}=".format(name=self.output_names[i])
+            o = self.output(self.output_names[i])
+            outputs_str += "{value}".format(value=o)
+            if i != len(self.output_names) - 1:
+                outputs_str += ", "
+        outputs_str += "}"
+
+        inputs_str = "{"
+        for i in range(0, len(self.input_names)):
+            inputs_str += "{name}=".format(name=self.input_names[i])
+            o = self.input(self.input_names[i])
+            inputs_str += "{value}".format(value=o)
+
+            if i != len(self.input_names) - 1:
+                inputs_str += ", "
+        inputs_str += "}"
+
+        attr_names = sorted(self.attr_names)
+        attrs_str = ""
+        for i in range(0, len(attr_names)):
+            name = attr_names[i]
+            if skip_op_callstack and name == "op_callstack":
+                continue
+
+            attr_type = self.desc.attr_type(name)
+            if attr_type == core.AttrType.BLOCK:
+                a = "{name} = block[{value}]".format(
+                    name=name, type=attr_type, value=self._block_attr_id(name))
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
+            if attr_type == core.AttrType.BLOCKS:
+                a = "{name} = blocks{value}".format(
+                    name=name,
+                    type=attr_type,
+                    value=self._blocks_attr_ids(name))
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
+            a = "{name} = {value}".format(
+                name=name, type=attr_type, value=self.desc.attr(name))
+            attrs_str += a
+            if i != len(attr_names) - 1:
+                attrs_str += ", "
+
+        if outputs_str != "{}":
+            op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
+                format(outputs = outputs_str, op_type=self.type, inputs=inputs_str, attrs=attrs_str)
+        else:
+            op_str = "{op_type}(inputs={inputs}, {attrs})".\
+                format(op_type=self.type, inputs=inputs_str, attrs=attrs_str)
+        return op_str
+
     def __str__(self):
-        return self.to_string(True)
+        return self._to_readable_code()
 
     __repr__ = __str__
 
     @property
     def type(self):
-        if in_dygraph_mode():
-            return self._type
-        else:
-            return self.desc.type()
+        return self.desc.type()
 
     def input(self, name):
         """
@@ -2222,7 +2427,52 @@ class Block(object):
         self.removed_vars = collections.OrderedDict()
 
     def __str__(self):
-        return self.to_string(True)
+        return self._to_readable_code()
+
+    def _to_readable_code(self, skip_op_callstack=True):
+        """
+        Get readable debug string of Block.
+
+        .. note::
+            If you want to get the debug string in protobuf format,
+            please use :code:`to_string` method.
+
+        Args:
+            skip_op_callstack(bool): whether to skip parsing Operator's attribute
+                op_callstack, default value is True
+
+        Returns:
+            string: The formatted Block string.
+
+        Examples:
+            .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_var = cur_block.create_var(name="X",
+                                           shape=[-1, 23, 48],
+                                           dtype='float32')
+            new_op = cur_block.append_op(type="abs",
+                                inputs={"X": [new_var]},
+                                outputs={"Out": [new_var]})
+            print(cur_block._to_readable_code())
+        """
+        assert isinstance(
+            skip_op_callstack, bool
+        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+            type(skip_op_callstack))
+        block_str = "{ // block "
+        block_str += "{}\n".format(self.idx)
+        for var in list(self.vars.values()):
+            block_str += "    {}\n".format(var._to_readable_code())
+        block_str += "\n"
+        for op in self.ops:
+            block_str += "    {}\n".format(
+                op._to_readable_code(skip_op_callstack))
+        block_str += "}"
+        return block_str
 
     def to_string(self, throw_on_error, with_details=False):
         """
@@ -2518,16 +2768,7 @@ class Block(object):
         """
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
-            if _dygraph_tracer_._train_mode == False:
-                # eval mode
-                if ('trainable_statistics' not in attrs
-                    ) or not attrs['trainable_statistics']:
-                    attrs['is_test'] = True
-                else:
-                    attrs['is_test'] = False
-
             type = kwargs.get("type", None)
-
             op = Operator(
                 block=self,
                 desc=None,
@@ -3099,8 +3340,6 @@ class IrOpNode(IrNode):
         """
         assert self.node.op() is not None, \
             "The node operator description can not be None."
-        print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
-        ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
 
     def input(self, name):
@@ -3323,6 +3562,12 @@ class IrGraph(object):
         var_desc.set_shape(shape)
         var_desc.set_dtype(var_dtype)
         return IrVarNode(self.graph.create_var_node(var_desc))
+
+    def create_control_dep_var(self):
+        """
+        create a control var
+        """
+        return IrVarNode(self.graph.create_control_dep_var())
 
     def create_var_node_from_desc(self, var_desc):
         """
@@ -3651,7 +3896,8 @@ class Program(object):
         self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
-        self._seed = 0
+        global global_prog_seed
+        self._seed = global_prog_seed
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self.__op_role_var = []
 
@@ -3690,6 +3936,33 @@ class Program(object):
         # appending gradients times
         self._appending_grad_times = 0
 
+    def global_seed(self, seed=0):
+        """
+        Set global seed for Program
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                prog = fluid.default_main_program()
+                print(prog.random_seed)
+                ## 0
+                ## the default random seed is 0
+
+                prog.global_seed(102)
+                prog1 = fluid.default_main_program()
+                print(prog1.random_seed)
+                ## 102
+                ## the random seed is 102
+        """
+        global global_prog_seed
+        global_prog_seed = seed
+        self._seed = global_prog_seed
+
     @property
     def _op_role(self):
         """
@@ -3722,14 +3995,16 @@ class Program(object):
         """
         return self.__op_role_var
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def _backward_role_guard(self):
         tmp_role = self._current_role
 
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Backward
-        yield
-        self._current_role = tmp_role
+        try:
+            yield
+        finally:
+            self._current_role = tmp_role
 
     @signature_safe_contextmanager
     def _optimized_guard(self, param_and_grads):
@@ -3758,9 +4033,11 @@ class Program(object):
             var.name if isinstance(var, Variable) else var
             for var in param_and_grads
         ]
-        yield
-        self.__op_role_var = tmp_var
-        self._current_role = tmp_role
+        try:
+            yield
+        finally:
+            self.__op_role_var = tmp_var
+            self._current_role = tmp_role
 
     @signature_safe_contextmanager
     def _lr_schedule_guard(self, is_with_opt=False):
@@ -3793,9 +4070,11 @@ class Program(object):
             self._current_role = int(OpRole.LRSched) | int(OpRole.Optimize)
         # TODO(typhoonzero): how to set target learning rate var
         self.__op_role_var = []
-        yield
-        self.__op_role_var = tmp_var
-        self._current_role = tmp_role
+        try:
+            yield
+        finally:
+            self.__op_role_var = tmp_var
+            self._current_role = tmp_role
 
     def __str__(self):
         """
@@ -3807,7 +4086,47 @@ class Program(object):
         Raises:
             ValueError: If any of required fields is not set.
         """
-        return self.to_string(True)
+        return self._to_readable_code()
+
+    def _to_readable_code(self, skip_op_callstack=True):
+        """
+        Get readable debug string of Program.
+
+        .. note::
+            If you want to get the debug string in protobuf format,
+            please use :code:`to_string` method.
+
+        Args:
+            skip_op_callstack(bool): whether to skip parsing Operator's attribute
+                op_callstack, default value is True
+
+        Returns:
+            string: The formatted Program string.
+
+        Examples:
+            .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_var = cur_block.create_var(name="X",
+                                           shape=[-1, 23, 48],
+                                           dtype='float32')
+            new_op = cur_block.append_op(type="abs",
+                                inputs={"X": [new_var]},
+                                outputs={"Out": [new_var]})
+            print(cur_program._to_readable_code())
+        """
+        assert isinstance(
+            skip_op_callstack, bool
+        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+            type(skip_op_callstack))
+        program_str = ""
+        for block in self.blocks:
+            program_str += block._to_readable_code(skip_op_callstack)
+            program_str += '\n'
+        return program_str
 
     def to_string(self, throw_on_error, with_details=False):
         """
@@ -3831,13 +4150,22 @@ class Program(object):
                 import paddle.fluid as fluid
 
                 prog = fluid.default_main_program()
+                x = fluid.layers.data(name="X", shape=[2,3], dtype="float32", append_batch_size=False)
+                pred = fluid.layers.fc(x, size=3)
                 prog_string = prog.to_string(throw_on_error=True, with_details=False)
+                prog_string_with_details = prog.to_string(throw_on_error=False, with_details=True)
                 print("program string without detail: {}".format(prog_string))
-                prog_string_with_detail = prog.to_string(throw_on_error=True, with_details=True)
-                print("program string with detail: {}".format(prog_string_with_detail))
+                print("program string with detail: {}".format(prog_string_with_details))
         """
-        assert isinstance(throw_on_error, bool) and isinstance(with_details,
-                                                               bool)
+        assert isinstance(
+            throw_on_error, bool
+        ), "The type of throw_on_error parameter is wrong, expected bool, but received {}.".format(
+            type(throw_on_error))
+        assert isinstance(
+            with_details, bool
+        ), "The type of with_details parameter is wrong, expected bool, but received {}.".format(
+            type(with_details))
+
         if with_details:
             res_str = ""
             for block in self.blocks:
@@ -3862,7 +4190,6 @@ class Program(object):
     def _version(self):
         return self.desc._version()
 
-    @dygraph_not_support
     def clone(self, for_test=False):
         """
         **Notes**:
@@ -3873,34 +4200,38 @@ class Program(object):
             **3. This API has no effect in Dygraph Mode**
 
         Create a new Program with forward content of original one when ``for_test=True``.
-        Create a new Program as the same as original one when ``for_test=False``
-
+        Create a new Program as same as the original one when ``for_test=False``.
 
         Some operators, e.g., :ref:`api_fluid_layers_batch_norm` , behave differently between
         training and testing. They have an attribute, :code:`is_test`, to
         control this behaviour. This method will change the :code:`is_test`
         attribute of them to :code:`True` when :code:`for_test=True`.
 
-        * Set for_test to False when we want to clone the program for training.
-        * Set for_test to True when we want to clone the program for testing.
+        * Set for_test to False when you want to clone the program for training.
+        * Set for_test to True when you want to clone the program for testing.
           We will prune the backward and optimize part of the program when you
           use :code:`clone` after :code:`Opimizer.minimize`, but we still
           recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
         For Example:
-            .. code-block:: python
+          ::
 
-                test_program = fluid.default_main_program().clone(for_test=True)
-                # Here we use clone before Momentum
-                optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-                optimizer.minimize()
+            import paddle.fluid as fluid
+            img = fluid.layers.data(name='image', shape=[784])
+            pred = fluid.layers.fc(input=img, size=10, act='relu')
+            loss = fluid.layers.mean(pred)
+            # Here we use clone before Momentum
+            test_program = fluid.default_main_program().clone(for_test=True)
+            optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+            optimizer.minimize(loss)
 
         Args:
 
-            for_test (bool): True if change the :code:`is_test` attribute of operators to :code:`True`.
+            for_test (bool): True if change the :code:`is_test` attribute of operators to :code:`True`
+                and prune the backward and optimize part of the program. The default value is :code:`False` .
 
         Returns:
-            Program: A new Program with forward content of original one when ``for_test=True``.  A new Program as the same as original one when ``for_test=False``
+            Program: A new Program with forward content of original one when ``for_test=True``.  A new Program as same as the original one when ``for_test=False``
 
 
         Examples:
@@ -3914,7 +4245,6 @@ class Program(object):
 
                 import paddle.fluid as fluid
                 import six
-
 
                 def print_prog(prog):
                     for name, value in sorted(six.iteritems(prog.block(0).vars)):
@@ -3959,7 +4289,7 @@ class Program(object):
                                                       input=fluid.layers.fc(hidden, size=10, act='softmax'),
                                         label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
                             avg_loss = fluid.layers.mean(loss)
-                            test_program = train_program.clone(for_test=False)
+                            test_program = train_program.clone(for_test=True)
                     print_prog(test_program)
 
                     # Due to parameter sharing usage for train and test, so we need to use startup program of train
@@ -3992,7 +4322,8 @@ class Program(object):
                             for key, value in sorted(six.iteritems(op.all_attrs())):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
-                    def network(is_test):
+                    
+                    def network():
                         img = fluid.layers.data(name='image', shape=[784])
                         hidden = fluid.layers.fc(input=img, size=200, act='relu')
                         hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
@@ -4002,19 +4333,19 @@ class Program(object):
                         avg_loss = fluid.layers.mean(loss)
                         return avg_loss
 
-
                     train_program_2 = fluid.Program()
                     startup_program_2 = fluid.Program()
                     test_program_2 = fluid.Program()
                     with fluid.program_guard(train_program_2, startup_program_2):
                         with fluid.unique_name.guard():
-                             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                             sgd.minimize(avg_loss)
+                            avg_loss = network()
+                            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                            sgd.minimize(avg_loss)
                     # the test startup program is not used.
-                    with fluid.program_guard(test_program_2, fluid.Program()):
+                    with fluid.program_guard(test_program_2, startup_program_2):
                         with fluid.unique_name.guard():
-                            loss = network(is_test=True)
-                    print(test_program_2)
+                            avg_loss = network()
+                    print_prog(test_program_2)
 
         The two code snippets above will generate and print same programs.
         """
@@ -4103,8 +4434,9 @@ class Program(object):
 
         for var in feeded_var_names:
             if not isinstance(var, six.string_types):
-                raise ValueError("All feeded_var_names of prune() can only be "
-                                 "str.")
+                raise ValueError(
+                    "All feeded_var_names of Program._prune_with_input() can only be "
+                    "str, but received %s." % type(var))
 
         targets_idx = []
         for t in targets:
@@ -4114,8 +4446,17 @@ class Program(object):
                 elif isinstance(t, six.string_types):
                     name = str(t)
                 else:
-                    raise ValueError("All targets of prune() can only be "
-                                     "Variable or Operator.")
+                    raise ValueError(
+                        "All targets of Program._prune_with_input() can only be "
+                        "Variable or Operator, but received %s." % type(t))
+
+                # NOTEZ(zhiqiu): For variable to be fed in fetch_list, there two cases:
+                # (1) the variable is leaf, it has no op that generates it;
+                # (2) the variable is not leaf, and we need to prune the op that generates it.
+                # In both cases, wo can just skip target_op of that it.
+                if name in feeded_var_names:
+                    continue
+
                 # After transpiler processing, the op that output this
                 # variable maybe has been changed, so t.op is not reliable
                 # and we need to find the current op that generate this
@@ -4132,11 +4473,14 @@ class Program(object):
                         else:
                             target_op = op
                             break
-                t = target_op
-                if t is None:
-                    raise ValueError("The target variable must have an "
-                                     "associated operator that generates it.")
-            targets_idx.append([t.block.idx, t.idx])
+                if target_op is None:
+                    raise ValueError(
+                        "The target variable used for pruning should have an "
+                        "associated operator that generates it.")
+                else:
+                    targets_idx.append([target_op.block.idx, target_op.idx])
+            else:
+                targets_idx.append([t.block.idx, t.idx])
 
         res = Program()
         res.desc, pruned_origin_block_id_map = core.prune(self.desc,
@@ -4288,13 +4632,17 @@ class Program(object):
                 prog = fluid.default_main_program()
                 random_seed = prog.random_seed
                 x_var = fluid.layers.data(name="X", shape=[3,3], dtype="float32", append_batch_size=False)
+                print(random_seed)
+                ## 0
+                ## the default random seed is 0
 
                 # Here we need to set random seed before we use fluid.layers.dropout
-                print(random_seed)
                 prog.random_seed = 1
                 z_var = fluid.layers.dropout(x_var, 0.7)
 
                 print(prog.random_seed)
+                ## 1
+                ## the random seed is change to 1
         """
         return self._seed
 
@@ -4325,7 +4673,9 @@ class Program(object):
     @random_seed.setter
     def random_seed(self, seed):
         if not isinstance(seed, int):
-            raise ValueError("Seed must be a integer.")
+            raise ValueError(
+                "Program.random_seed's input seed must be an integer, but received %s."
+                % type(seed))
         self._seed = seed
 
     def __repr__(self):
@@ -4458,8 +4808,9 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_param_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
 
         self.global_block()._copy_param_info_from(other.global_block())
 
@@ -4474,8 +4825,9 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_dist_param_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
         self._is_distributed = other._is_distributed
         self._is_chief = other._is_chief
         self._parameters_on_pservers = other._parameters_on_pservers
@@ -4501,8 +4853,9 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_data_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
 
         if not pruned_origin_block_id_map:
             pruned_origin_block_id_map = {
@@ -4523,7 +4876,6 @@ class Program(object):
                 if other_var.stop_gradient:
                     var.stop_gradient = True
 
-    @dygraph_not_support
     def list_vars(self):
         """
         Get all :ref:`api_guide_Variable_en` from this Program. A iterable object is returned.
@@ -4546,7 +4898,6 @@ class Program(object):
             for each_var in list(each_block.vars.values()):
                 yield each_var
 
-    @dygraph_not_support
     def all_parameters(self):
         """
         Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
@@ -4669,7 +5020,7 @@ class Parameter(Variable):
         self.is_distributed = False
 
     def __str__(self):
-        return self.to_string(True)
+        return self._to_readable_code()
 
     def to_string(self, throw_on_error, with_details=False):
         """
@@ -4759,7 +5110,8 @@ class ParamBase(core.VarBase):
                                         list(shape) if shape else [], name,
                                         core.VarDesc.VarType.LOD_TENSOR, True)
 
-        self.trainable = kwargs.get('trainable', True)
+        trainable = kwargs.get('trainable', True)
+        self.stop_gradient = not trainable
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
@@ -4768,42 +5120,47 @@ class ParamBase(core.VarBase):
         self.do_model_average = kwargs.get('do_model_average', None)
 
         self.is_distributed = False
-
         # self.block = default_main_program().global_block()
 
+    @property
+    def trainable(self):
+        return not self.stop_gradient
+
+    @trainable.setter
+    def trainable(self, trainable):
+        if isinstance(trainable, bool):
+            self.stop_gradient = not trainable
+        else:
+            raise ValueError(
+                "The type of trainable MUST be bool, but the type is ",
+                type(trainable))
+
     def __str__(self):
-        return self.to_string(True)
-
-    def to_string(self, throw_on_error, with_details=False):
         """
-        To debug string.
+        Convert a ParamBase object to a readable string.
 
-        Args:
-            throw_on_error(bool): raise exception when self is not initialized
-                when throw_on_error is True
-            with_details(bool): more details about variables and parameters
-                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
-
-        Returns(str): The debug string.
+        Returns(str): A readable string.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                rlt = fluid.layers.data("fake_data", shape=[1,1], dtype='float32')
-                debug_str = prog.to_string(throw_on_error=True, with_details=False)
-                print(debug_str)
+                import paddle
+                paddle.enable_imperative()
+                conv = paddle.nn.Conv2D(3, 3, 5)
+                print(conv.weight)
+                # Parameter: conv2d_0.w_0
+                #   - place: CUDAPlace(0)
+                #   - shape: [3, 3, 5, 5]
+                #   - layout: NCHW
+                #   - dtype: float
+                #   - data: [...] 
+                paddle.disable_imperative()
         """
-        assert isinstance(throw_on_error, bool) and isinstance(with_details,
-                                                               bool)
         tensor = self.value().get_tensor()
         if tensor._is_initialized():
-            return 'name %s, dtype: %s shape: %s %s' % (self.name, self.dtype,
-                                                        self.shape, str(tensor))
+            return 'Parameter: %s\n%s' % (self.name, str(tensor))
         else:
-            return 'name %s, shape: %s, not inited' % (self.name, self.shape)
+            return 'Parameter: %s, not initialized' % (self.name)
 
     __repr__ = __str__
 
@@ -4935,6 +5292,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
+    :api_attr: Static Graph
+
     Change the global main program and startup program with `"with"` statement.
     Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
@@ -4971,17 +5330,19 @@ def program_guard(main_program, startup_program=None):
              data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
     
     """
-    if not isinstance(main_program, Program):
-        raise TypeError("main_program should be Program")
+    from .data_feeder import check_type
+    check_type(main_program, 'main_program', Program, 'fluid.program_guard')
     main_program = switch_main_program(main_program)
     if startup_program is not None:
-        if not isinstance(startup_program, Program):
-            raise TypeError("startup_program should be Program")
+        check_type(startup_program, 'startup_program', Program,
+                   'fluid.program_guard')
         startup_program = switch_startup_program(startup_program)
-    yield
-    switch_main_program(main_program)
-    if startup_program is not None:
-        switch_startup_program(startup_program)
+    try:
+        yield
+    finally:
+        switch_main_program(main_program)
+        if startup_program is not None:
+            switch_startup_program(startup_program)
 
 
 def _get_var(name, program=None):
@@ -5011,10 +5372,11 @@ def _dygraph_guard(tracer):
     _dygraph_tracer_ = tracer
     core._switch_tracer(tracer)
 
-    yield
-
-    core._switch_tracer(tmp_trace)
-    _dygraph_tracer_ = tmp_trace
+    try:
+        yield
+    finally:
+        core._switch_tracer(tmp_trace)
+        _dygraph_tracer_ = tmp_trace
 
 
 @signature_safe_contextmanager
@@ -5023,13 +5385,16 @@ def _dygraph_place_guard(place):
     tmp_place = _dygraph_current_expected_place_
     _dygraph_current_expected_place_ = place
 
-    yield
-
-    _dygraph_current_expected_place_ = tmp_place
+    try:
+        yield
+    finally:
+        _dygraph_current_expected_place_ = tmp_place
 
 
 def load_op_library(lib_filename):
     """
+    :api_attr: Static Graph
+    
     Load a dynamic library, including custom operators and kernels.
     When library is loaded, ops and kernels registered in the library
     will be available in PaddlePaddle main process.
@@ -5100,10 +5465,86 @@ def device_guard(device=None):
             result = exe.run(fetch_list=[out])
     """
 
+    index = None
+    if device and ':' in device:
+        device, index = device.split(':')
+        if device == 'cpu':
+            raise ValueError("Should not set device id for cpu.")
     if device not in ['cpu', 'gpu', '', None]:
         raise ValueError(
             "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
+    if index:
+        device = ":".join([device, index])
     pre_device = switch_device(device)
-    yield
-    switch_device(pre_device)
+    try:
+        yield
+    finally:
+        switch_device(pre_device)
+
+
+def set_flags(flags):
+    """
+    This function sets the GFlags value in Paddle.
+
+    Args:
+        flags (dict): A dict contains flags and its value.
+
+    Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                fluid.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
+    """
+    if not isinstance(flags, dict):
+        raise TypeError('flags in set_flags should be a dict')
+    for key, value in flags.items():
+        if core.globals().is_public(key):
+            core.globals()[key] = value
+        else:
+            raise ValueError(
+                "Flag %s cannot set its value through this function." % (key))
+
+
+def get_flags(flags):
+    """
+    This function gets the GFlags value in Paddle.
+
+    Args:
+        flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
+
+    Returns:
+        flag's value in Paddle.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
+            res = fluid.get_flags(flags)
+            print(res)
+            # {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
+    """
+    flags_value = {}
+    if isinstance(flags, (list, tuple)):
+        for key in flags:
+            if (core.globals().is_public(key)):
+                value = core.globals()[key]
+                temp = {key: value}
+                flags_value.update(temp)
+            else:
+                raise ValueError(
+                    'Flag %s cannot get its value through this function.' %
+                    (key))
+    elif isinstance(flags, str):
+        if (core.globals().is_public(flags)):
+            value = core.globals()[flags]
+            temp = {flags: value}
+            flags_value.update(temp)
+        else:
+            raise ValueError(
+                'Flag %s cannot get its value through this function.' % (flags))
+    else:
+        raise TypeError('Flags in get_flags should be a list, tuple or string.')
+    return flags_value

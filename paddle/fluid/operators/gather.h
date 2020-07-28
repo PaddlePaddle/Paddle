@@ -36,15 +36,23 @@ using framework::Tensor;
 template <typename T, typename IndexT = int>
 void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                const Tensor& index, Tensor* output) {
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true);
+  PADDLE_ENFORCE_EQ(
+      platform::is_cpu_place(ctx.GetPlace()), true,
+      platform::errors::PreconditionNotMet("It should be running on the CPU."));
   // check index of shape 1-D
   if (index.dims().size() == 2) {
-    PADDLE_ENFORCE_EQ(index.dims()[1], 1,
-                      "index.dims()[1] should be 1 when index.dims().size() == "
-                      "2 in gather_op.");
+    PADDLE_ENFORCE_EQ(
+        index.dims()[1], 1,
+        platform::errors::InvalidArgument(
+            "index.dims()[1] should be 1 when index.dims().size() = 2"
+            "in gather_op, but received value is [%d].",
+            index.dims()[1]));
   } else {
     PADDLE_ENFORCE_EQ(index.dims().size(), 1,
-                      "index.dims().size() should be 1 or 2 in gather_op.");
+                      platform::errors::InvalidArgument(
+                          "index.dims().size() should be 1 or 2 in gather_op,"
+                          "but received shape's size is [%d].",
+                          index.dims().size()));
   }
   int64_t index_size = index.dims()[0];
 
@@ -69,8 +77,9 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
 template <typename T, typename IndexT = int>
 void CPUGatherNd(const platform::DeviceContext& ctx, const Tensor& input,
                  const Tensor& index, Tensor* output) {
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                    "It should be running on the CPU");
+  PADDLE_ENFORCE_EQ(
+      platform::is_cpu_place(ctx.GetPlace()), true,
+      platform::errors::PreconditionNotMet("It should be running on the CPU."));
 
   auto index_dims = index.dims();
   auto index_dims_size = index_dims.size();
@@ -98,11 +107,14 @@ void CPUGatherNd(const platform::DeviceContext& ctx, const Tensor& input,
     int64_t temp = 1;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = p_index[i * end_size + j];
-      PADDLE_ENFORCE_LT(index_value, input_dims[j],
-                        "Input(index[-1)] has wrong value, it is %d",
-                        index_value);
-      PADDLE_ENFORCE_GE(index_value, 0UL,
-                        "The value of Input(index) must be no less than 0");
+      PADDLE_ENFORCE_LT(
+          index_value, input_dims[j],
+          platform::errors::InvalidArgument(
+              "Input(index[-1)] has wrong value, it is [%d]", index_value));
+      PADDLE_ENFORCE_GE(
+          index_value, 0UL,
+          platform::errors::InvalidArgument(
+              "The value of Input(index) must be no less than 0"));
 
       index_ += (index_value * temp);
       temp *= input_dims[j];

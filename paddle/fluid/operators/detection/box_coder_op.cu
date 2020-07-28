@@ -131,8 +131,6 @@ template <typename DeviceContext, typename T>
 class BoxCoderCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "This kernel only runs on GPU device.");
     auto* prior_box = context.Input<framework::Tensor>("PriorBox");
     auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
     auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
@@ -143,20 +141,27 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     const T* prior_box_var_data = nullptr;
     auto prior_box_var_size = 0;
     if (prior_box_var) {
-      PADDLE_ENFORCE(variance.empty(),
-                     "Input 'PriorBoxVar' and attribute 'variance' should not"
-                     "be used at the same time.");
+      PADDLE_ENFORCE_EQ(variance.empty(), true,
+                        platform::errors::InvalidArgument(
+                            "Input 'PriorBoxVar' and attribute 'variance'"
+                            " of BoxCoder operator should not be used at the "
+                            "same time."));
       prior_box_var_data = prior_box_var->data<T>();
       prior_box_var_size = prior_box_var->dims().size();
     }
     if (!(variance.empty())) {
-      PADDLE_ENFORCE(static_cast<int>(variance.size()) == 4,
-                     "Size of attribute 'variance' should be 4");
+      PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()), 4,
+                        platform::errors::InvalidArgument(
+                            "Size of attribute 'variance' in BoxCoder operator"
+                            " should be 4. But received size is %d",
+                            variance.size()));
     }
 
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
-                        "Only support 1 level of LoD.");
+                        platform::errors::InvalidArgument(
+                            "Input 'TargetBox' of BoxCoder operator only"
+                            " supports LoD with one level."));
     }
     const int var_size = static_cast<int>(variance.size());
 
@@ -178,7 +183,8 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     auto dev_var = memory::Alloc(device_ctx, bytes);
     float* dev_var_data = reinterpret_cast<float*>(dev_var->ptr());
     auto cplace = platform::CPUPlace();
-    const auto gplace = boost::get<platform::CUDAPlace>(context.GetPlace());
+    const auto gplace =
+        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
     memory::Copy(gplace, dev_var_data, cplace, &variance[0], bytes,
                  device_ctx.stream());
 

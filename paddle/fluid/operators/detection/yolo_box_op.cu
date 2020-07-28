@@ -26,7 +26,8 @@ __global__ void KeYoloBoxFw(const T* input, const int* imgsize, T* boxes,
                             T* scores, const float conf_thresh,
                             const int* anchors, const int n, const int h,
                             const int w, const int an_num, const int class_num,
-                            const int box_num, int input_size, bool clip_bbox) {
+                            const int box_num, int input_size, bool clip_bbox,
+                            const float scale, const float bias) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   T box[4];
@@ -51,7 +52,7 @@ __global__ void KeYoloBoxFw(const T* input, const int* imgsize, T* boxes,
     int box_idx =
         GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 0);
     GetYoloBox<T>(box, input, anchors, l, k, j, h, input_size, box_idx,
-                  grid_num, img_height, img_width);
+                  grid_num, img_height, img_width, scale, bias);
     box_idx = (i * box_num + j * grid_num + k * w + l) * 4;
     CalcDetectionBox<T>(boxes, box, box_idx, img_height, img_width, clip_bbox);
 
@@ -77,6 +78,8 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     float conf_thresh = ctx.Attr<float>("conf_thresh");
     int downsample_ratio = ctx.Attr<int>("downsample_ratio");
     bool clip_bbox = ctx.Attr<bool>("clip_bbox");
+    float scale = ctx.Attr<float>("scale_x_y");
+    float bias = -0.5 * (scale - 1.);
 
     const int n = input->dims()[0];
     const int h = input->dims()[2];
@@ -89,7 +92,7 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     int bytes = sizeof(int) * anchors.size();
     auto anchors_ptr = memory::Alloc(dev_ctx, sizeof(int) * anchors.size());
     int* anchors_data = reinterpret_cast<int*>(anchors_ptr->ptr());
-    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
     const auto cplace = platform::CPUPlace();
     memory::Copy(gplace, anchors_data, cplace, anchors.data(), bytes,
                  dev_ctx.stream());
@@ -109,7 +112,7 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     KeYoloBoxFw<T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
         input_data, imgsize_data, boxes_data, scores_data, conf_thresh,
         anchors_data, n, h, w, an_num, class_num, box_num, input_size,
-        clip_bbox);
+        clip_bbox, scale, bias);
   }
 };
 

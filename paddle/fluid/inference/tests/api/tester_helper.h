@@ -66,8 +66,8 @@ DEFINE_bool(warmup, false,
             "Use warmup to calculate elapsed_time more accurately. "
             "To reduce CI time, it sets false in default.");
 
-DECLARE_bool(profile);
-DECLARE_int32(paddle_num_threads);
+DEFINE_bool(enable_profile, false, "Turn on profiler for fluid");
+DEFINE_int32(cpu_num_threads, 1, "Number of threads for each paddle instance.");
 
 namespace paddle {
 namespace inference {
@@ -104,6 +104,24 @@ void CheckError(float data_ref, float data) {
     CHECK_LE(std::abs(data_ref - data), FLAGS_accuracy);
   }
 }
+
+class Barrier {
+ public:
+  explicit Barrier(std::size_t count) : _count(count) {}
+  void Wait() {
+    std::unique_lock<std::mutex> lock(_mutex);
+    if (--_count) {
+      _cv.wait(lock, [this] { return _count == 0; });
+    } else {
+      _cv.notify_all();
+    }
+  }
+
+ private:
+  std::mutex _mutex;
+  std::condition_variable _cv;
+  std::size_t _count;
+};
 
 // Compare result between two PaddleTensor
 void CompareResult(const std::vector<PaddleTensor> &outputs,
@@ -355,7 +373,7 @@ void PredictionWarmUp(PaddlePredictor *predictor,
     predictor->ZeroCopyRun();
   }
   PrintTime(batch_size, 1, num_threads, tid, warmup_timer.toc(), 1, data_type);
-  if (FLAGS_profile) {
+  if (FLAGS_enable_profile) {
     paddle::platform::ResetProfiler();
   }
 }

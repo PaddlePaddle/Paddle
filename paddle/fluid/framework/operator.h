@@ -157,7 +157,7 @@ class OperatorBase {
   inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.find(name) != attrs_.end(),
                    "%s should be in AttributeMap", name);
-    return boost::get<T>(attrs_.at(name));
+    return BOOST_GET_CONST(T, attrs_.at(name));
   }
   const AttributeMap& Attrs() const { return attrs_; }
 
@@ -191,6 +191,11 @@ class OperatorBase {
   virtual void RuntimeInferShape(const Scope& scope,
                                  const platform::Place& place,
                                  const RuntimeContext& ctx) const {}
+
+  virtual platform::Place GetExecutionPlace(
+      const platform::Place& place) const {
+    return place;
+  }
 
  protected:
   std::string type_;
@@ -251,7 +256,7 @@ class ExecutionContext {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return boost::get<T>(GetAttr(name));
+    return BOOST_GET_CONST(T, GetAttr(name));
   }
 
   virtual const Attribute& GetAttr(const std::string& name) const {
@@ -478,6 +483,11 @@ class OperatorWithKernel : public OperatorBase {
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
+
+  platform::Place GetExecutionPlace(
+      const platform::Place& platform) const override {
+    return kernel_type_->place_;
+  }
 
  private:
   void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,

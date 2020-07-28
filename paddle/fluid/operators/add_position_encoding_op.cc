@@ -23,11 +23,9 @@ class AddPositionEncodingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "X(Input) of add_position_encoding_op should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Out(Output) of add_position_encoding_op should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AddPositionEncoding");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "AddPositionEncoding");
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);

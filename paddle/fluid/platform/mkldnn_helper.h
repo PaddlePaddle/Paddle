@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <mkldnn.h>
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+#include "mkldnn.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
@@ -101,6 +101,11 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
   }
 }
 
+struct mkldnn_dummy_primitive {
+  struct primitive_desc {};
+  struct desc {};
+};
+
 inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
                                           mkldnn::memory::data_type data_type,
                                           MKLDNNMemoryFormat format) {
@@ -110,6 +115,18 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
 inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
   bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
   return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
+}
+
+inline void ClearMKLDNNCache(const platform::Place& place) {
+  // Clear mkl-dnn cache,
+  if (platform::is_cpu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    dev_ctx->ResetBlobMap();
+    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+        paddle::framework::DataLayout::kNCHW);
+  }
 }
 
 template <typename Type>
@@ -173,6 +190,9 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3]) {
         return mkldnn::memory::format_tag::nchw;
+      } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
+                 strides[1] >= strides[0]) {
+        return mkldnn::memory::format_tag::cdba;
       } else {
         return mkldnn::memory::format_tag::nhwc;
       }

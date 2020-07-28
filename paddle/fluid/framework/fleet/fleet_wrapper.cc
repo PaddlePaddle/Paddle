@@ -917,6 +917,38 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #endif
 }
 
+void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
+                                     const std::string& path, const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret =
+      pslib_ptr_->_worker_ptr->save(table_id, path, std::to_string(mode));
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "save model of table id: " << table_id
+               << ", to path: " << path << " failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::SaveModelOneTable does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::SaveModelOneTablePrefix(const uint64_t table_id,
+                                           const std::string& path,
+                                           const int mode,
+                                           const std::string& prefix) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->save(table_id, path, std::to_string(mode),
+                                           prefix);
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "save model (with prefix) of table id: " << table_id
+               << ", to path: " << path << " failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::SaveModelOneTablePrefix does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->print_table_stat(table_id);
@@ -1053,7 +1085,8 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
   push_status.wait();
   auto status = push_status.get();
   if (status != 0) {
-    LOG(FATAL) << "push shrink dense param failed, status[" << status << "]";
+    PADDLE_THORW(platform::errors::Fatal(
+        "push shrink dense param failed, status is [%d].", status));
     sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
@@ -1131,6 +1164,28 @@ int32_t FleetWrapper::CopyTable(const uint64_t src_table_id,
 #else
   VLOG(0) << "FleetWrapper::CopyTable does nothing when no pslib";
   return 0;
+#endif
+}
+
+void FleetWrapper::Confirm() {
+#ifdef PADDLE_WITH_PSLIB
+  // FIXME(xujiaqi01): will later support confirm
+  // auto ret = pslib_ptr_->_worker_ptr->confirm();
+  // ret.wait();
+  VLOG(0) << "disable FleetWrapper::Confirm temporarily";
+#else
+  VLOG(0) << "FleetWrapper::Confirm does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::Revert() {
+#ifdef PADDLE_WITH_PSLIB
+  // FIXME(xujiaqi01): will later support revert
+  // auto ret = pslib_ptr_->_worker_ptr->revert();
+  // ret.wait();
+  VLOG(0) << "disable FleetWrapper::Revert temporarily";
+#else
+  VLOG(0) << "FleetWrapper::Revert does nothing when no pslib";
 #endif
 }
 

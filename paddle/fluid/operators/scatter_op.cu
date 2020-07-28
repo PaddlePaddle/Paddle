@@ -24,8 +24,9 @@ template <typename T>
 class ScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "This kernel only runs on GPU device."));
     auto *X = ctx.Input<Tensor>("X");
     auto *Ids = ctx.Input<Tensor>("Ids");
     auto *Updates = ctx.Input<Tensor>("Updates");
@@ -39,11 +40,14 @@ class ScatterOpCUDAKernel : public framework::OpKernel<T> {
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
         index_type_match, true,
-        "scatter_op Index holds the wrong type, it holds %s, but desires to be "
-        "%s or %s",
-        paddle::framework::DataTypeToString(index_type),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
+        platform::errors::InvalidArgument(
+            "scatter_op Index holds the wrong type, it holds [%s],"
+            "but desires to be [%s] or [%s].",
+            paddle::framework::DataTypeToString(index_type),
+            paddle::framework::DataTypeToString(
+                framework::proto::VarType::INT32),
+            paddle::framework::DataTypeToString(
+                framework::proto::VarType::INT64)));
     if (index_type == framework::proto::VarType::INT32) {
       GPUScatterAssign<T, int32_t>(ctx, *Updates, *Ids, Out, overwrite);
     } else {
@@ -56,8 +60,9 @@ template <typename T>
 class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "This kernel only runs on GPU device."));
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
     auto *Ids = ctx.Input<Tensor>("Ids");
@@ -74,12 +79,14 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
                               index_type == framework::proto::VarType::INT64;
       PADDLE_ENFORCE_EQ(
           index_type_match, true,
-          "scatter_op Index holds the wrong type, it holds %s, but desires to "
-          "be %s or %s",
-          paddle::framework::DataTypeToString(index_type),
-          paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-          paddle::framework::DataTypeToString(
-              framework::proto::VarType::INT64));
+          platform::errors::InvalidArgument(
+              "scatter_op Index holds the wrong type, it holds [%s], "
+              "but desires to be [%s] or [%s]",
+              paddle::framework::DataTypeToString(index_type),
+              paddle::framework::DataTypeToString(
+                  framework::proto::VarType::INT32),
+              paddle::framework::DataTypeToString(
+                  framework::proto::VarType::INT64)));
       // Gradient by Gather: dUpdates = dO[Ids]
       if (index_type == framework::proto::VarType::INT32) {
         GPUGather<T, int32_t>(ctx.device_context(), *dOut, *Ids, dUpdates);

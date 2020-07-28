@@ -31,7 +31,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle_api.h"  // NOLINT
+#include "paddle_api.h"            // NOLINT
+#include "paddle_infer_declare.h"  // NOLINT
 
 namespace paddle {
 
@@ -59,7 +60,7 @@ enum class ScaleAlgo {
 /// It is not recommended to use this config directly, please refer to
 /// AnalysisConfig::mkldnn_quantizer_config()
 ///
-struct MkldnnQuantizerConfig {
+struct PD_INFER_DECL MkldnnQuantizerConfig {
   ///
   /// \brief Construct a new Mkldnn Quantizer Config object
   ///

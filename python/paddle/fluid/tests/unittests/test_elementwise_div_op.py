@@ -227,6 +227,19 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
             ['X'], 'Out', max_relative_error=1, no_grad_set=set('Y'))
 
 
+class TestElementwiseDivBroadcast(unittest.TestCase):
+    def test_shape_with_batch_sizes(self):
+        with fluid.program_guard(fluid.Program()):
+            x_var = fluid.data(
+                name='x', dtype='float32', shape=[None, 3, None, None])
+            one = 2.
+            out = one / x_var
+            exe = fluid.Executor(fluid.CPUPlace())
+            x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
+            out_result, = exe.run(feed={'x': x}, fetch_list=[out])
+            self.assertEqual((out_result == (2 / x)).all(), True)
+
+
 class TestDivOp(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):

@@ -31,12 +31,19 @@ static inline framework::DDim ComputeAndCheckShape(
   auto out_dims = inputs_dims[0];
   size_t in_zero_dims_size = out_dims.size();
   for (size_t i = 1; i < n; i++) {
+    PADDLE_ENFORCE_EQ(inputs_dims[i].size(), out_dims.size(),
+                      platform::errors::InvalidArgument(
+                          "The shape of input[0] and input[%d] "
+                          "is expected to be equal."
+                          "But received input[0]'s shape = "
+                          "[%s], input[%d]'s shape = [%s].",
+                          i, inputs_dims[0], i, inputs_dims[i]));
     for (size_t j = 0; j < in_zero_dims_size; j++) {
       if (j == axis) {
         if (is_runtime) {
           out_dims[axis] += inputs_dims[i][j];
         } else {
-          if (inputs_dims[i][j] == -1) {
+          if (inputs_dims[i][j] == -1 || out_dims[j] == -1) {
             out_dims[axis] = -1;
           } else {
             out_dims[axis] += inputs_dims[i][j];
@@ -44,15 +51,19 @@ static inline framework::DDim ComputeAndCheckShape(
         }
       } else {
         bool check_shape =
-            is_runtime || (out_dims[j] > 0 && inputs_dims[i][j] > 0);
+            is_runtime || (inputs_dims[0][j] > 0 && inputs_dims[i][j] > 0);
         if (check_shape) {
           // check all shape in run time
-          PADDLE_ENFORCE_EQ(
-              inputs_dims[0][j], inputs_dims[i][j],
-              "ShapeError: Dimension %d in inputs' shapes must be equal. "
-              "But recevied input[0]'s shape = "
-              "[%s], input[%d]'s shape = [%s].",
-              j, inputs_dims[0], i, inputs_dims[i]);
+          PADDLE_ENFORCE_EQ(inputs_dims[0][j], inputs_dims[i][j],
+                            platform::errors::InvalidArgument(
+                                "The %d-th dimension of input[0] and input[%d] "
+                                "is expected to be equal."
+                                "But received input[0]'s shape = "
+                                "[%s], input[%d]'s shape = [%s].",
+                                j, i, inputs_dims[0], i, inputs_dims[i]));
+        }
+        if (!is_runtime && out_dims[j] == -1 && inputs_dims[i][j] > 0) {
+          out_dims[j] = inputs_dims[i][j];
         }
       }
     }
@@ -78,7 +89,9 @@ class ConcatKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
     framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ins[0],
+                            platform::errors::NotFound(
+                                "The first input tensor is not initalized."));
     auto axis = ctx.Attr<int>("axis");
     bool need_resize_out_dims = false;
     if (ctx.HasInput("AxisTensor")) {
@@ -113,7 +126,9 @@ class ConcatKernel : public framework::OpKernel<T> {
               platform::errors::Unimplemented(
                   "The lod level of all input LoDTensors should be same. "
                   "Maybe different lod level of input LoDTensors can concat,"
-                  " it is not supported currently."));
+                  "it is not supported currently. The lod level of %dth input "
+                  "is %d and first input is %d.",
+                  i, ins[i]->lod().size(), lod_size_0));
         } else {
           lod_size = 0;
           break;
@@ -178,7 +193,9 @@ class ConcatGradKernel : public framework::OpKernel<T> {
         }
       }
     }
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ins[0],
+                            platform::errors::NotFound(
+                                "The first input tensor is not initalized."));
 
     auto axis = ctx.Attr<int>("axis");
     if (ctx.HasInput("AxisTensor")) {

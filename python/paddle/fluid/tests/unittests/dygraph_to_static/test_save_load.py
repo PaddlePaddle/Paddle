@@ -18,10 +18,10 @@ import unittest
 
 import numpy as np
 import paddle.fluid as fluid
-import paddle.fluid.framework as framework
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_program
-from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.optimizer import AdamOptimizer
+from test_fetch_feed import Linear
 
 np.random.seed(2020)
 
@@ -29,54 +29,50 @@ place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 )
 
 
-def simple_func(x, weight_numpy):
-    weight_initalizer = fluid.initializer.NumpyArrayInitializer(weight_numpy)
-    linear = Linear(32, 64, param_attr=weight_initalizer)
-    x = fluid.dygraph.to_variable(x)
-    y = linear(x)
-    z = linear(x)
-    return z
-
-
-@dygraph_to_static_program
-def decorated_simple_func(x, weight_numpy):
-    weight_initalizer = fluid.initializer.NumpyArrayInitializer(weight_numpy)
-    linear = Linear(32, 64, param_attr=weight_initalizer)
-    x = fluid.dygraph.to_variable(x)
-    y = linear(x)
-    z = linear(x)
-    return z
-
-
 class TestDyToStaticSaveLoad(unittest.TestCase):
     def test_save_load_same_result(self):
-        x = np.random.randn(30, 10, 32).astype('float32')
-        weight = np.random.randn(32, 64).astype('float32')
+        program_translator = ProgramTranslator()
+        x_data = np.random.randn(30, 10, 32).astype('float32')
+        batch_num = 3
+
         with fluid.dygraph.guard(place):
-            dygraph_result = simple_func(x, weight)
 
-        main_program, startup_program, inputs, outputs = decorated_simple_func(
-            x, weight)
-        exe = fluid.Executor(place)
-        exe.run(startup_program)
-        fluid.save(main_program, "./test_dy2stat_save_load")
+            program_translator.enable(True)
+            x = fluid.dygraph.to_variable(x_data)
+            net = Linear(32, 64)
+            adam = AdamOptimizer(
+                learning_rate=0.1, parameter_list=net.parameters())
 
-        # set vars to zero so that we can test load in same file
-        for var in main_program.list_vars():
-            if isinstance(var, framework.Parameter) or var.persistable:
-                tensor = fluid.global_scope().find_var(var.name).get_tensor()
-                tensor.set(np.zeros_like(np.array(tensor)), place)
+            for i in range(batch_num):
+                static_out, static_loss = net(x)
+                # Update parameters
+                static_loss.backward()
+                adam.minimize(static_loss)
+                net.clear_gradients()
+            # Save parameters
+            fluid.save_dygraph(net.state_dict(), "./test_dy2stat_save_load")
+            # minimize() will update parameter, call net() to get output and avg_loss.
+            # Switch into eval mode.
+            net.eval()
+            static_out, static_loss = net(x)
 
-                # make sure all the paramerter or optimizer var have been set to zero
-                tensor_np = np.array(fluid.global_scope().find_var(var.name)
-                                     .get_tensor())
-                self.assertEqual(0, np.sum(np.abs(tensor_np)))
+        # load parameters into dygraph
+        with fluid.dygraph.guard(place):
+            dygraph_net = Linear(32, 64)
 
-        fluid.load(main_program, "./test_dy2stat_save_load")
-        static_result = exe.run(main_program,
-                                feed={inputs[0].name: x},
-                                fetch_list=outputs)
-        self.assertTrue(np.allclose(dygraph_result.numpy(), static_result))
+            # Load parameters
+            model_dict, _ = fluid.load_dygraph("./test_dy2stat_save_load")
+            dygraph_net.set_dict(model_dict)
+            # Switch into eval mode.
+            dygraph_net.eval()
+
+            x = fluid.dygraph.to_variable(x_data)
+            # predict output
+            program_translator.enable(False)
+            dygraph_out, dygraph_loss = dygraph_net(x)
+
+        self.assertTrue(np.allclose(dygraph_out.numpy(), static_out.numpy()))
+        self.assertTrue(np.allclose(dygraph_loss.numpy(), static_loss.numpy()))
 
 
 if __name__ == '__main__':

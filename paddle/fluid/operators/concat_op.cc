@@ -30,18 +30,17 @@ class ConcatOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of ConcatOp should not be empty.");
-
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of ConcatOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "Concat");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Concat");
 
     auto inputs_dims = ctx->GetInputsDim("X");
 
     const size_t inputs_num = inputs_dims.size();
-    PADDLE_ENFORCE_GT(inputs_num, 0,
-                      "ShapeError: Input tensors count should > 0. But "
-                      "recevied inputs' length is 0.");
+    PADDLE_ENFORCE_GT(
+        inputs_num, static_cast<size_t>(0),
+        platform::errors::InvalidArgument(
+            "The number of input tensors in concat op should > 0. But "
+            "received inputs' length is 0."));
     if (inputs_num == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
     }
@@ -176,7 +175,7 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ConcatOpGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ConcatOpGradNoNeedBufferVarInferer, "X");
 
 template <typename T>
 class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -204,15 +203,19 @@ REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
-                  ops::ConcatOpGradNoNeedBufferVarInference);
+                  ops::ConcatOpGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::float16>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
+                          paddle::platform::float16>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>);

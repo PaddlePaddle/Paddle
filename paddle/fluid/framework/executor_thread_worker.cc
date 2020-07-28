@@ -104,7 +104,8 @@ void DensePullThread::wait_all() {
   }
 
   if (_pull_dense_fail_times > 20) {
-    LOG(FATAL) << "pull dense failed times more than 20 times";
+    PADDLE_THROW(
+        platform::errors::Fatal("Pull dense failed more than 20 times."));
     exit(-1);
   }
 

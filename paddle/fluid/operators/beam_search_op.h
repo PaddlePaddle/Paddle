@@ -29,9 +29,15 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     auto* pre_ids = context.Input<framework::LoDTensor>("pre_ids");
     auto* pre_scores = context.Input<framework::LoDTensor>("pre_scores");
 
-    PADDLE_ENFORCE_NOT_NULL(scores);
-    PADDLE_ENFORCE_NOT_NULL(pre_ids);
-    PADDLE_ENFORCE_NOT_NULL(pre_scores);
+    PADDLE_ENFORCE_NOT_NULL(scores,
+                            platform::errors::NotFound(
+                                "Input(scores) of BeamSearchOp is not found."));
+    PADDLE_ENFORCE_NOT_NULL(
+        pre_ids, platform::errors::NotFound(
+                     "Input(pre_ids) of BeamSearchOp is not found."));
+    PADDLE_ENFORCE_NOT_NULL(
+        pre_scores, platform::errors::NotFound(
+                        "Input(pre_scores) of BeamSearchOp is not found."));
 
     size_t level = context.Attr<int>("level");
     size_t beam_size = context.Attr<int>("beam_size");
@@ -42,8 +48,14 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     auto selected_scores =
         context.Output<framework::LoDTensor>("selected_scores");
     auto* parent_idx = context.Output<framework::Tensor>("parent_idx");
-    PADDLE_ENFORCE_NOT_NULL(selected_ids);
-    PADDLE_ENFORCE_NOT_NULL(selected_scores);
+    PADDLE_ENFORCE_NOT_NULL(
+        selected_ids,
+        platform::errors::NotFound(
+            "Output(selected_scores) of BeamSearchOp is not found."));
+    PADDLE_ENFORCE_NOT_NULL(
+        selected_scores,
+        platform::errors::NotFound(
+            "Output(parent_idx) of BeamSearchOp is not found."));
 
     math::BeamSearchFunctor<DeviceContext, T> alg;
     alg(context.template device_context<DeviceContext>(), pre_ids, pre_scores,

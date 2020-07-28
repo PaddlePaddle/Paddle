@@ -114,8 +114,8 @@ void MainTest(std::string activation) {
     if (node->IsOp() && node->Op()->Type() == "conv2d") {
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(boost::get<bool>(op->GetAttr("use_mkldnn")));
-      auto op_name = boost::get<std::string>(op->GetAttr("name"));
+      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
       if (op->GetAttrIfExists<std::string>("fuse_activation") == activation) {
         ++conv_activation_count;
       }

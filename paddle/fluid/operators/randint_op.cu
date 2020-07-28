@@ -20,25 +20,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct UniformIntGenerator {
-  T low_, high_;
-  __host__ __device__ UniformIntGenerator(T low, T high)
-      : low_(low), high_(high) {}
-
-  __host__ __device__ T operator()(const unsigned int n) const {
-    thrust::minstd_rand rng;
-    rng.seed(0);
-    thrust::uniform_int_distribution<T> dist(low_, high_);
-    rng.discard(n);
-    T out = dist(rng);
-    return out;
-  }
-};
-
-// Use std::uniform_int_distribution and thrust::uniform_int_distribution(thrust
-// is a std library in CUDA) to
-// implement randint.
-template <typename T>
 class GPURandintKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -54,17 +35,34 @@ class GPURandintKernel : public framework::OpKernel<T> {
       }
     }
 
+    platform::CPUPlace cpu;
+    auto dtype = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
     auto* out = context.Output<framework::LoDTensor>("Out");
     if (!new_shape.empty()) out->Resize(framework::make_ddim(new_shape));
-    T* data = out->mutable_data<T>(context.GetPlace());
     T low = static_cast<T>(context.Attr<int>("low"));
     T high = static_cast<T>(context.Attr<int>("high")) - 1;
+    framework::LoDTensor tensor;
+    tensor.Resize(out->dims());
+    tensor.mutable_data(cpu, dtype);
+    T* data = tensor.mutable_data<T>(cpu);
 
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = out->numel();
-    thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                      thrust::device_ptr<T>(data),
-                      UniformIntGenerator<T>(low, high));
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    std::minstd_rand engine;
+    if (seed == 0) {
+      std::random_device rd;
+      seed = rd();
+    }
+    engine.seed(seed);
+    std::uniform_int_distribution<> dist(context.Attr<int>("low"),
+                                         context.Attr<int>("high") - 1);
+    for (int64_t i = 0; i < size; ++i) data[i] = dist(engine);
+
+    if (platform::is_gpu_place(context.GetPlace())) {
+      // Copy tensor to out
+      framework::TensorCopy(tensor, context.GetPlace(), out);
+    }
   }
 };
 

@@ -19,6 +19,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestLRNOp(OpTest):
@@ -143,6 +144,14 @@ class TestLRNAPI(unittest.TestCase):
 
         self.assertRaises(ValueError, _attr_data_fromat)
         self.assertRaises(ValueError, _input_dim_size)
+
+
+class TestLRNOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input must be float32
+            in_w = fluid.data(name="in_w", shape=[None, 3, 3, 3], dtype="int64")
+            self.assertRaises(TypeError, fluid.layers.lrn, in_w)
 
 
 if __name__ == "__main__":

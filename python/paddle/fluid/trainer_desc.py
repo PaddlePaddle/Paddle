@@ -14,7 +14,7 @@
 """Defination of trainers."""
 
 import sys
-from os import path
+import os
 __all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
 
 
@@ -32,9 +32,12 @@ class TrainerDesc(object):
         '''
         # Workaround for relative import in protobuf under python3
         # TODO: should be fixed
-        cur_path = path.dirname(__file__)
-        sys.path.append(cur_path)
-        sys.path.append(cur_path + "/proto")
+        cur_path = os.path.dirname(__file__)
+        if cur_path not in sys.path:
+            sys.path.append(cur_path)
+        if cur_path + "/proto" not in sys.path:
+            sys.path.append(cur_path + "/proto")
+
         from proto import trainer_desc_pb2
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
         import multiprocessing as mp
@@ -46,6 +49,8 @@ class TrainerDesc(object):
         self._infer = False
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
+        # convert fetch_info to list
+        fetch_info = list(fetch_info)
         for i, v in enumerate(fetch_vars):
             self.proto_desc.fetch_config.fetch_var_names.extend([v.name])
             self.proto_desc.fetch_config.fetch_var_str_format.extend(
@@ -103,6 +108,15 @@ class TrainerDesc(object):
 
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
+
+    def _set_enable_random_dump(self, enable_random_dump):
+        self.proto_desc.enable_random_dump = enable_random_dump
+
+    def _set_dump_interval(self, dump_interval):
+        self.proto_desc.dump_interval = dump_interval
+
+    def _set_random_with_lineid(self, random_with_lineid):
+        self.proto_desc.random_with_lineid = random_with_lineid
 
     def _set_dump_param(self, dump_param):
         for param in dump_param:

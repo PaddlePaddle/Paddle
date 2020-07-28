@@ -131,7 +131,7 @@ class SpaceToDepthOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SpaceToDepthGradOpNoBuffer, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SpaceToDepthGradOpNoBufferVarsInferer, "X");
 
 template <typename T>
 class SpaceToDepthGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -179,7 +179,7 @@ REGISTER_OPERATOR(space_to_depth, ops::SpaceToDepthOp, ops::SpaceToDepthOpMaker,
                   ops::SpaceToDepthGradOpMaker<paddle::framework::OpDesc>,
                   ops::SpaceToDepthGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(space_to_depth_grad, ops::SpaceToDepthGradOp,
-                  ops::SpaceToDepthGradOpNoBuffer);
+                  ops::SpaceToDepthGradOpNoBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     space_to_depth,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, float>,

@@ -65,9 +65,8 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
 class LoDRankTableInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    for (auto &o : ctx->Output("Out")) {
-      ctx->SetType(o, framework::proto::VarType::LOD_RANK_TABLE);
-    }
+    ctx->SetOutputType("Out", framework::proto::VarType::LOD_RANK_TABLE,
+                       framework::ALL_ELEMENTS);
   }
 };
 

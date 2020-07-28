@@ -18,6 +18,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
+import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 
 
@@ -68,6 +70,92 @@ class TestEyeOp2(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class API_TestTensorEye(unittest.TestCase):
+    def test_out(self):
+        with paddle.program_guard(paddle.Program()):
+            data = paddle.eye(10)
+            place = fluid.CPUPlace()
+            exe = paddle.Executor(place)
+            result, = exe.run(fetch_list=[data])
+            expected_result = np.eye(10, dtype="float32")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with paddle.program_guard(paddle.Program()):
+            data = paddle.eye(10, num_columns=7, dtype="float64")
+            place = paddle.CPUPlace()
+            exe = paddle.Executor(place)
+            result, = exe.run(fetch_list=[data])
+            expected_result = np.eye(10, 7, dtype="float64")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with paddle.program_guard(paddle.Program()):
+            data = paddle.eye(10, dtype="int64")
+            place = paddle.CPUPlace()
+            exe = paddle.Executor(place)
+            result, = exe.run(fetch_list=[data])
+            expected_result = np.eye(10, dtype="int64")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with paddle.imperative.guard():
+            out = paddle.eye(10, dtype="int64")
+            expected_result = np.eye(10, dtype="int64")
+        self.assertEqual((out.numpy() == expected_result).all(), True)
+
+        with paddle.imperative.guard():
+            batch_shape = [2]
+            out = fluid.layers.eye(10,
+                                   10,
+                                   dtype="int64",
+                                   batch_shape=batch_shape)
+            result = np.eye(10, dtype="int64")
+            expected_result = []
+            for index in reversed(batch_shape):
+                tmp_result = []
+                for i in range(index):
+                    tmp_result.append(result)
+                result = tmp_result
+                expected_result = np.stack(result, axis=0)
+        self.assertEqual(out.numpy().shape == np.array(expected_result).shape,
+                         True)
+        self.assertEqual((out.numpy() == expected_result).all(), True)
+
+        with paddle.imperative.guard():
+            batch_shape = [3, 2]
+            out = fluid.layers.eye(10,
+                                   10,
+                                   dtype="int64",
+                                   batch_shape=batch_shape)
+            result = np.eye(10, dtype="int64")
+            expected_result = []
+            for index in reversed(batch_shape):
+                tmp_result = []
+                for i in range(index):
+                    tmp_result.append(result)
+                result = tmp_result
+                expected_result = np.stack(result, axis=0)
+        self.assertEqual(out.numpy().shape == np.array(expected_result).shape,
+                         True)
+        self.assertEqual((out.numpy() == expected_result).all(), True)
+
+    def test_errors(self):
+        with paddle.program_guard(paddle.Program()):
+
+            def test_num_rows_type_check():
+                paddle.eye(-1, dtype="int64")
+
+            self.assertRaises(TypeError, test_num_rows_type_check)
+
+            def test_num_columns_type_check():
+                paddle.eye(10, num_columns=5.2, dtype="int64")
+
+            self.assertRaises(TypeError, test_num_columns_type_check)
+
+            def test_num_columns_type_check():
+                paddle.eye(10, num_columns=10, dtype="int8")
+
+            self.assertRaises(TypeError, test_num_columns_type_check)
 
 
 if __name__ == "__main__":

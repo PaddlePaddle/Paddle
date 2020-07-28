@@ -81,6 +81,14 @@ class TestPrintOpCPU(unittest.TestCase):
                        fetch_list=[loss],
                        return_numpy=False)
 
+    def test_no_summarize(self):
+        switch_main_program(Program())
+        printed = self.build_network(True, summarize=-1, print_phase='forward')
+        exe = Executor(self.place)
+        outs = exe.run(feed={'x': self.x_tensor},
+                       fetch_list=[printed],
+                       return_numpy=False)
+
 
 class TestPrintOpError(unittest.TestCase):
     def test_errors(self):

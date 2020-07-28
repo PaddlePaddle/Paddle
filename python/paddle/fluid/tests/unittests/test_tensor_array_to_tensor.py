@@ -20,6 +20,25 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
+from paddle.fluid import Program, program_guard
+
+
+class TestTensorArrayToTensorError(unittest.TestCase):
+    """Tensor_array_to_tensor error message enhance"""
+
+    def test_errors(self):
+        with program_guard(Program()):
+            input_data = numpy.random.random((2, 4)).astype("float32")
+
+            def test_Variable():
+                fluid.layers.tensor_array_to_tensor(input=input_data)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_list_Variable():
+                fluid.layers.tensor_array_to_tensor(input=[input_data])
+
+            self.assertRaises(TypeError, test_list_Variable)
 
 
 class TestLoDTensorArrayConcat(unittest.TestCase):

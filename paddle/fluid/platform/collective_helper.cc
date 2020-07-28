@@ -35,7 +35,7 @@ class NCCLCommImpl : public NCCLComm {
   int rank() const override { return rank_; }
 
   int device_id() const override {
-    return boost::get<CUDAPlace>(dev_ctx_->GetPlace()).device;
+    return BOOST_GET_CONST(CUDAPlace, dev_ctx_->GetPlace()).device;
   }
 
   void set_comm(ncclComm_t comm) { comm_ = comm; }
@@ -57,17 +57,30 @@ class NCCLCommImpl : public NCCLComm {
 
 NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
                                           int rank, int dev_id, int ring_id) {
-  PADDLE_ENFORCE_NOT_NULL(nccl_id);
-  PADDLE_ENFORCE_GT(nranks, 1);
-  PADDLE_ENFORCE_GE(rank, 0);
-  PADDLE_ENFORCE_LT(rank, nranks);
-  PADDLE_ENFORCE_GE(dev_id, 0);
+  PADDLE_ENFORCE_NOT_NULL(nccl_id,
+                          platform::errors::InvalidArgument(
+                              "The nccl unique id should not be null."));
+  PADDLE_ENFORCE_GT(
+      nranks, 1,
+      platform::errors::InvalidArgument(
+          "Expected nranks > 1. But received nranks is %d.", nranks));
+  PADDLE_ENFORCE_GE(rank, 0,
+                    platform::errors::InvalidArgument(
+                        "Expected rank >= 0. But received rank is %d.", rank));
+  PADDLE_ENFORCE_LT(
+      rank, nranks,
+      platform::errors::InvalidArgument(
+          "Expected rank < nranks. But received rank is %d, nranks is %d.",
+          rank, nranks));
+  PADDLE_ENFORCE_GE(
+      dev_id, 0,
+      platform::errors::InvalidArgument(
+          "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   ncclComm_t comm = nullptr;
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(dev_id));
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
-  comm_vec_.push_back(comm);
 
   auto* comm_wrapper = AssignNCCLComm(comm, nranks, rank, dev_id, ring_id);
 
@@ -83,15 +96,22 @@ NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
 
 void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
                                          int ring_id) {
-  PADDLE_ENFORCE_GT(dev_ids.size(), 0);
+  PADDLE_ENFORCE_GT(
+      dev_ids.size(), 0,
+      platform::errors::InvalidArgument("Expected the size of dev_ids > 0. But "
+                                        "received the size of dev_ids is %d.",
+                                        dev_ids.size()));
 
   const int kDevices = dev_ids.size();
   ncclComm_t comms[kDevices];
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
       comms, dev_ids.size(), dev_ids.data()));
-  comm_vec_.insert(comm_vec_.end(), comms, comms + kDevices);
 
-  PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0);
+  PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0,
+                    platform::errors::InvalidArgument(
+                        "Expected comm_map_.count(ring_id) = 0. But received "
+                        "comm_map_.count(ring_id) is %d.",
+                        comm_map_.count(ring_id)));
   for (size_t i = 0; i < dev_ids.size(); ++i) {
     AssignNCCLComm(comms[i], dev_ids.size(), i, dev_ids[i], ring_id);
     VLOG(1) << "nccl communicator of rank " << i << " in ring " << ring_id
@@ -135,10 +155,10 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(ncclComm_t comm, int nranks, int rank,
 }
 
 void NCCLCommContext::ReleaseNCCLComms() {
-  for (auto comm : comm_vec_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::ncclCommDestroy(comm),
-        platform::errors::External("Fail to destroy nccl comm"));
+  for (auto& p : comm_map_) {
+    for (auto& q : p.second) {
+      q.second.reset();
+    }
   }
 }
 

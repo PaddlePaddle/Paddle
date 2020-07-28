@@ -85,11 +85,11 @@ class TestElementwiseOpGradGrad {
       auto src = feed_datas_[in_name].data();
       auto src_place = platform::CPUPlace();
       if (platform::is_cpu_place(place_)) {
-        auto dst_place = boost::get<platform::CPUPlace>(place_);
+        auto dst_place = BOOST_GET_CONST(platform::CPUPlace, place_);
         memory::Copy(dst_place, dst, src_place, src, bytes);
       } else if (platform::is_gpu_place(place_)) {
 #ifdef PADDLE_WITH_CUDA
-        auto dst_place = boost::get<platform::CUDAPlace>(place_);
+        auto dst_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
         memory::Copy(dst_place, dst, src_place, src, bytes, nullptr);
 #else
         PADDLE_THROW("Not compiled with cuda");

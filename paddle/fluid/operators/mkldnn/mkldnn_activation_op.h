@@ -30,12 +30,8 @@ class MKLDNNActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(context.Input<framework::Tensor>("X") != nullptr,
-                   "Cannot get input tensor X, variable name = %s",
-                   context.InputName("X"));
-    PADDLE_ENFORCE(context.Output<framework::Tensor>("Out") != nullptr,
-                   "Cannot find output tensor Out, variable name = %s",
-                   context.OutputName("Out"));
+    OP_INOUT_CHECK(context.HasInput("X"), "Input", "X", "Activation");
+    OP_INOUT_CHECK(context.HasInput("Out"), "Output", "Out", "Activation");
     Functor functor;
 
     auto attrs = functor.GetAttrs();

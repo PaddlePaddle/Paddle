@@ -51,7 +51,7 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
   std::map<std::string, std::map<std::string, LoDTensor>> gathered_data;
   for (const auto* op : predictor_.inference_program_->Block(0).AllOps()) {
     if (op->HasAttr("use_quantizer") &&
-        boost::get<bool>(op->GetAttr("use_quantizer"))) {
+        BOOST_GET_CONST(bool, op->GetAttr("use_quantizer"))) {
       const VariableNameMap& connections_in = op->Inputs();
       const VariableNameMap& connections_out = op->Outputs();
 

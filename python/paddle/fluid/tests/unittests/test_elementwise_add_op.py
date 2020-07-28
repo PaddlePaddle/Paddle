@@ -263,6 +263,13 @@ class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
         self.out = self.x + self.y
 
 
+class TestElementwiseAddOp_broadcast_7(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(1, 1, 20, 5).astype(self.dtype)
+        self.y = np.random.rand(20, 5, 1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+
 class TestFP16ElementwiseAddOp_broadcast_6(TestFP16ElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)

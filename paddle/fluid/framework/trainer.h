@@ -51,11 +51,28 @@ class TrainerBase {
   virtual void Run() = 0;
   virtual void Finalize() = 0;
   virtual Scope* GetWorkerScope(int thread_id) = 0;
+  virtual void InitDumpEnv() = 0;
+  virtual void DumpWork(int tid);
 
  protected:
+  virtual std::string GetDumpPath(int tid) = 0;
+  virtual void ParseDumpConfig(const TrainerDesc& trainer_desc);
+  virtual void FinalizeDumpEnv();
+
   Scope* root_scope_;
   bool debug_;
   Dataset* dataset_ptr_;
+
+  // For dump param or field
+  bool need_dump_field_ = false;
+  bool need_dump_param_ = false;
+  std::string dump_fields_path_;
+  std::string dump_converter_;
+  std::vector<std::string> dump_param_;
+  std::vector<std::string> dump_fields_;
+  int dump_thread_num_;
+  std::vector<std::thread> dump_thread_;
+  std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
 };
 
 // general trainer for async execution
@@ -71,10 +88,9 @@ class MultiTrainer : public TrainerBase {
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Run();
   virtual void Finalize();
-  virtual void FinalizeDumpEnv();
   virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
-  virtual void DumpWork(int tid);
+  virtual std::string GetDumpPath(int tid);
 
  protected:
   int thread_num_;
@@ -83,16 +99,9 @@ class MultiTrainer : public TrainerBase {
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
   std::vector<std::string> need_merge_var_names_;
 
-  bool need_dump_field_;
-  std::string dump_fields_path_;
-  std::string dump_converter_;
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;
-
-  std::vector<std::thread> dump_thread_;
-  int dump_thread_num_;
-  std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
 };
 
 class DistMultiTrainer : public MultiTrainer {
@@ -107,10 +116,8 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void Finalize();
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
-  virtual void FinalizeDumpEnv();
   virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
-  virtual void DumpWork(int tid);
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
@@ -124,53 +131,37 @@ class PipelineTrainer : public TrainerBase {
   void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
   void InitTrainerEnv(const ProgramDesc& main_program,
                       const platform::Place& place) override;
-  void InitOtherEnv(const ProgramDesc& main_program) override {}
+  void InitOtherEnv(const ProgramDesc& main_program) override;
   void Run() override;
   void Finalize() override;
   virtual Scope* GetWorkerScope(int thread_id);
+  void InitDumpEnv() override;
+  virtual std::string GetDumpPath(int tid);
+  void GetSkipVars(int section_id, const ProgramDesc& main_program);
 
  protected:
   int section_num_;
-  int pipeline_num_;
-  int scope_queue_size_;
-  int sync_steps_;
+  int num_microbatches_;
+  int start_cpu_core_id_;
+  std::vector<std::string> feed_var_names_;
+  std::vector<platform::Place> places_;
+  std::vector<std::vector<std::string>> skip_vars_;
+  TrainerDesc trainer_desc_;
 
-  SectionWorkerParameter pipeline_config_;
-
-  // The in/output var names for each section
-  std::vector<std::unique_ptr<std::vector<std::string>>> in_var_names_;
-  std::vector<std::unique_ptr<std::vector<std::string>>> out_var_names_;
-
-  // Counter for the running thread
-  std::vector<std::vector<int*>> worker_count_;
-  std::vector<std::vector<std::unique_ptr<std::mutex>>> worker_count_mutex_;
-
-  // worker: [section_id][pipeline_id][thread_id]
-  std::vector<std::vector<
-      std::vector<std::shared_ptr<paddle::framework::DeviceWorker>>>>
-      workers_;
   std::vector<std::thread> section_threads_;
+  // worker: [section_id]
+  std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
+  // minibatch_scopes_: [section_id]
+  std::vector<Scope*> minibatch_scopes_;
+  // microbatch_scopes_: [section_id][microbatch_id]
+  std::vector<std::vector<Scope*>> microbatch_scopes_;
 
-  // We use scope to maintain context info, and scopes
-  // will be deliverd between different sections.
-  std::vector<std::vector<std::unique_ptr<ScopeQueue>>> scope_queues_;
-  std::vector<Scope*> pipeline_scopes_;
-
-  // The parameters that should be syncronized between different cards using
-  // nccl all-reduce
-  std::shared_ptr<std::vector<std::string>> param_need_sync_;
-  std::vector<std::string> persistable_vars_;
-  std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;
-  std::shared_ptr<platform::NCCLContextMap> nccl_ctx_map_;
-
-  std::vector<DataFeed*> readers_;
-
-  void InitFirstScopeQueue(ScopeQueue* scope_queue, int pipeline_id,
-                           const ProgramDesc& main_program,
-                           const Scope& root_scope);
-  void CopyParameters(const Scope& root_scope, int pipeline_id);
-  void construct_sync_functor();
+  void CopyParameters(int section_id, int microbatch_id,
+                      const ProgramDesc& program, const platform::Place& place);
+  bool isPersistableVarGrad(std::string name);
+  bool isPersistable(VarDesc* var);
 };
 #endif
+
 }  // namespace framework
 }  // namespace paddle

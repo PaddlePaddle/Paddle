@@ -24,6 +24,14 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_SOURCES_DIR ${THIRD_PARTY_PATH}/lite)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
+  if(NOT LITE_GIT_TAG)
+    set(LITE_GIT_TAG 42ab4d559f6659edfc35040fb30fdcec3dc3f8aa)
+  endif()
+
+  if(NOT CUDA_ARCH_NAME)
+    set(CUDA_ARCH_NAME "Auto")
+  endif()
+
   # No quotes, so cmake can resolve it as a command with arguments.
   set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
   set(LITE_OPTIONAL_ARGS -DWITH_MKL=ON
@@ -38,13 +46,14 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                          -DLITE_BUILD_EXTRA=ON
                          -DCUDNN_ROOT=${CUDNN_ROOT}
                          -DLITE_WITH_STATIC_CUDA=OFF
+                         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
                          -DLITE_WITH_ARM=OFF)
 
   ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       GIT_REPOSITORY      "https://github.com/PaddlePaddle/Paddle-Lite.git"
-      GIT_TAG             0f875ef367bd2dbfa2e557eb2a2fc841bacdf6cf
+      GIT_TAG             ${LITE_GIT_TAG}
       PREFIX              ${LITE_SOURCES_DIR}
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
@@ -74,7 +83,7 @@ message(STATUS "Paddle-lite SOURCE_DIR: ${LITE_SOURCE_DIR}")
 include_directories(${LITE_SOURCE_DIR})
 include_directories(${LITE_BINARY_DIR})
 
-function(external_lite_static_libs alias path)
+function(external_lite_libs alias path)
   add_library(${alias} SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET ${alias} PROPERTY IMPORTED_LOCATION
                ${path})
@@ -83,6 +92,16 @@ function(external_lite_static_libs alias path)
   endif()
 endfunction()
 
-external_lite_static_libs(lite_full_static ${LITE_BINARY_DIR}/inference_lite_lib/cxx/lib/libpaddle_full_api_shared.so)
+external_lite_libs(lite_full_static ${LITE_BINARY_DIR}/inference_lite_lib/cxx/lib/libpaddle_full_api_shared.so)
+set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/inference_lite_lib/cxx/lib/libpaddle_full_api_shared.so)
+
+if(XPU_SDK_ROOT)
+  include_directories("${XPU_SDK_ROOT}/XTDK/include")
+  include_directories("${XPU_SDK_ROOT}/XTCL/include")
+  add_definitions(-DPADDLE_WITH_XPU)
+  LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/shlib/")
+  LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/runtime/shlib/")
+endif()
 
 add_definitions(-DPADDLE_WITH_LITE)
+add_definitions(-DLITE_WITH_LOG)

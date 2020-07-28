@@ -158,6 +158,7 @@ class Tensor {
   void ShareBufferWith(const Tensor& tensor) {
     holder_ = tensor.holder_;
     offset_ = tensor.offset_;
+    type_ = tensor.type_;
   }
 
   bool IsSharedBufferWith(const Tensor& src) const {

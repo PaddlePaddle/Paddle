@@ -46,7 +46,7 @@ class TestDistSimnetBow2x2DenseAsync(TestDistBase):
         self._sync_mode = False
         self._enforce_place = "CPU"
 
-    #FIXME(typhoonzero): fix async tests later
+    # FIXME(typhoonzero): fix async tests later
     def notest_simnet_bow(self):
         need_envs = {
             "IS_DISTRIBUTED": '0',
@@ -107,7 +107,7 @@ class TestDistSimnetBow2x2LookupTableSync(TestDistBase):
 
     def test_simnet_bow(self):
         need_envs = {
-            "IS_DISTRIBUTED": '1',
+            "IS_DISTRIBUTED": '0',
             "IS_SPARSE": '1',
             'IS_SELF_CONTAINED_LR': '1'
         }
@@ -126,7 +126,7 @@ class TestDistSimnetBow2x2LookupTableAsync(TestDistBase):
 
     def test_simnet_bow(self):
         need_envs = {
-            "IS_DISTRIBUTED": '1',
+            "IS_DISTRIBUTED": '0',
             "IS_SPARSE": '1',
             'IS_SELF_CONTAINED_LR': '1'
         }
@@ -145,7 +145,7 @@ class TestDistSimnetBow2x2LookupTableNotContainLRSync(TestDistBase):
 
     def test_simnet_bow(self):
         need_envs = {
-            "IS_DISTRIBUTED": '1',
+            "IS_DISTRIBUTED": '0',
             "IS_SPARSE": '1',
             'IS_SELF_CONTAINED_LR': '0'
         }

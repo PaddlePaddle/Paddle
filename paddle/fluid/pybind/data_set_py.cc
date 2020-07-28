@@ -55,13 +55,19 @@ class IterableDatasetWrapper {
         batch_size_(batch_size),
         drop_last_(drop_last) {
 #if defined _WIN32
-    PADDLE_THROW("Dataset is not supported on Windows");
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Dataset is not supported on Windows"));
 #elif defined __APPLE__
-    PADDLE_THROW("Dataset is not supported on MAC");
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Dataset is not supported on MAC"));
 #else
     size_t device_num = places_.size();
-    PADDLE_ENFORCE_GT(device_num, 0, "thread_num must be larger than 0");
-    PADDLE_ENFORCE_GT(slots_.size(), 0, "slot_num cannot be 0");
+    PADDLE_ENFORCE_GT(device_num, 0,
+                      platform::errors::InvalidArgument(
+                          "The number of devices must be larger than 0"));
+    PADDLE_ENFORCE_GT(slots_.size(), 0,
+                      platform::errors::InvalidArgument(
+                          "The number of slots must be larger than 0"));
     scopes_.reserve(device_num);
     tensors_.reserve(device_num);
     for (size_t i = 0; i < device_num; ++i) {
@@ -80,14 +86,19 @@ class IterableDatasetWrapper {
   }
 
   void Start() {
-    PADDLE_ENFORCE_EQ(is_started_, false, "Reader has been started");
+    PADDLE_ENFORCE_EQ(
+        is_started_, false,
+        platform::errors::AlreadyExists("Reader has been started already"));
     data_feeds_ = dataset_->GetReaders();
     PADDLE_ENFORCE_EQ(data_feeds_.size(), places_.size(),
-                      "Device number does not match reader number");
+                      platform::errors::InvalidArgument(
+                          "Device number does not match reader number"));
     for (size_t i = 0; i < places_.size(); ++i) {
       data_feeds_[i]->AssignFeedVar(*scopes_[i]);
       data_feeds_[i]->SetPlace(platform::CPUPlace());
-      PADDLE_ENFORCE_EQ(data_feeds_[i]->Start(), true, "Reader start failed");
+      PADDLE_ENFORCE_EQ(data_feeds_[i]->Start(), true,
+                        platform::errors::Unavailable(
+                            "Failed to start the reader on device %d.", i));
     }
     is_started_ = true;
 
@@ -96,7 +107,10 @@ class IterableDatasetWrapper {
   }
 
   std::vector<std::unordered_map<std::string, framework::LoDTensor>> Next() {
-    PADDLE_ENFORCE_EQ(is_started_, true, "Reader must be started");
+    PADDLE_ENFORCE_EQ(
+        is_started_, true,
+        platform::errors::PreconditionNotMet(
+            "Reader must be started when getting next batch data."));
     size_t device_num = places_.size();
 
     std::vector<std::unordered_map<std::string, framework::LoDTensor>> result(
@@ -154,7 +168,9 @@ class IterableDatasetWrapper {
  private:
   bool IsValidLoDTensor(const framework::LoDTensor &tensor) const {
     auto &lod = tensor.lod();
-    PADDLE_ENFORCE_LE(lod.size(), 1, "lod level must be not larger than 1");
+    PADDLE_ENFORCE_LE(lod.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "LoD level must be not larger than 1"));
     if (!drop_last_) return true;
 
     if (lod.empty()) {
@@ -291,6 +307,8 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_fleet_send_sleep_seconds",
            &framework::Dataset::SetFleetSendSleepSeconds,
+           py::call_guard<py::gil_scoped_release>())
+      .def("enable_pv_merge", &framework::Dataset::EnablePvMerge,
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")

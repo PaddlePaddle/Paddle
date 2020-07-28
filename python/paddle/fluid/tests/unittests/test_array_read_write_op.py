@@ -21,6 +21,7 @@ import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import default_main_program
+from paddle.fluid import compiler, Program, program_guard
 import numpy
 
 
@@ -123,6 +124,20 @@ class TestArrayReadWrite(unittest.TestCase):
             g_out_sum_dygraph = numpy.array(g_out_dygraph).sum()
 
             self.assertAlmostEqual(1.0, g_out_sum_dygraph, delta=0.1)
+
+
+class TestArrayReadWriteOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            #for ci coverage
+            x1 = numpy.random.randn(2, 4).astype('int32')
+            x2 = fluid.layers.fill_constant(shape=[1], dtype='int32', value=1)
+            x3 = numpy.random.randn(2, 4).astype('int32')
+
+            self.assertRaises(
+                TypeError, fluid.layers.array_read, array=x1, i=x2)
+            self.assertRaises(
+                TypeError, fluid.layers.array_write, array=x1, i=x2, out=x3)
 
 
 if __name__ == '__main__':

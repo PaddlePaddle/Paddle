@@ -26,7 +26,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
   cfg->EnableMKLDNN();
 }
 

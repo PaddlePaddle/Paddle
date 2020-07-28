@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -35,30 +36,7 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
       : InferVarTypeContext(nullptr, nullptr),
         inputs_(inputs),
         outputs_(outputs),
-        attrs_(attrs_map),
-        input_names_(),
-        output_names_(),
-        var_set_() {
-    input_names_.reserve(inputs_.size());
-    for (auto& it : inputs_) {
-      for (auto& var : it.second) {
-        if (var) {
-          input_names_[it.first].emplace_back(var->Name());
-          var_set_[var->Name()] = var.get();
-        }
-      }
-    }
-
-    output_names_.reserve(outputs_.size());
-    for (auto& it : outputs_) {
-      for (auto& var : it.second) {
-        if (var) {
-          output_names_[it.first].emplace_back(var->Name());
-          var_set_[var->Name()] = var.get();
-        }
-      }
-    }
-  }
+        attrs_(attrs_map) {}
 
   virtual ~RuntimeInferVarTypeContext() {}
 
@@ -68,10 +46,6 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
         iter != attrs_.end(), true,
         platform::errors::NotFound("Cannot find attribute %s", name));
     return iter->second;
-  }
-
-  bool HasVar(const std::string& name) const override {
-    return var_set_.count(name) > 0;
   }
 
   bool HasInput(const std::string& name) const override {
@@ -84,93 +58,173 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     return (it != outputs_.end() && it->second.size() > 0);
   }
 
-  const std::vector<std::string>& Input(
-      const std::string& name) const override {
-    auto iter = input_names_.find(name);
-    PADDLE_ENFORCE_EQ(
-        iter != input_names_.end(), true,
-        platform::errors::NotFound("Cannot find input var %s", name));
-    return iter->second;
+  size_t InputSize(const std::string& name) const {
+    return inputs_.at(name).size();
   }
 
-  const std::vector<std::string>& Output(
-      const std::string& name) const override {
-    auto iter = output_names_.find(name);
-
-    PADDLE_ENFORCE_EQ(
-        iter != output_names_.end(), true,
-        platform::errors::NotFound("Cannot find output var %s", name));
-    return iter->second;
+  const std::string& InputVarName(const std::string& name,
+                                  const int index = 0) const {
+    return inputs_.at(name)[index]->Name();
   }
 
-  framework::proto::VarType::Type GetType(
-      const std::string& name) const override {
-    auto iter = var_set_.find(name);
-
-    PADDLE_ENFORCE_EQ(
-        iter != var_set_.end(), true,
-        platform::errors::NotFound("Cannot find var %s in GetType", name));
-    return iter->second->Type();
+  bool InputTypeAnyOf(const std::string& name,
+                      framework::proto::VarType::Type type) const override {
+    auto& inputs = inputs_.at(name);
+    return std::any_of(inputs.begin(), inputs.end(),
+                       [&type](const std::shared_ptr<VarType>& var) {
+                         return var->Type() == type;
+                       });
   }
 
-  void SetType(const std::string& name,
-               framework::proto::VarType::Type type) override {
-    if (name == "kLookupTablePath") {
-      VLOG(2) << "SUPER UGLY FIX, remove this when move imperative mode in C++";
-    } else {
-      var_set_[name]->SetType(type);
-      if ((var_set_[name]->MutableVar()->IsInitialized() == true) &&
-          (var_set_[name]->MutableVar()->Type() != type)) {
-        var_set_[name]->MutableVar()->Clear();
-      }
+  bool InputTypeAllOf(const std::string& name,
+                      framework::proto::VarType::Type type) const override {
+    auto& inputs = inputs_.at(name);
+    return std::all_of(inputs.begin(), inputs.end(),
+                       [&type](const std::shared_ptr<VarType>& var) {
+                         return var->Type() == type;
+                       });
+  }
+
+  void SyncTypeAndDataType(const std::string& input_name,
+                           const std::string& output_name,
+                           int index = 0) override {
+    auto in_var = inputs_.at(input_name)[index];
+    auto out_var = outputs_.at(output_name)[index];
+    if (in_var != out_var) {
+      this->SetVarBaseType(out_var, in_var->Type());
+      this->SetVarBaseDataType(out_var, in_var->DataType());
     }
   }
 
-  framework::proto::VarType::Type GetDataType(
-      const std::string& name) const override {
-    auto iter = var_set_.find(name);
-
-    PADDLE_ENFORCE_EQ(
-        iter != var_set_.end(), true,
-        platform::errors::NotFound("Cannot find var %s in GetDataType", name));
-    return iter->second->DataType();
+  void SetOutputType(const std::string& name,
+                     framework::proto::VarType::Type type,
+                     int index = 0) override {
+    if (index == framework::ALL_ELEMENTS) {
+      for (auto& item : outputs_.at(name)) {
+        this->SetVarBaseType(item, type);
+      }
+    } else {
+      auto& var = outputs_.at(name)[index];
+      this->SetVarBaseType(var, type);
+    }
   }
 
-  void SetDataType(const std::string& name,
-                   framework::proto::VarType::Type type) override {
-    var_set_[name]->SetDataType(type);
+  void SetVarBaseType(std::shared_ptr<VarType> out,
+                      framework::proto::VarType::Type type) {
+    out->SetType(type);
+    if ((out->MutableVar()->IsInitialized() == true) &&
+        (out->MutableVar()->Type() != type)) {
+      out->MutableVar()->Clear();
+    }
   }
 
-  std::vector<framework::proto::VarType::Type> GetDataTypes(
+  void SetVarBaseDataType(std::shared_ptr<VarType> out,
+                          framework::proto::VarType::Type type) {
+    out->SetDataType(type);
+  }
+
+  framework::proto::VarType::Type GetInputType(
+      const std::string& name, const int& index = 0) const override {
+    return inputs_.at(name)[index]->Type();
+  }
+
+  framework::proto::VarType::Type GetOutputType(
+      const std::string& name, const int& index = 0) const override {
+    return outputs_.at(name)[index]->Type();
+  }
+
+  framework::proto::VarType::Type GetInputDataType(
+      const std::string& name, const int& index = 0) const override {
+    return inputs_.at(name)[index]->DataType();
+  }
+
+  void SetOutputDataType(const std::string& name,
+                         framework::proto::VarType::Type type,
+                         int index = 0) override {
+    if (framework::ALL_ELEMENTS == index) {
+      for (auto& item : outputs_.at(name)) {
+        this->SetVarBaseDataType(item, type);
+      }
+    } else {
+      auto& var = outputs_.at(name)[index];
+      this->SetVarBaseDataType(var, type);
+    }
+  }
+
+  bool IsDygraph() const override { return true; }
+
+ protected:
+  bool HasVar(const std::string& name) const override {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "HasVar is not supported in runtime InferVarType"));
+  }
+
+  const std::vector<std::string>& InputVars(
       const std::string& name) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "GetDataTypes is not supported in runtime InferVarType"));
+        "InputVars is not supported in runtime InferVarType"));
   }
 
-  void SetDataTypes(const std::string& name,
-                    const std::vector<framework::proto::VarType::Type>&
-                        multiple_data_type) override {
+  const std::vector<std::string>& OutputVars(
+      const std::string& name) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "SetDataTypes is not supported in runtime InferVarType"));
+        "OutputVars is not supported in runtime InferVarType"));
   }
 
-  std::vector<int64_t> GetShape(const std::string& name) const override {
+  framework::proto::VarType::Type GetVarType(
+      const std::string& name) const override {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Do not manipulate var in runtime InferVarType"));
+  }
+
+  void SetVarType(const std::string& name,
+                  framework::proto::VarType::Type type) override {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Do not manipulate var in runtime InferVarType"));
+  }
+
+  framework::proto::VarType::Type GetVarDataType(
+      const std::string& name) const override {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Do not manipulate var in runtime InferVarType"));
+  }
+
+  void SetVarDataType(const std::string& name,
+                      framework::proto::VarType::Type type) override {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Do not manipulate var in runtime InferVarType"));
+  }
+
+  std::vector<framework::proto::VarType::Type> GetVarDataTypes(
+      const std::string& name) const override {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "GetVarDataTypes is not supported in runtime InferVarType"));
+  }
+
+  void SetVarDataTypes(const std::string& name,
+                       const std::vector<framework::proto::VarType::Type>&
+                           multiple_data_type) override {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "SetVarDataTypes is not supported in runtime InferVarType"));
+  }
+
+  std::vector<int64_t> GetVarShape(const std::string& name) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not handle Shape in runtime InferVarType"));
   }
 
-  void SetShape(const std::string& name,
-                const std::vector<int64_t>& dims) override {
+  void SetVarShape(const std::string& name,
+                   const std::vector<int64_t>& dims) override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not handle Shape in runtime InferVarType"));
   }
 
-  int32_t GetLoDLevel(const std::string& name) const override {
+  int32_t GetVarLoDLevel(const std::string& name) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not handle LoDLevel in runtime InferVarType"));
   }
 
-  void SetLoDLevel(const std::string& name, int32_t lod_level) override {
+  void SetVarLoDLevel(const std::string& name, int32_t lod_level) override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not handle LoDLevel in runtime InferVarType"));
   }
@@ -179,9 +233,6 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   const NameVarMap<VarType>& inputs_;
   const NameVarMap<VarType>& outputs_;
   const framework::AttributeMap& attrs_;
-  std::unordered_map<std::string, std::vector<std::string>> input_names_;
-  std::unordered_map<std::string, std::vector<std::string>> output_names_;
-  std::unordered_map<std::string, VarType*> var_set_;
 };
 
 }  // namespace imperative

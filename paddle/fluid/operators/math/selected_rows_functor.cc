@@ -59,14 +59,14 @@ struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
 
     auto* out_data = out_value->data<T>();
     auto* in1_data = in1_value.data<T>();
-    memory::Copy(boost::get<platform::CPUPlace>(out_place), out_data,
-                 boost::get<platform::CPUPlace>(in1_place), in1_data,
+    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, out_place), out_data,
+                 BOOST_GET_CONST(platform::CPUPlace, in1_place), in1_data,
                  in1_value.numel() * sizeof(T));
 
     auto* in2_data = in2_value.data<T>();
-    memory::Copy(boost::get<platform::CPUPlace>(out_place),
+    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, out_place),
                  out_data + in1_value.numel(),
-                 boost::get<platform::CPUPlace>(in2_place), in2_data,
+                 BOOST_GET_CONST(platform::CPUPlace, in2_place), in2_data,
                  in2_value.numel() * sizeof(T));
   }
 };
@@ -139,9 +139,9 @@ struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    memory::Copy(boost::get<platform::CPUPlace>(in2_place),
+    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, in2_place),
                  in2_data + input2_offset,
-                 boost::get<platform::CPUPlace>(in1_place), in1_data,
+                 BOOST_GET_CONST(platform::CPUPlace, in1_place), in1_data,
                  in1_value.numel() * sizeof(T));
   }
 };
@@ -333,9 +333,9 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
       for (auto* in : inputs) {
         auto* in_data = in->value().data<T>();
         auto in_numel = in->rows().size() * input_width;
-        memory::Copy(boost::get<platform::CPUPlace>(out_place),
+        memory::Copy(BOOST_GET_CONST(platform::CPUPlace, out_place),
                      out_data + copied_numel,
-                     boost::get<platform::CPUPlace>(in_place), in_data,
+                     BOOST_GET_CONST(platform::CPUPlace, in_place), in_data,
                      in_numel * sizeof(T));
         copied_numel += in_numel;
       }

@@ -49,7 +49,10 @@ class CheckpointNotifyOp : public framework::OperatorBase {
       VLOG(3) << "checkpoint notify sending lookup table: " << lookup_table_name
               << " and dir:" << dir << " to " << epmap[i];
     }
-    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+    PADDLE_ENFORCE_EQ(
+        rpc_client->Wait(), true,
+        platform::errors::Fatal("Fail to notify checkpoint."
+                                " Internal error occurs in RPCClient."));
   }
 };
 

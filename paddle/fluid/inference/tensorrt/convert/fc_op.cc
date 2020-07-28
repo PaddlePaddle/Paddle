@@ -40,28 +40,31 @@ class FcOpConverter : public OpConverter {
     auto* X = engine_->GetITensor(op_desc.Input(i_name).front());
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
-    PADDLE_ENFORCE_NOT_NULL(Y_v);
+    PADDLE_ENFORCE_NOT_NULL(
+        Y_v, platform::errors::NotFound(
+                 "Can not find %s presistale var of fc in scope.", w_name));
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     const int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
-            ? boost::get<int>(op_desc.GetAttr("x_num_col_dims"))
+            ? BOOST_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
             : (op_desc.HasAttr("in_num_col_dims")
-                   ? boost::get<int>(op_desc.GetAttr("in_num_col_dims"))
+                   ? BOOST_GET_CONST(int, op_desc.GetAttr("in_num_col_dims"))
                    : 1);
     const std::string activation_type =
         op_desc.HasAttr("activation_type")
-            ? boost::get<std::string>(op_desc.GetAttr("activation_type"))
+            ? BOOST_GET_CONST(std::string, op_desc.GetAttr("activation_type"))
             : "";
     // This may trigger a GPU->CPU copy, because TRT's weight can only be
     // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
-    bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
+    bool enable_int8 = op_desc.HasAttr("enable_int8");
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
       CHECK(op_desc.HasAttr(i_name + "_scale"));
-      float in_scale = boost::get<float>(op_desc.GetAttr(i_name + "_scale"));
+      float in_scale =
+          BOOST_GET_CONST(float, op_desc.GetAttr(i_name + "_scale")) * 127;
       auto weight_scale =
-          boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
+          BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
       weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
                                               Y_t, true, weight_scale);
       engine_->SetTensorDynamicRange(X, in_scale);
@@ -71,7 +74,11 @@ class FcOpConverter : public OpConverter {
           engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t, false);
     }
 
-    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL);  // a matrix
+    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL,
+                      platform::errors::InvalidArgument(
+                          "The fc's weight should be a matrix with 2 dims, but "
+                          "it's %d-dimensional.",
+                          Y_t->dims().size()));  // a matrix
     size_t n_output = Y_t->dims()[1];
 
     int m = Y_t->dims()[0];

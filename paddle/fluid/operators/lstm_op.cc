@@ -24,64 +24,80 @@ class LSTMOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(Bias) of LSTM should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "LSTM");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "LSTM");
+    OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "LSTM");
 
-    PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
-                   "Output(Hidden) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Cell"),
-                   "Output(Cell) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("BatchGate"),
-                   "Output(BatchGate) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("BatchCellPreAct"),
-                   "Output(BatchGate) of LSTM should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "LSTM");
+    OP_INOUT_CHECK(ctx->HasOutput("Cell"), "Output", "Cell", "LSTM");
+    OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate", "LSTM");
+    OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"), "Output",
+                   "BatchCellPreAct", "LSTM");
 
     auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE_EQ(in_dims.size(), 2, "Input(X)'s rank must be 2.");
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Input(X)'s rank must be 2, but received %d.", in_dims.size()));
 
     if (ctx->HasInput("H0")) {
-      PADDLE_ENFORCE(ctx->HasInput("C0"),
-                     "Input(Cell) and Input(Hidden) of LSTM should not "
-                     "be null at the same time.");
+      PADDLE_ENFORCE_EQ(
+          ctx->HasInput("C0"), true,
+          platform::errors::NotFound("Input(Cell) and Input(Hidden) of LSTM "
+                                     "should not be null at the same time."));
       auto h_dims = ctx->GetInputDim("H0");
       auto c_dims = ctx->GetInputDim("C0");
-      PADDLE_ENFORCE(h_dims == c_dims,
-                     "The dimension of Input(H0) and Input(C0) "
-                     "should be the same.");
+      PADDLE_ENFORCE_EQ(h_dims, c_dims,
+                        platform::errors::InvalidArgument(
+                            "The dimension of Input(H0) and Input(C0) should "
+                            "be the same, but received [%s] (H0) vs [%s] (C0).",
+                            h_dims, c_dims));
     }
 
     int frame_size = in_dims[1] / 4;
     auto w_dims = ctx->GetInputDim("Weight");
-    PADDLE_ENFORCE_EQ(w_dims.size(), 2,
-                      "The rank of Input(Weight) should be 2.");
+    PADDLE_ENFORCE_EQ(
+        w_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The rank of Input(Weight) should be 2, but received %d.",
+            w_dims.size()));
     PADDLE_ENFORCE_EQ(w_dims[0], frame_size,
-                      "The first dimension of Input(Weight) "
-                      "should be %d.",
-                      frame_size);
+                      platform::errors::InvalidArgument(
+                          "The first dimension of Input(Weight) should be %d, "
+                          "but received %d.",
+                          frame_size, w_dims[0]));
     PADDLE_ENFORCE_EQ(w_dims[1], 4 * frame_size,
-                      "The second dimension of Input(Weight) "
-                      "should be 4 * %d.",
-                      frame_size);
+                      platform::errors::InvalidArgument(
+                          "The second dimension of Input(Weight) should be 4 * "
+                          "%d, but received %d.",
+                          frame_size, w_dims[1]));
 
     auto b_dims = ctx->GetInputDim("Bias");
-    PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
-    PADDLE_ENFORCE_EQ(b_dims[0], 1,
-                      "The first dimension of Input(Bias) should be 1.");
+    PADDLE_ENFORCE_EQ(
+        b_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The rank of Input(Bias) should be 2, but received %d.",
+            b_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        b_dims[0], 1,
+        platform::errors::InvalidArgument(
+            "The first dimension of Input(Bias) should be 1, but received %d.",
+            b_dims[0]));
 
     if (ctx->Attrs().Get<bool>("use_peepholes")) {
-      PADDLE_ENFORCE_EQ(b_dims[1], 7 * frame_size,
-                        "The second dimension of Input(Bias) should be "
-                        "7 * %d if enable peepholes connection",
-                        frame_size);
+      PADDLE_ENFORCE_EQ(
+          b_dims[1], 7 * frame_size,
+          platform::errors::InvalidArgument(
+              "The second dimension of Input(Bias) should be 7 * %d if enable "
+              "peepholes connection, but received %d.",
+              frame_size, b_dims[1]));
     } else {
-      PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
-                        "The second dimension of Input(Bias) should be "
-                        "4 * %d if disable peepholes connection",
-                        frame_size);
+      PADDLE_ENFORCE_EQ(
+          b_dims[1], 4 * frame_size,
+          platform::errors::InvalidArgument(
+              "The second dimension of Input(Bias) should be 4 * %d if disable "
+              "peepholes connection, but received %d.",
+              frame_size, b_dims[1]));
     }
 
     framework::DDim out_dims({in_dims[0], frame_size});
@@ -229,21 +245,16 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Hidden"),
-                   "Input(Hidden) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Cell"),
-                   "Input(Cell) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(Bias) of LSTM should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("Hidden"), "Input", "Hidden", "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("Cell"), "Input", "Cell", "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "LSTM@Grad");
 
-    PADDLE_ENFORCE(ctx->HasInput("BatchGate"),
-                   "Input(BatchGate) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("BatchCellPreAct"),
-                   "Input(BatchGate) of LSTM should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("BatchGate"), "Input", "BatchGate",
+                   "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("BatchCellPreAct"), "Input", "BatchCellPreAct",
+                   "LSTM@Grad");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
       auto g_name = framework::GradVarName(name);

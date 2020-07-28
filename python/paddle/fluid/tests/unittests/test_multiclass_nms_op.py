@@ -17,6 +17,8 @@ import unittest
 import numpy as np
 import copy
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 def softmax(x):
@@ -485,6 +487,37 @@ class TestMulticlassNMS2LoDNoOutput(TestMulticlassNMS2LoDInput):
         # Here set 2.0 to test the case there is no outputs.
         # In practical use, 0.0 < score_threshold < 1.0
         self.score_threshold = 2.0
+
+
+class TestMulticlassNMSError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            M = 1200
+            N = 7
+            C = 21
+            BOX_SIZE = 4
+
+            boxes_np = np.random.random((M, C, BOX_SIZE)).astype('float32')
+            scores = np.random.random((N * M, C)).astype('float32')
+            scores = np.apply_along_axis(softmax, 1, scores)
+            scores = np.reshape(scores, (N, M, C))
+            scores_np = np.transpose(scores, (0, 2, 1))
+
+            boxes_data = fluid.data(
+                name='bboxes', shape=[M, C, BOX_SIZE], dtype='float32')
+            scores_data = fluid.data(
+                name='scores', shape=[N, C, M], dtype='float32')
+
+            def test_bboxes_Variable():
+                # the bboxes type must be Variable
+                fluid.layers.multiclass_nms(bboxes=boxes_np, scores=scores_data)
+
+            def test_scores_Variable():
+                # the bboxes type must be Variable
+                fluid.layers.multiclass_nms(bboxes=boxes_data, scores=scores_np)
+
+            self.assertRaises(TypeError, test_bboxes_Variable)
+            self.assertRaises(TypeError, test_scores_Variable)
 
 
 if __name__ == '__main__':

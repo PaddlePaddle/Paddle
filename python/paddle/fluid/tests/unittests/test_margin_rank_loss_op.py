@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle import fluid
 
 
 class TestMarginRankLossOp(OpTest):
@@ -49,6 +50,49 @@ class TestMarginRankLossOp(OpTest):
 
     def test_check_grad_ignore_x2(self):
         self.check_grad(["X1"], "Out", no_grad_set=set('X2'))
+
+
+class TestMarginRankLossLayer(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 5
+        self.margin = 0.5
+        # labels_{i} = {-1, 1}
+        self.label = 2 * np.random.randint(
+            0, 2, size=(self.batch_size, 1)).astype("float32") - 1
+        self.x1 = np.random.random((self.batch_size, 1)).astype("float32")
+        self.x2 = np.random.random((self.batch_size, 1)).astype("float32")
+        # loss = max(0, -label * (x1 - x2) + margin)
+        loss = -self.label * (self.x1 - self.x2) + self.margin
+        loss = np.where(loss > 0, loss, 0)
+        self.loss = loss
+
+    def test_identity(self):
+        place = fluid.CPUPlace()
+        self.check_identity(place)
+
+        if fluid.is_compiled_with_cuda():
+            place = fluid.CUDAPlace(0)
+            self.check_identity(place)
+
+    def check_identity(self, place):
+        main = fluid.Program()
+        start = fluid.Program()
+        with fluid.unique_name.guard():
+            with fluid.program_guard(main, start):
+                label = fluid.data("label", (self.batch_size, 1), "float32")
+                x1 = fluid.data("x1", (self.batch_size, 1), "float32")
+                x2 = fluid.data("x2", (self.batch_size, 1), "float32")
+                out = fluid.layers.margin_rank_loss(label, x1, x2, self.margin)
+
+        exe = fluid.Executor(place)
+        exe.run(start)
+        out_np, = exe.run(
+            main,
+            feed={"label": self.label,
+                  "x1": self.x1,
+                  "x2": self.x2},
+            fetch_list=[out])
+        np.testing.assert_allclose(out_np, self.loss)
 
 
 if __name__ == '__main__':

@@ -22,11 +22,11 @@ class EditDistanceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Hyps"), "Input(Hyps) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Refs"), "Input(Refs) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("SequenceNum"),
-                   "Output(SequenceNum) shouldn't be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Hyps"), "Input", "Hyps", "EditDistance");
+    OP_INOUT_CHECK(ctx->HasInput("Refs"), "Input", "Refs", "EditDistance");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "EditDistance");
+    OP_INOUT_CHECK(ctx->HasOutput("SequenceNum"), "Output", "SequenceNum",
+                   "EditDistance");
     auto hyp_dims = ctx->GetInputDim("Hyps");
     auto ref_dims = ctx->GetInputDim("Refs");
 
@@ -34,23 +34,41 @@ class EditDistanceOp : public framework::OperatorWithKernel {
       auto hyp_length_dims = ctx->GetInputDim("HypsLength");
       auto ref_length_dims = ctx->GetInputDim("RefsLength");
 
-      PADDLE_ENFORCE(hyp_dims.size() == 2 && ref_dims.size() == 2 &&
-                         hyp_dims[0] == ref_dims[0],
-                     "Input(Hyps) and Input(Refs) must be 2-D Tensors with "
-                     "identical first dimension");
-      PADDLE_ENFORCE(hyp_length_dims[0] == ref_length_dims[0] &&
-                         hyp_length_dims[0] == hyp_dims[0],
-                     "Input(HypsLength), Input(RefsLength) and Input(Hyps) "
-                     "should have identical first dimension");
+      PADDLE_ENFORCE_EQ(
+          hyp_dims.size() == 2 && ref_dims.size() == 2 &&
+              hyp_dims[0] == ref_dims[0],
+          true, platform::errors::InvalidArgument(
+                    "Input(Hyps) and Input(Refs) must be 2-D Tensors with "
+                    "identical first dimension. But received Input(Hyps): "
+                    "input rank %u, input shape [%s]; received Input(Refs): "
+                    "input rank %u, input shape [%s]",
+                    hyp_dims.size(), hyp_dims, ref_dims.size(), ref_dims));
+      PADDLE_ENFORCE_EQ(
+          hyp_length_dims[0] == ref_length_dims[0] &&
+              hyp_length_dims[0] == hyp_dims[0],
+          true,
+          platform::errors::InvalidArgument(
+              "Input(HypsLength), Input(RefsLength) and Input(Hyps) "
+              "should have identical first dimension. But received "
+              "Input(HypsLength): input rank %u, input shape [%s]; "
+              "received Input(RefsLength): input rank %u, input shape "
+              "[%s]; received Input(Hyps): input rank %u, input shape "
+              "[%s].",
+              hyp_length_dims.size(), hyp_length_dims, ref_length_dims.size(),
+              ref_length_dims, hyp_dims.size(), hyp_dims));
     } else {
-      PADDLE_ENFORCE(
-          hyp_dims.size() == 2 && hyp_dims[1] == 1,
-          "Input(Hyps) must be a 2-D LoDTensor with the 2nd dimension "
-          "equal to 1.");
-      PADDLE_ENFORCE(
-          ref_dims.size() == 2 && ref_dims[1] == 1,
-          "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
-          "equal to 1.");
+      PADDLE_ENFORCE_EQ(
+          hyp_dims.size() == 2 && hyp_dims[1] == 1, true,
+          platform::errors::InvalidArgument(
+              "Input(Hyps) must be a 2-D LoDTensor with the 2nd dimension "
+              "equal to 1. But received: input rank %u, input shape [%s].",
+              hyp_dims.size(), hyp_dims));
+      PADDLE_ENFORCE_EQ(
+          ref_dims.size() == 2 && ref_dims[1] == 1, true,
+          platform::errors::InvalidArgument(
+              "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
+              "equal to 1. But received: input rank %u, input shape [%s].",
+              ref_dims.size(), ref_dims));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("Refs"));

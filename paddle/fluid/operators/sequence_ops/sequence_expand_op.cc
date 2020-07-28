@@ -26,55 +26,72 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceExpandOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of SequenceExpandOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceExpandOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceExpand");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "SequenceExpand");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SequenceExpand");
 
     auto x_dims = ctx->GetInputDim("X");
     auto out_dims = x_dims;
     int ref_level = ctx->Attrs().Get<int>("ref_level");
 
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "Dimension number of Input(X) should be at least 2.");
+    PADDLE_ENFORCE_GE(
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Dimension number of Input(X) should be at least 2. But "
+            "received: input rank %u, input shape [%s].",
+            x_dims.size(), x_dims));
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("X")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       framework::Variable* y_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Y")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
 
       auto& x_lod = x_var->Get<LoDTensor>().lod();
       auto& y_lod = y_var->Get<LoDTensor>().lod();
 
       PADDLE_ENFORCE_LE(x_lod.size(), 1UL,
-                        "Level number of Input(X)'s lod should not be "
-                        "greater than 1.");
-      PADDLE_ENFORCE_GT(y_lod.size(), 0UL,
-                        "Level number of Input(Y)'s lod should be "
-                        "greater than 0.");
-      PADDLE_ENFORCE(
+                        platform::errors::InvalidArgument(
+                            "Level of Input(X)'s lod should not be "
+                            "greater than 1. But received: lod level %u.",
+                            x_lod.size()));
+      PADDLE_ENFORCE_GT(
+          y_lod.size(), 0UL,
+          platform::errors::InvalidArgument(
+              "Level of Input(Y)'s lod should be greater than 0. But "
+              "received: lod level %u.",
+              y_lod.size()));
+      PADDLE_ENFORCE_EQ(
           ref_level == -1 ||
               (ref_level >= 0 && ref_level < static_cast<int>(y_lod.size())),
-          "Invlid `ref_level`, which should be either equal to -1 "
-          "or in [0, %d)",
-          y_lod.size());
+          true, platform::errors::InvalidArgument(
+                    "Invlid `ref_level`, which should be either equal to -1 "
+                    "or in [0, %d), but received `ref_level` = %u.",
+                    y_lod.size(), ref_level));
 
       if (ref_level == -1) ref_level = y_lod.size() - 1;
 
       if (x_lod.size() > 0) {
-        PADDLE_ENFORCE(x_lod[0].size() == y_lod[ref_level].size(),
-                       "Level number of Input(X)'s lod could be 0. Otherwise "
-                       "size of Input(X)'s first level lod should be equal to "
-                       "size of Input(Y)'s referred level lod.");
+        PADDLE_ENFORCE_EQ(
+            x_lod[0].size(), y_lod[ref_level].size(),
+            platform::errors::InvalidArgument(
+                "Level number of Input(X)'s lod could be 0. Otherwise "
+                "size of Input(X)'s first level lod should be equal to "
+                "size of Input(Y)'s referred level lod. But received: "
+                "Input(X).lod[0].size() = %u, Input(Y).lod[%d].size() = "
+                "%u",
+                x_lod[0].size(), ref_level, y_lod[ref_level].size()));
       } else {
-        PADDLE_ENFORCE_EQ(x_dims[0],
-                          static_cast<int64_t>(y_lod[ref_level].size()) - 1,
-                          "When Input(X)'s lod is null, the dims[0] of "
-                          "Input(X) should match the "
-                          "size of Input(Y)'s referred level lod.");
+        PADDLE_ENFORCE_EQ(
+            x_dims[0], static_cast<int64_t>(y_lod[ref_level].size()) - 1,
+            platform::errors::InvalidArgument(
+                "When Input(X)'s lod is null, the dims[0] of "
+                "Input(X) should match the "
+                "size of Input(Y)'s referred level lod. But received "
+                "Input(X): input rank %u, input shape [%s]; received "
+                "Input(Y).lod[%d].size() - 1 = %d.",
+                x_dims.size(), x_dims, ref_level,
+                static_cast<int64_t>(y_lod[ref_level].size()) - 1));
       }
 
       int64_t out_first_dim = 0;
@@ -194,9 +211,9 @@ class SequenceExpandOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceExpandOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "SequenceExpandOpGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -230,10 +247,10 @@ class SequenceExpandOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceExpandOpNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceExpandOpNoNeedBufferVarsInferer,
                                     "Y");
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(
-    SequenceExpandGradOpNoNeedBufferVarsInference, "X", "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceExpandGradOpNoNeedBufferVarsInferer,
+                                    "X", "Y");
 
 }  // namespace operators
 }  // namespace paddle
@@ -243,9 +260,9 @@ REGISTER_OPERATOR(sequence_expand, ops::SequenceExpandOp,
                   ops::SequenceExpandOpMaker,
                   ops::SequenceExpandOpGradMaker<paddle::framework::OpDesc>,
                   ops::SequenceExpandOpGradMaker<paddle::imperative::OpBase>,
-                  ops::SequenceExpandOpNoNeedBufferVarsInference);
+                  ops::SequenceExpandOpNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(sequence_expand_grad, ops::SequenceExpandOpGrad,
-                  ops::SequenceExpandGradOpNoNeedBufferVarsInference);
+                  ops::SequenceExpandGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_expand,
     ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, float>,

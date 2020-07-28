@@ -44,7 +44,7 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   auto hidden_size = ctx.Attr<int>("size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   box_ptr->PullSparse(ctx.GetPlace(), all_keys, all_values, slot_lengths,
-                      hidden_size);
+                      hidden_size, 0);
 #endif
 }
 
@@ -81,7 +81,7 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   auto hidden_size = ctx.Attr<int>("size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   box_ptr->PushSparseGrad(ctx.GetPlace(), all_keys, all_grad_values,
-                          slot_lengths, hidden_size, batch_size);
+                          slot_lengths, hidden_size, 0, batch_size);
 #endif
 }
 

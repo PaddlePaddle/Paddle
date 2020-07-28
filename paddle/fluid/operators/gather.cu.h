@@ -27,15 +27,11 @@ namespace operators {
 using framework::Tensor;
 using platform::DeviceContext;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T, typename IndexT = int>
 __global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
                                  T* output, size_t index_size,
                                  size_t slice_size) {
-  CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
+  CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT gather_i = indices[indices_i];
@@ -49,7 +45,7 @@ __global__ void GatherNdCUDAKernel(const T* input, const int* input_dims,
                                    const IndexT* indices, T* output,
                                    size_t remain_size, size_t slice_size,
                                    size_t end_size) {
-  CUDA_1D_KERNEL_LOOP(i, remain_size * slice_size) {
+  CUDA_KERNEL_LOOP(i, remain_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT gather_i = 0;
@@ -78,12 +74,14 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   // check index of shape 1-D
   if (index.dims().size() == 1) {
     PADDLE_ENFORCE_GT(index.dims()[0], 0,
-                      "The index of gather_op should not be empty when the "
-                      "index's rank is 1.");
+                      platform::errors::InvalidArgument(
+                          "The index of gather_op should not be empty"
+                          "when the index's rank is 1."));
   } else if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(index.dims()[1], 1,
-                      " If the index's rank of gather_op is 2, the second "
-                      "dimension should be 1.");
+                      platform::errors::InvalidArgument(
+                          "If the index's rank of gather_op is 2,"
+                          " the second dimension should be 1."));
   }
 
   int index_size = index.dims()[0];
@@ -114,7 +112,7 @@ template <typename DeviceContext, typename T, typename IndexT = int>
 void GPUGatherNd(const framework::ExecutionContext& context,
                  const Tensor& input, const Tensor& index, Tensor* output) {
   const auto& ctx = context.template device_context<DeviceContext>();
-  const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   auto cplace = platform::CPUPlace();
 
   auto index_dims = index.dims();

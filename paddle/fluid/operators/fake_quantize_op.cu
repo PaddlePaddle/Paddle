@@ -138,9 +138,9 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
   int tid = threadIdx.x;
 
   T s = scale[0];
+  T inv_s = inverse(s);
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     T x = in[i];
-    T inv_s = inverse(s);
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt * inv_s * v;
@@ -262,7 +262,7 @@ struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& last_scale,
                   const framework::Tensor& iter, const int window_size,
                   framework::Tensor* scales_arr, framework::Tensor* out_scale) {
-    const auto gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
 
     T* scale_arr = scales_arr->mutable_data<T>(gpu_place);
     T* out_scale_data = out_scale->mutable_data<T>(gpu_place);
@@ -299,7 +299,7 @@ struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& in_state, const T* cur_scale,
                   const float rate, framework::Tensor* out_state,
                   framework::Tensor* out_accum, framework::Tensor* out_scale) {
-    const auto gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
 
     T accum;
     T state;
@@ -335,6 +335,8 @@ namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;
 REGISTER_OP_CUDA_KERNEL(fake_quantize_abs_max,
                         ops::FakeQuantizeAbsMaxKernel<CUDA, float>);
+REGISTER_OP_CUDA_KERNEL(fake_quantize_dequantize_abs_max,
+                        ops::FakeQuantizeDequantizeAbsMaxKernel<CUDA, float>);
 REGISTER_OP_CUDA_KERNEL(fake_channel_wise_quantize_abs_max,
                         ops::FakeChannelWiseQuantizeAbsMaxKernel<CUDA, float>);
 REGISTER_OP_CUDA_KERNEL(fake_quantize_range_abs_max,
@@ -347,3 +349,5 @@ REGISTER_OP_CUDA_KERNEL(moving_average_abs_max_scale,
 REGISTER_OP_CUDA_KERNEL(
     fake_quantize_dequantize_moving_average_abs_max,
     ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CUDA, float>);
+REGISTER_OP_CUDA_KERNEL(fake_quantize_dequantize_grad,
+                        ops::FakeQuantDequantGradKernel<CUDA, float>);

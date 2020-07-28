@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from utils import get_cluster, logger
 import os
+import paddle
+from paddle.distributed.utils import get_cluster, logger
 
 
 def get_cloud_cluster(args_node_ips, args_node_ip, args_port, selected_gpus):

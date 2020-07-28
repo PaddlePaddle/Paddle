@@ -15,10 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
+
 #include <algorithm>
 #include <functional>  // for multiplies
 #include <iterator>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -30,6 +32,7 @@ limitations under the License. */
 #ifdef __NVCC__
 #include <cuda.h>
 #include <thrust/iterator/iterator_adaptor.h>
+
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
@@ -76,12 +79,13 @@ inline void get_mid_dims(const framework::DDim &x_dims,
   }
   for (int i = 0; i < y_dims.size(); ++i) {
     if (x_dims[i + axis] != y_dims[i]) {
-      PADDLE_ENFORCE(y_dims[i] == 1 || x_dims[i + axis] == 1,
-                     "ShapeError: broadcast dimension mismatch. Operands "
-                     "could not be broadcast together with the shape of "
-                     "X = [%s] and the shape of Y = [%s]. Received [%d] "
-                     "in X is not equal to [%d] in Y",
-                     x_dims, y_dims, x_dims[i + axis], y_dims[i]);
+      PADDLE_ENFORCE_EQ(y_dims[i] == 1 || x_dims[i + axis] == 1, true,
+                        platform::errors::InvalidArgument(
+                            "Broadcast dimension mismatch. Operands "
+                            "could not be broadcast together with the shape of "
+                            "X = [%s] and the shape of Y = [%s]. Received [%d] "
+                            "in X is not equal to [%d] in Y.",
+                            x_dims, y_dims, x_dims[i + axis], y_dims[i]));
       *is_run_common_broadcast = 1;
       return;
     }
@@ -119,8 +123,15 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                                    int *x_dims_array, int *y_dims_array,
                                    int *out_dims_array, const int max_dim,
                                    const int axis) {
-  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
-  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_GE(
+      axis, 0,
+      platform::errors::InvalidArgument(
+          "Axis should be great than or equal to 0, but received axis is %d.",
+          axis));
+  PADDLE_ENFORCE_LT(axis, max_dim,
+                    platform::errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim, axis));
   if (x_dims.size() > y_dims.size()) {
     std::fill(y_dims_array, y_dims_array + axis, 1);
     if (axis + y_dims.size() < max_dim) {
@@ -138,13 +149,15 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
   }
 
   for (int i = 0; i < max_dim; i++) {
-    PADDLE_ENFORCE(x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
-                       y_dims_array[i] <= 1,
-                   "ShapeError: broadcast dimension mismatch. Operands could "
-                   "not be broadcast together with the shape of X = [%s] and "
-                   "the shape of Y = [%s]. Received [%d] in X is not equal to "
-                   "[%d] in Y at i:%d",
-                   x_dims, y_dims, x_dims_array[i], y_dims_array[i], i);
+    PADDLE_ENFORCE_EQ(
+        x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
+            y_dims_array[i] <= 1,
+        true, platform::errors::InvalidArgument(
+                  "Broadcast dimension mismatch. Operands could "
+                  "not be broadcast together with the shape of X = [%s] and "
+                  "the shape of Y = [%s]. Received [%d] in X is not equal to "
+                  "[%d] in Y at i:%d.",
+                  x_dims, y_dims, x_dims_array[i], y_dims_array[i], i));
     if ((x_dims_array[i] > 1 || y_dims_array[i] > 1) ||
         (x_dims_array[i] == 1 && y_dims_array[i] == 1)) {
       out_dims_array[i] = std::max(x_dims_array[i], y_dims_array[i]);
@@ -184,11 +197,11 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
 }
 
 #ifdef __NVCC__
-template <typename Functor, typename T>
+template <typename Functor, typename T, typename OutType = T>
 __global__ void CommonForwardBroadcastCUDAKernel(
     const int *x_strides_array, const int *y_strides_array,
-    const int *out_dims_array, const T *x, const T *y, T *out, int out_size,
-    int max_dim, Functor func, const bool is_xsize_larger) {
+    const int *out_dims_array, const T *x, const T *y, OutType *out,
+    int out_size, int max_dim, Functor func, const bool is_xsize_larger) {
   for (int out_index = blockIdx.x * blockDim.x + threadIdx.x;
        out_index < out_size; out_index += blockDim.x * gridDim.x) {
     int x_index = 0;
@@ -210,17 +223,17 @@ __global__ void CommonForwardBroadcastCUDAKernel(
   }
 }
 
-template <typename Functor, typename T>
+template <typename Functor, typename T, typename OutType = T>
 void CommonForwardBroadcastCUDA(
     const framework::Tensor *x, const framework::Tensor *y,
     framework::Tensor *z, int *x_dims_array, int *y_dims_array,
     int *out_dims_array, int max_dim, const platform::CUDADeviceContext &ctx,
     Functor func, const bool is_xsize_larger = true) {
-  const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   auto cplace = platform::CPUPlace();
   const T *x_data = x->data<T>();
   const T *y_data = y->data<T>();
-  T *out_data = z->mutable_data<T>(ctx.GetPlace());
+  OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
 
   std::vector<int> x_strides_array(max_dim);
   std::vector<int> y_strides_array(max_dim);
@@ -258,7 +271,7 @@ void CommonForwardBroadcastCUDA(
   dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
 
   CommonForwardBroadcastCUDAKernel<
-      Functor, T><<<gird_size, block_size, 0, ctx.stream()>>>(
+      Functor, T, OutType><<<gird_size, block_size, 0, ctx.stream()>>>(
       x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu, x_data,
       y_data, out_data, out_size, max_dim, func, is_xsize_larger);
 }
@@ -772,7 +785,7 @@ void CommonGradBroadcastCUDA(
     framework::Tensor *dx, framework::Tensor *dy, int *x_dims_array,
     int *y_dims_array, int *out_dims_array, int max_dim,
     const platform::CUDADeviceContext &ctx, DX_OP dx_op, DY_OP dy_op) {
-  const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   auto cplace = platform::CPUPlace();
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
@@ -1030,22 +1043,21 @@ void CommonGradBroadcastCUDA(
   // fallback
   // to old fast path.
   // 2. if both x and y need broadcast, then do it one by one.
+  bool fast_broadcast = false;
   if (x_broadcast_pos.empty() && !y_broadcast_pos.empty()) {
     can_split_y = SplitDims(y_broadcast_pos, max_dim);
     if (can_split_y) {
       // only y need to do broadcast on h
       if (y_broadcast_pos[0] == 0) {
         FastBroadCastHeightCUDAF(y_broadcast_pos, true);
-      } else {
-        LOG(ERROR) << "Error, broadcast should not into w broadcast";
+        fast_broadcast = true;
       }
-      return;
     } else if (y_broadcast_pos.size() == 1 ||
                CheckContiguousDims(y_broadcast_pos)) {  // for only one dim and
                                                         // contiguous broadcast.
       // If cannot split,  which means input has 3 parts
       FastBroadCastAllCUDAF(y_broadcast_pos, max_dim, true);
-      return;
+      fast_broadcast = true;
     }
   } else if (y_broadcast_pos.empty() && !x_broadcast_pos.empty()) {
     // only x need broadcast
@@ -1053,49 +1065,53 @@ void CommonGradBroadcastCUDA(
     if (can_split_x) {
       if (x_broadcast_pos[0] == 0) {
         FastBroadCastHeightCUDAF(x_broadcast_pos, false);
-      } else {
-        // x need to do broadcast on w
-        LOG(ERROR) << "Error, broadcast should not into w broadcast";
+        fast_broadcast = true;
       }
-      return;
     } else if (x_broadcast_pos.size() == 1 ||
                CheckContiguousDims(x_broadcast_pos)) {
       FastBroadCastAllCUDAF(x_broadcast_pos, max_dim, false);
-      return;
+      fast_broadcast = true;
     }
   } else if (!x_broadcast_pos.empty() && !y_broadcast_pos.empty()) {
     // do x and y broadcast each.
     can_split_y = SplitDims(y_broadcast_pos, max_dim);
+    bool fast_broadcast_x = false;
+    bool fast_broadcast_y = false;
     if (can_split_y) {
       // begin at start.
       if (y_broadcast_pos[0] == 0) {
         FastCommonCUDAF(y_broadcast_pos, true);
-      } else {
-        // finish at end
-        LOG(ERROR) << "Error, broadcast should not into w broadcast";
+        fast_broadcast_y = true;
       }
     } else if (y_broadcast_pos.size() == 1) {
       FastBroadCastOneCUDAF(y_broadcast_pos, max_dim, false);
       can_split_y = true;
+      fast_broadcast_y = true;
     }
     can_split_x = SplitDims(x_broadcast_pos, max_dim);
     if (can_split_x) {
       if (x_broadcast_pos[0] == 0) {
         FastCommonCUDAF(x_broadcast_pos, false);
-      } else {
-        LOG(ERROR) << "Error, broadcast should not into w broadcast";
+        fast_broadcast_x = true;
       }
     } else if (x_broadcast_pos.size() == 1) {
       FastBroadCastOneCUDAF(x_broadcast_pos, max_dim, true);
       can_split_x = true;
+      fast_broadcast_x = true;
     }
     VLOG(3) << "CommonBroadcast can_split_y:" << can_split_y
             << " can_split_x:" << can_split_x;
     // if both x and y into fast path then return
-    if (can_split_y && can_split_x) return;
+    if (fast_broadcast_x && fast_broadcast_y) {
+      fast_broadcast = true;
+    }
+    if (can_split_y && can_split_x && fast_broadcast) return;
   }
 
   // Should remove memory copy, use reg instead.
+  if (fast_broadcast) {
+    return;
+  }
   int x_blocks = 0;
   int x_threads = 0;
   ComputeBroadcastKernelSize(x_dims_array, out_dims_array, &x_blocks,
@@ -1126,7 +1142,7 @@ void CommonGradBroadcastCUDA(
                                        1, std::multiplies<int>());
   int x_block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, x_threads);
   int y_block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, y_threads);
-  if (dx && !can_split_x) {
+  if (dx) {
     auto x_strides_order_tmp = memory::Alloc(ctx, bytes);
     int *x_strides_order_gpu =
         reinterpret_cast<int *>(x_strides_order_tmp->ptr());
@@ -1143,7 +1159,7 @@ void CommonGradBroadcastCUDA(
         x_strides_order_gpu, x_dims_order_gpu, x_data, y_data, out_data,
         dout_data, dx_data, out_size, max_dim, x_threads, dx_op);
   }
-  if (dy && !can_split_y) {
+  if (dy) {
     auto y_strides_order_tmp = memory::Alloc(ctx, bytes);
     int *y_strides_order_gpu =
         reinterpret_cast<int *>(y_strides_order_tmp->ptr());
@@ -1690,8 +1706,15 @@ void ElemwiseGradComputeWithBroadcast(
   }
 
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
-  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_GE(
+      axis, 0,
+      platform::errors::InvalidArgument(
+          "Axis should be great than or equal to 0, but received axis is %d.",
+          axis));
+  PADDLE_ENFORCE_LT(axis, max_dim,
+                    platform::errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim, axis));
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
@@ -1758,8 +1781,15 @@ void CommonElementwiseBroadcastForward(
     int axis, const bool is_xsize_larger = true) {
   int max_dim = std::max(x_dims.size(), y_dims.size());
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
-  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_GE(
+      axis, 0,
+      platform::errors::InvalidArgument(
+          "Axis should be great than or equal to 0, but received axis is %d.",
+          axis));
+  PADDLE_ENFORCE_LT(axis, max_dim,
+                    platform::errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim, axis));
   std::vector<int> x_dims_array(max_dim);
   std::vector<int> y_dims_array(max_dim);
   std::vector<int> out_dims_array(max_dim);
@@ -1769,7 +1799,7 @@ void CommonElementwiseBroadcastForward(
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
-    CommonForwardBroadcastCUDA<Functor, T>(
+    CommonForwardBroadcastCUDA<Functor, T, OutType>(
         x, y, z, x_dims_array.data(), y_dims_array.data(),
         out_dims_array.data(), max_dim,
         ctx.template device_context<platform::CUDADeviceContext>(), func,
@@ -1848,8 +1878,15 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   }
 
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
-  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_GE(
+      axis, 0,
+      platform::errors::InvalidArgument(
+          "Axis should be great than or equal to 0, but received axis is %d.",
+          axis));
+  PADDLE_ENFORCE_LT(axis, max_dim,
+                    platform::errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim, axis));
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
@@ -2723,7 +2760,9 @@ void FusedElemwiseAndActGradComputeEx(
   const framework::DDim &x_dim = x->dims();
   const framework::DDim &y_dim = y->dims();
   if (UseIntermediateOut) {
-    PADDLE_ENFORCE(intermediate_out, "intermediate_out should not be nullptr");
+    PADDLE_ENFORCE_NOT_NULL(
+        intermediate_out,
+        platform::errors::InvalidArgument("Intermediate out is null pointer."));
   }
   if (x_dim == y_dim) {
     FusedElemwiseAndActGradComputeNoBroadcast<
@@ -2768,9 +2807,11 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
                                   framework::Tensor *out,
                                   framework::Tensor *intermediate_out) {
   if (KeepIntermediateOut) {
-    PADDLE_ENFORCE(intermediate_out,
-                   "The save_intermediate_out is opened, "
-                   "intermediate_out should not be nullptr.");
+    PADDLE_ENFORCE_NOT_NULL(
+        intermediate_out,
+        platform::errors::InvalidArgument(
+            "The save_intermediate_out is opened, intermediate "
+            "out is null pointer."));
   }
 
   const framework::DDim &x_dim = x.dims();
