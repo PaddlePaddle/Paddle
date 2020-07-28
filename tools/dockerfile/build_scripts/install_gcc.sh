@@ -5,7 +5,7 @@
 set -ex
 
 if [ -f "/etc/redhat-release" ];then
-  lib_so_5=/usr/lib64/libstdc++.so.6
+  lib_so_5=/usr/lib64/libgfortran.so.5
   lib_so_6=/usr/lib64/libstdc++.so.6
   lib_path=/usr/lib64
 else
