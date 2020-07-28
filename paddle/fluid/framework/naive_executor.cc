@@ -25,6 +25,9 @@
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -122,14 +125,7 @@ NaiveExecutor::~NaiveExecutor() {
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  if (platform::is_cpu_place(place_)) {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    platform::MKLDNNDeviceContext *dev_ctx =
-        (platform::MKLDNNDeviceContext *)pool.Get(place_);
-    dev_ctx->ResetBlobMap();
-    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-        paddle::framework::DataLayout::kNCHW);
-  }
+  ClearMKLDNNCache(place_);
 #endif
 }
 
