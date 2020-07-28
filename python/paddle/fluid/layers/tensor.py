@@ -269,14 +269,14 @@ def concat(input, axis=0, name=None):
         input(list): List of input Tensors with data type float16, float32, float64, int32,
             int64. All the Tensors in ``input`` must have the same data type.
         axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
-            It's a scalar with type ``int`` or a ``Tensor`` with shape [1] and data type ``int32`` or ``int64``.
+            It's a scalar with data type int or a Tensor with shape [1] and data type int32 or int64.
             The effective range is [-R, R), where R is Rank(x). When ``axis < 0``, it works the same way
-            as axis+R. Default is 0.
+            as ``axis+R``. Default is 0.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Raises:
-        TypeError: The dtype of input must be one of float16, float32, float64, int32 and int64. 
+        TypeError: The dtype of ``input`` must be one of float16, float32, float64, int32 and int64. 
         TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
         TypeError: All the Tensors in ``input`` must have the same data type.
 
