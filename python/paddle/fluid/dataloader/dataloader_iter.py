@@ -35,6 +35,8 @@ from ..framework import in_dygraph_mode
 from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, _set_SIGCHLD_handler
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 
+__all__ = ['get_worker_info']
+
 # multi-process worker check indices queue interval, avoid
 # hanging in subprocess data loading
 MP_INDICES_CHECK_INTERVAL = 5
@@ -83,6 +85,28 @@ class ParentWatchDog(object):
         if self._parent_alive:
             self._parent_alive = os.getppid() == self._parent_pid
         return self._parent_alive
+
+
+_worker_info = None
+
+
+def get_worker_info():
+    return _worker_info
+
+
+class WorkerInfo(object):
+    __initialized = False
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        self.__initialized = True
+
+    def __setattr__(self, key, val):
+        if self.__initialized:
+            raise RuntimeError("Cannot assign attributes to {} objects".format(
+                self.__class__.__name__))
+        return super(WorkerInfo, self).__setattr__(key, val)
 
 
 class _DataLoaderIterBase(object):
@@ -237,11 +261,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         # data get from _data_queue will be reordered by _rcvd_idx
         # for data order keeping, data index not equal _rcvd_idx 
-        # will be cached in _reorder_dict
+        # will be cached in _task_infos
         self._send_idx = 0
         self._rcvd_idx = 0
         self._batches_outstanding = 0
-        self._reorder_dict = {}
+        self._task_infos = {}
 
         # indices outstand as _outstanding_capacity at first, and
         # blocking_queue capacity is also _outstanding_capacity.
@@ -282,7 +306,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 target=self._worker_loop,
                 args=(self._dataset, self._dataset_kind, indices_queue,
                       self._data_queue, self._workers_done_event,
-                      self._collate_fn, self._worker_init_fn, i))
+                      self._collate_fn, self._worker_init_fn, i,
+                      self._num_workers))
             worker.daemon = True
             worker.start()
             self._workers.append(worker)
@@ -357,7 +382,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         logging.error("DataLoader reader thread raised an exception!")
 
     def _worker_loop(self, dataset, dataset_kind, indices_queue, out_queue,
-                     done_event, collate_fn, init_fn, worker_id):
+                     done_event, collate_fn, init_fn, worker_id, num_workers):
         try:
             # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
             # some shared memory objects may have been applied for but have not yet
@@ -367,6 +392,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
             # set signal handler
             core._set_process_signal_handler()
+
+            global _worker_info
+            _worker_info = WorkerInfo(
+                id=worker_id, num_workers=num_workers, dataset=dataset)
 
             init_exception = None
             try:
@@ -466,10 +495,25 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         self._rcvd_idx += 1
 
     def _get_data(self):
-        if self._rcvd_idx in self._reorder_dict.keys():
-            return self._reorder_dict.pop(self._rcvd_idx)
-
         while not self._thread_done_event.is_set():
+            while self._rcvd_idx < self._send_idx:
+                info = self._task_infos[self._rcvd_idx]
+                if len(info) == 2 or self._worker_status[info[0]]:
+                    break
+                del self._task_infos[self._rcvd_idx]
+                self._rcvd_idx += 1
+                self._batches_outstanding -= 1
+            else:
+                # continue
+                # # self._shutdown_workers()
+                # # raise StopIteration
+                if self._batches_outstanding < len(self._places):
+                    return None
+                continue
+
+            if len(self._task_infos[self._rcvd_idx]) == 2:
+                return self._task_infos.pop(self._rcvd_idx)[1]
+
             try:
                 # [ avoid hang ]: main process may blocking at _reader.read_next when
                 # KeyboardInterrupt, we do following tradeoff:
@@ -516,14 +560,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
                 idx, batch = data
                 if idx == self._rcvd_idx:
+                    del self._task_infos[idx]
                     return batch
                 else:
-                    self._reorder_dict[idx] = batch
+                    self._task_infos[idx] += (batch, )
                     continue
 
     def _try_put_indices(self):
-        # assert self._batches_outstanding <= self._outstanding_capacity, \
-        assert self._send_idx - self._rcvd_idx <= self._outstanding_capacity, \
+        assert self._batches_outstanding <= self._outstanding_capacity, \
                     "too many indices have been put to queue"
         try:
             indices = next(self._sampler_iter)
@@ -538,6 +582,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             return
 
         self._indices_queues[worker_idx].put((self._send_idx, indices))
+        self._task_infos[self._send_idx] = (worker_idx, )
         self._batches_outstanding += 1
         self._send_idx += 1
 

@@ -23,7 +23,7 @@ import multiprocessing
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.io import IterableDataset, BatchSampler, DataLoader
+from paddle.io import IterableDataset, BatchSampler, DataLoader, get_worker_info
 
 EPOCH_NUM = 3
 BATCH_SIZE = 8
