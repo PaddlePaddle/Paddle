@@ -162,6 +162,7 @@ def index_select(x, index, axis=0, name=None):
 
     Examples:
         .. code-block:: python
+            
             import paddle
             import numpy as np
 

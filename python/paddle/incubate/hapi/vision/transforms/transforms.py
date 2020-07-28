@@ -130,7 +130,7 @@ class BatchCompose(object):
             import numpy as np
             from paddle.io import DataLoader
 
-            from paddle.incubate.hapi.model import set_device
+            from paddle.incubate.hapi import set_device
             from paddle.incubate.hapi.datasets import Flowers
             from paddle.incubate.hapi.vision.transforms import Compose, BatchCompose, Resize
 

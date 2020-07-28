@@ -1084,9 +1084,6 @@ class Executor(object):
                 use_prune=use_prune,
                 return_merged=return_merged)
         except Exception as e:
-            if not isinstance(e, core.EOFException):
-                warnings.warn(
-                    "The following exception is not an EOF exception.")
             six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
