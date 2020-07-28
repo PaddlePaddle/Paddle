@@ -94,7 +94,6 @@ class TestMultiprocessReaderException(unittest.TestCase):
                     num = 0
                     try:
                         for data in reader():
-                            print(data)
                             exe.run(feed=data, fetch_list=[image_p_1])
                             num += 1
                         self.assertEquals(num, batch_num)
