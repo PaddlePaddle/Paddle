@@ -54,14 +54,14 @@ __all__ = [
 def concat(x, axis=0, name=None):
     """
 	:alias_main: paddle.concat
-	:alias: paddle.concat,paddle.tensor.concat,paddle.tensor.manipulation.concat
+	:alias: paddle.tensor.concat, paddle.tensor.manipulation.concat
 
     This OP concatenates the input along the axis.
 
     Args:
         x(list): List of input Tensors with data type float16, float32, float64, int32, int64.
             All the Tensors in ``x`` must have same data type.
-        axis(int|Variable, optional): Specify the axis to operate on the input Tensors.
+        axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with type ``int`` or a ``Tensor`` with shape [1] and data type ``int32`` 
             or ``int64``. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as axis+R. Default is 0.
@@ -70,11 +70,11 @@ def concat(x, axis=0, name=None):
             refer to :ref:`api_guide_Name`.
     Raises:
         TypeError: The dtype of ``x`` must be one of float16, float32, float64, int32 and int64. 
-        TypeError: The ``axis`` must be int or Variable. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
+        TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
         TypeError: All the Tensors in ``x`` must have the same data type.
 
     Returns:
-        Variable: A Tensor with the same data type as ``x``.
+        Tensor: A Tensor with the same data type as ``x``.
 
     Examples:
         .. code-block:: python
