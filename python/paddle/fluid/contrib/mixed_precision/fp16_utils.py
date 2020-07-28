@@ -16,6 +16,14 @@ from __future__ import print_function
 
 from ... import core
 from ... import layers
+from ...unique_name import generate as unique_name
+
+
+def _pretty_op_desc_(op_desc, prefix):
+    out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % \
+            (prefix + "_op", str(op_desc.type()), prefix + "_input", " ".join(op_desc.input_arg_names()),
+             prefix + "_output", " ".join(op_desc.output_arg_names()))
+    return out_s
 
 
 def _rename_arg(op, old_name, new_name):
@@ -77,25 +85,26 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             if in_var.type not in valid_types:
                 continue
             if in_var.dtype == src_dtype:
-                cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
+                cast_name = unique_name(in_var.name + '.cast_' + _dtype_to_str(
+                    dest_dtype))
                 out_var = block.vars.get(cast_name)
-                if out_var is None or out_var.dtype != dest_dtype:
-                    out_var = block.create_var(
-                        name=cast_name,
-                        dtype=dest_dtype,
-                        persistable=False,
-                        stop_gradient=False)
+                # if out_var is None or out_var.dtype != dest_dtype:
+                out_var = block.create_var(
+                    name=cast_name,
+                    dtype=dest_dtype,
+                    persistable=False,
+                    stop_gradient=False)
 
-                    block._insert_op(
-                        idx,
-                        type="cast",
-                        inputs={"X": in_var},
-                        outputs={"Out": out_var},
-                        attrs={
-                            "in_dtype": in_var.dtype,
-                            "out_dtype": out_var.dtype
-                        })
-                    num_cast_ops += 1
+                block._insert_op(
+                    idx,
+                    type="cast",
+                    inputs={"X": in_var},
+                    outputs={"Out": out_var},
+                    attrs={
+                        "in_dtype": in_var.dtype,
+                        "out_dtype": out_var.dtype
+                    })
+                num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
                 if op.has_attr('in_dtype'):
@@ -287,19 +296,23 @@ def update_role_var_grad(main_prog, params_grads):
         main_prog (Program): The main program for training.
         params_grads (list): A list of params and grads.
     """
+    print("update_role_var_grad...")
     block = main_prog.global_block()
     BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
     OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
     for p, g in params_grads:
         op = g.op
+        print("scaning ", op.type)
+        print(_pretty_op_desc_(op.desc, "scaning"))
         if g.dtype == core.VarDesc.VarType.FP32 and op.type == 'cast':
+            print("change roles")
             role = op.attr('op_role')
             if role & int(BACKWARD) and op.has_attr('op_role_var'):
                 op.desc.remove_attr("op_role_var")
             else:
                 raise ValueError("The cast op {0} must be in BACKWARD role "
                                  "and have op_role_var attr.".format(op))
-
+            print("change roles mid")
             fp16_grad_name = op.input(op.input_names[0])[0]
             op_for_fp16_grad = find_true_prev_op(block.ops, op, fp16_grad_name)
             op_role_var_attr_name = \
@@ -308,26 +321,88 @@ def update_role_var_grad(main_prog, params_grads):
             if op_for_fp16_grad.has_attr(op_role_var_attr_name):
                 attr_val.extend(op_for_fp16_grad.attr(op_role_var_attr_name))
             op_for_fp16_grad._set_attr(op_role_var_attr_name, attr_val)
+            print("change roles finish")
 
             # Maximize the all_reduce overlap, and perform the cast
             # operation after gradients transfer.
             op._set_attr('op_role', OPTIMIZE)
             # optimize op should stay behind forward and backward ops
+            print("set attr finish")
             if op == block.ops[-1]:
                 continue
             post_ops = find_true_post_op(block.ops, op, g.name)
+            print("find_true_post_op finish")
             if post_ops is not None:
                 raise ValueError("The cast op {0}'s output should not be"
                                  "used by a non-optimize op, however, it"
                                  "is used by {1}".format(op, post_ops[0]))
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(op.desc)
-
+            print("append_op finish")
             op_idx = find_op_index(block.desc, op.desc)
             if op_idx == -1:
                 raise ValueError("The op {0} is not in program".format(op))
             block.desc._remove_op(op_idx, op_idx + 1)
-        block._sync_with_cpp()
+            print("_remove_op finish")
+            block._sync_with_cpp()
+            print("_sync_with_cpp finish")
+
+        elif g.dtype == core.VarDesc.VarType.FP32 and op.type == 'sum':
+            move_sum = False
+            print(_pretty_op_desc_(op.desc, "sum_op"))
+            for input_name in op.input(op.input_names[0]):
+                print("input_name: ", input_name)
+                op_for_sum = find_true_prev_op(block.ops, op, input_name)
+                if op_for_sum.type == 'cast':
+                    print("moving cast op")
+                    print(_pretty_op_desc_(op_for_sum.desc, "cast_op"))
+                    move_sum = True
+                    #             # Maximize the all_reduce overlap, and perform the cast
+                    #             # operation after gradients transfer.
+                    op_for_sum._set_attr('op_role', OPTIMIZE)
+                    #             # optimize op should stay behind forward and backward ops
+                    if op_for_sum == block.ops[-1]:
+                        continue
+                    post_ops = find_true_post_op(block.ops, op_for_sum,
+                                                 input_name)
+                    if post_ops is None:
+                        print("cast op, post_ops is None")
+
+                    new_op_desc = block.desc.append_op()
+                    new_op_desc.copy_from(op_for_sum.desc)
+
+                    op_idx = find_op_index(block.desc, op_for_sum.desc)
+                    if op_idx == -1:
+                        raise ValueError("The op {0} is not in program".format(
+                            op_for_sum))
+                    block.desc._remove_op(op_idx, op_idx + 1)
+                    block._sync_with_cpp()
+
+            if move_sum:
+                print("moving sum op")
+                #     # Maximize the all_reduce overlap, and perform the cast
+                #     # operation after gradients transfer.
+                op._set_attr('op_role', OPTIMIZE)
+                #     # optimize op should stay behind forward and backward ops
+                if op == block.ops[-1]:
+                    continue
+                #     post_ops = find_true_post_op(block.ops, op, g.name)
+                # if post_ops is None:
+                #     print("sum op, post_ops is None")
+                #     if post_ops is not None:
+                #         raise ValueError("The sum op {0}'s output should not be"
+                #                          "used by a non-optimize op, however, it"
+                #                          "is used by {1}".format(op, post_ops[0]))
+                new_op_desc = block.desc.append_op()
+                new_op_desc.copy_from(op.desc)
+
+                op_idx = find_op_index(block.desc, op.desc)
+                if op_idx == -1:
+                    raise ValueError("The op {0} is not in program".format(op))
+                block.desc._remove_op(op_idx, op_idx + 1)
+                block._sync_with_cpp()
+
+    print("finish update_role_var_grad")
 
 
 def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
