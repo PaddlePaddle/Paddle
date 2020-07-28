@@ -21,8 +21,8 @@ import shutil
 
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server import fleet
-from paddle.fluid.incubate.fleet.parameter_server import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distribtued_strategy import StrategyFactory
 
 # For Net
 base_lr = 0.2

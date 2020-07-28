@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 import os
 import unittest
 import paddle.fleet.metrics.metric as metric
-from paddle.fluid.incubate.fleet.parameter_server import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 
 
 class TestFleetMetric(unittest.TestCase):

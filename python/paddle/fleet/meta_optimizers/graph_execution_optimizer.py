@@ -46,7 +46,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
     def _setup_nccl_op(self, startup_program, main_program, build_strategy):
         trainer_endpoints = self.role_maker.get_trainer_endpoints()
         trainers = trainer_endpoints
-        trainer_id = self.role_maker.worker_id()
+        trainer_id = self.role_maker.worker_index()
         current_endpoint = self.role_maker.get_trainer_endpoints()[trainer_id]
         trainer_endpoints_env = ",".join(trainer_endpoints)
         trainers_num = self.role_maker.worker_num()
@@ -164,7 +164,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         self._setup_nccl_op(startup_program, main_program, local_build_strategy)
 
         local_build_strategy.num_trainers = self.role_maker.worker_num()
-        local_build_strategy.trainer_id = self.role_maker.worker_id()
+        local_build_strategy.trainer_id = self.role_maker.worker_index()
         local_build_strategy.trainers_endpoints = self.role_maker.get_trainer_endpoints(
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
