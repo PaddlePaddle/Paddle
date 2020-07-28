@@ -1010,8 +1010,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     program = traced_layer.program
                     traced_layer.save_inference_model(
                         './infer_imperative_transformer',
-                        feed=range(len(ins_static)),
-                        fetch=range(len(outs_static)))
+                        feed=list(range(len(ins_static))),
+                        fetch=list(range(len(outs_static))))
                 else:
                     outs = transformer(enc_inputs, dec_inputs, label, weights)
 
