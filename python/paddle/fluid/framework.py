@@ -66,7 +66,6 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
 _current_device = None
-
 global_prog_seed = 0
 
 
