@@ -163,9 +163,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         # TODO(guru4elephant): should be an independent optimizer
         self._setup_nccl_op(startup_program, main_program, local_build_strategy)
 
-        build_strategy.num_trainers = self.role_maker.worker_num()
-        build_strategy.trainer_id = self.role_maker.worker_id()
-        build_strategy.trainers_endpoints = self.role_maker.get_trainer_endpoints(
+        local_build_strategy.num_trainers = self.role_maker.worker_num()
+        local_build_strategy.trainer_id = self.role_maker.worker_id()
+        local_build_strategy.trainers_endpoints = self.role_maker.get_trainer_endpoints(
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
 
