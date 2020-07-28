@@ -153,6 +153,18 @@ class TestMNISTWithDeclarative(TestMNIST):
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                             static_loss))
 
+    def test_mnist_declarative_cpu_vs_mkldnn(self):
+        dygraph_loss_cpu = self.train_dygraph()
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        try:
+            dygraph_loss_mkldnn = self.train_dygraph()
+        finally:
+            fluid.set_flags({'FLAGS_use_mkldnn': False})
+        self.assertTrue(
+            np.allclose(dygraph_loss_cpu, dygraph_loss_mkldnn),
+            msg='cpu dygraph is {}\n mkldnn dygraph is \n{}'.format(
+                dygraph_loss_cpu, dygraph_loss_mkldnn))
+
     def train(self, to_static=False):
         prog_trans = ProgramTranslator()
         prog_trans.enable(to_static)
