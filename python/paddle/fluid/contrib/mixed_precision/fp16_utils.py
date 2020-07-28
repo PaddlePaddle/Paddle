@@ -19,13 +19,6 @@ from ... import layers
 from ...unique_name import generate as unique_name
 
 
-def _pretty_op_desc_(op_desc, prefix):
-    out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % \
-            (prefix + "_op", str(op_desc.type()), prefix + "_input", " ".join(op_desc.input_arg_names()),
-             prefix + "_output", " ".join(op_desc.output_arg_names()))
-    return out_s
-
-
 def _rename_arg(op, old_name, new_name):
     """
     If an op has old_name input and output, rename these input 
@@ -88,7 +81,6 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                 cast_name = unique_name(in_var.name + '.cast_' + _dtype_to_str(
                     dest_dtype))
                 out_var = block.vars.get(cast_name)
-                # if out_var is None or out_var.dtype != dest_dtype:
                 out_var = block.create_var(
                     name=cast_name,
                     dtype=dest_dtype,
