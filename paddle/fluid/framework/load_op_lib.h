@@ -35,7 +35,10 @@ T *DynLoad(void *handle, std::string name) {
 #else
   auto errorno = GetLastError();
 #endif  // !_WIN32
-  PADDLE_ENFORCE_NOT_NULL(func, errorno);
+  PADDLE_ENFORCE_NOT_NULL(
+      func,
+      platform::errors::NotFound(
+          "Failed to load dynamic operator library, error code(%s).", errorno));
   return func;
 }
 
@@ -63,9 +66,9 @@ void LoadOpLib(const std::string &dso_name) {
         type == "conditional_block" || type == "conditional_block_grad") {
       continue;
     }
-    if (info_map.Has(n.first)) {
-      PADDLE_THROW("Op %s has been registered.");
-    }
+    PADDLE_ENFORCE_NE(info_map.Has(n.first), true,
+                      platform::errors::AlreadyExists(
+                          "Operator (%s) has been registered.", type));
     OpInfo info;
     info.creator_ = n.second.creator_;
 
@@ -88,7 +91,8 @@ void LoadOpLib(const std::string &dso_name) {
       for (auto &str : strs) {
         proto::OpDesc proto_desc;
         PADDLE_ENFORCE_EQ(proto_desc.ParseFromString(str), true,
-                          "Failed to parse OpDesc from string");
+                          platform::errors::InvalidArgument(
+                              "Failed to parse OpDesc from string."));
         ret.emplace_back(new OpDesc(proto_desc, nullptr));
       }
       return ret;
