@@ -42,11 +42,32 @@ from ..fluid import layers
 import paddle
 
 __all__ = [
-    'cast', 'concat', 'expand', 'expand_as', 'flatten', 'gather', 'gather_nd',
-    'reshape', 'reverse', 'scatter', 'scatter_nd_add', 'scatter_nd',
-    'shard_index', 'slice', 'split', 'squeeze', 'stack', 'strided_slice',
-    'transpose', 'unique', 'unique_with_counts', 'unsqueeze', 'unstack', 'flip',
-    'unbind', 'roll'
+    'cast',
+    'concat',
+    'expand',
+    'expand_as',
+    'flatten',
+    'gather',
+    'gather_nd',
+    'reshape',
+    'reverse',
+    'scatter',
+    'scatter_nd_add',
+    'scatter_nd',
+    'shard_index',
+    'slice',
+    'split',
+    'squeeze',
+    'stack',
+    'strided_slice',
+    'transpose',
+    'unique',
+    'unique_with_counts',
+    'unsqueeze',
+    'unstack',
+    'flip',
+    'unbind',
+    'roll',
 ]
 
 
@@ -612,7 +633,7 @@ def unsqueeze(x, axis, name=None):
         name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Variable: Output unsqueezed Tensor with the same data type as input Tensor.
+        Tensor: Output unsqueezed Tensor with the same data type as input Tensor.
 
     Examples:
         .. code-block:: python
@@ -629,7 +650,7 @@ def unsqueeze(x, axis, name=None):
             print(out2.shape)  # [1, 5, 1, 10]
             
     """
-    if axis == None:
+    if axis is None:
         axis = []
     elif isinstance(axis, int):
         axis = [axis]

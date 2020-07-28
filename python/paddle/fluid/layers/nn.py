@@ -6270,7 +6270,7 @@ def unsqueeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
-        out, _ = core.ops.unsqueeze2(x, 'axis', axis)
+        out, _ = core.ops.unsqueeze2(input, 'axes', axes)
         return out
 
     if not isinstance(axes, (int, list, tuple, Variable)):

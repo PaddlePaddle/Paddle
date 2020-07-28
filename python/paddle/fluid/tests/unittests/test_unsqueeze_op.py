@@ -108,7 +108,7 @@ class API_TestUnsqueeze2(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.data('data1', shape=[-1, 10], dtype='float64')
             data2 = fluid.data('data2', shape=[1], dtype='int32')
-            result_squeeze = paddle.unsqueeze(data1, axes=data2)
+            result_squeeze = paddle.unsqueeze(data1, axis=data2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([5, 1, 10]).astype('float64')
