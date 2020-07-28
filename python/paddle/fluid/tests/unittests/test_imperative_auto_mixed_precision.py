@@ -119,7 +119,7 @@ class TestAmpScaler(unittest.TestCase):
     def test_minimize(self):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
 
-        def run_simple_conv(use_scaler=True):
+        def run_simple_conv(inp_np, use_scaler=True):
             paddle.manual_seed(10)
             with fluid.dygraph.guard():
                 model = SimpleConv(
@@ -139,10 +139,10 @@ class TestAmpScaler(unittest.TestCase):
                 scaled_loss.backward()
                 optimize_ops, params_grads = scaler.minimize(optimizer,
                                                              scaled_loss)
-                return optimize_ops, params_grads
+            return optimize_ops, params_grads
 
-        outs_with_scaler = run_simple_conv(use_scaler=True)
-        outs_no_scaler = run_simple_conv(use_scaler=False)
+        outs_with_scaler = run_simple_conv(inp_np, use_scaler=True)
+        outs_no_scaler = run_simple_conv(inp_np, use_scaler=False)
 
         self.assertEqual(outs_with_scaler[0],
                          [])  # optimize_ops is [] in dygraph mode
@@ -157,6 +157,36 @@ class TestAmpScaler(unittest.TestCase):
             self.assertEqual(
                 np.allclose(outs_with_scaler[1][i][0].numpy(),
                             outs_no_scaler[1][i][0].numpy()), True)
+
+    def test_nan_inf(self):
+        inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+        inp_np[0][1][2][3] = np.nan
+        with fluid.dygraph.guard():
+            model = SimpleConv(
+                num_channels=3,
+                num_filters=64,
+                filter_size=7,
+                stride=2,
+                act='relu')
+            params_init = {}
+            for param in model.parameters():
+                params_init[param.name] = param.numpy()
+            optimizer = fluid.optimizer.SGDOptimizer(
+                learning_rate=0.01, parameter_list=model.parameters())
+            scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+            data = fluid.dygraph.to_variable(inp_np)
+
+            out = model(data)
+            loss = fluid.layers.mean(out)
+            scaled_loss = scaler.scale(loss)
+            scaled_loss.backward()
+            optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
+            self.assertEqual(scaler._found_inf.numpy() == 1, True)
+
+            for param in model.parameters():
+                # param not update when tensor contains nan or inf
+                self.assertTrue(
+                    np.array_equal(param.numpy(), params_init[param.name]))
 
 
 class TestResnet(unittest.TestCase):

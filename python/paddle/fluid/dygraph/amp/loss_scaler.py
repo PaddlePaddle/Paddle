@@ -154,11 +154,15 @@ class AmpScaler(object):
 
         if self._cache_founf_inf:
             self._incr_count = 0
-            self._decr_count = self._incr_count + 1
+            self._decr_count = self._decr_count + 1
             if self._decr_count == self._decr_every_n_nan_or_inf:
+                print(
+                    'Found inf or nan, current scale is: {}, decrease to: {}*{}'.
+                    format(
+                        float(self._scale),
+                        float(self._scale), float(self._decr_ratio)))
                 self._scale = self._scale * self._decr_ratio
-                self._decr_count
-            print('found infinite', float(self._scale))
+                self._decr_count = 0
         else:
             self._decr_count = 0
             self._incr_count = self._incr_count + 1
