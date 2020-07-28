@@ -138,27 +138,27 @@ def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
 def index_select(x, index, axis=0, name=None):
     """
 	:alias_main: paddle.index_select
-	:alias: paddle.index_select,paddle.tensor.index_select,paddle.tensor.search.index_select
+	:alias: paddle.tensor.index_select, paddle.tensor.search.index_select
 
-    Returns a new tensor which indexes the `input` tensor along dimension `dim` using 
-    the entries in `index` which is a Tensor. The returned tensor has the same number 
-    of dimensions as the original `input` tensor. The dim-th dimension has the same 
-    size as the length of `index`; other dimensions have the same size as in the `input` tensor. 
+    Returns a new tensor which indexes the ``input`` tensor along dimension ``dim`` using 
+    the entries in ``index`` which is a Tensor. The returned tensor has the same number 
+    of dimensions as the original ``x`` tensor. The dim-th dimension has the same 
+    size as the length of ``index``; other dimensions have the same size as in the `input` tensor. 
 
     Args:
-        x (Variable): The input tensor variable.The dtype of x can be one of float32, float64, int32, int64.
-        index (Variable): The 1-D tensor containing the indices to index.the dtype of index can be int32 or int64.
+        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
+        index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
         axis (int, optional): The dimension in which we index. Default: if None, the axis is 0.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor with same data type as `input`.
+        Tensor: A Tensor with same data type as `x`.
     
     Raises:
-        TypeError: x must be a Variable and the dtype of x must be one of  float32, float64, int32 and int64.
-        TypeError: index must be a Variable adn the dtype of index must be int32 or int64.
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
+        TypeError: ``index`` must be a Tensor adn the data type of ``index`` must be int32 or int64.
 
     Examples:
         .. code-block:: python
