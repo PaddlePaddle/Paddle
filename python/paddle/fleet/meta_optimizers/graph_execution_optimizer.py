@@ -16,6 +16,7 @@ from paddle.fluid.framework import core
 from paddle.fluid import compiler
 from .meta_optimizer_base import MetaOptimizerBase
 from ..base.private_helper_function import wait_server_ready
+import logging
 
 
 class GraphExecutionOptimizer(MetaOptimizerBase):

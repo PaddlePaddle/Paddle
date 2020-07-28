@@ -584,4 +584,7 @@ class DistributedStrategy(object):
             print("WARNING: auto should have value of bool type")
 
     def __repr__(self):
+        fields = self.strategy.DESCRIPTOR.fields
+        for f in fields:
+            print("{}: {}".format(f.name, f.default_value))
         return str(self.strategy)
