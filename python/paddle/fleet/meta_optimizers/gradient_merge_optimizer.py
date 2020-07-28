@@ -28,10 +28,10 @@ class GradientMergeOptimizer(MetaOptimizerBase):
                         user_defined_strategy):
         super(GradientMergeOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
-        # TODO(update to new user_defined_strategy)
         self.wrapped_opt._set_k_steps(
-            self.user_defined_strategy.gradient_merge_k_step)
-        # self.wrapped_opt._set_avg(self.user_defined_strategy.gradient_merge_avg)
+            self.user_defined_strategy.gradient_merge_configs["k_steps"])
+        self.wrapped_opt._set_avg(
+            self.user_defined_strategy.gradient_merge_configs["avg"])
 
     def _can_apply(self):
         can_apply = (self.user_defined_strategy.gradient_merge == True) and \
