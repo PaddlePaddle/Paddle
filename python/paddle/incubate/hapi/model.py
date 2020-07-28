@@ -691,8 +691,8 @@ class Model(object):
         import paddle.incubate.hapi as hapi
         
         class MyNet(fluid.dygraph.Layer):
-            def __init__(self):
-                super(MyNet, self).__init__(classifier_act=None)
+            def __init__(self, classifier_act=None):
+                super(MyNet, self).__init__()
                 self._fc1 = fluid.dygraph.Linear(784, 200, act=classifier_act)
 
             def forward(self, x):
@@ -776,8 +776,8 @@ class Model(object):
               import paddle.incubate.hapi as hapi
 
               class MyNet(fluid.dygraph.Layer):
-                  def __init__(self):
-                      super(MyNet, self).__init__(classifier_act=None)
+                  def __init__(self, classifier_act=None):
+                      super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 10, act=classifier_act)
 
                   def forward(self, x):
@@ -825,8 +825,8 @@ class Model(object):
               import paddle.incubate.hapi as hapi
 
               class MyNet(fluid.dygraph.Layer):
-                  def __init__(self):
-                      super(MyNet, self).__init__(classifier_act=None)
+                  def __init__(self, classifier_act=None):
+                      super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 10, act=classifier_act)
 
                   def forward(self, x):
@@ -1197,12 +1197,13 @@ class Model(object):
               input = hapi.Input('image', [None, 1, 28, 28], 'float32')
               label = hapi.Input('label', [None, 1], 'int64')
            
-              model = hapi.Model(hapi.vision.LeNet(), input, label)
+              model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
+                  input, label)
               optim = fluid.optimizer.Adam(
                   learning_rate=0.001, parameter_list=model.parameters())
               model.prepare(
                   optim,
-                  paddle.nn.CrossEntropy(),
+                  paddle.nn.CrossEntropyLoss(),
                   hapi.metrics.Accuracy(topk=(1, 2)))
               model.fit(train_dataset,
                         val_dataset,
@@ -1233,12 +1234,13 @@ class Model(object):
               input = hapi.Input('image', [None, 1, 28, 28], 'float32')
               label = hapi.Input('label', [None, 1], 'int64')
            
-              model = hapi.Model(hapi.vision.LeNet(), input, label)
+              model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
+                  input, label)
               optim = fluid.optimizer.Adam(
                   learning_rate=0.001, parameter_list=model.parameters())
               model.prepare(
                   optim,
-                  paddle.nn.CrossEntropy(),
+                  paddle.nn.CrossEntropyLoss(),
                   hapi.metrics.Accuracy(topk=(1, 2)))
               model.fit(train_loader,
                         val_loader,

@@ -170,6 +170,7 @@ class Accuracy(Metric):
         
         .. code-block:: python
 
+        import paddle
         import paddle.fluid as fluid
         import paddle.incubate.hapi as hapi
 
