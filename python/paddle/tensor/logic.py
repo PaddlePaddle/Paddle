@@ -58,13 +58,13 @@ def equal_all(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Variable): Tensor, data type is float32, float64, int32, int64.
-        y(Variable): Tensor, data type is float32, float64, int32, int64.
+        x(Tensor): Tensor, data type is float32, float64, int32, int64.
+        y(Tensor): Tensor, data type is float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: output Tensor, data type is bool, value is [False] or [True].
+        Tensor: output Tensor, data type is bool, value is [False] or [True].
 
     Examples:
         .. code-block:: python
@@ -187,13 +187,13 @@ def equal(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Variable): Tensor, data type is float32, float64, int32, int64.
-        y(Variable): Tensor, data type is float32, float64, int32, int64.
+        x(Tensor): Tensor, data type is float32, float64, int32, int64.
+        y(Tensor): Tensor, data type is float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: output Tensor, it's shape is the same as the input's Tensor,
+        Tensor: output Tensor, it's shape is the same as the input's Tensor,
         and the data type is bool. The result of this op is stop_gradient. 
 
     Examples:
@@ -223,12 +223,12 @@ def greater_equal(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
+        Tensor, the output data type is bool: The tensor storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -256,12 +256,12 @@ def greater_than(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x` .
+        Tensor, the output data type is bool: The tensor storing the output, the output shape is same as input :attr:`x` .
 
     Examples:
         .. code-block:: python
@@ -289,13 +289,13 @@ def less_equal(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
+        Tensor, the output data type is bool: The tensor storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -323,13 +323,13 @@ def less_than(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
+        Tensor, the output data type is bool: The tensor storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -357,13 +357,13 @@ def not_equal(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
+        Tensor, the output data type is bool: The tensor storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
