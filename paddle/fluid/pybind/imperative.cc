@@ -721,11 +721,11 @@ void BindImperative(py::module *m_ptr) {
       .def("_run_backward",
            [](imperative::VarBase &self,
               const imperative::detail::BackwardStrategy &bckst,
-              const imperative::Tracer &tracer) {
+              const imperative::Tracer &tracer, bool retain_graph) {
              // TODO(jiabin): when we impl more backward execution we can
              // select them
              auto *engine = tracer.GetEngine();
-             engine->Init(&self, bckst);
+             engine->Init(&self, bckst, retain_graph);
              VLOG(3) << "Start backward";
              engine->Execute();
              VLOG(3) << "Finish backward";
@@ -873,7 +873,7 @@ void BindImperative(py::module *m_ptr) {
            &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
-           py::arg("key") = "tmp")
+           py::arg("key") = "eager_tmp")
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,

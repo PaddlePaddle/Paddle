@@ -41,12 +41,6 @@ ExternalProject_Add(
   TEST_COMMAND      ""
 )
 
-if(${CMAKE_VERSION} VERSION_LESS "3.3.0")
-  set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cub_dummy.c)
-  file(WRITE ${dummyfile} "const char *dummy = \"${dummyfile}\";")
-  add_library(cub STATIC ${dummyfile})
-else()
-  add_library(cub INTERFACE)
-endif()
+add_library(cub INTERFACE)
 
 add_dependencies(cub extern_cub)

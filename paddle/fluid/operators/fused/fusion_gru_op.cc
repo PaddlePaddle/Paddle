@@ -183,6 +183,10 @@ void FusionGRUOpMaker::Make() {
                 "(bool, default: True) "
                 "whether to use seq mode to compute GRU.")
       .SetDefault(true);
+  AddAttr<bool>("origin_mode",
+                "bool"
+                "use origin mode in article https://arxiv.org/abs/1412.3555")
+      .SetDefault(false);
   AddComment(R"DOC(
 The Fusion complete GRU Operator.
 This operator fuse the fully-connected operator into GRU, 

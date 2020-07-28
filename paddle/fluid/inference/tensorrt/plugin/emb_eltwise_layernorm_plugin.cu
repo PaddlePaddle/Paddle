@@ -83,7 +83,11 @@ bool EmbEltwiseLayernormPluginDynamic<T>::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
-
+  PADDLE_ENFORCE_EQ(nb_outputs, 1,
+                    platform::errors::InvalidArgument(
+                        "The EmbEltwiseLayerNorm's output should be one"
+                        "but it's (%d) outputs.",
+                        nb_outputs));
   PADDLE_ENFORCE_LT(
       pos, nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
@@ -114,6 +118,7 @@ bool EmbEltwiseLayernormPluginDynamic<T>::supportsFormatCombination(
       return desc.type == nvinfer1::DataType::kHALF;
     }
   }
+  return false;
 }
 
 template <typename T>
