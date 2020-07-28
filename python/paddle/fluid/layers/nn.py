@@ -4815,7 +4815,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             dimension orderly. The length of the list mustn't be larger than the Tensor's size of specified dim.
         dim (int|Tensor, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and data type ``int32`` 
             or ``int64``. The dimension along which to split. If :math:`dim < 0`, the dimension to split along is 
-            ``rank(input) + dim``. Default is -1.
+            :math:`rank(input) + dim`. Default is -1.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name` .
 

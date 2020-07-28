@@ -307,6 +307,9 @@ def stack(x, axis=0, out=None, name=None):
 
 def split(x, num_or_sections, axis=0, name=None):
     """
+      :alias_main: paddle.split
+      :alias: paddle.tensor.split, paddle.tensor.manipulation.split
+    
     Split the input tensor into multiple sub-Tensors.
     
     Args:
@@ -317,8 +320,8 @@ def split(x, num_or_sections, axis=0, name=None):
             sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
             The length of the list must not  be larger than the Tensor's size of specified ``dim``.
         axis (int|Tensor, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and data type 
-            ``int32`` or ``int64``. The axis along which to split. If ``axis < 0``, the axis to split along
-            is ``rank(x) + axis``. Default is 0.
+            ``int32`` or ``int64``. The axis along which to split. If :math::`axis < 0`, the axis to split along
+            is :math:`rank(x) + axis`. Default is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -338,24 +341,24 @@ def split(x, num_or_sections, axis=0, name=None):
             input_1 = np.random.random([3, 9, 5]).astype("int32")
             input = paddle.imperative.to_variable(input_1)
 
-            x0, x1, x2 = paddle.split(input, num_or_sections=3, dim=1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
             # x0.shape [3, 3, 5]
             # x1.shape [3, 3, 5]
             # x2.shape [3, 3, 5]
 
-            x0, x1, x2 = paddle.split(input, num_or_sections=[2, 3, 4], dim=1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=[2, 3, 4], axis=1)
             # x0.shape [3, 2, 5]
             # x1.shape [3, 3, 5]
             # x2.shape [3, 4, 5]
 
-            x0, x1, x2 = paddle.split(input, num_or_sections=[2, 3, -1], dim=1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=[2, 3, -1], axis=1)
             # x0.shape [3, 2, 5]
             # x1.shape [3, 3, 5]
             # x2.shape [3, 4, 5]
             
-            # dim is negative, the real dim is (rank(input) + axis) which real
+            # axis is negative, the real axis is (rank(x) + axis) which real
             # value is 1.
-            x0, x1, x2 = paddle.split(input, num_or_sections=3, dim=-2)
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=-2)
             # x0.shape [3, 3, 5]
             # x1.shape [3, 3, 5]
             # x2.shape [3, 3, 5]
