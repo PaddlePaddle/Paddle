@@ -1,6 +1,7 @@
 #!/bin/bash
 set -xe
 
+echo '123'
 REPO="${REPO:-typhoon1986}"
 
 # NOTE: version matches are determined!
