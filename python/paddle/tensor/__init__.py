@@ -105,6 +105,7 @@ from .math import asin  #DEFINE_ALIAS
 from .math import atan  #DEFINE_ALIAS
 from .math import ceil  #DEFINE_ALIAS
 from .math import cos  #DEFINE_ALIAS
+from .math import cosh  #DEFINE_ALIAS
 from .math import cumsum  #DEFINE_ALIAS
 from .math import elementwise_add  #DEFINE_ALIAS
 from .math import elementwise_div  #DEFINE_ALIAS
@@ -130,6 +131,7 @@ from .math import rsqrt  #DEFINE_ALIAS
 from .math import scale  #DEFINE_ALIAS
 from .math import sign  #DEFINE_ALIAS
 from .math import sin  #DEFINE_ALIAS
+from .math import sinh  #DEFINE_ALIAS
 from .math import sqrt  #DEFINE_ALIAS
 from .math import square  #DEFINE_ALIAS
 from .math import stanh  #DEFINE_ALIAS

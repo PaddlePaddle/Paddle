@@ -117,6 +117,18 @@ inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
   return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
 }
 
+inline void ClearMKLDNNCache(const platform::Place& place) {
+  // Clear mkl-dnn cache,
+  if (platform::is_cpu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    dev_ctx->ResetBlobMap();
+    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+        paddle::framework::DataLayout::kNCHW);
+  }
+}
+
 template <typename Type>
 mkldnn::memory::data_type MKLDNNGetDataType() {
   return mkldnn::memory::data_type::undef;

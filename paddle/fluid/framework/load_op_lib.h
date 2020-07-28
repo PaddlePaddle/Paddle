@@ -35,7 +35,10 @@ T *DynLoad(void *handle, std::string name) {
 #else
   auto errorno = GetLastError();
 #endif  // !_WIN32
-  PADDLE_ENFORCE_NOT_NULL(func, errorno);
+  PADDLE_ENFORCE_NOT_NULL(
+      func,
+      platform::errors::NotFound(
+          "Failed to load dynamic operator library, error code(%s).", errorno));
   return func;
 }
 
