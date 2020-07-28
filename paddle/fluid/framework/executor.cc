@@ -37,9 +37,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 DECLARE_bool(benchmark);
-DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
@@ -84,15 +87,7 @@ Executor::~Executor() {
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
   if (clear_mkldnn_cache_) {
-    if (platform::is_cpu_place(place_)) {
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      platform::MKLDNNDeviceContext* dev_ctx =
-          (platform::MKLDNNDeviceContext*)pool.Get(place_);
-      dev_ctx->ResetBlobMap();
-      platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-          paddle::framework::DataLayout::kNCHW);
-    }
+    ClearMKLDNNCache(place_);
   }
 #endif
 }

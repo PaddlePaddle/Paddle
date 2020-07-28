@@ -96,14 +96,14 @@ class GradOpDescMakerBase {
     if (!drop_empty_grad) {
       return ret_val;
     }
-    PADDLE_ENFORCE_LE(var_names.size(), 1UL,
-                      "BUG from operator developer:"
-                      " for input argument with a list of variables, "
-                      " drop_empty_grad is not allowed because it makes"
-                      " the correspondence bewteen a variable and its gradient"
-                      " ambiguous."
-                      " Op type %s",
-                      fwd_op_.Type());
+    PADDLE_ENFORCE_LE(
+        var_names.size(), 1UL,
+        platform::errors::Unavailable(
+            "BUG from operator developer:"
+            " for input argument with a list of variables, "
+            " drop_empty_grad is not allowed because it makes"
+            " the correspondence bewteen a variable and its gradient"
+            " ambiguous."));
 
     std::vector<std::string> dropped_ret_val;
     dropped_ret_val.reserve(ret_val.size());
@@ -157,7 +157,8 @@ class GradOpDescMakerBase {
   const Attribute& GetAttr(const std::string& name) const {
     auto& map = fwd_op_.GetAttrMap();
     auto it = map.find(name);
-    PADDLE_ENFORCE(it != map.end(), "Cannot find attribute %s", name);
+    PADDLE_ENFORCE_NE(it, map.end(), platform::errors::NotFound(
+                                         "Cannot find attribute (%s).", name));
     return it->second;
   }
 

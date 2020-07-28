@@ -103,7 +103,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     helper = LayerHelper("full_like", **locals())
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full_like')
+                'full_like/zeros_like/ones_like')
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
@@ -134,7 +134,7 @@ def ones(shape, dtype=None, name=None):
 
     Raises:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32, int64 and None
-        and the data type of out Tensor must be the same as the dtype. 
+            and the data type of out Tensor must be the same as the dtype. 
         TypeError: The `shape` must be one of list, tuple and Variable.
     
     Examples:
@@ -164,74 +164,47 @@ def ones(shape, dtype=None, name=None):
     return fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
 
 
-def ones_like(input, dtype=None, device=None, name=None):
+def ones_like(x, dtype=None, name=None):
     """
 	:alias_main: paddle.ones_like
-	:alias: paddle.ones_like,paddle.tensor.ones_like,paddle.tensor.creation.ones_like
+	:alias: paddle.tensor.ones_like, paddle.tensor.creation.ones_like
 
-    This function creates a ones tensor which has identical shape and dtype 
-    with `input`.
+    This OP returns a Tensor filled with the value 1, with the same shape and
+    data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Args:
-        input(Variable): The input tensor which specifies shape and dtype.The dtype of input can be 
-            float32, float64, int32, int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set bool, float32, float64, int32, int64. 
-            The default value is None, the dtype is the same as input.
-        device(str, optional): Which device to run the operator. The :attr:`device` must be
-            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default value is None.
-        name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
-            Default value is None, the framework set the name of output variable.  
+        x(Tensor): The input tensor which specifies shape and dtype. The
+            dtype of ``x`` can be bool, float16, float32, float64, int32, int64.
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+            output tensor. Supported data types: bool, float16, float32, float64,
+            int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
+            Default is None.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
     Returns:
-        out(Variable): The tensor variable storing the output.
+        Tensor: A Tensor filled with the value 1, with the same shape and
+        data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
+
+    Raise:
+        TypeError: If ``dtype`` is not None and is not bool, float16, float32,
+            float64, int32 or int64.
 
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.fluid as fluid
+        import paddle
+        import numpy as np
 
-          x = fluid.data(name='x', dtype='float32', shape=[3])
-          data = paddle.ones_like(x) # data=[1.0, 1.0, 1.0]
-          data1 = paddle.ones_like(input=x, device="gpu") data1=[1.0, 1.0. 1.0]
+        paddle.enable_imperative()
+
+        x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
+        out1 = paddle.zeros_like(x) # [1., 1., 1.]
+        out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
 
     """
-
-    helper = LayerHelper("zeros_like", **locals())
-
-    attrs = {"value": 1.0}
-    var_dtype = None
-    if dtype is not None:
-        check_dtype(
-            dtype, 'create data type',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-            'zeros_like')
-        var_dtype = convert_np_dtype_to_dtype_(dtype)
-        attrs["dtype"] = var_dtype
-    else:
-        var_dtype = input.dtype
-
-    out = helper.create_variable_for_type_inference(dtype=var_dtype)
-
-    if device is not None:
-        if device not in ['cpu', 'gpu']:
-            raise ValueError(
-                "The value of 'device' in zeros_op must be cpu or gpu, but received %s."
-                % (device))
-        with fluid.device_guard(device):
-            helper.append_op(
-                type='fill_any_like',
-                inputs={'X': [input]},
-                attrs=attrs,
-                outputs={'Out': [out]})
-            return out
-    helper.append_op(
-        type='fill_any_like',
-        inputs={'X': [input]},
-        attrs=attrs,
-        outputs={'Out': [out]})
-    out.stop_gradient = True
-    return out
+    return full_like(x=x, fill_value=1, dtype=dtype, name=name)
 
 
 def zeros(shape, dtype=None, name=None):
@@ -242,7 +215,7 @@ def zeros(shape, dtype=None, name=None):
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
     Args:
-        shape(tuple|list): Shape of output tensor.
+        shape(tuple|list|Variable): Shape of output tensor. The data type of shape is int32 or int64.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
