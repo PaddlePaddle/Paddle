@@ -113,7 +113,7 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.incubate.fleet.parameter_server import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from test_communicator_half_async import TestCommunicatorHalfAsyncEnd2End
