@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid.framework import Program
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
-from paddle.fluid.incubate.fleet.base.fleet_base import Mode
+from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 

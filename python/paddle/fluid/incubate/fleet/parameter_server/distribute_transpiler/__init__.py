@@ -32,7 +32,7 @@ from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
-from paddle.fluid.incubate.fleet.base.fleet_base import Mode
+from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 from paddle.fluid.incubate.fleet.parameter_server import version
@@ -57,7 +57,7 @@ class FleetTranspiler(Fleet):
     """
 
     def __init__(self):
-        super(FleetTranspiler, self).__init__(Mode.PS)
+        super(FleetTranspiler, self).__init__(Mode.TRANSPILER)
 
         self._inner_mode = None
 
