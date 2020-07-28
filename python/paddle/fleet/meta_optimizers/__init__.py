@@ -13,5 +13,6 @@
 
 from .recompute_optimizer import RecomputeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
+from .pipeline_optimizer import PipelineOptimizer
 
-__all__ = ['RecomputeOptimizer']
+__all__ = ['RecomputeOptimizer', 'PipelineOptimizer']
