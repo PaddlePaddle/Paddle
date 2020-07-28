@@ -153,7 +153,7 @@ class SkipLayerNormPluginV2Creator : public nvinfer1::IPluginCreator {
   nvinfer1::PluginFieldCollection mFieldCollection;
   std::vector<nvinfer1::PluginField> mPluginAttributes;
 };
-REGISTER_TENSORRT_PLUGIN(SkipLayerNormPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(SkipLayerNormPluginV2Creator);
 #endif
 
 }  // namespace plugin

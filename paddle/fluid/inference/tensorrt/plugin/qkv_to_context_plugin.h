@@ -153,7 +153,7 @@ class QkvToContextPluginV2Creator : public nvinfer1::IPluginCreator {
   nvinfer1::PluginFieldCollection mFieldCollection;
   std::vector<nvinfer1::PluginField> mPluginAttributes;
 };
-REGISTER_TENSORRT_PLUGIN(QkvToContextPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(QkvToContextPluginV2Creator);
 #endif
 
 }  // namespace plugin
