@@ -588,7 +588,7 @@ def squeeze(x, axis=None, name=None):
         name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Tensor: Output squeezed Tensor. Data type is same as input Tensor.
+        Tensor: Output squeezed Tensor with the same data type as input Tensor.
 
     Examples:
         .. code-block:: python
@@ -625,11 +625,13 @@ def unsqueeze(x, axis, name=None):
     .. code-block:: text
 
       Given a tensor such that tensor with shape [3, 4, 5],
-      then unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
+      then unsqueezed tensor with axis=[0, 4] has shape [1, 3, 4, 5, 1].
 
     Args:
         x (Tensor): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
-        axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
+        axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . 
+                                    If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. 
+                                    If ``axis`` is a Tensor, it should be an 1-D Tensor .
         name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
@@ -650,9 +652,7 @@ def unsqueeze(x, axis, name=None):
             print(out2.shape)  # [1, 5, 1, 10]
             
     """
-    if axis is None:
-        axis = []
-    elif isinstance(axis, int):
+    if isinstance(axis, int):
         axis = [axis]
 
     return layers.unsqueeze(x, axis, name)
