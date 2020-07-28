@@ -139,13 +139,11 @@ class OptimizerWithMixedPrecision(object):
         # Change the op_role_var attr for some ops, so that gradients
         # transferred across GPUs can be FP16.
         update_role_var_grad(self._train_program, self._params_grads)
-        print("start to scale gradient")
         scaled_params_grads = []
         for p, g in self._params_grads:
             with self._train_program._optimized_guard([p, g]):
                 scaled_g = g / self._loss_scaling
                 scaled_params_grads.append([p, scaled_g])
-        print("end scale gradient")
         return scaled_params_grads
 
     def apply_gradients(self, scaled_params_grads):

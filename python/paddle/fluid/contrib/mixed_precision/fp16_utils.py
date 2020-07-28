@@ -296,23 +296,18 @@ def update_role_var_grad(main_prog, params_grads):
         main_prog (Program): The main program for training.
         params_grads (list): A list of params and grads.
     """
-    print("update_role_var_grad...")
     block = main_prog.global_block()
     BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
     OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
     for p, g in params_grads:
         op = g.op
-        print("scaning ", op.type)
-        print(_pretty_op_desc_(op.desc, "scaning"))
         if g.dtype == core.VarDesc.VarType.FP32 and op.type == 'cast':
-            print("change roles")
             role = op.attr('op_role')
             if role & int(BACKWARD) and op.has_attr('op_role_var'):
                 op.desc.remove_attr("op_role_var")
             else:
                 raise ValueError("The cast op {0} must be in BACKWARD role "
                                  "and have op_role_var attr.".format(op))
-            print("change roles mid")
             fp16_grad_name = op.input(op.input_names[0])[0]
             op_for_fp16_grad = find_true_prev_op(block.ops, op, fp16_grad_name)
             op_role_var_attr_name = \
@@ -321,41 +316,31 @@ def update_role_var_grad(main_prog, params_grads):
             if op_for_fp16_grad.has_attr(op_role_var_attr_name):
                 attr_val.extend(op_for_fp16_grad.attr(op_role_var_attr_name))
             op_for_fp16_grad._set_attr(op_role_var_attr_name, attr_val)
-            print("change roles finish")
 
             # Maximize the all_reduce overlap, and perform the cast
             # operation after gradients transfer.
             op._set_attr('op_role', OPTIMIZE)
             # optimize op should stay behind forward and backward ops
-            print("set attr finish")
             if op == block.ops[-1]:
                 continue
             post_ops = find_true_post_op(block.ops, op, g.name)
-            print("find_true_post_op finish")
             if post_ops is not None:
                 raise ValueError("The cast op {0}'s output should not be"
                                  "used by a non-optimize op, however, it"
                                  "is used by {1}".format(op, post_ops[0]))
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(op.desc)
-            print("append_op finish")
             op_idx = find_op_index(block.desc, op.desc)
             if op_idx == -1:
                 raise ValueError("The op {0} is not in program".format(op))
             block.desc._remove_op(op_idx, op_idx + 1)
-            print("_remove_op finish")
             block._sync_with_cpp()
-            print("_sync_with_cpp finish")
 
         elif g.dtype == core.VarDesc.VarType.FP32 and op.type == 'sum':
             move_sum = False
-            print(_pretty_op_desc_(op.desc, "sum_op"))
             for input_name in op.input(op.input_names[0]):
-                print("input_name: ", input_name)
                 op_for_sum = find_true_prev_op(block.ops, op, input_name)
                 if op_for_sum.type == 'cast':
-                    print("moving cast op")
-                    print(_pretty_op_desc_(op_for_sum.desc, "cast_op"))
                     move_sum = True
                     #             # Maximize the all_reduce overlap, and perform the cast
                     #             # operation after gradients transfer.
@@ -365,8 +350,6 @@ def update_role_var_grad(main_prog, params_grads):
                         continue
                     post_ops = find_true_post_op(block.ops, op_for_sum,
                                                  input_name)
-                    if post_ops is None:
-                        print("cast op, post_ops is None")
 
                     new_op_desc = block.desc.append_op()
                     new_op_desc.copy_from(op_for_sum.desc)
@@ -379,20 +362,9 @@ def update_role_var_grad(main_prog, params_grads):
                     block._sync_with_cpp()
 
             if move_sum:
-                print("moving sum op")
-                #     # Maximize the all_reduce overlap, and perform the cast
-                #     # operation after gradients transfer.
                 op._set_attr('op_role', OPTIMIZE)
-                #     # optimize op should stay behind forward and backward ops
                 if op == block.ops[-1]:
                     continue
-                #     post_ops = find_true_post_op(block.ops, op, g.name)
-                # if post_ops is None:
-                #     print("sum op, post_ops is None")
-                #     if post_ops is not None:
-                #         raise ValueError("The sum op {0}'s output should not be"
-                #                          "used by a non-optimize op, however, it"
-                #                          "is used by {1}".format(op, post_ops[0]))
                 new_op_desc = block.desc.append_op()
                 new_op_desc.copy_from(op.desc)
 
@@ -401,8 +373,6 @@ def update_role_var_grad(main_prog, params_grads):
                     raise ValueError("The op {0} is not in program".format(op))
                 block.desc._remove_op(op_idx, op_idx + 1)
                 block._sync_with_cpp()
-
-    print("finish update_role_var_grad")
 
 
 def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
