@@ -65,7 +65,7 @@ def full_like(x, fill_value, dtype=None, name=None):
 
     Args:
         x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
-        fill_value(bool|float|int|Tensor): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
+        fill_value(bool|float|int): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The data type can be one
             of bool, float16, float32, float64, int32, int64. The default value is None, which means the output 
             data type is the same as input.
@@ -127,7 +127,7 @@ def ones(shape, dtype=None, name=None):
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
 
     Args:
-        shape(tuple|list|Tensor): Shape of output Tensor, the data type of shape is int32 or int64.
+        shape(tuple|list|Tensor): Shape of the Tensor to be created, the data type of shape is int32 or int64.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the data type is 'float32'.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
@@ -219,7 +219,7 @@ def zeros(shape, dtype=None, name=None):
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
     Args:
-        shape(tuple|list|Tensor): Shape of output Tensor, the data type of ``shape`` is int32 or int64.
+        shape(tuple|list|Tensor): Shape of the Tensor to be created, the data type of ``shape`` is int32 or int64.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
@@ -240,8 +240,19 @@ def zeros(shape, dtype=None, name=None):
           import paddle
           
           paddle.enable_imperative()  # Now we are in imperative mode
-          data = paddle.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
-          data = paddle.zeros(shape=[2, 2], dtype='int32', name='zeros') # [[0, 0], [0, 0]]
+          data = paddle.zeros(shape=[3, 2], dtype='float32') 
+          # [[0. 0.]
+          #  [0. 0.]
+          #  [0. 0.]]
+          data = paddle.zeros(shape=[2, 2]) 
+          # [[0. 0.]
+          #  [0. 0.]]
+          
+          #shape is a Tensor
+          shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
+          data3 = paddle.ones(shape=shape, dtype='int32') 
+          # [[0 0]
+          #  [0 0]]
     """
     if dtype is None:
         dtype = 'float32'
@@ -290,13 +301,16 @@ def zeros_like(x, dtype=None, name=None):
 
 def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
+	:alias_main: paddle.eye
+	:alias: paddle.tensor.eye, paddle.tensor.creation.eye
+    
     This function constructs 2-D Tensor with ones on the diagonal and zeros elsewhere.
 
     Args:
-        num_rows(int): the number of rows in each batch tensor.
-        num_columns(int, optional): the number of columns in each batch tensor.
+        num_rows(int): the number of rows in each batch Tensor.
+        num_columns(int, optional): the number of columns in each batch Tensor.
             If None, default: num_rows.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the returned tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the returned Tensor.
             It should be int32, int64, float16, float32, float64. Default: if None, the data type
             is float32.
         name(str, optional): The default value is None.  Normally there is no need for 
@@ -350,7 +364,7 @@ def full(shape, fill_value, dtype=None, name=None):
             used to initialize the Tensor to be created. If ``fill_value`` is an Tensor, it must be an 1-D Tensor.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output Tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
-            type of created tensor is `float32`
+            type of created Tensor is `float32`
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
     

@@ -641,15 +641,14 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     The attribute `stop_gradient` of the created Tensor is set to True.
 
     Args:
-        shape(list|tuple|Tensor): Shape of the Tensor to be created.
-                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
-                the elements of it should be integers or Tensors with shape [1].
-                If ``shape`` is an Tensor, it should be an 1-D Tensor .
+        shape(list|tuple|Tensor): Shape of the output Tensor, the data type of ``shape`` is int32 or int64.
+            If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor with date type int32 or int64.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output Tensor which can
             be float16, float32, float64, int32, int64.
         value(bool|float|int|Tensor): The constant value used to initialize 
             the Tensor to be created. If ``value`` is an Tensor, it should be an 1-D Tensor.
-        force_cpu(bool): data should be on CPU if it's true, default value is False.
+        force_cpu(bool, optional): data should be on CPU if it's true, default value is False.
         out(Tensor, optional): Optional output which can be any created 
             Tensor that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -1053,14 +1052,12 @@ def ones(shape, dtype, force_cpu=False):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
+          data0 = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
+          
+          #shape is a Tensor
+          shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
+          data1 = paddle.ones(shape=shape, dtype='int32') #[[1, 1], [1, 1]]
     """
-    check_type(shape, 'shape', (list, tuple), 'ones')
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'ones')
-    assert reduce(lambda x, y: x * y,
-                  shape) > 0, "The shape is invalid: %s." % (str(shape))
     return fill_constant(value=1.0, **locals())
 
 
@@ -1070,7 +1067,7 @@ def zeros(shape, dtype, force_cpu=False, name=None):
     Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
     Parameters:
-        shape(tuple|list|Tensor): Shape of output Tensor, the data type of shape is int32 or int64.
+        shape(tuple|list|Tensor): Shape of output Tensor, the data type of ``shape`` is int32 or int64.
         dtype (np.dtype|core.VarDesc.VarType|str): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64.
         force_cpu (bool, optional): Whether force to store the output Tensor in CPU memory.
@@ -1087,6 +1084,10 @@ def zeros(shape, dtype, force_cpu=False, name=None):
 
           import paddle.fluid as fluid
           data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
+          
+          #shape is a Tensor
+          shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
+          data1 = paddle.ones(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
     """
     return fill_constant(value=0.0, **locals())
 
@@ -1420,12 +1421,12 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     Args:
         start(float|Tensor): The input :attr:`start` is start variable of range. It is a float scalar, \
-            or a tensor of shape [1] with input data type float32, float64.
+            or a Tensor of shape [1] with input data type float32, float64.
         stop(float|Tensor): The input :attr:`stop` is start variable of range. It is a float scalar, \
-            or a tensor of shape [1] with input data type float32, float64.
+            or a Tensor of shape [1] with input data type float32, float64.
         num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int scalar, \
-            or a tensor of shape [1] with type int32.
-        dtype(np.dtype|core.VarDesc.VarType|str): The data type of output tensor, it could be 'float32' and 'float64'.
+            or a Tensor of shape [1] with data type int32.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output tensor, it could be 'float32' and 'float64'.
             Default: if None, the data type is float32.
         name(str, optional): Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name`.Default: None.
@@ -1580,8 +1581,8 @@ def eye(num_rows,
         num_rows(int): the number of rows in each batch tensor.
         num_columns(int, optional): the number of columns in each batch tensor.
             If None, default: num_rows.
-        batch_shape(list(int), optional): If provided, the returned tensor will have a leading
-            batch size of this shape, default is None.
+        batch_shape(list, optional): If provided, the returned tensor will have a leading
+            batch size of this shape, the data type of ``batch_shape`` is int. Default is None.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the returned tensor.
             It should be int32, int64, float16, float32, float64, default is 'float32'.
         name(str, optional): The default value is None. Normally there is no
