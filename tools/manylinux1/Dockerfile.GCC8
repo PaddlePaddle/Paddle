@@ -4,6 +4,7 @@
 # and libcudnn.so.x in paddle/scripts/docker/build.sh
 FROM nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
+sdakjfhjksad
 
 # ENV variables
 ARG WITH_GPU
