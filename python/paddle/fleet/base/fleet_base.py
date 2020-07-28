@@ -228,6 +228,7 @@ class Fleet(object):
         """
         self.user_defined_optimizer = optimizer
         self.user_defined_strategy = strategy
+        self.valid_strategy = None
         return self
 
     def minimize(self,
@@ -292,6 +293,7 @@ class Fleet(object):
         distributed_optimizer_list = \
             MetaOptimizerFactory()._get_valid_meta_optimizers(
                 self.user_defined_optimizer)
+
         valid_optimizer_list = []
         valid_graph_optimizer_list = []
         # recall meta optimizers for ranking
@@ -304,11 +306,16 @@ class Fleet(object):
             if opt._can_apply() and opt._is_graph_out():
                 valid_graph_optimizer_list.append(opt)
         # combine recalled meta optimizers to be a valid meta optimizer
-        meta_optimizer, graph_optimizer, final_dist_strategy = \
+        meta_optimizer, graph_optimizer = \
                 self.strategy_compiler.generate_optimizer(
                     loss, self._role_maker, self.user_defined_optimizer,
                     self.user_defined_strategy, valid_optimizer_list,
                     valid_graph_optimizer_list)
+
+        valid_strategy = self.strategy_compiler._get_valid_strategy(
+            self.user_defined_strategy)
+        self.valid_strategy = valid_strategy
+        print(self.valid_strategy)
 
         optimize_ops = []
         params_grads = []
@@ -332,12 +339,10 @@ class Fleet(object):
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(
-                final_dist_strategy, self._role_maker, optimize_ops,
-                params_grads)
+                valid_strategy, self._role_maker, optimize_ops, params_grads)
 
         if self._util is None:
-            self._util = UtilFactory()._create_util(final_dist_strategy,
-                                                    self._role_maker,
-                                                    optimize_ops, params_grads)
+            self._util = UtilFactory()._create_util(
+                valid_strategy, self._role_maker, optimize_ops, params_grads)
 
         return optimize_ops, params_grads

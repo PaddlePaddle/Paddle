@@ -178,6 +178,10 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
 
         return self._compiled_program
 
+    def _disable_strategy(self, dist_strategy):
+        # TODO(guru4elephant): should close all PE related flags here
+        pass
+
     def minimize(self,
                  loss,
                  startup_program=None,
