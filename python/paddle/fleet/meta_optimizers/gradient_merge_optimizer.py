@@ -35,7 +35,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
 
     def _can_apply(self):
         can_apply = (self.user_defined_strategy.gradient_merge == True) and \
-                  self.user_defined_strategy.gradient_merge_k_step > 1
+                  self.user_defined_strategy.gradient_merge_configs["k_steps"] > 1
         return can_apply
 
     def minimize_impl(self,
