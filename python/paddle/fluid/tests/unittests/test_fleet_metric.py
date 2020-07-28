@@ -20,8 +20,7 @@ import paddle.fluid as fluid
 import os
 import unittest
 import paddle.fleet.metrics.metric as metric
-from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
-from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet
+from paddle.fluid.incubate.fleet.parameter_server import fleet
 
 
 class TestFleetMetric(unittest.TestCase):
