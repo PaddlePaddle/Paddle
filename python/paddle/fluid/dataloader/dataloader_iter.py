@@ -87,6 +87,8 @@ class ParentWatchDog(object):
         return self._parent_alive
 
 
+# worker information for each workers, used for splitting data copy
+# for IteratorDataset in worker processes.
 _worker_info = None
 
 
@@ -190,10 +192,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def _thread_loop(self):
         try:
             for indices in self._sampler_iter:
-                # # read data from dataset in mini-batch
-                # batch = [self._dataset[i] for i in indices]
-                # if self._collate_fn is not None:
-                #     batch = self._collate_fn(batch)
+                # read data from dataset in mini-batch
                 batch = self._dataset_fetcher.fetch(indices)
 
                 # pack as LoDTensorArray
@@ -432,9 +431,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         batch = init_exception
                         init_exception = None
                     else:
-                        # batch = [dataset[i] for i in indices]
-                        # if self._collate_fn is not None:
-                        #     batch = self._collate_fn(batch)
                         batch = fetcher.fetch(indices)
                 except Exception as e:
                     if isinstance(
@@ -480,7 +476,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                             # serializable, cannot be create in workers
                             for slot in batch:
                                 if not isinstance(slot, core.LoDTensor):
-                                    # self._check_input_array(slot)
                                     tmp = core.LoDTensor()
                                     tmp.set(slot, core.CPUPlace())
                                     slot = tmp
@@ -496,6 +491,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
     def _get_data(self):
         while not self._thread_done_event.is_set():
+            # For IterableDataset, batch indices is generate infinitely
+            # for each worker to raise StopIteration, but a StopIteration
+            # raising process will discard a batch indices which is count
+            # in _send_idx but will not increase _rcvd_idx, so we check 
+            # whether the worker is still alive here to skip the discarded
+            # batch indices and increase _rcvd_idx
             while self._rcvd_idx < self._send_idx:
                 info = self._task_infos[self._rcvd_idx]
                 if len(info) == 2 or self._worker_status[info[0]]:
@@ -504,9 +505,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 self._rcvd_idx += 1
                 self._batches_outstanding -= 1
             else:
-                # continue
-                # # self._shutdown_workers()
-                # # raise StopIteration
+                # NOTE: _rcvd_idx and _send_idx only record batches among
+                #       workers, if batches among workers drained, there
+                #       may also be data in blocking queue
                 if self._batches_outstanding < len(self._places):
                     return None
                 continue
@@ -553,6 +554,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             else:
                 if self._dataset_kind == _DatasetKind.ITER and isinstance(
                         data, _IterableDatasetStopIteration):
+                    # if a worker get StopIteraion, we shutdown this worker,
+                    # note that this batch indices to trigger StopIteration
+                    # is discard, outstanding batch number should be decrease
+                    # and another indices should be put for other workers
+                    # may still working.
                     self._shutdown_worker(data.worker_id)
                     self._batches_outstanding -= 1
                     self._try_put_indices()
