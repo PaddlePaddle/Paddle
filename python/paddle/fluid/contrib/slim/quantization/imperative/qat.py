@@ -205,7 +205,7 @@ class ImperativeQuantAware(object):
         input_spec = [input_vars[i] for i in feed]
         configs = dygraph.jit.SaveLoadConfig()
         configs.separate_params = True
-        if not isinstance(outputs, tuple):
+        if not isinstance(outputs, (tuple, list)):
             outputs = [outputs]
         configs.output_spec = [outputs[i] for i in fetch]
         dygraph.jit.save(

@@ -54,7 +54,7 @@ class DynamicGRU(fluid.dygraph.Layer):
             origin_mode=origin_mode)
 
         self.size = size
-        self.register_buffer("h_0", h_0)
+        self.h_0 = h_0
         self.is_reverse = is_reverse
 
     def forward(self, inputs):
