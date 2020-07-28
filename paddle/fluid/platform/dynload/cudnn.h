@@ -121,14 +121,20 @@ CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 CUDNN_DNN_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 // APIs available after R3:
-#if CUDNN_VERSION >= 3000 && CUDNN_VERSION < 8000
+#if CUDNN_VERSION >= 3000
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_R3(__macro)           \
   __macro(cudnnGetConvolutionBackwardFilterWorkspaceSize); \
-  __macro(cudnnGetConvolutionBackwardDataWorkspaceSize);   \
-  __macro(cudnnGetConvolutionBackwardFilterAlgorithm);     \
-  __macro(cudnnGetConvolutionForwardAlgorithm);            \
-  __macro(cudnnSetRNNDescriptor);
+  __macro(cudnnGetConvolutionBackwardDataWorkspaceSize);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R3(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
+// APIs available after R3:
+#if CUDNN_VERSION >= 3000 && CUDNN_VERSION < 8000
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(__macro) \
+  __macro(cudnnGetConvolutionBackwardFilterAlgorithm);   \
+  __macro(cudnnGetConvolutionForwardAlgorithm);          \
+  __macro(cudnnSetRNNDescriptor);
+CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 // APIs available after R4:
