@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import six
 import logging
 from collections import defaultdict
 
@@ -4554,6 +4555,17 @@ class RecomputeOptimizer(Optimizer):
         self._learning_rate_map = self._optimizer._learning_rate_map
 
     def _set_checkpoints(self, checkpoints):
+        """
+        Args:
+            checkpoints (list): List of Variable or string    
+        """
+        assert isinstance(
+            checkpoints, list
+        ), "_checkpoints should be a list of Variable or a list of String"
+        for ckpt in checkpoints:
+            assert (
+                isinstance(ckpt, six.string_types) or isinstance(ckpt, Variable)
+            ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
     def load(self, stat_dict):
@@ -4690,6 +4702,8 @@ class RecomputeOptimizer(Optimizer):
                     no_grad_set=None)
                 print("Finished backward")
         """
+        assert (self._checkpoints is not None
+                ), "You should call _set_checkpoints first"
 
         if framework.in_dygraph_mode():
             raise NotImplementedError(
@@ -4698,11 +4712,15 @@ class RecomputeOptimizer(Optimizer):
         self._dtype = loss.dtype
         program = loss.block.program
         with program_guard(program, startup_program):
+            checkpoint_vars = []
+            for ckpt in self._checkpoints:
+                if isinstance(ckpt, Variable):
+                    checkpoint_vars.append(ckpt)
+                else:
+                    checkpoint_vars.append(loss.block.var(ckpt))
+
             params_grads = append_backward(
-                loss,
-                parameter_list,
-                no_grad_set,
-                checkpoints=self._checkpoints)
+                loss, parameter_list, no_grad_set, checkpoints=checkpoint_vars)
             # Note: since we can't use all_reduce_op now,
             #  dgc_op should be the last op of one grad.
             if hasattr(self._optimizer, "_append_dgc_ops"):
