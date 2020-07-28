@@ -39,6 +39,15 @@ __all__ = [
 ]
 
 
+def CheckUseMkldnnWithFlag(use_mkldnn):
+    """
+    This method checks if both use_mkldnn attribute and FLAGS_use_mkldnn are true.
+    """
+    if not isinstance(use_mkldnn, bool):
+        raise ValueError("use_mkldnn should be True or False")
+    return use_mkldnn and core.globals()["FLAGS_use_mkldnn"]
+
+
 class Conv2D(layers.Layer):
     """
     This interface is used to construct a callable object of the ``Conv2D`` class.
@@ -125,6 +134,8 @@ class Conv2D(layers.Layer):
             is not set, the bias is initialized zero. Default: None.
         use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
+        use_mkldnn (bool, optional): Use mkldnn kernel or not, it is valid only when built with mkldnn
+            and FLAGS_use_mkldnn is true. Default: True.
         act (str, optional): Activation type, if it is set to None, activation is not appended.
             Default: None.
         dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
@@ -139,6 +150,7 @@ class Conv2D(layers.Layer):
     
     Raises:
         ValueError: if ``use_cudnn`` is not a bool value.
+        ValueError: If ``use_mkldnn`` is not a bool value.
 
     Examples:
         .. code-block:: python
@@ -167,6 +179,7 @@ class Conv2D(layers.Layer):
                  param_attr=None,
                  bias_attr=None,
                  use_cudnn=True,
+                 use_mkldnn=True,
                  act=None,
                  dtype='float32'):
         assert param_attr is not False, "param_attr should not be False here."
@@ -180,6 +193,7 @@ class Conv2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
+        self._use_mkldnn = CheckUseMkldnnWithFlag(use_mkldnn)
         self._filter_size = filter_size
         self._num_filters = num_filters
         self._param_attr = param_attr
@@ -187,7 +201,8 @@ class Conv2D(layers.Layer):
         self._dtype = dtype
 
         if (self._num_channels == self._groups and
-                num_filters % self._num_channels == 0 and not self._use_cudnn):
+                num_filters % self._num_channels == 0 and
+                not self._use_cudnn and not self._use_mkldnn):
             self._l_type = 'depthwise_conv2d'
         else:
             self._l_type = 'conv2d'
@@ -224,14 +239,15 @@ class Conv2D(layers.Layer):
         if in_dygraph_mode() and self._l_type == 'conv2d':
             attrs = ('strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups
-                     if self._groups else 1, 'use_cudnn', self._use_cudnn)
+                     if self._groups else 1, 'use_cudnn', self._use_cudnn,
+                     'use_mkldnn', self._use_mkldnn)
             out = core.ops.conv2d(input, self.weight, *attrs)
             pre_bias = out
 
-            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
-                                                            1)
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
+            pre_act = dygraph_utils._append_bias_in_dygraph(
+                pre_bias, self.bias, 1, use_mkldnn=self._use_mkldnn)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
         inputs = {
             'Input': [input],
             'Filter': [self.weight],
@@ -242,7 +258,7 @@ class Conv2D(layers.Layer):
             'dilations': self._dilation,
             'groups': self._groups if self._groups else 1,
             'use_cudnn': self._use_cudnn,
-            'use_mkldnn': False,
+            'use_mkldnn': self._use_mkldnn,
         }
 
         check_variable_and_dtype(input, 'input',
@@ -267,12 +283,14 @@ class Conv2D(layers.Layer):
                 inputs={'X': [pre_bias],
                         'Y': [self.bias]},
                 outputs={'Out': [pre_act]},
-                attrs={'axis': 1})
+                attrs={'axis': 1,
+                       'use_mkldnn': self._use_mkldnn})
         else:
             pre_act = pre_bias
 
         # Currently, we don't support inplace in dygraph mode
-        return self._helper.append_activation(pre_act, act=self._act)
+        return self._helper.append_activation(
+            pre_act, act=self._act, use_mkl_dnn=self._use_mkldnn)
 
 
 class Conv3D(layers.Layer):
@@ -768,6 +786,8 @@ class Pool2D(layers.Layer):
         global_pooling (bool, optional): Whether to use the global pooling. If global_pooling = true,
             kernel size and paddings will be ignored. Default: False.
         use_cudnn (bool, optional): Only used in cudnn kernel, need install cudnn. Default: True.
+        use_mkldnn (bool, optional): Use mkldnn kernel or not, it is valid only when built with mkldnn
+            and FLAGS_use_mkldnn is true. Default: True.
         ceil_mode (bool, optional): Whether to use the ceil function to calculate output height and width.
             False is the default. If it is set to False, the floor function will be used. Default: False.
         exclusive (bool, optional): Whether to exclude padding points in average pooling mode. Default: True.
@@ -783,6 +803,7 @@ class Pool2D(layers.Layer):
         ValueError: If ``pool_type`` is not "max" nor "avg".
         ValueError: If ``global_pooling`` is False and ``pool_size`` is -1.
         ValueError: If ``use_cudnn`` is not a bool value.
+        ValueError: If ``use_mkldnn`` is not a bool value.
         ValueError: If ``data_format`` is not "NCHW" nor "NHWC".
 
     Examples:
@@ -810,6 +831,7 @@ class Pool2D(layers.Layer):
                  pool_padding=0,
                  global_pooling=False,
                  use_cudnn=True,
+                 use_mkldnn=True,
                  ceil_mode=False,
                  exclusive=True,
                  data_format="NCHW"):
@@ -827,6 +849,8 @@ class Pool2D(layers.Layer):
 
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
+
+        self._use_mkldnn = CheckUseMkldnnWithFlag(use_mkldnn)
 
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
@@ -853,8 +877,8 @@ class Pool2D(layers.Layer):
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
                      'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
-                     'use_mkldnn', False, 'exclusive', self._exclusive,
-                     'data_format', self._data_format)
+                     'use_mkldnn', self._use_mkldnn, 'exclusive',
+                     self._exclusive, 'data_format', self._data_format)
             return core.ops.pool2d(input, *attrs)
 
         check_variable_and_dtype(
@@ -869,7 +893,7 @@ class Pool2D(layers.Layer):
             "paddings": self._pool_padding,
             "use_cudnn": self._use_cudnn,
             "ceil_mode": self._ceil_mode,
-            "use_mkldnn": False,
+            "use_mkldnn": self._use_mkldnn,
             "exclusive": self._exclusive,
             "data_format": self._data_format,
         }
@@ -916,6 +940,8 @@ class Linear(layers.Layer):
             If it is set to None, the bias is initialized zero. Default: None.
         act(str, optional): Activation to be applied to the output of this layer. Default: None.
         dtype(str, optional): Dtype used for weight, it can be "float32" or "float64". Default: "float32".
+        use_mkldnn (bool, optional): Use mkldnn kernel or not, it is valid only when built with mkldnn
+            and FLAGS_use_mkldnn is true. Default: True.
 
     Attributes:
         **weight** (Parameter): the learnable weights of this layer.
@@ -924,6 +950,9 @@ class Linear(layers.Layer):
 
     Returns:
         None
+
+    Raises:
+        ValueError: If ``use_mkldnn`` is not a bool value.
 
     Examples:
         .. code-block:: python
@@ -946,7 +975,8 @@ class Linear(layers.Layer):
                  param_attr=None,
                  bias_attr=None,
                  act=None,
-                 dtype="float32"):
+                 dtype="float32",
+                 use_mkldnn=True):
         super(Linear, self).__init__()
         self._act = act
         self._dtype = dtype
@@ -958,16 +988,22 @@ class Linear(layers.Layer):
         self.bias = self.create_parameter(
             shape=[output_dim], attr=bias_attr, dtype=dtype, is_bias=True)
 
+        self._use_mkldnn = CheckUseMkldnnWithFlag(use_mkldnn)
+
     def forward(self, input):
         if in_dygraph_mode():
             pre_bias = _varbase_creator(dtype=input.dtype)
             core.ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
-                            'transpose_Y', False, "alpha", 1)
+                            'transpose_Y', False, "alpha", 1, "use_mkldnn",
+                            self._use_mkldnn)
             pre_act = dygraph_utils._append_bias_in_dygraph(
-                pre_bias, self.bias, axis=len(input.shape) - 1)
+                pre_bias,
+                self.bias,
+                axis=len(input.shape) - 1,
+                use_mkldnn=self._use_mkldnn)
 
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
 
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], "Linear")
@@ -976,6 +1012,7 @@ class Linear(layers.Layer):
             "transpose_X": False,
             "transpose_Y": False,
             "alpha": 1,
+            "use_mkldnn": self._use_mkldnn,
         }
         inputs = {"X": [input], "Y": [self.weight]}
 
@@ -990,10 +1027,14 @@ class Linear(layers.Layer):
                 inputs={'X': [tmp],
                         'Y': [self.bias]},
                 outputs={'Out': [pre_activation]},
-                attrs={'axis': len(input.shape) - 1})
+                attrs={
+                    'axis': len(input.shape) - 1,
+                    'use_mkldnn': self._use_mkldnn
+                })
         else:
             pre_activation = tmp
-        return self._helper.append_activation(pre_activation, act=self._act)
+        return self._helper.append_activation(
+            pre_activation, act=self._act, use_mkl_dnn=self._use_mkldnn)
 
 
 class InstanceNorm(layers.Layer):
@@ -1212,6 +1253,12 @@ class BatchNorm(layers.Layer):
         trainable_statistics(bool, optional): Whether to calculate mean and var in eval mode. In eval mode, when
             setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
             Default: False.
+        use_mkldnn (bool, optional): Use mkldnn kernel or not, it is valid only when built with mkldnn
+            and FLAGS_use_mkldnn is true. Default: True.
+
+
+    Raises:
+        ValueError: If ``use_mkldnn`` is not a bool value.
 
     Returns:
         None
@@ -1245,11 +1292,13 @@ class BatchNorm(layers.Layer):
                  moving_variance_name=None,
                  do_model_average_for_mean_and_var=True,
                  use_global_stats=False,
-                 trainable_statistics=False):
+                 trainable_statistics=False,
+                 use_mkldnn=True):
         super(BatchNorm, self).__init__()
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
+        self._use_mkldnn = CheckUseMkldnnWithFlag(use_mkldnn)
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
@@ -1314,8 +1363,8 @@ class BatchNorm(layers.Layer):
         if in_dygraph_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
-                     self._data_layout, "use_mkldnn", False, "fuse_with_relu",
-                     self._fuse_with_relu, "use_global_stats",
+                     self._data_layout, "use_mkldnn", self._use_mkldnn,
+                     "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
             batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
@@ -1323,7 +1372,7 @@ class BatchNorm(layers.Layer):
                 mean_out, variance_out, *attrs)
 
             return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act)
+                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], 'BatchNorm')
