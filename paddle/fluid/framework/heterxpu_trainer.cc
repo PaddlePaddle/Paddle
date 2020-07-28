@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
+void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset *dataset) {
   srand((unsigned)time(NULL));
   param_ = trainer_desc.downpour_param();
@@ -146,15 +146,15 @@ void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
                  sizeof(T) * root_tensor->numel(), stream);
   } else {
     memory::Copy(boost::get<platform::CUDAPlace>(thread_place), thread_ptr,
-                 boost::get<platform::CUDAPlace>(root_tensor->place()), root_ptr,
-                 sizeof(T) * root_tensor->numel(), stream);
+                 boost::get<platform::CUDAPlace>(root_tensor->place()),
+                 root_ptr, sizeof(T) * root_tensor->numel(), stream);
   }
 }
 
 void HeterXpuTrainer::DumpWork(int tid) {}
 
-void HeterXpuTrainer::InitTrainerEnv(const ProgramDesc &main_program,
-                                     const platform::Place &place) {
+void HeterXpuTrainer::InitTrainerEnv(const ProgramDesc& main_program,
+                                     const platform::Place& place) {
   CacheProgram(main_program);
   place_ = place;
   auto& profiler = paddle::ps::CostProfiler::instance();
@@ -207,7 +207,7 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
     for (size_t j = 0; j < places_.size(); ++j) {
       int num = j;
       std::shared_ptr<HeterServiceContext> context =
-                      std::make_shared<HeterServiceContext>();
+          std::make_shared<HeterServiceContext>();
       context->place_num_ = num;
       auto place = places_[num];
       context->scope_ = &(place_scopes_[num]->NewScope());
