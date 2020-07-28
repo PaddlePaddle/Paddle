@@ -1067,13 +1067,13 @@ class TracedLayer(object):
 
         Args:
             layer (dygraph.Layer): the layer object to be traced.
-            inputs (list(Variable)|tuple(Variable)|Variable): the input
-                variables of the layer object.
+            inputs (list(Tensor)|tuple(Tensor)|Tensor): the input tensors of
+                the layer object.
 
         Returns:
             tuple: A tuple of 2 items, whose the first item is the output of
-            :code:`layer(*inputs)` , and the second item is the created
-            TracedLayer object.
+                :code:`layer(*inputs)` , and the second item is the created
+                TracedLayer object.
 
         Examples:
             .. code-block:: python:
