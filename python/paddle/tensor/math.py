@@ -1404,6 +1404,8 @@ def clamp(input, min=None, max=None, name=None):
     assert min is not None or max is not None, "either min or max should be defined."
 
     if in_dygraph_mode():
+        min = sys.float_info.min if min is None else min
+        max = sys.float_info.max if max is None else max
         return core.ops.clip(input, "min", min, "max", max)
 
     if min is not None:
