@@ -152,13 +152,13 @@ class Fleet(object):
 
     def is_server(self):
         """
-        Check whether the node is an instance of server.
+        Check whether the node is an instance of server or heter_worker.
 
         Returns:
-            bool: True if this is a node of server,
+            bool: True if this is a node of server or heter_worker,
                   False if not.
         """
-        return self._role_maker.is_server()
+        return self._role_maker.is_server() or self._role_maker._is_heter_worker()
 
     @property
     def util(self):

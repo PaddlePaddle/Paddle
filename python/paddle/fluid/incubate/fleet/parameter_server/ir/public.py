@@ -144,10 +144,11 @@ def pretty_print_envs(envs, header=None):
 
 
 def _is_heter_op(op, current_heter_device, default_device="cpu"):
-    heter_deivces = DEVICE_LIST.remove(default_device)
+    heter_devices = list(DEVICE_LIST)
+    heter_devices.remove(default_device)
     op_device = op.attr("op_device")
     op_type = op.type
-    if op_device in heter_deivces:
+    if op_device in heter_devices:
         return True
     elif op_type in COMMUNICATE_OPS_TYPE and current_heter_device != default_device:
         # for distributed communciate ops: send & recv & barrier
@@ -209,6 +210,7 @@ def find_heter_ops(program, default_device="cpu"):
             # for gpu/xpu-op, cpu-op
             _append_heter_ops_block(current_heter_block_ops, heter_ops)
             current_heter_block_ops = []
+            current_heter_device = default_device
             is_heter = False
 
     if len(heter_ops) == 0:
@@ -217,9 +219,11 @@ def find_heter_ops(program, default_device="cpu"):
             " please using fluid.device_guard() to run OPs on different device.")
 
     total_heter_ops = 0
-    for heter_block in heter_ops:
-        total_heter_ops += len(heter_block)
-    warnings.warn(
+    for device in heter_ops.keys():
+        heter_block_list = heter_ops[device]
+        for heter_block in heter_block_list:
+            total_heter_ops += len(heter_block)
+    print(
         "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, len(heter_ops)))
     return program, heter_ops
 
@@ -250,10 +254,10 @@ def find_block_input_output(program, block):
     output_var_list = []
     for op in block.ops:
         inputs = _get_input_map_from_op(
-            block.vars, op)
+            program.global_block().vars, op)
         input_var_list += get_varlist_from_op_map(inputs)
         outputs = _get_output_map_from_op(
-            block.vars, op)
+            program.global_block().vars, op)
         output_var_list += get_varlist_from_op_map(outputs)
 
     input_var_list = list(set(input_var_list))
@@ -274,17 +278,40 @@ def find_op_input_output(program, block, op):
 
 
 def get_vars_name_in_block(block):
-    vars_list = block.vars
-    vars_name_list = [var.name for var in vars_list]
+    vars_list = block.vars.keys()
+    vars_name_list = [var_name for var_name in vars_list]
     return vars_name_list
+
+
+def is_same_op(op1, op2):
+    if str(op1) != str(op2):
+        return False
+    return True
+
+
+def delete_same_ops(block, ops):
+    for op in ops:
+        try:
+            for origin_op in block.ops:
+                if is_same_op(origin_op, op):
+                    idx = list(block.ops).index(origin_op)
+                    block._remove_op(idx)
+        except Exception as e:
+            print(e)
 
 
 def replace_ops_by_communicate_op(block, ops, program, entrance_var, exit_var, config):
     if ops == []:
         raise ValueError("Not find op in heter block")
 
-    first_op_idx = list(block.ops).index(ops[0])
-    delete_ops(block, ops)
+    first_op_idx = -1
+    for index, op in enumerate(block.ops):
+        if is_same_op(op, ops[0]):
+            first_op_idx = index
+            break
+    if first_op_idx == -1:
+        raise ValueError("Not find heter op in origin block")
+    delete_same_ops(block, ops)
 
     mode = config.get_distributed_mode()
     # Todo: replace XPU endpoints
@@ -303,13 +330,53 @@ def replace_ops_by_communicate_op(block, ops, program, entrance_var, exit_var, c
         inputs={"X": send_input_vars},
         outputs={"Out": dummy_output},
         attrs={
-            "send_varnames": [entrance_var],
+            "send_varnames": entrance_var,
             "merge_add": True,
             "use_send_handler": False,
             "endpoints": pserver_endpoints,
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         }
     )
+
+
+def block_append_op(program, origin_program, block, op):
+    inputs = _get_input_map_from_op(origin_program.global_block().vars, op)
+    for key, varlist in six.iteritems(inputs):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for var in varlist:
+            if var not in program.global_block().vars:
+                program.global_block()._clone_variable(var)
+
+    outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
+    for key, varlist in six.iteritems(outputs):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for var in varlist:
+            if var not in program.global_block().vars:
+                program.global_block()._clone_variable(var)
+
+    if "_grad" not in op.type:
+        # for forward op
+        return block.append_op(
+            type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
+    else:
+        # for grad op
+        op_desc = op.desc
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+
+        # append grad op
+        new_op_desc = block.desc.append_op()
+        new_op_desc.copy_from(op_desc)
+        new_op_desc._set_attr(op_role_attr_name, backward)
+
+        # set device guard
+        if op.desc.has_attr(device_attr_name):
+            op_device = op_desc.attr(device_attr_name)
+            new_op_desc._set_attr(device_attr_name, op_device)
+        block._sync_with_cpp()
 
 
 class ServerRuntimeConfig(object):

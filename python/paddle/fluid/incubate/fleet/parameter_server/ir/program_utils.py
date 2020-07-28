@@ -18,6 +18,7 @@ import six
 
 from paddle.fluid import core
 import paddle
+import collections
 
 
 def delete_ops(block, ops):

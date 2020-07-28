@@ -42,7 +42,6 @@ from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import Device
 
 from paddle.fluid.incubate.fleet.parameter_server import version
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_all_get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.ir.checkport import wait_server_ready
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
@@ -1137,7 +1136,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
         if fleet._role_maker.is_heter_parameter_server:
             # for main program
             if fleet._role_maker._is_heter_worker():
-                _main = worker.split_heter_trainer_ops_pass(
+                _main = worker.split_heter_worker_ops_pass(
                     _main, compiled_config)
                 _main = worker.append_heter_worker_communicate_ops_pass(
                     _main, compiled_config)
@@ -1147,7 +1146,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
 
             # for startup
             _startup = worker.delete_startup_useless_ops_var_pass(
-                _startup, compiled_config)
+                _startup, _main, compiled_config)
 
         return _main, _startup
 
@@ -1211,5 +1210,5 @@ class ParameterServerOptimizer(DistributedOptimizer):
 
         fleet.compiled_config = compiled_config
         fleet.main_program, fleet.startup_program = \
-            self._build_trainer_programs(compiled_config) if fleet.is_worker() \
+            self._build_trainer_programs(compiled_config) if fleet.is_worker() or fleet._role_maker._is_heter_worker() \
             else self._build_pserver_programs(compiled_config)

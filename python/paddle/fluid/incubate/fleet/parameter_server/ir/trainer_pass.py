@@ -30,6 +30,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.public import add_vars_by_o
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_block_input_output
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_op_input_output
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_vars_name_in_block
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import block_append_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import replace_ops_by_communicate_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import _get_input_map_from_op, _get_output_map_from_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import add_listen_and_serv_pass
@@ -341,12 +342,7 @@ def split_heter_worker_ops_pass(program, config):
     for index, heter_block_ops in enumerate(heter_ops[current_device]):
         heter_block = heter_program._create_block(pre_block_idx)
         for _, op in enumerate(heter_block_ops):
-            heter_block.append_op(
-                type=op.type,
-                inputs=op.inputs,
-                outputs=op.outputs,
-                attrs=op.all_attrs()
-            )
+            block_append_op(heter_program, origin_program, heter_block, op)
 
             # add relate variables
             inputs = _get_input_map_from_op(
