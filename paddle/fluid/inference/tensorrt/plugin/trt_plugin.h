@@ -180,6 +180,21 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
 };
 #endif
 
+template <typename T>
+class TrtDyPluginRegistrar {
+ public:
+  TrtDyPluginRegistrar() {
+    getPluginRegistry()->registerCreator(creator, "Paddle");
+  }
+
+ private:
+  T creator;
+};
+
+#define REGISTER_TRTDy_PLUGIN(name)                                      \
+  static paddle::inference::tensorrt::plugin::TrtDyPluginRegistrar<name> \
+      plugin_registrar_##name {}
+
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
