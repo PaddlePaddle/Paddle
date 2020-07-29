@@ -124,7 +124,7 @@ function(op_library TARGET)
         endif()
     endforeach()
 
-# The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
+    # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
     # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
     # And for detail pybind information, please see generated paddle/pybind/pybind.h.
     file(READ ${TARGET}.cc TARGET_CONTENT)
