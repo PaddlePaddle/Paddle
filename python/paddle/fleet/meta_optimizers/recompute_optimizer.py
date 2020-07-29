@@ -34,10 +34,15 @@ class RecomputeOptimizer(MetaOptimizerBase):
 
     def _can_apply(self):
         if self.user_defined_strategy.recompute == True:
-            if len(self.user_defined_strategy.recompute_checkpoints) == 0:
+            if len(self.user_defined_strategy.recompute_configs[
+                    "checkpoints"]) == 0:
                 return False
             else:
                 return True
+
+    def _disable_strategy(self, dist_strategy):
+        dist_strategy.recompute = False
+        dist_strategy.recompute_configs = {"checkpoints": []}
 
     def backward(self,
                  loss,
