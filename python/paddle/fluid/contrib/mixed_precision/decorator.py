@@ -14,6 +14,7 @@
 
 from ... import default_main_program
 from ... import default_startup_program
+from ... import device_guard
 from ... import layers
 from ... import unique_name
 from . import fp16_utils
@@ -164,7 +165,8 @@ class OptimizerWithMixedPrecision(object):
             grads = [layers.reduce_sum(g) for [_, g] in scaled_params_grads]
             all_grads = layers.concat(grads)
             all_grads_sum = layers.reduce_sum(all_grads)
-            is_overall_finite = layers.isfinite(all_grads_sum)
+            with device_guard("cpu"):
+                is_overall_finite = layers.isfinite(all_grads_sum)
 
             update_loss_scaling(is_overall_finite, self._loss_scaling,
                                 self._num_good_steps, self._num_bad_steps,
