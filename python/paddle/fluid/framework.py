@@ -1914,8 +1914,13 @@ class Operator(object):
                     "`type` to initialized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
-                op_attrs[callstack_var_name] = list(traceback.format_stack(
-                ))[:-1]
+                op_attrs[callstack_var_name] = []
+                for frame in traceback.extract_stack():
+                    op_attrs[callstack_var_name].append(
+                        '  File "{}", line {}, in {}\n'.format(frame[0], frame[
+                            1], frame[2]))
+                    op_attrs[callstack_var_name].append('    {}\n'.format(frame[
+                        3]))
 
             self.desc.set_type(type)
             proto = OpProtoHolder.instance().get_op_proto(type)

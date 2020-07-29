@@ -39,7 +39,7 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   if (callstack) {
     sout << "\n\n  Compile Traceback (most recent call last):\n";
     for (auto &line : *callstack) {
-      sout << "    " << line;
+      sout << "  " << line;
     }
   }
   // Step 2. Construct final call stack & append error op name
