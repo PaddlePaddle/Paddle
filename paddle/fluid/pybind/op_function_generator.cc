@@ -88,10 +88,19 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
 // with reshape ops being inplace, we can use canonical broadcasting semantics
 // i.e., remove the `axis` argument
 std::map<std::string, std::map<std::string, std::string>>
-op_forward_input_output_map = {
-    {"reshape2", {{"Out", "X"},}},
-    {"unsqueeze2", {{"Out", "X"},}},
-    {"squeeze2", {{"Out", "X"}},},
+    op_forward_input_output_map = {
+        {"reshape2",
+         {
+             {"Out", "X"},
+         }},
+        {"unsqueeze2",
+         {
+             {"Out", "X"},
+         }},
+        {
+            "squeeze2",
+            {{"Out", "X"}},
+        },
 };
 
 // clang-format off
@@ -305,9 +314,8 @@ GenerateOpFunctions(const std::string& module_name) {
 
         if (FindForwardInOutMap(op_type, out_name)) {
           auto in_name = op_forward_input_output_map[op_type][out_name];
-          forward_in_out +=
-            paddle::string::Sprintf(
-              FORWARD_IN_OUT, in_name, out_name, in_name);
+          forward_in_out += paddle::string::Sprintf(FORWARD_IN_OUT, in_name,
+                                                    out_name, in_name);
         }
       }
 
@@ -342,8 +350,8 @@ GenerateOpFunctions(const std::string& module_name) {
     auto op_function_str = paddle::string::Sprintf(
         OP_FUNCTION_TEMPLATE, return_type, func_name, function_args,
         outs_initializer, ins_initializer,
-        ins_initializer_with_null + outs_initializer_with_null,
-        forward_in_out, op_type, return_str);
+        ins_initializer_with_null + outs_initializer_with_null, forward_in_out,
+        op_type, return_str);
 
     // generate pybind item
     auto bind_function_str = paddle::string::Sprintf(
