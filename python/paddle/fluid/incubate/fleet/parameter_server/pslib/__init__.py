@@ -305,7 +305,7 @@ class PSLib(Fleet):
                                   main_program=None,
                                   **kwargs):
         """
-        save model with whitelist, mode is consistent with fleet.save_persistables,
+        save whitelist, mode is consistent with fleet.save_persistables,
         when using fleet, it will save sparse and dense feature
 
         Args:
@@ -525,10 +525,10 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         mode = kwargs.get("mode", 0)
         if self._role_maker.is_first_worker():
-            self._fleet_ptr.load_table_with_whitelist(table_id, model_path, mode)
+            self._fleet_ptr.load_table_with_whitelist(table_id, model_path,
+                                                      mode)
         self._role_maker._barrier_worker()
-    
-    
+
     def load_one_table(self, table_id, model_path, **kwargs):
         """
         load pslib model for one table or load params from paddle model
