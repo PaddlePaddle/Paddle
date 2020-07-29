@@ -146,6 +146,10 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def __init__(self, is_collective=False):
         self._is_collective = is_collective
         self._role_is_generated = False
+
+        self._server_endpoints = None
+        self._worker_endpoints = None
+
         self._node_type_comm = None
         self._all_comm = None
 
@@ -288,28 +292,34 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         try:
             # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
             # format: string(ip:port), eg. 127.0.0.1:6001
-            eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
-            # note that, we usually assign the same port to different ips
-            # if we run parameter server training in local mode
-            # port should be different in environment variables
-
-            trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
-            training_role = os.environ["TRAINING_ROLE"]
-
-            if training_role not in ["TRAINER", "PSERVER"]:
-                raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
-
-            if training_role == "TRAINER":
-                role = Role.WORKER
-                current_id = int(os.environ["PADDLE_TRAINER_ID"])
-            elif training_role == "PSERVER":
-                role = Role.SERVER
-                cur_ip = os.environ["POD_IP"]
-                curr_port = os.environ["PADDLE_PORT"]
-                curr_endpoint = ":".join([cur_ip, curr_port])
-                current_id = eplist.index(curr_endpoint)
+            pserver_endpoints = os.environ[
+                "PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
+            worker_endpoints = os.getenv("PADDLE_TRINERS_IP_PORT_LIST", None)
+            if worker_endpoints:
+                # paddlecloud env support gloo
+                self._worker_endpoints = worker_endpoints.split(",")
             else:
-                raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
+                # note that, we usually assign the same port to different ips
+                # if we run parameter server training in local mode
+                # port should be different in environment variables
+
+                trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
+                training_role = os.environ["TRAINING_ROLE"]
+
+                if training_role not in ["TRAINER", "PSERVER"]:
+                    raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
+
+                if training_role == "TRAINER":
+                    role = Role.WORKER
+                    current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                elif training_role == "PSERVER":
+                    role = Role.SERVER
+                    cur_ip = os.environ["POD_IP"]
+                    curr_port = os.environ["PADDLE_PORT"]
+                    curr_endpoint = ":".join([cur_ip, curr_port])
+                    current_id = eplist.index(curr_endpoint)
+                else:
+                    raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
         except ValueError as ve:
             raise ValueError(
                 "something wrong with PaddleCloud, please check environment")
@@ -329,33 +339,74 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
 
-    def _gloo_init(self, role="trainer"):
-        role = role.lower()
-        assert role in ["trainer", "pserver", "all"]
-        if role is "trainer":
-            all_list = self._worker_endpoints
-            rank = self._current_id
-        elif role == "pserver":
-            all_list = self._server_endpoints
-            rank = self._current_id
+    def _init_gloo_env(self):
+        def init_gloo_instance(role="trainer"):
+            role = role.lower()
+            assert role in ["trainer", "pserver", "all"]
+            if role is "trainer":
+                all_list = self._worker_endpoints
+                rank = self._current_id
+            elif role == "pserver":
+                all_list = self._server_endpoints
+                rank = self._current_id
+            else:
+                all_list = self._worker_endpoints + self._server_endpoints
+                rank = all_list.index(self._cur_endpoint)
+            gloo = fluid.core.Gloo()
+            gloo.set_rank(rank)
+            gloo.set_size(len(all_list))
+            gloo.set_prefix(self._prefix)
+            gloo.set_iface(self._iface)
+            gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                     self._run_timeout_seconds)
+            if len(self._http_ip_port) != 0:
+                gloo.set_http_store(self._http_ip_port[0],
+                                    int(self._http_ip_port[1]), role)
+            else:
+                gloo.set_hdfs_store(self._hdfs_path + "/" + role,
+                                    self._hdfs_name, self._hdfs_ugi)
+            gloo.init()
+            return gloo
+
+        # paddlecloud support gloo
+        if self._role == Role.WORKER:
+            if self._current_id == 0 and len(self._http_ip_port) != 0:
+                size_d = {
+                    "trainer": len(self._worker_endpoints),
+                    "pserver": len(self._server_endpoints),
+                    "all":
+                    len(self._worker_endpoints) + len(self._server_endpoints)
+                }
+                # child process for http server
+                self._http_server = Process(
+                    target=self.__start_kv_server,
+                    args=(self._http_server_d, size_d))
+                self._http_server.daemon = True
+                # set running status to True
+                self._http_server_d["running"] = True
+                # start child process
+                self._http_server.start()
+            self._node_type = 1
+            gloo = init_gloo_instance("trainer")
+            self._node_type_comm = gloo
         else:
-            all_list = self._worker_endpoints + self._server_endpoints
-            rank = all_list.index(self._cur_endpoint)
-        gloo = fluid.core.Gloo()
-        gloo.set_rank(rank)
-        gloo.set_size(len(all_list))
-        gloo.set_prefix(self._prefix)
-        gloo.set_iface(self._iface)
-        gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                 self._run_timeout_seconds)
-        if len(self._http_ip_port) != 0:
-            gloo.set_http_store(self._http_ip_port[0],
-                                int(self._http_ip_port[1]), role)
-        else:
-            gloo.set_hdfs_store(self._hdfs_path + "/" + role, self._hdfs_name,
-                                self._hdfs_ugi)
-        gloo.init()
-        return gloo
+            assert self._role == Role.SERVER
+            self._node_type = 0
+            gloo = init_gloo_instance("pserver")
+            self._node_type_comm = gloo
+
+        all_list = self._worker_endpoints + self._server_endpoints
+        self._rank = all_list.index(self._cur_endpoint)
+        self._size = len(all_list)
+
+        gloo = init_gloo_instance("all")
+        self._all_comm = gloo
+
+        if self._http_server is not None:
+            # set running status to False
+            self._http_server_d["running"] = False
+            # wait until child process exits
+            self._http_server.join()
 
     def generate_role(self):
         """
@@ -364,44 +415,12 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             if not self._is_collective:
                 self._ps_env()
-                if self._role == Role.WORKER:
-                    if self._current_id == 0 and len(self._http_ip_port) != 0:
-                        size_d = {
-                            "trainer": len(self._worker_endpoints),
-                            "pserver": len(self._server_endpoints),
-                            "all": len(self._worker_endpoints) +
-                            len(self._server_endpoints)
-                        }
-                        # child process for http server
-                        self._http_server = Process(
-                            target=self.__start_kv_server,
-                            args=(self._http_server_d, size_d))
-                        self._http_server.daemon = True
-                        # set running status to True
-                        self._http_server_d["running"] = True
-                        # start child process
-                        self._http_server.start()
-                    self._node_type = 1
-                    gloo = self._gloo_init("trainer")
-                    self._node_type_comm = gloo
+                if self._worker_endpoints:
+                    # branch: paddlecloud supports gloo
+                    self._init_gloo_env()
                 else:
-                    assert self._role == Role.SERVER
-                    self._node_type = 0
-                    gloo = self._gloo_init("pserver")
-                    self._node_type_comm = gloo
-
-                all_list = self._worker_endpoints + self._server_endpoints
-                self._rank = all_list.index(self._cur_endpoint)
-                self._size = len(all_list)
-
-                gloo = self._gloo_init("all")
-                self._all_comm = gloo
-
-                if self._http_server is not None:
-                    # set running status to False
-                    self._http_server_d["running"] = False
-                    # wait until child process exits
-                    self._http_server.join()
+                    # compatible branch: paddlecloud don't supports gloo
+                    pass
             else:
                 self._collective_env()
             self._role_is_generated = True
