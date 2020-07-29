@@ -631,7 +631,8 @@ class FleetTranspiler(Fleet):
         recv_distributed_varnames = self._save_distributed_params(
             executor, dirname, distributed_ctx, main_program)
 
-        saved_varnames = recv_dense_varnames + recv_sparse_varnames + recv_distributed_varnames
+        saved_varnames = recv_dense_varnames + list(
+            recv_sparse_varnames) + list(recv_distributed_varnames)
 
         remaining_vars = list(
             filter(
