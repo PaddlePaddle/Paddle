@@ -18,7 +18,10 @@ from ..meta_optimizers import PipelineOptimizer
 
 __all__ = ["MetaOptimizerFactory"]
 
-meta_optimizer_names = ["RecomputeOptimizer", "GraphExecutionOptimizer, PipelineOptimizer"]
+meta_optimizer_names = [
+    "RecomputeOptimizer",
+    "GraphExecutionOptimizer",
+    "PipelineOptimizer"]
 
 
 class MetaOptimizerFactory(object):

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle.fluid.optimizer import PipelineOptimizer
+from paddle.fluid.optimizer import PipelineOptimizer as PO
 from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = ["PipelineOptimizer"]
@@ -21,7 +21,6 @@ class PipelineOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(PipelineOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
-        self.wrapped_opt = PipelineOptimizer(optimizer, num_microbatches=)
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
 
@@ -29,6 +28,8 @@ class PipelineOptimizer(MetaOptimizerBase):
                         user_defined_strategy):
         super(PipelineOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        num_microbatches = user_defined_strategy.pipeline_configs['micro_batch']
+        self.wrapped_opt = PO(self.inner_opt, num_microbatches=num_microbatches)
 
     def _can_apply(self):
         if self.user_defined_strategy.pipeline == True:
