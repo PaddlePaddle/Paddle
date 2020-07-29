@@ -17,7 +17,7 @@ from __future__ import print_function
 import paddle.fleet as fleet
 from paddle.fluid.optimizer import Momentum, SGD
 from .meta_optimizer_base import MetaOptimizerBase
-from . import CollectiveHelper
+from .collective_helper import CollectiveHelper
 
 
 class LocalSGDOptimizer(MetaOptimizerBase):
@@ -57,7 +57,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
         self.nrings = 2
         # TODO: need review
-        self.wait_port = 1234
+        self.wait_port = "6174"
         collective_helper = CollectiveHelper(nrings, wait_port)
         collective_helper.update_startup_program(startup_program)
 

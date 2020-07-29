@@ -14,29 +14,15 @@
 
 from __future__ import print_function
 
-import sys
-import math
-from functools import reduce
-
-import collections
-import six
-import logging
-
-import numpy as np
-
 import paddle.fluid as fluid
-from paddle import core, unique_name
-from paddle.framework import Program, default_main_program, default_startup_program
-from paddle.fluid.transpile.details import wait_server_ready
-from .. import fleet
+import paddle.fleet as fleet
+from paddle.fluid import core, unique_name
+from paddle.fluid.transpiler.details import wait_server_ready
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 class CollectiveHelper(object):
-    '''
-    '''
-
     def __init__(self, nrings, wait_port):
         self.nrings = nrings
         self.wait_port = wait_port
