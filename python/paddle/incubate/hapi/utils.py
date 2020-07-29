@@ -26,7 +26,7 @@ __all__ = ['uncombined_weight_to_state_dict']
 
 def uncombined_weight_to_state_dict(weight_dir):
     """
-    Convert uncombined weight to state_dict
+    Convert uncombined weight which was getted by using `fluid.io.save_params` or `fluid.io.save_persistables` to state_dict
 
     Args:
         weight_dir (str): weight direcotory path.
@@ -98,8 +98,30 @@ def uncombined_weight_to_state_dict(weight_dir):
             fluid.io.save_params(excutor, save_dir, test_prog)
 
             # convert uncombined weight to state dict
-
             state_dict = uncombined_weight_to_state_dict(save_dir)
+
+            key2key_dict = {
+                'features.0.weight': 'conv2d_0.w_0',
+                'features.0.bias': 'conv2d_0.b_0',
+                'features.3.weight': 'conv2d_1.w_0',
+                'features.3.bias': 'conv2d_1.b_0',
+                'fc.0.weight': 'linear_0.w_0',
+                'fc.0.bias': 'linear_0.b_0',
+                'fc.1.weight': 'linear_1.w_0',
+                'fc.1.bias': 'linear_1.b_0',
+                'fc.2.weight': 'linear_2.w_0',
+                'fc.2.bias': 'linear_2.b_0'
+            }
+
+            fluid.enable_imperative()
+            dygraph_model = LeNetDygraph()
+
+            converted_state_dict = dygraph_model.state_dict()
+            for k1, k2 in key2key_dict.items():
+                converted_state_dict[k1] = state_dict[k2]
+
+            # dygraph model load state dict which converted from uncombined weight
+            dygraph_model.set_dict(converted_state_dict)
     """
 
     def _get_all_params_name(dir):
