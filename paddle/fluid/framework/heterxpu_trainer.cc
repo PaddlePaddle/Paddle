@@ -51,7 +51,8 @@ void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
     copy_streams_.push_back(stream);
     places_.push_back(place);
     cudaEvent_t event;
-    PADDLE_ENFORCE(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
     events_.push_back(event);
   }
   // thread_num_ = trainer_desc.thread_num();
@@ -231,7 +232,7 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
       }
       auto dev_id = boost::get<platform::CUDAPlace>(place).device;
       platform::CUDADeviceGuard guard(dev_id);
-      PADDLE_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));
       object_pool_.Push(context);
     }
@@ -358,7 +359,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
 
     auto dev_id = boost::get<platform::CUDAPlace>(place).device;
     platform::CUDADeviceGuard guard(dev_id);
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));
   }
 

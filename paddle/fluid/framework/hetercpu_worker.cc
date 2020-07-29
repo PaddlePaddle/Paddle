@@ -790,10 +790,10 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
           if (tensor == nullptr) {
             continue;
           }
-          PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                            "Tensor %s contains Inf", var_name);
-          PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                            "Tensor %s contains NAN", var_name);
+          // PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+          //                   "Tensor %s contains Inf", var_name);
+          // PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+          //                   "Tensor %s contains NAN", var_name);
         }
         task->Update();
         timeline.Pause();
@@ -1060,10 +1060,10 @@ void HeterCpuWorker::TrainFiles() {
           if (tensor == nullptr) {
             continue;
           }
-          PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                            "Tensor %s contains Inf", var_name);
-          PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                            "Tensor %s contains NAN", var_name);
+          // PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+          //                   "Tensor %s contains Inf", var_name);
+          // PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+          //                   "Tensor %s contains NAN", var_name);
         }
         task->Update();
       } else if (task->state_ == PUSH_GRAD) {
