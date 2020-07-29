@@ -15,21 +15,21 @@
 from __future__ import print_function
 
 import os
-import six
 import pickle
-
 import warnings
+
+import six
 from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
+from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import FunctionSpec, ProgramTranslator
+from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
-from paddle.fluid.framework import Program, Block, Variable, ParamBase, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
+from paddle.fluid.framework import Block, ParamBase, Program, Variable, _current_expected_place, _dygraph_guard, _dygraph_tracer, dygraph_only, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.dygraph.io import TranslatedLayer, VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
-from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
 
 __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 

@@ -128,7 +128,9 @@ class OriginInfoAttacher(gast.NodeTransformer):
 global_origin_info_map = {}
 
 
-def create_origin_info_map(transformed_node, static_func, is_global=True):
+def create_and_update_origin_info_map(transformed_node,
+                                      static_func,
+                                      is_global=True):
     """
     Creates a original information map between transformed static function and original dygraph function.
 

@@ -36,7 +36,7 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info, create_origin_info_map, ORIGI_INFO_MAP
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info, create_and_update_origin_info_map, ORIGI_INFO_MAP
 from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data, ERROR_DATA
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
@@ -106,9 +106,7 @@ class FunctionCache(object):
         # Get static function from AST
         static_func, file_name = ast_to_func(root_wrapper.node, func)
 
-        # Attach origin info map to static_func
-        origin_info_map = create_origin_info_map(root, static_func)
-        setattr(static_func, ORIGI_INFO_MAP, origin_info_map)
+        create_and_update_origin_info_map(root_wrapper.node, static_func)
         return static_func
 
     def exist(self, func):
@@ -137,7 +135,7 @@ class FunctionSpec(object):
         self._args = args
         self._kwargs = kwargs
 
-        # TODO(liym): func has multi layer decoration
+        # TODO(liym27): func has multi layer decorator
         dyfunc = getattr(func, '__wrapped__', func)
         self._dyfunc_code = inspect.getsource(dyfunc)
 
@@ -306,18 +304,13 @@ class ConcreteProgram(object):
                                   (tuple, list)) and outputs is not None:
                     outputs = [outputs]
 
-        concrete_program = ConcreteProgram(
+        return ConcreteProgram(
             inputs=inputs,
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             func=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)
-
-        # Attach origin info map to concrete_program,
-        setattr(concrete_program, ORIGI_INFO_MAP,
-                getattr(static_func, ORIGI_INFO_MAP))
-        return concrete_program
 
 
 class ProgramCache(object):
