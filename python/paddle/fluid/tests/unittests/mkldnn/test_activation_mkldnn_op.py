@@ -143,13 +143,7 @@ class TestMKLDNNSwishDim2(TestSwish):
     def setUp(self):
         super(TestMKLDNNSwishDim2, self).setUp()
 
-        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
-        beta = 2.3
-        out = x * expit(beta * x)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True, "beta": beta}
+        self.attrs["use_mkldnn"] = True
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -160,6 +154,9 @@ class TestMKLDNNSwishDim2(TestSwish):
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(['X'], 'Out')
+
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNSigmoidDim2(TestSigmoid):
