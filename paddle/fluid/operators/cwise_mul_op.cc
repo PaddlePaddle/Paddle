@@ -23,7 +23,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-class CwisePowOpMaker : public ElementwiseOpMaker {
+class CwiseMulOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Mul"; }
   std::string GetEquation() const override { return "Out = X \\\\odot Y"; }
@@ -50,7 +50,7 @@ class CwisePowOpMaker : public ElementwiseOpMaker {
 namespace ops = paddle::operators;
 namespace functors = paddle::operators::functors;
 
-REGISTER_OPERATOR(cwise_mul, ops::BinaryOp, ops::CwisePowOpMaker);
+REGISTER_OPERATOR(cwise_mul, ops::BinaryOp, ops::CwiseMulOpMaker);
 
 REGISTER_CPU_KERNEL_4(cwise_mul, ops::BinaryOpKernel, functors::Mul, int,
                       int64_t, float, double);
