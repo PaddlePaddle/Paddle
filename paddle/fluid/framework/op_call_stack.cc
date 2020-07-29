@@ -37,9 +37,9 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   std::ostringstream sout;
   // Step 1. Construct python call stack string
   if (callstack) {
-    sout << "\n\n  Compile Traceback (most recent call last):\n";
+    sout << "\n\n  Compile Traceback (most recent call last):";
     for (auto &line : *callstack) {
-      sout << "  " << line;
+      sout << "\n  " << line;
     }
   }
   // Step 2. Construct final call stack & append error op name

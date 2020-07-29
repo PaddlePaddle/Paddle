@@ -230,7 +230,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   static constexpr int TRACE_STACK_LIMIT = 100;
   std::ostringstream sout;
 
-  sout << "\n--------------------------------------\n";
+  sout << "\n\n--------------------------------------\n";
   sout << "C++ Traceback (most recent call last):";
   sout << "\n--------------------------------------\n";
 #if !defined(_WIN32)

@@ -1917,9 +1917,9 @@ class Operator(object):
                 op_attrs[callstack_var_name] = []
                 for frame in traceback.extract_stack():
                     op_attrs[callstack_var_name].append(
-                        '  File "{}", line {}, in {}\n'.format(frame[0], frame[
-                            1], frame[2]))
-                    op_attrs[callstack_var_name].append('    {}\n'.format(frame[
+                        '  File "{}", line {}, in {}'.format(frame[0], frame[1],
+                                                             frame[2]))
+                    op_attrs[callstack_var_name].append('    {}'.format(frame[
                         3]))
 
             self.desc.set_type(type)
