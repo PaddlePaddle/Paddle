@@ -1570,7 +1570,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     inputs = {'Input': [x]}
     attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
 
-    def __check_input(input, offset, axis1, axis2):
+    def __check_input(x, offset, axis1, axis2):
         check_dtype(x.dtype, 'Input',
                     ['int32', 'int64', 'float16', 'float32', 'float64'],
                     'trace')
@@ -1598,7 +1598,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
     if not in_dygraph_mode():
-        __check_input(input, offset, axis1, axis2)
+        __check_input(x, offset, axis1, axis2)
     helper = LayerHelper('trace', **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
