@@ -71,6 +71,6 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
-    
+
 if __name__ == "__main__":
     unittest.main()
