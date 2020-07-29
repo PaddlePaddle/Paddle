@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+import paddle
 
 
 class CwiseMulOp(OpTest):
@@ -51,8 +52,22 @@ class CwiseMulOp(OpTest):
             x = fluid.dygraph.to_variable(self.x)
             y = fluid.dygraph.to_variable(self.y)
             out = core.ops.cwise_mul(x, y)
-            print(out.numpy(), self.out)
             self.assertTrue(np.array_equal(out.numpy(), self.out))
+
+    def test_api_dygraph(self):
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            x = fluid.dygraph.to_variable(self.x)
+            y = fluid.dygraph.to_variable(self.y)
+            out = paddle.cwise_mul(x, y, axis=-1)
+            self.assertTrue(np.array_equal(out.numpy(), self.out))
+
+    def test_api_static(self):
+        x = fluid.data("x", shape=[13, 17], dtype='float64')
+        y = fluid.data("y", shape=[13, 17], dtype='float64')
+        out = paddle.cwise_mul(x, y, axis=-1)
+        exe = fluid.Executor(fluid.CPUPlace())
+        res = exe.run(feed={"x": self.x, "y": self.y}, fetch_list=[out])
+        self.assertTrue(np.allclose(res, self.out))  # why not equal ?
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -64,3 +79,7 @@ class CwiseMulOp(OpTest):
 
     def init_axis(self):
         pass
+
+
+if __name__ == '__main__':
+    unittest.main()

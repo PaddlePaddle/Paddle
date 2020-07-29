@@ -14,10 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/common_infer_kernel_type_functions.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 // This file almostly contains all the coefficient-wise Operator class and
@@ -52,6 +55,28 @@ class BinaryOpKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
     ElementwiseComputeEx<Functor, DeviceContext, T>(ctx, x, y, axis, Functor(),
                                                     out);
+  }
+};
+
+class BinaryOpMaker : public ElementwiseOpMaker {
+ protected:
+  std::string GetName() const override { return "Mul"; }
+  std::string GetEquation() const override { return "Out = X \\\\odot Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Multiply two tensors element-wise";
   }
 };
 
