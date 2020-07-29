@@ -4807,15 +4807,15 @@ def split(input, num_or_sections, dim=-1, name=None):
     Split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Tensor): A N-D Tensor. The data type is float16, float32, float64, int32 or int64.
+        input (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is int, then the ``num_or_sections`` 
-            indicates the number of equal sized sub-Tensors that the Tensor 
+            indicates the number of equal sized sub-Tensors that the ``input``
             will be divided into. If ``num_or_sections`` is a list or tuple, the length of it 
             indicates the number of sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
-            dimension orderly. The length of the list mustn't be larger than the Tensor's size of specified dim.
-        dim (int|Tensor, optional): A scalar with type ``int`` or a ``Tensor`` with shape [1] and data type ``int32`` 
-            or ``int64``. The dimension along which to split. If :math:`dim < 0`, the dimension to split along is 
-            :math:`rank(input) + dim`. Default is -1.
+            dimension orderly. The length of the list mustn't be larger than the ``input`` 's size of specified dim.
+        dim (int|Tensor, optional): The axis along which to split, it can be a scalar with type ``int`` or
+            a ``Tensor`` with shape [1] and data type ``int32`` or ``int64``. The dimension along which to split.
+            If :math:`dim < 0`, the dimension to split along is :math:`rank(input) + dim`. Default is -1.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -4823,7 +4823,7 @@ def split(input, num_or_sections, dim=-1, name=None):
         list(Tensor): The list of segmented Tensors.
 
     Raises:
-        TypeError: The data type of ``input`` must be one of float16, float32, float64, int32, int64.
+        TypeError: The data type of ``input`` must be one of bool, float16, float32, float64, int32, int64.
         TypeError: ``num_or_sections`` is not int, list or tuple.
         TypeError: ``dim`` is not int or Tensor. The data type of ``dim`` must be int32 or int64 when it's a Tensor.
 
@@ -4832,7 +4832,7 @@ def split(input, num_or_sections, dim=-1, name=None):
 
             import paddle.fluid as fluid
 
-            # input is a variable which shape is [3, 9, 5]
+            # input is a Tensor which shape is [3, 9, 5]
             input = fluid.data(
                  name="input", shape=[3, 9, 5], dtype="float32")
 
@@ -4889,8 +4889,8 @@ def split(input, num_or_sections, dim=-1, name=None):
         return core.ops.split(input, num, *attrs)
 
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64', 'int32', 'in64'],
-        'split')
+        input, 'input',
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'in64'], 'split')
     check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
     check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):
