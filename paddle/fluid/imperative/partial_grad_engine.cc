@@ -36,7 +36,7 @@
 namespace paddle {
 namespace imperative {
 
-struct hash_pair {
+struct HashPair {
   template <class T1, class T2>
   size_t operator()(const std::pair<T1, T2> &p) const {
     auto hash1 = std::hash<T1>{}(p.first);
@@ -161,7 +161,7 @@ static void GetGraphInfoBetweenTargets(
   target_vars = *input_target_grads;
 
   std::queue<std::pair<OpBase * /*op*/, OpBase * /*pending op*/>> op_queue;
-  std::unordered_set<std::pair<OpBase *, OpBase *>, hash_pair> op_base_visited;
+  std::unordered_set<std::pair<OpBase *, OpBase *>, HashPair> op_base_visited;
   for (auto &endpoint_op : endpoint_ops) {
     op_queue.emplace(endpoint_op, nullptr);
     op_base_visited.insert(std::make_pair(endpoint_op, nullptr));
