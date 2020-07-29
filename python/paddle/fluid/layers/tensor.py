@@ -265,24 +265,26 @@ def concat(input, axis=0, name=None):
     """
 	:alias_main: paddle.concat
 	:alias: paddle.concat,paddle.tensor.concat,paddle.tensor.manipulation.concat
-	:old_api: paddle.fluid.layers.concat
-
-    **Concat**
 
     This OP concatenates the input along the axis.
 
     Args:
-        input(list): List of input Tensors with data type float32, float64, int32,
-            int64.
-        axis(int32|Variable, optional):  A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. Axis to compute indices along. The effective range
-            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+        input(list): List of input Tensors with data type float16, float32, float64, int32,
+            int64. All the Tensors in ``input`` must have the same data type.
+        axis(int|Variable, optional): Specify the axis to operate on the input Tensors.
+            It's a scalar with type ``int`` or a ``Tensor`` with shape [1] and data type ``int32`` or ``int64``.
+            The effective range is [-R, R), where R is Rank(x). When ``axis < 0``, it works the same way
             as axis+R. Default is 0.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+    Raises:
+        TypeError: The dtype of input must be one of float16, float32, float64, int32 and int64. 
+        TypeError: The ``axis`` must be int or Variable. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
+        TypeError: All the Tensors in ``input`` must have the same data type.
 
     Returns:
-        Variable: A Tensor with the same data type as input's.
+        Variable: A Tensor with the same data type as ``input``.
 
     Examples:
         .. code-block:: python
@@ -300,6 +302,8 @@ def concat(input, axis=0, name=None):
                 x1 = fluid.dygraph.to_variable(in1)
                 x2 = fluid.dygraph.to_variable(in2)
                 x3 = fluid.dygraph.to_variable(in3)
+                # When the axis is negative, the real axis is (axis + Rank(x)).
+                # As follows, axis is -1, Rank(x) is 2, the real axis is 1
                 out1 = fluid.layers.concat(input=[x1,x2,x3], axis=-1)
                 out2 = fluid.layers.concat(input=[x1,x2], axis=0)
                 print(out1.numpy())
@@ -315,8 +319,6 @@ def concat(input, axis=0, name=None):
     if in_dygraph_mode():
         if isinstance(axis, Variable):
             axis = axis.numpy()
-            assert axis.shape == (
-                1, ), "axis of type Variable should have shape [1]"
             axis = axis[0]
         return core.ops.concat(input, 'axis', axis)
 
@@ -329,7 +331,15 @@ def concat(input, axis=0, name=None):
         check_variable_and_dtype(
             x, 'input[' + str(id) + ']',
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
+        if x.dtype != input[0].dtype:
+            raise TypeError(
+                "All the Tensors in the input must have the same data type.")
     check_type(axis, 'axis', (int, Variable), 'concat')
+
+    if isinstance(axis, Variable):
+        check_dtype(
+            axis.dtype, 'axis', ['int32', 'int64'], 'concat',
+            "The data type of axis must be int32 or int64 when axis is a Tensor")
 
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -650,9 +660,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     Returns:
         Variable: Tensor which is created according to shape and dtype.
 
-    Raise:
+    Raises:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-        and the data type of out Tensor must be the same as the dtype. 
+            and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The shape must be one of list, tuple and Variable.
 
     Examples:
         .. code-block:: python
@@ -665,7 +676,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-          data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[1.5, 1.5]
+          data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[[1.5, 1.5]]
 
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([2], "int32", 2) # shape=[2,2]
@@ -1322,25 +1333,35 @@ def isfinite(x):
     return out
 
 
-def range(start, end, step, dtype):
+def range(start, end, step, dtype, name=None):
     """
     Return evenly spaced values within a given interval.
 
-    Values are generated within the half-open interval [start, stop) (in other words,
-    the interval including start but excluding stop).
+    Values are generated within the half-open interval [start, stop) (in other
+    words, the interval including start but excluding stop).
+
+    If dtype is float32 or float64, we advise adding a small epsilon to end to
+    avoid floating point rounding errors when comparing against end.
 
     Parameters:
-        start(float32 | float64 | int32 | int64 | Variable): Start of interval. The interval includes this value.
-            when start is Variable, it is a 1-D Tensor with shape [1].
-        end(float32 | float64 | int32 | int64 | Variable): End of interval. The interval does not include this
-                                 value, except in some cases where step is not an integer
-                                 and floating point round-off affects the length of out. When end is Variable,
-                                 it is a 1-D Tensor with shape [1].
-        step(float32 | float64 | int32 | int64 | Variable): Spacing between values. For any output out, this is the
-                                  distance between two adjacent values, out[i+1] - out[i].
-        dtype(str|core.VarDesc.VarType): the data type of the output tensor, can be float32, float64, int32, int64.
+        start(float|int|Variable): Start of interval. The interval includes
+            this value. If start is Variable, it is a 1-D Tensor with shape [1],
+            and it's data type should be one of int32, int64, float32, float64.
+        end(float|int|Variable): End of interval. The interval does not include
+            this value. When end is Variable, it is a 1-D Tensor with shape [1],
+            and it's data type should be int32, int64, float32, float64.
+        step(float|int|Variable): Spacing between values. For any out, this is
+            the istance between two adjacent values, out[i+1] - out[i].
+            When end is Variable, it is a 1-D Tensor with shape [1], and it's
+            data type should be one of int32, int64, float32, float64.
+        dtype(str|np.dtype|core.VarDesc.VarType): The data type of the output
+            tensor, can be float32, float64, int32, int64.
+        name(str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            Default is None.
 
-    Returns: a 1-D Tensor which is evenly spaced values within a given interval. Its data type is set by dtype.
+    Returns: a 1-D Tensor which is evenly spaced values within a given interval.
+        Its data type is set by dtype.
     
     Return type: Variable
 
@@ -1348,44 +1369,47 @@ def range(start, end, step, dtype):
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             data = fluid.layers.range(0, 10, 2, 'int32')
+            import paddle.fluid as fluid
+
+            out1 = fluid.layers.range(0, 10, 2, 'int32')
+            # [0, 2, 4, 6, 8]
+
+            start_var = fluid.layers.fill_constant([1], 'int64', 3)
+            out2 = fluid.layers.range(start_var, 7, 1, 'int64')
+            # [3, 4, 5, 6]
 
     """
-    check_type(start, 'start', (float, int, Variable), 'range')
-    check_type(end, 'end', (float, int, Variable), 'range')
-    check_type(step, 'step', (float, int, Variable), 'range')
-    helper = LayerHelper("range", **locals())
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
-    check_dtype(dtype, 'create data type',
-                ['float32', 'float64', 'int32', 'int64'], 'range')
-
-    dtype = convert_dtype(dtype)
     if not isinstance(start, Variable):
         start = fill_constant([1], dtype, start)
-    elif convert_dtype(start.dtype) != dtype:
-        # make sure that start, end, step has the same dtype as
-        # `dtype`
-        start = cast(x=start, dtype=dtype)
+    elif start.dtype != dtype:
+        start = cast(start, dtype)
 
     if not isinstance(end, Variable):
         end = fill_constant([1], dtype, end)
-    elif convert_dtype(end.dtype) != dtype:
-        end = cast(x=end, dtype=dtype)
+    elif end.dtype != dtype:
+        end = cast(end, dtype)
 
     if not isinstance(step, Variable):
         step = fill_constant([1], dtype, step)
-    elif convert_dtype(step.dtype) != dtype:
-        step = cast(x=step, dtype=dtype)
+    elif step.dtype != dtype:
+        step = cast(step, dtype)
 
-    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+    if in_dygraph_mode():
+        return core.ops.range(start, end, step)
 
+    check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
+                'range/arange')
+    helper = LayerHelper('range', **locals())
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='range',
         inputs={'Start': start,
                 'End': end,
                 'Step': step},
-        outputs={'Out': [out]})
+        outputs={'Out': out})
     out.stop_gradient = True
     return out
 
@@ -1410,6 +1434,12 @@ def linspace(start, stop, num, dtype=None, name=None):
         Variable, the output data type will be float32, float64.: The 1-D tensor with fixed number of evenly spaced values, \
         the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
         the value with input :attr:`start`. 
+
+    Raises:
+        TypeError: The dtype must be one of float32 and float64.
+        TypeError: The dtype of `start` and `stop`  must be one of float32 and float64.
+        TypeError: The dtype of `num` must be one of int32 and int64.
+
 
     Examples:
         .. code-block:: python
@@ -1538,7 +1568,11 @@ def diag(diagonal):
     return out
 
 
-def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
+def eye(num_rows,
+        num_columns=None,
+        batch_shape=None,
+        dtype='float32',
+        name=None):
     """
 	:alias_main: paddle.eye
 	:alias: paddle.eye,paddle.tensor.eye,paddle.tensor.creation.eye
@@ -1546,19 +1580,25 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
 
     **eye**
 
-    This function constructs an identity tensor, or a batch of tensor.
+    This function constructs a or a batch of 2-D tensor with ones on the diagonal and zeros elsewhere. 
 
     Args:
         num_rows(int): the number of rows in each batch tensor.
-        num_columns(int): the number of columns in each batch tensor.
-                          If None, default: num_rows.
-        batch_shape(list(int)): If provided, the returned tensor will have a leading
-                                batch size of this shape.
-        dtype(string): The data type of the returned tensor.
-                       It should be int32, int64, float16, float32, float64.
+        num_columns(int, optional): the number of columns in each batch tensor.
+            If None, default: num_rows.
+        batch_shape(list(int), optional): If provided, the returned tensor will have a leading
+            batch size of this shape, default is None.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the returned tensor.
+            It should be int32, int64, float16, float32, float64, default is 'float32'.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: An identity Tensor or LoDTensor of shape batch_shape + [num_rows, num_columns].
+    Raises:
+        TypeError: The `dtype` must be one of float16, float32, float64, int32 and int64.
+        TypeError: The `num_columns` must be non-negative int.
 
     Examples:
         .. code-block:: python
@@ -1579,38 +1619,55 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
 
     """
 
-    helper = LayerHelper("eye", **locals())
-    if not isinstance(num_rows, int) or num_rows < 0:
-        raise TypeError("num_rows should be a non-negative int")
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
         if not isinstance(num_columns, int) or num_columns < 0:
             raise TypeError("num_columns should be a non-negative int")
     else:
         num_columns = num_rows
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
-    helper.append_op(
-        type='eye',
-        inputs={},
-        outputs={'Out': [out]},
-        attrs={
-            'num_rows': num_rows,
-            'num_columns': num_columns,
-            'dtype': c_dtype
-        },
-        stop_gradient=True)
-    out.stop_gradient = True
+
+    if in_dygraph_mode():
+        out = core.ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
+                           num_columns)
+
+    else:
+        helper = LayerHelper("eye", **locals())
+        check_dtype(dtype, 'dtype',
+                    ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
+        if not isinstance(num_rows, int) or num_rows < 0:
+            raise TypeError("num_rows should be a non-negative int")
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+        helper.append_op(
+            type='eye',
+            inputs={},
+            outputs={'Out': [out]},
+            attrs={
+                'num_rows': num_rows,
+                'num_columns': num_columns,
+                'dtype': dtype
+            },
+            stop_gradient=True)
 
     if batch_shape is not None:
+        re_shape = [1] * len(batch_shape)
+        re_shape = re_shape + [num_rows, num_columns]
+        expand_times = batch_shape + [1, 1]
+        if in_dygraph_mode():
+            out = core.ops.reshape(out, 'shape', re_shape)
+            return core.ops.expand(out, 'expand_times', expand_times)
+
         if not isinstance(batch_shape, list):
             raise TypeError("batch_shape should be a list")
-        from .nn import stack
-        for batch_val in reversed(batch_shape):
+        for batch_val in (batch_shape):
             if batch_val <= 0:
                 raise TypeError("batch_shape should be a positive int list")
-            else:
-                stack_vars = [out for _ in numpy.arange(batch_val)]
-                out = stack(stack_vars, axis=0)
+
+        from .nn import reshape, expand
+        out = reshape(x=out, shape=re_shape)
+        out = expand(x=out, expand_times=expand_times)
+
+    out.stop_gradient = True
     return out
 
 
