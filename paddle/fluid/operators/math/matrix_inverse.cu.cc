@@ -80,15 +80,6 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
       blas.BatchedMatInv(n,
                          reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
                          gpu_inv_ptrs, gpu_info_ptr, batch_size);
-      memory::Copy(platform::CPUPlace(), info.data(),
-                   BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
-                   gpu_info_ptr, sizeof(int) * batch_size, context.stream());
-      for (int i = 0; i < batch_size; ++i) {
-        PADDLE_ENFORCE_EQ(
-            info[i], 0, platform::errors::PreconditionNotMet(
-                            "For batch [%d]: U(%d, %d) is zero, singular U.", i,
-                            info[i], info[i]));
-      }
     } else {
       // This function performs the LU factorization of each matrix A by the
       // equation P * A = L * U. L and U are written back to original matrix A,
@@ -101,15 +92,15 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
       blas.BatchedGETRI(n,
                         reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
                         gpu_pivot_ptr, gpu_inv_ptrs, gpu_info_ptr, batch_size);
-      memory::Copy(platform::CPUPlace(), info.data(),
-                   BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
-                   gpu_info_ptr, sizeof(int) * batch_size, context.stream());
-      for (int i = 0; i < batch_size; ++i) {
-        PADDLE_ENFORCE_EQ(
-            info[i], 0, platform::errors::PreconditionNotMet(
+    }
+    memory::Copy(platform::CPUPlace(), info.data(),
+                 BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
+                 gpu_info_ptr, sizeof(int) * batch_size, context.stream());
+    for (int i = 0; i < batch_size; ++i) {
+      PADDLE_ENFORCE_EQ(info[i], 0,
+                        platform::errors::PreconditionNotMet(
                             "For batch [%d]: U(%d, %d) is zero, singular U.", i,
                             info[i], info[i]));
-      }
     }
   }
 };
