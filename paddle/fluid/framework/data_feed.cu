@@ -25,8 +25,8 @@ namespace framework {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
 
-__global__ void CopyForTensorKernel(FeatureItem* src, void** dest,
-                                    size_t* offset, char* type,
+__global__ void CopyForTensorKernel(FeatureItem *src, void **dest,
+                                    size_t *offset, char *type,
                                     size_t total_size, size_t row_size,
                                     size_t col_size) {
   CUDA_KERNEL_LOOP(i, row_size * col_size) {
@@ -42,14 +42,14 @@ __global__ void CopyForTensorKernel(FeatureItem* src, void** dest,
       right = offset[row_id * (col_size + 1) + col_id + 1] -
               offset[(row_id - 1) * (col_size + 1) + col_id + 1];
     }
-    
-    uint64_t* up = NULL;
-    float* fp = NULL;
+
+    uint64_t *up = NULL;
+    float *fp = NULL;
     if (type[row_id] == 'f') {
-      fp = reinterpret_cast<float*>(dest[row_id]);
+      fp = reinterpret_cast<float *>(dest[row_id]);
     } else {
-      up = reinterpret_cast<uint64_t*>(
-          *(reinterpret_cast<uint64_t**>(dest) + row_id));
+      up = reinterpret_cast<uint64_t *>(
+          *(reinterpret_cast<uint64_t **>(dest) + row_id));
     }
     size_t begin = offset[row_id * (col_size + 1) + col_id + 1] +
                    offset[(row_size - 1) * (col_size + 1) + col_id] -
@@ -72,10 +72,10 @@ __global__ void CopyForTensorKernel(FeatureItem* src, void** dest,
 }
 
 void MultiSlotInMemoryDataFeed::CopyForTensor(
-    const paddle::platform::Place& place, FeatureItem* src, void** dest,
-    size_t* offset, char* type, size_t total_size, size_t row_size,
+    const paddle::platform::Place &place, FeatureItem *src, void **dest,
+    size_t *offset, char *type, size_t total_size, size_t row_size,
     size_t col_size) {
-  auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+  auto stream = dynamic_cast<platform::CUDADeviceContext *>(
                     platform::DeviceContextPool::Instance().Get(
                         boost::get<platform::CUDAPlace>(place)))
                     ->stream();
@@ -91,7 +91,7 @@ const int CUDA_NUM_THREADS = 512;
 inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
-
+// fill slot values
 __global__ void FillSlotValueOffsetKernel(
     const int ins_num, const int used_slot_num, size_t *slot_value_offsets,
     const int *uint64_offsets, const int uint64_slot_size,
@@ -127,8 +127,7 @@ __global__ void FillSlotValueOffsetKernel(
 }
 
 void SlotPaddleBoxDataFeed::FillSlotValueOffset(
-    std::vector<size_t> *cpu_slot_value_offsets, const int ins_num,
-    const int used_slot_num, size_t *slot_value_offsets,
+    const int ins_num, const int used_slot_num, size_t *slot_value_offsets,
     const int *uint64_offsets, const int uint64_slot_size,
     const int *float_offsets, const int float_slot_size,
     const UsedSlotGpuType *used_slots) {
@@ -140,9 +139,6 @@ void SlotPaddleBoxDataFeed::FillSlotValueOffset(
                               stream>>>(
       ins_num, used_slot_num, slot_value_offsets, uint64_offsets,
       uint64_slot_size, float_offsets, float_slot_size, used_slots);
-  cudaMemcpyAsync(cpu_slot_value_offsets->data(), slot_value_offsets,
-                  cpu_slot_value_offsets->size() * sizeof(size_t),
-                  cudaMemcpyDeviceToHost, stream);
   cudaStreamSynchronize(stream);
 }
 

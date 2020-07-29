@@ -28,55 +28,73 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
 //  VLOG(3) << "Begin PullSparse";
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
-  platform::Timer& all_timer = all_pull_timers_[device_id];
-  platform::Timer& pull_boxps_timer = boxps_pull_timers_[device_id];
+  DeviceBoxData& dev = device_caches_[device_id];
+  platform::Timer& all_timer = dev.all_pull_timer;
+  platform::Timer& pull_boxps_timer = dev.boxps_pull_timer;
 #else
   platform::Timer all_timer;
   platform::Timer pull_boxps_timer;
 #endif
   all_timer.Resume();
 
-  int64_t total_length =
-      std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-  auto buf = memory::AllocShared(
-      place, total_length *
-                 sizeof(boxps::FeatureValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>));
+  // construct slot_level lod info
+  auto slot_lengths_lod = slot_lengths;
+  int slot_num = static_cast<int>(slot_lengths.size());
+  for (int i = 1; i < slot_num; i++) {
+    slot_lengths_lod[i] += slot_lengths_lod[i - 1];
+  }
+  int64_t total_length = slot_lengths_lod[slot_num - 1];
+  size_t total_bytes = reinterpret_cast<size_t>(
+      total_length *
+      sizeof(boxps::FeatureValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>));
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  dev.total_key_length = total_length;
+  auto& pull_buf = dev.pull_push_buf;
+  if (pull_buf == nullptr) {
+    pull_buf = memory::AllocShared(place, total_bytes);
+  } else if (total_bytes > pull_buf->size()) {
+    auto buf = memory::AllocShared(place, total_bytes);
+    pull_buf.swap(buf);
+    buf = nullptr;
+  }
+#else
+  auto pull_buf = memory::AllocShared(place, total_bytes);
+#endif
   boxps::FeatureValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>* total_values_gpu =
       reinterpret_cast<boxps::FeatureValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>*>(
-          buf->ptr());
+          pull_buf->ptr());
 
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    //    VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-    //    int device_id = BOOST_GET_CONST(platform::CUDAPlace,
-    //    place).GetDeviceId();
-    LoDTensor& total_keys_tensor = keys_tensor[device_id];
+    auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+                      platform::DeviceContextPool::Instance().Get(
+                          BOOST_GET_CONST(platform::CUDAPlace, place)))
+                      ->stream();
     uint64_t* total_keys = reinterpret_cast<uint64_t*>(
-        total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
+        dev.keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
     int* total_dims = reinterpret_cast<int*>(
-        dims_tensor[device_id].mutable_data<int>({total_length, 1}, place));
-    // construct slot_level lod info
-    auto slot_lengths_lod = slot_lengths;
-    for (size_t i = 1; i < slot_lengths_lod.size(); i++) {
-      slot_lengths_lod[i] += slot_lengths_lod[i - 1];
+        dev.dims_tensor.mutable_data<int>({total_length, 1}, place));
+    if (dev.gpu_keys_ptr == nullptr) {
+      dev.gpu_keys_ptr =
+          memory::AllocShared(place, keys.size() * sizeof(uint64_t*));
     }
-    auto buf_key = memory::AllocShared(place, keys.size() * sizeof(uint64_t*));
-    auto buf_length =
-        memory::AllocShared(place, slot_lengths.size() * sizeof(int64_t));
-    uint64_t** gpu_keys = reinterpret_cast<uint64_t**>(buf_key->ptr());
-    int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());
-    cudaMemcpy(gpu_keys, keys.data(), keys.size() * sizeof(uint64_t*),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(gpu_len, slot_lengths_lod.data(),
-               slot_lengths.size() * sizeof(int64_t), cudaMemcpyHostToDevice);
 
-    this->CopyKeys(place, gpu_keys, total_keys, gpu_len,
-                   static_cast<int>(slot_lengths.size()),
-                   static_cast<int>(total_length));
-    //    VLOG(3) << "Begin call PullSparseGPU in BoxPS";
+    int* key2slot = reinterpret_cast<int*>(
+        dev.keys2slot.mutable_data<int>({total_length, 1}, place));
+    uint64_t** gpu_keys = reinterpret_cast<uint64_t**>(dev.gpu_keys_ptr->ptr());
+    int64_t* slot_lens = reinterpret_cast<int64_t*>(
+        dev.slot_lens.mutable_data<int64_t>({slot_num, 1}, place));
+    cudaMemcpyAsync(gpu_keys, keys.data(), keys.size() * sizeof(uint64_t*),
+                    cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(slot_lens, slot_lengths_lod.data(),
+                    slot_lengths.size() * sizeof(int64_t),
+                    cudaMemcpyHostToDevice, stream);
+    this->CopyKeys(place, gpu_keys, total_keys, slot_lens, slot_num,
+                   static_cast<int>(total_length), key2slot);
+
     pull_boxps_timer.Resume();
     int ret = boxps_ptr_->PullSparseGPU(
         total_keys, reinterpret_cast<void*>(total_values_gpu),
@@ -85,12 +103,17 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
                                   "PullSparseGPU failed in BoxPS."));
     pull_boxps_timer.Pause();
 
-    //    VLOG(3) << "Begin Copy result to tensor, total_length[" <<
-    //    total_length << "]";
-    this->CopyForPull(place, gpu_keys, values,
-                      reinterpret_cast<void*>(total_values_gpu), gpu_len,
-                      static_cast<int>(slot_lengths.size()), hidden_size,
-                      expand_embed_dim, total_length, total_dims);
+    if (dev.gpu_values_ptr == nullptr) {
+      dev.gpu_values_ptr =
+          memory::AllocShared(place, values.size() * sizeof(float*));
+    }
+    float** gpu_values = reinterpret_cast<float**>(dev.gpu_values_ptr->ptr());
+    cudaMemcpyAsync(gpu_values, values.data(), values.size() * sizeof(float*),
+                    cudaMemcpyHostToDevice, stream);
+
+    this->CopyForPull(place, gpu_keys, gpu_values, total_values_gpu, slot_lens,
+                      slot_num, key2slot, hidden_size, expand_embed_dim,
+                      total_length, total_dims);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Please compile WITH_GPU option, because NCCL doesn't support "
@@ -101,10 +124,6 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
         "PaddleBox: PullSparse Only Support CPUPlace or CUDAPlace Now."));
   }
   all_timer.Pause();
-  //  VLOG(1) << "PullSparse total costs: " << all_timer.ElapsedSec()
-  //          << " s, of which BoxPS costs: " << pull_boxps_timer.ElapsedSec()
-  //          << " s";
-  //  VLOG(3) << "End PullSparse";
 }
 
 template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM>
@@ -114,45 +133,71 @@ void BoxWrapper::PushSparseGradCase(
     const std::vector<const float*>& grad_values,
     const std::vector<int64_t>& slot_lengths, const int hidden_size,
     const int expand_embed_dim, const int batch_size) {
-//  VLOG(3) << "Begin PushSparseGrad";
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
-  platform::Timer& all_timer = all_push_timers_[device_id];
-  platform::Timer& push_boxps_timer = boxps_push_timers_[device_id];
+  DeviceBoxData& dev = device_caches_[device_id];
+  platform::Timer& all_timer = dev.all_push_timer;
+  platform::Timer& push_boxps_timer = dev.boxps_push_timer;
 #else
   platform::Timer all_timer;
   platform::Timer push_boxps_timer;
 #endif
   all_timer.Resume();
 
-  int64_t total_length =
-      std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-  auto buf = memory::AllocShared(
-      place,
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  int64_t total_length = dev.total_key_length;
+  // std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
+  size_t total_bytes = reinterpret_cast<size_t>(
       total_length *
-          sizeof(boxps::FeaturePushValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>));
+      sizeof(boxps::FeaturePushValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>));
+  auto& push_buf = dev.pull_push_buf;
+  if (push_buf == nullptr) {
+    push_buf = memory::AllocShared(place, total_bytes);
+  } else if (total_bytes > push_buf->size()) {
+    auto buf = memory::AllocShared(place, total_bytes);
+    push_buf.swap(buf);
+    buf = nullptr;
+  }
+#else
+  auto push_buf = memory::AllocShared(place, total_bytes);
+#endif
   boxps::FeaturePushValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>*
       total_grad_values_gpu = reinterpret_cast<
           boxps::FeaturePushValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>*>(
-          buf->ptr());
+          push_buf->ptr());
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    //    int device_id = BOOST_GET_CONST(platform::CUDAPlace,
-    //    place).GetDeviceId();
-    LoDTensor& cached_total_keys_tensor = keys_tensor[device_id];
+    auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+                      platform::DeviceContextPool::Instance().Get(
+                          BOOST_GET_CONST(platform::CUDAPlace, place)))
+                      ->stream();
     uint64_t* total_keys =
-        reinterpret_cast<uint64_t*>(cached_total_keys_tensor.data<int64_t>());
-    int* total_dims =
-        reinterpret_cast<int*>(dims_tensor[device_id].data<int>());
-    //    VLOG(3) << "Begin copy grad tensor to boxps struct";
-    this->CopyForPush(place, grad_values, total_grad_values_gpu, slot_lengths,
-                      hidden_size, expand_embed_dim, total_length, batch_size,
-                      total_dims);
+        reinterpret_cast<uint64_t*>(dev.keys_tensor.data<int64_t>());
+    int* total_dims = reinterpret_cast<int*>(dev.dims_tensor.data<int>());
+    int slot_num = static_cast<int>(slot_lengths.size());
+    if (!dev.d_slot_vector.IsInitialized()) {
+      int* buf_slot_vector = reinterpret_cast<int*>(
+          dev.d_slot_vector.mutable_data<int>({slot_num, 1}, place));
+      cudaMemcpyAsync(buf_slot_vector, slot_vector_.data(),
+                      slot_num * sizeof(int), cudaMemcpyHostToDevice, stream);
+    }
 
-    //    VLOG(3) << "Begin call PushSparseGPU in BoxPS";
+    const int64_t* slot_lens =
+        reinterpret_cast<int64_t*>(dev.slot_lens.data<int64_t>());
+    const int* d_slot_vector = dev.d_slot_vector.data<int>();
+    const int* key2slot = reinterpret_cast<int*>(dev.keys2slot.data<int>());
+    float** gpu_values = reinterpret_cast<float**>(dev.gpu_values_ptr->ptr());
+    cudaMemcpyAsync(gpu_values, grad_values.data(),
+                    grad_values.size() * sizeof(float*), cudaMemcpyHostToDevice,
+                    stream);
+
+    this->CopyForPush(place, gpu_values, total_grad_values_gpu, d_slot_vector,
+                      slot_lens, slot_num, hidden_size, expand_embed_dim,
+                      total_length, batch_size, total_dims, key2slot);
+
     push_boxps_timer.Resume();
     int ret = boxps_ptr_->PushSparseGPU(
         total_keys, reinterpret_cast<void*>(total_grad_values_gpu),
@@ -171,10 +216,6 @@ void BoxWrapper::PushSparseGradCase(
         "PaddleBox: PushSparseGrad Only Support CPUPlace or CUDAPlace Now."));
   }
   all_timer.Pause();
-  //  VLOG(1) << "PushSparseGrad total cost: " << all_timer.ElapsedSec()
-  //          << " s, of which BoxPS cost: " << push_boxps_timer.ElapsedSec()
-  //          << " s";
-  //  VLOG(3) << "End PushSparseGrad";
 }
 
 }  // namespace framework

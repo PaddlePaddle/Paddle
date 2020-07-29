@@ -53,15 +53,19 @@ namespace framework {
 #ifdef PADDLE_WITH_BOX_PS
 class BasicAucCalculator {
  public:
-  BasicAucCalculator(bool mode_collect_in_gpu=false): 
-      _mode_collect_in_gpu(mode_collect_in_gpu) {}
-  void init(int table_size, int max_batch_size=0);
+  explicit BasicAucCalculator(bool mode_collect_in_gpu = false)
+      : _mode_collect_in_gpu(mode_collect_in_gpu) {}
+  void init(int table_size, int max_batch_size = 0);
   void reset();
+  // add single data in CPU with LOCK, deprecated
+  void add_unlock_data(double pred, int label);
   // add batch data
   void add_data(const float* d_pred, const int64_t* d_label, int batch_size,
                 const paddle::platform::Place& place);
-  // add single data in CPU with LOCK, deprecated
-  void add_data(double pred, int label); 
+  // add mask data
+  void add_mask_data(const float* d_pred, const int64_t* d_label,
+                     const int64_t* d_mask, int batch_size,
+                     const paddle::platform::Place& place);
   void compute();
   int table_size() const { return _table_size; }
   double bucket_error() const { return _bucket_error; }
@@ -76,9 +80,15 @@ class BasicAucCalculator {
   double& local_abserr() { return _local_abserr; }
   double& local_sqrerr() { return _local_sqrerr; }
   double& local_pred() { return _local_pred; }
-  void cuda_add_data(const paddle::platform::Place& place,
-                     const int64_t* label, const float* pred, int len);
+  // lock and unlock
+  std::mutex& table_mutex(void) { return _table_mutex; }
+
  private:
+  void cuda_add_data(const paddle::platform::Place& place, const int64_t* label,
+                     const float* pred, int len);
+  void cuda_add_mask_data(const paddle::platform::Place& place,
+                          const int64_t* label, const float* pred,
+                          const int64_t* mask, int len);
   void calculate_bucket_error();
 
  protected:
@@ -100,9 +110,7 @@ class BasicAucCalculator {
   std::vector<std::shared_ptr<memory::Allocation>> _d_pred;
 
  private:
-  void set_table_size(int table_size) {
-    _table_size = table_size;
-  }
+  void set_table_size(int table_size) { _table_size = table_size; }
   void set_max_batch_size(int max_batch_size) {
     _max_batch_size = max_batch_size;
   }
@@ -118,6 +126,32 @@ class BasicAucCalculator {
 };
 
 class BoxWrapper {
+  struct DeviceBoxData {
+    LoDTensor keys_tensor;
+    LoDTensor dims_tensor;
+    std::shared_ptr<memory::Allocation> pull_push_buf = nullptr;
+    std::shared_ptr<memory::Allocation> gpu_keys_ptr = nullptr;
+    std::shared_ptr<memory::Allocation> gpu_values_ptr = nullptr;
+
+    LoDTensor slot_lens;
+    LoDTensor d_slot_vector;
+    LoDTensor keys2slot;
+
+    platform::Timer all_pull_timer;
+    platform::Timer boxps_pull_timer;
+    platform::Timer all_push_timer;
+    platform::Timer boxps_push_timer;
+
+    int64_t total_key_length = 0;
+
+    void ResetTimer(void) {
+      all_pull_timer.Reset();
+      boxps_pull_timer.Reset();
+      all_push_timer.Reset();
+      boxps_push_timer.Reset();
+    }
+  };
+
  public:
   virtual ~BoxWrapper() {
     if (file_manager_ != nullptr) {
@@ -132,11 +166,9 @@ class BoxWrapper {
       delete p_agent_;
       p_agent_ = nullptr;
     }
-    if (all_pull_timers_ != nullptr) {
-      delete[] all_pull_timers_;
-      delete[] boxps_pull_timers_;
-      delete[] all_push_timers_;
-      delete[] boxps_push_timers_;
+    if (device_caches_ != nullptr) {
+      delete device_caches_;
+      device_caches_ = nullptr;
     }
   }
   BoxWrapper() {
@@ -180,22 +212,22 @@ class BoxWrapper {
                       const int batch_size);
 
   void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
-                   const std::vector<float*>& values, void* total_values_gpu,
-                   const int64_t* gpu_len, const int slot_num,
-                   const int hidden_size, const int expand_embed_dim,
-                   const int64_t total_length, int* total_dims);
+                   float** gpu_values, void* total_values_gpu,
+                   const int64_t* slot_lens, const int slot_num,
+                   const int* key2slot, const int hidden_size,
+                   const int expand_embed_dim, const int64_t total_length,
+                   int* total_dims);
 
-  void CopyForPush(const paddle::platform::Place& place,
-                   const std::vector<const float*>& grad_values,
-                   void* total_grad_values_gpu,
-                   const std::vector<int64_t>& slot_lengths,
+  void CopyForPush(const paddle::platform::Place& place, float** grad_values,
+                   void* total_grad_values_gpu, const int* slots,
+                   const int64_t* slot_lens, const int slot_num,
                    const int hidden_size, const int expand_embed_dim,
                    const int64_t total_length, const int batch_size,
-                   int* total_dims);
+                   const int* total_dims, const int* key2slot);
 
   void CopyKeys(const paddle::platform::Place& place, uint64_t** origin_keys,
                 uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
-                int total_len);
+                int total_len, int* key2slot);
 
   void CheckEmbedSizeIsValid(int embedx_dim, int expand_embed_dim);
 
@@ -207,7 +239,8 @@ class BoxWrapper {
     if (nullptr != s_instance_) {
       VLOG(3) << "Begin InitializeGPU";
       std::vector<cudaStream_t*> stream_list;
-      for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
+      int gpu_num = platform::GetCUDADeviceCount();
+      for (int i = 0; i < gpu_num; ++i) {
         VLOG(3) << "before get context i[" << i << "]";
         platform::CUDADeviceContext* context =
             dynamic_cast<platform::CUDADeviceContext*>(
@@ -226,15 +259,7 @@ class BoxWrapper {
         slot_name_omited_in_feedpass_.insert(slot_name);
       }
       slot_vector_ = slot_vector;
-
-      int gpu_num = platform::GetCUDADeviceCount();
-      keys_tensor.resize(gpu_num);
-      dims_tensor.resize(gpu_num);
-
-      all_pull_timers_ = new platform::Timer[gpu_num];
-      boxps_pull_timers_ = new platform::Timer[gpu_num];
-      all_push_timers_ = new platform::Timer[gpu_num];
-      boxps_push_timers_ = new platform::Timer[gpu_num];
+      device_caches_ = new DeviceBoxData[gpu_num];
     }
   }
 
@@ -242,8 +267,9 @@ class BoxWrapper {
 
   void Finalize() {
     VLOG(3) << "Begin Finalize";
-    if (nullptr != s_instance_) {
+    if (nullptr != s_instance_ && s_instance_->boxps_ptr_ != nullptr) {
       s_instance_->boxps_ptr_->Finalize();
+      s_instance_->boxps_ptr_ = nullptr;
     }
   }
 
@@ -376,8 +402,8 @@ class BoxWrapper {
    public:
     MetricMsg() {}
     MetricMsg(const std::string& label_varname, const std::string& pred_varname,
-              int metric_phase, int bucket_size = 1000000, bool mode_collect_in_gpu = false,
-              int max_batch_size = 0)
+              int metric_phase, int bucket_size = 1000000,
+              bool mode_collect_in_gpu = false, int max_batch_size = 0)
         : label_varname_(label_varname),
           pred_varname_(pred_varname),
           metric_phase_(metric_phase) {
@@ -396,11 +422,11 @@ class BoxWrapper {
       const float* pred_data = NULL;
       get_data<int64_t>(exe_scope, label_varname_, &label_data, &label_len);
       get_data<float>(exe_scope, pred_varname_, &pred_data, &pred_len);
-      PADDLE_ENFORCE_EQ(label_len, pred_len, platform::errors::PreconditionNotMet(
-                    "the predict data length should be consistent with the label data length"));
-      int& batch_size = label_len;
-      auto cal = GetCalculator();
-      cal->add_data(pred_data, label_data, batch_size, place);
+      PADDLE_ENFORCE_EQ(label_len, pred_len,
+                        platform::errors::PreconditionNotMet(
+                            "the predict data length should be consistent with "
+                            "the label data length"));
+      calculator->add_data(pred_data, label_data, label_len, place);
     }
     template <class T = float>
     static void get_data(const Scope* exe_scope, const std::string& varname,
@@ -473,7 +499,7 @@ class BoxWrapper {
     }
     virtual ~MultiTaskMetricMsg() {}
     void add_data(const Scope* exe_scope,
-                          const paddle::platform::Place& place) override {
+                  const paddle::platform::Place& place) override {
       std::vector<int64_t> cmatch_rank_data;
       get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
       std::vector<int64_t> label_data;
@@ -497,14 +523,15 @@ class BoxWrapper {
                 batch_size, pred_data_list[i].size()));
       }
       auto cal = GetCalculator();
+      std::lock_guard<std::mutex> lock(cal->table_mutex());
       for (size_t i = 0; i < batch_size; ++i) {
         auto cmatch_rank_it =
             std::find(cmatch_rank_v.begin(), cmatch_rank_v.end(),
                       parse_cmatch_rank(cmatch_rank_data[i]));
         if (cmatch_rank_it != cmatch_rank_v.end()) {
-          cal->add_data(pred_data_list[std::distance(cmatch_rank_v.begin(),
-                                                     cmatch_rank_it)][i],
-                        label_data[i]);
+          cal->add_unlock_data(pred_data_list[std::distance(
+                                   cmatch_rank_v.begin(), cmatch_rank_it)][i],
+                               label_data[i]);
         }
       }
     }
@@ -545,7 +572,7 @@ class BoxWrapper {
     }
     virtual ~CmatchRankMetricMsg() {}
     void add_data(const Scope* exe_scope,
-                          const paddle::platform::Place& place) override {
+                  const paddle::platform::Place& place) override {
       std::vector<int64_t> cmatch_rank_data;
       get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
       std::vector<int64_t> label_data;
@@ -564,6 +591,7 @@ class BoxWrapper {
               "illegal batch size: cmatch_rank[%lu] and pred_data[%lu]",
               batch_size, pred_data.size()));
       auto cal = GetCalculator();
+      std::lock_guard<std::mutex> lock(cal->table_mutex());
       for (size_t i = 0; i < batch_size; ++i) {
         const auto& cur_cmatch_rank = parse_cmatch_rank(cmatch_rank_data[i]);
         for (size_t j = 0; j < cmatch_rank_v.size(); ++j) {
@@ -574,7 +602,7 @@ class BoxWrapper {
             is_matched = cmatch_rank_v[j] == cur_cmatch_rank;
           }
           if (is_matched) {
-            cal->add_data(pred_data[i], label_data[i]);
+            cal->add_unlock_data(pred_data[i], label_data[i]);
             break;
           }
         }
@@ -590,30 +618,35 @@ class BoxWrapper {
    public:
     MaskMetricMsg(const std::string& label_varname,
                   const std::string& pred_varname, int metric_phase,
-                  const std::string& mask_varname, int bucket_size = 1000000) {
+                  const std::string& mask_varname, int bucket_size = 1000000,
+                  bool mode_collect_in_gpu = false, int max_batch_size = 0) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
       mask_varname_ = mask_varname;
       metric_phase_ = metric_phase;
-      calculator = new BasicAucCalculator();
-      calculator->init(bucket_size);
+      calculator = new BasicAucCalculator(mode_collect_in_gpu);
+      calculator->init(bucket_size, max_batch_size);
     }
     virtual ~MaskMetricMsg() {}
     void add_data(const Scope* exe_scope,
-                          const paddle::platform::Place& place) override {
-      std::vector<int64_t> label_data;
-      get_data<int64_t>(exe_scope, label_varname_, &label_data);
-      std::vector<float> pred_data;
-      get_data<float>(exe_scope, pred_varname_, &pred_data);
-      std::vector<int64_t> mask_data;
-      get_data<int64_t>(exe_scope, mask_varname_, &mask_data);
+                  const paddle::platform::Place& place) override {
+      int label_len = 0;
+      const int64_t* label_data = NULL;
+      get_data<int64_t>(exe_scope, label_varname_, &label_data, &label_len);
+
+      int pred_len = 0;
+      const float* pred_data = NULL;
+      get_data<float>(exe_scope, pred_varname_, &pred_data, &pred_len);
+
+      int mask_len = 0;
+      const int64_t* mask_data = NULL;
+      get_data<int64_t>(exe_scope, mask_varname_, &mask_data, &mask_len);
+      PADDLE_ENFORCE_EQ(label_len, mask_len,
+                        platform::errors::PreconditionNotMet(
+                            "the predict data length should be consistent with "
+                            "the label data length"));
       auto cal = GetCalculator();
-      auto batch_size = label_data.size();
-      for (size_t i = 0; i < batch_size; ++i) {
-        if (mask_data[i] == 1) {
-          cal->add_data(pred_data[i], label_data[i]);
-        }
-      }
+      cal->add_mask_data(pred_data, label_data, mask_data, label_len, place);
     }
 
    protected:
@@ -658,8 +691,10 @@ class BoxWrapper {
                   int bucket_size = 1000000, bool mode_collect_in_gpu = false,
                   int max_batch_size = 0) {
     if (method == "AucCalculator") {
-      metric_lists_.emplace(name, new MetricMsg(label_varname, pred_varname,
-                                                metric_phase, bucket_size, mode_collect_in_gpu, max_batch_size));
+      metric_lists_.emplace(
+          name,
+          new MetricMsg(label_varname, pred_varname, metric_phase, bucket_size,
+                        mode_collect_in_gpu, max_batch_size));
     } else if (method == "MultiTaskAucCalculator") {
       metric_lists_.emplace(
           name, new MultiTaskMetricMsg(label_varname, pred_varname,
@@ -673,7 +708,8 @@ class BoxWrapper {
     } else if (method == "MaskAucCalculator") {
       metric_lists_.emplace(
           name, new MaskMetricMsg(label_varname, pred_varname, metric_phase,
-                                  mask_varname, bucket_size));
+                                  mask_varname, bucket_size,
+                                  mode_collect_in_gpu, max_batch_size));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "PaddleBox only support AucCalculator, MultiTaskAucCalculator "
@@ -721,15 +757,10 @@ class BoxWrapper {
   std::map<std::string, MetricMsg*> metric_lists_;
   std::vector<std::string> metric_name_list_;
   std::vector<int> slot_vector_;
-  std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
-  std::vector<LoDTensor> dims_tensor;
   bool use_afs_api_ = false;
   std::shared_ptr<boxps::PaddleFileMgr> file_manager_ = nullptr;
-
-  platform::Timer* all_pull_timers_ = nullptr;
-  platform::Timer* boxps_pull_timers_ = nullptr;
-  platform::Timer* all_push_timers_ = nullptr;
-  platform::Timer* boxps_push_timers_ = nullptr;
+  // box device cache
+  DeviceBoxData* device_caches_ = nullptr;
 
  public:
   static std::shared_ptr<boxps::PaddleShuffler> data_shuffle_;

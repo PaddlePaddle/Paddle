@@ -1395,7 +1395,9 @@ class PadBoxSlotDataConsumer : public boxps::DataConsumer {
       : _dataset(dataset) {
     BoxWrapper::data_shuffle_->register_handler(this);
   }
-  virtual ~PadBoxSlotDataConsumer() {}
+  virtual ~PadBoxSlotDataConsumer() {
+    BoxWrapper::data_shuffle_->register_handler(nullptr);
+  }
   virtual void on_receive(const int client_id, const char* buff, int len) {
     _dataset->ReceiveSuffleData(client_id, buff, len);
   }
@@ -1407,22 +1409,9 @@ class PadBoxSlotDataConsumer : public boxps::DataConsumer {
 PadBoxSlotDataset::PadBoxSlotDataset() {
   mpi_size_ = boxps::MPICluster::Ins().size();
   mpi_rank_ = boxps::MPICluster::Ins().rank();
-
-  if (mpi_size_ > 1) {
-    finished_counter_ = mpi_size_;
-    mpi_flags_.assign(mpi_size_, 1);
-    VLOG(3) << "RegisterClientToClientMsgHandler";
-    data_consumer_ = reinterpret_cast<void*>(new PadBoxSlotDataConsumer(this));
-    VLOG(3) << "RegisterClientToClientMsgHandler done";
-  }
   SlotRecordPool();
 }
-PadBoxSlotDataset::~PadBoxSlotDataset() {
-  if (data_consumer_ != nullptr) {
-    delete reinterpret_cast<PadBoxSlotDataConsumer*>(data_consumer_);
-    data_consumer_ = nullptr;
-  }
-}
+PadBoxSlotDataset::~PadBoxSlotDataset() {}
 // create input channel and output channel
 void PadBoxSlotDataset::CreateChannel() {
   if (input_channel_ == nullptr) {
@@ -1476,6 +1465,14 @@ void PadBoxSlotDataset::LoadIntoMemory() {
   std::vector<std::thread> load_threads;
   std::vector<std::thread> shuffle_threads;
 
+  if (mpi_size_ > 1) {
+    finished_counter_ = mpi_size_;
+    mpi_flags_.assign(mpi_size_, 1);
+    VLOG(3) << "RegisterClientToClientMsgHandler";
+    data_consumer_ = reinterpret_cast<void*>(new PadBoxSlotDataConsumer(this));
+    VLOG(3) << "RegisterClientToClientMsgHandler done";
+  }
+
   std::atomic<int> ref(thread_num_);
   for (int64_t i = 0; i < thread_num_; ++i) {
     load_threads.push_back(std::thread([this, i, &ref]() {
@@ -1505,6 +1502,10 @@ void PadBoxSlotDataset::LoadIntoMemory() {
     }
   }
 
+  if (data_consumer_ != nullptr) {
+    delete reinterpret_cast<PadBoxSlotDataConsumer*>(data_consumer_);
+    data_consumer_ = nullptr;
+  }
   //  shuffle_channel_->Clear();
   //  input_channel_->Clear();
 

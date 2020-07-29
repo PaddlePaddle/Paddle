@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifdef PADDLE_WITH_BOX_PS
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include <algorithm>
@@ -31,7 +30,7 @@ cudaStream_t BoxWrapper::stream_list_[8];
 int BoxWrapper::embedx_dim_ = 8;
 int BoxWrapper::expand_embed_dim_ = 0;
 
-void BasicAucCalculator::add_data(double pred, int label) {
+void BasicAucCalculator::add_unlock_data(double pred, int label) {
   PADDLE_ENFORCE_GE(pred, 0.0, platform::errors::PreconditionNotMet(
                                    "pred should be greater than 0"));
   PADDLE_ENFORCE_LE(pred, 1.0, platform::errors::PreconditionNotMet(
@@ -49,59 +48,94 @@ void BasicAucCalculator::add_data(double pred, int label) {
       pos, _table_size,
       platform::errors::PreconditionNotMet(
           "pos must be less than table_size, but its value is: %d", pos));
-  std::lock_guard<std::mutex> lock(_table_mutex);
   _local_abserr += fabs(pred - label);
   _local_sqrerr += (pred - label) * (pred - label);
   _local_pred += pred;
-  _table[label][pos]++;
+  ++_table[label][pos];
 }
 
-void BasicAucCalculator::add_data(const float* d_pred, const int64_t* d_label, int batch_size,
-              const paddle::platform::Place& place) {
+void BasicAucCalculator::add_data(const float* d_pred, const int64_t* d_label,
+                                  int batch_size,
+                                  const paddle::platform::Place& place) {
   if (_mode_collect_in_gpu) {
     cuda_add_data(place, d_label, d_pred, batch_size);
   } else {
-    std::vector<float> h_pred;
-    std::vector<int64_t> h_label;
+    thread_local std::vector<float> h_pred;
+    thread_local std::vector<int64_t> h_label;
     h_pred.resize(batch_size);
     h_label.resize(batch_size);
-    cudaMemcpy(h_pred.data(), d_pred, sizeof(float) * batch_size, cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_label.data(), d_label, sizeof(int64_t) * batch_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_pred.data(), d_pred, sizeof(float) * batch_size,
+               cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_label.data(), d_label, sizeof(int64_t) * batch_size,
+               cudaMemcpyDeviceToHost);
+
+    std::lock_guard<std::mutex> lock(_table_mutex);
     for (int i = 0; i < batch_size; ++i) {
-      add_data(h_pred[i], h_label[i]);
+      add_unlock_data(h_pred[i], h_label[i]);
+    }
+  }
+}
+// add mask data
+void BasicAucCalculator::add_mask_data(const float* d_pred, const int64_t* d_label,
+        const int64_t *d_mask,
+        int batch_size, const paddle::platform::Place& place) {
+  if (_mode_collect_in_gpu) {
+    cuda_add_mask_data(place, d_label, d_pred, d_mask, batch_size);
+  } else {
+    thread_local std::vector<float> h_pred;
+    thread_local std::vector<int64_t> h_label;
+    thread_local std::vector<int64_t> h_mask;
+    h_pred.resize(batch_size);
+    h_label.resize(batch_size);
+    h_mask.resize(batch_size);
+
+    cudaMemcpy(h_pred.data(), d_pred, sizeof(float) * batch_size,
+               cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_label.data(), d_label, sizeof(int64_t) * batch_size,
+               cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_mask.data(), d_mask, sizeof(int64_t) * batch_size,
+                   cudaMemcpyDeviceToHost);
+
+    std::lock_guard<std::mutex> lock(_table_mutex);
+    for (int i = 0; i < batch_size; ++i) {
+      if (h_mask[i]) {
+          add_unlock_data(h_pred[i], h_label[i]);
+      }
     }
   }
 }
 
 void BasicAucCalculator::init(int table_size, int max_batch_size) {
   if (_mode_collect_in_gpu) {
-      PADDLE_ENFORCE_GE(max_batch_size, 0, platform::errors::PreconditionNotMet(
-          "max_batch_size should be greater than 0 in mode_collect_in_gpu"));
+    PADDLE_ENFORCE_GE(
+        max_batch_size, 0,
+        platform::errors::PreconditionNotMet(
+            "max_batch_size should be greater than 0 in mode_collect_in_gpu"));
+  }
+  set_table_size(table_size);
+  set_max_batch_size(max_batch_size);
+  // init CPU memory
+  for (int i = 0; i < 2; i++) {
+    _table[i] = std::vector<double>();
+  }
+  // init GPU memory
+  if (_mode_collect_in_gpu) {
+    for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
+      auto place = platform::CUDAPlace(i);
+      _d_positive.emplace_back(
+          memory::AllocShared(place, _table_size * sizeof(double)));
+      _d_negative.emplace_back(
+          memory::Alloc(place, _table_size * sizeof(double)));
+      _d_abserr.emplace_back(
+          memory::Alloc(place, _max_batch_size * sizeof(double)));
+      _d_sqrerr.emplace_back(
+          memory::Alloc(place, _max_batch_size * sizeof(double)));
+      _d_pred.emplace_back(
+          memory::Alloc(place, _max_batch_size * sizeof(double)));
     }
-    set_table_size(table_size);
-    set_max_batch_size(max_batch_size);
-    // init CPU memory
-    for (int i = 0; i < 2; i++) {
-      _table[i] = std::vector<double>();
-    }
-    // init GPU memory
-    if (_mode_collect_in_gpu) {
-      for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
-        auto place = platform::CUDAPlace(i);
-        _d_positive.emplace_back(
-            memory::AllocShared(place, _table_size * sizeof(double)));
-        _d_negative.emplace_back(
-            memory::Alloc(place, _table_size * sizeof(double)));
-        _d_abserr.emplace_back(
-            memory::Alloc(place, _max_batch_size * sizeof(double)));
-        _d_sqrerr.emplace_back(
-            memory::Alloc(place, _max_batch_size * sizeof(double)));
-        _d_pred.emplace_back(
-            memory::Alloc(place, _max_batch_size * sizeof(double)));
-      }
-    }
-    // reset
-    reset();
+  }
+  // reset
+  reset();
 }
 
 void BasicAucCalculator::reset() {
@@ -128,10 +162,10 @@ void BasicAucCalculator::reset() {
                       stream);
       cudaMemsetAsync(_d_negative[i]->ptr(), 0, sizeof(double) * _table_size,
                       stream);
-      cudaMemsetAsync(_d_abserr[i]->ptr(), 0,
-                      sizeof(double) * _max_batch_size, stream);
-      cudaMemsetAsync(_d_sqrerr[i]->ptr(), 0,
-                      sizeof(double) * _max_batch_size, stream);
+      cudaMemsetAsync(_d_abserr[i]->ptr(), 0, sizeof(double) * _max_batch_size,
+                      stream);
+      cudaMemsetAsync(_d_sqrerr[i]->ptr(), 0, sizeof(double) * _max_batch_size,
+                      stream);
       cudaMemsetAsync(_d_pred[i]->ptr(), 0, sizeof(double) * _max_batch_size,
                       stream);
     }
@@ -141,51 +175,51 @@ void BasicAucCalculator::reset() {
 }
 
 void BasicAucCalculator::collect_data_nccl() {
-    // backup orginal device
-    int ori_device;
-    cudaGetDevice(&ori_device);
-    // transfer to CPU
-    platform::dynload::ncclGroupStart();
-    // nccl allreduce sum
-    for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
-      cudaSetDevice(i);
-      auto place = platform::CUDAPlace(i);
-      auto stream = dynamic_cast<platform::CUDADeviceContext*>(
-                        platform::DeviceContextPool::Instance().Get(place))
-                        ->stream();
-      auto comm = platform::NCCLCommContext::Instance().Get(0, place);
-      platform::dynload::ncclAllReduce(
-          _d_positive[i]->ptr(), _d_positive[i]->ptr(), _table_size,
-          ncclFloat64, ncclSum, comm->comm(), stream);
-      platform::dynload::ncclAllReduce(
-          _d_negative[i]->ptr(), _d_negative[i]->ptr(), _table_size,
-          ncclFloat64, ncclSum, comm->comm(), stream);
-      platform::dynload::ncclAllReduce(_d_abserr[i]->ptr(), _d_abserr[i]->ptr(),
-                                       _max_batch_size, ncclFloat64, ncclSum,
-                                       comm->comm(), stream);
-      platform::dynload::ncclAllReduce(_d_sqrerr[i]->ptr(), _d_sqrerr[i]->ptr(),
-                                       _max_batch_size, ncclFloat64, ncclSum,
-                                       comm->comm(), stream);
-      platform::dynload::ncclAllReduce(_d_pred[i]->ptr(), _d_pred[i]->ptr(),
-                                       _max_batch_size, ncclFloat64, ncclSum,
-                                       comm->comm(), stream);
-    }
-    platform::dynload::ncclGroupEnd();
-    // sync
-    for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
-      cudaSetDevice(i);
-      auto place = platform::CUDAPlace(i);
-      auto stream = dynamic_cast<platform::CUDADeviceContext*>(
-                        platform::DeviceContextPool::Instance().Get(place))
-                        ->stream();
-      cudaStreamSynchronize(stream);
-    }
-    // restore device
-    cudaSetDevice(ori_device);
+  // backup orginal device
+  int ori_device;
+  cudaGetDevice(&ori_device);
+  // transfer to CPU
+  platform::dynload::ncclGroupStart();
+  // nccl allreduce sum
+  for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
+    cudaSetDevice(i);
+    auto place = platform::CUDAPlace(i);
+    auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+                      platform::DeviceContextPool::Instance().Get(place))
+                      ->stream();
+    auto comm = platform::NCCLCommContext::Instance().Get(0, place);
+    platform::dynload::ncclAllReduce(
+        _d_positive[i]->ptr(), _d_positive[i]->ptr(), _table_size, ncclFloat64,
+        ncclSum, comm->comm(), stream);
+    platform::dynload::ncclAllReduce(
+        _d_negative[i]->ptr(), _d_negative[i]->ptr(), _table_size, ncclFloat64,
+        ncclSum, comm->comm(), stream);
+    platform::dynload::ncclAllReduce(_d_abserr[i]->ptr(), _d_abserr[i]->ptr(),
+                                     _max_batch_size, ncclFloat64, ncclSum,
+                                     comm->comm(), stream);
+    platform::dynload::ncclAllReduce(_d_sqrerr[i]->ptr(), _d_sqrerr[i]->ptr(),
+                                     _max_batch_size, ncclFloat64, ncclSum,
+                                     comm->comm(), stream);
+    platform::dynload::ncclAllReduce(_d_pred[i]->ptr(), _d_pred[i]->ptr(),
+                                     _max_batch_size, ncclFloat64, ncclSum,
+                                     comm->comm(), stream);
+  }
+  platform::dynload::ncclGroupEnd();
+  // sync
+  for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
+    cudaSetDevice(i);
+    auto place = platform::CUDAPlace(i);
+    auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+                      platform::DeviceContextPool::Instance().Get(place))
+                      ->stream();
+    cudaStreamSynchronize(stream);
+  }
+  // restore device
+  cudaSetDevice(ori_device);
 }
 
 void BasicAucCalculator::copy_data_d2h(int device) {
-    // backup orginal device
+  // backup orginal device
   int ori_device;
   cudaGetDevice(&ori_device);
   cudaSetDevice(device);
@@ -201,11 +235,9 @@ void BasicAucCalculator::copy_data_d2h(int device) {
   h_sqrerr.resize(_max_batch_size);
   h_pred.resize(_max_batch_size);
   cudaMemcpyAsync(&_table[0][0], _d_negative[device]->ptr(),
-                  _table_size * sizeof(double), cudaMemcpyDeviceToHost,
-                  stream);
+                  _table_size * sizeof(double), cudaMemcpyDeviceToHost, stream);
   cudaMemcpyAsync(&_table[1][0], _d_positive[device]->ptr(),
-                  _table_size * sizeof(double), cudaMemcpyDeviceToHost,
-                  stream);
+                  _table_size * sizeof(double), cudaMemcpyDeviceToHost, stream);
   cudaMemcpyAsync(h_abserr.data(), _d_abserr[device]->ptr(),
                   _max_batch_size * sizeof(double), cudaMemcpyDeviceToHost,
                   stream);
@@ -433,10 +465,8 @@ void BoxWrapper::EndFeedPass(boxps::PSAgentBase* agent) const {
 void BoxWrapper::BeginPass() const {
   int gpu_num = platform::GetCUDADeviceCount();
   for (int i = 0; i < gpu_num; ++i) {
-    all_pull_timers_[i].Reset();
-    boxps_pull_timers_[i].Reset();
-    all_push_timers_[i].Reset();
-    boxps_push_timers_[i].Reset();
+    DeviceBoxData& dev = device_caches_[i];
+    dev.ResetTimer();
   }
   int ret = boxps_ptr_->BeginPass();
   PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
@@ -453,11 +483,12 @@ void BoxWrapper::EndPass(bool need_save_delta) const {
       ret, 0, platform::errors::PreconditionNotMet("EndPass failed in BoxPS."));
   int gpu_num = platform::GetCUDADeviceCount();
   for (int i = 0; i < gpu_num; ++i) {
+    auto& dev = device_caches_[i];
     LOG(WARNING) << "gpu[" << i
-                 << "] sparse pull span: " << all_pull_timers_[i].ElapsedSec()
-                 << ", boxps span: " << boxps_pull_timers_[i].ElapsedSec()
-                 << ", push span: " << all_push_timers_[i].ElapsedSec()
-                 << ", boxps span:" << boxps_push_timers_[i].ElapsedSec();
+                 << "] sparse pull span: " << dev.all_pull_timer.ElapsedSec()
+                 << ", boxps span: " << dev.boxps_pull_timer.ElapsedSec()
+                 << ", push span: " << dev.all_push_timer.ElapsedSec()
+                 << ", boxps span:" << dev.boxps_push_timer.ElapsedSec();
   }
 }
 

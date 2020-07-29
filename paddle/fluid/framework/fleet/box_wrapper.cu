@@ -31,20 +31,12 @@ template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM>
 __global__ void PullCopy(
     float** dest,
     const boxps::FeatureValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>* src,
-    const int64_t* len, int hidden, int expand_dim, int slot_num, int total_len,
-    uint64_t** keys, int* total_dims) {
+    const int hidden, const int expand_dim, const int total_len,
+    uint64_t** keys, int* total_dims, const int64_t* slot_lens,
+    const int slot_num, const int* key2slot) {
   CUDA_KERNEL_LOOP(i, total_len) {
-    int low = 0;
-    int high = slot_num - 1;
-    while (low < high) {
-      int mid = (low + high) / 2;
-      if (i < len[mid])
-        high = mid;
-      else
-        low = mid + 1;
-    }
-    int x = low;
-    int y = i - (x ? len[x - 1] : 0);
+    int x = key2slot[i];
+    int y = i - (x ? slot_lens[x - 1] : 0);
     if (*(keys[x] + y) == 0) {
       *(dest[x] + y * hidden) = 0;
       *(dest[x] + y * hidden + 1) = 0;
@@ -82,21 +74,29 @@ __global__ void PullCopy(
   }  // end kernel loop
 }
 
-__global__ void CopyKeysKernel(uint64_t** src_keys, uint64_t* dest_total_keys,
-                               const int64_t* len, int slot_num,
-                               int total_len) {
+__global__ void FillKey2Slot(const int total_len, const int64_t* slot_lens,
+                             const int slot_num, int* key2slots) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
     while (low < high) {
       int mid = (low + high) / 2;
-      if (i < len[mid])
+      if (i < slot_lens[mid]) {
         high = mid;
-      else
+      } else {
         low = mid + 1;
+      }
     }
-    int x = low;
-    int y = i - (x ? len[x - 1] : 0);
+    key2slots[i] = low;
+  }
+}
+
+__global__ void CopyKeysKernel(const int total_len, uint64_t** src_keys,
+                               uint64_t* dest_total_keys,
+                               const int64_t* slot_lens, const int* key2slot) {
+  CUDA_KERNEL_LOOP(i, total_len) {
+    int x = key2slot[i];
+    int y = i - (x ? slot_lens[x - 1] : 0);
     dest_total_keys[i] = src_keys[x][y];
   }
 }
@@ -104,20 +104,12 @@ __global__ void CopyKeysKernel(uint64_t** src_keys, uint64_t* dest_total_keys,
 template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM>
 __global__ void PushCopy(
     boxps::FeaturePushValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>* dest, float** src,
-    int64_t* len, int hidden, int expand_dim, int slot_num, int total_len,
-    int bs, int* slot_vector, int* total_dims) {
+    int hidden, int expand_dim, int total_len, int bs, const int* slot_vector,
+    const int* total_dims, const int64_t* slot_lens, const int slot_num,
+    const int* key2slot) {
   CUDA_KERNEL_LOOP(i, total_len) {
-    int low = 0;
-    int high = slot_num - 1;
-    while (low < high) {
-      int mid = (low + high) / 2;
-      if (i < len[mid])
-        high = mid;
-      else
-        low = mid + 1;
-    }
-    int x = low;
-    int y = i - (x ? len[low - 1] : 0);
+    int x = key2slot[i];
+    int y = i - (x ? slot_lens[x - 1] : 0);
     (dest + i)->slot = slot_vector[x];
     (dest + i)->show = *(src[x] + y * hidden);
     (dest + i)->clk = *(src[x] + y * hidden + 1);
@@ -147,45 +139,61 @@ __global__ void PushCopy(
   }
 }
 
+__device__ void add_calculator_value(const int table_size, const float pred,
+                                     const int64_t label, const int idx,
+                                     double* positive, double* negative,
+                                     double* abs_error, double* sqr_error,
+                                     double* local_pred) {
+  int pos = static_cast<int>(pred * table_size);
+  if (pos >= table_size) {
+    pos = table_size - 1;
+  }
+  if (label == 0) {
+    atomicAdd(negative + pos, 1.0);
+  } else {
+    atomicAdd(positive + pos, 1.0);
+  }
+  double err = pred - label;
+  abs_error[idx] += fabs(err);
+  sqr_error[idx] += err * err;
+  local_pred[idx] += pred;
+}
+
 __global__ void AddBasicCalculator(const float* pred, const int64_t* label,
                                    double* positive, double* negative,
                                    double* abs_error, double* sqr_error,
                                    double* local_pred, int len,
                                    int table_size) {
   CUDA_KERNEL_LOOP(ins_idx, len) {
-    int pos = static_cast<int>(pred[ins_idx] * table_size);
-    if (pos >= table_size) {
-      pos = table_size - 1;
+    add_calculator_value(table_size, pred[ins_idx], label[ins_idx], ins_idx,
+                         positive, negative, abs_error, sqr_error, local_pred);
+  }
+}
+
+__global__ void AddMaskCalculator(const float* pred, const int64_t* label,
+                                  const int64_t* mask, double* positive,
+                                  double* negative, double* abs_error,
+                                  double* sqr_error, double* local_pred,
+                                  int len, int table_size) {
+  CUDA_KERNEL_LOOP(ins_idx, len) {
+    if (mask[ins_idx] != 1) {
+      continue;
     }
-    if (label[ins_idx] == 0) {
-      atomicAdd(negative + pos, 1.0);
-      // negative[pos]++;
-    } else {
-      atomicAdd(positive + pos, 1.0);
-      // positive[pos]++;
-    }
-    double err = pred[ins_idx] - label[ins_idx];
-    abs_error[ins_idx] += fabs(err);
-    sqr_error[ins_idx] += err * err;
-    local_pred[ins_idx] += pred[ins_idx];
+    add_calculator_value(table_size, pred[ins_idx], label[ins_idx], ins_idx,
+                         positive, negative, abs_error, sqr_error, local_pred);
   }
 }
 
 void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
-                             uint64_t** gpu_keys,
-                             const std::vector<float*>& values,
-                             void* total_values_gpu, const int64_t* gpu_len,
-                             const int slot_num, const int hidden_size,
-                             const int expand_embed_dim,
+                             uint64_t** gpu_keys, float** gpu_values,
+                             void* total_values_gpu, const int64_t* slot_lens,
+                             const int slot_num, const int* key2slot,
+                             const int hidden_size, const int expand_embed_dim,
                              const int64_t total_length, int* total_dims) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
                         BOOST_GET_CONST(platform::CUDAPlace, place)))
                     ->stream();
-  auto buf_value = memory::AllocShared(place, values.size() * sizeof(float*));
-  float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
-  cudaMemcpy(gpu_values, values.data(), values.size() * sizeof(float*),
-             cudaMemcpyHostToDevice);
 #define EMBEDX_CASE(i, ...)                                                  \
   case i: {                                                                  \
     constexpr size_t EmbedxDim = i;                                          \
@@ -205,8 +213,8 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
         gpu_values,                                                          \
         reinterpret_cast<boxps::FeatureValueGpu<EmbedxDim, ExpandDim>*>(     \
             total_values_gpu),                                               \
-        gpu_len, hidden_size, expand_embed_dim, slot_num, total_length,      \
-        gpu_keys, total_dims);                                               \
+        hidden_size, expand_embed_dim, total_length, gpu_keys, total_dims,   \
+        slot_lens, slot_num, key2slot);                                      \
   } break
 
   switch (hidden_size - 3) {
@@ -225,48 +233,30 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
 
 void BoxWrapper::CopyKeys(const paddle::platform::Place& place,
                           uint64_t** origin_keys, uint64_t* total_keys,
-                          const int64_t* gpu_len, int slot_num, int total_len) {
+                          const int64_t* slot_lens, int slot_num, int total_len,
+                          int* key2slot) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
                         BOOST_GET_CONST(platform::CUDAPlace, place)))
                     ->stream();
+  FillKey2Slot<<<(total_len + 512 - 1) / 512, 512, 0, stream>>>(
+      total_len, slot_lens, slot_num, key2slot);
   CopyKeysKernel<<<(total_len + 512 - 1) / 512, 512, 0, stream>>>(
-      origin_keys, total_keys, gpu_len, slot_num, total_len);
+      total_len, origin_keys, total_keys, slot_lens, key2slot);
   cudaStreamSynchronize(stream);
 }
 
 void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
-                             const std::vector<const float*>& grad_values,
-                             void* total_grad_values_gpu,
-                             const std::vector<int64_t>& slot_lengths,
-                             const int hidden_size, const int expand_embed_dim,
+                             float** grad_values, void* total_grad_values_gpu,
+                             const int* d_slot_vector, const int64_t* slot_lens,
+                             const int slot_num, const int hidden_size,
+                             const int expand_embed_dim,
                              const int64_t total_length, const int batch_size,
-                             int* total_dims) {
+                             const int* total_dims, const int* key2slot) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
                         BOOST_GET_CONST(platform::CUDAPlace, place)))
                     ->stream();
-  auto slot_lengths_lod = slot_lengths;
-  for (int i = 1; i < slot_lengths_lod.size(); i++) {
-    slot_lengths_lod[i] += slot_lengths_lod[i - 1];
-  }
-  auto buf_grad_value =
-      memory::AllocShared(place, grad_values.size() * sizeof(float*));
-  auto buf_length =
-      memory::AllocShared(place, slot_lengths.size() * sizeof(int64_t));
-  auto buf_slot_vector =
-      memory::AllocShared(place, slot_lengths_lod.size() * sizeof(int));
-
-  float** gpu_values = reinterpret_cast<float**>(buf_grad_value->ptr());
-  int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());
-  int* d_slot_vector = reinterpret_cast<int*>(buf_slot_vector->ptr());
-
-  cudaMemcpy(gpu_values, grad_values.data(),
-             grad_values.size() * sizeof(float*), cudaMemcpyHostToDevice);
-  cudaMemcpy(gpu_len, slot_lengths_lod.data(),
-             slot_lengths.size() * sizeof(int64_t), cudaMemcpyHostToDevice);
-  cudaMemcpy(d_slot_vector, slot_vector_.data(),
-             slot_lengths_lod.size() * sizeof(int), cudaMemcpyHostToDevice);
 
 #define EMBEDX_CASE(i, ...)                                                  \
   case i: {                                                                  \
@@ -279,16 +269,15 @@ void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
     }                                                                        \
   } break
 
-#define EXPAND_EMBED_PUSH_CASE(i, ...)                                       \
-  case i: {                                                                  \
-    constexpr size_t ExpandDim = i;                                          \
-    PushCopy<EmbedxDim,                                                      \
-             ExpandDim><<<(total_length + 512 - 1) / 512, 512, 0, stream>>>( \
-        reinterpret_cast<boxps::FeaturePushValueGpu<EmbedxDim, ExpandDim>*>( \
-            total_grad_values_gpu),                                          \
-        gpu_values, gpu_len, hidden_size, expand_embed_dim,                  \
-        slot_lengths.size(), total_length, batch_size, d_slot_vector,        \
-        total_dims);                                                         \
+#define EXPAND_EMBED_PUSH_CASE(i, ...)                                        \
+  case i: {                                                                   \
+    constexpr size_t ExpandDim = i;                                           \
+    PushCopy<EmbedxDim,                                                       \
+             ExpandDim><<<(total_length + 512 - 1) / 512, 512, 0, stream>>>(  \
+        reinterpret_cast<boxps::FeaturePushValueGpu<EmbedxDim, ExpandDim>*>(  \
+            total_grad_values_gpu),                                           \
+        grad_values, hidden_size, expand_embed_dim, total_length, batch_size, \
+        d_slot_vector, total_dims, slot_lens, slot_num, key2slot);            \
   } break
 
   switch (hidden_size - 3) {
@@ -309,7 +298,6 @@ void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
 void BasicAucCalculator::cuda_add_data(const paddle::platform::Place& place,
                                        const int64_t* label, const float* pred,
                                        int len) {
-
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(
                         BOOST_GET_CONST(platform::CUDAPlace, place)))
@@ -321,6 +309,25 @@ void BasicAucCalculator::cuda_add_data(const paddle::platform::Place& place,
 
   AddBasicCalculator<<<(len + 512 - 1) / 512, 512, 0, stream>>>(
       pred, label, reinterpret_cast<double*>(_d_positive[i]->ptr()),
+      reinterpret_cast<double*>(_d_negative[i]->ptr()),
+      reinterpret_cast<double*>(_d_abserr[i]->ptr()),
+      reinterpret_cast<double*>(_d_sqrerr[i]->ptr()),
+      reinterpret_cast<double*>(_d_pred[i]->ptr()), len, _table_size);
+}
+
+void BasicAucCalculator::cuda_add_mask_data(
+    const paddle::platform::Place& place, const int64_t* label,
+    const float* pred, const int64_t* mask, int len) {
+  auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+                    platform::DeviceContextPool::Instance().Get(
+                        BOOST_GET_CONST(platform::CUDAPlace, place)))
+                    ->stream();
+  int i = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+
+  cudaSetDevice(i);
+
+  AddMaskCalculator<<<(len + 512 - 1) / 512, 512, 0, stream>>>(
+      pred, label, mask, reinterpret_cast<double*>(_d_positive[i]->ptr()),
       reinterpret_cast<double*>(_d_negative[i]->ptr()),
       reinterpret_cast<double*>(_d_abserr[i]->ptr()),
       reinterpret_cast<double*>(_d_sqrerr[i]->ptr()),
