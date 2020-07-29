@@ -580,7 +580,7 @@ def squeeze(x, axis=None, name=None):
             out.shape = [1, 3, 5]
 
     Args:
-        input (Tensor): The input Tensor. Support data type: float32, float64, int8, int32, int64.
+        input (Tensor): The input Tensor. Support data type: float16, float32, float64, int8, int32, int64.
         axis (int|list|tuple, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
                           The range of axis is :math:`[-ndim(input), ndim(input))`.
                           If axis is negative, :math:`axis = axis + ndim(input)`.
@@ -588,7 +588,7 @@ def squeeze(x, axis=None, name=None):
         name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Tensor: Output squeezed Tensor with the same data type as input Tensor.
+        Tensor: Squeezed Tensor with the same data type as input Tensor.
 
     Examples:
         .. code-block:: python
@@ -628,14 +628,14 @@ def unsqueeze(x, axis, name=None):
       then unsqueezed tensor with axis=[0, 4] has shape [1, 3, 4, 5, 1].
 
     Args:
-        x (Tensor): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
+        x (Tensor): The input Tensor to be unsqueezed. Support data type: float16, float32, float64, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . 
                                     If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. 
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
         name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Tensor: Output unsqueezed Tensor with the same data type as input Tensor.
+        Tensor: Unsqueezed Tensor with the same data type as input Tensor.
 
     Examples:
         .. code-block:: python
@@ -650,6 +650,10 @@ def unsqueeze(x, axis, name=None):
             
             out2 = paddle.unsqueeze(x, axis=[0, 2]) 
             print(out2.shape)  # [1, 5, 1, 10]
+
+            axis = paddle.fluid.dygraph.to_variable([0, 1, 2])
+            out3 = paddle.unsqueeze(x, axis=axis) 
+            print(out3.shape)  # [1, 1, 1, 5, 10]
             
     """
     if isinstance(axis, int):

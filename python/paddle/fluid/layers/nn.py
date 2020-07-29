@@ -6227,7 +6227,7 @@ def squeeze(input, axes, name=None):
     check_variable_and_dtype(
         input, 'input',
         ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
-    check_type(axes, 'axes', (list, tuple), 'squeeze')
+    check_type(axes, 'axis/axes', (list, tuple), 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -6254,12 +6254,12 @@ def unsqueeze(input, axes, name=None):
       then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
 
     Args:
-        input (Variable): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
+        input (Variable): The input Tensor to be unsqueezed. Support data type: float16, float32, float64, int8, int32, int64.
         axes (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
         name (str|None): Name for this layer.
 
     Returns:
-        Variable: Output unsqueezed Tensor, with data type being float32, float64, int32, int64.
+        Variable: Unsqueezed Tensor, with the same data type as input.
 
     Examples:
         .. code-block:: python
@@ -6273,10 +6273,7 @@ def unsqueeze(input, axes, name=None):
         out, _ = core.ops.unsqueeze2(input, 'axes', axes)
         return out
 
-    if not isinstance(axes, (int, list, tuple, Variable)):
-        raise TypeError(
-            "The type of 'axes' in unsqueeze must be int, list, tuple or Variable, but "
-            "received %s." % (type(axes)))
+    check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     helper = LayerHelper("unsqueeze2", **locals())
     inputs = {"X": input}
     attrs = {}
