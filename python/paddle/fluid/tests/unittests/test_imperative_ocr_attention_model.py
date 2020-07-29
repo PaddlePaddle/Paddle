@@ -375,7 +375,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
         seed = 90
         epoch_num = 1
         if core.is_compiled_with_cuda():
-            batch_num = 2
+            batch_num = 10
         else:
             batch_num = 4
         np.random.seed = seed
@@ -433,7 +433,6 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     avg_loss = fluid.layers.reduce_sum(loss)
 
                     dy_out = avg_loss.numpy()
-                    print(dy_out)
 
                     if epoch == 0 and batch_id == 0:
                         for param in ocr_attention.parameters():
@@ -457,7 +456,6 @@ class TestDygraphOCRAttention(unittest.TestCase):
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
-            # print("static start")
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             ocr_attention = OCRAttention()
@@ -523,8 +521,6 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     static_param_value = {}
                     static_grad_value = {}
                     static_out = out[0]
-                    print(static_out)
-                    # static_test_grad = out[1]
                     for i in range(1, len(static_param_name_list) + 1):
                         static_param_value[static_param_name_list[i - 1]] = out[
                             i]
@@ -534,9 +530,6 @@ class TestDygraphOCRAttention(unittest.TestCase):
                         static_grad_value[static_grad_name_list[
                             i - grad_start_pos]] = out[i]
 
-        print(static_out)
-        print("============================")
-        print(dy_out)
         self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_init_value):
