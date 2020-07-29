@@ -248,7 +248,7 @@ def zeros(shape, dtype=None, name=None):
           # [[0. 0.]
           #  [0. 0.]]
           
-          #shape is a Tensor
+          # shape is a Tensor
           shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
           data3 = paddle.ones(shape=shape, dtype='int32') 
           # [[0 0]
