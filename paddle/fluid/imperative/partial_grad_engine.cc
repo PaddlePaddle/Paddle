@@ -38,7 +38,7 @@ namespace imperative {
 
 struct HashPair {
   template <class T1, class T2>
-  size_t operator()(const std::pair<T1, T2> &p) const {
+  size_t operator()(const std::pair<T1, T2> &p) const noexcept {
     auto hash1 = std::hash<T1>{}(p.first);
     auto hash2 = std::hash<T2>{}(p.second);
     return hash1 ^ hash2;
@@ -164,7 +164,7 @@ static void GetGraphInfoBetweenTargets(
   std::unordered_set<std::pair<OpBase *, OpBase *>, HashPair> op_base_visited;
   for (auto &endpoint_op : endpoint_ops) {
     op_queue.emplace(endpoint_op, nullptr);
-    op_base_visited.insert(std::make_pair(endpoint_op, nullptr));
+    op_base_visited.emplace(endpoint_op, nullptr);
   }
 
   while (!op_queue.empty()) {
@@ -230,7 +230,7 @@ static void GetGraphInfoBetweenTargets(
       for (auto &preceding_op : iter->second) {
         if (op_base_visited.count(std::make_pair(preceding_op, op)) == 0) {
           op_queue.emplace(preceding_op, op);
-          op_base_visited.insert(std::make_pair(preceding_op, op));
+          op_base_visited.emplace(preceding_op, op);
         }
       }
     }
