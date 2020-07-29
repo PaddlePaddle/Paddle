@@ -28,11 +28,11 @@ import numpy as np
 class ApiOnesTest(unittest.TestCase):
     def test_paddle_ones(self):
         with paddle.program_guard(paddle.Program()):
-            ones = paddle.ones(shape=[10], dtype="float64")
+            ones = paddle.ones(shape=[10])
             place = paddle.CPUPlace()
             exe = paddle.Executor(place)
             result, = exe.run(fetch_list=[ones])
-            expected_result = np.ones(10, dtype="float64")
+            expected_result = np.ones(10, dtype="float32")
         self.assertEqual((result == expected_result).all(), True)
 
         with paddle.program_guard(paddle.Program()):
