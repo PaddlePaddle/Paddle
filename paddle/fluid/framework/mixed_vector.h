@@ -505,12 +505,12 @@ class CPUVector : public std::vector<T, std::allocator<T>> {
   }
 
   const T *CUDAData(platform::Place place) const {
-    PADDLE_THROW(platform::errors::Unavaliable(
+    PADDLE_THROW(platform::errors::Unavailable(
         "Vector::CUDAData() method is not supported in CPU-only version."));
   }
 
   T *CUDAMutableData(platform::Place place) {
-    PADDLE_THROW(platform::errors::Unavaliable(
+    PADDLE_THROW(platform::errors::Unavailable(
         "Vector::CUDAMutableData() method is not supported in CPU-only "
         "version"));
   }
@@ -518,7 +518,7 @@ class CPUVector : public std::vector<T, std::allocator<T>> {
   const T *Data(platform::Place place) const {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(place), true,
-        platform::errors::Unavaliable(
+        platform::errors::Unavailable(
             "Vector::Data() method is not supported when not in CPUPlace."));
     return this->data();
   }
@@ -526,7 +526,7 @@ class CPUVector : public std::vector<T, std::allocator<T>> {
   T *MutableData(platform::Place place) {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(place), true,
-        platform::errors::Unavaliable("Vector::MutableData() method is not "
+        platform::errors::Unavailable("Vector::MutableData() method is not "
                                       "supported when not in CPUPlace."));
     return this->data();
   }
