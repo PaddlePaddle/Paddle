@@ -40,7 +40,6 @@ static void PrepareData(const platform::Place& place,
     for (const auto& var_base : name_pair.second) {
       const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {
-        auto tmp_place = tensor->place();
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
         if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
