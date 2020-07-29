@@ -672,7 +672,7 @@ def save(layer, model_path, input_spec=None, configs=None):
         else:
             result_list = valid_vars
         if return_name:
-            result_list = [var.name for var in target_vars]
+            result_list = [var.name for var in result_list]
 
         return result_list
 
@@ -707,18 +707,27 @@ def save(layer, model_path, input_spec=None, configs=None):
     layer_func = FunctionSpec(type(layer).forward, [layer], {})
     concrete_program, _ = prog_cache.get_program(layer_func)
 
+    # NOTE: we maintain the mapping of variable name to
+    # structured name, the buffer variable (non-persistable)
+    # saved to inference program may not need by dygraph Layer, 
+    # we only record the state_dict variable's structured name
+    state_names_dict = dict()
+    for structured_name, var in layer.state_dict().items():
+        state_names_dict[var.name] = structured_name
+
     # 3. share parameters from Layer to scope & record var info
     scope = core.Scope()
-    state_dict = layer.state_dict()
     extra_var_info = dict()
-    for structured_name, param_or_buffer in state_dict.items():
+    for param_or_buffer in concrete_program.parameters:
         # share to scope
         param_or_buffer_tensor = scope.var(param_or_buffer.name).get_tensor()
         src_tensor = param_or_buffer.value().get_tensor()
         param_or_buffer_tensor._share_data_with(src_tensor)
         # record var info
         extra_info_dict = dict()
-        extra_info_dict['structured_name'] = structured_name
+        if param_or_buffer.name in state_names_dict:
+            extra_info_dict['structured_name'] = state_names_dict[
+                param_or_buffer.name]
         extra_info_dict['stop_gradient'] = param_or_buffer.stop_gradient
         if isinstance(param_or_buffer, ParamBase):
             extra_info_dict['trainable'] = param_or_buffer.trainable
