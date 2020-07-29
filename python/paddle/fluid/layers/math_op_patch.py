@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import logging
+import warnings
 import inspect
 
 from .. import core
@@ -268,7 +268,7 @@ def monkey_patch_variable():
                 stack = inspect.stack()[1]
                 file_name = stack[1]
                 line_num = stack[2]
-                logging.warning(
+                warnings.warn(
                     "%s:%s\nThe behavior of expression %s has been unified with %s(X, Y, axis=-1) from Paddle 2.0. "
                     "If your code works well in the older versions but crashes in this version, try to use "
                     "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."

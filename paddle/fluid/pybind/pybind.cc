@@ -56,6 +56,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
@@ -1536,6 +1537,25 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
+
+  m.def("get_float_stats", []() {
+    std::vector<paddle::platform::ExportedStatValue<float>> float_stats;
+    paddle::platform::StatRegistry<float>::Instance().publish(float_stats);
+    std::unordered_map<std::string, float> stats_map;
+    for (const auto &stat : float_stats) {
+      stats_map[stat.key] = stat.value;
+    }
+    return stats_map;
+  });
+  m.def("get_int_stats", []() {
+    std::vector<paddle::platform::ExportedStatValue<int64_t>> int_stats;
+    paddle::platform::StatRegistry<int64_t>::Instance().publish(int_stats);
+    std::unordered_map<std::string, int64_t> stats_map;
+    for (const auto &stat : int_stats) {
+      stats_map[stat.key] = stat.value;
+    }
+    return stats_map;
+  });
   m.def("run_cmd",
         [](const std::string &cmd, int time_out = -1,
            int sleep_inter = -1) -> const std::string {
@@ -1543,6 +1563,15 @@ All parameter, weight, gradient are variables in Paddle.
                                                              sleep_inter);
         },
         py::arg("cmd"), py::arg("time_out") = -1, py::arg("sleep_inter") = -1);
+  m.def("shell_execute_cmd",
+        [](const std::string &cmd, int time_out = 0, int sleep_inter = 0,
+           bool redirect_stderr = false) -> std::vector<std::string> {
+          return paddle::framework::shell_execute_cmd(
+              cmd, time_out, sleep_inter, redirect_stderr);
+        },
+        py::arg("cmd"), py::arg("time_out") = 0, py::arg("sleep_inter") = 0,
+        py::arg("redirect_stderr") = false);
+
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16

@@ -35,10 +35,8 @@ __global__ void SliceKernel(int num, int dims, const T *input,
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   extern __shared__ int shared_data[];
 
-  if (threadIdx.x == 0) {
-    for (int i = 0; i < dims * 3; i++) {
-      shared_data[i] = offsets_info[i];
-    }
+  for (int i = threadIdx.x; i < dims * 3; i += blockDim.x) {
+    shared_data[i] = offsets_info[i];
   }
   __syncthreads();
 

@@ -626,7 +626,7 @@ class TestDygraphUtils(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
             res2 = fluid.layers.sigmoid(a)
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            self.assertTrue(np.allclose(res1.numpy(), res2.numpy()))
 
     def test_append_bias_in_dygraph_exception(self):
         with new_program_scope():
@@ -643,6 +643,15 @@ class TestDygraphUtils(unittest.TestCase):
             res1 = func(a, bias=a)
             res2 = a + a
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+
+class TestDygraphGuardWithError(unittest.TestCase):
+    def test_without_guard(self):
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(np.zeros([10, 10]))
+        with self.assertRaisesRegexp(TypeError,
+                                     "Please use `with fluid.dygraph.guard()"):
+            y = fluid.layers.matmul(x, x)
 
 
 if __name__ == '__main__':

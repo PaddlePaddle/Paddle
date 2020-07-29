@@ -281,22 +281,18 @@ def generate_activation_fn(op_type):
 
 Return type
   Variable
+
 Examples:
     .. code-block:: python
 
-        import paddle.fluid as fluid
+        import paddle
         import numpy as np
 
-        inputs = fluid.data(name="x", shape = [None, 4], dtype='float32')
-        output = fluid.layers.%s(inputs)
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
-
-        #input.shape=1X4, batch_size=1
-        img = np.array([[1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
-        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-        print(res)
+        paddle.enable_imperative()
+        x_data = np.array([1, 2, 3, 4]).astype(np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        res = paddle.%s(x)
+        print(res.numpy())
 """ % op_type
     return func
 

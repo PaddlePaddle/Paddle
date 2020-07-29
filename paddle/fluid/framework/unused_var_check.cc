@@ -12,14 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/unused_var_check.h"
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_bool(enable_unused_var_check, false,
@@ -27,7 +29,7 @@ DEFINE_bool(enable_unused_var_check, false,
             "especially for grad operator. It should be in unittest.");
 
 // NOTE(zhiqiu): Currently, there are some operators which involves unused
-// inputs and cannot be removed from the white_list below.
+// inputs and cannot be removed from the allow_list below.
 // They can be mainly divided into four categories:
 // 0: the inputs of which are only used in if branch, or used in cuda kernel but
 // not in cpu kernel;
@@ -35,7 +37,7 @@ DEFINE_bool(enable_unused_var_check, false,
 // 2: the inputs of which are used in fused operators.
 // The category number is presented in the comments after each operator.
 
-const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
+const std::unordered_set<std::string> op_with_unsed_vars_allow_list = {
     "batch_norm",                      // 0
     "batch_norm_grad",                 // 0
     "sync_batch_norm",                 // 0
@@ -74,8 +76,8 @@ void LogVarUsageIfUnusedVarCheckEnabled(const std::string &name) {
 }
 
 void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
-  // skip op in white list and it should be fixed in the future.
-  if (op_has_unsed_vars_white_list.count(op.Type()) != 0) {
+  // skip op in allow list.
+  if (op_with_unsed_vars_allow_list.count(op.Type()) != 0) {
     return;
   }
   auto *used_set = GetThreadLocalUsedVarNameSet();
@@ -116,7 +118,7 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
         "from inputs of the operator; if yes, register "
         "NoNeedBufferVarsInference or add "
         "the operator to "
-        "white list in unused_var_check.cc. See more details at "
+        "allow list in unused_var_check.cc. See more details at "
         "[https://github.com/PaddlePaddle/Paddle/wiki/"
         "OP-Should-Not-Have-Unused-Input]";
     PADDLE_ENFORCE_EQ(unsed_input_var_names.size(), 0,

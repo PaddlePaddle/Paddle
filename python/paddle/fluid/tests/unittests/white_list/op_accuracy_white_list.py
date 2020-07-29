@@ -70,10 +70,12 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'squared_l2_distance', \
     'squared_l2_norm', \
     'tanh', \
+    'mish', \
     'transpose2', \
     'trilinear_interp', \
     'var_conv_2d', \
-    'warpctc'
+    'warpctc', \
+    'bilateral_slice'
 ]
 
 NO_FP16_CHECK_GRAD_OP_LIST = [
