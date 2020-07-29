@@ -40,10 +40,10 @@ class ScalarMulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("a", "(Scalar), The scaled factor of the input tensor");
     AddAttr<float>("b", "(Scalar), The bias of the scalr mul op");
     AddComment(R"DOC(
-Scalar Mul Operator.
-This operator is used to perform scalar multiply for input tensor X,
-Out = a * X + b
-)DOC");
+              Scalar Mul Operator.
+              This operator is used to perform scalar multiply for input tensor X,
+              Out = a * X + b
+              )DOC");
   }
 };
 

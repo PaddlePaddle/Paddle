@@ -51,7 +51,7 @@ class ScalarMulGradKernel : public framework::OpKernel<T> {
     auto dx = dx_t->mutable_data<T>(ctx.GetPlace());
 
     for (int i = 0; i < dout_t->numel(); ++i) {
-      dx[i] = dout[i] / a;
+      dx[i] = dout[i] * a;
     }
   }
 };
