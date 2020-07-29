@@ -1568,7 +1568,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     inputs = {'Input': [x]}
     attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
 
-    def __check_input(input, offset, dim1, dim2):
+    def __check_input(input, offset, axis1, axis2):
         check_dtype(x.dtype, 'Input',
                     ['int32', 'int64', 'float16', 'float32', 'float64'],
                     'trace')
