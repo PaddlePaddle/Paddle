@@ -37,9 +37,9 @@ class ScalarMulOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), The input tensor.");
     AddOutput("Out", "(Tensor), The output tensor of scalar mul op");
-    AddAttr<float>("a", "(Scalar), The scaled factor of the input tensor")
-        AddAttr<float>("b", "(Scalar), The bias of the scalr mul op")
-            AddComment(R"DOC(
+    AddAttr<float>("a", "(Scalar), The scaled factor of the input tensor");
+    AddAttr<float>("b", "(Scalar), The bias of the scalr mul op");
+    AddComment(R"DOC(
 Scalar Mul Operator.
 This operator is used to perform scalar multiply for input tensor X,
 Out = a * X + b
