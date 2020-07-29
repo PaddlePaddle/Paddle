@@ -154,7 +154,7 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
 
     def run_with_worker_done(self, use_shared_memory=True):
         try:
-            place = fluid.CUDAPlace(0)
+            place = fluid.CPUPlace()
             with fluid.dygraph.guard(place):
                 dataset = RandomDataset(800)
 
