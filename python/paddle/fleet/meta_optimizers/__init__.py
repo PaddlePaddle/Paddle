@@ -16,6 +16,6 @@ from .gradient_merge_optimizer import GradientMergeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
 
 __all__ = [
-    'RecomputeOptimizer', 
-    'GradientMergeOptimizer'
+    'RecomputeOptimizer',
+    'GradientMergeOptimizer',
 ]
