@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle.fleet as fleet
 from paddle.fluid.optimizer import Momentum, SGD
 from .meta_optimizer_base import MetaOptimizerBase
 from . import CollectiveHelper
@@ -23,20 +24,18 @@ class LocalSGDOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(LocalSGDOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
-        # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
-
         self.snapshot_key = '@SNAPSHOT'
 
     def _can_apply(self):
-        if self.user_defined_strategy.localsgd:
-            import paddle.fleet
-            if fleet.trainer_num() <= 1:
-                return False
+        if not self.user_defined_strategy.localsgd:
+            return False
 
-            return isinstance(self.inner_opt, Momentum) \
-                    or isinstance(self.inner_opt, SGD)
-        return False
+        if fleet.worker_num() <= 1:
+            return False
+
+        return isinstance(self.inner_opt, Momentum) \
+                or isinstance(self.inner_opt, SGD)
 
     def snapshot_name(self, param_name):
         return param_name + self.snapshot_key
@@ -49,19 +48,27 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         minimized = self.inner_opt.minimize(
             loss, startup_program=startup_program)
 
+        init_k_steps = self.user_defined_strategy.localsgd_k_steps
+        auto_steps = self.user_defined_strategy.localsgd_auto_steps
+
         if startup_program is None:
             startup_program = default_startup_program()
         main_block = loss.block
 
         self.nrings = 2
+        # TODO: need review
         self.wait_port = 1234
         collective_helper = CollectiveHelper(nrings, wait_port)
-        # update startup program
         collective_helper.update_startup_program(startup_program)
 
-        # update main program
         with program_guard(main_block.program):
             step = layers.autoincreased_step_counter(begin=0)
+            k_steps = layers.create_global_var(
+                name="k_steps",
+                shape=[1],
+                value=init_k_steps,
+                dtype='int64',
+                persistable=True)
             last_step = layers.create_global_var(
                 name="last_step",
                 shape=[1],
@@ -69,13 +76,14 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                 dtype='int64',
                 persistable=True)
 
-            global_lr = self.inner_opt._global_learning_rate()
+            if auto_steps:
+                global_lr = self.inner_opt._global_learning_rate()
 
-            def initialize():
-                loss_0 = layers.assign(loss)
-                lr_0 = layers.assign(global_lr)
+                def initialize():
+                    loss_0 = layers.assign(loss)
+                    lr_0 = layers.assign(global_lr)
 
-            layers.cond(step == 0, lambda: initialize)
+                layers.cond(step == 0, initialize)
 
             def communicate():
                 ordered_param_snapshot = []
@@ -152,12 +160,18 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                         outputs={'Out': [snapshot]},
                         attrs={self.op_role_key: OpRole.Optimize})
 
-                delta_step = layers.cast(
-                    layers.ceil(
-                        layers.sqrt(lr_0 * loss / (global_lr * loss_0))),
-                    dtype='int64')
+                if auto_steps:
+                    next_local_steps = layers.cast(
+                        layers.ceil(
+                            layers.sqrt(lr_0 * loss / (global_lr * loss_0) *
+                                        float(init_k_steps))),
+                        dtype='int64')
+                    max_local_steps = 16
+                    next_local_steps = layers.elementwise_min(next_local_steps,
+                                                              max_local_steps)
+                    layers.assign(next_local_steps, k_steps)
                 layers.assign(step, last_step)
 
-            layers.cond(step - last_step == delta_step, communicate)
+            layers.cond(step - last_step == k_steps, communicate)
 
         return minimized
