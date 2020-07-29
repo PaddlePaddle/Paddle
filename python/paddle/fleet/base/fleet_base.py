@@ -296,6 +296,7 @@ class Fleet(object):
 
         valid_optimizer_list = []
         valid_graph_optimizer_list = []
+        can_not_apply_optimizer_list = []
         # recall meta optimizers for ranking
         for opt in distributed_optimizer_list:
             opt._set_basic_info(loss, self._role_maker,
@@ -303,8 +304,10 @@ class Fleet(object):
                                 self.user_defined_strategy)
             if opt._can_apply() and not opt._is_graph_out():
                 valid_optimizer_list.append(opt)
-            if opt._can_apply() and opt._is_graph_out():
+            elif opt._can_apply() and opt._is_graph_out():
                 valid_graph_optimizer_list.append(opt)
+            else:
+                can_not_apply_optimizer_list.append(opt)
         # combine recalled meta optimizers to be a valid meta optimizer
         meta_optimizer, graph_optimizer = \
                 self.strategy_compiler.generate_optimizer(
@@ -313,9 +316,8 @@ class Fleet(object):
                     valid_graph_optimizer_list)
 
         valid_strategy = self.strategy_compiler._get_valid_strategy(
-            self.user_defined_strategy)
+            self.user_defined_strategy, can_not_apply_optimizer_list)
         self.valid_strategy = valid_strategy
-        print(self.valid_strategy)
 
         optimize_ops = []
         params_grads = []

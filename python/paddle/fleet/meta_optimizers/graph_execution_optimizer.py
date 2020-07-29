@@ -33,6 +33,10 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         """
         Basically, this is PE, and almost all programs can be executed here
         """
+        if not self.role_maker._is_collective:
+            # update me. currently, if parameter server is used
+            # graph execution optimizer can not be applied
+            return False
         return True
 
     def backward(self,

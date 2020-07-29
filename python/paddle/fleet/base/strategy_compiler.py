@@ -58,7 +58,7 @@ class StrategyCompiler(StrategyCompilerBase):
         self._meta_optimizer_candidates = []
         self._graph_optimizer_candidates = []
 
-    def _get_valid_strategy(self, dist_strategy):
+    def _get_valid_strategy(self, dist_strategy, can_not_apply_optimizer_list):
         import copy
         valid_strategy = copy.copy(dist_strategy)
         invalid_optimizers = []
@@ -71,6 +71,8 @@ class StrategyCompiler(StrategyCompilerBase):
             if not is_valid:
                 invalid_optimizers.append(candidate)
         for opt in invalid_optimizers:
+            opt._disable_strategy(valid_strategy)
+        for opt in can_not_apply_optimizer_list:
             opt._disable_strategy(valid_strategy)
         return valid_strategy
 
