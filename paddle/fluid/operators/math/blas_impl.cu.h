@@ -428,15 +428,23 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
   const int64_t strideC = M * N;
 
 #if CUDA_VERSION >= 9010
-  if ((FLAGS_enable_cublas_tensor_op_math && (std::is_same<T, float>::value)) ||
+  bool tensor_core_avail = context_.tensor_core_available();
+  if ((tensor_core_avail && (std::is_same<T, float>::value)) ||
       std::is_same<T, paddle::platform::float16>::value) {
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
-    bool use_tensor_op_math = context_.tensor_core_available();
-    if (use_tensor_op_math) {
+
+    if (std::is_same<T, float>::value && tensor_core_avail &&
+        FLAGS_enable_cublas_tensor_op_math) {
       algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+      VLOG(5) << "use_tensor_op_math: True";
+    } else if (std::is_same<T, __half>::value) {
+      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+      VLOG(5) << "use_tensor_op_math: True";
+    } else {
+      VLOG(5) << "use_tensor_op_math: False";
     }
-    VLOG(5) << "use_tensor_op_math: "
-            << (use_tensor_op_math ? "True" : "False");
+
+    auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
 
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
@@ -445,14 +453,12 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
           fp, lda, strideA, &beta, C, fp, ldc, strideC, batchCount, fp, algo));
     });
   } else {
-#endif  // CUDA_VERSION >= 9010
-
+#endif  // CUDA_VERSION < 9010
     context_.CublasCall([&](cublasHandle_t handle) {
       CUBlas<T>::GEMM_STRIDED_BATCH(handle, cuTransB, cuTransA, N, M, K, &alpha,
                                     B, ldb, strideB, A, lda, strideA, &beta, C,
                                     ldc, strideC, batchCount);
     });
-
 #if CUDA_VERSION >= 9010
   }
 #endif  // CUDA_VERSION >= 9010
