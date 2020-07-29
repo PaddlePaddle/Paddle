@@ -1057,8 +1057,8 @@ def ones(shape, dtype, force_cpu=False):
           data0 = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
           
           #shape is a Tensor
-          shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
-          data1 = paddle.ones(shape=shape, dtype='int32') #[[1, 1], [1, 1]]
+          shape = fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
+          data1 = fluid.layers.ones(shape=shape, dtype='int32') #[[1, 1], [1, 1]]
     """
     return fill_constant(value=1.0, **locals())
 
@@ -1093,8 +1093,8 @@ def zeros(shape, dtype, force_cpu=False, name=None):
           data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
           
           #shape is a Tensor
-          shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
-          data1 = paddle.ones(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
+          shape = fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
+          data1 = fluid.layers.zeros(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
     """
     return fill_constant(value=0.0, **locals())
 
