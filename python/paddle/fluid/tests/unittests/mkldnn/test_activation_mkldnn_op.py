@@ -216,7 +216,7 @@ class TestMKLDNNSwishDim4(TestSwish):
     def setUp(self):
         super(TestMKLDNNSwishDim4, self).setUp()
 
-        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         beta = 2.3
         out = x * expit(beta * x)
 
