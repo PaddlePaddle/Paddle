@@ -19,7 +19,9 @@ from ..meta_optimizers import GraphExecutionOptimizer
 __all__ = ["MetaOptimizerFactory"]
 
 meta_optimizer_names = [
-    "RecomputeOptimizer", "GradientMergeOptimizer", "GraphExecutionOptimizer"
+    "RecomputeOptimizer", 
+    "GradientMergeOptimizer", 
+    "GraphExecutionOptimizer",
 ]
 
 
