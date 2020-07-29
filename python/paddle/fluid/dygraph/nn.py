@@ -290,7 +290,7 @@ class Conv2D(layers.Layer):
 
         # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(
-            pre_act, act=self._act, use_mkl_dnn=self._use_mkldnn)
+            pre_act, act=self._act, use_mkldnn=self._use_mkldnn)
 
 
 class Conv3D(layers.Layer):
@@ -1034,7 +1034,7 @@ class Linear(layers.Layer):
         else:
             pre_activation = tmp
         return self._helper.append_activation(
-            pre_activation, act=self._act, use_mkl_dnn=self._use_mkldnn)
+            pre_activation, act=self._act, use_mkldnn=self._use_mkldnn)
 
 
 class InstanceNorm(layers.Layer):
