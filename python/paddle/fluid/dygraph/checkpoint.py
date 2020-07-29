@@ -70,10 +70,13 @@ def save_dygraph(state_dict, model_path):
     suffix = ".pdparams"
     assert len(state_dict) > 0, "state_dict is empty, no need to save"
 
+    param_num = 0
     for k, v in state_dict.items():
-        if not isinstance(v, ParamBase):
-            suffix = ".pdopt"
-        break
+        if isinstance(v, ParamBase):
+            param_num += 1
+
+    if param_num == 0:
+        suffix = ".pdopt"
 
     model_dict = {}
     name_table = {}
