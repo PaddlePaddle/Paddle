@@ -57,3 +57,9 @@ class BinaryOpKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
+
+#define REGISTER_CPU_KERNEL_4(N, K, F, T0, T1, T2, T3)                        \
+  REGISTER_OP_CPU_KERNEL(N, K<paddle::platform::CPUDeviceContext, F<T0>, T0>, \
+                         K<paddle::platform::CPUDeviceContext, F<T1>, T1>,    \
+                         K<paddle::platform::CPUDeviceContext, F<T2>, T2>,    \
+                         K<paddle::platform::CPUDeviceContext, F<T3>, T3>)

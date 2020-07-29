@@ -52,14 +52,5 @@ namespace functors = paddle::operators::functors;
 
 REGISTER_OPERATOR(cwise_mul, ops::BinaryOp, ops::CwisePowOpMaker);
 
-// REGISTER_OPERATOR(elementwise_pow_grad, ops::ElementwiseOpGrad);
-
-REGISTER_OP_CPU_KERNEL(cwise_mul,
-                       ops::BinaryOpKernel<paddle::platform::CPUDeviceContext,
-                                           functors::Mul<float>, float>,
-                       ops::BinaryOpKernel<paddle::platform::CPUDeviceContext,
-                                           functors::Mul<double>, double>,
-                       ops::BinaryOpKernel<paddle::platform::CPUDeviceContext,
-                                           functors::Mul<int>, int>,
-                       ops::BinaryOpKernel<paddle::platform::CPUDeviceContext,
-                                           functors::Mul<int64_t>, int64_t>);
+REGISTER_CPU_KERNEL_4(cwise_mul, ops::BinaryOpKernel, functors::Mul, int,
+                      int64_t, float, double);
