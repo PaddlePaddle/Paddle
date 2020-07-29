@@ -402,7 +402,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 #ifdef PADDLE_WITH_MKLDNN
-  exec.KeepMKLDNNCache(true);
+  executor.KeepMKLDNNCache(true);
 #endif
 
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;

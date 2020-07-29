@@ -135,7 +135,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                      const platform::Place &dev_place) const {
     framework::Executor executor(dev_place);
 #ifdef PADDLE_WITH_MKLDNN
-    exec.KeepMKLDNNCache(true);
+    executor.KeepMKLDNNCache(true);
 #endif
     auto *block = Attr<framework::BlockDesc *>("sub_block");
     auto *program = block->Program();

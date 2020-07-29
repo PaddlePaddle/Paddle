@@ -219,7 +219,7 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 #ifdef PADDLE_WITH_MKLDNN
-  exec.KeepMKLDNNCache(true);
+  executor.KeepMKLDNNCache(true);
 #endif
 
   auto f = std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope,
