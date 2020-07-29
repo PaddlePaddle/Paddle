@@ -648,7 +648,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         force_cpu(bool, optional): data should be on CPU if it's true, default value is False.
         out(Tensor, optional): Optional output which can be any created 
             Tensor that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
+            if ``out`` is None, a new Tensor will be create to store the result.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -657,8 +657,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
     Raises:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-            and the data type of out Tensor must be the same as the ``dtype``. 
-        TypeError: The shape must be one of list, tuple and Tensor, the data type of shape
+            and the data type of ``out`` must be the same as the ``dtype``. 
+        TypeError: The shape must be one of list, tuple and Tensor, the data type of ``shape``
             must be int32 or int64 when ``shape`` is a Tensor
 
     Examples:
@@ -674,11 +674,11 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
           data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[[1.5, 1.5]]
 
-          # attr shape is an Tensor.
+          # attr shape is a Tensor.
           shape = fluid.layers.fill_constant([2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
           
-          # attr value is an Tensor.
+          # attr value is a Tensor.
           val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
           data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
@@ -1056,7 +1056,7 @@ def ones(shape, dtype, force_cpu=False):
           import paddle.fluid as fluid
           data0 = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
           
-          #shape is a Tensor
+          # shape is a Tensor
           shape = fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
           data1 = fluid.layers.ones(shape=shape, dtype='int32') #[[1, 1], [1, 1]]
     """
@@ -1092,7 +1092,7 @@ def zeros(shape, dtype, force_cpu=False, name=None):
           import paddle.fluid as fluid
           data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
           
-          #shape is a Tensor
+          # shape is a Tensor
           shape = fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
           data1 = fluid.layers.zeros(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
     """

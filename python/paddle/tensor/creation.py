@@ -147,7 +147,7 @@ def ones(shape, dtype=None, name=None):
           import paddle 
           paddle.enable_imperative()
           
-          #default dtype for ones OP
+          # default dtype for ones OP
           data1 = paddle.ones(shape=[3, 2]) 
           # [[1. 1.]
           #  [1. 1.]
@@ -157,7 +157,7 @@ def ones(shape, dtype=None, name=None):
           # [[1 1]
           #  [1 1]]
           
-          #shape is a Tensor
+          # shape is a Tensor
           shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
           data3 = paddle.ones(shape=shape, dtype='int32') 
           # [[1 1]
@@ -325,6 +325,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
     Examples:
         .. code-block:: python
+          
           import paddle
 
           paddle.enable_imperative()  # Now we are in imperative mode
