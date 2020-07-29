@@ -19,7 +19,8 @@ import inspect
 
 import gast
 
-ORIGI_INFO = "Original information of source code."
+# NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
+ORIGI_INFO = "Original information of source code for ast node."
 
 
 class Location(object):
@@ -60,12 +61,11 @@ class OriginInfo(object):
         self.source_code = source_code
 
     def __str__(self):
-        return "location: {}:{}:{} \nsource_code: {}  in function {}\n  ".format(
-            self.location.filepath, self.location.lineno,
-            self.location.col_offset, self.source_code, self.function_name)
+        return "{} \nsource_code: {}  in function {}\n  ".format(
+            self.location, self.source_code, self.function_name)
 
 
-class OriginInfoResolver(gast.NodeTransformer):
+class OriginInfoAttacher(gast.NodeTransformer):
     """
     Attach original source information to AST node according corresponding function.
     """
@@ -101,7 +101,7 @@ class OriginInfoResolver(gast.NodeTransformer):
         assert hasattr(node, "lineno")
 
         lineno = self._abs_lineno(node)
-        col_offset = self._abs_col_col_offset(node)
+        col_offset = self._abs_col_offset(node)
         loc = Location(self.filepath, lineno, col_offset)
         func_name = self.current_func[-1].name
         code_line = self.source_lines[node.lineno - 1]
@@ -109,15 +109,13 @@ class OriginInfoResolver(gast.NodeTransformer):
         origin_info = OriginInfo(loc, func_name, code_line)
         setattr(node, ORIGI_INFO, origin_info)
 
-        return
-
     def _abs_lineno(self, node):
         # NOTE(liym27):
-        #   If the first gast.FunctionDef has decorator, it's lineno is 1, which
+        #   If the first gast.FunctionDef has decorator, its lineno is 1, which
         #   equals to the lineno of the first decorator node.
         return self.lineno_offset + node.lineno
 
-    def _abs_col_col_offset(self, node):
+    def _abs_col_offset(self, node):
         return self.col_offset + node.col_offset
 
 
@@ -138,7 +136,7 @@ def create_origin_info_map(transformed_node, static_func):
     static_node = gast.parse(static_source)
     static_node = attach_origin_info(static_node, static_func)
 
-    for t_node, s_node in walk(transformed_node, static_node):
+    for t_node, s_node in ast_walk(transformed_node, static_node):
         assert type(t_node) == type(s_node), \
             "The node types should be the same, but received type(t_node) is {}, and type(s_node) is {}." \
                 .format(type(t_node), type(s_node))
@@ -172,7 +170,7 @@ def attach_origin_info(ast_node, func):
     Returns:
         An AST node attached original source information.
     """
-    resolver = OriginInfoResolver(ast_node, func)
+    resolver = OriginInfoAttacher(ast_node, func)
     resolver.transform()
     return ast_node
 
@@ -189,7 +187,7 @@ def unwrap(func):
     return unwrapped_f
 
 
-def walk(transformed_node, static_node):
+def ast_walk(transformed_node, static_node):
     """
     Recursively yield all descendant nodes in the trees starting at transformed_node and static_node (including itself) in parallel.
 
