@@ -226,12 +226,15 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
                            src + outs_dense_idx[out_idx][j] * row_numel,
                            sizeof(T) * row_numel);
             } else {
-              PADDLE_THROW("do not support GPU now");
+              PADDLE_THROW(
+                  platform::errors::Unimplemented("do not support GPU now"));
             }
           }
         }
-        PADDLE_ENFORCE_EQ(rows_idx.size(), outs[out_idx]->rows().size(),
-                          "rows should has the same size with tensor dim 0");
+        PADDLE_ENFORCE_EQ(
+            rows_idx.size(), outs[out_idx]->rows().size(),
+            platform::errors::InvalidArgument(
+                "rows should has the same size with tensor dim 0"));
       }
     } else {
       auto pserver_num = rpc_ctx.epmap.size();
@@ -268,12 +271,15 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
                            src + outs_dense_idx[out_idx][j] * row_numel,
                            sizeof(T) * row_numel);
             } else {
-              PADDLE_THROW("do not support GPU now");
+              PADDLE_THROW(
+                  platform::errors::Unimplemented("do not support GPU now"));
             }
           }
         }
-        PADDLE_ENFORCE_EQ(rows_idx.size(), outs[out_idx]->rows().size(),
-                          "rows should has the same size with tensor dim 0");
+        PADDLE_ENFORCE_EQ(
+            rows_idx.size(), outs[out_idx]->rows().size(),
+            platform::errors::InvalidArgument(
+                "rows should has the same size with tensor dim 0"));
       }
     }
 
@@ -305,7 +311,8 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
   if (sync) {
     for (auto &handle : rets) {
       VLOG(4) << "Wait send var to pserver handle: " << handle;
-      PADDLE_ENFORCE(handle->Wait(), "internal error in RPCClient");
+      PADDLE_ENFORCE_NE(handle->Wait(), 0U, platform::errors::ExecutionTimeout(
+                                                "internal error in RPCClient"));
     }
   }
 }

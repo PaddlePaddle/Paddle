@@ -138,9 +138,9 @@ void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
     VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
     return;
   } else {
-    PADDLE_ENFORCE(
-        false,
-        "ParameterRecv can not recv dense with multi parts now, add it soon.");
+    PADDLE_ENFORCE(false, platform::errors::Unimplemented(
+                              "ParameterRecv can not recv dense with multi "
+                              "parts now, add it soon."));
   }
 }
 
