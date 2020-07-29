@@ -81,7 +81,7 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
                          reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
                          gpu_inv_ptrs, gpu_info_ptr, batch_size);
       memory::Copy(platform::CPUPlace(), info.data(),
-                   boost::get<platform::CUDAPlace>(context.GetPlace()),
+                   BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                    gpu_info_ptr, sizeof(int) * batch_size, context.stream());
       for (int i = 0; i < batch_size; ++i) {
         PADDLE_ENFORCE_EQ(
@@ -102,7 +102,7 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
                         reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
                         gpu_pivot_ptr, gpu_inv_ptrs, gpu_info_ptr, batch_size);
       memory::Copy(platform::CPUPlace(), info.data(),
-                   boost::get<platform::CUDAPlace>(context.GetPlace()),
+                   BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                    gpu_info_ptr, sizeof(int) * batch_size, context.stream());
       for (int i = 0; i < batch_size; ++i) {
         PADDLE_ENFORCE_EQ(
