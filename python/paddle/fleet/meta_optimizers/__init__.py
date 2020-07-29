@@ -17,5 +17,5 @@ from .graph_execution_optimizer import GraphExecutionOptimizer
 
 __all__ = [
     'RecomputeOptimizer', 
-    'GradientOptimizer'
+    'GradientMergeOptimizer'
 ]
