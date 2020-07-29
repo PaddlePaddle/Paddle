@@ -153,10 +153,10 @@ class Layer(core.Layer):
 
               def init_weights(layer):
                   if type(layer) == nn.Linear:
-                      print('before init_weight:', layer.weight.numpy())
+                      print('before init weight:', layer.weight.numpy())
                       new_weight = paddle.fill_constant(layer.weight.shape, layer.weight.dtype, value=0.9)
                       layer.weight.set_value(new_weight)
-                      print('after init_weight after:', layer.weight.numpy())
+                      print('after init weight:', layer.weight.numpy())
 
               net.apply(init_weights)
 
