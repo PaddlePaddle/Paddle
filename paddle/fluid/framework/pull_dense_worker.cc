@@ -121,7 +121,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         Variable* var = thread_scopes_[i]->FindVar(name);
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         float* w = tensor->data<float>();
-        memory::Copy(boost::get<platform::CUDAPlace>(places_[i]), w,
+        memory::Copy(BOOST_GET_CONST<platform::CUDAPlace>(places_[i]), w,
                      platform::CUDAPinnedPlace(), pin_w,
                      sizeof(float) * tensor->numel(), copy_streams_[i]);
       }
