@@ -323,14 +323,17 @@ def concat(input, axis=0, name=None):
             axis = axis[0]
         return core.ops.concat(input, 'axis', axis)
 
-    check_type(input, 'input', (list, tuple), 'concat')
-    for id, x in enumerate(input):
-        check_variable_and_dtype(
-            x, 'input[' + str(id) + ']',
-            ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
-        if x.dtype != input[0].dtype:
-            raise TypeError(
-                "All the Tensors in the input must have the same data type.")
+    check_type(input, 'input', (list, tuple, Variable), 'concat')
+    if not isinstance(input, Variable):
+        for id, x in enumerate(input):
+            check_variable_and_dtype(
+                x, 'input[' + str(id) + ']',
+                ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
+            if x.dtype != input[0].dtype:
+                raise TypeError(
+                    "All the Tensors in the input must have the same data type.")
+    else:
+        input = [input]
     check_type(axis, 'axis', (int, Variable), 'concat')
 
     if isinstance(axis, Variable):
@@ -342,8 +345,6 @@ def concat(input, axis=0, name=None):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
 
     if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-        assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
-                            "number of the elements must be 1, but received %s." % len(x)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
         helper.append_op(
             type='tensor_array_to_tensor',

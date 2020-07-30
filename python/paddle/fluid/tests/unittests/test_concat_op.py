@@ -198,7 +198,7 @@ class TestConcatOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of concat_op should be list.
             x1 = fluid.layers.data(shape=[4], dtype='int32', name='x1')
-            fluid.layers.concat((x1, ))
+            fluid.layers.concat(x1)
             # The item in input must be Variable.
             x2 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
@@ -348,7 +348,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
             for i in range(self.iter_num):
                 fluid.layers.array_write(input, zero + i, tensor_array)
 
-            self.out_var = fluid.layers.concat([tensor_array], axis=self.axis)
+            self.out_var = fluid.layers.concat(tensor_array, axis=self.axis)
 
     def test_case(self):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
