@@ -70,19 +70,22 @@ def save_dygraph(state_dict, model_path):
     suffix = ".pdparams"
     assert len(state_dict) > 0, "state_dict is empty, no need to save"
 
+    param_num = 0
     for k, v in state_dict.items():
-        if not isinstance(v, ParamBase):
-            suffix = ".pdopt"
-        break
+        if isinstance(v, ParamBase):
+            param_num += 1
+
+    if param_num == 0:
+        suffix = ".pdopt"
 
     model_dict = {}
     name_table = {}
     for k, v in state_dict.items():
         if isinstance(v, (Variable, core.VarBase)):
             model_dict[k] = v.numpy()
+            name_table[k] = v.name
         else:
             model_dict[k] = v
-        name_table[k] = v.name
     model_dict["StructuredToParameterName@@"] = name_table
 
     file_name = model_path + suffix
@@ -94,7 +97,9 @@ def save_dygraph(state_dict, model_path):
         pickle.dump(model_dict, f, protocol=2)
 
 
-@dygraph_only
+# TODO(qingqing01): remove dygraph_only to support loading static model.
+# maybe need to unify the loading interface after 2.0 API is ready.
+#@dygraph_only
 def load_dygraph(model_path, keep_name_table=False):
     '''
     :api_attr: imperative

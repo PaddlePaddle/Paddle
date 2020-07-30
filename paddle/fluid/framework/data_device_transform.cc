@@ -23,11 +23,14 @@ void TransDataDevice(const Tensor &in, const platform::Place &dst_place,
 
   PADDLE_ENFORCE_NE(
       in.place().which(), dst_place.which(),
-      "Currently, model parallelism is only supported between CPU and CUDA");
+      platform::errors::Unavailable("Currently, model parallelism is only "
+                                    "supported between CPU and CUDA."));
 
   // NOTE(yy): TransDataDevice should wait for computation of input.
-  platform::DeviceContextPool::Instance().Get(in.place())->Wait();
-  platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+  if (!platform::is_cuda_pinned_place(in.place())) {
+    platform::DeviceContextPool::Instance().Get(in.place())->Wait();
+    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+  }
 
   // FIXME(zcd): TransDataDevice is used to transform data from GPU to CPU and
   // the enforced checkings have been done in GetDeviceContext, so the

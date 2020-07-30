@@ -82,7 +82,7 @@ class RollKernel : public framework::OpKernel<T> {
     auto& input = input_var->Get<LoDTensor>();
     auto* output = output_var->GetMutable<LoDTensor>();
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
-    std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("dims");
+    std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("axis");
 
     std::vector<T> out_vec;
     TensorToVector(input, context.device_context(), &out_vec);
@@ -94,8 +94,8 @@ class RollKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           dims[i] < input_dim.size() && dims[i] >= (0 - input_dim.size()), true,
           platform::errors::OutOfRange(
-              "Attr(dims[%d]) is out of range, It's expected "
-              "to be in range of [-%d, %d]. But received Attr(dims[%d]) = %d.",
+              "Attr(axis[%d]) is out of range, It's expected "
+              "to be in range of [-%d, %d]. But received Attr(axis[%d]) = %d.",
               i, input_dim.size(), input_dim.size() - 1, i, dims[i]));
       shift_along_dim(out_vec.data(), input_dim, dims[i], shifts[i]);
     }
@@ -114,7 +114,7 @@ class RollGradKernel : public framework::OpKernel<T> {
     auto& input = input_var->Get<LoDTensor>();
     auto* output = output_var->GetMutable<LoDTensor>();
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
-    std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("dims");
+    std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("axis");
 
     std::vector<T> out_vec;
     TensorToVector(input, context.device_context(), &out_vec);

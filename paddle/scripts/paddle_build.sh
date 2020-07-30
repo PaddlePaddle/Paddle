@@ -64,6 +64,9 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
+    # `gym` is only used in unittest, it's not suitable to add in requirements.txt.
+    # Add it dynamically.
+    echo "gym" >> ${PADDLE_ROOT}/python/requirements.txt
     # Support build for all python versions, currently
     # including cp27-cp27m and cp27-cp27mu.
     PYTHON_FLAGS=""
@@ -119,6 +122,8 @@ function cmake_base() {
                 exit 1
             fi
         fi
+        # delete `gym` to avoid modifying requirements.txt in *.whl
+        sed -i .bak "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
@@ -175,6 +180,8 @@ function cmake_base() {
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
+        # delete `gym` to avoid modifying requirements.txt in *.whl
+        sed -i "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     fi
 
     if [ "$SYSTEM" == "Darwin" ]; then
@@ -193,7 +200,6 @@ function cmake_base() {
     Configuring cmake in /paddle/build ...
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
-        -DWITH_DSO=ON
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
@@ -214,15 +220,16 @@ function cmake_base() {
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
+        -DLITE_GIT_TAG=develop
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
+    set +e
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
-        -DWITH_DSO=ON \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
@@ -242,8 +249,11 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-        -DWITH_LITE=${WITH_LITE:-OFF}
-
+        -DLITE_GIT_TAG=develop \
+        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
 }
 
 function cmake_gen() {
@@ -295,6 +305,7 @@ function check_style() {
 #=================================================
 
 function build_base() {
+    set +e
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
@@ -312,7 +323,10 @@ function build_base() {
         make clean
     fi
 
-    make install -j ${parallel_number}
+    make install -j ${parallel_number};build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
 }
 
 function build_size() {
@@ -365,6 +379,7 @@ function cmake_gen_and_build() {
 }
 
 function build_mac() {
+    set +e
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cat <<EOF
@@ -375,7 +390,11 @@ EOF
     if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
         make clean
     fi
-    make install -j 8
+    make install -j 8;build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
+    set -e
     build_size
 }
 
@@ -565,6 +584,10 @@ function generate_api_spec() {
     op_desc_path=${PADDLE_ROOT}/paddle/fluid/OP_DESC_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_op_desc.py > $op_desc_path
 
+    # print api and the md5 of source code of the api.
+    api_source_md5_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.source.md5
+    python ${PADDLE_ROOT}/tools/count_api_without_core_ops.py -p paddle > $api_source_md5_path
+
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
@@ -657,9 +680,9 @@ EOF
 
 
 function assert_api_spec_approvals() {
-    /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh
-    if [ "$?" != 0 ];then
-       exit 1
+    /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh;approval_error=$?
+    if [ "$approval_error" != 0 ];then
+       exit 6
     fi
 }
 
@@ -744,6 +767,23 @@ EOF
     fi
 }
 
+failed_test_lists=''
+tmp_dir=`mktemp -d`
+
+function collect_failed_tests() {
+    for file in `ls $tmp_dir`; do
+        exit_code=0
+        grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failed_test_lists="${failed_test_lists}
+            ${failuretest}"
+        fi
+    done
+}
+
 function card_test() {
     set -m
     case_count $1 $2
@@ -766,7 +806,7 @@ function card_test() {
     fi
 
     trap 'caught_error' CHLD
-
+    tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
     for (( i = 0; i < $NUM_PROC; i++ )); do
         # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
@@ -779,21 +819,21 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
+        tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
-            else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+            else  
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
-
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
@@ -804,7 +844,7 @@ function card_test() {
     set +m
 }
 
-function parallel_test_base() {
+function parallel_test_base_gpu() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -878,6 +918,16 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        collect_failed_tests
+        if [ -n "${failed_test_lists}" ];then
+            failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+            echo "========================================"
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failed_test_lists_ult}"
+        fi
+        rm -f $tmp_dir/*
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
@@ -885,11 +935,34 @@ set -ex
     fi
 }
 
+function parallel_test_base_cpu() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit cpu tests ...
+    ========================================
+EOF
+        ut_startTime_s=`date +%s`
+        ctest --output-on-failure -j $1
+        ut_endTime_s=`date +%s`
+        echo "CPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test() {
     ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    parallel_test_base
+    if [ "$WITH_GPU" == "ON" ];then
+        parallel_test_base_gpu
+    else
+        parallel_test_base_cpu ${PROC_RUN:-1}
+    fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
 }
@@ -1149,11 +1222,14 @@ EOF
     if [[ "$1" != "" ]]; then
       parallel_number=$1
     fi
-    startTime_s=`date +%s` 
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto}
-
-    make -j ${parallel_number} fluid_lib_dist
-    make -j ${parallel_number} inference_lib_dist
+    startTime_s=`date +%s`
+    set +e
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
+    make -j ${parallel_number} fluid_lib_dist;build_error=$?
+    make -j ${parallel_number} inference_lib_dist;build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     build_size "fluid_inference"
@@ -1211,10 +1287,10 @@ function example() {
     pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
     cd ${PADDLE_ROOT}/tools
-    python sampcd_processor.py cpu 
-    if [ "$?" != "0" ];then
+    python sampcd_processor.py cpu;example_error=$?
+    if [ "$example_error" != "0" ];then
       echo "Code instance execution failed"
-      exit 1
+      exit 5
     fi
 }
 
