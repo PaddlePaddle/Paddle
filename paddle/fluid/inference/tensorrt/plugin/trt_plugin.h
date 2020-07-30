@@ -183,9 +183,7 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
 template <typename T>
 class TrtPluginRegistrarV2 {
  public:
-  TrtPluginRegistrarV2() {
-    getPluginRegistry()->registerCreator(creator, "Paddle");
-  }
+  TrtPluginRegistrarV2() { getPluginRegistry()->registerCreator(creator, ""); }
 
  private:
   T creator;
