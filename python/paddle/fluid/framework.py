@@ -66,7 +66,6 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
 _current_device = None
-
 global_prog_seed = 0
 
 
@@ -2979,7 +2978,8 @@ class Block(object):
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
-                    lod_level=v.lod_level,
+                    lod_level=v.lod_level
+                    if v.type == core.VarDesc.VarType.LOD_TENSOR else None,
                     stop_gradient=p.stop_gradient,
                     trainable=p.trainable,
                     optimize_attr=p.optimize_attr,
@@ -3936,6 +3936,9 @@ class Program(object):
 
         # appending gradients times
         self._appending_grad_times = 0
+
+        # compiled program, i.e. Graph
+        self._graph = None
 
     def global_seed(self, seed=0):
         """

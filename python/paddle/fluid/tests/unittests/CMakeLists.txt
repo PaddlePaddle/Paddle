@@ -19,10 +19,8 @@ list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_momentum_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
-list(APPEND MIXED_DIST_TEST_OPS test_nce_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_recv_save_op)
 list(APPEND MIXED_DIST_TEST_OPS test_transpiler_ops)
-list(APPEND MIXED_DIST_TEST_OPS test_lookup_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_launch)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_ps)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
@@ -32,6 +30,9 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_checkpoint)
 list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -54,20 +55,32 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
     LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
 
+    LIST(REMOVE_ITEM TEST_OPS test_distributed_strategy)
+    LIST(REMOVE_ITEM TEST_OPS test_downpoursgd)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
+    LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
+    LIST(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
+
     # TODO: Fix these unittests failed on Windows
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
-    list(REMOVE_ITEM TEST_OPS test_desc_clone)
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
     list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
     list(REMOVE_ITEM TEST_OPS test_split_ids_op)
-    list(REMOVE_ITEM TEST_OPS test_program_code)
     LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
-    LIST(REMOVE_ITEM TEST_OPS test_math_op_patch_var_base)
 endif()
 
 if(APPLE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_hdfs)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
 endif()
 
 if (NOT ${WITH_GPU})
@@ -234,6 +247,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
+list(REMOVE_ITEM TEST_OPS test_pipeline)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -323,13 +337,23 @@ if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
 
     #not need
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_base")
 
-    py_test_modules(test_lookup_remote_table_op MODULES test_lookup_remote_table_op ENVS ${dist_ENVS})
-    py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
+    # FIXME(seiriosX) will readd after PR 22957  Merged
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_ctr")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_lars")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_train")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_save_load")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_simnet_bow")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_simnet_bow")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_text_classification")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
+
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
     py_test_modules(test_communicator_async MODULES test_communicator_async ENVS ${dist_ENVS})
@@ -337,6 +361,11 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_communicator_half_async MODULES test_communicator_half_async ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
     py_test_modules(test_communicator_sync MODULES test_communicator_sync ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
     py_test_modules(test_collective_optimizer MODULES test_collective_optimizer)
+    if(NOT APPLE)
+    	   py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
+    	   py_test_modules(test_fleet_meta_optimizer MODULES test_fleet_meta_optimizer ENVS ${dist_ENVS})
+    	   py_test_modules(test_fleet_private_function MODULES test_fleet_private_function ENVS ${dist_ENVS})
+    endif(NOT APPLE)
     if(WITH_DGC)
         # if with dgc, test all dgc tests.
         # NOTE. dist dgc tests is already in DIST_TEST_OPS
@@ -372,16 +401,22 @@ py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_para
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 py_test_modules(test_fuse_bn_act_pass MODULES test_fuse_bn_act_pass ENVS FLAGS_cudnn_deterministic=1 FLAGS_cudnn_batchnorm_spatial_persistent=1 FLAGS_conv_workspace_size_limit=1000)
 
-if(NOT WIN32)
-    # TODO: fix these unittests failure on Windows
+# NOTE: These unittests will appear NaN steadily in windows CI. After analysis,
+# it is found that windows CI will run all the training unittests with the ON_INFER option turned on, 
+# which will not appear in other CIs. The calculation behavior of some ops in inference mode is 
+# inconsistent with that in non-inference mode.
+if(NOT ON_INFER)
     py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
     py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
     py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
-    py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
     set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
     set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
     set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
+endif()
 
+if(NOT WIN32)
+    # TODO: fix these unittests failure on Windows
+    py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
     # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
     py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
