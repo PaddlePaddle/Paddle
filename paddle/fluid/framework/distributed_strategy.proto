@@ -42,14 +42,14 @@ message GradientMergeConfig {
 
 message LarsConfig {
   optional float lars_coeff = 1 [ default = 0.001 ];
-  optional float lars_weight_decay = 1 [ default = 0.0005 ];
-  optional float lars_eps = 1 [ default = 0.0 ];
+  optional float lars_weight_decay = 2 [ default = 0.0005 ];
+  optional float lars_eps = 3 [ default = 0.0 ];
 }
 
 message LambConfig {
   optional float beta1 = 1 [ default = 0.001 ];
-  optional float beta2 = 1 [ default = 0.999 ];
-  optional float epsilon = 1 [ default = 0.000001 ];
+  optional float beta2 = 2 [ default = 0.999 ];
+  optional float epsilon = 3 [ default = 0.000001 ];
 }
 
 message BuildStrategy {
