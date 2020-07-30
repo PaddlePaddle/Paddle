@@ -140,12 +140,12 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("");
     AddAttr<std::string>("y_data_format", "This parameter is no longer used.")
         .SetDefault("");
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
     /* int8 parameters */
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. Only used on CPU.")
-        .SetDefault(false);
     AddAttr<float>("Scale_x",
                    "(float, default 1.0f), The quantize scale of X tensor")
         .SetDefault(1.0f);

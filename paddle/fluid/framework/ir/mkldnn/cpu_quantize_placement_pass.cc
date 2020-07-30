@@ -32,12 +32,13 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
                     n->id()) != excluded_ids_list.end())
         continue;
       auto* op = n->Op();
-      if (op->HasAttr("use_quantizer") || op->HasProtoAttr("use_quantizer")) {
+      if (op->HasAttr("mkldnn_data_type") ||
+          op->HasProtoAttr("mkldnn_data_type")) {
         if (op_types_list.empty()) {
-          op->SetAttr("use_quantizer", true);
+          op->SetAttr("mkldnn_data_type", "int8");
         } else if (std::find(op_types_list.begin(), op_types_list.end(),
                              op->Type()) != op_types_list.end()) {
-          op->SetAttr("use_quantizer", true);
+          op->SetAttr("mkldnn_data_type", "int8");
         }
       }
     }

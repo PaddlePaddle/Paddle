@@ -535,13 +535,12 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
               "it's a axis atribute of fused transpose for `Out` output.)DOC")
         .SetDefault({});
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
     /* int8 parameters */
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. "
-                  "Only used on CPU.")
-        .SetDefault(false);
     AddAttr<float>("Scale_x",
                    "(float, default 1.0f), The quantize scale of X tensor")
         .SetDefault(1.0f);

@@ -11931,7 +11931,7 @@ for func in [
             :ref:`api_guide_Name` "
         ],
         skip_attrs_set={
-            "x_data_format", "y_data_format", "axis", "use_quantizer",
+            "x_data_format", "y_data_format", "axis", "mkldnn_data_type",
             "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
 

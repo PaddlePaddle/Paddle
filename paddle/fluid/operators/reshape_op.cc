@@ -431,13 +431,11 @@ class Reshape2OpMaker : public ReshapeOpMaker {
               "XShape is just used to store the shape and lod of X, which will "
               "be used in FlattenGradOp.")
         .AsIntermediate();
-    /* int8 parameters */
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. "
-                  "Used only on CPU.")
-        .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
   }
 };
 

@@ -54,7 +54,7 @@ void LogQuantizationDisabled(Node* op) {
   std::stringstream msg_ss;
   VLOG(4) << "Qantization skipped for operator " << op->Name()
           << " (type: " << op->Op()->Type() << ", id: " << op->id()
-          << "). Attribute use_quantizer = false.";
+          << "). Attribute mkldnn_data_type != \"int8\".";
 }
 
 }  // namespace
@@ -228,12 +228,12 @@ double CPUQuantizePass::GetScaleValueForNode(const Node* node,
 
 bool CPUQuantizePass::IsOpDequantized(const Node* node) const {
   return node->Op()->Type() == "dequantize" ||
-         node->Op()->GetAttrIfExists<bool>("use_quantizer");
+         node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8";
 }
 
 bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
   return node->Op()->Type() == "quantize" ||
-         node->Op()->GetAttrIfExists<bool>("use_quantizer");
+         node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8";
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,
@@ -251,7 +251,8 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     auto* conv_op_desc = conv_op->Op();
 
     // skip if should not be quantized
-    if (!conv_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+    if (conv_op_desc->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+        "int8") {
       LogQuantizationDisabled(conv_op);
       return;
     }
@@ -356,7 +357,8 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
     auto* fc_op_desc = fc->Op();
 
     // skip if should not be quantized
-    if (!fc_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+    if (fc_op_desc->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+        "int8") {
       LogQuantizationDisabled(fc);
       return;
     }
@@ -423,7 +425,8 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
     auto* pool_op_desc = pool_op->Op();
 
     // skip if should not be quantized
-    if (!pool_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+    if (pool_op_desc->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+        "int8") {
       LogQuantizationDisabled(pool_op);
       return;
     }
@@ -468,7 +471,8 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
     auto* concat_op_desc = concat_op->Op();
 
     // skip if should not be quantized
-    if (!concat_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+    if (concat_op_desc->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+        "int8") {
       LogQuantizationDisabled(concat_op);
       return;
     }
@@ -514,7 +518,8 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
     auto* prior_box_op_desc = prior_box_op->Op();
 
     // skip if should not be quantized
-    if (!prior_box_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+    if (prior_box_op_desc->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+        "int8") {
       LogQuantizationDisabled(prior_box_op);
       return;
     }
@@ -557,7 +562,8 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
     auto* transpose_op_desc = transpose_op->Op();
 
     // skip if should not be quantized
-    if (!transpose_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+    if (transpose_op_desc->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+        "int8") {
       LogQuantizationDisabled(transpose_op);
       return;
     }
@@ -612,7 +618,8 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
     auto* reshape_op_desc = reshape_op->Op();
 
     // skip if should not be quantized
-    if (!reshape_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+    if (reshape_op_desc->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+        "int8") {
       LogQuantizationDisabled(reshape_op);
       return;
     }
@@ -665,7 +672,8 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     auto* matmul_op_desc = matmul_op->Op();
 
     // skip if should not be quantized
-    if (!matmul_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+    if (matmul_op_desc->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+        "int8") {
       LogQuantizationDisabled(matmul_op);
       return;
     }
@@ -735,7 +743,8 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
     auto* elementwise_add_op_desc = elementwise_add_op->Op();
 
     // skip if should not be quantized
-    if (!elementwise_add_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+    if (elementwise_add_op_desc->GetAttrIfExists<std::string>(
+            "mkldnn_data_type") != "int8") {
       LogQuantizationDisabled(elementwise_add_op);
       return;
     }
