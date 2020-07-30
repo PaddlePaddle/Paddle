@@ -5020,6 +5020,12 @@ class GradientMergeOptimizer(object):
         self.type = "gradient_merge"
         self.avg = avg
 
+    def _set_k_steps(self, k_steps):
+        self.k_steps = k_steps
+
+    def _set_avg(self, avg):
+        self.avg = avg
+
     def minimize(self,
                  loss,
                  startup_program=None,

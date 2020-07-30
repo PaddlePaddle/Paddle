@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 
 from .recompute_optimizer import RecomputeOptimizer
+from .gradient_merge_optimizer import GradientMergeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
 from .lars_optimizer import LarsOptimizer
 
-__all__ = ['RecomputeOptimizer', 'LarsOptimizer']
+
+__all__ = [
+    'RecomputeOptimizer',
+    'GradientMergeOptimizer',
+    'LarsOptimizer',
+]
+

@@ -13,12 +13,20 @@
 # limitations under the License.
 
 from ..meta_optimizers import RecomputeOptimizer
+from ..meta_optimizers import GradientMergeOptimizer
 from ..meta_optimizers import GraphExecutionOptimizer
 from ..meta_optimizers import LarsOptimizer
 
 __all__ = ["MetaOptimizerFactory"]
 
-meta_optimizer_names = ["RecomputeOptimizer", "GraphExecutionOptimizer", "LarsOptimizer"]
+
+meta_optimizer_names = [
+    "RecomputeOptimizer",
+    "GradientMergeOptimizer",
+    "GraphExecutionOptimizer",
+    "LarsOptimizer",
+]
+
 
 
 class MetaOptimizerFactory(object):
