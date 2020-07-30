@@ -22,6 +22,13 @@ RUN rm -rf build_scripts
 
 ENV SSL_CERT_FILE=/opt/_internal/certs.pem
 
+# git 2.17.1
+RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
+  tar -xvf git-2.17.1.tar.gz && \
+  cd git-2.17.1 && \
+  ./configure --prefix=/usr/local && \
+  make -j8 && make install 
+
 # for paddle
 RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
