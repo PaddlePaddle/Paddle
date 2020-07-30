@@ -194,17 +194,11 @@ def train():
     place = fluid.CUDAPlace(0)
     exe = fluid.Executor(place)
 
-    dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
-    dataset.set_use_var([image, label])
-    dataset.set_batch_size(args.batch_size)
-    dataset.set_thread(1)
-    dataset.set_filelist("any_file")
     exe.run(fluid.default_startup_program())
 
     data_loader.start()
     logger.info("begin training...")
-    exe.train_from_dataset(
-        fluid.default_main_program(), dataset, debug=is_profile)
+    exe.train_from_dataset(fluid.default_main_program(), debug=is_profile)
 
 
 if __name__ == "__main__":
