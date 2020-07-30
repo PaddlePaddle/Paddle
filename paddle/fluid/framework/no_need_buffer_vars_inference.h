@@ -113,8 +113,10 @@ class InferNoNeedBufferVarsFN {
       const imperative::NameVarMap<imperative::VariableWrapper> &inputs,
       const imperative::NameVarMap<imperative::VariableWrapper> &outputs,
       const AttributeMap &attrs) const {
-    PADDLE_ENFORCE_NOT_NULL(inferer_, platform::errors::PreconditionNotMet(
-                                          "The c is not initialized."));
+    PADDLE_ENFORCE_NOT_NULL(
+        inferer_,
+        platform::errors::PreconditionNotMet(
+            "The `inferer_` of InferNoNeedBufferVarsFN is not initialized."));
     DyGraphInferNoNeedBufferVarsContext ctx(inputs, outputs, attrs);
     return (*inferer_)(ctx);
   }
@@ -127,7 +129,7 @@ class InferNoNeedBufferVarsFN {
     PADDLE_ENFORCE_NOT_NULL(
         inferer, platform::errors::InvalidArgument("The input inferer of "
                                                    "InferNoNeedBufferVarsFN::"
-                                                   "Reset is not nullptr."));
+                                                   "Reset is nullptr."));
     PADDLE_ENFORCE_EQ(
         inferer_, nullptr,
         platform::errors::AlreadyExists(
