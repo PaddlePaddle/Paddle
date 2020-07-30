@@ -144,6 +144,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
                           "input 'Offsets' must be equal to "
                           "the number of dimensions (%d) of the input tensor.",
                           offsets_tensor->dims()[0], rank));
+
     const int* offsets_data;
     framework::Tensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {
