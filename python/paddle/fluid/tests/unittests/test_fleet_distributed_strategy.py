@@ -145,6 +145,20 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.fuse_all_reduce_ops = "True"
         self.assertEqual(strategy.fuse_all_reduce_ops, False)
 
+    def test_fuse_grad_size_in_MB(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.fuse_grad_size_in_MB = 50
+        self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
+        strategy.fuse_grad_size_in_MB = "40"
+        self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
+
+    def test_fuse_grad_size_in_TFLOPS(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy._fuse_grad_size_in_TFLOPS = 0.1
+        self.assertEqual(strategy._fuse_grad_size_in_TFLOPS, 0.1)
+        strategy._fuse_grad_size_in_TFLOPS = "0.2"
+        self.assertEqual(strategy._fuse_grad_size_in_TFLOPS, 0.1)
+
     def test_gradient_merge(self):
         strategy = paddle.fleet.DistributedStrategy()
         strategy.gradient_merge = True

@@ -1154,6 +1154,23 @@ class Executor(object):
 
         # For backward compatibility, run directly.
         if not compiled:
+            # In distributed training, the compiled program is saved in Program._graph
+            has_compiled_graph = isinstance(program._graph,
+                                            compiler.CompiledProgram)
+            if has_compiled_graph:
+                program._graph._compile(scope, self.place)
+                # _graph in program does not support inference since the _graph is optimized
+                # through optimizer.minimize function and should not be used as inference graph
+                assert not program._graph_is_inference
+                return self._run_parallel(
+                    program._graph,
+                    scope=scope,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    fetch_var_name=fetch_var_name,
+                    return_numpy=return_numpy,
+                    return_merged=return_merged)
+
             return self._run_program(
                 program,
                 feed=feed,
