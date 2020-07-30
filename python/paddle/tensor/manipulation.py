@@ -399,27 +399,27 @@ def split(x, num_or_sections, axis=0, name=None):
             x_np = np.random.random([3, 9, 5]).astype("int32")
             x = paddle.imperative.to_variable(x_np)
 
-            x0, x1, x2 = paddle.split(x, num_or_sections=3, axis=1)
-            # x0.shape [3, 3, 5]
-            # x1.shape [3, 3, 5]
-            # x2.shape [3, 3, 5]
+            out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
 
-            x0, x1, x2 = paddle.split(x, num_or_sections=[2, 3, 4], axis=1)
-            # x0.shape [3, 2, 5]
-            # x1.shape [3, 3, 5]
-            # x2.shape [3, 4, 5]
+            out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, 4], axis=1)
+            # out0.shape [3, 2, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 4, 5]
 
-            x0, x1, x2 = paddle.split(x, num_or_sections=[2, 3, -1], axis=1)
-            # x0.shape [3, 2, 5]
-            # x1.shape [3, 3, 5]
-            # x2.shape [3, 4, 5]
+            out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, -1], axis=1)
+            # out0.shape [3, 2, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 4, 5]
             
             # axis is negative, the real axis is (rank(x) + axis) which real
             # value is 1.
-            x0, x1, x2 = paddle.split(x, num_or_sections=3, axis=-2)
-            # x0.shape [3, 3, 5]
-            # x1.shape [3, 3, 5]
-            # x2.shape [3, 3, 5]
+            out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=-2)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
     """
     return paddle.fluid.layers.split(
         input=x, num_or_sections=num_or_sections, dim=axis, name=name)
