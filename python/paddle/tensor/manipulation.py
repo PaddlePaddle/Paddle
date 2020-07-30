@@ -108,6 +108,7 @@ def concat(x, axis=0, name=None):
             #  [11 12 13]
             #  [14 15 16]]
     """
+    check_type(x, 'x', (list, tuple), 'concat')
     return paddle.fluid.layers.concat(input=x, axis=axis, name=name)
 
 
