@@ -29,10 +29,6 @@ using Tensor = framework::Tensor;
 using Dim3 = framework::Dim3;
 using Index3 = framework::Index3;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 struct EqualTo {
   constexpr bool operator()(int a, int b) const { return a == b; }
 };
@@ -464,7 +460,7 @@ __global__ void TransposeSimpleKernel(int nthreads, const T* __restrict__ input,
   output_dims[pos1] = input_dims[1];
   output_dims[pos2] = input_dims[2];
 
-  CUDA_1D_KERNEL_LOOP(output_index, nthreads) {
+  CUDA_KERNEL_LOOP(output_index, nthreads) {
     Index3 output_tensor_index = ConvertTensorIndex(output_index, output_dims);
 
     Index3 input_tensor_index;

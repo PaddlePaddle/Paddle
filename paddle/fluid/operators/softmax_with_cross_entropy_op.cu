@@ -24,11 +24,10 @@ template <typename T>
 __global__ void CrossEntropyGrad(T* logit_grad, const int64_t* labels,
                                  const int n, const int d, const int remain,
                                  const int ignore_index) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n * remain;
-       i += blockDim.x * gridDim.x) {
-    int idx_n = i / remain;
-    int idx_remain = i % remain;
-    int tmp = labels[i];
+  CUDA_KERNEL_LOOP(index, n * remain) {
+    int idx_n = index / remain;
+    int idx_remain = index % remain;
+    int tmp = labels[index];
     if (ignore_index != tmp) {
       int idx = idx_n * d + tmp * remain + idx_remain;
       logit_grad[idx] -= static_cast<T>(1.);
@@ -39,11 +38,10 @@ __global__ void CrossEntropyGrad(T* logit_grad, const int64_t* labels,
 template <typename T>
 __global__ void Scale(T* logit_grad, const T* loss_grad, const int num,
                       const int d, const int remain) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
-    int idx_n = i / d;
-    int idx_remain = i % remain;
-    logit_grad[i] *= loss_grad[idx_n * remain + idx_remain];
+  CUDA_KERNEL_LOOP(index, num) {
+    int idx_n = index / d;
+    int idx_remain = index % remain;
+    logit_grad[index] *= loss_grad[idx_n * remain + idx_remain];
   }
 }
 
