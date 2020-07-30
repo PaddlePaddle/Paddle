@@ -378,9 +378,8 @@ def split(x, num_or_sections, axis=0, name=None):
             sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
             The length of the list must not  be larger than the ``x`` 's size of specified ``axis``.
         axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type 
-            ``int`` or a ``Tensor`` with shape [1] and data type  ``int32`` or ``int64``. 
-            The axis along which to split. If :math::`axis < 0`, the axis to split along
-            is :math:`rank(x) + axis`. Default is 0.
+            ``int`` or a ``Tensor`` with shape [1] and data type  ``int32`` or ``int64``.
+            If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
