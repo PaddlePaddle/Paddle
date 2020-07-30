@@ -50,6 +50,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
     # should fix the variable 
     def _setup_nccl_op(self, startup_program, main_program, build_strategy):
         trainer_endpoints = self.role_maker.get_trainer_endpoints()
+        trainers = trainer_endpoints
         trainer_id = self.role_maker.worker_index()
         current_endpoint = self.role_maker.get_trainer_endpoints()[trainer_id]
         trainer_endpoints_env = ",".join(trainer_endpoints)
