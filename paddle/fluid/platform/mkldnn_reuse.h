@@ -108,8 +108,20 @@ class MKLDNNHandlerT {
   }
 
  protected:
-  template <typename... Args>
-  void AcquireForwardPrimitiveDescriptor(Args&&... args) {
+  bool isCached() {
+    const std::string key_pd = key_common_ + "@forward_pd";
+    fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
+        dev_ctx_.GetBlob(key_pd));
+    const std::string key_p = key_ + "@forward_p";
+    return (dev_ctx_.GetBlob(key_p) != nullptr);
+  }
+
+  // If your primitive descriptor requires attributes, pass them as a
+  // first argument and paramters to descriptor constructor in the following
+  // arguments. Otherwise, all arguments will be forwarded to descriptor
+  // constructor, including the first one.
+  template <typename Arg, typename... Args>
+  void AcquireForwardPrimitiveDescriptor(Arg&& first_arg, Args&&... args) {
     // Forward PD has to be passed to Grad op that
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
@@ -123,12 +135,32 @@ class MKLDNNHandlerT {
       fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
           dev_ctx_.GetBlob(key_pd));
       if (fwd_pd_ == nullptr) {
-        auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
-        fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(fwd_desc,
-                                                                      engine_);
+        CreateForwardPrimitiveDescriptor(first_arg,
+                                         std::forward<Args>(args)...);
         dev_ctx_.SetBlob(key_pd, fwd_pd_);
       }
     }
+  }
+
+  // Using sfinae to specialise variadic function. Workaround for not having
+  // if constexpr in C++ 11.
+  template <class First, class... Args>
+  typename std::enable_if<std::is_same<typename std::decay<First>::type,
+                                       dnnl::primitive_attr>::value>::type
+  CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
+    auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
+    fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
+        fwd_desc, first, engine_);
+  }
+
+  template <class First, class... Args>
+  typename std::enable_if<!std::is_same<typename std::decay<First>::type,
+                                        dnnl::primitive_attr>::value>::type
+  CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
+    auto fwd_desc = typename TForward::desc(std::forward<First>(first),
+                                            std::forward<Args>(args)...);
+    fwd_pd_ =
+        std::make_shared<typename TForward::primitive_desc>(fwd_desc, engine_);
   }
 
   template <typename... Args>
@@ -160,6 +192,91 @@ class MKLDNNHandlerT {
       mem_p->set_data_handle(ptr);
     }
     return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
+      mkldnn::memory::desc md, const std::string& suffix) {
+    const auto local_key = key_ + suffix;
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    if (mem_p == nullptr) {
+      mem_p = std::make_shared<mkldnn::memory>(md, engine_);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    }
+    return mem_p;
+  }
+
+  void AcquireReorder(const std::shared_ptr<mkldnn::memory>& user_memory_p,
+                      const std::shared_ptr<mkldnn::memory>& target_memory_p,
+                      const std::string& suffix) {
+    const auto key_reorder_p = key_ + suffix + "reorder_p";
+
+    auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
+        dev_ctx_.GetBlob(key_reorder_p));
+
+    if (reorder_p == nullptr) {
+      reorder_p =
+          std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
+      dev_ctx_.SetBlob(key_reorder_p, reorder_p);
+    }
+
+    mkldnn::stream astream(engine_);
+    reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
+                                 {MKLDNN_ARG_TO, *target_memory_p}});
+    astream.wait();
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorder(
+      const mkldnn::memory::desc& user_md,
+      const mkldnn::memory::desc& target_md, void* ptr,
+      const std::string& suffix, bool is_persistent = false) {
+    const auto target_key = key_ + suffix + "_target";
+    const auto key_reorder_p = key_ + suffix + "reorder_p";
+    const auto user_key = key_ + suffix + "_user";
+
+    auto target_memory_p =
+        std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(target_key));
+
+    if (target_memory_p == nullptr) {
+      auto user_memory_p =
+          std::make_shared<dnnl::memory>(user_md, engine_, ptr);
+      if (user_md != target_md) {
+        target_memory_p = std::make_shared<mkldnn::memory>(target_md, engine_);
+        auto reorder_p =
+            std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
+        dev_ctx_.SetBlob(key_reorder_p, reorder_p);
+
+        mkldnn::stream astream(engine_);
+        reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
+                                     {MKLDNN_ARG_TO, *target_memory_p}});
+        astream.wait();
+      } else {
+        target_memory_p = user_memory_p;
+      }
+      dev_ctx_.SetBlob(user_key, user_memory_p);
+      dev_ctx_.SetBlob(target_key, target_memory_p);
+    } else if (!is_persistent) {
+      mkldnn::stream astream(engine_);
+
+      auto user_memory_p =
+          std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(user_key));
+      user_memory_p->set_data_handle(ptr);
+
+      auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
+          dev_ctx_.GetBlob(key_reorder_p));
+      if (reorder_p != nullptr) {
+        reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
+                                     {MKLDNN_ARG_TO, *target_memory_p}});
+        astream.wait();
+      }
+    }
+    return target_memory_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemory(const std::string& suffix) {
+    const auto local_key = key_ + suffix;
+    return std::static_pointer_cast<mkldnn::memory>(
+        dev_ctx_.GetBlob(local_key));
   }
 
   const MKLDNNDeviceContext& dev_ctx_;

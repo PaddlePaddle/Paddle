@@ -26,14 +26,11 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 template <typename T, typename IndexT = int>
 __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
                                       size_t index_size, size_t slice_size,
                                       bool overwrite) {
-  CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
+  CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
@@ -46,7 +43,7 @@ template <typename T, typename IndexT = int>
 __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
                                   T* output, size_t index_size,
                                   size_t slice_size, bool overwrite) {
-  CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
+  CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
@@ -64,7 +61,7 @@ __global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
                                     T* output, const int* output_dims,
                                     size_t remain_size, size_t slice_size,
                                     size_t end_size) {
-  CUDA_1D_KERNEL_LOOP(i, remain_size * slice_size) {
+  CUDA_KERNEL_LOOP(i, remain_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT gather_i = 0;

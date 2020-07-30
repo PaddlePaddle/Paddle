@@ -215,6 +215,10 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_label_smooth",
                   "Whether to use label smooth. Default True.")
         .SetDefault(true);
+    AddAttr<float>("scale_x_y",
+                   "Scale the center point of decoded bounding "
+                   "box. Default 1.0")
+        .SetDefault(1.);
     AddComment(R"DOC(
          This operator generates yolov3 loss based on given predict result and ground
          truth boxes.
