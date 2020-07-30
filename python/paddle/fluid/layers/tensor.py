@@ -269,7 +269,7 @@ def concat(input, axis=0, name=None):
     This OP concatenates the input along the axis.
 
     Args:
-        input(list): List of input Tensors with data type float16, float32, float64, int32,
+        input(list|tuple): List or tuple of input Tensors with data type float16, float32, float64, int32,
             int64. All the Tensors in ``input`` must have the same data type.
         axis(int|Variable, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with type ``int`` or a ``Tensor`` with shape [1] and data type ``int32`` or ``int64``.
@@ -279,7 +279,8 @@ def concat(input, axis=0, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Raises:
-        TypeError: The dtype of input must be one of float16, float32, float64, int32 and int64. 
+        TypeError: The data type of ``input`` must be one of float16, float32, float64, int32 and int64. 
+        TypeError: The type of  ``input`` must be list or tuple
         TypeError: The ``axis`` must be int or Variable. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
         TypeError: All the Tensors in ``input`` must have the same data type.
 
@@ -322,7 +323,7 @@ def concat(input, axis=0, name=None):
             axis = axis[0]
         return core.ops.concat(input, 'axis', axis)
 
-    check_type(input, 'input', (list, tuple, Variable), 'concat')
+    check_type(input, 'input', (list, tuple), 'concat')
     for id, x in enumerate(input):
         check_variable_and_dtype(
             x, 'input[' + str(id) + ']',
