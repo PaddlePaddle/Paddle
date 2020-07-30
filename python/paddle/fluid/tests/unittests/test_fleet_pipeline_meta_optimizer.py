@@ -18,13 +18,6 @@ import os
 
 
 class TestFleetMetaOptimizer(unittest.TestCase):
-    def setUp(self):
-        os.environ["POD_IP"] = "127.0.0.1"
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
-        os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-                       "127.0.0.1:36001,127.0.0.2:36001"
-
     def test_pipeline_optimizer(self):
         import paddle.fleet as fleet
         import paddle.fluid.incubate.fleet.base.role_maker as role_maker
