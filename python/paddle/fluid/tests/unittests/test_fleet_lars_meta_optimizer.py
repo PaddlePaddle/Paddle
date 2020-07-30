@@ -52,9 +52,9 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
-
         ops = [op.type for op in avg_cost.block.ops]
         self.assertIn('lars_momentum', ops)
+
 
 if __name__ == "__main__":
     unittest.main()

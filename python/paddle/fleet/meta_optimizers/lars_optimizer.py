@@ -48,7 +48,6 @@ class LarsOptimizer(MetaOptimizerBase):
             grad_clip=opt._grad_clip,
             name=opt._name)
 
-
     def _can_apply(self):
         if self.user_defined_strategy.lars:
             return isinstance(self.inner_opt, Momentum)
@@ -61,7 +60,7 @@ class LarsOptimizer(MetaOptimizerBase):
                  no_grad_set=None,
                  callbacks=None):
         return self.lars_opt.backward(loss, startup_program, parameter_list,
-                                     no_grad_set, callbacks)
+                                      no_grad_set, callbacks)
 
     def minimize_impl(self,
                       loss,

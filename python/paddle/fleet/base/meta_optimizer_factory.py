@@ -19,14 +19,12 @@ from ..meta_optimizers import LarsOptimizer
 
 __all__ = ["MetaOptimizerFactory"]
 
-
 meta_optimizer_names = [
     "RecomputeOptimizer",
     "GradientMergeOptimizer",
     "GraphExecutionOptimizer",
     "LarsOptimizer",
 ]
-
 
 
 class MetaOptimizerFactory(object):
