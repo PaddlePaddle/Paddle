@@ -145,7 +145,7 @@ class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> mPluginAttributes;
 };
 
-REGISTER_TRTDy_PLUGIN(GeluPluginV2Creator);
+REGISTER_TENSORRT_PLUGIN(GeluPluginV2Creator);
 #endif
 
 }  // namespace plugin

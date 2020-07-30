@@ -445,8 +445,6 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
     }
 
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
-
-    auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmStridedBatchedEx(
           handle, cuTransB, cuTransA, N, M, K, &alpha, B, fp, ldb, strideB, A,

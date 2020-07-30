@@ -15,7 +15,7 @@ else()
   set(paddle_known_gpu_archs7 "30 35 50 52")
   set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
   set(paddle_known_gpu_archs9 "30 35 50 52 60 61 70")
-  set(paddle_known_gpu_archs10 "30 35 50 52 60 61 70 75")
+  set(paddle_known_gpu_archs10 "60 61 70 75")
 endif()
 
 ######################################################################################
@@ -96,6 +96,7 @@ function(select_nvcc_arch_flags out_variable)
     unset(CUDA_ARCH_BIN CACHE)
     unset(CUDA_ARCH_PTX CACHE)
   endif()
+  add_definitions("-DSUPPORTS_CUDA_FP16")
 
   if(${CUDA_ARCH_NAME} STREQUAL "Kepler")
     set(cuda_arch_bin "30 35")
