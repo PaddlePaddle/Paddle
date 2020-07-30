@@ -16,7 +16,7 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
-const int FLAGS_max_turn_num = 9;
+const int FLAGS_max_turn_num = 1;
 
 namespace paddle {
 namespace inference {
