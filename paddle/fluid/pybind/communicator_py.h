@@ -26,6 +26,8 @@ namespace paddle {
 namespace pybind {
 
 void BindCommunicator(pybind11::module* m);
+void BindCommunicatorContext(pybind11::module* m);
+void BindLargeScaleKV(pybind11::module* m);
 
 }  // namespace pybind
 }  // namespace paddle
