@@ -278,10 +278,7 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
 
     bool is_test = context.Attr<bool>("is_test");
     // testing

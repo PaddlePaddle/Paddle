@@ -31,6 +31,8 @@ from ..fluid.layers import acos    #DEFINE_ALIAS
 from ..fluid.layers import asin    #DEFINE_ALIAS
 from ..fluid.layers import ceil    #DEFINE_ALIAS
 from ..fluid.layers import cos    #DEFINE_ALIAS
+from ..fluid.layers import sinh    #DEFINE_ALIAS
+from ..fluid.layers import cosh    #DEFINE_ALIAS
 from ..fluid.layers import cumsum    #DEFINE_ALIAS
 from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
 from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
@@ -69,6 +71,7 @@ __all__ = [
         'atan',
         'ceil',
         'cos',
+        'cosh',
         'cumsum',
         'elementwise_add',
         'elementwise_div',
@@ -76,7 +79,6 @@ __all__ = [
         'elementwise_max',
         'elementwise_min',
         'elementwise_mod',
-        'elementwise_mul',
         'elementwise_pow',
         'elementwise_sub',
         'exp',
@@ -96,6 +98,7 @@ __all__ = [
         'scale',
         'sign',
         'sin',
+        'sinh',
         'sqrt',
         'square',
         'stanh',
@@ -107,6 +110,7 @@ __all__ = [
         'min',
         'mm',
         'div',
+        'multiply',
         'add',
         'atan',
         'logsumexp',
@@ -171,7 +175,7 @@ Examples:
     .. code-block:: python
 
         import numpy as np
-        
+
         import paddle
         import paddle.fluid as fluid
 
@@ -201,9 +205,9 @@ def pow(input, exponent, out=None, name=None):
     Args:
         input(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
         exponent(float32|Variable): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.
-        out (Variable, optional):  The Variable that stores results of the operation. 
+        out (Variable, optional):  The Variable that stores results of the operation.
             If out is None, a new Variable will be created to store the results.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. 
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -580,11 +584,49 @@ Examples:
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+def multiply(x, y, axis=-1, name=None):
+    """
+	:alias_main: paddle.multiply
+	:alias: paddle.multiply,paddle.tensor.multiply,paddle.tensor.math.multiply
+
+Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.enable_imperative()
+        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
+        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.multiply(x, y)
+        print(res.numpy()) # [[5, 12], [21, 32]]
+
+        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
+        y_data = np.array([1, 2], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.multiply(x, y, axis=1)
+        print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
+
+    """
+    op_type = 'elementwise_mul'
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
 for func in [
         add,
         div,
+        multiply,
 ]:
-    proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div'}
+    proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div', 'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
     if func.__name__ in ['add']:
         alias_main = ':alias_main: paddle.%(func)s' % {'func': func.__name__}
@@ -601,9 +643,6 @@ for func in [
         ]
     else:
         additional_args_lines = [
-            "out (Variable, optinal): The Variable that stores results of the operation. If out is None, \
-            a new Variable will be created to store the results."
-                                                                 ,
             "name (string, optional): Name of the output. \
             Default is None. It's used to print debug info for developers. Details: \
             :ref:`api_guide_Name` "
@@ -631,7 +670,7 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
             the dimension to reduce is :math:`rank + dim[i]`.
-        dtype(str, optional): The dtype of output tensor. The default value is None, the dtype 
+        dtype(str, optional): The dtype of output tensor. The default value is None, the dtype
             of output is the same as input tensor.
         keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
@@ -646,7 +685,7 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
 
     Raises:
         ValueError, the :attr:`dtype` must be float64 or int64.
-    
+
     Examples:
         .. code-block:: python
 
@@ -727,7 +766,7 @@ def elementwise_sum(inputs, name=None):
 	:alias: paddle.elementwise_sum,paddle.tensor.elementwise_sum,paddle.tensor.math.elementwise_sum
 
     ${comment}
-    
+
     Case 1:
     ::
         Input:
@@ -759,13 +798,13 @@ def elementwise_sum(inputs, name=None):
                       [14, 16, 18]]
 
     Args:
-        inputs (Variable|list(Variable)):  A Varaible list. The shape and data type of the list elementsshould be consistent. 
-            Variable can be multi-dimensional Tensoror LoDTensor, and data types can be: float32, float64, int32, int64. 
+        inputs (Variable|list(Variable)):  A Varaible list. The shape and data type of the list elementsshould be consistent.
+            Variable can be multi-dimensional Tensoror LoDTensor, and data types can be: float32, float64, int32, int64.
         name(str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: the sum of input :math:`inputs` . its shape and data types are consistent with :math:`inputs` . 
+        Variable: the sum of input :math:`inputs` . its shape and data types are consistent with :math:`inputs` .
 
     Examples:
         .. code-block:: python
@@ -791,8 +830,8 @@ def elementwise_sum(inputs, name=None):
 
             # the sum of input0 and input1 is 2-D Tensor with shape [2,3].
             # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t, 
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
+            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
+            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
@@ -837,7 +876,7 @@ def mm(input, mat2, out=None, name=None):
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
         mat2 (Variable): The input variable which is a Tensor or LoDTensor.
-        out(Variable, optional): Optional output which can be any created 
+        out(Variable, optional): Optional output which can be any created
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
         name(str, optional): The default value is None. Normally there is no need for
@@ -969,7 +1008,7 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
 
             place =  fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
             exe = fluid.Executor(place)
-            results = exe.run(fluid.default_main_program(), 
+            results = exe.run(fluid.default_main_program(),
                               fetch_list=[out], feed={"input": data_input, 'x': data_x, "y": data_y})
             print( np.array(results[0]) )
             # [[10.5 10.5]
@@ -1078,7 +1117,7 @@ def inverse(input, out=None, name=None):
             dimensions should be equal. When the number of dimensions is
             greater than 2, it is treated as batches of square matrix. The data
             type can be float32 and float64.
-        out (Variable, optional): Optional output which can be any created 
+        out (Variable, optional): Optional output which can be any created
             Variable that meets the requirements to store the result of operation.
             If out is None, a new Varibale will be create to store the result.
         name (str, optional): The default value is None. Normally there is no need for
@@ -1101,7 +1140,7 @@ def inverse(input, out=None, name=None):
             # example for static graph
             input = fluid.data("input", shape=[2, 2], dtype="float32")
             out = paddle.inverse(input)
-        
+
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             results = exe.run(feed={"input": mat_np },
@@ -1158,10 +1197,10 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true, default
             value is False.
-        out(Variable, optional): Optional output which can be any created 
+        out(Variable, optional): Optional output which can be any created
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
-        name(str, optional): The default value is None.  Normally there is no need for 
+        name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
@@ -1238,10 +1277,10 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true, default
             value is False.
-        out(Variable, optional): Optional output which can be any created 
+        out(Variable, optional): Optional output which can be any created
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
-        name(str, optional): The default value is None.  Normally there is no need for 
+        name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
@@ -1402,17 +1441,17 @@ def clamp(input, min=None, max=None, output=None, name=None):
 
     .. math::
 
-        Out = MIN(MAX(x, min), max) 
+        Out = MIN(MAX(x, min), max)
 
     Args:
-        input (Variable): An input N-D Tensor or LoDTensor 
-            with data type float32, float64.   
+        input (Variable): An input N-D Tensor or LoDTensor
+            with data type float32, float64.
         min (float32|Variable): The lower bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         max (float32|Variable): The upper bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        output (Variable, optional): A tensor or LoDTensor. If :attr:`output` is None, 
-            a new tensor will be created as :attr:`output`. Default: None. 
+        output (Variable, optional): A tensor or LoDTensor. If :attr:`output` is None,
+            a new tensor will be created as :attr:`output`. Default: None.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -1484,11 +1523,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 	:alias: paddle.trace,paddle.tensor.trace,paddle.tensor.math.trace
 
     This OP computes the sum along diagonals of the input tensor x.
-    
-    If ``x`` is 2D, returns the sum of diagonal. 
+
+    If ``x`` is 2D, returns the sum of diagonal.
 
     If ``x`` has larger dimensions, then returns an tensor of diagonals sum, diagonals be taken from
-    the 2D planes specified by axis1 and axis2. By default, the 2D planes formed by the first and second axes 
+    the 2D planes specified by axis1 and axis2. By default, the 2D planes formed by the first and second axes
     of the input tensor x.
 
     The argument ``offset`` determines where diagonals are taken from input tensor x:
@@ -1496,7 +1535,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     - If offset = 0, it is the main diagonal.
     - If offset > 0, it is above the main diagonal.
     - If offset < 0, it is below the main diagonal.
-    
+
     Args:
         x(Variable): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
         offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
@@ -1512,11 +1551,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 
             import paddle
             import numpy as np
-            
+
             case1 = np.random.randn(2, 3).astype('float32')
             case2 = np.random.randn(3, 10, 10).astype('float32')
             case3 = np.random.randn(3, 10, 5, 10).astype('float32')
-            
+
             paddle.enable_imperative()
 
             case1 = paddle.imperative.to_variable(case1)
@@ -1580,17 +1619,17 @@ def kron(x, y, out=None, name=None):
 ${comment}
 
     Args:
-        x (Variable): the fist operand of kron op, data type: float16, float32, 
+        x (Variable): the fist operand of kron op, data type: float16, float32,
             float64, int32 or int64.
-        y (Variable): the second operand of kron op, data type: float16, 
-            float32, float64, int32 or int64. Its data type should be the same 
+        y (Variable): the second operand of kron op, data type: float16,
+            float32, float64, int32 or int64. Its data type should be the same
             with x.
-        out (Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of 
-            operation. If out is None, a new Varibale will be create to store 
+        out (Variable, optional): Optional output which can be any created
+            Variable that meets the requirements to store the result of
+            operation. If out is None, a new Varibale will be create to store
             the result. Defaults to None.
-        name(str, optional): The default value is None.  Normally there is no 
-            need for user to set this property.  For more information, please 
+        name(str, optional): The default value is None.  Normally there is no
+            need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1598,7 +1637,7 @@ ${comment}
 
     Examples:
         .. code-block:: python
-        
+
           import paddle
           from paddle import fluid
           import paddle.fluid.dygraph as dg
