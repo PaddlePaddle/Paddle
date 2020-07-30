@@ -52,7 +52,7 @@ inline bool CompareVersion(const std::string& str_first,
   // first version id
   PADDLE_ENFORCE_EQ(vec_first_version.size(), vec_second_version.size(),
                     platform::errors::InvalidArgument(
-                        "version information size is not equal, the first is "
+                        "Version information size is not equal, the first is "
                         "[%d], the second is [%d].",
                         vec_first_version.size(), vec_second_version.size()));
 

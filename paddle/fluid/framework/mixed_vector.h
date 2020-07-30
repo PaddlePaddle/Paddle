@@ -512,7 +512,7 @@ class CPUVector : public std::vector<T, std::allocator<T>> {
   T *CUDAMutableData(platform::Place place) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Vector::CUDAMutableData() method is not supported in CPU-only "
-        "version"));
+        "version."));
   }
 
   const T *Data(platform::Place place) const {
