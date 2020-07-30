@@ -374,7 +374,7 @@ def full(shape, fill_value, dtype=None, name=None):
 
     Raises:
         TypeError: The ``dtype`` must be one of None, bool, float16, float32, float64, int32 and int64.
-        TypeError: The ``shape`` must be one of Variable, list and tuple. the data type of ``shape`` must
+        TypeError: The ``shape`` must be one of Tensor, list and tuple. The data type of ``shape`` must
             be int32 or int64 when the it's a Tensor
     
     Examples:
