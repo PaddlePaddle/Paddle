@@ -42,8 +42,7 @@ class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The dimension to accumulate along. -1 means the last "
                  "dimension [default -1].")
-        .SetDefault(-1)
-        .EqualGreaterThan(-1);
+        .SetDefault(-1);
     AddAttr<bool>("flatten",
                   "Whether to compute the cumsum over the flattened array. "
                   "[default false].")

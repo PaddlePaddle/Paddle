@@ -64,6 +64,9 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
+    # `gym` is only used in unittest, it's not suitable to add in requirements.txt.
+    # Add it dynamically.
+    echo "gym" >> ${PADDLE_ROOT}/python/requirements.txt
     # Support build for all python versions, currently
     # including cp27-cp27m and cp27-cp27mu.
     PYTHON_FLAGS=""
@@ -119,6 +122,8 @@ function cmake_base() {
                 exit 1
             fi
         fi
+        # delete `gym` to avoid modifying requirements.txt in *.whl
+        sed -i .bak "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
@@ -175,6 +180,8 @@ function cmake_base() {
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
+        # delete `gym` to avoid modifying requirements.txt in *.whl
+        sed -i "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     fi
 
     if [ "$SYSTEM" == "Darwin" ]; then
@@ -213,11 +220,13 @@ function cmake_base() {
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
+        -DLITE_GIT_TAG=develop
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
+    set +e
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
@@ -240,8 +249,11 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-        -DWITH_LITE=${WITH_LITE:-OFF}
-
+        -DLITE_GIT_TAG=develop \
+        -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
 }
 
 function cmake_gen() {
@@ -293,6 +305,7 @@ function check_style() {
 #=================================================
 
 function build_base() {
+    set +e
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
@@ -310,7 +323,10 @@ function build_base() {
         make clean
     fi
 
-    make install -j ${parallel_number}
+    make install -j ${parallel_number};build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
 }
 
 function build_size() {
@@ -363,6 +379,7 @@ function cmake_gen_and_build() {
 }
 
 function build_mac() {
+    set +e
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cat <<EOF
@@ -373,7 +390,11 @@ EOF
     if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
         make clean
     fi
-    make install -j 8
+    make install -j 8;build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
+    set -e
     build_size
 }
 
@@ -563,6 +584,10 @@ function generate_api_spec() {
     op_desc_path=${PADDLE_ROOT}/paddle/fluid/OP_DESC_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_op_desc.py > $op_desc_path
 
+    # print api and the md5 of source code of the api.
+    api_source_md5_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.source.md5
+    python ${PADDLE_ROOT}/tools/count_api_without_core_ops.py -p paddle > $api_source_md5_path
+
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
@@ -655,9 +680,9 @@ EOF
 
 
 function assert_api_spec_approvals() {
-    /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh
-    if [ "$?" != 0 ];then
-       exit 1
+    /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh;approval_error=$?
+    if [ "$approval_error" != 0 ];then
+       exit 6
     fi
 }
 
@@ -1197,11 +1222,14 @@ EOF
     if [[ "$1" != "" ]]; then
       parallel_number=$1
     fi
-    startTime_s=`date +%s` 
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto}
-
-    make -j ${parallel_number} fluid_lib_dist
-    make -j ${parallel_number} inference_lib_dist
+    startTime_s=`date +%s`
+    set +e
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
+    make -j ${parallel_number} fluid_lib_dist;build_error=$?
+    make -j ${parallel_number} inference_lib_dist;build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     build_size "fluid_inference"
@@ -1259,10 +1287,10 @@ function example() {
     pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
     cd ${PADDLE_ROOT}/tools
-    python sampcd_processor.py cpu 
-    if [ "$?" != "0" ];then
+    python sampcd_processor.py cpu;example_error=$?
+    if [ "$example_error" != "0" ];then
       echo "Code instance execution failed"
-      exit 1
+      exit 5
     fi
 }
 

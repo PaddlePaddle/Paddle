@@ -107,6 +107,8 @@ def visit_member(parent_name, member):
                 visit_member(cur_name, value)
     elif inspect.ismethoddescriptor(member):
         return
+    elif inspect.isbuiltin(member):
+        return
     elif callable(member):
         queue_dict(member, cur_name)
     elif inspect.isgetsetdescriptor(member):

@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/device_ptr.h>
+#include <thrust/device_vector.h>
+#include <thrust/reverse.h>
 #include <thrust/scan.h>
 #include "paddle/fluid/operators/cum_op.h"
 #include "paddle/fluid/platform/gpu_launch_param_config.h"
@@ -255,27 +258,42 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     auto out_dims = out->dims();
     auto size = in->numel();
 
-    if (axis == -1) {
-      axis = out_dims.size() - 1;
+    PADDLE_ENFORCE_EQ(
+        axis < out_dims.size() && axis >= (0 - out_dims.size()), true,
+        platform::errors::OutOfRange(
+            "Attr(axis) is out of range, It's expected "
+            "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
+            out_dims.size(), out_dims.size() - 1, axis));
+    if (axis < 0) {
+      axis += out_dims.size();
     }
-    PADDLE_ENFORCE_LT(
-        axis, out_dims.size(),
-        platform::errors::InvalidArgument("axis(%d) should be less than the "
-                                          "dimension(%d) of the input tensor.",
-                                          axis, out_dims.size()));
 
     T* out_data = out->mutable_data<T>(context.GetPlace());
     const T* in_data = in->data<T>();
+
     // Use thrust for parallel acceleration when the input size is equal to the
-    // size of the ‘axis’ dimension. Invalid in reverse case because the thrust
-    // APIs do not support.
-    if (size == out_dims[axis] && !reverse) {
-      if (exclusive) {
-        thrust::exclusive_scan(thrust::device, in_data, in_data + size,
-                               out_data);
+    // length of the ‘axis’ dimension.
+    if (size == out_dims[axis]) {
+      if (reverse) {
+        thrust::device_ptr<const T> dev_ptr =
+            thrust::device_pointer_cast(in_data);
+        thrust::device_vector<T> vec(dev_ptr, dev_ptr + size);
+        if (exclusive) {
+          thrust::exclusive_scan(thrust::device, vec.rbegin(), vec.rend(),
+                                 out_data);
+        } else {
+          thrust::inclusive_scan(thrust::device, vec.rbegin(), vec.rend(),
+                                 out_data);
+        }
+        thrust::reverse(thrust::device, out_data, out_data + size);
       } else {
-        thrust::inclusive_scan(thrust::device, in_data, in_data + size,
-                               out_data);
+        if (exclusive) {
+          thrust::exclusive_scan(thrust::device, in_data, in_data + size,
+                                 out_data);
+        } else {
+          thrust::inclusive_scan(thrust::device, in_data, in_data + size,
+                                 out_data);
+        }
       }
       return;
     }

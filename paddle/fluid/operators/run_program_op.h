@@ -49,13 +49,13 @@ static void CheckInputVarStatus(const Variable &var,
       var.IsType<LoDTensor>(), true,
       platform::errors::InvalidArgument(
           "The input variable %s of "
-          "RunProgram(Grad)Op(StaticModelRunner) holds "
+          "RunProgram(Grad)Op holds "
           "wrong type. Expect type is LoDTensor, but receive type is %s.",
           var_name, platform::demangle(framework::ToTypeName(var.Type()))));
   PADDLE_ENFORCE_EQ(
       var.Get<LoDTensor>().IsInitialized(), true,
       platform::errors::InvalidArgument("The tensor in input variable %s of "
-                                        "RunProgram(Grad)Op(StaticModelRunner) "
+                                        "RunProgram(Grad)Op "
                                         "is not initialized.",
                                         var_name));
 }
@@ -68,14 +68,14 @@ static void CheckOutputVarStatus(const Variable &src_var,
         src_var.IsType<LoDTensor>(), true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
-            "RunProgram(Grad)Op(StaticModelRunner)'s internal scope holds "
+            "RunProgram(Grad)Op's internal scope holds "
             "wrong type. Expect type is LoDTensor, but receive type is %s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<LoDTensor>().IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
-                          "RunProgram(Grad)Op(StaticModelRunner)'s internal "
+                          "RunProgram(Grad)Op's internal "
                           "scope is not initialized.",
                           var_name));
   } else if (dst_var.IsType<SelectedRows>()) {
@@ -83,20 +83,20 @@ static void CheckOutputVarStatus(const Variable &src_var,
         src_var.IsType<SelectedRows>(), true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
-            "RunProgram(Grad)Op(StaticModelRunner)'s internal scope holds "
+            "RunProgram(Grad)Op's internal scope holds "
             "wrong type. Expect type is SelectedRows, but receive type is %s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<SelectedRows>().value().IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
-                          "RunProgram(Grad)Op(StaticModelRunner)'s "
+                          "RunProgram(Grad)Op's "
                           "internal scope is not initialized.",
                           var_name));
 
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The RunProgram(Grad)Op(StaticModelRunner) only support output "
+        "The RunProgram(Grad)Op only support output "
         "variable of type LoDTensor or SelectedRows, "
         "but received variable %s's type is %s",
         var_name, platform::demangle(framework::ToTypeName(dst_var.Type()))));
@@ -143,7 +143,7 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
     auto *var = scope->FindVar(var_names[i]);
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("The output variable %s is not in "
-                                        "RunProgram(Grad)Op(StaticModelRunner)'"
+                                        "RunProgram(Grad)Op'"
                                         "s internal scope.",
                                         var_names[i]));
     CheckOutputVarStatus(*var, *vars[i], var_names[i]);
@@ -232,10 +232,15 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     auto exe_ctx = exe.Prepare(*program, 0, skip_vars);
 
-    // get scope and clear old vars
-    framework::Scope &scope = *(out_scope_vec->front());
-    auto local_vars = scope.LocalVarNames();
-    scope.EraseVars(local_vars);
+    // NOTE(Aurelius84): While training some models, forward can be called many
+    // times and then apply backpropagation all at once, such as Reinforcement
+    // Learning. Tensor data in multi-step training should be saved into single
+    // scope separately. Otherwise, the gradients can be miscalculated because
+    // always using the Tensor data of the last step in forward.
+    framework::Scope *global_inner_scope = out_scope_vec->front();
+    VLOG(2) << "The number of sub scopes before forward: "
+            << out_scope_vec->front()->kids().size();
+    framework::Scope &scope = global_inner_scope->NewScope();
 
     // share input_vars & parameters into scope
     details::ShareVarsIntoScope(input_vars, input_var_names, &scope);
@@ -251,6 +256,12 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     // Debug info: scope info when run end
     VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
+    // Step 5. Drop all children scopes while testing.
+    if (is_test) {
+      out_scope_vec->front()->DropKids();
+    }
+    VLOG(2) << "The number of sub scopes after forward: "
+            << out_scope_vec->front()->kids().size();
   }
 };
 
@@ -285,8 +296,8 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     auto orig_end_op_index = ctx.Attr<int64_t>("end_op_index");
     // NOTE: skip `shape` and `fill_constant` op created by
-    // fluid.backward.gradients,
-    // one forward output will generate one `shape` and `fill_constant`
+    // fluid.backward.gradients, one forward output will generate one `shape`
+    // and `fill_constant`
     int64_t start_op_index = orig_end_op_index + (output_grad_vars.size() * 2);
     int64_t end_op_index = block->OpSize();
 
@@ -295,7 +306,16 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
         out_scope_vec->size(), 1,
         platform::errors::InvalidArgument(
             "The OutScope of RunProgramGradOp should only hold one scope."));
-    auto &scope = *(out_scope_vec->front());
+
+    framework::Scope *global_inner_scope = out_scope_vec->front();
+    auto sub_scope_num = global_inner_scope->kids().size();
+    VLOG(2) << "The number of sub scopes before backward: " << sub_scope_num;
+    PADDLE_ENFORCE_GT(sub_scope_num, 0,
+                      platform::errors::InvalidArgument(
+                          "The OutScope of RunProgramGradOp should hold at "
+                          "least one sub scope."));
+
+    auto &scope = *(global_inner_scope->kids().front());
 
     // Step 2. prepare executor and scope
     framework::Executor exe(ctx.GetPlace());
@@ -324,6 +344,11 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     // Step 4. get outputs
     details::ShareVarsFromScope(input_grad_vars, input_grad_var_names, &scope);
     details::ShareVarsFromScope(param_grad_vars, param_grad_names, &scope);
+
+    // Step5. drop current scope
+    global_inner_scope->DeleteScope(&scope);
+    VLOG(2) << "The number of sub scopes after backward: "
+            << global_inner_scope->kids().size();
   }
 };
 

@@ -23,12 +23,10 @@ from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import concat  #DEFINE_ALIAS
 from ..fluid.layers import expand  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import flatten  #DEFINE_ALIAS
 from ..fluid.layers import reshape  #DEFINE_ALIAS
-from ..fluid.layers import reverse  #DEFINE_ALIAS
 from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
@@ -41,6 +39,8 @@ from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
 from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
 from ..fluid.layers import shard_index  #DEFINE_ALIAS
 from ..fluid.layers import unique_with_counts  #DEFINE_ALIAS
+from ..fluid import layers
+import paddle
 
 __all__ = [
     'cast', 'concat', 'expand', 'expand_as', 'flatten', 'gather', 'gather_nd',
@@ -51,46 +51,106 @@ __all__ = [
 ]
 
 
-def flip(input, dims, name=None):
+def concat(x, axis=0, name=None):
+    """
+	:alias_main: paddle.concat
+	:alias: paddle.concat,paddle.tensor.concat,paddle.tensor.manipulation.concat
+
+    This OP concatenates the input along the axis.
+
+    Args:
+        x(list): List of input Tensors with data type float16, float32, float64, int32, int64.
+            All the Tensors in ``x`` must have same data type.
+        axis(int|Variable, optional): Specify the axis to operate on the input Tensors.
+            It's a scalar with type ``int`` or a ``Tensor`` with shape [1] and data type ``int32`` 
+            or ``int64``. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
+            it works the same way as axis+R. Default is 0.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Raises:
+        TypeError: The dtype of ``x`` must be one of float16, float32, float64, int32 and int64. 
+        TypeError: The ``axis`` must be int or Variable. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
+        TypeError: All the Tensors in ``x`` must have the same data type.
+
+    Returns:
+        Variable: A Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            import numpy as np
+            
+            paddle.enable_imperative()  # Now we are in imperative mode
+            in1 = np.array([[1,2,3],
+                            [4,5,6]])
+            in2 = np.array([[11,12,13],
+                            [14,15,16]])
+            in3 = np.array([[21,22],
+                            [23,24]])
+            x1 = paddle.imperative.to_variable(in1)
+            x2 = paddle.imperative.to_variable(in2)
+            x3 = paddle.imperative.to_variable(in3)
+            zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
+            # When the axis is negative, the real axis is (axis + Rank(x))
+            # As follow, axis is -1, Rank(x) is 2, the real axis is 1
+            out1 = paddle.concat(x=[x1,x2,x3], axis=-1)
+            out2 = paddle.concat(x=[x1,x2], axis=0)
+            out3 = paddle.concat(x=[x1,x2], axis=zero)
+            # out1
+            # [[ 1  2  3 11 12 13 21 22]
+            #  [ 4  5  6 14 15 16 23 24]]
+            # out2 out3
+            # [[ 1  2  3]
+            #  [ 4  5  6]
+            #  [11 12 13]
+            #  [14 15 16]]
+    """
+    return paddle.fluid.layers.concat(input=x, axis=axis, name=name)
+
+
+def flip(x, axis, name=None):
     """
 	:alias_main: paddle.flip
 	:alias: paddle.flip,paddle.tensor.flip,paddle.tensor.manipulation.flip
 
 
-    Reverse the order of a n-D tensor along given axis in dims.
+    Reverse the order of a n-D tensor along given axis in axis.
 
     Args:
-        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+        x (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
-        dims (list): The axis to flip on.
+        axis (list): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: Tensor or LoDTensor calculated by flip layer. The data type is same with input.
+        Variable: Tensor or LoDTensor calculated by flip layer. The data type is same with input x.
 
     Examples:
         .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
           import numpy as np
-          input = fluid.data(name="x", shape=[-1, 2, 2], dtype='float32')
-          output = paddle.flip(input, dims=[0, 1])
-          exe = fluid.Executor(fluid.CPUPlace())
-          exe.run(fluid.default_startup_program())
-          img = np.arange(12).reshape((3,2,2)).astype(np.float32)
-          res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-          print(res) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
+
+          paddle.enable_imperative()
+
+          image_shape=(3, 2, 2)
+          x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
+          x = x.astype('float32')
+          img = paddle.imperative.to_variable(x)
+          out = paddle.flip(img, [0,1])
+
+          print(out) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
     """
     helper = LayerHelper("flip", **locals())
-    check_type(input, 'X', (Variable), 'flip')
-    dtype = helper.input_dtype()
+    check_type(x, 'X', (Variable), 'flip')
+    dtype = helper.input_dtype('x')
     check_dtype(dtype, 'X',
                 ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
                 'flip')
-    check_type(dims, 'dims', (list, tuple), 'flip')
-    assert len(dims) > 0, 'len(dims) must be greater than 0.'
+    check_type(axis, 'axis', (list, tuple), 'flip')
     if name is None:
         out = helper.create_variable_for_type_inference(dtype)
     else:
@@ -98,10 +158,13 @@ def flip(input, dims, name=None):
 
     helper.append_op(
         type="flip",
-        inputs={"X": input},
+        inputs={"X": x},
         outputs={"Out": out},
-        attrs={"dims": dims})
+        attrs={"axis": axis})
     return out
+
+
+reverse = flip  #DEFINE_ALIAS
 
 
 def roll(x, shifts, axis=None, name=None):
@@ -439,83 +502,81 @@ def split(input, num_or_sections, dim=-1, name=None):
     return outs
 
 
-def squeeze(input, axes, out=None, name=None):
+def squeeze(x, axis=None, name=None):
     """
 	:alias_main: paddle.squeeze
-	:alias: paddle.squeeze,paddle.tensor.squeeze,paddle.tensor.manipulation.squeeze
+	:alias: paddle.squeeze, paddle.tensor.squeeze, paddle.tensor.manipulation.squeeze
 
-    This OP will squeeze single-dimensional entries of input tensor's shape. If axes is provided, will
-    remove the dims by axes, the dims selected by axes should be one. If not provide axes, all dims equal
-    to one will be deleted.
+    This OP will squeeze the dimension(s) of size 1 of input tensor x's shape. 
 
+    If axis is provided, it will remove the dimension(s) by given axis that of size 1. 
+    If the dimension of given axis is not of size 1, the dimension remain unchanged. 
+    If axis is not provided, all dims equal of size 1 will be removed.
 
     .. code-block:: text
 
         Case1:
 
           Input:
-            X.shape = (1, 3, 1, 5)
-            axes = [0]
+            x.shape = [1, 3, 1, 5]  # If axis is not provided, all dims equal of size 1 will be removed.
+            axis = None
           Output:
-            Out.shape = (3, 1, 5)
+            out.shape = [3, 5]
 
         Case2:
 
           Input:
-            X.shape = (1, 3, 1, 5)
-            axes = []
+            x.shape = [1, 3, 1, 5]  # If axis is provided, it will remove the dimension(s) by given axis that of size 1.
+            axis = 0
           Output:
-            Out.shape = (3, 5)
-
-        Case3:
+            out.shape = [3, 1, 5]
+        
+        Case4:
 
           Input:
-            X.shape = [1,3,1,5]
-            axes = [-2]
+            x.shape = [1, 3, 1, 5]  # If the dimension of one given axis (3) is not of size 1, the dimension remain unchanged. 
+            axis = [0, 2, 3]
           Output:
-            Out.shape = [1,3,5]
+            out.shape = [3, 5]
+
+        Case4:
+
+          Input:
+            x.shape = [1, 3, 1, 5]  # If axis is negative, axis = axis + ndim (number of dimensions in x). 
+            axis = [-2]
+          Output:
+            out.shape = [1, 3, 5]
 
     Args:
-        input (Variable): The input Tensor. Support data type: float32, float64, int8, int32, int64.
-                          axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
-                          Axes range is :math:`[-rank(input), rank(input))`.
-                          If axes is negative, :math:`axes=axes+rank(input)`.
+        input (Tensor): The input Tensor. Support data type: float32, float64, int8, int32, int64.
+        axis (int|list|tuple, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
+                          The range of axis is :math:`[-ndim(input), ndim(input))`.
+                          If axis is negative, :math:`axis = axis + ndim(input)`.
+                          If axis is None, all the dimensions of input of size 1 will be removed.
         name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Variable: Output squeezed Tensor. Data type is same as input Tensor.
+        Tensor: Output squeezed Tensor. Data type is same as input Tensor.
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
-            with fluid.dygraph.guard():
-                input_1 = np.random.random([5, 1, 10]).astype("int32")
-                # input is a variable which shape is [5, 1, 10]
-                input = fluid.dygraph.to_variable(input_1)
-
-                output = paddle.squeeze(input, axes=[1])
-                # output.shape [5, 10]
+            paddle.enable_imperative()
+            
+            x = paddle.rand([5, 1, 10])
+            output = paddle.squeeze(x, axis=1)
+            # output.shape [5, 10]
 
     """
+    if axis is None:
+        axis = []
+    elif isinstance(axis, int):
+        axis = [axis]
+    elif isinstance(axis, tuple):
+        axis = list(axis)
 
-    helper = LayerHelper("squeeze", **locals())
-    check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int8', 'int32', 'int64'],
-                             'squeeze')
-    check_type(axes, 'axes', list, 'squeeze')
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type="squeeze2",
-        inputs={"X": input},
-        attrs={"axes": axes},
-        outputs={"Out": out,
-                 "XShape": x_shape})
-
-    return out
+    return layers.squeeze(x, axis, name)
 
 
 def unsqueeze(input, axes, out=None, name=None):

@@ -37,14 +37,17 @@ class CumKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
     bool exclusive = context.Attr<bool>("exclusive");
     bool reverse = context.Attr<bool>("reverse");
     auto out_dims = Out.dims();
-    if (axis == -1) {
-      axis = out_dims.size() - 1;
+
+    PADDLE_ENFORCE_EQ(
+        axis < out_dims.size() && axis >= (0 - out_dims.size()), true,
+        platform::errors::OutOfRange(
+            "Attr(axis) is out of range, It's expected "
+            "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
+            out_dims.size(), out_dims.size() - 1, axis));
+    if (axis < 0) {
+      axis += out_dims.size();
     }
-    PADDLE_ENFORCE_LT(
-        axis, out_dims.size(),
-        platform::errors::InvalidArgument("axis(%d) should be less than the "
-                                          "dimension(%d) of the input tensor.",
-                                          axis, out_dims.size()));
+
     Out.template mutable_data<T>(context.GetPlace());
 
     int pre = 1;

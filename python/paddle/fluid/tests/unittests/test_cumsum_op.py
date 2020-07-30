@@ -47,6 +47,10 @@ class TestCumsumOp(unittest.TestCase):
         y = paddle.cumsum(data, dtype=np.int32)
         self.assertTrue(y.dtype == core.VarDesc.VarType.INT32)
 
+        y = paddle.cumsum(data, axis=-2)
+        z = np.cumsum(data_np, axis=-2)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
     def run_static(self, use_gpu=False):
         with fluid.program_guard(fluid.Program()):
             data_np = np.random.random((100, 100)).astype(np.float32)
@@ -56,13 +60,16 @@ class TestCumsumOp(unittest.TestCase):
             y3 = paddle.cumsum(x, axis=-1)
             y4 = paddle.cumsum(x, dtype='float64')
             y5 = paddle.cumsum(x, dtype=np.int32)
+            y6 = paddle.cumsum(x, axis=-2)
 
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            out = exe.run(
-                feed={'X': data_np},
-                fetch_list=[y.name, y2.name, y3.name, y4.name, y5.name])
+            out = exe.run(feed={'X': data_np},
+                          fetch_list=[
+                              y.name, y2.name, y3.name, y4.name, y5.name,
+                              y6.name
+                          ])
 
             z = np.cumsum(data_np)
             self.assertTrue(np.allclose(z, out[0]))
@@ -72,6 +79,8 @@ class TestCumsumOp(unittest.TestCase):
             self.assertTrue(np.allclose(z, out[2]))
             self.assertTrue(out[3].dtype == np.float64)
             self.assertTrue(out[4].dtype == np.int32)
+            z = np.cumsum(data_np, axis=-2)
+            self.assertTrue(np.allclose(z, out[5]))
 
     def test_cpu(self):
         with paddle.imperative.guard(paddle.fluid.CPUPlace()):
