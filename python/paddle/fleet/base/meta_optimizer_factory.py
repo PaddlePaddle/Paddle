@@ -14,10 +14,11 @@
 
 from ..meta_optimizers import RecomputeOptimizer
 from ..meta_optimizers import GraphExecutionOptimizer
+from ..meta_optimizers import LarsOptimizer
 
 __all__ = ["MetaOptimizerFactory"]
 
-meta_optimizer_names = ["RecomputeOptimizer", "GraphExecutionOptimizer"]
+meta_optimizer_names = ["RecomputeOptimizer", "GraphExecutionOptimizer", "LarsOptimizer"]
 
 
 class MetaOptimizerFactory(object):

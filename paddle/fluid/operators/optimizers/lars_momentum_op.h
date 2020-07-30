@@ -39,6 +39,7 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     T lars_coeff = ctx.Attr<float>("lars_coeff");
     T lars_weight_decay = ctx.Attr<float>("lars_weight_decay");
+    T lars_eps = ctx.Attr<float>("lars_eps");
 
     auto p_out = framework::EigenVector<T>::Flatten(*param_out);
     auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);
@@ -61,10 +62,10 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
     T local_lr = lr[0];
     if (ep_norm(0) > 0 && eg_norm(0) > 0) {
       local_lr = lr[0] * lars_coeff * ep_norm(0) /
-                 (eg_norm(0) + lars_weight_decay * ep_norm(0));
+                 (eg_norm(0) + lars_weight_decay * ep_norm(0) + lars_eps);
     }
-    v_out = v * mu + local_lr * (g + lars_weight_decay * p);
-    p_out = p - v_out;
+    v_out = v * mu + (g + lars_weight_decay * p);
+    p_out = p - local_lr * v_out;
   }
 };
 

@@ -13,5 +13,6 @@
 
 from .recompute_optimizer import RecomputeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
+from .lars_optimizer import LarsOptimizer
 
-__all__ = ['RecomputeOptimizer']
+__all__ = ['RecomputeOptimizer', 'LarsOptimizer']

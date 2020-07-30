@@ -48,6 +48,9 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("lars_weight_decay",
                    "(float, default 0.0005) LARS weight decay")
         .SetDefault(0.0005);
+    AddAttr<float>("lars_eps",
+                   "(float, default 0.) LARS epsilon to avoid zero divide")
+        .SetDefault(0.);
 
     AddComment(R"DOC(
 Lars Momentum Optimizer.
@@ -58,9 +61,8 @@ weight using a local learning rate:
 $$
 local\_lr = \eta  *
     \frac{\left \| param \right \|}{\left \| grad \right \| + \beta *\left \| param \right \|} \\
-velocity = mu * velocity +
-    local\_lr * (grad + \beta * param) \\
-param = param - velocity. \\
+velocity = mu * velocity + (grad + \beta * param + eps) \\
+param = param - local\_lr * velocity. \\
 $$
 
 Note that we use lars_weight_decay here to decay weights, you may need not to
