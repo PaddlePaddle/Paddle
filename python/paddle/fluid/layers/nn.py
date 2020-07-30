@@ -4813,47 +4813,57 @@ def split(input, num_or_sections, dim=-1, name=None):
     Split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
-        num_or_sections (int|list|tuple): If :attr:`num_or_sections` is an integer,
-            then the integer indicates the number of equal sized sub-Tensors
-            that the Tensor will be divided into. If :attr:`num_or_sections`
-            is a list or tuple, the length of it indicates the number of
-            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
-            :attr:`dim` dimension orderly. The length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
-        dim (int32|Varible, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. The dimension along which to split. If :math:`dim < 0`, the
-            dimension to split along is :math:`rank(input) + dim`. Default is -1.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+        input (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        num_or_sections (int|list|tuple): If ``num_or_sections`` is int, then the ``num_or_sections`` 
+            indicates the number of equal sized sub-Tensors that the ``input``
+            will be divided into. If ``num_or_sections`` is a list or tuple, the length of it 
+            indicates the number of sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
+            dimension orderly. The length of the list mustn't be larger than the ``input`` 's size of specified dim.
+        dim (int|Tensor, optional): The dimension along which to split, it can be a scalar with type ``int`` or
+            a ``Tensor`` with shape [1] and data type ``int32`` or ``int64``. If :math:`dim < 0`,
+            the dimension to split along is :math:`rank(input) + dim`. Default is -1.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        list(Variable): The list of segmented Tensor variables.
+        list(Tensor): The list of segmented Tensors.
 
     Raises:
-        TypeError: num_or_sections is not int, list or tuple.
-        TypeError: dim is not int or Variable.
+        TypeError: The data type of ``input`` must be one of bool, float16, float32, float64, int32, int64.
+        TypeError: ``num_or_sections`` is not int, list or tuple.
+        TypeError: ``dim`` is not int or Tensor. The data type of ``dim`` must be int32 or int64 when it's a Tensor.
 
     Example:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            # input is a variable which shape is [3, 9, 5]
+            # input is a Tensor which shape is [3, 9, 5]
             input = fluid.data(
                  name="input", shape=[3, 9, 5], dtype="float32")
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=1)
-            # x0.shape [3, 3, 5]
-            # x1.shape [3, 3, 5]
-            # x2.shape [3, 3, 5]
+            out0, out1, out2 = fluid.layers.split(input, num_or_sections=3, dim=1)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, 4], dim=1)
-            # x0.shape [3, 2, 5]
-            # x1.shape [3, 3, 5]
-            # x2.shape [3, 4, 5]
+            out0, out1, out2 = fluid.layers.split(input, num_or_sections=[2, 3, 4], dim=1)
+            # out0.shape [3, 2, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 4, 5]
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, -1], dim=1)
-            # x0.shape [3, 2, 5]
-            # x1.shape [3, 3, 5]
-            # x2.shape [3, 4, 5]
+            out0, out1, out2 = fluid.layers.split(input, num_or_sections=[2, 3, -1], dim=1)
+            # out0.shape [3, 2, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 4, 5]
+            
+            # dim is negative, the real dim is (rank(input) + axis) which real
+            # value is 1.
+            out0, out1, out2 = fluid.layers.split(input, num_or_sections=3, dim=-2)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
+
     """
     if in_dygraph_mode():
         num = None
@@ -4861,8 +4871,6 @@ def split(input, num_or_sections, dim=-1, name=None):
 
         if isinstance(dim, Variable):
             dim = dim.numpy()
-            assert dim.shape == (1,
-                                 ), "dim of type Variable should have shape [1]"
             dim = dim[0]
         dim = (len(input.shape) + dim) if dim < 0 else dim
         attrs += ('axis', dim)
@@ -4873,28 +4881,29 @@ def split(input, num_or_sections, dim=-1, name=None):
         elif isinstance(num_or_sections, (list, tuple)):
             num = len(num_or_sections)
             if utils._contain_var(num_or_sections):
-                raise TypeError(
-                    "The type of 'num_or_sections' in split must be int or list[int] or tuple[int] in Dygraph mode, but "
-                    "received %s, which contains Variable." %
-                    (type(num_or_sections)))
+                for index, item in enumerate(num_or_sections):
+                    if isinstance(item, Variable):
+                        num_or_sections[index] = num_or_sections[index].numpy()[
+                            0]
+                attrs += ('sections', list(num_or_sections))
             else:
                 attrs += ('sections', list(num_or_sections))
         else:
             raise TypeError(
-                "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
+                "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
         return core.ops.split(input, num, *attrs)
 
-    if not isinstance(num_or_sections, (int, list, tuple)):
-        raise TypeError(
-            "The type of 'num_or_sections' in split must be int, list or "
-            "tuple, but received %s." % (type(num_or_sections)))
-    if not isinstance(dim, (int, Variable)):
-        raise TypeError(
-            "The type of 'dim' in split must be int or Variable, but "
-            "received %s." % (type(dim)))
+    check_variable_and_dtype(
+        input, 'input',
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'in64'], 'split')
+    check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
+    check_type(dim, 'dim', (int, Variable), 'split')
+    if isinstance(dim, Variable):
+        check_dtype(dim.dtype, 'dim', ['int32', 'int64'], 'split')
 
     helper = LayerHelper('split', **locals())
+
     input_shape = input.shape
     inputs = {'X': input}
     attrs = {'num': num_or_sections if isinstance(num_or_sections, int) else 0}
