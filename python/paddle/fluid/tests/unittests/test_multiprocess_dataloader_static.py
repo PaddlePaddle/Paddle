@@ -137,8 +137,14 @@ class TestStaticDataLoader(unittest.TestCase):
                         label = item['label']
                         assert image.shape() == [BATCH_SIZE, IMAGE_SIZE]
                         assert label.shape() == [BATCH_SIZE, 1]
-                        assert image._place()._equals(places[i])
-                        assert label._place()._equals(places[i])
+                        if places[i]._equals(fluid.CPUPlace()):
+                            assert image._place()._equals(fluid.CPUPlace())
+                            assert label._place()._equals(fluid.CPUPlace())
+                        else:
+                            assert image._place()._equals(fluid.CUDAPinnedPlace(
+                            ))
+                            assert label._place()._equals(fluid.CUDAPinnedPlace(
+                            ))
                     L, = exe.run(program=prog,
                                  feed=d,
                                  fetch_list=[loss],
