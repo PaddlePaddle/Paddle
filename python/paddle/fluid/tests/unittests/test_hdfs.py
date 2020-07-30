@@ -166,6 +166,7 @@ class FSTest(unittest.TestCase):
             None,
             time_out=15 * 1000,
             sleep_inter=100)
+        self._test_touch(fs)
         self._test_dirs(fs)
         self._test_upload(fs)
 
@@ -175,6 +176,7 @@ class FSTest(unittest.TestCase):
 
     def test_local(self):
         fs = LocalFS()
+        self._test_touch(fs)
         self._test_dirs(fs)
         self._test_touch_file(fs)
         self._test_mkdirs(fs)
@@ -245,6 +247,18 @@ java.io.IOException: Input/output error
             time_out=15 * 1000,
             sleep_inter=100)
         fs.ls_dir("test_not_exists")
+
+    def _test_touch(self, fs):
+        path = "./touch.flag"
+        fs.touch(path, exist_ok=True)
+        try:
+            fs.touch("./touch.flag", exist_ok=False)
+            self.assertFalse(0, "can't reach here")
+        except FSFileExistsError as e:
+            pass
+
+        self.assertFalse(fs.is_dir(path))
+        fs.delete(path)
 
 
 if __name__ == '__main__':

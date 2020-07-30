@@ -122,6 +122,9 @@ class AutoCheckpointChecker(object):
         return "{}/{}/exe/{}".format(self.hdfs_checkpoint_path, self.job_id,
                                      name)
 
+    def get_job_path(self):
+        return "{}/{}".format(self.hdfs_checkpoint_path, self.job_id)
+
     @property
     def save_checkpoint_inter(self):
         return self._save_checkpoint_inter
@@ -454,8 +457,10 @@ class TrainEpochRange(SerializableBase):
     def save_checkpoint(self):
         # not save last one because exe and program can't be restored.
         if self._checker.trainer_id == 0:
-            if time.time(
-            ) - self._last_checkpoint_time >= self._save_checkpoint_inter:
+            self._generate_flag()
+
+            if time.time() - self._last_checkpoint_time >= \
+                    self._save_checkpoint_inter:
                 if g_acp_type == CONST_ACP_TYPE:
                     # not save the last one
                     if self._max_epoch_num > 0 and self._epoch_no != self._max_epoch_num - 1:
@@ -497,6 +502,12 @@ class TrainEpochRange(SerializableBase):
                 local_cache_path=self._checker._fs_cache)
             logger.info("save train_epoch_range checkpoint:{}".format(
                 self._serialize()))
+
+    def _generate_flag(self):
+        name = "can_be_auto_checkpoint.flag"
+        path = self._checker.get_job_path() + "/" + name
+        logger.info("this job can_be_auto_checkpoint")
+        self._hdfs.touch(path, exist_ok=True)
 
 
 def _get_train_epoch_range():

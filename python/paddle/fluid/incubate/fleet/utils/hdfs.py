@@ -312,5 +312,20 @@ class HDFSClient(FS):
 
         return self._rm(fs_path)
 
+    def touch(self, fs_path, exist_ok=True):
+        if self.is_exist(fs_path):
+            if exist_ok:
+                return
+            raise FSFileExistsError
+
+        return self._touchz(fs_path)
+
+    @_handle_errors()
+    def _touchz(self, fs_path):
+        cmd = "touchz {}".format(fs_path)
+        ret, _ = self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError
+
     def need_upload_download(self):
         return True

@@ -102,6 +102,10 @@ class FS(object):
     def list_dirs(self, fs_path):
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def touch(self, fs_path, exist_ok=True):
+        raise NotImplementedError
+
 
 class LocalFS(FS):
     def ls_dir(self, fs_path):
@@ -142,8 +146,13 @@ class LocalFS(FS):
     def is_exist(self, fs_path):
         return os.path.exists(fs_path)
 
-    def touch(self, fs_path):
-        return Path(fs_path).touch()
+    def touch(self, fs_path, exist_ok=True):
+        if self.is_exist(fs_path):
+            if exist_ok:
+                return
+            raise FSFileExistsError
+
+        return Path(fs_path).touch(exist_ok=True)
 
     def mv(self, src_path, dst_path, overwrite=False, test_exists=False):
         if not self.is_exist(src_path):
