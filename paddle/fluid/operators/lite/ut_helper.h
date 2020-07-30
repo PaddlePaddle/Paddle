@@ -23,7 +23,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace inference {
@@ -99,8 +98,7 @@ void CreateTensor(framework::Scope* scope, const std::string& name,
 #ifdef PADDLE_WITH_CUDA
     place = platform::CUDAPlace(0);
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "You must define PADDLE_WITH_CUDA for using CUDAPlace."));
+    LOG(FATAL) << "You must define PADDLE_WITH_CUDA for using CUDAPlace.";
 #endif
   } else {
     place = platform::CPUPlace();
