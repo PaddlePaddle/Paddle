@@ -47,7 +47,7 @@ rpm -Uvh --replacepkgs epel-release-6*.rpm
 rm -f epel-release-6*.rpm
 
 # Development tools and libraries
-yum -y install bzip2 make patch unzip bison yasm diffutils \
+yum -y install bzip2 make git patch unzip bison yasm diffutils \
     automake which file \
     kernel-devel-`uname -r` \
     devtoolset-2-binutils devtoolset-2-gcc \
