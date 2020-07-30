@@ -322,11 +322,7 @@ def concat(input, axis=0, name=None):
             axis = axis[0]
         return core.ops.concat(input, 'axis', axis)
 
-    if not isinstance(input, list):
-        warnings.warn(
-            "The type of input in concat should be list, but received %s." %
-            (type(input)))
-        input = [input]
+    check_type(input, 'input', (list, tuple, Variable), 'concat')
     for id, x in enumerate(input):
         check_variable_and_dtype(
             x, 'input[' + str(id) + ']',
