@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from __future__ import print_function
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -189,7 +190,7 @@ class TestPipeline(unittest.TestCase):
         # The following dataset is only used for the 
         # interface 'train_from_dataset'.
         # And it has no actual meaning.
-        dataset = fluid.DatasetFactory().create_dataset('FileInstantDataset')
+        dataset = paddle.fleet.DatasetFactory().create_dataset('FileInstantDataset')
         dataset.set_batch_size(1)
         dataset.set_thread(1)
         dataset.set_filelist(['/tmp/tmp_2.txt'])
