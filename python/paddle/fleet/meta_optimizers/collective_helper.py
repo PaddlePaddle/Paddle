@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import paddle.fluid as fluid
-import paddle.fleet as fleet
 from paddle.fluid import core, unique_name
 from paddle.fluid.transpiler.details import wait_server_ready
 
@@ -23,7 +22,7 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 class CollectiveHelper(object):
-    def __init__(self, nrings, wait_port):
+    def __init__(self, nrings=1, wait_port='6174'):
         self.nrings = nrings
         self.wait_port = wait_port
 
@@ -35,6 +34,7 @@ class CollectiveHelper(object):
         if startup_program is None:
             startup_program = fluid.default_startup_program()
 
+        import paddle.fleet as fleet
         endpoints = fleet.get_trainer_endpoints()
         current_endpoint = fleet.current_trainer_endpoint()
         for ring_id in range(self.nrings):

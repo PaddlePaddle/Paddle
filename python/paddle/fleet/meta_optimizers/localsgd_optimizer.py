@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import paddle.fleet as fleet
 from paddle.fluid.optimizer import Momentum, SGD
 from .meta_optimizer_base import MetaOptimizerBase
 from .collective_helper import CollectiveHelper
@@ -31,11 +30,16 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         if not self.user_defined_strategy.localsgd:
             return False
 
+        import paddle.fleet as fleet
         if fleet.worker_num() <= 1:
             return False
 
         return isinstance(self.inner_opt, Momentum) \
                 or isinstance(self.inner_opt, SGD)
+
+    def _disable_strategy(self, dist_strategy):
+        dist_strategy.localsgd = False
+        dist_strategy.localsgd_configs = {'k_steps': 1}
 
     def snapshot_name(self, param_name):
         return param_name + self.snapshot_key
@@ -48,17 +52,15 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         minimized = self.inner_opt.minimize(
             loss, startup_program=startup_program)
 
-        init_k_steps = self.user_defined_strategy.localsgd_k_steps
-        auto_steps = self.user_defined_strategy.localsgd_auto_steps
+        init_k_steps = self.user_defined_strategy.localsgd_configs.k_steps
+        auto_steps = self.user_defined_strategy.auto
 
         if startup_program is None:
             startup_program = default_startup_program()
         main_block = loss.block
 
         self.nrings = 2
-        # TODO: need review
-        self.wait_port = "6174"
-        collective_helper = CollectiveHelper(nrings, wait_port)
+        collective_helper = CollectiveHelper(nrings)
         collective_helper.update_startup_program(startup_program)
 
         with program_guard(main_block.program):
@@ -137,6 +139,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                             self.op_role_key: OpRole.Optimize
                         })
 
+                import paddle.fleet as fleet
                 for param_snapshot in reversed(ordered_param_snapshot):
                     param = param_snapshot[0]
                     snapshot = param_snapshot[1]
