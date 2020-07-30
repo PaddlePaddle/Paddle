@@ -76,9 +76,8 @@ Initialize collective communicatoin context within this trainer
     AddAttr<int>("nranks", "(int) The number of ranks of distributed trainers");
     AddAttr<int>("rank",
                  "(int) The rank of the trainer in distributed training.");
-    AddAttr<int>(
-        "device_id",
-        "(int) The deivce_id on which to initialize the communicator.")
+    AddAttr<int>("device_id",
+                 "(int) The deivce_id on which to initialize the communicator.")
         .SetDefault(-1);
     AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
