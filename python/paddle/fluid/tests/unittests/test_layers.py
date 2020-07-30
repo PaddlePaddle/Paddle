@@ -3205,15 +3205,15 @@ class TestBook(LayerTest):
 
     def test_batch_fc(self):
         with self.static_graph():
-            input = fluid.data(name="input", shape=[16, 2, 3], dtype="float32")
+            input = fluid.data(name="input", shape=[16, 2 * 3], dtype="float32")
             out = fluid.contrib.layers.batch_fc(
                 input=input,
-                param_size=[16, 3, 10],
+                param_size=[2, 3 * 4],
                 param_attr=fluid.ParamAttr(
                     learning_rate=1.0,
                     name="w_0",
                     initializer=fluid.initializer.Xavier(uniform=False)),
-                bias_size=[16, 10],
+                bias_size=[1, 3 * 4],
                 bias_attr=fluid.ParamAttr(
                     learning_rate=1.0,
                     name="b_0",
@@ -3235,6 +3235,22 @@ class TestBook(LayerTest):
                     name="ubm_rank_param.w_0",
                     initializer=fluid.initializer.Xavier(uniform=False)),
                 max_rank=3)
+            return (out)
+
+    def test_cross_norm_layer_hadamard(self):
+        with self.static_graph():
+            input = fluid.data(name="input", shape=[None, 2], dtype="float32")
+            param_attr = {
+                "batch_size": 1e4,
+                "batch_sum": 0.0,
+                "batch_square": 1e4
+            }
+            out = fluid.contrib.layers.cross_norm_layer_hadamard(
+                input=input,
+                param_dict=param_attr,
+                fields_num=1,
+                embed_dim=1,
+                name="cross")
             return (out)
 
     def test_roi_pool(self):
