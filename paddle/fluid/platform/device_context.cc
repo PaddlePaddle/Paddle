@@ -59,12 +59,11 @@ DeviceContextPool* DeviceContextPool::pool = nullptr;
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
-    PADDLE_THROW(
-        "Place %s is not supported, Please check that your paddle compiles "
-        "with WITH_GPU "
-        "option or check that your train process hold the correct gpu_id if "
-        "you use Executor",
-        place);
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Place %s is not supported. Please check that your paddle compiles "
+        "with WITH_GPU option or check that your train process hold the "
+        "correct gpu_id if you use Executor.",
+        place));
   }
   return it->second.get().get();
 }
@@ -84,7 +83,11 @@ inline void EmplaceDeviceContext(
 
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
-  PADDLE_ENFORCE_GT(places.size(), 0);
+  PADDLE_ENFORCE_GT(
+      places.size(), 0,
+      platform::errors::InvalidArgument("The number of platform places should "
+                                        "be larger than 0. But received %d.",
+                                        places.size()));
   std::set<Place> set;
   for (auto& p : places) {
     set.insert(p);
@@ -101,17 +104,17 @@ DeviceContextPool::DeviceContextPool(
       EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_, p);
 #else
       PADDLE_THROW(
-          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
-          "option");
+          platform::errors::Unimplemented("CUDAPlace is not supported. Please "
+                                          "re-compile with WITH_GPU option."));
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
 #ifdef PADDLE_WITH_CUDA
       EmplaceDeviceContext<CUDAPinnedDeviceContext, CUDAPinnedPlace>(
           &device_contexts_, p);
 #else
-      PADDLE_THROW(
-          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
-          "option");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDAPlace is not supported. Please re-compile with WITH_GPU "
+          "option."));
 #endif
     }
   }

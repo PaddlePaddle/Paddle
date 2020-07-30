@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
 SEED = 2020
 DATATYPE = 'float32'
@@ -186,11 +187,11 @@ class BMN(fluid.dygraph.Layer):
             act="relu")
 
         # init to speed up
-        self.sample_mask = get_interp1d_mask(
-            self.tscale, self.dscale, self.prop_boundary_ratio, self.num_sample,
-            self.num_sample_perbin)
-        # self.sample_mask = fluid.dygraph.base.to_variable(sample_mask)
-        # self.sample_mask.stop_gradient = True
+        sample_mask = get_interp1d_mask(self.tscale, self.dscale,
+                                        self.prop_boundary_ratio,
+                                        self.num_sample, self.num_sample_perbin)
+        self.sample_mask = fluid.dygraph.base.to_variable(sample_mask)
+        self.sample_mask.stop_gradient = True
 
         self.p_conv3d1 = fluid.dygraph.Conv3D(
             num_channels=128,
@@ -241,12 +242,6 @@ class BMN(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, x):
-        # TODO(Aurelius84): sample_mask is created in `__init__`,
-        # but currently we don't support that. The two lines code
-        # will be removed when support creating var outside of forward.
-        sample_mask = to_variable(self.sample_mask)
-        sample_mask.stop_gradient = True
-
         # Base Module
         x = self.b_conv1(x)
         x = self.b_conv2(x)
@@ -262,7 +257,7 @@ class BMN(fluid.dygraph.Layer):
         # PEM
         xp = self.p_conv1(x)
         # BM layer
-        xp = fluid.layers.matmul(xp, sample_mask)
+        xp = fluid.layers.matmul(xp, self.sample_mask)
         xp = fluid.layers.reshape(
             xp, shape=[0, 0, -1, self.dscale, self.tscale])
 
@@ -622,7 +617,7 @@ def train_bmn(args, place, to_static):
 
                 if batch_id == args.train_batch_num:
                     if to_static:
-                        program_translator.save_inference_model(args.infer_dir)
+                        fluid.dygraph.jit.save(bmn, args.infer_dir)
                     else:
                         fluid.dygraph.save_dygraph(bmn.state_dict(),
                                                    args.dy_param_path)
@@ -727,7 +722,9 @@ class TestTrain(unittest.TestCase):
         # load inference model
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(
-             self.args.infer_dir, executor=exe)
+             self.args.infer_dir,
+             executor=exe,
+             params_filename=VARIABLE_FILENAME)
         pred_res = exe.run(inference_program,
                            feed={feed_target_names[0]: data},
                            fetch_list=fetch_targets)

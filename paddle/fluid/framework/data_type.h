@@ -78,7 +78,9 @@ inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
 
   _ForEachDataType_(VisitDataTypeCallback);
 #undef VisitDataTypeCallback
-  PADDLE_THROW("Not supported %d", type);
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Not supported proto::VarType::Type(%d) as data type.",
+      static_cast<int>(type)));
 }
 
 template <typename Visitor>

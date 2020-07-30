@@ -15,7 +15,7 @@
 from __future__ import print_function
 import gast
 import inspect
-import logging
+import warnings
 import textwrap
 import threading
 import collections
@@ -36,10 +36,9 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
+from paddle.fluid.annotations import deprecated
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
-
-logger = logging.getLogger("fluid")
 
 
 class FunctionCache(object):
@@ -127,19 +126,43 @@ class FunctionSpec(object):
         self._args = args
         self._kwargs = kwargs
 
+        dyfunc = getattr(func, '__wrapped__', func)
+        self._dyfunc_code = inspect.getsource(dyfunc)
+
     def is_method(self):
         return self._args and isinstance(self._args[0], layers.Layer)
 
     def parameters(self, include_sublayer=True):
+        """
+        Returns parameters of decorated layers. If set `include_sublayer` True,
+        the parameters created in sub layers will be added.
+        """
         params = collections.OrderedDict()
         if self.is_method():
+            layer_instance = self._args[0]
             if include_sublayer:
-                params = self._args[0].parameters()
+                params = layer_instance.parameters()
                 names = [p.name for p in params]
                 params = collections.OrderedDict(zip(names, params))
             else:
-                params = self._args[0]._parameters
+                params = layer_instance._parameters
         return params
+
+    def buffers(self, include_sublayer=True):
+        """
+        Returns Variable buffers of decorated layers. If set `include_sublayer` True,
+        the Variable buffers created in sub layers will be added.
+        """
+        buffers = collections.OrderedDict()
+        if self.is_method():
+            layer_instance = self._args[0]
+            if include_sublayer:
+                buffers = layer_instance.buffers()
+                names = [buffer.name for buffer in buffers]
+                buffers = collections.OrderedDict(zip(names, buffers))
+            else:
+                buffers = layer_instance._buffers
+        return buffers
 
     @switch_to_static_graph
     def to_static_inputs(self, main_program):
@@ -179,7 +202,9 @@ class FunctionSpec(object):
         # Note: if dygraph function is a method of class,
         # consider instance info as hash key.
         if self.is_method():
-            return self._dyfunc, self._args[0]
+            # NOTE: we can use Layer's (instance + function code) as hash key.
+            # An instance will not hold two identical methods 
+            return self._dyfunc_code, self._args[0]
         else:
             return self._dyfunc
 
@@ -251,19 +276,22 @@ class ConcreteProgram(object):
                 # 1. Adds `fluid.data` layers for input if needed
                 inputs = func_spec.to_static_inputs(main_program)
 
-                # 2. Gets all ParamBases in the function
-                all_parameters = list(func_spec.parameters().values())
+                # 2. Gets all ParamBases and buffered VarBases in the function
+                all_parameters_and_buffers = list(func_spec.parameters().values(
+                )) + list(func_spec.buffers().values())
 
                 # 3. Builds program only once and returns the output Variables.
-                with param_guard(func_spec.parameters(False)):
+                with param_guard(func_spec.parameters(False)), param_guard(
+                        func_spec.buffers(False)):
                     outputs = static_func(*inputs)
-                if not isinstance(outputs, (tuple, list)):
-                    outputs = [outputs] if outputs else []
+                if not isinstance(outputs,
+                                  (tuple, list)) and outputs is not None:
+                    outputs = [outputs]
 
         return ConcreteProgram(
             inputs=inputs,
             outputs=outputs,
-            parameters=all_parameters,
+            parameters=all_parameters_and_buffers,
             func=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)
@@ -288,6 +316,17 @@ class ProgramCache(object):
                 type(item))
         if item not in self._caches:
             self._caches[item] = self._build_once(item)
+        return self._caches[item]
+
+    def get_program(self, item):
+        if not isinstance(item, FunctionSpec):
+            raise ValueError(
+                "Input item's type should be FunctionSpec, but received %s" %
+                type(item))
+        if item not in self._caches:
+            raise RuntimeError(
+                "Failed to find program for input item, please decorate input function by `@declarative`."
+            )
         return self._caches[item]
 
     def last(self):
@@ -439,7 +478,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable = False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
@@ -490,7 +529,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable=False. We will "
                 "just return dygraph output.")
             return dygraph_func
@@ -543,7 +582,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable=False."
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
@@ -610,98 +649,6 @@ class ProgramTranslator(object):
         # Get source_code
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
-
-    @switch_to_static_graph
-    def save_inference_model(self, dirname, feed=None, fetch=None):
-        """
-        Saves current model as the inference model. It will prune the main_program
-        to build a new program especially for inference, and then save it and all
-        related parameters to given `dirname` . The saved inference model can be
-        loaded by `:ref:`api_fluid_io_load_inference_model` or `C++ inference APIs.
-
-        Args:
-            dirname (str): the directory to save the inference model.
-            feed (list[int], optional): the indices of the input variables of the
-                dygraph functions which will be saved as input variables in
-                inference model. If None, all input variables of the dygraph function
-                would be the inputs of the saved inference model. Default None.
-            fetch (list[int], optional): the indices of the returned variable of the
-                dygraph functions which will be saved as output variables in
-                inference model. If None, all output variables of the dygraph function
-                would be the outputs of the saved inference model. Default None.
-        Returns:
-            None
-        Examples:
-            .. code-block:: python
-                import numpy as np
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph import Linear
-                from paddle.fluid.dygraph import declarative
-                from paddle.fluid.dygraph import ProgramTranslator
-
-                class SimpleNet(fluid.dygraph.Layer):
-                    def __init__(self, in_size, out_size):
-                        super(SimpleNet, self).__init__()
-                        self._linear = Linear(in_size, out_size)
-
-                    @declarative
-                    def forward(self, x):
-                        y = self._linear(x)
-                        z = self._linear(y)
-                        loss = fluid.layers.mean(z)
-                        return z, loss
-
-                with fluid.dygraph.guard(fluid.CPUPlace()):
-                    net = SimpleNet(8, 8)
-                    adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
-                    x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
-                    for i in range(10):
-                        loss, out = net(x)
-                        loss.backward()
-                        adam.minimize(loss)
-                        net.clear_gradients()
-                # Save inference model.
-                # Note that fetch=[0] means we set 'z' as the inference output.
-                prog_trans = ProgramTranslator()
-                prog_trans.save_inference_model("./dy2stat_infer_model", fetch=[0])
-
-                # In this example, the inference model will be pruned based on output (z).
-                # The pruned inference program is going to be saved in the folder
-                # "./dy2stat_infer_model" and parameters are going to be saved in separate
-                # files in the folder.
-        """
-
-        def get_feed_fetch(var_list, partial_vars, return_name=False):
-            vars = [
-                var for var in var_list if isinstance(var, framework.Variable)
-            ]
-            if partial_vars:
-                vars = [vars[idx] for idx in partial_vars]
-            if return_name:
-                vars = [var.name for var in vars]
-
-            return vars
-
-        func_spec, (concrete_program,
-                    partial_layer) = self._program_cache.last()
-        # share paramBase data with parameter
-        scope = core.Scope()
-        for param_base in concrete_program.parameters:
-            param_tensor = scope.var(param_base.name).get_tensor()
-            src_tensor = param_base.value().get_tensor()
-            param_tensor._share_data_with(src_tensor)
-
-        feed_var_names = get_feed_fetch(concrete_program.inputs, feed, True)
-        fetch_vars = get_feed_fetch(concrete_program.outputs, fetch)
-
-        from paddle.fluid.io import save_inference_model
-        with scope_guard(scope):
-            save_inference_model(
-                dirname=dirname,
-                feeded_var_names=feed_var_names,
-                target_vars=fetch_vars,
-                executor=executor.Executor(framework._current_expected_place()),
-                main_program=concrete_program.main_program.clone())
 
     def get_program_cache(self):
         """

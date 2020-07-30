@@ -54,7 +54,7 @@ class MKLDNNHandlerT {
   }
 
   std::shared_ptr<TForward> AcquireForwardPrimitive() {
-    const std::string key_p = key_ + "@forward_p";
+    const std::string key_p = key_ + "@fwd_p";
     auto forward_p =
         std::static_pointer_cast<TForward>(dev_ctx_.GetBlob(key_p));
     if (forward_p == nullptr) {
@@ -65,7 +65,7 @@ class MKLDNNHandlerT {
   }
 
   std::shared_ptr<TBackward> AcquireBackwardPrimitive() {
-    const std::string key_p = key_ + "@backward_p";
+    const std::string key_p = key_ + "@bwd_p";
     auto backward_p =
         std::static_pointer_cast<TBackward>(dev_ctx_.GetBlob(key_p));
     if (backward_p == nullptr) {
@@ -112,11 +112,11 @@ class MKLDNNHandlerT {
 
  protected:
   bool isCached() {
-    const std::string key_pd = key_common_ + "@forward_pd";
+    const std::string key_pd = key_common_ + "@fwd_pd";
     fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
 
-    const std::string key_p = key_ + "@forward_p";
+    const std::string key_p = key_ + "@fwd_p";
     return (dev_ctx_.GetBlob(key_p) != nullptr);
   }
 
@@ -129,7 +129,7 @@ class MKLDNNHandlerT {
     // Forward PD has to be passed to Grad op that
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
-    const std::string key_pd = key_common_ + "@forward_pd";
+    const std::string key_pd = key_common_ + "@fwd_pd";
     fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
     if (fwd_pd_ == nullptr) {
@@ -169,11 +169,13 @@ class MKLDNNHandlerT {
 
   template <typename... Args>
   void AcquireBackwardPrimitiveDescriptor(Args&&... args) {
-    const std::string key_fwd_pd = key_common_ + "@forward_pd";
+    const std::string key_fwd_pd = key_common_ + "@fwd_pd";
     fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
         dev_ctx_.GetBlob(key_fwd_pd));
-    PADDLE_ENFORCE_NOT_NULL(fwd_pd_);
-    const std::string key_pd = key_ + "@backward_pd";
+    PADDLE_ENFORCE_NOT_NULL(
+        fwd_pd_, platform::errors::Unavailable(
+                     "Get MKLDNN Forward primitive %s failed.", key_fwd_pd));
+    const std::string key_pd = key_ + "@bwd_pd";
     bwd_pd_ = std::static_pointer_cast<typename TBackward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
     if (bwd_pd_ == nullptr) {
@@ -208,6 +210,73 @@ class MKLDNNHandlerT {
       dev_ctx_.SetBlob(local_key, mem_p);
     }
     return mem_p;
+  }
+
+  void AcquireReorder(const std::shared_ptr<mkldnn::memory>& user_memory_p,
+                      const std::shared_ptr<mkldnn::memory>& target_memory_p,
+                      const std::string& suffix) {
+    const auto key_reorder_p = key_ + suffix + "reorder_p";
+
+    auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
+        dev_ctx_.GetBlob(key_reorder_p));
+
+    if (reorder_p == nullptr) {
+      reorder_p =
+          std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
+      dev_ctx_.SetBlob(key_reorder_p, reorder_p);
+    }
+
+    mkldnn::stream astream(engine_);
+    reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
+                                 {MKLDNN_ARG_TO, *target_memory_p}});
+    astream.wait();
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorder(
+      const mkldnn::memory::desc& user_md,
+      const mkldnn::memory::desc& target_md, void* ptr,
+      const std::string& suffix, bool is_persistent = false) {
+    const auto target_key = key_ + suffix + "_target";
+    const auto key_reorder_p = key_ + suffix + "reorder_p";
+    const auto user_key = key_ + suffix + "_user";
+
+    auto target_memory_p =
+        std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(target_key));
+
+    if (target_memory_p == nullptr) {
+      auto user_memory_p =
+          std::make_shared<dnnl::memory>(user_md, engine_, ptr);
+      if (user_md != target_md) {
+        target_memory_p = std::make_shared<mkldnn::memory>(target_md, engine_);
+        auto reorder_p =
+            std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
+        dev_ctx_.SetBlob(key_reorder_p, reorder_p);
+
+        mkldnn::stream astream(engine_);
+        reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
+                                     {MKLDNN_ARG_TO, *target_memory_p}});
+        astream.wait();
+      } else {
+        target_memory_p = user_memory_p;
+      }
+      dev_ctx_.SetBlob(user_key, user_memory_p);
+      dev_ctx_.SetBlob(target_key, target_memory_p);
+    } else if (!is_persistent) {
+      mkldnn::stream astream(engine_);
+
+      auto user_memory_p =
+          std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(user_key));
+      user_memory_p->set_data_handle(ptr);
+
+      auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
+          dev_ctx_.GetBlob(key_reorder_p));
+      if (reorder_p != nullptr) {
+        reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
+                                     {MKLDNN_ARG_TO, *target_memory_p}});
+        astream.wait();
+      }
+    }
+    return target_memory_p;
   }
 
   std::shared_ptr<mkldnn::memory> AcquireMemory(const std::string& suffix) {
@@ -431,17 +500,17 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
           x->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for X tensor"));
+          platform::errors::InvalidArgument("Wrong layout set for X tensor."));
       PADDLE_ENFORCE_NE(
           x->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for X tensor"));
+          platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
       PADDLE_ENFORCE_EQ(
           y->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for Y tensor"));
+          platform::errors::InvalidArgument("Wrong layout set for Y tensor."));
       PADDLE_ENFORCE_NE(
           y->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for Y tensor"));
+          platform::errors::InvalidArgument("Wrong format set for Y tensor."));
 
       const auto src_x_tz = framework::vectorize(x->dims());
       const auto src_y_tz = framework::vectorize(y->dims());
@@ -705,10 +774,10 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
                         platform::errors::InvalidArgument(
-                            "Wrong layout set for Input tensor"));
+                            "Wrong layout set for Input tensor."));
       PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
                         platform::errors::InvalidArgument(
-                            "Wrong format set for Input tensor"));
+                            "Wrong format set for Input tensor."));
 
       const std::string pooling_type = ctx.Attr<std::string>("pooling_type");
 
@@ -726,15 +795,21 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
           ctx.Attr<std::string>("padding_algorithm");
 
       // Only 2D pooling is supported now
-      PADDLE_ENFORCE_EQ(ksize.size(), 2,
-                        platform::errors::InvalidArgument(
-                            "ksize must be 2D, i.e. 2D pooling"));
-      PADDLE_ENFORCE_EQ(pooling_type == "max" || pooling_type == "avg", true,
-                        platform::errors::InvalidArgument(
-                            "pooling_type must be 'max' or 'avg'"));
-      PADDLE_ENFORCE_EQ(input->dims().size(), 4,
-                        platform::errors::InvalidArgument(
-                            "Input dim must be with 4, i.e. NCHW"));
+      PADDLE_ENFORCE_EQ(
+          ksize.size(), 2,
+          platform::errors::InvalidArgument(
+              "The ksize must be 2D, i.e. 2D pooling, but received %dD.",
+              ksize.size()));
+      PADDLE_ENFORCE_EQ(
+          pooling_type == "max" || pooling_type == "avg", true,
+          platform::errors::InvalidArgument(
+              "The pooling_type must be 'max' or 'avg', but received %s.",
+              pooling_type));
+      PADDLE_ENFORCE_EQ(
+          input->dims().size(), 4,
+          platform::errors::InvalidArgument(
+              "Input dim must be with 4, i.e. NCHW, but received %d.",
+              input->dims().size()));
 
       const auto input_dims = input->dims();
       framework::DDim data_dims =
@@ -1352,7 +1427,7 @@ static std::shared_ptr<mkldnn::memory> SetDstMemory(
       residual_param_data,
       platform::errors::PreconditionNotMet("Residual parameter is required for "
                                            "the DNNL conv+elementwise_add "
-                                           "fusion, but now it is missing"));
+                                           "fusion, but now it is missing."));
   std::shared_ptr<mkldnn::memory> user_residual_memory_p =
       handler->AcquireResidualDataMemory(user_residual_md,
                                          to_void_cast<T>(residual_param_data));
@@ -1383,8 +1458,10 @@ static void SetDstMemoryQuantized(
   T* output_data = output->mutable_data<T>(ctx.GetPlace());
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
-  PADDLE_ENFORCE_LE(dst_dims, 5,
-                    "Dst memory for quantization can not have dims > 5");
+  PADDLE_ENFORCE_LE(dst_dims, 5, platform::errors::InvalidArgument(
+                                     "Dst memory for quantization can not have "
+                                     "dims > 5. But received dst_dims is %d.",
+                                     dst_dims));
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
   auto tmp_dst_md = platform::MKLDNNMemDesc(

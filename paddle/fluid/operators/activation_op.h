@@ -585,6 +585,72 @@ struct SinFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct Sinh {
+  HOSTDEVICE T operator()(const T& val) const { return sinh(val); }
+};
+
+template <>
+struct Sinh<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(sinhf(static_cast<float>(val)));
+  }
+};
+
+template <typename T>
+struct Cosh {
+  HOSTDEVICE T operator()(const T& val) const { return cosh(val); }
+};
+
+template <>
+struct Cosh<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(coshf(static_cast<float>(val)));
+  }
+};
+
+// sinh(x) = sinh(x)
+template <typename T>
+struct SinhFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Sinh<T>());
+  }
+};
+
+// cosh(x) = cosh(x)
+template <typename T>
+struct CoshFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Cosh<T>());
+  }
+};
+
+// sinh'(x) = cosh(x)
+template <typename T>
+struct SinhGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * x.unaryExpr(Cosh<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+// cosh'(x) = sinh(x)
+template <typename T>
+struct CoshGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * x.unaryExpr(Sinh<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename T>
 struct Acos {
   HOSTDEVICE T operator()(const T& val) const { return acos(val); }
 };
@@ -1752,6 +1818,8 @@ class PowGradKernel
   __macro(acos, Acos, AcosFunctor, AcosGradFunctor);                          \
   __macro(sin, Sin, SinFunctor, SinGradFunctor);                              \
   __macro(asin, Asin, AsinFunctor, AsinGradFunctor);                          \
+  __macro(sinh, Sinh, SinhFunctor, SinhGradFunctor);                          \
+  __macro(cosh, Cosh, CoshFunctor, CoshGradFunctor);                          \
   __macro(round, Round, RoundFunctor, ZeroGradFunctor);                       \
   __macro(reciprocal, Reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);  \
   __macro(log, Log, LogFunctor, LogGradFunctor);                              \

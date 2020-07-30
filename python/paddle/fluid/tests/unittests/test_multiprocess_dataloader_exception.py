@@ -23,6 +23,7 @@ import multiprocessing
 import numpy as np
 
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.io import Dataset, BatchSampler, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
@@ -109,6 +110,8 @@ class TestDataLoaderAssert(unittest.TestCase):
 
 # CI Converage cannot record stub in subprocess,
 # HACK a _worker_loop in main process call here
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestDataLoaderWorkerLoop(unittest.TestCase):
     def run_without_worker_done(self, use_shared_memory=True):
         try:
@@ -151,7 +154,7 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
 
     def run_with_worker_done(self, use_shared_memory=True):
         try:
-            place = fluid.cpu_places()[0]
+            place = fluid.CPUPlace()
             with fluid.dygraph.guard(place):
                 dataset = RandomDataset(800)
 
@@ -190,7 +193,8 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
             self.assertTrue(False)
 
     def test_main(self):
-        for use_shared_memory in [True, False]:
+        # only HACK a subprocess call here, do not need to use_shared_memory
+        for use_shared_memory in [False]:
             self.run_without_worker_done(use_shared_memory)
             self.run_with_worker_done(use_shared_memory)
 

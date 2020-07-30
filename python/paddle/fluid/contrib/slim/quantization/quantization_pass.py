@@ -127,6 +127,22 @@ def _get_op_output_var_names(op):
     return var_names
 
 
+def _get_output_name_index(op, output_var_name):
+    """Get the output name and index of the var_name in the op"""
+    assert isinstance(op, (IrNode, Operator)), \
+        "The input op should be IrNode or Operator."
+    op_name = op.name() if isinstance(op, IrNode) \
+        else op.type
+    name_list = _op_real_in_out_name[op_name][1]
+    res = None
+    for name in name_list:
+        var_name = op.output(name)
+        for index, val in enumerate(var_name):
+            if val == output_var_name:
+                res = (name, index)
+    return res
+
+
 def _init_var_node(var_node, value, scope, place):
     assert isinstance(value,
                       np.ndarray), 'The type of value should be numpy array.'
@@ -419,6 +435,8 @@ class QuantizationTransformPass(object):
             if op.name() in self._quantizable_ops or \
                     op.name() in self._quantizable_grad_ops:
                 _quant_preprocess(op)
+        # Insert mapping table to solve the problem in saving inference model.
+        graph.out_node_mapping_table = dict()
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
         for op in ops:
@@ -837,6 +855,7 @@ class QuantizationTransformPass(object):
                     shape=var_node.shape(),
                     dtype='float32')
                 out_node = func(in_node)
+                graph.out_node_mapping_table[out_node.name] = var_node.name()
                 # loss shape must be 1 when minimize
                 loss = mean(out_node)
                 if not graph._for_test:
@@ -1021,6 +1040,10 @@ class QuantizationFreezePass(object):
             op_name = op_node.name()
             if op_name in self._fake_quant_op_names:
                 input_arg_name = op_node.input('X')[0]
+                if hasattr(graph, 'out_node_mapping_table'):
+                    if input_arg_name in graph.out_node_mapping_table.keys():
+                        input_arg_name = graph.out_node_mapping_table[
+                            input_arg_name]
                 if input_arg_name in persistable_vars:
                     if self._weight_quantize_type == 'abs_max':
                         param = self._load_var(input_arg_name)
@@ -1426,7 +1449,6 @@ class OutScaleForTrainingPass(object):
         for op in target_ops:
             for output_var_name in _get_op_output_var_names(op):
                 in_node = graph._find_node_by_name(op.outputs, output_var_name)
-                out_node = graph.create_var_node_from_desc(in_node.var())
                 scale_node = graph.create_persistable_node(
                     name=self._scale_name(in_node.name()),
                     var_type=core.VarDesc.VarType.LOD_TENSOR,
@@ -1441,7 +1463,7 @@ class OutScaleForTrainingPass(object):
                     self._scope,
                     self._place)
                 ins = {'X': in_node}
-                outs = {'Out': out_node, 'OutScale': scale_node}
+                outs = {'OutScale': scale_node}
                 if not self._is_test:
                     state_in_node = graph.create_persistable_node(
                         name=unique_name.generate('scale_state@'),
@@ -1486,7 +1508,6 @@ class OutScaleForTrainingPass(object):
                     inputs=ins,
                     outputs=outs)
                 graph.link_to(in_node, scale_op_node)
-                graph.link_to(scale_op_node, out_node)
                 graph.link_to(scale_op_node, scale_node)
                 if not self._is_test:
                     graph.link_to(state_in_node, scale_op_node)
@@ -1528,13 +1549,19 @@ class OutScaleForInferencePass(object):
         op_nodes = graph.all_op_nodes()
         for op_node in op_nodes:
             if op_node.name() in self._teller_set:
-                output_var_name = _get_op_output_var_names(op_node)
-                assert len(output_var_name) == 1, "Only support collecting " \
-                    "output for op that only has an activation output for now."
-                scale_name = self._scale_name(output_var_name[0])
-                scale_v = np.array(
-                    self._scope.find_var(scale_name).get_tensor())[0]
-                op_node.op()._set_attr("out_threshold", float(scale_v))
+                var_names = _get_op_output_var_names(op_node)
+                for var_name in var_names:
+                    # For compatibility, we save output threshold by two methods.
+                    scale_name = self._scale_name(var_name)
+                    scale_v = np.array(
+                        self._scope.find_var(scale_name).get_tensor())[0]
+                    op_node.op()._set_attr("out_threshold", float(scale_v))
+
+                    argname_index = _get_output_name_index(op_node, var_name)
+                    assert argname_index is not None, \
+                        var_name + " is not the output of the op"
+                    op_node.op()._set_attr(argname_index[0] + str(argname_index[1]) \
+                        + "_threshold", float(scale_v))
         graph.resolve_hazard()
         return graph
 
