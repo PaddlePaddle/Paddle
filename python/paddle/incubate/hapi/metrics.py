@@ -170,6 +170,7 @@ class Accuracy(Metric):
         
         .. code-block:: python
 
+        import paddle
         import paddle.fluid as fluid
         import paddle.incubate.hapi as hapi
 
@@ -177,12 +178,12 @@ class Accuracy(Metric):
 
         train_dataset = hapi.datasets.MNIST(mode='train')
 
-        model = hapi.Model(hapi.vision.LeNet())
+        model = hapi.Model(hapi.vision.LeNet(classifier_activation=None))
         optim = fluid.optimizer.Adam(
             learning_rate=0.001, parameter_list=model.parameters())
         model.prepare(
             optim,
-            loss_function=hapi.loss.CrossEntropy(average=False),
+            loss_function=paddle.nn.CrossEntropyLoss(),
             metrics=hapi.metrics.Accuracy())
 
         model.fit(train_dataset, batch_size=64)
