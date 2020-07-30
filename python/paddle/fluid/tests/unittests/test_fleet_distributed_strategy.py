@@ -178,20 +178,20 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.lamb = "True"
         self.assertEqual(strategy.lamb, False)
 
-    def test_async_update(self):
+    def test_a_sync(self):
         strategy = paddle.fleet.DistributedStrategy()
-        strategy.async_update = True
-        self.assertEqual(strategy.async_update, True)
-        strategy.async_update = False
-        self.assertEqual(strategy.async_update, False)
-        strategy.async_update = "True"
-        self.assertEqual(strategy.async_update, False)
+        strategy.a_sync = True
+        self.assertEqual(strategy.a_sync, True)
+        strategy.a_sync = False
+        self.assertEqual(strategy.a_sync, False)
+        strategy.a_sync = "True"
+        self.assertEqual(strategy.a_sync, False)
 
-    def test_async_configs(self):
+    def test_a_sync_configs(self):
         strategy = paddle.fleet.DistributedStrategy()
         configs = {"k_steps": 1000}
-        strategy.async_update_configs = configs
-        self.assertEqual(strategy.async_update_configs["k_steps"], 1000)
+        strategy.a_sync_configs = configs
+        self.assertEqual(strategy.a_sync_configs["k_steps"], 1000)
 
     def test_elastic(self):
         strategy = paddle.fleet.DistributedStrategy()
@@ -213,7 +213,7 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_strategy_prototxt(self):
         strategy = paddle.fleet.DistributedStrategy()
-        strategy.async_update = True
+        strategy.a_sync = True
         strategy.localsgd = True
         strategy.dgc = True
         localsgd_configs = {"k_steps": 5}

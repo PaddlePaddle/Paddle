@@ -16,6 +16,7 @@ from paddle.fluid.framework import core
 from paddle.fluid import compiler
 from .meta_optimizer_base import MetaOptimizerBase
 from ..base.private_helper_function import wait_server_ready
+import logging
 
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
@@ -32,6 +33,10 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         """
         Basically, this is PE, and almost all programs can be executed here
         """
+        if not self.role_maker._is_collective:
+            # update me. currently, if parameter server is used
+            # graph execution optimizer can not be applied
+            return False
         return True
 
     def backward(self,
@@ -177,6 +182,10 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             share_vars_from=None)
 
         return self._compiled_program
+
+    def _disable_strategy(self, dist_strategy):
+        # TODO(guru4elephant): should close all PE related flags here
+        pass
 
     def minimize(self,
                  loss,

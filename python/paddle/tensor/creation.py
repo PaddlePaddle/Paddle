@@ -241,26 +241,29 @@ def zeros(shape, dtype=None, name=None):
 def zeros_like(x, dtype=None, name=None):
     """
 	:alias_main: paddle.zeros_like
-	:alias: paddle.zeros_like, paddle.tensor.zeros_like, paddle.tensor.creation.zeros_like
+	:alias: paddle.tensor.zeros_like, paddle.tensor.creation.zeros_like
 
-    This function creates a zeros tensor which has identical shape and dtype 
-    with `input`.
+    This OP returns a Tensor filled with the value 0, with the same shape and
+    data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Args:
-        x(Variable): The input tensor which specifies shape and dtype. The
-            dtype of input can be bool, float16, float32, float64, int32, int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can
-            be set bool, float16, float32, float64, int32, int64. The default
-            value is None, the dtype is the same as input.
+        x(Tensor): The input tensor which specifies shape and dtype. The
+            dtype of ``x`` can be bool, float16, float32, float64, int32, int64.
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+            output tensor. Supported data types: bool, float16, float32, float64,
+            int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
+            Default is None.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        out(Variable): The tensor variable storing the output.
+        Tensor: A Tensor filled with the value 0, with the same shape and
+        data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Raise:
-        TypeError: If dtype is not bool, float16, float32, float64, int32 or int64.
+        TypeError: If ``dtype`` is not None and is not bool, float16, float32,
+            float64, int32 or int64.
 
     Examples:
         .. code-block:: python
@@ -271,8 +274,8 @@ def zeros_like(x, dtype=None, name=None):
         paddle.enable_imperative()
 
         x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
-        out1 = paddle.zeros_like(x) # [1.0, 1.0, 1.0]
-        out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
+        out1 = paddle.zeros_like(x) # [0., 0., 0.]
+        out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
 
     """
     return full_like(x=x, fill_value=0, dtype=dtype, name=name)
@@ -388,45 +391,43 @@ def full(shape, fill_value, dtype=None, name=None):
 def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
 	:alias_main: paddle.arange
-	:alias: paddle.arange,paddle.tensor.arange,paddle.tensor.creation.arange
+	:alias: paddle.tensor.arange, paddle.tensor.creation.arange
 
-    Return evenly spaced values within a given interval.
+    This OP returns a 1-D Tensor with spaced values within a given interval.
 
-    Values are generated into the half-open interval [start, stop) with the step.
-    (the interval including start but excluding stop).
+    Values are generated into the half-open interval [``start``, ``end``) with
+    the ``step``. (the interval including ``start`` but excluding ``end``).
 
-    If dtype is float32 or float64, we advise adding a small epsilon to end to
-    avoid floating point rounding errors when comparing against end.
+    If ``dtype`` is float32 or float64, we advise adding a small epsilon to
+    ``end`` to avoid floating point rounding errors when comparing against ``end``.
 
     Parameters:
-        start(float|int|Variable): Start of interval. The interval includes
-            this value. If end is None, the half-open interval is [0, start).
-            If start is Variable, it is a 1-D Tensor with shape [1], and it's
-            data type should be one of int32, int64, float32, float64. Default
-            is 0.
-        end(float|int|Variable, optional): End of interval. The interval does
-            not include this value. When end is Variable, it is a 1-D Tensor
-            with shape [1], and it's data type should be one of int32, int64,
-            float32, float64. If end is None, the half-open interval is [0, start).
-            Default is None.
-        step(float|int|Variable, optional): Spacing between values. For any
-            out, this is the istance between two adjacent values, out[i+1] - out[i].
-            When end is Variable, it is a 1-D Tensor with shape [1], and it's
-            data type should be one of int32, int64, float32, float64. Default is 1.
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
-            the output tensor, can be float32, float64, int32, int64. If dtype
-            is `None` , the data type of out tensor is `int64` . Defaule is None
-        name(str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-            Default is None.
+        start(float|int|Tensor): Start of interval. The interval includes this
+            value. If ``end`` is None, the half-open interval is [0, ``start``).
+            If ``start`` is a Tensor, it is a 1-D Tensor with shape [1], with
+            data type int32, int64, float32, float64. Default is 0.
+        end(float|int|Tensor, optional): End of interval. The interval does not
+            include this value. If ``end`` is a Tensor, it is a 1-D Tensor with
+            shape [1], with data type int32, int64, float32, float64. If ``end``
+            is None, the half-open interval is [0, ``start``). Default is None.
+        step(float|int|Tensor, optional): Spacing between values. For any out,
+            it is the istance between two adjacent values, out[i+1] - out[i].
+            If ``step`` is a Tensor, it is a 1-D Tensor with shape [1], with
+            data type int32, int64, float32, float64. Default is 1.
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+            output tensor. Supported data types: int32, int64, float32, float64.
+            If ``dytpe`` is None, the data type is float32. Default is None.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
-    Returns: a 1-D Tensor which is evenly spaced values within a given interval.
-        Its data type is set by dtype.
-    
-    Return type: Variable
+    Returns: 
+        Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
+            taken with common difference ``step`` beginning from ``start``. Its
+            data type is set by ``dtype``.
 
     Raises:
-        TypeError: If dtype is not float32, float64, int32 or int64.
+        TypeError: If ``dtype`` is not int32, int64, float32, float64.
 
     examples:
 

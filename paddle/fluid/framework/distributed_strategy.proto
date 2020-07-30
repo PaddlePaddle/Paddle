@@ -85,7 +85,7 @@ message DistributedStrategy {
   optional bool pipeline = 9 [ default = false ];
   optional bool elastic = 10 [ default = false ];
   optional bool auto = 11 [ default = false ];
-  optional bool async = 12 [ default = true ];
+  optional bool a_sync = 12 [ default = true ];
   optional bool sync_nccl_allreduce = 13 [ default = true ];
   optional int32 nccl_comm_num = 14 [ default = 1 ];
   optional bool use_hierarchical_allreduce = 15 [ default = false ];
@@ -99,7 +99,7 @@ message DistributedStrategy {
   optional LocalSGDConfig localsgd_configs = 103;
   optional GradientMergeConfig gradient_merge_configs = 104;
   optional PipelineConfig pipeline_configs = 106;
-  optional AsyncConfig async_configs = 107;
+  optional AsyncConfig a_sync_configs = 107;
 
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
