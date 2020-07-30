@@ -22,8 +22,9 @@ template <typename T>
 __global__ void MomentumLarsKernel(const T* p, const T* g, const T* v,
                                    const T* learning_rate, const T mu,
                                    const int64_t num, const T lars_coeff,
-                                   const T lars_weight_decay, const T lars_eps, const T* p_norm,
-                                   const T* g_norm, T* p_out, T* v_out) {
+                                   const T lars_weight_decay, const T lars_eps,
+                                   const T* p_norm, const T* g_norm, T* p_out,
+                                   T* v_out) {
   T lr = learning_rate[0];
   T local_lr = learning_rate[0];
   CUDA_KERNEL_LOOP(i, num) {
@@ -79,8 +80,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     ep_norm.device(*place) = eigen_p.square().sum().sqrt();
     eg_norm.device(*place) = eigen_g.square().sum().sqrt();
     MomentumLarsKernel<<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-        p, g, v, lr, mu, param->numel(), lars_coeff, lars_weight_decay, lars_eps,
-        p_norm_data, g_norm_data, p_out, v_out);
+        p, g, v, lr, mu, param->numel(), lars_coeff, lars_weight_decay,
+        lars_eps, p_norm_data, g_norm_data, p_out, v_out);
   }
 };
 
