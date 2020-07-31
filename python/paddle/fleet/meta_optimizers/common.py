@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License');
 # you may not use this file except in compliance with the License.
@@ -16,31 +16,53 @@ from __future__ import print_function
 
 import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
-from paddle.fluid.transpiler.details import wait_server_ready
+from ..base.private_helper_function import wait_server_ready
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+OP_ROLE_VAR_KEY = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+
+
+def is_update_op(op):
+    return 'Param' in op.input_names and 'Grad' in op.input_names and \
+            "LearningRate" in op.input_names
+
+
+def is_loss_grad_op(op):
+    if OP_ROLE_KEY not in op.attr_names:
+        return False
+    op_role = int(op.all_attrs()[OP_ROLE_KEY])
+    return op_role & int(OpRole.Backward) and op_role & int(OpRole.Loss)
+
+
+def is_backward_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
+
+
+def is_optimizer_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
+
 
 class CollectiveHelper(object):
-    def __init__(self, nrings=1, wait_port='6174'):
+    def __init__(self, role_maker, nrings=1, wait_port='6174'):
         self.nrings = nrings
         self.wait_port = wait_port
-
-        op_maker = core.op_proto_and_checker_maker
-        self.op_role_key = op_maker.kOpRoleAttrName()
-        self.op_role_var_key = op_maker.kOpRoleVarAttrName()
+        self.role_maker = role_maker
 
     def update_startup_program(self, startup_program=None):
+        self.startup_program = startup_program
         if startup_program is None:
-            startup_program = fluid.default_startup_program()
+            self.startup_program = fluid.default_startup_program()
 
-        import paddle.fleet as fleet
-        endpoints = fleet.get_trainer_endpoints()
-        current_endpoint = fleet.current_trainer_endpoint()
+        endpoints = self.role_maker.get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker.worker_index()]
         for ring_id in range(self.nrings):
             self._init_communicator(
-                startup_program, current_endpoint, endpoints,
-                fleet.worker_index(), ring_id, self.wait_port)
+                self.startup_program, current_endpoint, endpoints,
+                self.role_maker.worker_index(), ring_id, self.wait_port)
         self._broadcast_params()
 
     def _init_communicator(self, program, current_endpoint, endpoints, rank,
@@ -64,7 +86,7 @@ class CollectiveHelper(object):
                 'rank': rank,
                 'endpoint': current_endpoint,
                 'other_endpoints': other_endpoints,
-                self.op_role_key: OpRole.Forward
+                OP_ROLE_KEY: OpRole.Forward
             })
         block.append_op(
             type='c_comm_init',
@@ -74,7 +96,7 @@ class CollectiveHelper(object):
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': ring_id,
-                self.op_role_key: OpRole.Forward
+                OP_ROLE_KEY: OpRole.Forward
             })
 
     def _broadcast_params(self):
@@ -92,7 +114,7 @@ class CollectiveHelper(object):
                 attrs={
                     'ring_id': ring_id,
                     'root': 0,
-                    self.op_role_key: OpRole.Forward
+                    OP_ROLE_KEY: OpRole.Forward
                 })
 
         for ring_id in range(self.nrings):
@@ -101,22 +123,4 @@ class CollectiveHelper(object):
                 inputs={'X': param},
                 outputs={'Out': param},
                 attrs={'ring_id': ring_id,
-                       self.op_role_key: OpRole.Forward})
-
-    def is_loss_grad_op(self, op):
-        if self.op_role_key not in op.attr_names:
-            return False
-        op_role = int(op.all_attrs()[self.op_role_key])
-        return op_role & int(OpRole.Backward) and op_role & int(OpRole.Loss)
-
-    def is_backward_op(self, op):
-        return self.op_role_key in op.attr_names and \
-                int(op.all_attrs()[self.op_role_key]) & int(OpRole.Backward)
-
-    def is_update_op(self, op):
-        return 'Param' in op.input_names and 'Grad' in op.input_names and \
-                "LearningRate" in op.input_names
-
-    def is_optimizer_op(self, op):
-        return self.op_role_key in op.attr_names and \
-                int(op.all_attrs()[self.op_role_key]) & int(OpRole.Optimize)
+                       OP_ROLE_KEY: OpRole.Forward})

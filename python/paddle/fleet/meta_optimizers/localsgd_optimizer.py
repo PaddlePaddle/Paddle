@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
+from paddle.fluid import program_guard, layers
 from paddle.fluid.optimizer import Momentum, SGD
 from .meta_optimizer_base import MetaOptimizerBase
-from .collective_helper import CollectiveHelper
+from .common import OpRole, OP_ROLE_KEY, CollectiveHelper, is_update_op
 
 
 class LocalSGDOptimizer(MetaOptimizerBase):
@@ -30,8 +31,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         if not self.user_defined_strategy.localsgd:
             return False
 
-        import paddle.fleet as fleet
-        if fleet.worker_num() <= 1:
+        if self.role_maker.worker_num() <= 1:
             return False
 
         return isinstance(self.inner_opt, Momentum) \
@@ -52,7 +52,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         minimized = self.inner_opt.minimize(
             loss, startup_program=startup_program)
 
-        init_k_steps = self.user_defined_strategy.localsgd_configs.k_steps
+        init_k_steps = self.user_defined_strategy.localsgd_configs['k_steps']
         auto_steps = self.user_defined_strategy.auto
 
         if startup_program is None:
@@ -60,7 +60,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         main_block = loss.block
 
         self.nrings = 2
-        collective_helper = CollectiveHelper(nrings)
+        collective_helper = CollectiveHelper(self.role_maker, self.nrings)
         collective_helper.update_startup_program(startup_program)
 
         with program_guard(main_block.program):
@@ -79,89 +79,101 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                 persistable=True)
 
             if auto_steps:
+                lr_0 = layers.create_global_var(
+                    name="lr_0",
+                    shape=[1],
+                    value=float(0),
+                    dtype='float32',
+                    persistable=True)
+                loss_0 = layers.create_global_var(
+                    name="loss_0",
+                    shape=[1],
+                    value=float(0),
+                    dtype='float32',
+                    persistable=True)
+
                 global_lr = self.inner_opt._global_learning_rate()
 
                 def initialize():
-                    loss_0 = layers.assign(loss)
-                    lr_0 = layers.assign(global_lr)
+                    layers.assign(loss, loss_0)
+                    layers.assign(global_lr, lr_0)
 
                 layers.cond(step == 0, initialize)
 
             def communicate():
                 ordered_param_snapshot = []
                 ring_id = -1
-                for idx, op in reversed(list(enumerate(block.ops))):
-                    if collective_helper.is_update_op(op):
-                        param = block.vars[op.input('Param')[0]]
+                for idx, op in reversed(list(enumerate(main_block.ops))):
+                    if is_update_op(op):
+                        param = main_block.vars[op.input('Param')[0]]
                         if param.is_distributed:
                             continue
 
-                        snapshot = block.create_var(
+                        snapshot = main_block.create_var(
                             name=self.snapshot_name(param.name),
                             shape=param.shape,
                             persistable=True,
                             stop_gradient=True,
                             dtype=param.dtype)
 
-                        block._insert_op(
+                        main_block._insert_op(
                             idx + 1,
                             type='elementwise_sub',
                             inputs={'X': [snapshot],
                                     'Y': [param]},
                             outputs={'Out': [param]},
-                            attrs={self.op_role_key: OpRole.Optimize})
-                        block._insert_op(
+                            attrs={OP_ROLE_KEY: OpRole.Optimize})
+                        main_block._insert_op(
                             idx + 2,
                             type='c_sync_calc_stream',
                             inputs={'X': param},
                             outputs={'Out': param},
-                            attrs={self.op_role_key: OpRole.Optimize})
+                            attrs={OP_ROLE_KEY: OpRole.Optimize})
                         ring_id = (ring_id + 1) % self.nrings
-                        block._insert_op(
+                        main_block._insert_op(
                             idx + 3,
                             type='c_allreduce_sum',
                             inputs={'X': [param]},
                             outputs={'Out': [param]},
                             attrs={
                                 'ring_id': ring_id,
-                                self.op_role_key: OpRole.Optimize
+                                OP_ROLE_KEY: OpRole.Optimize
                             })
 
                         ordered_param_snapshot.append((param, snapshot))
 
                 for ring_id in range(self.nrings):
-                    block.append_op(
+                    main_block.append_op(
                         type='c_sync_comm_stream',
                         inputs={'X': param},
                         outputs={'Out': param},
                         attrs={
                             'ring_id': ring_id,
-                            self.op_role_key: OpRole.Optimize
+                            OP_ROLE_KEY: OpRole.Optimize
                         })
 
-                import paddle.fleet as fleet
                 for param_snapshot in reversed(ordered_param_snapshot):
                     param = param_snapshot[0]
                     snapshot = param_snapshot[1]
-                    block.append_op(
+                    main_block.append_op(
                         type='scale',
                         inputs={'X': [param]},
                         outputs={'Out': [param]},
                         attrs={
-                            'scale': 1.0 / fleet.worker_num(),
-                            self.op_role_key: OpRole.Optimize
+                            'scale': 1.0 / self.role_maker.worker_num(),
+                            OP_ROLE_KEY: OpRole.Optimize
                         })
-                    block.append_op(
+                    main_block.append_op(
                         type='elementwise_sub',
                         inputs={'X': [snapshot],
                                 'Y': [param]},
                         outputs={'Out': [param]},
-                        attrs={self.op_role_key: OpRole.Optimize})
-                    block.append_op(
+                        attrs={OP_ROLE_KEY: OpRole.Optimize})
+                    main_block.append_op(
                         type='assign',
                         inputs={'X': [param]},
                         outputs={'Out': [snapshot]},
-                        attrs={self.op_role_key: OpRole.Optimize})
+                        attrs={OP_ROLE_KEY: OpRole.Optimize})
 
                 if auto_steps:
                     next_local_steps = layers.cast(
@@ -169,7 +181,8 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                             layers.sqrt(lr_0 * loss / (global_lr * loss_0) *
                                         float(init_k_steps))),
                         dtype='int64')
-                    max_local_steps = 16
+                    max_local_steps = layers.fill_constant(
+                        shape=[1], dtype='int64', value=16)
                     next_local_steps = layers.elementwise_min(next_local_steps,
                                                               max_local_steps)
                     layers.assign(next_local_steps, k_steps)
