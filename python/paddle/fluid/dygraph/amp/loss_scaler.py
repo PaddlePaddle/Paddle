@@ -61,7 +61,7 @@ class AmpScaler(object):
         """
         tracer = _dygraph_tracer()
         if not tracer:
-            raise Exception(
+            raise ValueError(
                 "current_tracer is None, maybe it is not in imperative mode.")
 
         if enable and not tracer._expected_place.is_gpu_place():

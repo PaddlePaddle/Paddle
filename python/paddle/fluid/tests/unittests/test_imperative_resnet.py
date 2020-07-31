@@ -310,7 +310,7 @@ class TestDygraphResnet(unittest.TestCase):
                 avg_loss = fluid.layers.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
-                print(batch_id, dy_out)
+
                 if batch_id == 0:
                     for param in resnet.parameters():
                         if param.name not in dy_param_init_value:
