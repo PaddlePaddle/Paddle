@@ -108,7 +108,7 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
   auto stream = copy_streams_[num];
   auto event = events_[num];
 
-  auto dev_id = BOOST_GET_CONST<platform::CUDAPlace>(place).device;
+  auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
   platform::CUDADeviceGuard guard(dev_id);
   auto& block = program.Block(0);
   for (auto& var : block.AllVars()) {
@@ -142,12 +142,12 @@ void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
   if (platform::is_cpu_place(root_tensor->place())) {
-    memory::Copy(BOOST_GET_CONST<platform::CUDAPlace>(thread_place), thread_ptr,
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, thread_place), thread_ptr,
                  platform::CPUPlace(), root_ptr,
                  sizeof(T) * root_tensor->numel(), stream);
   } else {
-    memory::Copy(BOOST_GET_CONST<platform::CUDAPlace>(thread_place), thread_ptr,
-                 BOOST_GET_CONST<platform::CUDAPlace>(root_tensor->place()),
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, thread_place), thread_ptr,
+                 BOOST_GET_CONST(platform::CUDAPlace, root_tensor->place()),
                  root_ptr, sizeof(T) * root_tensor->numel(), stream);
   }
 }
@@ -230,7 +230,7 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
         OperatorBase* local_op_ptr = local_op.release();
         (context->ops_).push_back(local_op_ptr);
       }
-      auto dev_id = BOOST_GET_CONST<platform::CUDAPlace>(place).device;
+      auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
       platform::CUDADeviceGuard guard(dev_id);
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));
@@ -279,7 +279,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       _ForEachDataType_(MergeCallback);
       if (platform::is_gpu_place(thread_tensor->place())) {
         auto dev_id =
-            BOOST_GET_CONST<platform::CUDAPlace>(thread_tensor->place()).device;
+            BOOST_GET_CONST(platform::CUDAPlace, thread_tensor->place()).device;
         platform::CUDADeviceGuard guard(dev_id);
         cudaMemset(thread_tensor->data<void>(), 0,
                    thread_tensor->numel() * SizeOfType(thread_tensor->type()));
@@ -293,7 +293,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
                                merge_var);
     if (platform::is_gpu_place(root_tensor->place())) {
       auto dev_id =
-          BOOST_GET_CONST<platform::CUDAPlace>(root_tensor->place()).device;
+          BOOST_GET_CONST(platform::CUDAPlace, root_tensor->place()).device;
       platform::CUDADeviceGuard guard(dev_id);
       cudaMemset(root_tensor->data<void>(), 0,
                  root_tensor->numel() * SizeOfType(root_tensor->type()));
@@ -357,7 +357,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
       (context->ops_).push_back(local_op_ptr);
     }
 
-    auto dev_id = BOOST_GET_CONST<platform::CUDAPlace>(place).device;
+    auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
     platform::CUDADeviceGuard guard(dev_id);
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));

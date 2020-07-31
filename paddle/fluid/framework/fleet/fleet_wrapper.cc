@@ -721,7 +721,7 @@ void FleetWrapper::PushDenseVarsAsync(
     float* pin_g = pin_tensor->mutable_data<float>(tensor->dims(),
                                                    platform::CUDAPinnedPlace());
     memory::Copy(platform::CUDAPinnedPlace(), pin_g,
-                 BOOST_GET_CONST<platform::CUDAPlace>(place), g_data,
+                 BOOST_GET_CONST(platform::CUDAPlace, place), g_data,
                  sizeof(float) * count, stream);
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
     cudaEventSynchronize(event);
