@@ -453,7 +453,7 @@ def dist(x, y, p=2):
 def dot(x, y, name=None):
     """
 	:alias_main: paddle.dot
-	:alias: paddle.dot,paddle.tensor.dot,paddle.tensor.linalg.dot
+	:alias: paddle.dot, paddle.tensor.dot, paddle.tensor.linalg.dot
 
     This operator calculates inner product for vectors.
    
@@ -461,12 +461,12 @@ def dot(x, y, name=None):
        Only support 1-d Tensor(vector).
 
     Parameters:
-        x(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
-        y(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        x(Variable): 1-D ``Tensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
+        y(Variable): 1-D ``Tensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
-        Variable: the calculated result Tensor/LoDTensor.
+        Variable: the calculated result Tensor.
 
     Examples:
 
@@ -475,12 +475,14 @@ def dot(x, y, name=None):
         import paddle
         import paddle.fluid as fluid
         import numpy as np
-        
-        with fluid.dygraph.guard():
-          x = fluid.dygraph.to_variable(np.random.uniform(0.1, 1, [10]).astype(np.float32))
-          y = fluid.dygraph.to_variable(np.random.uniform(1, 3, [10]).astype(np.float32))
-          z = paddle.dot(x, y)
-          print(z.numpy())
+
+        paddle.enable_imperative()
+        x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
+        y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        z = paddle.dot(x, y)
+        print(z.numpy())
 
     """
     op_type = 'dot'
@@ -651,10 +653,10 @@ def cross(x, y, axis=None, name=None):
     return out
 
 
-def cholesky(x, upper=False):
+def cholesky(x, upper=False, name=None):
     """
 	:alias_main: paddle.cholesky
-	:alias: paddle.cholesky,paddle.tensor.cholesky,paddle.tensor.linalg.cholesky
+	:alias: paddle.cholesky, paddle.tensor.cholesky, paddle.tensor.linalg.cholesky
 
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrice. 
@@ -680,19 +682,18 @@ def cholesky(x, upper=False):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
-            with fluid.dygraph.guard():
-                a = np.random.rand(3, 3)
-                a_t = np.transpose(a, [1, 0])
-                x = np.matmul(a, a_t) + 1e-03
-                x = fluid.dygraph.to_variable(x)
-                out = paddle.cholesky(x, upper=False)
-                print(out.numpy())
-                # [[1.190523   0.         0.        ]
-                #  [0.9906703  0.27676893 0.        ]
-                #  [1.25450498 0.05600871 0.06400121]]
+            paddle.enable_imperative()
+            a = np.random.rand(3, 3)
+            a_t = np.transpose(a, [1, 0])
+            x_data = np.matmul(a, a_t) + 1e-03
+            x = paddle.imperative.to_variable(x_data)
+            out = paddle.cholesky(x, upper=False)
+            print(out.numpy())
+            # [[1.190523   0.         0.        ]
+            #  [0.9906703  0.27676893 0.        ]
+            #  [1.25450498 0.05600871 0.06400121]]
 
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
