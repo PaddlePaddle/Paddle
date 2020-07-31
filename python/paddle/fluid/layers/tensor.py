@@ -342,6 +342,8 @@ def concat(input, axis=0, name=None):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
 
     if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
+                "number of the elements must be 1, but received %s." % len(x)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
         helper.append_op(
             type='tensor_array_to_tensor',
