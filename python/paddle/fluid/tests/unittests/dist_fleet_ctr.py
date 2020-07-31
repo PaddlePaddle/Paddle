@@ -34,6 +34,17 @@ fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
 
 
+def fake_ctr_reader():
+    def reader():
+        for _ in range(1000):
+            deep = np.random.random_integers(0, 1e5 - 1, size=16).tolist()
+            wide = np.random.random_integers(0, 1e5 - 1, size=8).tolist()
+            label = np.random.random_integers(0, 1, size=1).tolist()
+            yield [deep, wide, label]
+
+    return reader
+
+
 class TestDistCTR2x2(FleetDistRunnerBase):
     """
     For test CTR model, using Fleet api
@@ -49,8 +60,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         Returns:
             avg_cost: LoDTensor of cost.
         """
-        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
-        )
+        dnn_input_dim, lr_input_dim = int(1e5), int(1e5)
+
         dnn_data = fluid.layers.data(
             name="dnn_data",
             shape=[-1, 1],
@@ -125,7 +136,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         avg_cost = fluid.layers.mean(x=cost)
 
         self.feeds = datas
-        self.train_file_path = train_file_path
+        self.train_file_path = ["fake1", "fake2"]
         self.avg_cost = avg_cost
         self.predict = predict
 
@@ -147,25 +158,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         Args:
             fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
         """
-        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
-        )
 
         exe = fluid.Executor(fluid.CPUPlace())
-
         fleet.init_worker()
         exe.run(fleet.startup_program)
 
-        thread_num = 2
-        batch_size = 128
-        filelist = []
-        for _ in range(thread_num):
-            filelist.append(train_file_path)
-
-        train_reader = paddle.batch(
-            paddle.reader.shuffle(
-                ctr_dataset_reader.CtrReader()._reader_creator(filelist),
-                buf_size=batch_size * 100),
-            batch_size=batch_size)
+        batch_size = 4
+        train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
         self.reader.decorate_sample_list_generator(train_reader)
 
         compiled_prog = fluid.compiler.CompiledProgram(

@@ -1079,9 +1079,6 @@ class Executor(object):
                 use_prune=use_prune,
                 return_merged=return_merged)
         except Exception as e:
-            if not isinstance(e, core.EOFException):
-                warnings.warn(
-                    "The following exception is not an EOF exception.")
             six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
@@ -1337,14 +1334,25 @@ class Executor(object):
                           fetch_info=None,
                           print_period=100,
                           fetch_handler=None):
-        if dataset is None:
-            raise RuntimeError("dataset is need and should be initialized")
-
-        if program._pipeline_opt is not None and program._pipeline_opt[
-                "sync_steps"] != -1:
-            # hack for paddlebox: sync_steps(-1) denotes paddlebox
-            thread = self._adjust_pipeline_resource(program._pipeline_opt,
-                                                    dataset, thread)
+        if program._pipeline_opt is not None:
+            import paddle
+            if dataset is not None:
+                raise RuntimeError("dataset should be None for pipeline mode")
+            # The following fake dataset is created to call 
+            # the _prepare_trainer api, and it is meaningless.
+            data_vars = []
+            for var in program.global_block().vars.values():
+                if var.is_data:
+                    data_vars.append(var)
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset')
+            dataset.set_batch_size(1)
+            dataset.set_thread(1)
+            dataset.set_filelist(['None'])
+            dataset.set_use_var(data_vars)
+        else:
+            if dataset is None:
+                raise RuntimeError("dataset is need and should be initialized")
 
         dataset._prepare_to_run()
 

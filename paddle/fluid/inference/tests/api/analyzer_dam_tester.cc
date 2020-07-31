@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <vector>
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
-DEFINE_int32(max_turn_num, 9,
-             "The max turn number: 1 for the small and 9 for the normal.");
+const int FLAGS_max_turn_num = 1;
 
 namespace paddle {
 namespace inference {
@@ -300,7 +301,7 @@ TEST(Analyzer_dam, compare_determine) {
 TEST(Analyzer_dam, save_optim_model) {
   AnalysisConfig cfg;
   std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
-  mkdir(optimModelPath.c_str(), 0777);
+  MKDIR(optimModelPath.c_str());
   SetConfig(&cfg);
   SaveOptimModel(&cfg, optimModelPath);
 }

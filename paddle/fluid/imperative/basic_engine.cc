@@ -33,8 +33,10 @@
 namespace paddle {
 namespace imperative {
 
-void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
+void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy,
+                       bool retain_graph) {
   backward_strategy_ = strategy;
+  retain_graph_ = retain_graph;
   init_node_ = var->GradVarBase()->GradNode();
   var->GradVarBase()->ClearGradNode();
 
@@ -226,7 +228,9 @@ void BasicEngine::Execute() {
       need_accu_var_list_.clear();
 
       VLOG(3) << "Remove op after op " << cur_op.Type() << " runs";
-      cur_op.ClearBackwardTrace();
+      if (!retain_graph_) {
+        cur_op.ClearBackwardTrace();
+      }
     }
 
     // Step 3: Collect ready ops

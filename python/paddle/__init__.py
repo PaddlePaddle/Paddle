@@ -98,7 +98,7 @@ from .tensor.logic import not_equal  #DEFINE_ALIAS
 from .tensor.logic import reduce_all  #DEFINE_ALIAS
 from .tensor.logic import reduce_any  #DEFINE_ALIAS
 from .tensor.logic import allclose  #DEFINE_ALIAS
-from .tensor.logic import elementwise_equal  #DEFINE_ALIAS
+from .tensor.logic import equal_all  #DEFINE_ALIAS
 # from .tensor.logic import isnan        #DEFINE_ALIAS
 from .tensor.manipulation import cast  #DEFINE_ALIAS
 from .tensor.manipulation import concat  #DEFINE_ALIAS
@@ -132,6 +132,7 @@ from .tensor.math import asin  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import ceil  #DEFINE_ALIAS
 from .tensor.math import cos  #DEFINE_ALIAS
+from .tensor.math import cosh  #DEFINE_ALIAS
 from .tensor.math import cumsum  #DEFINE_ALIAS
 from .tensor.math import elementwise_add  #DEFINE_ALIAS
 from .tensor.math import elementwise_div  #DEFINE_ALIAS
@@ -157,6 +158,7 @@ from .tensor.math import rsqrt  #DEFINE_ALIAS
 from .tensor.math import scale  #DEFINE_ALIAS
 from .tensor.math import sign  #DEFINE_ALIAS
 from .tensor.math import sin  #DEFINE_ALIAS
+from .tensor.math import sinh  #DEFINE_ALIAS
 from .tensor.math import sqrt  #DEFINE_ALIAS
 from .tensor.math import square  #DEFINE_ALIAS
 from .tensor.math import stanh  #DEFINE_ALIAS
