@@ -18,6 +18,9 @@ import os
 
 
 class TestFleetMetaOptimizer(unittest.TestCase):
+    def setUp(self):
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
+
     def test_pipeline_optimizer(self):
         import paddle.fleet as fleet
         import paddle.fluid.incubate.fleet.base.role_maker as role_maker
