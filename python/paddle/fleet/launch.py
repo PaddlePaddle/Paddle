@@ -304,14 +304,15 @@ def launch():
         if co_arg in " ".join(sys.argv[1:-1])
     ]
     if len(has_ps_args) > 0 or fluid.core.get_cuda_device_count() == 0:
-        logger.info("sys.argv[1:]:{}".format(sys.argv[1:]))
+        logger.info("Run cpu parameter-sever mode.")
         launch_ps(args)
     elif len(has_collective_args) > 0:
-        logger.info("sys.argv[1:]:{}".format(sys.argv[1:]))
+        logger.info("Run gpu collective mode.")
         launch_collective(args)
     else:
-        logger.info("sys.argv[1:]:{}".format(sys.argv[1:]))
-        logger.warning("not found distinct arg")
+        logger.warning(
+            "Not found distinct args. Default use gpu collective mode")
+        launch_collective(args)
 
 
 if __name__ == "__main__":
