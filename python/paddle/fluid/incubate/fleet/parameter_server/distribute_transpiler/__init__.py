@@ -352,7 +352,7 @@ class FleetTranspiler(Fleet):
                     # for half_async compatibility
                     strategy.half_async = True
                     strategy.runtime_split_send_recv = True
-            self._strategy.set_program_config(strategy)
+            _strategy.set_program_config(strategy)
         elif isinstance(strategy, dict):
             if self._inner_mode != PSMode.PSLIB:
                 raise TypeError("Dict strategy can only be used at PSLIB Mode")
