@@ -172,14 +172,8 @@ def _is_same_device(op, device, default_device):
 def _append_heter_op(op, current_heter_block_ops, heter_ops):
     op_device = op.attr("op_device")
     if op_device not in heter_ops:
-        heter_ops[op_device] = []
+        heter_ops[op_device] = {}
     current_heter_block_ops.append(op)
-
-
-def _append_heter_ops_block(current_heter_block_ops, heter_ops):
-    op_device = current_heter_block_ops[0].attr("op_device")
-    heter_ops[op_device].append(current_heter_block_ops)
-
 
 def find_heter_ops(program, default_device="cpu"):
     if default_device not in DEVICE_LIST:
@@ -187,31 +181,56 @@ def find_heter_ops(program, default_device="cpu"):
             default_device, DEVICE_LIST))
 
     block = program.global_block()
+    
+    program_block_ops = []
+    default_ops = {default_device:{}}
     heter_ops = {}
-    # heter_ops: {"gpu": [ [op1, op2, ...], [op1, op2, ...] ]; "xpu": [ [op1, op2, ...], [op1, op2, ...] ]}
+    block_index = 0
+    # heter_ops: {"gpu": {1:[op1, op2, ...], 2:[op1, op2, ...] }; "xpu": {3:[op1, op2, ...], 4:[op1, op2, ...] }}
+
     current_heter_block_ops = []
+    current_default_block_ops = []
     current_heter_device = default_device
     is_heter = False
     for op in block.ops:
         if _is_heter_op(op, current_heter_device, default_device):
             # for gpu/xpu-op
             is_heter = True
+
+            # for cpu-op block append
+            if len(current_default_block_ops) > 1:
+                default_ops[default_device][block_index] = current_default_block_ops
+                program_block_ops.append(current_default_block_ops)
+                current_default_block_ops = []
+                block_index += 1
+            
+
             if _is_same_device(op, current_heter_device, default_device):
                 # for gpu-op, gpu-op, gpu-op,...
                 current_heter_device = op.attr("op_device")
                 _append_heter_op(op, current_heter_block_ops, heter_ops)
             else:
                 # for gpu-op, xpu-op, ...
-                _append_heter_ops_block(current_heter_block_ops, heter_ops)
+                op_device = current_heter_block_ops[0].attr("op_device")
+                heter_ops[op_device][block_index] = current_heter_block_ops
+                program_block_ops.append(current_heter_block_ops)
+                block_index += 1
                 current_heter_block_ops = []
                 current_heter_device = op.attr("op_device")
                 _append_heter_op(op, current_heter_block_ops, heter_ops)
+
         elif is_heter:
             # for gpu/xpu-op, cpu-op
-            _append_heter_ops_block(current_heter_block_ops, heter_ops)
+            op_device = current_heter_block_ops[0].attr("op_device")
+            heter_ops[op_device][block_index] = current_heter_block_ops
+            program_block_ops.append(current_heter_block_ops)
+            block_index += 1
             current_heter_block_ops = []
             current_heter_device = default_device
             is_heter = False
+        else:
+            # for cpu-op
+            current_default_block_ops.append(op)
 
     if len(heter_ops) == 0:
         warnings.warn(
@@ -225,8 +244,62 @@ def find_heter_ops(program, default_device="cpu"):
             total_heter_ops += len(heter_block)
     print(
         "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, len(heter_ops)))
-    return program, heter_ops
+    return program, heter_ops, default_ops, program_block_ops
 
+def find_block_joints(program, program_block_ops_list):
+    block_var_detail = find_entrance_exit_private(program, program_block_ops_list)
+    block_var_detail = entrance_exit_check(program, program_block_ops_list, block_var_detail)
+    block_var_detail = delete_block_useless_exit(program, program_block_ops_list, block_var_detail)
+    return block_var_detail
+
+def find_entrance_exit_private(program, program_block_ops_list):
+    block_var_detail = []
+    for block_op_list in program_block_ops_list:
+        block_input, block_output = find_ops_list_input_output(program, block_op_list)
+        # find entrance & exit
+        block_private_vars = list(set(block_input) & set(block_output))
+        block_entrance = list(set(block_input)-set(block_private_vars))
+        block_exit = list(set(block_output)-set(block_private_vars))
+        detail = {"entrance": block_entrance, "exit": block_exit, "private": block_private_vars}
+        block_var_detail.append(detail)
+    return block_var_detail
+
+def entrance_exit_check(program, program_block_ops_list, block_var_detail):
+    for index in range(len(block_var_detail)-1, -1, -1):
+        if index - 1 < 0:
+            break 
+        previous_block_exit = block_var_detail[index - 1]["exit"]
+        previous_block_exit.sort()
+        current_block_entrance = block_var_detail[index]["entrance"]
+        current_block_entrance.sort()
+        if previous_block_exit == current_block_entrance:
+            continue
+        exist_vars = list(set(previous_block_exit) & set(current_block_entrance))
+        need_add_vars = list(set(current_block_entrance)-set(exist_vars))
+
+        previous_block_private = block_var_detail[index - 1]["private"]
+        previous_block_entrance = block_var_detail[index - 1]["entrance"]
+        for var in need_add_vars:
+            if var not in previous_block_private and var not in previous_block_entrance:
+                previous_block_entrance.append(var)
+            previous_block_exit.append(var)
+    return block_var_detail
+
+def delete_block_useless_exit(program, program_block_ops_list, block_var_detail):
+    for index in range(len(block_var_detail)):
+        if index == len(block_var_detail) - 1:
+            break
+        current_block_exit = block_var_detail[index]["exit"]
+        next_block_entrance = block_var_detail[index]["entrance"]
+        need_delete_var = []
+        for var in current_block_exit:
+            if var not in next_block_entrance:
+                need_delete_var.append(var)
+
+        for var in need_delete_var:
+            current_block_exit.remove(var)
+
+    return block_var_detail
 
 def add_vars_by_op_map(var_map, program):
     for key, varlist in six.iteritems(var_map):
@@ -263,6 +336,22 @@ def find_block_input_output(program, block):
     input_var_list = list(set(input_var_list))
     output_var_list = list(set(output_var_list))
     return input_var_list, output_var_list
+
+def find_ops_list_input_output(program, ops_list):
+    input_var_list = []
+    output_var_list = []
+    for op in ops_list:
+        inputs = _get_input_map_from_op(
+            program.global_block().vars, op)
+        input_var_list += get_varlist_from_op_map(inputs)
+        outputs = _get_output_map_from_op(
+            program.global_block().vars, op)
+        output_var_list += get_varlist_from_op_map(outputs)
+
+    input_var_list = list(set(input_var_list))
+    output_var_list = list(set(output_var_list))
+    return input_var_list, output_var_list
+
 
 
 def find_op_input_output(program, block, op):

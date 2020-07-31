@@ -26,6 +26,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_heter_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_block_joint
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import add_vars_by_op_map
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_block_input_output
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_op_input_output
@@ -325,7 +326,7 @@ def delet_extra_optimizes_pass(program, config):
 def split_heter_worker_ops_pass(program, config):
     default_deveice = "cpu"
     current_device = "gpu"
-    program, heter_ops = find_heter_ops(program, default_deveice)
+    program, heter_ops, _, program_block_ops = find_heter_ops(program, default_deveice)
 
     if len(heter_ops) == 0:
         return program
@@ -334,41 +335,28 @@ def split_heter_worker_ops_pass(program, config):
         raise ValueError(
             "Op which run on device {} not exist.".format(current_device))
 
-    origin_program = program.clone()
+    block_vars_detail = find_block_joint(program, program_block_ops)
+
     heter_program = Program()
 
     # add heter op
     pre_block_idx = heter_program.num_blocks - 1
-    for index, heter_block_ops in enumerate(heter_ops[current_device]):
+    for index, heter_block_ops in heter_ops[current_device].items():
         heter_block = heter_program._create_block(pre_block_idx)
         for _, op in enumerate(heter_block_ops):
-            block_append_op(heter_program, origin_program, heter_block, op)
+            block_append_op(heter_program, program, heter_block, op)
 
             # add relate variables
             inputs = _get_input_map_from_op(
-                origin_program.global_block().vars, op)
+                program.global_block().vars, op)
             add_vars_by_op_map(inputs, heter_program)
 
             outputs = _get_output_map_from_op(
-                origin_program.global_block().vars, op)
+                program.global_block().vars, op)
             add_vars_by_op_map(outputs, heter_program)
 
-    return heter_program
-
-
-def append_heter_worker_communicate_ops_pass(program, config):
-    # find block inputs & outputs
-    block_nums = program.num_blocks
-    for block_index in range(1, block_nums):
-        current_block = program.block(block_index)
-        block_input, block_output = find_block_input_output(
-            program, current_block)
-        # find entrance & exit
-        block_private_vars = list(set(block_input) & set(block_output))
-        block_entrance = list(set(block_input)-set(block_private_vars))
-        block_exit = list(set(block_output)-set(block_private_vars))
-        # Todo: 不同异构设备间的通信，需要加send
-        # 一期默认只有一个异构设备
+        # entrance_vars = block_vars_detail[index]["entrance"]
+        # exit_vars = block_vars_detail[index]["exit"]
 
     # attrs = {
     #     "optimize_blocks": optimize_block,
@@ -397,7 +385,8 @@ def split_trainer_ops_pass(program, config):
     default_deveice = "cpu"
     # 复用XPU-Trainer逻辑找到连接点
     origin_program = program.clone()
-    heter_program = split_heter_worker_ops_pass(origin_program, config)
+    origin_program, _, _, program_block_ops = find_heter_ops(origin_program, default_deveice)
+    block_vars_detail = find_block_joint(origin_program, program_block_ops)
 
     block_nums = heter_program.num_blocks
     for block_index in range(1, block_nums):
