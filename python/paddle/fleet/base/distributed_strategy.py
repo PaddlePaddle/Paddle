@@ -228,7 +228,9 @@ class DistributedStrategy(object):
         if isinstance(flag, bool):
             self.strategy.a_sync = flag
         else:
-            print("WARNING: a_sync should have value of bool type")
+            raise ValueError(
+                "The type of `flag` is invalid, expected type is bool, but received %s".
+                format(type(flag)))
 
     @property
     def a_sync_configs(self):
