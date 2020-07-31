@@ -13,10 +13,10 @@ rem See the License for the specific language governing permissions and
 rem limitations under the License.
 
 rem =================================================
-rem               Build Paddle for Windows
+rem       Paddle CI Task On Windows Platform
 rem =================================================
 
-@ECHO ON
+@ECHO OFF
 SETLOCAL
 
 set work_dir=%cd%
@@ -57,6 +57,11 @@ call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 goto:success
+
+rem "Other configurations are added here"
+rem :CASE_wincheck_others
+rem call ...
+
 
 rem ---------------------------------------------------------------------------------------------
 :cmake
@@ -197,8 +202,7 @@ echo fi>>  check_change_of_unittest.sh
 echo if [ ! -e "$(pwd)/../.git/refs/remotes/upstream/$BRANCH" ]; then>>  check_change_of_unittest.sh
 echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_unittest.sh
 echo fi>>  check_change_of_unittest.sh
-echo git checkout -b origin_pr >>  check_change_of_unittest.sh
-echo git checkout -b dev -t upstream/$BRANCH >>  check_change_of_unittest.sh
+echo git reset --hard upstream/$BRANCH >>  check_change_of_unittest.sh
 echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE:\=\\% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0" -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% >>  check_change_of_unittest.sh
 echo cat ^<^<EOF>>  check_change_of_unittest.sh
 echo     ============================================       >>  check_change_of_unittest.sh
@@ -229,7 +233,6 @@ echo     else>>  check_change_of_unittest.sh
 echo          exit 1 >>  check_change_of_unittest.sh
 echo     fi>>  check_change_of_unittest.sh
 echo fi>>  check_change_of_unittest.sh
-echo git checkout origin_pr >>  check_change_of_unittest.sh
 d:\.cache\tools\busybox64.exe bash check_change_of_unittest.sh
 goto:eof
 
