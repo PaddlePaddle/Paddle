@@ -280,7 +280,7 @@ def concat(input, axis=0, name=None):
 
     Args:
         input(list|tuple|Tensor): ``input`` can be Tensor, Tensor list or Tensor tuple which is with data type
-            bool float16, float32, float64, int32, int64. All the Tensors in ``input`` must have the same data type. 
+            bool, float16, float32, float64, int32, int64. All the Tensors in ``input`` must have the same data type. 
         axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with data type int or a Tensor with shape [1] and data type int32 or int64.
             The effective range is [-R, R), where R is Rank(x). When ``axis < 0``, it works the same way
