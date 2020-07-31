@@ -1913,8 +1913,13 @@ class Operator(object):
                     "`type` to initialized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
-                op_attrs[callstack_var_name] = list(
-                    reversed(traceback.format_stack()))[1:]
+                op_attrs[callstack_var_name] = []
+                for frame in traceback.extract_stack():
+                    op_attrs[callstack_var_name].append(
+                        '  File "{}", line {}, in {}'.format(frame[0], frame[1],
+                                                             frame[2]))
+                    op_attrs[callstack_var_name].append('    {}'.format(frame[
+                        3]))
 
             self.desc.set_type(type)
             proto = OpProtoHolder.instance().get_op_proto(type)
@@ -2978,7 +2983,8 @@ class Block(object):
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
-                    lod_level=v.lod_level,
+                    lod_level=v.lod_level
+                    if v.type == core.VarDesc.VarType.LOD_TENSOR else None,
                     stop_gradient=p.stop_gradient,
                     trainable=p.trainable,
                     optimize_attr=p.optimize_attr,

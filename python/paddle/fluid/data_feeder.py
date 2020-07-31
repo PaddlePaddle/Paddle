@@ -66,9 +66,9 @@ def convert_dtype(dtype):
             # may still be a long-lasting problem.
             return str(dtype)
 
-    raise ValueError(
+    raise TypeError(
         "dtype must be any of [bool, float16, float32, float64, int8, int16, "
-        "int32, int64, uint8]")
+        "int32, int64, uint8], but received %s" % dtype)
 
 
 def check_variable_and_dtype(input,
