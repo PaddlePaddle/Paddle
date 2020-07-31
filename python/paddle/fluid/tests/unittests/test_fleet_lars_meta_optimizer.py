@@ -46,7 +46,6 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         strategy.lars_configs = {
             "lars_coeff": 0.001,
             "lars_weight_decay": 0.0005,
-            "lars_eps": 0.0,
         }
 
         optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)

@@ -1576,7 +1576,6 @@ class LarsMomentumOptimizer(Optimizer):
             momentum (float): momentum factor
         lars_coeff (float): Defines how much we trust the layer to change its weights.
         lars_weight_decay (float): Weight decay coefficient for decaying using LARS.
-        lars_eps (float): epsilon used to avoid division by zero when caculate the local lr
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
@@ -1619,7 +1618,6 @@ class LarsMomentumOptimizer(Optimizer):
                  momentum,
                  lars_coeff=0.001,
                  lars_weight_decay=0.0005,
-                 lars_eps=0.0,
                  parameter_list=None,
                  regularization=None,
                  grad_clip=None,
@@ -1636,7 +1634,6 @@ class LarsMomentumOptimizer(Optimizer):
         self._momentum = momentum
         self._lars_coeff = float(lars_coeff)
         self._lars_weight_decay = float(lars_weight_decay)
-        self._lars_eps = float(lars_eps)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -1665,8 +1662,7 @@ class LarsMomentumOptimizer(Optimizer):
             attrs={
                 "mu": self._momentum,
                 "lars_coeff": self._lars_coeff,
-                "lars_weight_decay": self._lars_weight_decay,
-                "lars_eps": self._lars_eps,
+                "lars_weight_decay": self._lars_weight_decay
             },
             stop_gradient=True)
 

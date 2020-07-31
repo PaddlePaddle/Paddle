@@ -42,7 +42,6 @@ class LarsOptimizer(MetaOptimizerBase):
             momentum=opt._momentum,
             lars_coeff=configs['lars_coeff'],
             lars_weight_decay=configs['lars_weight_decay'],
-            lars_eps=configs['lars_eps'],
             parameter_list=opt._parameter_list,
             regularization=opt.regularization,
             grad_clip=opt._grad_clip,
@@ -62,7 +61,6 @@ class LarsOptimizer(MetaOptimizerBase):
         dist_strategy.lars_configs = {
             'lars_coeff': 0.001,
             'lars_weight_decay': 0.0005,
-            'lars_eps': 0.0
         }
 
     def backward(self,
