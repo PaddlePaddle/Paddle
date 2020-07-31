@@ -33,7 +33,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_recompute_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_gradient_merge_meta_optimizer
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_gradient_merge_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_gradient_merge_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
