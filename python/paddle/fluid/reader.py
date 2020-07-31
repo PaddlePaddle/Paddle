@@ -97,7 +97,8 @@ class DataLoaderBase(object):
     def __next__(self):
         raise NotImplementedError()
 
-    def _check_input_array(self, item):
+    @staticmethod
+    def _check_input_array(item):
         arr = np.asarray(item)
         if arr.dtype == np.object:
             raise TypeError(
