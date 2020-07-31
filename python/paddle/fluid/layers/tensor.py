@@ -266,8 +266,8 @@ def concat(input, axis=0, name=None):
     This OP concatenates the input along the axis.
 
     Args:
-        input(list|tuple|Tensor): ``input`` can be Tensor, Tensor list or Tensor tuple which is with data
-            type float16, float32, float64, int32, int64. All the Tensors in ``input`` must have the same data type. 
+        input(list|tuple|Tensor): ``input`` can be Tensor, Tensor list or Tensor tuple which is with data type
+            bool float16, float32, float64, int32, int64. All the Tensors in ``input`` must have the same data type. 
         axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with data type int or a Tensor with shape [1] and data type int32 or int64.
             The effective range is [-R, R), where R is Rank(x). When ``axis < 0``, it works the same way
@@ -276,7 +276,7 @@ def concat(input, axis=0, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Raises:
-        TypeError: The data type of ``input`` must be one of float16, float32, float64, int32 and int64. 
+        TypeError: The data type of ``input`` must be one of bool, float16, float32, float64, int32 and int64. 
         TypeError: The dtype of ``input`` must be one of float16, float32, float64, int32 and int64. 
         TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
         TypeError: All the Tensors in ``input`` must have the same data type.
