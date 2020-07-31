@@ -15,9 +15,11 @@ from .recompute_optimizer import RecomputeOptimizer
 from .gradient_merge_optimizer import GradientMergeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
 from .lars_optimizer import LarsOptimizer
+from .pipeline_optimizer import PipelineOptimizer
 
 __all__ = [
     'RecomputeOptimizer',
     'GradientMergeOptimizer',
     'LarsOptimizer',
+    'PipelineOptimizer',
 ]
