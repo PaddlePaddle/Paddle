@@ -395,11 +395,11 @@ class DistributedStrategy(object):
 
     @_fuse_grad_size_in_TFLOPS.setter
     def _fuse_grad_size_in_TFLOPS(self, value):
-        if isinstance(value, int):
-            self.strategy.fuse_grad_size_in_TFLOPS = value
+        if isinstance(value, float) or isinstance(value, int):
+            self.strategy.fuse_grad_size_in_TFLOPS = float(value)
         else:
             print(
-                "WARNING: fuse_grad_size_in_TFLOPS should have value of int type"
+                "WARNING: fuse_grad_size_in_TFLOPS should have value of int/float type"
             )
 
     @property
