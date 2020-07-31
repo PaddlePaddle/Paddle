@@ -267,7 +267,7 @@ def concat(input, axis=0, name=None):
 
     Args:
         input(list|tuple|Tensor): ``input`` can be Tensor, Tensor list or Tensor tuple which is with data
-            type float16, float32, float64, int32,int64. All the Tensors in ``input`` must have the same data type. 
+            type float16, float32, float64, int32, int64. All the Tensors in ``input`` must have the same data type. 
         axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with data type int or a Tensor with shape [1] and data type int32 or int64.
             The effective range is [-R, R), where R is Rank(x). When ``axis < 0``, it works the same way
@@ -307,7 +307,7 @@ def concat(input, axis=0, name=None):
                 print(out1.numpy())
                 # [[ 1  2  3 11 12 13 21 22]
                 #  [ 4  5  6 14 15 16 23 24]]
-                print(out2.numpy()
+                print(out2.numpy())
                 # [[ 1  2  3]
                 #  [ 4  5  6]
                 #  [11 12 13]
