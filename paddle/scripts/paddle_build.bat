@@ -1,3 +1,6 @@
+@ECHO OFF
+SETLOCAL
+
 rem Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 rem
 rem Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +16,9 @@ rem See the License for the specific language governing permissions and
 rem limitations under the License.
 
 rem =================================================
-rem               Build Paddle for Windows
+rem       Paddle CI Task On Windows Platform
 rem =================================================
 
-@ECHO ON
-SETLOCAL
 
 set work_dir=%cd%
 if not defined BRANCH set BRANCH=develop
@@ -57,6 +58,11 @@ call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 goto:success
+
+rem "Other configurations are added here"
+rem :CASE_wincheck_others
+rem call ...
+
 
 rem ---------------------------------------------------------------------------------------------
 :cmake
@@ -183,7 +189,7 @@ echo     ============================================ >>  check_change_of_unitte
 echo     Generate unit tests.spec of this PR.         >>  check_change_of_unittest.sh
 echo     ============================================ >>  check_change_of_unittest.sh
 echo EOF>>  check_change_of_unittest.sh
-echo spec_path=$(pwd)/../paddle/fluid/UNITTEST_PR.spec>>  check_change_of_unittest.sh
+echo spec_path=$(pwd)/UNITTEST_PR.spec>>  check_change_of_unittest.sh
 echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
 echo UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'>>  check_change_of_unittest.sh
 echo origin_upstream_url=`git remote -v ^| awk '{print $1, $2}' ^| uniq ^| grep upstream ^| awk '{print $2}'`>>  check_change_of_unittest.sh
@@ -198,16 +204,16 @@ echo if [ ! -e "$(pwd)/../.git/refs/remotes/upstream/$BRANCH" ]; then>>  check_c
 echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_unittest.sh
 echo fi>>  check_change_of_unittest.sh
 echo git checkout -b origin_pr >>  check_change_of_unittest.sh
-echo git checkout -b dev -t upstream/$BRANCH >>  check_change_of_unittest.sh
+echo git checkout -f $BRANCH >>  check_change_of_unittest.sh
 echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE:\=\\% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0" -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% >>  check_change_of_unittest.sh
 echo cat ^<^<EOF>>  check_change_of_unittest.sh
 echo     ============================================       >>  check_change_of_unittest.sh
 echo     Generate unit tests.spec of develop.               >>  check_change_of_unittest.sh
 echo     ============================================       >>  check_change_of_unittest.sh
 echo EOF>>  check_change_of_unittest.sh
-echo spec_path=$(pwd)/../paddle/fluid/UNITTEST_DEV.spec>>  check_change_of_unittest.sh
+echo spec_path=$(pwd)/UNITTEST_DEV.spec>>  check_change_of_unittest.sh
 echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
-echo unittest_spec_diff=`python $(pwd)/../tools/diff_unittest.py $(pwd)/../paddle/fluid/UNITTEST_DEV.spec $(pwd)/../paddle/fluid/UNITTEST_PR.spec`>>  check_change_of_unittest.sh
+echo unittest_spec_diff=`python $(pwd)/../tools/diff_unittest.py $(pwd)/UNITTEST_DEV.spec $(pwd)/UNITTEST_PR.spec`>>  check_change_of_unittest.sh
 echo if [ "$unittest_spec_diff" != "" ]; then>>  check_change_of_unittest.sh
 echo     # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420>>  check_change_of_unittest.sh
 echo     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`>>  check_change_of_unittest.sh
@@ -229,7 +235,7 @@ echo     else>>  check_change_of_unittest.sh
 echo          exit 1 >>  check_change_of_unittest.sh
 echo     fi>>  check_change_of_unittest.sh
 echo fi>>  check_change_of_unittest.sh
-echo git checkout origin_pr >>  check_change_of_unittest.sh
+echo git checkout -f origin_pr >>  check_change_of_unittest.sh
 d:\.cache\tools\busybox64.exe bash check_change_of_unittest.sh
 goto:eof
 
