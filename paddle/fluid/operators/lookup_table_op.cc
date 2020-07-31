@@ -116,6 +116,25 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                          ") for entry attribute.")
         .SetDefault("none");
 
+    AddAttr<std::vector<std::string>>(
+        "table_names",
+        "(string vector, the split table names that will be fetched from "
+        "parameter server)"
+        "in the order of input variables for mapping")
+        .SetDefault({});
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<bool>("grad_inplace",
+                  "(boolean, default false) "
+                  "If the grad op reuse the input's variable.")
+        .SetDefault(false);
+    AddAttr<std::vector<std::string>>(
+        "epmap",
+        "(string vector, default 127.0.0.1:6164)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
     AddComment(R"DOC(
 Lookup Table Operator.
 

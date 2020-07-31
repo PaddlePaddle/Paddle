@@ -48,22 +48,16 @@ inline EP_SPLIT_TABLE_PAIRS GetMultiFieldCommContext(
 
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
   if (send_var->IsType<framework::SelectedRows>()) {
-    PADDLE_ENFORCE_GT(multi_parts, 0, "multi_parts must >=1");
+    PADDLE_ENFORCE_GE(multi_parts, 1,
+                      platform::errors::InvalidArgument(
+                          "multi_parts must == 1 in parameter send, now is: %d",
+                          multi_parts));
 
-    if (multi_parts == 1) {
-      for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
-        table_pairs.push_back(
-            std::make_pair(rpc_ctx.epmap[i], rpc_ctx.splited_varnames[i]));
-      }
-    } else {
-      for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
-        for (int x = 0; x < multi_parts; x++) {
-          auto table =
-              string::Sprintf("%s@%d@PIECE", rpc_ctx.splited_varnames[i], x);
-          table_pairs.push_back(std::make_pair(rpc_ctx.epmap[i], table));
-        }
-      }
+    for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+      table_pairs.push_back(
+          std::make_pair(rpc_ctx.epmap[i], rpc_ctx.splited_varnames[i]));
     }
+
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "GetMultiFieldCommContext unsupported LoDTensor current!"));
@@ -232,12 +226,15 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
                            src + outs_dense_idx[out_idx][j] * row_numel,
                            sizeof(T) * row_numel);
             } else {
-              PADDLE_THROW("do not support GPU now");
+              PADDLE_THROW(
+                  platform::errors::Unimplemented("do not support GPU now"));
             }
           }
         }
-        PADDLE_ENFORCE_EQ(rows_idx.size(), outs[out_idx]->rows().size(),
-                          "rows should has the same size with tensor dim 0");
+        PADDLE_ENFORCE_EQ(
+            rows_idx.size(), outs[out_idx]->rows().size(),
+            platform::errors::InvalidArgument(
+                "rows should has the same size with tensor dim 0"));
       }
     } else {
       auto pserver_num = rpc_ctx.epmap.size();
@@ -274,12 +271,15 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
                            src + outs_dense_idx[out_idx][j] * row_numel,
                            sizeof(T) * row_numel);
             } else {
-              PADDLE_THROW("do not support GPU now");
+              PADDLE_THROW(
+                  platform::errors::Unimplemented("do not support GPU now"));
             }
           }
         }
-        PADDLE_ENFORCE_EQ(rows_idx.size(), outs[out_idx]->rows().size(),
-                          "rows should has the same size with tensor dim 0");
+        PADDLE_ENFORCE_EQ(
+            rows_idx.size(), outs[out_idx]->rows().size(),
+            platform::errors::InvalidArgument(
+                "rows should has the same size with tensor dim 0"));
       }
     }
 
@@ -311,7 +311,8 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
   if (sync) {
     for (auto &handle : rets) {
       VLOG(4) << "Wait send var to pserver handle: " << handle;
-      PADDLE_ENFORCE(handle->Wait(), "internal error in RPCClient");
+      PADDLE_ENFORCE_NE(handle->Wait(), 0U, platform::errors::ExecutionTimeout(
+                                                "internal error in RPCClient"));
     }
   }
 }

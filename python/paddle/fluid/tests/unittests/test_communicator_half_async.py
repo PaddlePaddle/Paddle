@@ -26,8 +26,8 @@ import paddle
 import paddle.fluid as fluid
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server import fleet
-from paddle.fluid.incubate.fleet.parameter_server import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 
 class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
@@ -113,18 +113,20 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.incubate.fleet.parameter_server import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from test_communicator_half_async import TestCommunicatorHalfAsyncEnd2End
-from paddle.fluid.incubate.fleet.parameter_server import fleet
-from paddle.fluid.incubate.fleet.parameter_server import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 
 class RunServer(TestCommunicatorHalfAsyncEnd2End):
     def runTest(self):
         pass
 
+os.environ["http_proxy"] = ""
+os.environ["https_proxy"] = ""
 os.environ["TRAINING_ROLE"] = "PSERVER"
 half_run_server = RunServer()
 half_run_server.run_ut()
@@ -142,6 +144,8 @@ half_run_server.run_ut()
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
+        os.environ["http_proxy"] = ""
+        os.environ["https_proxy"] = ""
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["FLAGS_communicator_send_queue_size"] = "1"
         os.environ["FLAGS_communicator_max_merge_var_num"] = "1"

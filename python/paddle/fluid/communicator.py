@@ -33,7 +33,7 @@ It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 """
 from . import core
 from paddle.fluid.framework import Program
-from paddle.fluid.incubate.fleet.parameter_server import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 __all__ = ['Communicator', 'LargeScaleKV']
 
@@ -63,9 +63,6 @@ class Communicator(object):
         """
         # set all recv op to not_run mode
 
-        if envs is None:
-            envs = {}
-
         if mode == DistributedMode.SYNC:
             envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
             envs["trainer_id"] = str(kwargs["trainer_id"])
@@ -73,6 +70,8 @@ class Communicator(object):
         if mode == DistributedMode.GEO:
             envs["trainers"] = str(kwargs["trainers"])
             envs["sparse_attrs"] = str(kwargs["sparse_attrs"])
+
+        envs["need_global_step"] = str(kwargs["need_global_step"])
 
         mode_str = None
 
@@ -88,10 +87,6 @@ class Communicator(object):
         self.mode = mode_str
         self.envs = envs
         self.communicator_ = None
-
-    def init_with_program(self, program):
-        self.communicator_ = core.DistCommunicator(self.mode, program.desc,
-                                                   global_scope(), self.envs)
 
     def init_with_ctx(self, send_ctx, recv_ctx):
         self.communicator_ = core.DistCommunicator(self.mode, send_ctx,

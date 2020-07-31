@@ -32,7 +32,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
     def test_pslib_2(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server import fleet
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
         from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
         try:
@@ -116,11 +116,11 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role10.is_first_worker()
         role10.is_first_worker()
         role11 = GeneralRoleMaker(path="./test_gloo_11")
-        role11.worker_id()
-        role11.worker_id()
+        role11.worker_index()
+        role11.worker_index()
         role12 = GeneralRoleMaker(path="./test_gloo_12")
-        role12.server_id()
-        role12.server_id()
+        role12.server_index()
+        role12.server_index()
         role13 = GeneralRoleMaker(path="./test_gloo_13")
         role13.worker_num()
         role13.worker_num()

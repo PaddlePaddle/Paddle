@@ -837,7 +837,7 @@ class TestDataset2(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        from paddle.fluid.incubate.fleet.parameter_server import fleet
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
         with fluid.program_guard(train_program, startup_program):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
@@ -902,7 +902,7 @@ class TestDataset2(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        from paddle.fluid.incubate.fleet.parameter_server import fleet
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
         with fluid.program_guard(train_program, startup_program):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []

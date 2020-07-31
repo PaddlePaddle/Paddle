@@ -137,61 +137,10 @@ void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
 
     VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
     return;
-  }
-
-  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
-  auto barrier = true;
-
-  if (barrier) {
-    for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
-      auto &recv_var_name = rpc_ctx.splited_varnames[i];
-      local_scope->Var(recv_var_name);
-      VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
-      // sparse param in recv_scope is LoDTensor
-      rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
-                                             *local_scope.get(), recv_var_name,
-                                             recv_var_name));
-    }
   } else {
-    for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
-      auto &recv_var_name = rpc_ctx.splited_varnames[i];
-      local_scope->Var(recv_var_name);
-      VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
-      // sparse param in recv_scope is LoDTensor
-      rets.push_back(rpc_client->AsyncGetVarNoBarrier(
-          rpc_ctx.epmap[i], cpu_ctx, *local_scope.get(), recv_var_name,
-          recv_var_name));
-    }
-  }
-
-  for (size_t i = 0; i < rets.size(); i++) {
-    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
-                                               "internal error in RPCClient"));
-  }
-
-  std::vector<Variable *> variables;
-  for (auto &slice_varname : rpc_ctx.splited_varnames) {
-    Variable *var = local_scope->FindVar(slice_varname);
-
-    PADDLE_ENFORCE_EQ(
-        var->IsInitialized(), true,
-        platform::errors::InvalidArgument("recv var should be inited"));
-
-    variables.push_back(var);
-  }
-
-  // merged var's tensor into one
-  auto merged_var = std::make_shared<Variable>();
-
-  framework::FlattenVariable(variables, merged_var.get());
-  auto src_ptr = merged_var->Get<framework::LoDTensor>().data<void>();
-  // write tensor to global scope
-  for (auto &origin_varname : rpc_ctx.origin_varnames) {
-    Variable *origin_v = scope.FindVar(origin_varname);
-    framework::Tensor *origin_t = origin_v->GetMutable<framework::LoDTensor>();
-    auto size = origin_t->numel() * framework::SizeOfType(origin_t->type());
-    memory::Copy(cpu_place, origin_t->data<void>(), cpu_place, src_ptr, size);
-    src_ptr = reinterpret_cast<char *>(const_cast<void *>(src_ptr)) + size;
+    PADDLE_ENFORCE(false, platform::errors::Unimplemented(
+                              "ParameterRecv can not recv dense with multi "
+                              "parts now, add it soon."));
   }
 }
 

@@ -25,8 +25,8 @@ class EntryAttr(object):
             import paddle.fluid as fluid
     """
 
-    def __init__(self, name):
-        self._name = name
+    def __init__(self):
+        self._name = None
 
     def to_attr(self):
         """
@@ -35,13 +35,12 @@ class EntryAttr(object):
         Returns:
             Parameter attributes(map): The attributes of this parameter.
         """
-        kwargs = ""
-        return kwargs
+        raise NotImplementedError("EntryAttr is base class")
 
 
 class ProbabilityEntry(EntryAttr):
     def __init__(self, probability):
-        super(EntryAttr, self).__init__("probability_entry")
+        super(EntryAttr, self).__init__()
 
         if not isinstance(probability, float):
             raise ValueError("probability must be a float in (0,1)")
@@ -49,6 +48,7 @@ class ProbabilityEntry(EntryAttr):
         if probability <= 0 or probability >= 1:
             raise ValueError("probability must be a float in (0,1)")
 
+        self._name = "probability_entry"
         self._probability = probability
 
     def to_attr(self):
@@ -57,7 +57,7 @@ class ProbabilityEntry(EntryAttr):
 
 class CountFilterEntry(EntryAttr):
     def __init__(self, count_filter):
-        super(EntryAttr, self).__init__("count_filter_entry")
+        super(EntryAttr, self).__init__()
 
         if not isinstance(count_filter, int):
             raise ValueError(
@@ -67,6 +67,7 @@ class CountFilterEntry(EntryAttr):
             raise ValueError(
                 "count_filter must be a valid integer greater or equal than 0")
 
+        self._name = "count_filter_entry"
         self._count_filter = count_filter
 
     def to_attr(self):

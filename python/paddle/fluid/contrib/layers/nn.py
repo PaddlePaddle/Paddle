@@ -979,7 +979,7 @@ def sparse_embedding(input,
     w = helper.create_parameter(
         attr=helper.param_attr,
         shape=size,
-        type=core.VarDesc.VarType.LOD_TENSOR,
+        type=core.VarDesc.VarType.SELECTED_ROWS,
         dtype=dtype,
         is_bias=False)
 
@@ -991,7 +991,7 @@ def sparse_embedding(input,
     entry_str = "none"
 
     if entry is not None:
-        if not isinstance(entry, ProbabilityEntry) or not isinstance(
+        if not isinstance(entry, ProbabilityEntry) and not isinstance(
                 entry, CountFilterEntry):
             raise ValueError(
                 "entry must be instance in [ProbabilityEntry, CountFilterEntry]")

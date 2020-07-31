@@ -158,27 +158,6 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
         attrs=opt_op.all_attrs())
 
 
-def _clone_lr_op(program, origin_program, block, op):
-    inputs = _get_input_map_from_op(origin_program.global_block().vars, op)
-    for key, varlist in six.iteritems(inputs):
-        if not isinstance(varlist, list):
-            varlist = [varlist]
-        for var in varlist:
-            if var not in program.global_block().vars:
-                block._clone_variable(var)
-
-    outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
-    for key, varlist in six.iteritems(outputs):
-        if not isinstance(varlist, list):
-            varlist = [varlist]
-        for var in varlist:
-            if var not in program.global_block().vars:
-                block._clone_variable(var)
-
-    return block.append_op(
-        type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
-
-
 def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
                         origin_program, merged_var, sparse_grad_to_param,
                         config):
@@ -506,30 +485,6 @@ def add_optimizer_pass(program, config):
         elif op not in lr_ops:
             _append_pserver_non_opt_ops(block, op, origin_program, config)
 
-    def __clone_lr_op_sub_block__(op, program, lr_block):
-        if not op.has_attr('sub_block'):
-            return
-
-        origin_block_desc = op.attr('sub_block')
-        origin_block = origin_program.block(origin_block_desc.id)
-        assert isinstance(origin_block, Block)
-        # we put the new sub block to new block to follow the block
-        # hierarchy of the original blocks
-        new_sub_block = program._create_block(lr_block.idx)
-
-        # clone vars
-        for var in origin_block.vars:
-            new_sub_block._clone_variable(var)
-
-        # clone ops
-        for origin_op in origin_block.ops:
-            cloned_op = _clone_lr_op(program, new_sub_block, origin_op)
-            # clone sub_block of op
-            __clone_lr_op_sub_block__(cloned_op, program, new_sub_block)
-
-        # reset the block of op
-        op._set_attr('sub_block', new_sub_block)
-
     optimize_ops = _get_optimize_ops(origin_program)
     for _, op in enumerate(optimize_ops):
         if _is_optimizer_op(op) and _is_opt_op_on_pserver(ps_endpoint, op):
@@ -560,7 +515,7 @@ def add_optimizer_pass(program, config):
             cloned_op = _append_pserver_non_opt_ops(lr_decay_block, op,
                                                     origin_program, config)
             # append sub blocks to pserver_program in lr_decay_op
-            __clone_lr_op_sub_block__(cloned_op, program, lr_decay_block)
+            # todo(tangwei12): __clone_lr_op_sub_block__
         lr_decay_block_id = lr_decay_block.idx
 
     # append op to the current block
@@ -666,32 +621,6 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
 
         return l_sep.join(init_attrs)
 
-    def get_geo_values(block):
-        value_names = []
-        acture_names = []
-        value_dims = []
-        opt_idx = -1
-
-        for op in block.ops:
-            opt_idx += 1
-
-            if op.type not in geo_value_map.keys():
-                continue
-
-            param = main_program.global_block().vars[op.output("Out")[0]]
-            varnams = op.input("X")
-            recv_varname = varnams[1] if varnams[0] == param.name else varnams[
-                0]
-            recv_var = main_program.global_block().vars[recv_varname]
-
-            value_names.append(geo_value_map[op.type])
-            value_dims.append(param.shape[1])
-            acture_names.append(param.name)
-
-            if value_names:
-                break
-        return recv_var, opt_idx, value_names, value_dims, acture_names
-
     def get_optimizer_values(block):
         value_names = []
         acture_names = []
@@ -786,8 +715,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             opt_block = program.block(blockid)
 
             grad, opt_idx, value_names, value_dims, acture_names = \
-                get_geo_values(opt_block) if config.is_geo_mode() \
-                else get_optimizer_values(opt_block)
+                get_optimizer_values(opt_block)
 
             entry_attr = get_entry_attr(param)
             is_entry = False if entry_attr == "none" else True
@@ -800,8 +728,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         for param, blockid in param_blockid_map.items():
             opt_block = main_program.block(blockid)
             grad, _, value_names, value_dims, acture_names = \
-                get_geo_values(opt_block) if config.is_geo_mode() \
-                else get_optimizer_values(opt_block)
+                get_optimizer_values(opt_block)
 
             entry_attr = get_entry_attr(param)
 

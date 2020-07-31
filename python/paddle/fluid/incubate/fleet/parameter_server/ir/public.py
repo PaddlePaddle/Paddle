@@ -484,11 +484,6 @@ class MergedVariable:
         self.ordered_vars = ordered
         self.offsets = offsets
 
-    def __str__(self):
-        ordered_varnames = ",".join([var.name for var in self.ordered_vars])
-        return "merged: {}\norderd: {}\n".format(self.merged_var.name,
-                                                 ordered_varnames)
-
 
 class CompileTimeStrategy(object):
     def __init__(self, main_program, startup_program, strategy, role_maker):
@@ -796,28 +791,6 @@ class CompileTimeStrategy(object):
                         var_distributed.append((g.name, ep, g.shape[0]))
         return var_distributed
 
-    def display(self):
-        header = ("Fleet Compiled Config", "Value")
-        maps = {}
-
-        for ep, pairs in self.param_grad_ep_mapping.items():
-
-            vs = []
-
-            params, grads = pairs
-
-            vs.append("P: ")
-            for p in params:
-                vs.append(p.name)
-
-            vs.append(", G: ")
-            for g in grads:
-                vs.append(g.name)
-
-            maps[ep] = " ".join(vs)
-
-        pretty_print_envs(maps, header)
-
     def _step_ctx(self):
         name = STEP_COUNTER
         trainer_id = self.get_role_id()
@@ -972,16 +945,18 @@ class CompileTimeStrategy(object):
             if not uniform:
                 var_numel = reduce(lambda x, y: x * y, var.shape)
 
-                if min_block_size == -1:
-                    split_count = 1
-                else:
-                    split_count = slice_count
-                    max_pserver_count = int(
-                        math.floor(var_numel / float(min_block_size)))
-                    if max_pserver_count == 0:
-                        max_pserver_count = 1
-                    if max_pserver_count < slice_count:
-                        split_count = max_pserver_count
+                split_count = 1
+
+                # if min_block_size == -1:
+                #     split_count = 1
+                # else:
+                #     split_count = slice_count
+                #     max_pserver_count = int(
+                #         math.floor(var_numel / float(min_block_size)))
+                #     if max_pserver_count == 0:
+                #         max_pserver_count = 1
+                #     if max_pserver_count < slice_count:
+                #         split_count = max_pserver_count
                 block_size = int(math.ceil(var_numel / float(split_count)))
 
                 if len(var.shape) >= 2:
@@ -1153,37 +1128,6 @@ class CompileTimeStrategy(object):
 
         self._var_slice_and_distribute()
         self._dispatcher()
-
-    def dense_var_merge(self, denses):
-        if not denses:
-            return [], [], None
-
-        ordered_dense = []
-        ordered_dense_offsets = []
-        flatten_dims = 0
-
-        for dense in denses:
-            param, grad = dense
-
-            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-                raise TypeError(
-                    "{} may not Dense Param, need check `build_var_distributed`".
-                    format(param.name))
-
-            ordered_dense.append(dense)
-            ordered_dense_offsets.append(flatten_dims)
-            flatten_dims += reduce(lambda x, y: x * y, param.shape)
-
-        param, grad = denses[0]
-
-        merged_param = vars_metatools.VarStruct(
-            "merged.dense_0", (flatten_dims, ), param.dtype, param.type,
-            param.lod_level, param.persistable)
-        merged_grad = vars_metatools.VarStruct(
-            "merged.dense_0@GRAD", (flatten_dims, ), grad.dtype, grad.type,
-            grad.lod_level, grad.persistable)
-
-        return ordered_dense, ordered_dense_offsets, merged_param, merged_grad
 
     def get_param_grads(self):
         origin_program = self.origin_main_program

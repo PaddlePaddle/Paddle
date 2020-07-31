@@ -74,14 +74,14 @@ class Fleet(object):
         """
         return self._role_maker.is_first_worker()
 
-    def worker_id(self):
+    def worker_index(self):
         """
         Get current worker index.
 
         Returns:
             int: node id
         """
-        return self._role_maker.worker_id()
+        return self._role_maker.worker_index()
 
     def worker_num(self):
         """

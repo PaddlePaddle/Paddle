@@ -26,8 +26,8 @@ import paddle
 import paddle.fluid as fluid
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server import fleet
-from paddle.fluid.incubate.fleet.parameter_server import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
@@ -88,7 +88,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             role=role_maker.Role.WORKER
             if training_role == "TRAINER" else role_maker.Role.SERVER,
             worker_num=1,
-            server_endpoints=["127.0.0.1:8099"])
+            server_endpoints=["127.0.0.1:18099"])
 
         strategy = StrategyFactory.create_geo_strategy(10)
 
@@ -97,7 +97,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         else:
             self.run_pserver(role, strategy)
 
-    def skip_test_communicator(self):
+    def test_communicator(self):
         run_server_cmd = """
 from __future__ import print_function
 
@@ -115,9 +115,9 @@ import paddle.fluid as fluid
 
 from paddle.fluid.communicator import Communicator
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server import DistributedMode
-from paddle.fluid.incubate.fleet.parameter_server import fleet
-from paddle.fluid.incubate.fleet.parameter_server import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End
 
@@ -127,6 +127,9 @@ class RunServer(TestCommunicatorGeoEnd2End):
         pass
 
 os.environ["TRAINING_ROLE"] = "PSERVER"
+os.environ["http_proxy"] = ""
+os.environ["https_proxy"] = ""
+
 half_run_server = RunServer()
 half_run_server.run_ut()
 """
@@ -135,6 +138,9 @@ half_run_server.run_ut()
         with open(server_file, "w") as wb:
             wb.write(run_server_cmd)
         os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["http_proxy"] = ""
+        os.environ["https_proxy"] = ""
+
         _python = sys.executable
 
         ps_cmd = "{} {}".format(_python, server_file)
@@ -146,6 +152,8 @@ half_run_server.run_ut()
         time.sleep(5)
 
         os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["http_proxy"] = ""
+        os.environ["https_proxy"] = ""
 
         self.run_ut()
         ps_proc.kill()
