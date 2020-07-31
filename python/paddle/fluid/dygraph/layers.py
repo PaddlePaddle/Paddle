@@ -145,7 +145,6 @@ class Layer(core.Layer):
 
               import paddle
               import paddle.nn as nn
-              import paddle.fluid as fluid
               
               paddle.fluid.enable_imperative()
               
