@@ -1,6 +1,7 @@
 import subprocess
 import os
 import os.path
+import errno
 import re
 import shutil
 import sys
@@ -134,6 +135,7 @@ def is_transpiler():
 
 write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/fluid/incubate/fleet/parameter_server/version.py')
 
+
 packages=['paddle',
           'paddle.libs',
           'paddle.utils',
@@ -185,6 +187,7 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.parameter_server',
           'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
           'paddle.fluid.incubate.fleet.parameter_server.pslib',
+          'paddle.fluid.incubate.fleet.parameter_server.ir',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
           'paddle.incubate.hapi',
