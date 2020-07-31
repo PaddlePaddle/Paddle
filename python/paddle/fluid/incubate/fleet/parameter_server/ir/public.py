@@ -36,6 +36,7 @@ import os
 import six
 from paddle.fluid import core
 from paddle.fluid.core import CommContext
+import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
@@ -49,6 +50,8 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
+DEVICE_LIST = ["cpu", "gpu", "xpu"]
+COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
 
 
 def _get_lr_ops(program):
@@ -56,8 +59,8 @@ def _get_lr_ops(program):
     for index, op in enumerate(program.global_block().ops):
         role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
         if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                        role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                        int(OPT_OP_ROLE_ATTR_VALUE):
+                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                int(OPT_OP_ROLE_ATTR_VALUE):
             lr_ops.append(op)
     return lr_ops
 
@@ -100,6 +103,370 @@ def get_sparse_tablenames(program, is_distributed):
             if is_sparse_op(op):
                 tablenames.add(get_sparse_tablename(op))
     return list(tablenames)
+
+
+def _is_heter_op(op, current_heter_device, default_device="cpu"):
+    heter_devices = list(DEVICE_LIST)
+    heter_devices.remove(default_device)
+    op_device = op.attr("op_device")
+    op_type = op.type
+    if op_device in heter_devices:
+        return True
+    elif op_type in COMMUNICATE_OPS_TYPE and current_heter_device != default_device:
+        # for distributed communciate ops: send & recv & barrier
+        op._set_attr('op_device', current_heter_device)
+        return True
+    elif op_device == None or op_device == default_device:
+        op._set_attr('op_device', default_device)
+        return False
+    return False
+
+
+def _is_same_device(op, device, default_device):
+    op_device = op.attr("op_device")
+    if op_device == device:
+        return True
+    elif op_device != default_device:
+        return True
+    return False
+
+
+def _append_heter_op(op, current_heter_block_ops, heter_ops):
+    op_device = op.attr("op_device")
+    if op_device not in heter_ops:
+        heter_ops[op_device] = {}
+    current_heter_block_ops.append(op)
+
+
+def find_heter_ops(program, default_device="cpu"):
+    if default_device not in DEVICE_LIST:
+        raise ValueError("Given device {} is not in default device list {}".format(
+            default_device, DEVICE_LIST))
+
+    block = program.global_block()
+
+    program_block_ops = []
+    default_ops = {default_device: {}}
+    heter_ops = {}
+    block_index = 0
+    # heter_ops: {"gpu": {1:[op1, op2, ...], 2:[op1, op2, ...] }; "xpu": {3:[op1, op2, ...], 4:[op1, op2, ...] }}
+
+    current_heter_block_ops = []
+    current_default_block_ops = []
+    current_heter_device = default_device
+    is_heter = False
+    for op in block.ops:
+        if _is_heter_op(op, current_heter_device, default_device):
+            # for gpu/xpu-op
+            is_heter = True
+
+            # for cpu-op block append
+            if len(current_default_block_ops) > 1:
+                default_ops[default_device][block_index] = current_default_block_ops
+                program_block_ops.append(current_default_block_ops)
+                current_default_block_ops = []
+                block_index += 1
+
+            if _is_same_device(op, current_heter_device, default_device):
+                # for gpu-op, gpu-op, gpu-op,...
+                current_heter_device = op.attr("op_device")
+                _append_heter_op(op, current_heter_block_ops, heter_ops)
+            else:
+                # for gpu-op, xpu-op, ...
+                op_device = current_heter_block_ops[0].attr("op_device")
+                heter_ops[op_device][block_index] = current_heter_block_ops
+                program_block_ops.append(current_heter_block_ops)
+                block_index += 1
+                current_heter_block_ops = []
+                current_heter_device = op.attr("op_device")
+                _append_heter_op(op, current_heter_block_ops, heter_ops)
+
+        elif is_heter:
+            # for gpu/xpu-op, cpu-op
+            op_device = current_heter_block_ops[0].attr("op_device")
+            heter_ops[op_device][block_index] = current_heter_block_ops
+            program_block_ops.append(current_heter_block_ops)
+            block_index += 1
+            current_heter_block_ops = []
+            current_heter_device = default_device
+            is_heter = False
+        else:
+            # for cpu-op
+            current_default_block_ops.append(op)
+
+    if len(heter_ops) == 0:
+        warnings.warn(
+            "No heterogeneous OP was found in your program , "
+            " please using fluid.device_guard() to run OPs on different device.")
+
+    total_heter_ops = 0
+    for device in heter_ops.keys():
+        heter_block_list = heter_ops[device]
+        for heter_block in heter_block_list:
+            total_heter_ops += len(heter_block)
+    print(
+        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, len(heter_ops)))
+    return program, heter_ops, default_ops, program_block_ops
+
+
+def find_block_joints(program, program_block_ops_list):
+    block_var_detail = find_entrance_exit_private(
+        program, program_block_ops_list)
+    block_var_detail = entrance_exit_check(
+        program, program_block_ops_list, block_var_detail)
+    block_var_detail = delete_block_useless_exit(
+        program, program_block_ops_list, block_var_detail)
+    return block_var_detail
+
+
+def find_entrance_exit_private(program, program_block_ops_list):
+    block_var_detail = []
+    for block_op_list in program_block_ops_list:
+        block_input, block_output = find_ops_list_input_output(
+            program, block_op_list)
+        # find entrance & exit
+        block_private_vars = list(set(block_input) & set(block_output))
+        block_entrance = list(set(block_input)-set(block_private_vars))
+        block_exit = list(set(block_output)-set(block_private_vars))
+        detail = {"entrance": block_entrance,
+                  "exit": block_exit, "private": block_private_vars}
+        block_var_detail.append(detail)
+    return block_var_detail
+
+
+def entrance_exit_check(program, program_block_ops_list, block_var_detail):
+    for index in range(len(block_var_detail)-1, -1, -1):
+        if index - 1 < 0:
+            break
+        previous_block_exit = block_var_detail[index - 1]["exit"]
+        previous_block_exit.sort()
+        current_block_entrance = block_var_detail[index]["entrance"]
+        current_block_entrance.sort()
+        if previous_block_exit == current_block_entrance:
+            continue
+        exist_vars = list(set(previous_block_exit) &
+                          set(current_block_entrance))
+        need_add_vars = list(set(current_block_entrance)-set(exist_vars))
+
+        previous_block_private = block_var_detail[index - 1]["private"]
+        previous_block_entrance = block_var_detail[index - 1]["entrance"]
+        for var in need_add_vars:
+            if var not in previous_block_private and var not in previous_block_entrance:
+                previous_block_entrance.append(var)
+            previous_block_exit.append(var)
+    return block_var_detail
+
+
+def delete_block_useless_exit(program, program_block_ops_list, block_var_detail):
+    for index in range(len(block_var_detail)):
+        if index == len(block_var_detail) - 1:
+            break
+        current_block_exit = block_var_detail[index]["exit"]
+        next_block_entrance = block_var_detail[index]["entrance"]
+        need_delete_var = []
+        for var in current_block_exit:
+            if var not in next_block_entrance:
+                need_delete_var.append(var)
+
+        for var in need_delete_var:
+            current_block_exit.remove(var)
+
+    return block_var_detail
+
+
+def add_vars_by_op_map(var_map, program):
+    for key, varlist in six.iteritems(var_map):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for i in range(len(varlist)):
+            var = varlist[i]
+            if var.name not in program.global_block().vars:
+                program.global_block()._clone_variable(var)
+
+
+def get_varlist_from_op_map(var_map):
+    var_list = []
+    for key, varlist in six.iteritems(var_map):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for i in range(len(varlist)):
+            var = varlist[i]
+            var_list.append(var.name)
+    return var_list
+
+
+def find_block_input_output(program, block):
+    input_var_list = []
+    output_var_list = []
+    for op in block.ops:
+        inputs = _get_input_map_from_op(
+            program.global_block().vars, op)
+        input_var_list += get_varlist_from_op_map(inputs)
+        outputs = _get_output_map_from_op(
+            program.global_block().vars, op)
+        output_var_list += get_varlist_from_op_map(outputs)
+
+    input_var_list = list(set(input_var_list))
+    output_var_list = list(set(output_var_list))
+    return input_var_list, output_var_list
+
+
+def find_ops_list_input_output(program, ops_list):
+    input_var_list = []
+    output_var_list = []
+    for op in ops_list:
+        inputs = _get_input_map_from_op(
+            program.global_block().vars, op)
+        input_var_list += get_varlist_from_op_map(inputs)
+        outputs = _get_output_map_from_op(
+            program.global_block().vars, op)
+        output_var_list += get_varlist_from_op_map(outputs)
+
+    input_var_list = list(set(input_var_list))
+    output_var_list = list(set(output_var_list))
+    return input_var_list, output_var_list
+
+
+def find_op_input_output(program, block, op):
+    input_var_list = []
+    output_var_list = []
+    inputs = _get_input_map_from_op(
+        block.vars, op)
+    input_var_list += get_varlist_from_op_map(inputs)
+    outputs = _get_output_map_from_op(
+        block.vars, op)
+    output_var_list += get_varlist_from_op_map(outputs)
+    return input_var_list, output_var_list
+
+
+def get_vars_name_in_block(block):
+    vars_list = block.vars.keys()
+    vars_name_list = [var_name for var_name in vars_list]
+    return vars_name_list
+
+
+def is_same_op(op1, op2):
+    if str(op1) != str(op2):
+        return False
+    return True
+
+
+def _get_input_map_from_op(varmap, op):
+    """Returns a dict from op input name to the vars in varmap."""
+    iomap = collections.OrderedDict()
+    for key in op.input_names:
+        vars = []
+        for varname in op.input(key):
+            vars.append(varmap[varname])
+        if len(vars) == 1:
+            iomap[key] = vars[0]
+        else:
+            iomap[key] = vars
+    return iomap
+
+
+def _get_output_map_from_op(varmap, op):
+    """Returns a dict from op output name to the vars in varmap."""
+    iomap = collections.OrderedDict()
+    for key in op.output_names:
+        vars = []
+        for varname in op.output(key):
+            vars.append(varmap[varname])
+        if len(vars) == 1:
+            iomap[key] = vars[0]
+        else:
+            iomap[key] = vars
+    return iomap
+
+
+def delete_same_ops(block, ops):
+    for op in ops:
+        try:
+            for origin_op in block.ops:
+                if is_same_op(origin_op, op):
+                    idx = list(block.ops).index(origin_op)
+                    block._remove_op(idx)
+        except Exception as e:
+            print(e)
+
+
+def replace_ops_by_communicate_op(block, ops, program, entrance_var, exit_var, config):
+    if ops == []:
+        raise ValueError("Not find op in heter block")
+
+    first_op_idx = -1
+    for index, op in enumerate(block.ops):
+        if is_same_op(op, ops[0]):
+            first_op_idx = index
+            break
+    if first_op_idx == -1:
+        raise ValueError("Not find heter op in origin block")
+    delete_same_ops(block, ops)
+
+    mode = config.get_distributed_mode()
+    # Todo: replace XPU endpoints
+    pserver_endpoints = config.get_ps_endpoints()
+    send_input_vars = [
+        program.global_block().vars[union_var]
+        for union_var in entrance_var
+    ]
+    dummy_output = []
+    if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
+        dummy_output = program.global_block().create_var(
+            name=framework.generate_control_dev_var_name())
+    block._insert_op(
+        index=first_op_idx,
+        type="send",
+        inputs={"X": send_input_vars},
+        outputs={"Out": dummy_output},
+        attrs={
+            "send_varnames": entrance_var,
+            "merge_add": True,
+            "use_send_handler": False,
+            "endpoints": pserver_endpoints,
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+        }
+    )
+
+
+def block_append_op(program, origin_program, block, op):
+    inputs = _get_input_map_from_op(origin_program.global_block().vars, op)
+    for key, varlist in six.iteritems(inputs):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for var in varlist:
+            if var not in program.global_block().vars:
+                program.global_block()._clone_variable(var)
+
+    outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
+    for key, varlist in six.iteritems(outputs):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for var in varlist:
+            if var not in program.global_block().vars:
+                program.global_block()._clone_variable(var)
+
+    if "_grad" not in op.type:
+        # for forward op
+        return block.append_op(
+            type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
+    else:
+        # for grad op
+        op_desc = op.desc
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+
+        # append grad op
+        new_op_desc = block.desc.append_op()
+        new_op_desc.copy_from(op_desc)
+        new_op_desc._set_attr(op_role_attr_name, backward)
+
+        # set device guard
+        if op.desc.has_attr(device_attr_name):
+            op_device = op_desc.attr(device_attr_name)
+            new_op_desc._set_attr(device_attr_name, op_device)
+        block._sync_with_cpp()
 
 
 class MergedVariable:
@@ -804,7 +1171,7 @@ def _is_opt_role_op(op):
     op_maker = core.op_proto_and_checker_maker
     optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
     if op_maker.kOpRoleAttrName() in op.attr_names and \
-                    int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
         return True
     return False
 

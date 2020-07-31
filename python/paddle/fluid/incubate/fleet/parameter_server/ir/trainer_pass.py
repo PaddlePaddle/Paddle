@@ -250,7 +250,7 @@ def fake_init_ops_pass(program, config):
         return list(set(dist_varnames + sparse_varnames))
 
     def _fake_init_sparsetable(sparse_table_names):
-        #delete table init op
+        # delete table init op
         for table_name in sparse_table_names:
             table_var = program.global_block().vars[table_name]
             table_param_init_op = []
