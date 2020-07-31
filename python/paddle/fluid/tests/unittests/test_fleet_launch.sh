@@ -16,6 +16,7 @@ function test_launch_ps(){
 if [[ ${WITH_GPU} == "OFF" ]]; then
     test_launch_ps
     exit 0
+fi
 
 test_launch_ps
 # use default values
