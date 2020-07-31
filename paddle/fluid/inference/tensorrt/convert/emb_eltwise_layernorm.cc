@@ -80,28 +80,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
 
     if (engine_->with_dynamic_shape()) {
-      //  auto use_fp16 = engine_->WithFp16();
       plugin::DynamicPluginTensorRT* plugin = nullptr;
-      /*
-            if (use_fp16) {
-      #ifdef SUPPORTS_CUDA_FP16
-              plugin = new plugin::EmbEltwiseLayernormPluginDynamic<half>(
-                  input_embs, bias, scale, emb_sizes, bias_size, scale_size,
-      hidden,
-                  eps);
-      #else
-              plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
-                  input_embs, bias, scale, emb_sizes, bias_size, scale_size,
-      hidden,
-                  eps);
-      #endif
-            } else {
-              plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
-                  input_embs, bias, scale, emb_sizes, bias_size, scale_size,
-      hidden,
-                  eps);
-            }
-      */
       plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
           input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
           eps);
