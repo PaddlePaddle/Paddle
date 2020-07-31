@@ -50,8 +50,20 @@ class LarsOptimizer(MetaOptimizerBase):
 
     def _can_apply(self):
         if self.user_defined_strategy.lars:
-            return isinstance(self.inner_opt, Momentum)
+            if not isinstance(self.inner_opt, Momentum):
+                logging.warn(
+                    "lars need the inner optimizer to be Momentum optimizer")
+                return False
+            return True
         return False
+
+    def _disable_strategy(self, dist_strategy):
+        dist_strategy.lars = False
+        dist_strategy.lars_configs = {
+            'lars_coeff': 0.001,
+            'lars_weight_decay': 0.0005,
+            'lars_eps': 0.0
+        }
 
     def backward(self,
                  loss,
