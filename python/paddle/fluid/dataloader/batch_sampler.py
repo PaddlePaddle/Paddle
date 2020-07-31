@@ -106,6 +106,7 @@ class BatchSampler(object):
             assert isinstance(indices, list) or isinstance(indices, tuple), \
                 "indices should be a list or tuple, but got {}".format(type(indices))
             self.indices = indices
+            self.sampler_iter = None
         else:
             if isinstance(dataset, IterableDataset):
                 self.sampler_iter = iter(
