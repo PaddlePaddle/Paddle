@@ -25,6 +25,31 @@
 namespace paddle {
 namespace imperative {
 
+// Singleton implementation with C++ 11
+class AmpOperators {
+ public:
+  ~AmpOperators();
+  AmpOperators(const AmpOperators& o) = delete;
+  const AmpOperators& operator=(const AmpOperators& o) = delete;
+
+  static AmpOperators& Instance();
+
+  std::shared_ptr<std::unordered_set<std::string>> GetAllowOps();
+
+  std::shared_ptr<std::unordered_set<std::string>> GetBlockOps();
+
+ private:
+  AmpOperators();  // forbid calling constructor
+
+  // The set of ops that support fp16 calculation and are considered numerically
+  // safe and performance critical. These ops are always converted to fp16.
+  std::shared_ptr<std::unordered_set<std::string>> allow_ops_;
+
+  // The set of ops that support fp16 calculation and are considered numerically
+  // dangerous and whose effects may also be observed in downstream ops.
+  std::shared_ptr<std::unordered_set<std::string>> block_ops_;
+};
+
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {
  public:
@@ -49,11 +74,6 @@ class AutoCastGuard {
 
 NameVarBaseMap AutoCastInputs(const std::string& op_type,
                               const NameVarBaseMap& ins);
-void SetAmpOpList(const std::unordered_set<std::string>& white_list,
-                  const std::unordered_set<std::string>& black_list);
-std::tuple<const std::unordered_set<std::string>,
-           const std::unordered_set<std::string>>
-GetAmpOpList();
 
 }  // namespace imperative
 }  // namespace paddle

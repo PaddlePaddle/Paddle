@@ -25,6 +25,56 @@ __all__ = ['AmpScaler']
 
 
 class AmpScaler(object):
+    """
+    :api_attr: imperative
+
+    AmpScaler is used for Auto-Mixed-Precision training/inferring in imperative
+    mode. It controls the scaling of loss, helps avoiding numerical overflow.
+    The object of this class has two methods `scale()`, `minimize()`.
+
+    `scale()` is used to multiply the loss by a scale ratio.
+    `minimize()` is similar as `Optimizer.minimize()`, performs parameters updating.
+
+    Commonly, it is used together with `amp_guard` to achieve Auto-Mixed-Precision in 
+    imperative mode.
+
+    Args:
+        enable(bool, optional): Enable loss scaling or not. Default is True.
+        init_loss_scaling (float, optional): The initial loss scaling factor. Default is 2**15.
+        incr_ratio(float, optional): The multiplier to use when increasing the loss 
+                        scaling. Default is 2.0.
+        decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing 
+                        the loss scaling. Default is 0.5.
+        incr_every_n_steps(int, optional): Increases loss scaling every n consecutive 
+                                steps with finite gradients. Default is 1000.
+        decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n 
+                                    accumulated steps with nan or inf gradients. Default is 2.
+
+    Returns:
+        An AmpScaler object.
+
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+        with fluid.dygraph.guard():
+            model = fluid.dygraph.Conv2D(3, 2, 3)
+            optimizer = fluid.optimizer.SGDOptimizer(
+                    learning_rate=0.01, parameter_list=model.parameters())
+            scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+            data = fluid.dygraph.to_variable(data)
+            with fluid.dygraph.amp_guard():
+                conv = model(data)
+                loss = fluid.layers.reduce_mean(conv)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.minimize(optimizer, scaled)         
+    """
+
     @dygraph_only
     def __init__(
             self,
@@ -34,31 +84,7 @@ class AmpScaler(object):
             decr_ratio=0.5,
             incr_every_n_steps=1000,
             decr_every_n_nan_or_inf=1, ):
-        """
-        :api_attr: imperative
 
-        AmpScaler is used for Auto-Mixed-Precision training/inferring in imperative
-        mode. It controls the scaling of loss, helps avoiding numerical overflow.
-        The object of this class has two methods `scale()`, `minimize()`.
-
-        `scale()` is used to multiply the loss by a scale ratio.
-        `minimize()` is similar as `Optimizer.minimize()`, performs parameters updating.
-
-        Commonly, it is used together with `amp_guard` to achieve Auto-Mixed-Precision in 
-        imperative mode.
-
-        Args:
-            enable(bool, optional): Enable loss scaling or not. Default is True.
-            init_loss_scaling (float, optional): The initial loss scaling factor. Default is 2**15.
-            incr_ratio(float, optional): The multiplier to use when increasing the loss 
-                            scaling. Default is 2.0.
-            decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing 
-                            the loss scaling. Default is 0.5.
-            incr_every_n_steps(int, optional): Increases loss scaling every n consecutive 
-                                    steps with finite gradients. Default is 1000.
-            decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n 
-                                        accumulated steps with nan or inf gradients. Default is 2.
-        """
         tracer = _dygraph_tracer()
         if not tracer:
             raise ValueError(

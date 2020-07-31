@@ -18,7 +18,6 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <tuple>
 #include <unordered_set>
 #include <utility>
 
@@ -29,22 +28,23 @@
 namespace paddle {
 namespace imperative {
 
-// TODO(zhiqiu): consider to cache casted params for better inference
-// performance.
+AmpOperators::AmpOperators()
+    : allow_ops_(new std::unordered_set<std::string>()),
+      block_ops_(new std::unordered_set<std::string>()) {}
+AmpOperators::~AmpOperators() {}
 
-// The set of ops that support fp16 calculation and are considered numerically -
-// safe and performance critical. These ops are always converted to fp16.
-static std::unordered_set<std::string> g_white_ops;
+AmpOperators& AmpOperators::Instance() {
+  static AmpOperators instance;
+  return instance;
+}
 
-// The set of ops that support fp16 calculation and are considered numerically -
-// dangerous and whose effects may also be observed in downstream ops.
-static std::unordered_set<std::string> g_black_ops;
+std::shared_ptr<std::unordered_set<std::string>> AmpOperators::GetAllowOps() {
+  return allow_ops_;
+}
 
-// This set contains two types of ops. All ops supported fp16 calculation. One
-// of two types is considered numerically - safe, but may be made unsafe by an
-// upstream blacklist op. Another type do not have numerically - significant
-// effects, like stack, flatten2.
-// static std::unordered_set<std::string> g_gray_ops;
+std::shared_ptr<std::unordered_set<std::string>> AmpOperators::GetBlockOps() {
+  return block_ops_;
+}
 
 inline std::string GetDtypeStr(
     const std::shared_ptr<imperative::VarBase>& var) {
@@ -119,7 +119,7 @@ static inline framework::proto::VarType::Type GetPromoteType(
 NameVarBaseMap AutoCastInputs(const std::string& op_type,
                               const NameVarBaseMap& ins) {
   NameVarBaseMap new_ins = {};
-  if (g_white_ops.count(op_type)) {
+  if (AmpOperators::Instance().GetAllowOps()->count(op_type)) {
     for (const auto& pair : ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float16";
@@ -129,7 +129,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
       }
     }
     return new_ins;
-  } else if (g_black_ops.count(op_type)) {
+  } else if (AmpOperators::Instance().GetBlockOps()->count(op_type)) {
     for (const auto& pair : ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";
@@ -163,18 +163,6 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
     return new_ins;
   }
   return ins;
-}
-
-void SetAmpOpList(const std::unordered_set<std::string>& white_list,
-                  const std::unordered_set<std::string>& black_list) {
-  g_white_ops = white_list;
-  g_black_ops = black_list;
-}
-
-std::tuple<const std::unordered_set<std::string>,
-           const std::unordered_set<std::string>>
-GetAmpOpList() {
-  return std::make_tuple(g_white_ops, g_black_ops);
 }
 
 }  // namespace imperative

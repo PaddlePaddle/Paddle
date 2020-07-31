@@ -112,7 +112,7 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
 
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
-            conv2d = Conv2D(3, 2, 3)
+            conv2d = fluid.dygraph.Conv2D(3, 2, 3)
             data = to_variable(data)
             with fluid.dygraph.amp_guard():
                 conv = conv2d(data)
