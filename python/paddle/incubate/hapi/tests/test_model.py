@@ -497,8 +497,8 @@ class TestModelFunction(unittest.TestCase):
                     dirname=save_dir, executor=exe))
 
             results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
+                         feed={feed_target_names[0]: tensor_img},
+                         fetch_list=fetch_targets)
 
             np.testing.assert_allclose(results, ori_results, rtol=1e-6)
             shutil.rmtree(save_dir)
