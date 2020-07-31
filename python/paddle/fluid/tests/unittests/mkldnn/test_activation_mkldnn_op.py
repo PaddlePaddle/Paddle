@@ -19,7 +19,7 @@ import numpy as np
 from scipy.special import expit
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish
+from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestSigmoid
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
@@ -160,6 +160,12 @@ class TestMKLDNNSwishDim2(TestSwish):
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(['X'], 'Out')
+
+
+class TestMKLDNNSigmoidDim2(TestSigmoid):
+    def setUp(self):
+        super(TestMKLDNNSigmoidDim2, self).setUp()
+        self.attrs = {"use_mkldnn": True}
 
 
 class TestMKLDNNReluDim4(TestRelu):
@@ -326,6 +332,17 @@ class TestMKLDNNSwishDim4(TestSwish):
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(['X'], 'Out')
+
+
+class TestMKLDNNSigmoidDim4(TestSigmoid):
+    def setUp(self):
+        super(TestMKLDNNSigmoidDim4, self).setUp()
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        out = 1 / (1 + np.exp(-x))
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
 
 
 # Check if primitives already exist in backward

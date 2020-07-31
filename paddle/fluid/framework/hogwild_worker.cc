@@ -53,7 +53,9 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
   auto &block = program.Block(0);
 
   PADDLE_ENFORCE_NOT_NULL(
-      root_scope_, "root_scope should be set before creating thread scope");
+      root_scope_,
+      platform::errors::NotFound(
+          "Root scope should be set before creating thread scope."));
 
   thread_scope_ = &root_scope_->NewScope();
 

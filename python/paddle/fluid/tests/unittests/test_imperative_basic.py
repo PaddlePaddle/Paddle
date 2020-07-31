@@ -626,7 +626,7 @@ class TestDygraphUtils(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
             res2 = fluid.layers.sigmoid(a)
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            self.assertTrue(np.allclose(res1.numpy(), res2.numpy()))
 
     def test_append_bias_in_dygraph_exception(self):
         with new_program_scope():

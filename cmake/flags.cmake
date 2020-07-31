@@ -8,6 +8,8 @@ function(CheckCompilerCXX11Flag)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.8)
             message(FATAL_ERROR "Unsupported GCC version. GCC >= 4.8 required.")
+        elseif(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.2)
+            message(WARNING "Found GCC ${CMAKE_CXX_COMPILER_VERSION} which is too high, recommended to use GCC 8.2")
         endif()
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"

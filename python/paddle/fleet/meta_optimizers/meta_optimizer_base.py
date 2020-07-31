@@ -39,6 +39,9 @@ class MetaOptimizerBase(object):
         if str(optimizer.__class__.__name__) in self.meta_optimizers_white_list:
             return True
 
+    def _disable_strategy(self, dist_strategy):
+        raise NotImplementedError("you should implement disable strategy")
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
