@@ -226,12 +226,16 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
   TestPrepareDataSamePlace({});
 }
 
+#ifdef PADDLE_WITH_MKLDNN
 TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
   TestPrepareDataSamePlace({{"use_mkldnn", true}});
 }
+#endif
 }  // namespace imperative
 }  // namespace paddle
 
 USE_OP(split);
 USE_OP(relu);
+#ifdef PADDLE_WITH_MKLDNN
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
+#endif
