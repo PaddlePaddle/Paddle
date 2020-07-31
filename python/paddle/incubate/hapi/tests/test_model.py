@@ -469,6 +469,7 @@ class TestModelFunction(unittest.TestCase):
             fluid.disable_dygraph() if dynamic else None
 
     def test_export_deploy_model(self):
+        device = set_device('cpu')
         for dynamic in [True, False]:
             net = LeNet()
             inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
@@ -497,8 +498,8 @@ class TestModelFunction(unittest.TestCase):
                     dirname=save_dir, executor=exe))
 
             results = exe.run(inference_program,
-                         feed={feed_target_names[0]: tensor_img},
-                         fetch_list=fetch_targets)
+                              feed={feed_target_names[0]: tensor_img},
+                              fetch_list=fetch_targets)
 
             np.testing.assert_allclose(results, ori_results, rtol=1e-6)
             shutil.rmtree(save_dir)
