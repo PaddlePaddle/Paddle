@@ -69,9 +69,9 @@ ProgramDesc BuildProgramDesc() {
     }
   }
 
-  SetOp(&prog, "concat", "concat1", {"a", "b"}, {"c"}, "int8");
+  SetOp(&prog, "concat", "concat1", {"a", "b"}, {"c"}, "float32");
   SetOp(&prog, "conv2d", "conv1", {"c", "weights", "bias"}, {"f"}, "float32");
-  SetOp(&prog, "relu", "relu1", {"f"}, {"g"}, "int8");
+  SetOp(&prog, "relu", "relu1", {"f"}, {"g"}, "float32");
   SetOp(&prog, "pool2d", "pool1", {"g"}, {"h"}, "float32");
   SetOp(&prog, "conv2d", "conv2", {"h", "weights2", "bias2"}, {"k"}, "float32");
   SetOp(&prog, "pool2d", "pool2", {"k"}, {"l"}, "float32");
@@ -133,13 +133,13 @@ TEST(QuantizerPlacementPass, enabled_conv_excluded_one) {
 }
 
 TEST(QuantizerPlacementPass, excluded_none) {
-  // 2 conv + 2 pool
-  MainTest({}, {}, 4);
+  // all operators quantized
+  MainTest({}, {}, 6);
 }
 
 TEST(QuantizerPlacementPass, default_attr_value) {
-  // 2 conv + 2 pool
-  DefaultAttrTest(4);
+  //  all operators quantized
+  DefaultAttrTest(6);
 }
 
 }  // namespace ir

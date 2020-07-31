@@ -35,10 +35,10 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       if (op->HasAttr("mkldnn_data_type") ||
           op->HasProtoAttr("mkldnn_data_type")) {
         if (op_types_list.empty()) {
-          op->SetAttr("mkldnn_data_type", "int8");
+          op->SetAttr("mkldnn_data_type", std::string("int8"));
         } else if (std::find(op_types_list.begin(), op_types_list.end(),
                              op->Type()) != op_types_list.end()) {
-          op->SetAttr("mkldnn_data_type", "int8");
+          op->SetAttr("mkldnn_data_type", std::string("int8"));
         }
       }
     }
