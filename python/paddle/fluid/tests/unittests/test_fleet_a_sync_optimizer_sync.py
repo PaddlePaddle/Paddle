@@ -50,6 +50,19 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
+        prog = paddle.fluid.default_main_program()
+        self.assertEqual(prog.global_block().ops[-1].type, "send_barrier")
+
+        sends = 0
+        sgds = 0
+        for op in prog.global_block().ops:
+            if op.type == "send":
+                sends += 1
+            if op.type == "sgd":
+                sgds += 1
+        self.assertEqual(sends, 6)
+        self.assertEqual(sgds, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
