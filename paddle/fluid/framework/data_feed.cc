@@ -257,32 +257,50 @@ bool InMemoryDataFeed<T>::Start() {
 
 template <typename T>
 void InMemoryDataFeed<T>::PutToQueue(std::vector<T>& ins_vec) {
+  if(!sample_enable_) {
+    return;
+  }
 //  thread_local std::vector<T> item_vec;
 //  item_vec.clear();
 //  ins_vec.resize(ins_vec.size());
   for (int i = 0; i < ins_vec.size(); ++i) {
     T record;
+    T record_user;
     uint64_t nid;
     for (FeatureItem& fi : ins_vec[i].uint64_feasigns_) {
       if (fi.slot() == nid_slot_) {
         nid = fi.sign().uint64_feasign_;
       }
-      if (item_map_.find(fi.slot()) != item_map_.end()) {
+      if (sample_map_.find(fi.slot()) != sample_map_.end()) {
       //if (item_map_.find(fi.sign().uint64_feasign_) != item_map_.end()) {
         //item_vec[i].uint64_feasigns_.push_back(fi);
-        record.uint64_feasigns_.push_back(fi);
+        for (int j : sample_map_[fi.slot()]) {
+          fi.slot() = j;//sample_map_[fi.slot()];
+          record.uint64_feasigns_.push_back(fi);
+        }
+      } else {
+        record_user.uint64_feasigns_.push_back(fi);
       }
     }
-    for(FeatureItem* fi : ins_vec[i].float_feasigns_) {
-      if (item_map_.find(fi.sign().float_feasigns_) != item_map_.end()) {
+    for(FeatureItem& fi : ins_vec[i].float_feasigns_) {
+      if (sample_map_.find(fi.slot()) != sample_map_.end()) {
+      //if (sample_map_.find(fi.sign().float_feasign_) != sample_map_.end()) {
         //item_vec[i].float_feasigns_.push_back(fi);
-        record.float_feasigns_.push_back(fi);
+        //fi.slot() = sample_map_[fi.slot()];
+        for (int j : sample_map_[fi.slot()]) {
+          fi.slot() = j;
+          record.float_feasigns_.push_back(fi);
+        }
+      } else {
+        record_user.float_feasigns_.push_back(fi);
       }
     }
 
     record.ins_id_ = ins_vec[i].ins_id_;
     record.content_ = ins_vec[i].content_;
-    lru_.Put(nid, record);
+    lru_->Put(nid, record);
+    ins_vec[i].uint64_feasigns_ = record_user.uint64_feasigns_;
+    ins_vec[i].float_feasigns_ = record_user.float_feasigns_;
     //item_vec[i].ins_id_ = ins_vec[i].ins_id_;
     //item_vec[i].content_ = ins_vec[i].content_;
   }
@@ -295,10 +313,19 @@ void InMemoryDataFeed<T>::PutToQueue(std::vector<T>& ins_vec) {
 
 template <typename T>
 void InMemoryDataFeed<T>::SampleFromQueue(std::vector<T>& ins_vec) {
+  if(!sample_enable_) {
+    return;
+  }
+  //VLOG(0) << "lru size " << lru_->Size();
   for (size_t i = 0; i < ins_vec.size(); ++i) {
-    T record = lru_.GetRandom();
-    ins_vec[i].uint64_feasigns_.insert(ins_vec[i].uint64_feasigns_.end(), record.uint64_feasigns_.begin(), record.uint64_feasigns_.end());
-    ins_vec[i].float_feasigns_.insert(ins_vec[i].float_feasigns_.end(), record.float_feasigns_.begin(), record.float_feasigns_.end());
+    //for (size_t j = 0; j < ins_vec.size(); ++j) {
+      if (ins_vec[i].click == 0) {
+        continue;
+      } 
+      T record = lru_->GetRandom();
+      ins_vec[i].uint64_feasigns_.insert(ins_vec[i].uint64_feasigns_.end(), record.uint64_feasigns_.begin(), record.uint64_feasigns_.end());
+      ins_vec[i].float_feasigns_.insert(ins_vec[i].float_feasigns_.end(), record.float_feasigns_.begin(), record.float_feasigns_.end());
+    //}
   }
 }
 
@@ -315,26 +342,40 @@ int InMemoryDataFeed<T>::Next() {
   T instance;
   thread_local std::vector<T> ins_vec;
   ins_vec.clear();
-  ins_vec.reserve(this->default_batch_size_);
+  int sample_num = sample_num_;
+  int batch_size = this->default_batch_size_ * sample_num;//this->default_batch_size_;
+  ins_vec.reserve(batch_size);
+  VLOG(3) << "default_batch_size_ " << default_batch_size_;
   while (index < this->default_batch_size_) {
+  //while (index < batch_size) {
     if (output_channel_->Size() == 0) {
       break;
     }
     output_channel_->Get(instance);
-    ins_vec.push_back(instance);
+    //for(int i = 0; i < this->default_batch_size_; ++i) {
+    if (instance.click == 1) {
+      for (int i = 0; i < sample_num; ++i) {
+        ins_vec.push_back(instance);
+        //++index;
+      }
+    } else {
+      ins_vec.push_back(instance);
+    }
     ++index;
     consume_channel_->Put(std::move(instance));
   }
-  this->batch_size_ = index;
+  this->batch_size_ = index * sample_num;//this->default_batch_size_;//index;//batch_size;//index;
   VLOG(3) << "batch_size_=" << this->batch_size_
           << ", thread_id=" << thread_id_;
   
+  VLOG(3) << "PutToQueue";
   PutToQueue(ins_vec);
-  
+  VLOG(3) << "SampleFromQueue";
   SampleFromQueue(ins_vec);
 
   if (this->batch_size_ != 0) {
     PutToFeedVec(ins_vec);
+    VLOG(3) << "after PutToFeedVec";
   } else {
     VLOG(3) << "finish reading, output_channel_ size="
             << output_channel_->Size()
@@ -940,7 +981,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       instance->rank = rank;
       pos += len + 1;
     }
-    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
+    VLOG(3) << "use_slots_index_.size() " << use_slots_index_.size() << " sample_slots_index_2_.size() " << sample_slots_index_2_.size();
+    for (size_t i = 0; i < use_slots_index_.size() - sample_slots_index_2_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
       PADDLE_ENFORCE(
@@ -974,6 +1016,9 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             FeatureKey f;
             f.uint64_feasign_ = feasign;
             instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
+            if (idx == 1) {
+              instance->click = feasign;
+            }
           }
         }
         pos = endptr - str;
@@ -1100,7 +1145,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
       }
     }
   }
-
+  VLOG(3) << "33333333333333333333";
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     if (feed_vec_[i] == nullptr) {
       continue;

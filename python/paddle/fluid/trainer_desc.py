@@ -52,7 +52,7 @@ class TrainerDesc(object):
     def _set_nid_slot(self, nid_slot):
         self.proto_desc.nid_slot = nid_slot
 
-    def _set_sample_slots(self, sample_slots)
+    def _set_sample_slots(self, sample_slots):
         for x in sample_slots:
             self.proto_desc.sample_slots.append(x)
 

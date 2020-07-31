@@ -147,7 +147,11 @@ class Dataset {
   virtual void SetFleetSendSleepSeconds(int seconds) = 0;
 
   virtual void SetLRUCap(int cap) = 0;
-  virtual void SetSampleSlots(std::vector<std::string> sample_slots) = 0;
+  //virtual void SetSampleSlots(std::vector<std::string> sample_slots) = 0;
+  virtual void SetSampleSlots(std::vector<int>& sample_slots, std::vector<int>& s22) = 0;
+  virtual void SetNidSlot(int nid) = 0;
+  virtual void SetSampleNum(int num) = 0;
+  virtual void SetEnableSample(bool enable) = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -234,8 +238,19 @@ class DatasetImpl : public Dataset {
   virtual void SetLRUCap(int cap) {
     lru_cap_ = cap;
   }
-  virtual void SetSampleSlots(std::vector<std::string> sample_slots) {
+  //virtual void SetSampleSlots(std::vector<std::string> sample_slots) {
+  virtual void SetSampleSlots(std::vector<int>& sample_slots, std::vector<int>& s22) {
     sample_slots_ = sample_slots;
+    s2 = s22;
+  }
+  virtual void SetNidSlot(int nid) {
+    nid_slot_ = nid;
+  }
+  virtual void SetSampleNum(int num) {
+    sample_num_ = num;
+  }
+  virtual void SetEnableSample(bool enable) {
+    sample_enable_ = enable;
   }
 
  protected:
@@ -285,10 +300,14 @@ class DatasetImpl : public Dataset {
   int64_t global_index_ = 0;
   std::vector<std::shared_ptr<ThreadPool>> consume_task_pool_;
   std::vector<T> input_records_;  // only for paddleboxdatafeed
-  std::shared_ptr<LRUCache<uint64_t, T>>* lru_ = nullptr;
+  std::shared_ptr<LRUCache<uint64_t, T>> lru_ = nullptr;
   int lru_cap_ = 1000000;
-  std::vector<std::string> sample_slots_;
-  std::vector<int> sample_slots_index_
+  //std::vector<std::string> sample_slots_;
+  std::vector<int> sample_slots_;
+  std::vector<int> s2;
+  int nid_slot_;
+  int sample_num_ = 10;
+  bool sample_enable_ = false;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
