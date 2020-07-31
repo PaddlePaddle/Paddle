@@ -48,6 +48,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
 from paddle.fluid.incubate.fleet.parameter_server.ir import pserver_pass as server
+from paddle.fluid.incubate.fleet.parameter_server.ir import heter_trainer_pass as heter_worker
 from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
 
 
@@ -788,16 +789,16 @@ class ParameterServerOptimizer(DistributedOptimizer):
         if fleet._role_maker.is_heter_parameter_server:
             # for main program
             if fleet._role_maker._is_heter_worker():
-                _main = worker.split_heter_worker_ops_pass(
+                _main = heter_worker.split_heter_worker_ops_pass(
                     _main, compiled_config)
-                _main = worker.append_heter_worker_communicate_ops_pass(
+                _main = heter_worker.append_heter_worker_communicate_ops_pass(
                     _main, compiled_config)
             else:
-                _main = worker.split_trainer_ops_pass(
+                _main = heter_worker.split_trainer_ops_pass(
                     _main, compiled_config)
 
             # for startup
-            _startup = worker.delete_startup_useless_ops_var_pass(
+            _startup = heter_worker.delete_startup_useless_ops_var_pass(
                 _startup, _main, compiled_config)
 
         return _main, _startup

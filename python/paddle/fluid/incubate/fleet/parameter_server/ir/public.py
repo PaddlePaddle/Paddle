@@ -32,6 +32,7 @@ from functools import reduce
 import collections
 import math
 import os
+import warnings
 
 import six
 from paddle.fluid import core
@@ -207,6 +208,98 @@ def find_heter_ops(program, default_device="cpu"):
     print(
         "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, len(heter_ops)))
     return program, heter_ops, default_ops, program_block_ops
+
+
+def create_heter_program(program, heter_program, heter_ops, block_var_detail, current_device):
+    # add heter op
+    pre_block_idx = heter_program.num_blocks - 1
+    for index, heter_block_ops in heter_ops[current_device].items():
+        heter_block = heter_program._create_block(pre_block_idx)
+        for _, op in enumerate(heter_block_ops):
+            block_append_op(heter_program, program, heter_block, op)
+
+            # add relate variables
+            inputs = _get_input_map_from_op(
+                program.global_block().vars, op)
+            add_vars_by_op_map(inputs, heter_program)
+
+            outputs = _get_output_map_from_op(
+                program.global_block().vars, op)
+            add_vars_by_op_map(outputs, heter_program)
+
+        # entrance_vars = block_vars_detail[index]["entrance"]
+        # exit_vars = block_vars_detail[index]["exit"]
+
+    # attrs = {
+    #     "optimize_blocks": optimize_block,
+    #     "endpoint": endpoint,
+    #     "Fanin": self.trainer_num,
+    #     "distributed_mode": DistributedMode.GEO,
+    #     "grad_to_block_id": param_to_block_id,
+    #     "sparse_grad_to_param": sparse_grad_to_param,
+    #     "rpc_get_thread_num": self.server_config._rpc_get_thread_num,
+    #     "rpc_send_thread_num": self.server_config._rpc_send_thread_num,
+    #     "rpc_prefetch_thread_num":
+    #         self.server_config._rpc_prefetch_thread_num
+    # }
+
+    # append the listen_and_serv op
+    program.global_block().append_op(
+        type="listen_and_serv",
+        inputs={'X': []},
+        outputs={},
+        attrs={})
+
+
+def create_trainer_program(program, config, heter_ops, block_var_detail):
+    for device in heter_ops.keys():
+        for heter_block_index in sorted(heter_ops[device]):
+            replace_ops_by_communicate_op(
+                program, config, heter_ops[device][heter_block_index], block_var_detail[heter_block_index])
+
+
+def replace_ops_by_communicate_op(program, config, ops_list, ops_detail):
+    all_op = program.global_block().ops
+    start_op = ops_list[0]
+    first_op_idx = -1
+    for op in all_op:
+        if is_same_op(op, start_op):
+            first_op_idx = all_op.index(op)
+            break
+    assert first_op_idx != -1
+    delete_same_ops(program.global_block(), ops_list)
+
+    mode = config.get_distributed_mode()
+    # Todo: replace XPU endpoints
+    pserver_endpoints = config.get_ps_endpoints()
+    entrance_var = ops_detail["entrance_var"]
+    private_var = ops_detail["private"]
+    # exit_var = ops_detail["exit"] # for recv
+    send_input_vars = [
+        program.global_block().vars[union_var]
+        for union_var in ops_detail["entrance_var"]
+    ]
+    dummy_output = []
+    if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
+        dummy_output = program.global_block().create_var(
+            name=framework.generate_control_dev_var_name())
+    program.global_block()._insert_op(
+        index=first_op_idx,
+        type="send",
+        inputs={"X": send_input_vars},
+        outputs={"Out": dummy_output},
+        attrs={
+            "send_varnames": entrance_var,
+            "merge_add": True,
+            "use_send_handler": False,
+            "endpoints": pserver_endpoints,
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+        }
+    )
+
+    for var in private_var:
+        if program.global_block().has_var(var):
+            program.global_block()._remove_var(var)
 
 
 def find_block_joints(program, program_block_ops_list):
@@ -388,45 +481,6 @@ def delete_same_ops(block, ops):
                     block._remove_op(idx)
         except Exception as e:
             print(e)
-
-
-def replace_ops_by_communicate_op(block, ops, program, entrance_var, exit_var, config):
-    if ops == []:
-        raise ValueError("Not find op in heter block")
-
-    first_op_idx = -1
-    for index, op in enumerate(block.ops):
-        if is_same_op(op, ops[0]):
-            first_op_idx = index
-            break
-    if first_op_idx == -1:
-        raise ValueError("Not find heter op in origin block")
-    delete_same_ops(block, ops)
-
-    mode = config.get_distributed_mode()
-    # Todo: replace XPU endpoints
-    pserver_endpoints = config.get_ps_endpoints()
-    send_input_vars = [
-        program.global_block().vars[union_var]
-        for union_var in entrance_var
-    ]
-    dummy_output = []
-    if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
-        dummy_output = program.global_block().create_var(
-            name=framework.generate_control_dev_var_name())
-    block._insert_op(
-        index=first_op_idx,
-        type="send",
-        inputs={"X": send_input_vars},
-        outputs={"Out": dummy_output},
-        attrs={
-            "send_varnames": entrance_var,
-            "merge_add": True,
-            "use_send_handler": False,
-            "endpoints": pserver_endpoints,
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-        }
-    )
 
 
 def block_append_op(program, origin_program, block, op):
