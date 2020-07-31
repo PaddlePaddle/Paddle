@@ -228,7 +228,7 @@ def launch_ps(args):
     ports = range(start_port, start_port + server_num, 1)
     default_endpoints = ",".join(["127.0.0.1:" + str(x) for x in ports])
     user_endpoints = ""
-    if args.endpoints == "":
+    if args.servers == "":
         user_endpoints = default_endpoints
     else:
         user_endpoints = args.servers
