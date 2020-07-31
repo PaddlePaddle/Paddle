@@ -36,8 +36,8 @@ class AsyncOptimizer(MetaOptimizerBase):
         return True if k_steps >= 0 else False
 
     def _build_trainer_programs(self, compiled_config):
-        _main = fleet._origin_main_program.clone()
-        _startup = fleet._origin_startup_program.clone()
+        _main = compiled_config.origin_main_program.clone()
+        _startup = compiled_config.origin_startup_program.clone()
 
         if not compiled_config.is_geo_mode():
             # for main program
@@ -123,13 +123,11 @@ class AsyncOptimizer(MetaOptimizerBase):
                                                      strategy, self.role_maker)
 
         main_program, startup_program = \
-            self._build_trainer_programs(compiled_config) if self.is_worker() \
+            self._build_trainer_programs(compiled_config) if self.role_maker.is_worker() \
                 else self._build_pserver_programs(compiled_config)
 
-        from paddle.fluid import framework
-
-        framework.switch_main_program(main_program)
-        framework.switch_main_program(startup_program)
+        fluid.framework.switch_main_program(main_program)
+        fluid.framework.switch_startup_program(startup_program)
 
         return None, None
 

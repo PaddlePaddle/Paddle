@@ -227,6 +227,7 @@ class DistributedStrategy(object):
     def a_sync(self, flag):
         if isinstance(flag, bool):
             self.strategy.a_sync = flag
+            self.a_sync_configs = {"k_steps": 0}
         else:
             raise ValueError(
                 "The type of `flag` is invalid, expected type is bool, but received %s".
