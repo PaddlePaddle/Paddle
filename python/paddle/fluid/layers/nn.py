@@ -4814,15 +4814,15 @@ def split(input, num_or_sections, dim=-1, name=None):
 
     Args:
         input (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
-        num_or_sections (int|list|tuple): If ``num_or_sections`` is int, then the ``num_or_sections`` 
+        num_or_sections (int|list|tuple): If ``num_or_sections`` is int, then the ``num_or_sections``
             indicates the number of equal sized sub-Tensors that the ``input``
-            will be divided into. If ``num_or_sections`` is a list or tuple, the length of it 
+            will be divided into. If ``num_or_sections`` is a list or tuple, the length of it
             indicates the number of sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
             dimension orderly. The length of the list mustn't be larger than the ``input`` 's size of specified dim.
         dim (int|Tensor, optional): The dimension along which to split, it can be a scalar with type ``int`` or
             a ``Tensor`` with shape [1] and data type ``int32`` or ``int64``. If :math:`dim < 0`,
             the dimension to split along is :math:`rank(input) + dim`. Default is -1.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property. 
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -4856,7 +4856,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             # out0.shape [3, 2, 5]
             # out1.shape [3, 3, 5]
             # out2.shape [3, 4, 5]
-            
+
             # dim is negative, the real dim is (rank(input) + axis) which real
             # value is 1.
             out0, out1, out2 = fluid.layers.split(input, num_or_sections=3, dim=-2)
@@ -6358,10 +6358,10 @@ def lod_reset(x, y=None, target_lod=None):
                 out.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a Tensor or LoDTensor. 
+        x (Variable): Input variable which could be a Tensor or LoDTensor.
                       The data type should be int32, int64, float32 or float64.
-        y (Variable, optional): If provided, output's LoD would be derived from :attr:`y`. 
-                                If y's lod level>0, the data type can be any type. 
+        y (Variable, optional): If provided, output's LoD would be derived from :attr:`y`.
+                                If y's lod level>0, the data type can be any type.
                                 If y's lod level=0, the data type should be int32.
         target_lod (list|tuple, optional): One level LoD which should be considered
                                       as target LoD when :attr:`y` not provided.
@@ -6422,9 +6422,9 @@ def lod_append(x, level):
                 x.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a tensor or LoDTensor. 
+        x (Variable): Input variable which could be a tensor or LoDTensor.
                       The data type should be int32, int64, float32 or float64.
-        level (list|tuple|Variable, optional): The LoD level to be appended into LoD of x. 
+        level (list|tuple|Variable, optional): The LoD level to be appended into LoD of x.
                                                If level is variable and its lod level>0, the data type can be any type.
                                                If level is variable and its lod level=0, the data type should be int32.
     Returns:
@@ -7051,19 +7051,19 @@ def image_resize(input,
     future and only use :attr:`out_shape` instead.
 
     Supporting resample methods:
-        'LINEAR' : Linear interpolation 
+        'LINEAR' : Linear interpolation
 
         'BILINEAR' : Bilinear interpolation
 
         'TRILINEAR' : Trilinear interpolation
 
         'NEAREST' : Nearest neighbor interpolation
-        
+
         'BICUBIC' : Bicubic interpolation
-    
-    Linear interpolation is the method of using a line connecting two known quantities 
+
+    Linear interpolation is the method of using a line connecting two known quantities
     to determine the value of an unknown quantity between the two known quantities.
-    
+
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
     direction) on input tensor.
@@ -7078,7 +7078,7 @@ def image_resize(input,
     interpolating functions of three variables (e.g. D-direction,
     H-direction and W-direction in this op) on a rectilinear 3D grid.
     The linear interpolation is performed on three directions.
-    
+
     Bicubic interpolation is an extension of cubic interpolation for interpolating
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
@@ -7177,7 +7177,7 @@ def image_resize(input,
               output: (N,C,D_out,H_out,W_out) where:
 
               D_out = D_{in} * scale_{factor}
-       
+
         Trilinear interpolation:
           if:
               align_corners = False , align_mode = 0
@@ -7192,20 +7192,20 @@ def image_resize(input,
               D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
-        
+
 
     For details of linear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Linear_interpolation.
-    
+
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-    
+
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
-    
+
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
-    
+
     For details of bicubic interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bicubic_interpolation
 
@@ -7213,8 +7213,8 @@ def image_resize(input,
         input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape (list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
-             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
         scale(float|Variable|None): The multiplier for the input height or width. At
@@ -7242,8 +7242,8 @@ def image_resize(input,
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
                                Default: True
-        align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the fomula in the 
-                            the example code above, it can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , 
+        align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the fomula in the
+                            the example code above, it can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 ,
                             can be \'1\' for src_idx = scale*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
@@ -7512,10 +7512,10 @@ def resize_linear(input,
     output shape which specified by actual_shape, out_shape and scale
     in priority order.
 
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in 
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in
     the future and only use :attr:`out_shape` instead.
 
-    Align_corners and align_mode are optional parameters,the calculation 
+    Align_corners and align_mode are optional parameters,the calculation
     method of interpolation can be selected by them.
 
     Example:
@@ -7523,23 +7523,23 @@ def resize_linear(input,
     .. code-block:: text
 
         For scale:
-          
+
             if align_corners = True && out_size > 1 :
 
               scale_factor = (in_size-1.0)/(out_size-1.0)
-            
+
             else:
-              
+
               scale_factor = float(in_size/out_size)
 
         Linear interpolation:
 
           if:
               align_corners = False , align_mode = 0
-              
+
               input : (N,C,W_in)
               output: (N,C,W_out) where:
-              
+
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
           else:
@@ -7552,12 +7552,12 @@ def resize_linear(input,
         input(Variable): 3-D Tensor(NCW), its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize linear
-            layer, the shape is (out_w,). Default: None. If a list, each 
-            element can be an integer or a Tensor Variable with shape: [1]. If a 
+            layer, the shape is (out_w,). Default: None. If a list, each
+            element can be an integer or a Tensor Variable with shape: [1]. If a
             Tensor Variable, its dimension size should be 1.
         scale(float|Variable|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale` must be set. 
-             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             least one of :attr:`out_shape` or :attr:`scale` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale`.
              Default: None.
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -7565,28 +7565,28 @@ def resize_linear(input,
                                 :attr:`out_shape` and :attr:`scale` specifying
                                 shape. That is to say actual_shape has the
                                 highest priority. It is recommended to use
-                                :attr:`out_shape` if you want to specify output 
-                                shape dynamically, because :attr:`actual_shape` 
-                                will be deprecated. When using actual_shape to 
-                                specify output shape, one of :attr:`out_shape` 
-                                and :attr:`scale` should also be set, otherwise 
+                                :attr:`out_shape` if you want to specify output
+                                shape dynamically, because :attr:`actual_shape`
+                                will be deprecated. When using actual_shape to
+                                specify output shape, one of :attr:`out_shape`
+                                and :attr:`scale` should also be set, otherwise
                                 errors would be occurred in graph constructing stage.
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
-        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCW"`, `"NWC"`.
             The default is `"NCW"`. When it is `"NCW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_width]`.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
 	Variable: 3-D tensor(NCW or NWC).
-    
+
     Examples:
         .. code-block:: python
-	
+
 	    #declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
@@ -7597,14 +7597,14 @@ def resize_linear(input,
 	    place = fluid.CPUPlace()
 	    exe = fluid.Executor(place)
 	    exe.run(fluid.default_startup_program())
- 
+
 	    input_data = np.random.rand(1,3,100).astype("float32")
 
 	    output_data = exe.run(fluid.default_main_program(),
                 feed={"input":input_data},
                 fetch_list=[output],
                 return_numpy=True)
- 
+
 	    print(output_data[0].shape)
 
 	    # (1, 3, 50)
@@ -9652,7 +9652,7 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
     alpha_shape = [1]
-    # NOTE(): The input of this API should be ``N,C,...`` format, 
+    # NOTE(): The input of this API should be ``N,C,...`` format,
     # which means x.shape[0] is batch_size and x.shape[0] is channel.
     if mode == 'channel':
         assert len(
@@ -10127,7 +10127,7 @@ def unstack(x, axis=0, num=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
+            x = fluid.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
             y = fluid.layers.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
@@ -10263,7 +10263,7 @@ def expand_as(x, target_tensor, name=None):
     :alias_main: paddle.expand_as
 	:alias: paddle.expand_as,paddle.tensor.expand_as,paddle.tensor.manipulation.expand_as
 	:old_api: paddle.fluid.layers.expand_as
-    
+
     expand_as operator tiles to the input by given expand tensor. You should set expand tensor
     for each dimension by providing tensor 'target_tensor'. The rank of X
     should be in [1, 6]. Please note that size of 'target_tensor' must be the same
@@ -10494,20 +10494,20 @@ def gaussian_random(shape,
             # result_3 is:
             # [[-0.12310527,  0.8187662,   1.923219  ]
             #  [ 0.70721835,  0.5210541,  -0.03214082]]
-       
+
        .. code-block:: python
-       
-           # declarative mode 
+
+           # declarative mode
            import numpy as np
            from paddle import fluid
-   
+
            x = fluid.layers.gaussian_random((2, 3), std=2., seed=10)
-   
+
            place = fluid.CPUPlace()
            exe = fluid.Executor(place)
            start = fluid.default_startup_program()
            main = fluid.default_main_program()
-   
+
            exe.run(start)
            x_np, = exe.run(main, feed={}, fetch_list=[x])
 
@@ -10521,11 +10521,11 @@ def gaussian_random(shape,
            import numpy as np
            from paddle import fluid
            import paddle.fluid.dygraph as dg
-    
+
            place = fluid.CPUPlace()
            with dg.guard(place) as g:
                x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
-               x_np = x.numpy()       
+               x_np = x.numpy()
            x_np
            # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
@@ -15046,7 +15046,7 @@ def unbind(input, axis=0):
     Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
     Args:
         input (Variable): The input variable which is an N-D Tensor, data type being float32, float64, int32 or int64.
-       
+
         axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind. If :math:`axis < 0`, the
             dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
