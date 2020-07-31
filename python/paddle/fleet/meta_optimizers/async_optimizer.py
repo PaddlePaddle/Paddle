@@ -103,13 +103,13 @@ class AsyncOptimizer(MetaOptimizerBase):
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         strategy = None
 
-        if self.user_defined_strategy.a_sync and k_steps == 0:
+        if not self.user_defined_strategy.a_sync and k_steps == 0:
             strategy = StrategyFactory.create_sync_strategy()
 
-        if not self.user_defined_strategy.a_sync and k_steps == 0:
+        if self.user_defined_strategy.a_sync and k_steps == 0:
             strategy = StrategyFactory.create_async_strategy()
 
-        if not self.user_defined_strategy.a_sync and k_steps > 0:
+        if self.user_defined_strategy.a_sync and k_steps > 0:
             strategy = StrategyFactory.create_geo_strategy(k_steps)
 
         if not strategy:
