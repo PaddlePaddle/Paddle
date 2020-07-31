@@ -1565,6 +1565,9 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
     """
+    len_x_shape = len(x.shape)
+    axis1 = axis1 if axis1 >= 0 else len_x_shape + axis1
+    axis2 = axis2 if axis2 >= 0 else len_x_shape + axis2
     if axis1 > axis2:
         offset = -offset
     inputs = {'Input': [x]}
