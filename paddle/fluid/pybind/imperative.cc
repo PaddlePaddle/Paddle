@@ -886,6 +886,9 @@ void BindImperative(py::module *m_ptr) {
             // NOTE(zhiqiu): The automatic conversion in pybind11 between c++
             // STL and python set/list/dict involve a copy operation that
             // prevents pass-by-reference semantics, so it is ok to swap.
+            // The reaseon why not directly pass
+            // std::shared_ptr<std::unordered_set<std::string>>
+            // is that pybind11 forbid shared_ptr<T> where T is not custom type.
             imperative::AmpOperators::Instance().GetAllowOps()->swap(allow_ops);
             imperative::AmpOperators::Instance().GetBlockOps()->swap(block_ops);
           })

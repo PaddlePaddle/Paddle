@@ -39,7 +39,7 @@ class AmpOperators {
   std::shared_ptr<std::unordered_set<std::string>> GetBlockOps();
 
  private:
-  AmpOperators();  // forbid calling constructor
+  AmpOperators();  // forbid calling default constructor
 
   // The set of ops that support fp16 calculation and are considered numerically
   // safe and performance critical. These ops are always converted to fp16.
