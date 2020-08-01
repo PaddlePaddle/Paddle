@@ -57,7 +57,6 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         ops = [op.type for op in avg_cost.block.ops]
-        self.assertIn('lars', ops)
         self.assertIn('lars_momentum', ops)
 
     def test_lars_not_apply_with_adam(self):
@@ -67,8 +66,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         ops = [op.type for op in avg_cost.block.ops]
-        self.assertNotIn('dgc', ops)
-        self.assertNotIn('dgc_momentum', ops)
+        self.assertNotIn('lars_momentum', ops)
 
 
 if __name__ == "__main__":
