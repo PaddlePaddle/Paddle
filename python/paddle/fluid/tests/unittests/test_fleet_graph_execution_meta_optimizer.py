@@ -24,13 +24,17 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36003",
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36003,127.0.0.1:36004"
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36003,127.0.0.1:36004",
+            "http_proxy": "",
+            "https_proxy": ""
         }
         node_b = {
             "PADDLE_TRAINER_ID": "1",
             "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36004",
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36003,127.0.0.1:36004"
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36003,127.0.0.1:36004",
+            "http_proxy": "",
+            "https_proxy": ""
         }
 
         def node_func():
@@ -70,13 +74,17 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36001",
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002"
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "http_proxy": "",
+            "https_proxy": ""
         }
         node_b = {
             "PADDLE_TRAINER_ID": "1",
             "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36002",
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002"
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "http_proxy": "",
+            "https_proxy": ""
         }
 
         def node_func():
