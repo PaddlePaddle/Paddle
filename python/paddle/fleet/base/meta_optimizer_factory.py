@@ -16,6 +16,7 @@ from ..meta_optimizers import RecomputeOptimizer
 from ..meta_optimizers import GradientMergeOptimizer
 from ..meta_optimizers import GraphExecutionOptimizer
 from ..meta_optimizers import PipelineOptimizer
+from ..meta_optimizers import LocalSGDOptimizer
 
 __all__ = ["MetaOptimizerFactory"]
 
@@ -24,6 +25,7 @@ meta_optimizer_names = [
     "GradientMergeOptimizer",
     "GraphExecutionOptimizer",
     "PipelineOptimizer",
+    "LocalSGDOptimizer",
 ]
 
 
