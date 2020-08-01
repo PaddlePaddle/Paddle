@@ -15,6 +15,8 @@
 import unittest
 import paddle
 import os
+import paddle.fleet as fleet
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestFleetLarsMetaOptimizer(unittest.TestCase):
@@ -25,9 +27,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
                        "127.0.0.1:36001,127.0.0.2:36001"
 
-    def test_lars_optimizer(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+    def net(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         input_x = paddle.fluid.layers.data(
@@ -48,11 +48,27 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
             "lars_weight_decay": 0.0005,
         }
 
+        return avg_cost, strategy
+
+    def test_lars_optimizer(self):
+        avg_cost, strategy = self.net()
         optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
+
         ops = [op.type for op in avg_cost.block.ops]
+        self.assertIn('lars', ops)
         self.assertIn('lars_momentum', ops)
+
+    def test_lars_not_apply_with_adam(self):
+        avg_cost, strategy = self.net()
+        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize(avg_cost)
+
+        ops = [op.type for op in avg_cost.block.ops]
+        self.assertNotIn('dgc', ops)
+        self.assertNotIn('dgc_momentum', ops)
 
 
 if __name__ == "__main__":
