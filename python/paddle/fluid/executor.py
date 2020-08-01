@@ -1161,7 +1161,7 @@ class Executor(object):
                 program._graph._compile(scope, self.place)
                 # _graph in program does not support inference since the _graph is optimized
                 # through optimizer.minimize function and should not be used as inference graph
-                assert not program._graph_is_inference
+                # assert not program._graph._is_inference
                 return self._run_parallel(
                     program._graph,
                     scope=scope,

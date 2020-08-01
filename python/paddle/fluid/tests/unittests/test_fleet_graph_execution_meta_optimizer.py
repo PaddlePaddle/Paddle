@@ -116,6 +116,19 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
             exe.run(paddle.fluid.default_startup_program())
 
+            import numpy as np
+
+            def gen_data():
+                return {
+                    "x": np.random.random(size=(128, 32)).astype('float32'),
+                    "y": np.random.randint(
+                        2, size=(128, 1)).astype('int64')
+                }
+
+            for i in range(10):
+                cost_val = exe.run(feed=gen_data(), fetch_list=[avg_cost.name])
+                print("cost of step[{}] = {}".format(i, cost_val))
+
         proc_a = launch_func(node_func, node_a)
         proc_a.start()
         proc_b = launch_func(node_func, node_b)
