@@ -187,14 +187,6 @@ class TestPipeline(unittest.TestCase):
         data_loader.set_sample_generator(train_reader, batch_size=1)
         place = fluid.CPUPlace()
 
-        # The following dataset is only used for the 
-        # interface 'train_from_dataset'.
-        # And it has no actual meaning.
-        dataset = paddle.fleet.DatasetFactory().create_dataset('FileInstantDataset')
-        dataset.set_batch_size(1)
-        dataset.set_thread(1)
-        dataset.set_filelist(['/tmp/tmp_2.txt'])
-        dataset.set_use_var([image, label])
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         data_loader.start()
