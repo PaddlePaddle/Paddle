@@ -16,7 +16,6 @@ import os
 
 
 def launch_func(func, env_dict):
-    print(env_dict)
     for key in env_dict:
         os.environ[key] = env_dict[key]
     proc = Process(target=func)
