@@ -48,6 +48,15 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputsDim("MultiFpnRois", outs_dims);
     ctx->SetOutputDim("RestoreIndex", {-1, 1});
+
+    if (ctx->HasOutputs("MultiRoisNum")) {
+      std::vector<framework::DDim> outs_num_dims;
+      for (size_t i = 0; i < num_out_rois; ++i) {
+        framework::DDim out_num_dim = {-1};
+        outs_num_dims.push_back(out_num_dim);
+      }
+      ctx->SetOutputsDim("MultiRoisNum", outs_num_dims);
+    }
     if (!ctx->IsRuntime()) {
       for (size_t i = 0; i < num_out_rois; ++i) {
         ctx->SetLoDLevel("MultiFpnRois", ctx->GetLoDLevel("FpnRois"), i);
@@ -66,12 +75,21 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
 class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("FpnRois", "(LoDTensor) The rois at all levels in shape (-1, 4)");
+    AddInput("FpnRois", "(LoDTensor) The RoIs at all levels in shape (-1, 4)");
+    AddInput("RoisNum",
+             "(Tensor) The number of RoIs in shape (B),"
+             "B is the number of images")
+        .AsDispensable();
     AddOutput("MultiFpnRois", "(LoDTensor) Output with distribute operator")
         .AsDuplicable();
     AddOutput("RestoreIndex",
               "(Tensor) An array of positive number which is "
               "used to restore the order of FpnRois");
+    AddOutput("MultiRoisNum",
+              "(Tensor) Multiple number of RoIs from each level in shape (B),"
+              "B is the number of images.")
+        .AsDuplicable()
+        .AsDispensable();
     AddAttr<int>("min_level",
                  "The lowest level of FPN layer where the"
                  " proposals come from");

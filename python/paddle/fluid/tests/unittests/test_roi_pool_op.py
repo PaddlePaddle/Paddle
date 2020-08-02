@@ -174,16 +174,11 @@ class TestROIPoolInLodOp(TestROIPoolOp):
         self.calc_roi_pool()
 
         seq_len = self.rois_lod[0]
-        cur_len = 0
-        lod = [cur_len]
-        for l in seq_len:
-            cur_len += l
-            lod.append(cur_len)
 
         self.inputs = {
             'X': self.x,
             'ROIs': (self.rois[:, 1:5], self.rois_lod),
-            'RoisLod': np.asarray(lod).astype('int64')
+            'RoisNum': np.asarray(seq_len).astype('int32')
         }
 
         self.attrs = {

@@ -54,11 +54,14 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
               score_dim[1]));
     }
     context->SetOutputDim("FpnRois", {post_nms_topN, 4});
+    if (context->HasOutput("RoisNum")) {
+      context->SetOutputDim("RoisNum", {-1});
+    }
     if (!context->IsRuntime()) {  // Runtime LoD infershape will be computed
       // in Kernel.
       context->ShareLoD("MultiLevelRois", "FpnRois");
     }
-    if (context->IsRuntime()) {
+    if (context->IsRuntime() && !context->HasInputs("MultiLevelNums")) {
       std::vector<framework::InferShapeVarPtr> roi_inputs =
           context->GetInputVarPtrs("MultiLevelRois");
       std::vector<framework::InferShapeVarPtr> score_inputs =
@@ -68,15 +71,13 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
             BOOST_GET(framework::Variable *, roi_inputs[i]);
         framework::Variable *score_var =
             BOOST_GET(framework::Variable *, score_inputs[i]);
-        if (!context->HasInputs("MultiLevelNums")) {
-          auto &roi_lod = roi_var->Get<LoDTensor>().lod();
-          auto &score_lod = score_var->Get<LoDTensor>().lod();
-          PADDLE_ENFORCE_EQ(
-              roi_lod, score_lod,
-              platform::errors::InvalidArgument(
-                  "Inputs(MultiLevelRois) and "
-                  "Inputs(MultiLevelScores) should have same lod."));
-        }
+        auto &roi_lod = roi_var->Get<LoDTensor>().lod();
+        auto &score_lod = score_var->Get<LoDTensor>().lod();
+        PADDLE_ENFORCE_EQ(
+            roi_lod, score_lod,
+            platform::errors::InvalidArgument(
+                "Inputs(MultiLevelRois) and "
+                "Inputs(MultiLevelScores) should have same lod."));
       }
     }
   }
@@ -104,7 +105,7 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(
         "MultiLevelNums",
         "(Tensor) Multiple RoIs number of each image from each level in shape"
-        "(N), N is the total number of RoIs.")
+        "(N), N is the number of images.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("FpnRois", "(LoDTensor) All selected RoIs with highest scores");

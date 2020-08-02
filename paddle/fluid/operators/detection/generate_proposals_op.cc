@@ -347,7 +347,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     lod0.push_back(0);
     anchors.Resize({anchors.numel() / 4, 4});
     variances.Resize({variances.numel() / 4, 4});
-    std::vector<int64_t> tmp_lod;
+    std::vector<int> tmp_num;
 
     int64_t num_proposals = 0;
     for (int64_t i = 0; i < num; ++i) {
@@ -369,16 +369,16 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       AppendProposals(rpn_roi_probs, num_proposals, scores);
       num_proposals += proposals.dims()[0];
       lod0.push_back(num_proposals);
-      tmp_lod.push_back(num_proposals);
+      tmp_num.push_back(proposals.dims()[0]);
     }
-    if (context.HasOutput("RpnRoisLod")) {
-      auto *rpn_rois_lod = context.Output<Tensor>("RpnRoisLod");
-      rpn_rois_lod->mutable_data<int64_t>({num}, context.GetPlace());
-      int64_t *lod_data = rpn_rois_lod->data<int64_t>();
+    if (context.HasOutput("RpnRoisNum")) {
+      auto *rpn_rois_num = context.Output<Tensor>("RpnRoisNum");
+      rpn_rois_num->mutable_data<int>({num}, context.GetPlace());
+      int *num_data = rpn_rois_num->data<int>();
       for (int i = 0; i < num; i++) {
-        lod_data[i] = tmp_lod[i];
+        num_data[i] = tmp_num[i];
       }
-      rpn_rois_lod->Resize({num});
+      rpn_rois_num->Resize({num});
     }
     rpn_rois->set_lod(lod);
     rpn_roi_probs->set_lod(lod);
@@ -481,7 +481,8 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor), Output proposals with shape (rois_num, 4).");
     AddOutput("RpnRoiProbs",
               "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
-    AddOutput("RpnRoisLod", "(Tensor), rpn rois's lod info").AsDispensable();
+    AddOutput("RpnRoisNum", "(Tensor), The number of Rpn RoIs in each image")
+        .AsDispensable();
     AddAttr<int>("pre_nms_topN",
                  "Number of top scoring RPN proposals to keep before "
                  "applying NMS.");

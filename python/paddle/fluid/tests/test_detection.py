@@ -740,14 +740,24 @@ class TestDistributeFpnProposals(unittest.TestCase):
     def test_distribute_fpn_proposals(self):
         program = Program()
         with program_guard(program):
-            fpn_rois = fluid.layers.data(
-                name='data', shape=[4], dtype='float32', lod_level=1)
+            fpn_rois = fluid.data(
+                name='data', shape=[None, 4], dtype='float32', lod_level=1)
+            rois_num = fluid.data(name='rois_num', shape=[None], dtype='int32')
             multi_rois, restore_ind = layers.distribute_fpn_proposals(
                 fpn_rois=fpn_rois,
                 min_level=2,
                 max_level=5,
                 refer_level=4,
                 refer_scale=224)
+            multi_rois, restore_ind, multi_rois_num = layers.distribute_fpn_proposals(
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=5,
+                refer_level=4,
+                refer_scale=224,
+                rois_num=rois_num,
+                return_rois_num=True)
+
             self.assertIsNotNone(multi_rois)
             self.assertIsNotNone(restore_ind)
 

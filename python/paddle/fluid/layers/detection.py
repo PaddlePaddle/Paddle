@@ -2985,7 +2985,7 @@ def generate_proposals(scores,
         dtype=bbox_deltas.dtype)
     rpn_roi_probs = helper.create_variable_for_type_inference(
         dtype=scores.dtype)
-    rpn_rois_lod = helper.create_variable_for_type_inference(dtype='int32')
+    rpn_rois_num = helper.create_variable_for_type_inference(dtype='int32')
 
     helper.append_op(
         type="generate_proposals",
@@ -3006,14 +3006,14 @@ def generate_proposals(scores,
         outputs={
             'RpnRois': rpn_rois,
             'RpnRoiProbs': rpn_roi_probs,
-            'RpnRoisLod': rpn_rois_lod
+            'RpnRoisNum': rpn_rois_num
         })
     rpn_rois.stop_gradient = True
     rpn_roi_probs.stop_gradient = True
-    rpn_rois_lod.stop_gradient = True
+    rpn_rois_num.stop_gradient = True
 
     if return_rois_num:
-        return rpn_rois, rpn_roi_probs, rpn_rois_lod
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
     else:
         return rpn_rois, rpn_roi_probs
 
@@ -3528,7 +3528,9 @@ def distribute_fpn_proposals(fpn_rois,
                              max_level,
                              refer_level,
                              refer_scale,
-                             name=None):
+                             name=None,
+                             rois_num=None,
+                             return_rois_num=False):
     """
 	:alias_main: paddle.nn.functional.distribute_fpn_proposals
 	:alias: paddle.nn.functional.distribute_fpn_proposals,paddle.nn.functional.vision.distribute_fpn_proposals
@@ -3562,6 +3564,12 @@ def distribute_fpn_proposals(fpn_rois,
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default. 
+        rois_num(Variable): 1-D Tensor with shape [B] and data type is int32.
+            B is the number os images. The number of RoIs in each image.
+        return_rois_num(bool): When setting True, it will return a list 
+            contaning 1-D Tensor with shape [B] that includes RoIs' number of 
+            each image from each level. The length of list is the number of 
+            levels and B is the number of images. 'False' by default.
 
     Returns:
         Tuple:
@@ -3574,6 +3582,10 @@ def distribute_fpn_proposals(fpn_rois,
         the number of total rois. The data type is int32. It is
         used to restore the order of fpn_rois.
 
+        multi_rois_num(List): A list of 1-D Tensor with shape [B]
+        and data type of int32. B is the number of images. The number of RoIs 
+        in each image from each level.
+        
 
     Examples:
         .. code-block:: python
@@ -3596,18 +3608,29 @@ def distribute_fpn_proposals(fpn_rois,
     multi_rois = [
         helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
     ]
+    multi_rois_num = [
+        helper.create_variable_for_type_inference(dtype='int32')
+        for i in range(num_lvl)
+    ]
+
     restore_ind = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
         type='distribute_fpn_proposals',
-        inputs={'FpnRois': fpn_rois},
-        outputs={'MultiFpnRois': multi_rois,
-                 'RestoreIndex': restore_ind},
+        inputs={'FpnRois': fpn_rois,
+                'RoisNum': rois_num},
+        outputs={
+            'MultiFpnRois': multi_rois,
+            'RestoreIndex': restore_ind,
+            'MultiRoisNum': multi_rois_num
+        },
         attrs={
             'min_level': min_level,
             'max_level': max_level,
             'refer_level': refer_level,
             'refer_scale': refer_scale
         })
+    if return_rois_num:
+        return multi_rois, restore_ind, multi_rois_num
     return multi_rois, restore_ind
 
 
@@ -3723,11 +3746,9 @@ def collect_fpn_proposals(multi_rois,
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default.
-        multi_rois_num(list, optional): List of the number of RoIs in each image from each level. Element in list is 1-D Tensor with shape [N] and data type is int32, N is the number of total RoIs in each level. Default: None
-        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's 
-            num of each image. N is the number of images. For example, the tensor has values [4,5] that represents
-            the first image has 4 Rois and the second image has 5 Rois. It only used in rcnn model. 
-            'False' by default.         
+        multi_rois_num(list, optional): List of the number of RoIs in each image from each level. Element in list is 1-D Tensor with shape [B] and data type is int32, B is the number of images. Default: None
+        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [B] that includes Rois' 
+            number of each image. B is the number of images. 'False' by default.         
 
     Returns:
         Variable:
@@ -3735,8 +3756,8 @@ def collect_fpn_proposals(multi_rois,
         fpn_rois(Variable): 2-D LoDTensor with shape [N, 4] and data type is 
         float32 or float64. Selected RoIs. 
 
-        rois_num(Variable): 1-D Tensor with shape [N, ] and data type is int32.
-        The number of rois in each image.
+        rois_num(Variable): 1-D Tensor with shape [B] and data type is int32.
+        B is the number of images. The number of RoIs in each image.
 
     Examples:
         .. code-block:: python
