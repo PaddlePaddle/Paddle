@@ -22,17 +22,17 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_heter_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import create_heter_program
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import create_trainer_program
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_block_joint
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import add_vars_by_op_map
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_block_input_output
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_op_input_output
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_vars_name_in_block
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import block_append_op
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import replace_ops_by_communicate_op
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_input_map_from_op, _get_output_map_from_op
-from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import add_listen_and_serv_pass
 
 
 def split_heter_worker_ops_pass(program, config):
+    """
+    split heter worker program from origin-program
+    1. find heter op (located on different device)
+    2. find input&output of every heter-block
+    3. create heter worker program, add listen&serv op
+    """
     default_deveice = "cpu"
     program, heter_ops, _, program_block_ops = find_heter_ops(
         program, default_deveice)
@@ -51,6 +51,12 @@ def split_heter_worker_ops_pass(program, config):
 
 
 def split_trainer_ops_pass(program, config):
+    """
+    split cpu-trainer program from origin-program
+    1. find heter op (located on different device)
+    2. find input&output of every heter-block
+    3. create cpu-trainer program, add send&recv op
+    """
     default_deveice = "cpu"
     program, heter_ops, _, program_block_ops = find_heter_ops(
         program, default_deveice)
@@ -60,6 +66,9 @@ def split_trainer_ops_pass(program, config):
 
 
 def delete_startup_useless_ops_var_pass(startup_program, main_program, config):
+    """
+    delete variable which not used in current main_program
+    """
     # find all op and its var
     vars_in_main_program = get_vars_name_in_block(main_program.global_block())
 

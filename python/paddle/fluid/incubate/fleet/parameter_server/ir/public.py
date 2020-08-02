@@ -123,11 +123,9 @@ def _is_heter_op(op, current_heter_device, default_device="cpu"):
     return False
 
 
-def _is_same_device(op, device, default_device):
+def _is_same_device(op, pre_device, default_device="cpu"):
     op_device = op.attr("op_device")
-    if op_device == device:
-        return True
-    elif op_device != default_device:
+    if op_device == pre_device:
         return True
     return False
 
@@ -229,6 +227,9 @@ def create_heter_program(program, heter_program, heter_ops, block_var_detail, cu
 
         # entrance_vars = block_vars_detail[index]["entrance"]
         # exit_vars = block_vars_detail[index]["exit"]
+        # create slice op
+        # create reshape op
+        # add info in listen&serv
 
     # attrs = {
     #     "optimize_blocks": optimize_block,
@@ -270,11 +271,13 @@ def replace_ops_by_communicate_op(program, config, ops_list, ops_detail):
     delete_same_ops(program.global_block(), ops_list)
 
     mode = config.get_distributed_mode()
-    # Todo: replace XPU endpoints
+    # Todo: replace by XPU endpoints
     pserver_endpoints = config.get_ps_endpoints()
     entrance_var = ops_detail["entrance_var"]
     private_var = ops_detail["private"]
-    # exit_var = ops_detail["exit"] # for recv
+    # create reshape op
+    # create concat op
+
     send_input_vars = [
         program.global_block().vars[union_var]
         for union_var in ops_detail["entrance_var"]
@@ -297,9 +300,52 @@ def replace_ops_by_communicate_op(program, config, ops_list, ops_detail):
         }
     )
 
+    # exit_var = ops_detail["exit"] # for recv
+    # create slice op
+    # create reashpe op
+
     for var in private_var:
         if program.global_block().has_var(var):
             program.global_block()._remove_var(var)
+
+
+def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_list):
+    send_var_reshape_dim = []
+    send_var_reshape_name = []
+    send_var_concat_name = "HETER_BLOCK_{}@HETER_SEND_CONCAT".format(
+        block_index)
+    recv_var_slice_dim = []
+    recv_var_reshape_name = []
+    recv_var_listen_recv_name = "HETER_BLOCK_{}@HETER_SEND_CONCAT".format(
+        block_index - 1)
+    # send
+    # var -> reshape -> var@HETER_SEND_RESHAPE -> concat -> var@HETER_BLOCK_INDEX@HETER_SEND_CONCAT
+    for var_name in exit_var_list:
+        var = program.global_block().vars[var_name]
+        shape = var.shape
+        if len(shape) < 2 or shape[0] != -1:
+            raise("Variable {} not support heter training.".format(var_name))
+        send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
+        send_var_reshape_dim.append(send_reshape_dim)
+        send_var_reshape_name.append("{}@HETER_SEND_RESHAPE".format(var_name))
+    # recv
+    # var@HETER_SEND_CONCAT -> slice -> var@HETER_SEND_RESHAPE -> reshape -> var
+    for name in entrance_var_list:
+        var = program.global_block().vars[var_name]
+        shape = var.shape
+        if len(shape) < 2 or shape[0] != -1:
+            raise("Variable {} not support heter training.".format(var_name))
+        recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
+        recv_var_slice_dim.append(recv_var_dim)
+        recv_var_reshape_name.append("{}@HETER_RECV_RESHAPE".format(var_name))
+
+    info = {"send_var_reshape_dim": send_var_reshape_dim,
+            "send_var_reshape_name": send_var_reshape_name,
+            "send_var_concat_name": send_var_concat_name,
+            "recv_var_slice_dim": recv_var_slice_dim,
+            "recv_var_reshape_name": recv_var_reshape_name,
+            "recv_var_listen_recv_name": recv_var_listen_recv_name}
+    return info
 
 
 def find_block_joints(program, program_block_ops_list):
@@ -442,6 +488,22 @@ def is_same_op(op1, op2):
     if str(op1) != str(op2):
         return False
     return True
+
+
+def insert_send_reshape_op(program, block, index, var, new_var_name):
+    pass
+
+
+def insert_send_concat_op(program, block, index, var_list, new_var_name_list):
+    pass
+
+
+def insert_recv_slice_op(program, block, index, var, new_var_name_list):
+    pass
+
+
+def insert_recv_reshape_op(program, block, index, var, old_var_name):
+    pass
 
 
 def _get_input_map_from_op(varmap, op):
