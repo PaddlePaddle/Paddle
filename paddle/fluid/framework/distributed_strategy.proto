@@ -40,6 +40,17 @@ message GradientMergeConfig {
   optional bool avg = 2 [ default = true ];
 }
 
+message LarsConfig {
+  optional float lars_coeff = 1 [ default = 0.001 ];
+  optional float lars_weight_decay = 2 [ default = 0.0005 ];
+}
+
+message LambConfig {
+  optional float beta1 = 1 [ default = 0.001 ];
+  optional float beta2 = 2 [ default = 0.999 ];
+  optional float epsilon = 3 [ default = 0.000001 ];
+}
+
 message BuildStrategy {
   optional bool enable_sequential_execution = 1 [ default = false ];
   optional bool fuse_elewise_add_act_ops = 2 [ default = false ];
@@ -100,7 +111,8 @@ message DistributedStrategy {
   optional GradientMergeConfig gradient_merge_configs = 104;
   optional PipelineConfig pipeline_configs = 106;
   optional AsyncConfig a_sync_configs = 107;
-
+  optional LarsConfig lars_configs = 108;
+  optional LambConfig lamb_configs = 109;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }
