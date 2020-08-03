@@ -144,12 +144,15 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     indices_queue.put([i, i + 10])
                 indices_queue.put(None)
                 loader._worker_loop(
-                    loader._dataset, indices_queue, loader._data_queue,
-                    loader._workers_done_event, _collate_fn, _init_fn, 0)
+                    loader._dataset, 0, indices_queue, loader._data_queue,
+                    loader._workers_done_event, _collate_fn, _init_fn, 0, 1)
                 self.assertTrue(False)
         except AssertionError:
             pass
-        except Exception:
+        except Exception as e:
+            print("Exception", e)
+            import sys
+            sys.stdout.flush()
             self.assertTrue(False)
 
     def run_with_worker_done(self, use_shared_memory=True):
@@ -184,8 +187,8 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 indices_queue.put(None)
                 loader._workers_done_event.set()
                 loader._worker_loop(
-                    loader._dataset, indices_queue, loader._data_queue,
-                    loader._workers_done_event, _collate_fn, _init_fn, 0)
+                    loader._dataset, 0, indices_queue, loader._data_queue,
+                    loader._workers_done_event, _collate_fn, _init_fn, 0, 1)
                 self.assertTrue(True)
         except AssertionError:
             pass
