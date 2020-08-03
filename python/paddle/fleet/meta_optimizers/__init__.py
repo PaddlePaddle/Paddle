@@ -16,8 +16,13 @@ from .gradient_merge_optimizer import GradientMergeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
 from .async_optimizer import AsyncOptimizer
 from .pipeline_optimizer import PipelineOptimizer
+from .localsgd_optimizer import LocalSGDOptimizer
 
 __all__ = [
-    'RecomputeOptimizer', 'GradientMergeOptimizer', 'AsyncOptimizer',
-    'GraphExecutionOptimizer', 'PipelineOptimizer'
+    'RecomputeOptimizer',
+    'GradientMergeOptimizer',
+    'AsyncOptimizer',
+    'GraphExecutionOptimizer',
+    'PipelineOptimizer',
+    'LocalSGDOptimizer',
 ]
