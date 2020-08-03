@@ -15,11 +15,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/platform/float16.h"
 
-template <typename T>
-using CastOpKernel =
-    paddle::operators::CastOpKernel<paddle::platform::CUDADeviceContext, T>;
+namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(cast, CastOpKernel<float>, CastOpKernel<double>,
-                        CastOpKernel<int>, CastOpKernel<int64_t>,
-                        CastOpKernel<bool>, CastOpKernel<uint8_t>,
-                        CastOpKernel<paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    cast, ops::CastOpGPUKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CastOpGPUKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::CastOpGPUKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::CastOpGPUKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::CastOpGPUKernel<paddle::platform::CUDADeviceContext, bool>,
+    ops::CastOpGPUKernel<paddle::platform::CUDADeviceContext, uint8_t>,
+    ops::CastOpGPUKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::float16>);

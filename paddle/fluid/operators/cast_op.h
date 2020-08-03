@@ -62,5 +62,43 @@ class CastOpKernel : public framework::OpKernel<InT> {
   }
 };
 
+template <typename DeviceContext, typename InT, typename OutT>
+static void CastFunction(const framework::ExecutionContext& context) {
+  auto* in = context.Input<framework::Tensor>("X");
+  auto* out = context.Output<framework::Tensor>("Out");
+
+  auto in_t = framework::EigenVector<InT>::Flatten(*in);
+  out->mutable_data<OutT>(context.GetPlace());
+  auto out_t = framework::EigenVector<OutT>::Flatten(*out);
+  auto& place =
+      *context.template device_context<DeviceContext>().eigen_device();
+  out_t.device(place) = in_t.template cast<OutT>();
+}
+
+template <typename DeviceContext, typename InT>
+class CastOpGPUKernel : public framework::OpKernel<InT> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto out_type = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("out_dtype"));
+
+    if (out_type == paddle::framework::proto::VarType::FP64) {
+      CastFunction<DeviceContext, InT, double>(context);
+    } else if (out_type == paddle::framework::proto::VarType::FP32) {
+      CastFunction<DeviceContext, InT, float>(context);
+    } else if (out_type == paddle::framework::proto::VarType::FP16) {
+      CastFunction<DeviceContext, InT, paddle::platform::float16>(context);
+    } else if (out_type == paddle::framework::proto::VarType::INT64) {
+      CastFunction<DeviceContext, InT, int64_t>(context);
+    } else if (out_type == paddle::framework::proto::VarType::INT32) {
+      CastFunction<DeviceContext, InT, int>(context);
+    } else if (out_type == paddle::framework::proto::VarType::UINT8) {
+      CastFunction<DeviceContext, InT, uint8_t>(context);
+    } else if (out_type == paddle::framework::proto::VarType::BOOL) {
+      CastFunction<DeviceContext, InT, bool>(context);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
