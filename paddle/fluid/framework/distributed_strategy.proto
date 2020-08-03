@@ -31,6 +31,9 @@ message AMPConfig {
   optional float incr_ratio = 4 [ default = 2.0 ];
   optional float decr_ratio = 5 [ default = 0.8 ];
   optional bool use_dynamic_loss_scaling = 6 [ default = true ];
+  repeated string custom_white_list = 7;
+  repeated string custom_black_list = 8;
+  repeated string custom_black_varnames = 9;
 }
 
 message LocalSGDConfig { optional int32 k_steps = 1 [ default = 4 ]; }
