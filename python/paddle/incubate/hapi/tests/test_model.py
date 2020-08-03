@@ -437,7 +437,6 @@ class TestModelFunction(unittest.TestCase):
             fluid.disable_dygraph() if dynamic else None
 
     def test_export_deploy_model(self):
-        from paddle.fluid.dygraph import TracedLayer, to_variable
         inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
         tensor_img = np.array(
             np.random.random((1, 1, 28, 28)), dtype=np.float32)
@@ -448,19 +447,21 @@ class TestModelFunction(unittest.TestCase):
                 os.makedirs(save_dir)
             if dynamic:
                 fluid.enable_dygraph(device)
-                in_var = to_variable(tensor_img)
+                net = LeNet()
+                model = Model(net, inputs)
+                model.prepare()
+                ori_results = model.test_batch(tensor_img)
+                from paddle.fluid.dygraph import to_variable
+                in_var_list = [to_variable(tensor_img)]
+                model.save_inference_model(save_dir, net, in_var_list)
             else:
-                fluid.disable_dygraph()
-            net = LeNet()
-            model = Model(net, inputs)
-            model.prepare()
-            ori_results = model.test_batch(tensor_img)
-            if dynamic:
-                model.save_inference_model(save_dir, net, [in_var])
-            else:
+                fluid.disable_dygraph() if fluid.in_dygraph_mode() else None
+                net = LeNet()
+                model = Model(net, inputs)
+                model.prepare()
+                ori_results = model.test_batch(tensor_img)
                 model.save_inference_model(save_dir)
-           
-            fluid.disable_dygraph()
+            fluid.disable_dygraph() if dynamic else None
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
