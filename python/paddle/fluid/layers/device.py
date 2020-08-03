@@ -25,7 +25,7 @@ from paddle.utils import deprecated
 __all__ = []
 
 
-@deprecated(since='0.15.0', new_api="paddle.fluid.ParallelExecutor")
+@deprecated(since='0.15.0', update_to="paddle.fluid.ParallelExecutor")
 @autodoc()
 def get_places(device_count=None, device_type=None):
     helper = LayerHelper('get_places', **locals())
