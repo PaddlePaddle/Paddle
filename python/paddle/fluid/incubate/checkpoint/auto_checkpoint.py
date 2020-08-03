@@ -274,6 +274,7 @@ class TrainEpochRange(SerializableBase):
         self._name = name
         self._restored_from = None
         self._exe_status = {}
+        self._flag_generated = False
 
         self._checker = g_checker
         if checkpoint_inter is not None:
@@ -504,10 +505,16 @@ class TrainEpochRange(SerializableBase):
                 self._serialize()))
 
     def _generate_flag(self):
+        if self._flag_generated:
+            return
+
         name = "can_be_auto_checkpoint.flag"
         path = self._checker.get_job_path() + "/" + name
         logger.info("this job can_be_auto_checkpoint")
+        self._hdfs.mkdirs(self._checker.get_job_path())
         self._hdfs.touch(path, exist_ok=True)
+
+        self._flag_generated = True
 
 
 def _get_train_epoch_range():
