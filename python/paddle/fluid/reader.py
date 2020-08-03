@@ -29,7 +29,6 @@ from .unique_name import UniqueNameGenerator
 import logging
 import warnings
 from .dataset import DatasetBase, InMemoryDataset
-from . import unique_name
 
 ### Dygraph DataLoader configs ###
 import os
