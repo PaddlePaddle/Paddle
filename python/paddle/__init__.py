@@ -238,6 +238,14 @@ from .framework import ParallelEnv  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS
 from .framework import jit  #DEFINE_ALIAS
 
+from .framework import NoamDecay  #DEFINE_ALIAS
+from .framework import PiecewiseDecay  #DEFINE_ALIAS
+from .framework import NaturalExpDecay  #DEFINE_ALIAS
+from .framework import ExponentialDecay  #DEFINE_ALIAS
+from .framework import InverseTimeDecay  #DEFINE_ALIAS
+from .framework import PolynomialDecay  #DEFINE_ALIAS
+from .framework import CosineDecay  #DEFINE_ALIAS
+
 from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.stat import mean  #DEFINE_ALIAS
 from .tensor.stat import reduce_mean  #DEFINE_ALIAS
