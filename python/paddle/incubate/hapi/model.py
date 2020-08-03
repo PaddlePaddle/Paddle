@@ -1564,7 +1564,7 @@ class Model(object):
 
         if fluid.in_dygraph_mode():
             assert layer and in_var_list, \
-                "Dyraph mode needs layer and input variable tensor list"
+                "Dyraph mode needs layer and input variable list"
             from paddle.fluid.dygraph import TracedLayer
             _, static_layer = TracedLayer.trace(layer, inputs=in_var_list)
             fluid.disable_dygraph()

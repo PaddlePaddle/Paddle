@@ -450,7 +450,6 @@ class TestModelFunction(unittest.TestCase):
                 fluid.enable_dygraph(device)
                 in_var = to_variable(tensor_img)
             else:
-                # with fluid.dygraph.guard():
                 fluid.disable_dygraph()
             net = LeNet()
             model = Model(net, inputs)
@@ -462,7 +461,6 @@ class TestModelFunction(unittest.TestCase):
                 model.save_inference_model(save_dir)
            
             fluid.disable_dygraph()
-            
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
@@ -476,7 +474,6 @@ class TestModelFunction(unittest.TestCase):
 
             np.testing.assert_allclose(results, ori_results, rtol=1e-6)
             shutil.rmtree(save_dir)
-        return
 
 
 if __name__ == '__main__':
