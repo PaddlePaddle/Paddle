@@ -19,9 +19,32 @@ __all__ = [
     'CUDAPinnedPlace'
 ]
 
+__all__ += [
+    'BackwardStrategy', 'grad', 'LayerList', 'load', 'save', 'prepare_context',
+    'to_variable', 'no_grad', 'ParallelEnv', 'DataParallel', 'jit'
+]
+
+__all__ += [
+    'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
+    'InverseTimeDecay', 'PolynomialDecay', 'CosineDecay'
+]
+
 from . import random
 from .random import manual_seed
 from ..fluid.framework import default_main_program, default_startup_program, Program, Variable
 from ..fluid.param_attr import ParamAttr
 from ..fluid.layers.tensor import create_global_var
 from ..fluid.core import CPUPlace, CUDAPlace, CUDAPinnedPlace
+
+from paddle.fluid import core
+from ..fluid.dygraph.base import no_grad, to_variable, grad
+from ..fluid.dygraph.checkpoint import load_dygraph as load
+from ..fluid.dygraph.checkpoint import save_dygraph as save
+from ..fluid.dygraph.parallel import prepare_context, ParallelEnv, DataParallel
+
+from . import jit
+
+from ..fluid.dygraph.learning_rate_scheduler import NoamDecay, PiecewiseDecay, NaturalExpDecay, ExponentialDecay, \
+        InverseTimeDecay, PolynomialDecay, CosineDecay
+
+BackwardStrategy = core.BackwardStrategy

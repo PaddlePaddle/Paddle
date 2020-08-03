@@ -201,8 +201,6 @@ packages=['paddle',
           'paddle.static',
           'paddle.static.nn',
           'paddle.jit',
-          'paddle.imperative',
-          'paddle.imperative.jit',
           'paddle.tensor',
           ]
 
