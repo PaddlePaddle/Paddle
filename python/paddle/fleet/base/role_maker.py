@@ -149,9 +149,14 @@ class RoleMakerBase(object):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
-    def __init__(self, is_collective=False, is_user_defined=False, **kwargs):
+    def __init__(self,
+                 is_collective=False,
+                 is_user_defined=False,
+                 init_gloo=True,
+                 **kwargs):
         self._is_collective = is_collective
         self._is_user_defined = is_user_defined
+        self._init_gloo = init_gloo
         self._kwargs = kwargs
 
         self._role_is_generated = False
@@ -437,7 +442,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     self._user_defined_env()
                 else:
                     self._ps_env()
-                self._init_gloo_env()
+                if self._init_gloo:
+                    self._init_gloo_env()
             else:
                 self._collective_env()
             self._role_is_generated = True
