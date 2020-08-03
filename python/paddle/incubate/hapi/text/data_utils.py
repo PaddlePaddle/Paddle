@@ -38,16 +38,73 @@ from .utils import InitTrackerMeta
 
 
 class Stack(object):
+    """
+    Stack the input data samples to construct the batch.
+    The N input samples must have the same shape/length and will be stacked to construct a batch.
+
+    Args:
+        dtype (str|numpy.dtype): The value type of the output. If it is set to None, the input data type is used. Default: None.
+
+    Example:
+        .. code-block:: python:
+
+            from paddle.incubate.hapi.text import Stack
+            # Stack multiple lists
+            a = [1, 2, 3, 4]
+            b = [4, 5, 6, 8]
+            c = [8, 9, 1, 2]
+            Stack()([a, b, c])
+            '''
+            [[1 2 3 4]
+             [4 5 6 8]
+             [8 9 1 2]]
+             '''
+    """
     def __init__(self, axis=0, dtype=None):
         self._dtype = dtype
 
     def __call__(self, data):
+        """
+        Batchify the input data
+
+        Args:
+            data (list) – The input data samples
+        Returns:
+            NDArray: Batch_data
+
+        """
         data = np.stack(data).astype(self._dtype) if self._dtype else np.stack(
             data)
         return data
 
 
 class Pad(object):
+    """
+    Return a callable that pads and stacks data.
+
+    Args:
+        axis (int): The axis to pad the arrays. The arrays will be padded to the largest dimension at axis. For example, 
+            assume the input arrays have shape (10, 8, 5), (6, 8, 5), (3, 8, 5) and the axis is 0. 
+            Each input will be padded into (10, 8, 5) and then stacked to form the final output, which has shape（3, 10, 8, 5). Default: 0.
+        pad_val (float|int): The padding value. Default: 0.
+        ret_length (bool): Whether to return the valid length in the output. Default: False.
+        dtype (str|numpy.dtype): The value type of the output. If it is set to None, the input data type is used. Default: None.
+        round_to (int): If specified, the padded dimension will be rounded to be multiple of this argument. Default: None.
+
+        Example:
+            .. code-block:: python:
+                from paddle.incubate.hapi.text import Pad
+                # Inputs are multiple lists
+                a = [1, 2, 3, 4]
+                b = [4, 5, 6]
+                c = [8, 2]
+                Pad(pad_val=0)([a, b, c])
+                '''
+                [[1. 2. 3. 4.]
+                 [4. 5. 6. 0.]
+                 [8. 2. 0. 0.]]
+                '''
+     """
     def __init__(self, pad_val=0, axis=0, ret_length=None, dtype=None):
         self._pad_val = pad_val
         self._axis = axis
@@ -55,6 +112,21 @@ class Pad(object):
         self._dtype = dtype
 
     def __call__(self, data):
+        """
+        Batchify the input data.
+        The input can be list of numpy.ndarray, list of numbers or list of mxnet.nd.NDArray. 
+        Inputting mxnet.nd.NDArray is discouraged as each array need to be converted to numpy for efficient padding.
+
+        The arrays will be padded to the largest dimension at axis and then stacked to form the final output. In addition, the function will output the original dimensions at the axis if ret_length is turned on.
+
+        Args:
+            data (List[np.ndarray]|List[List[dtype]]|List[mx.nd.NDArray]): List of samples to pad and stack.
+
+        Returns:
+            NDArray: Batch_data, data in the minibatch. Shape is (N, …)
+            NDArray (optional): Valid_length, the sequences’ original lengths at the padded axis. Shape is (N,). 
+                This will only be returned in ret_length is True.
+        """
         arrs = [np.asarray(ele) for ele in data]
         original_length = [ele.shape[self._axis] for ele in arrs]
         max_size = max(original_length)
@@ -81,6 +153,19 @@ class Pad(object):
 
 
 class Tuple(object):
+    """
+    Wrap multiple batchify functions together. The input functions will be applied to the corresponding input fields.
+    Each data sample should be a list or tuple containing multiple attributes. The i`th batchify function stored in `Tuple will be applied on the i`th attribute. For example, each data sample is (nd_data, label). You can wrap two batchify functions using `Tuple(DataBatchify, LabelBatchify) to batchify nd_data and label correspondingly.
+
+    Args:
+        fn (list|tuple|callable): The batchify functions to wrap.
+        *args (tuple of callable): The additional batchify functions to wrap.
+    Example:
+        .. code-block:: python:
+            from paddle.incubate.hapi.text import Tuple, Pad, Stack
+            batchify_fn = Tuple(Pad(axis=0, pad_val=0), Stack())
+
+    """
     def __init__(self, fn, *args):
         if isinstance(fn, (list, tuple)):
             assert len(args) == 0, 'Input pattern not understood. The input of Tuple can be ' \
@@ -94,6 +179,15 @@ class Tuple(object):
                                                 'type(fn[%d]) = %s' % (i, str(type(ele_fn)))
 
     def __call__(self, data):
+        """
+        Batchify the input data.
+
+        Args:
+            list: The samples to batchfy. Each sample should contain N attributes.
+        Returns:
+            tuple: A tuple of length N. Contains the batchified result of each attribute in the input.
+        
+        """
         assert len(data[0]) == len(self._fn),\
             'The number of attributes in each data sample should contains' \
             ' {} elements'.format(len(self._fn))
@@ -380,6 +474,9 @@ class SamplerHelper(object):
 
 @six.add_metaclass(InitTrackerMeta)
 class PreTrainedTokenizer(object):
+    """
+    预训练Tokenizer的基类，提供加载和保存预训练所用Tokenzier的接口
+    """
     tokenizer_config_file = "tokenizer_config.json"
     pretrained_init_configuration = {}
     resource_files_names = {}  # keys are arguments of __init__

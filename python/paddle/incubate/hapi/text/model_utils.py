@@ -29,6 +29,9 @@ from .utils import InitTrackerMeta
 
 @six.add_metaclass(InitTrackerMeta)
 class PreTrainedModel(Model):
+    """
+    预训练模型的基类，提供加载和保存预训练所用模型的接口
+    """
     model_config_file = "model_config.json"
     pretrained_init_configuration = {}
     # TODO: more flexible resource handle, namedtuple with fileds as:

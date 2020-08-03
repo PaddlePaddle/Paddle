@@ -22,6 +22,7 @@ class InitTrackerMeta(type(paddle.fluid.dygraph.Layer)):
     Since InitTrackerMeta would be used as metaclass for model, thus use
     type(Layer) rather than type to avoid multiple inheritance metaclass
     conflicts temporarily.
+    预训练类的metaclass，用于构造对__init__封装后的class，封装用以记录初始化的参数方便保存与加载预训练信息。
     """
 
     # def __new__(cls, name, bases, attrs):
