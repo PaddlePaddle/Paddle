@@ -37,7 +37,7 @@ from functools import reduce
 from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
-from paddle.utils.deprecated import deprecated
+from paddle.utils import deprecated
 
 __all__ = [
     'fc',
