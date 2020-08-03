@@ -23,7 +23,6 @@ import sys
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-import paddle.fluid.incubate.checkpoint.dataloader_auto_checkpoint as dacp
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
 from paddle.fluid.framework import program_guard
 from paddle.fluid import unique_name
@@ -122,7 +121,6 @@ class AutoCheckpointBase(unittest.TestCase):
         unique_name.generator = fluid.unique_name.UniqueNameGenerator()
         acp.generator = fluid.unique_name.UniqueNameGenerator()
         acp.g_acp_type = None
-        dacp.g_ranges = {}
         acp.g_checker = acp.AutoCheckpointChecker()
         acp.g_program_attr = {}
 
