@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cuda.h>
+#include <vector>
 #include "paddle/fluid/operators/shape_op.h"
 
 namespace paddle {
@@ -37,14 +38,22 @@ class ShapeCUDAKernel : public framework::OpKernel<T> {
     auto* out_t = ctx.Output<Tensor>("Out");
     auto dim_size = in_dims.size();
     out_t->Resize({dim_size});
-    auto* out_data = out_t->mutable_data<int64_t>(ctx.GetPlace());
+    // The data type in DDims is int64_t. Downcasting it into int32_t
+    // to keep same with most usage in framework. This is dangerous
+    // but the data value of shape seems no more than the limit of int32_t.
+    std::vector<int32_t> in_dims_data;
+    for (int i = 0; i < dim_size; ++i) {
+      in_dims_data.push_back(in_dims[i]);
+    }
+
+    auto* out_data = out_t->mutable_data<int32_t>(ctx.GetPlace());
     auto stream = ctx.cuda_device_context().stream();
     auto target_gpu_place =
         BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
     VLOG(1) << "data of tensor.shape: " << in_dims;
     // copy in_dims_data from CPU to GPU
     memory::Copy(target_gpu_place, out_data, platform::CPUPlace(),
-                 in_dims.Get(), dim_size * sizeof(int64_t), stream);
+                 in_dims_data.data(), dim_size * sizeof(int32_t), stream);
   }
 };
 

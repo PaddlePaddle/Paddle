@@ -36,7 +36,7 @@ class ShapeCPUKernel : public framework::OpKernel<T> {
     }
     auto* out_t = ctx.Output<Tensor>("Out");
     out_t->Resize({in_dims.size()});
-    auto out_data = out_t->mutable_data<int64_t>(ctx.GetPlace());
+    auto out_data = out_t->mutable_data<int32_t>(ctx.GetPlace());
     for (int i = 0; i < in_dims.size(); ++i) {
       out_data[i] = in_dims[i];
     }
