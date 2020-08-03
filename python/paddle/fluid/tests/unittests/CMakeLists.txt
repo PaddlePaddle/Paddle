@@ -445,6 +445,7 @@ endif()
 
 if(NOT APPLE AND NOT WIN32)
     bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 600)
+    bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 600)
 endif()
 
 add_subdirectory(sequence)
