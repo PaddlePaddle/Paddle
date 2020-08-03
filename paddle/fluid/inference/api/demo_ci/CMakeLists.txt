@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.0)
 project(cpp_inference_demo CXX C)
 option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL."       ON)
-option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    ON)
+option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
 option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
-option(USE_TENSORRT "Compile demo with TensorRT."   ON)
+option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
 
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
@@ -28,10 +28,6 @@ if(NOT DEFINED PADDLE_LIB)
 endif()
 if(NOT DEFINED DEMO_NAME)
   message(FATAL_ERROR "please set DEMO_NAME with -DDEMO_NAME=demo_name")
-endif()
-
-if(DEMO_NAME MATCHES "vis_demo")
-  option(USE_TENSORRT "Compile demo with TensorRT."   ON)
 endif()
 
 include_directories("${PADDLE_LIB}/")
