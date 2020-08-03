@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import paddle
 from .framework import Program, program_guard, unique_name, cuda_places, cpu_places
 from .param_attr import ParamAttr
 from .initializer import Constant
@@ -49,6 +50,11 @@ def run_check():
     This func should not be called only if you need to verify installation
     '''
     print("Running Verify Fluid Program ... ")
+    '''
+    paddle 2.0 directory migration
+    Need to modify dygraph method.
+    '''
+    paddle.enable_static()
 
     device_list = []
     if core.is_compiled_with_cuda():
@@ -143,3 +149,5 @@ def run_check():
         print(
             "Your Paddle Fluid is installed successfully ONLY for SINGLE GPU or CPU! "
             "\n Let's start deep Learning with Paddle Fluid now")
+
+    paddle.disable_static()
