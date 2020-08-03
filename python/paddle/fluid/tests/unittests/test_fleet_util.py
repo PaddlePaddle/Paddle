@@ -78,6 +78,84 @@ class TestFleetUtil(unittest.TestCase):
         user_id = fleet.util.get_user_id()
         self.assertEqual(user_id, 10)
 
+    def test_fs(self):
+        from paddle.fleet.utils import LocalFS
+        fs = LocalFS()
+        dirs, files = fs.ls_dir("test_tmp")
+        dirs, files = fs.ls_dir("./")
+        self.assertFalse(fs.need_upload_download())
+        fleet_util.set_file_system(fs)
+
+    def test_barrier(self):
+        gloo = fluid.core.Gloo()
+        gloo.set_rank(0)
+        gloo.set_size(1)
+        gloo.set_prefix("123")
+        gloo.set_iface("lo")
+        gloo.set_hdfs_store("./tmp_test_fleet_barrier", "", "")
+        gloo.init()
+
+        role = role_maker.UserDefinedRoleMaker(
+            is_collective=False,
+            init_gloo=False,
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_endpoints=["127.0.0.1:6003"],
+            server_endpoints=["127.0.0.1:6001"])
+        role._node_type_comm = gloo
+        role._role_is_generated = True
+        fleet_util._set_role_maker(role)
+
+        fleet_util.barrier("worker")
+
+    def test_reduce(self):
+        gloo = fluid.core.Gloo()
+        gloo.set_rank(0)
+        gloo.set_size(1)
+        gloo.set_prefix("123")
+        gloo.set_iface("lo")
+        gloo.set_hdfs_store("./tmp_test_fleet_reduce", "", "")
+        gloo.init()
+
+        role = role_maker.UserDefinedRoleMaker(
+            is_collective=False,
+            init_gloo=False,
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_endpoints=["127.0.0.1:6003"],
+            server_endpoints=["127.0.0.1:6001"])
+        role._node_type_comm = gloo
+        role._role_is_generated = True
+        fleet_util._set_role_maker(role)
+
+        output = fleet_util.all_reduce(1, "sum", comm_world="server")
+        self.assertEqual(output, 1)
+
+    def test_gather(self):
+        gloo = fluid.core.Gloo()
+        gloo.set_rank(0)
+        gloo.set_size(1)
+        gloo.set_prefix("123")
+        gloo.set_iface("lo")
+        gloo.set_hdfs_store("./tmp_test_fleet_reduce", "", "")
+        gloo.init()
+
+        role = role_maker.UserDefinedRoleMaker(
+            is_collective=False,
+            init_gloo=False,
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_endpoints=["127.0.0.1:6003"],
+            server_endpoints=["127.0.0.1:6001"])
+        role._node_type_comm = gloo
+        role._all_comm = gloo
+        role._role_is_generated = True
+        fleet_util._set_role_maker(role)
+
+        output = fleet_util.all_gather(1, comm_world="all")
+        self.assertTrue(len(output) == 1 and output[0] == 1)
+        self.assertRaises(Exception, fleet_util.all_gather, 1, "dfs")
+
     def download_files(self):
         path = download(self.proto_data_url, self.module_name,
                         self.proto_data_md5)
@@ -95,13 +173,12 @@ class TestFleetUtil(unittest.TestCase):
             print("warning: no netifaces, skip test_get_file_shard")
             return
 
-        role = role_maker.PaddleCloudRoleMaker(
+        role = role_maker.UserDefinedRoleMaker(
             is_collective=False,
-            is_user_defined=True,
             init_gloo=False,
             current_id=0,
             role=role_maker.Role.WORKER,
-            trainer_endpoints=["127.0.0.1:6003", "127.0.0.1:6004"],
+            worker_endpoints=["127.0.0.1:6003", "127.0.0.1:6004"],
             server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
         fleet_util._set_role_maker(role)
         files = fleet_util.get_file_shard(["1", "2", "3"])

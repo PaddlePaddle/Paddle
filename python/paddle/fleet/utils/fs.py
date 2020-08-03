@@ -118,7 +118,7 @@ class FS(object):
 class LocalFS(FS):
     def ls_dir(self, fs_path):
         if not self.is_exist(fs_path):
-            return []
+            return [], []
 
         dirs = []
         files = []

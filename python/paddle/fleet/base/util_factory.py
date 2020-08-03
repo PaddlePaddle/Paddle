@@ -57,13 +57,13 @@ class UtilBase(object):
         if comm_world_upper == "WORKER":
             if not self.role_maker.is_worker():
                 print(
-                    "warning: current role is not worker in all_reduce(comm_world=\"worker\")"
+                    "warning: current role is not worker in collective_func(comm_world=\"worker\")"
                 )
             _comm_world = self.role_maker._node_type_comm
         elif comm_world_upper == "SERVER":
             if not self.role_maker.is_server():
                 print(
-                    "warning: current role is not server in all_reduce(comm_world=\"server\")"
+                    "warning: current role is not server in collective_func(comm_world=\"server\")"
                 )
             _comm_world = self.role_maker._node_type_comm
         elif comm_world_upper == "ALL":

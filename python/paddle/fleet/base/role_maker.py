@@ -141,7 +141,7 @@ class RoleMakerBase(object):
         print("warning: RoleMakerBase does not have all gather.")
         return None
 
-    def _all_reduce(self, comm_world, input, output, mode="sum"):
+    def _all_reduce(self, comm_world, input, mode="sum"):
         """
         Args:
             input(list/numpy.array): array of one dim
@@ -149,6 +149,7 @@ class RoleMakerBase(object):
             mode(str): "sum" or "min" or "max"
         """
         print("warning: RoleMakerBase does not have all reduce worker.")
+        return None
 
     def _barrier(self, comm_world):
         """
@@ -158,13 +159,9 @@ class RoleMakerBase(object):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
-    def __init__(self,
-                 is_collective=False,
-                 is_user_defined=False,
-                 init_gloo=True,
-                 **kwargs):
+    def __init__(self, is_collective=False, init_gloo=True, **kwargs):
+        super(PaddleCloudRoleMaker, self).__init__()
         self._is_collective = is_collective
-        self._is_user_defined = is_user_defined
         self._init_gloo = init_gloo
         self._kwargs = kwargs
 
@@ -323,25 +320,14 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._size
 
-    def _user_defined_env(self):
-        self._server_endpoints = self._kwargs.get("server_endpoints")
-        self._worker_endpoints = self._kwargs.get("trainer_endpoints")
-        self._role = self._kwargs.get("role")
-        self._current_id = self._kwargs.get("current_id")
-        if self._role == Role.WORKER:
-            self._cur_endpoint = self._worker_endpoints[self._current_id]
-        elif self._role == Role.SERVER:
-            self._cur_endpoint = self._server_endpoints[self._current_id]
-        self._trainers_num = len(self._worker_endpoints)
-
     def _ps_env(self):
         try:
             # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
             # format: string(ip:port), eg. 127.0.0.1:6001
             self._server_endpoints = os.environ[
-                "PADDLE_PSERVER_ENDPOINTS"].split(",")
-            self._worker_endpoints = os.getenv(
-                "PADDLE_TRAINER_ENDPOINTS").split(",")
+                "PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
+            self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
+                                               "").split(",")
 
             trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
             training_role = os.environ["TRAINING_ROLE"]
@@ -352,13 +338,13 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             if training_role == "TRAINER":
                 role = Role.WORKER
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
-                self._cur_endpoint = self._worker_endpoints[current_id]
+                if len(self._worker_endpoints) > 0:
+                    self._cur_endpoint = self._worker_endpoints[current_id]
             elif training_role == "PSERVER":
                 role = Role.SERVER
                 port = os.environ["PADDLE_PORT"]
                 ip = os.environ["POD_IP"]
                 self._cur_endpoint = ip + ":" + port
-                print(ip, port, self._cur_endpoint)
                 current_id = self._server_endpoints.index(self._cur_endpoint)
             else:
                 raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
@@ -393,7 +379,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 all_list = self._worker_endpoints + self._server_endpoints
                 rank = all_list.index(self._cur_endpoint)
-            print(role, all_list, rank)
             gloo = fluid.core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(len(all_list))
@@ -456,10 +441,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             if not self._is_collective:
-                if self._is_user_defined:
-                    self._user_defined_env()
-                else:
-                    self._ps_env()
+                self._ps_env()
                 if self._init_gloo:
                     self._init_gloo_env()
             else:
@@ -509,3 +491,45 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                                 False) and not http_server.shoud_stop():
             time.sleep(wait_seconds)
         http_server.stop()
+
+
+class UserDefinedRoleMaker(PaddleCloudRoleMaker):
+    def __init__(self, is_collective=False, init_gloo=False, **kwargs):
+        super(UserDefinedRoleMaker, self).__init__(
+            is_collective=is_collective, init_gloo=init_gloo, **kwargs)
+
+    def _user_defined_ps_env(self):
+        self._server_endpoints = self._kwargs.get("server_endpoints")
+        self._worker_endpoints = self._kwargs.get("worker_endpoints", [])
+        self._trainer_num = self._kwargs.get("worker_num")
+        assert (self._trainer_num == len(self._worker_endpoints) or
+                len(self._worker_endpoints) == 0)
+
+        self._role = self._kwargs.get("role")
+        self._current_id = self._kwargs.get("current_id")
+
+        assert (self._current_id < self._trainer_num)
+        if self._role == Role.WORKER and len(
+                self._worker_endpoints) > self._current_id:
+            self._cur_endpoint = self._worker_endpoints[self._current_id]
+        elif self._role == Role.SERVER:
+            self._cur_endpoint = self._server_endpoints[self._current_id]
+
+    def _user_defined_collective_env(self):
+        self._worker_endpoints = self._kwargs.get("worker_endpoints")
+        self._current_id = self._kwargs.get("current_id")
+        self._trainer_num = len(self._worker_endpoints)
+        self._training_role = Role.Worker
+
+    def generate_role(self):
+        """
+        generate role for role maker
+        """
+        if not self._role_is_generated:
+            if not self._is_collective:
+                self._user_defined_ps_env()
+                if self._init_gloo:
+                    self._init_gloo_env()
+            else:
+                self._user_defined_collective_env()
+            self._role_is_generated = True

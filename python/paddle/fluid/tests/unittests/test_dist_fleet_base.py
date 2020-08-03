@@ -54,24 +54,22 @@ class FleetDistRunnerBase(object):
     def build_role(self, args):
 
         if args.role.upper() == "PSERVER":
-            role = role_maker.PaddleCloudRoleMaker(
+            role = role_maker.UserDefinedRoleMaker(
                 is_collective=False,
-                is_user_defined=True,
                 init_gloo=True,
                 path=args.gloo_path,
                 current_id=args.current_id,
                 role=role_maker.Role.SERVER,
-                trainer_endpoints=args.trainer_endpoints.split(","),
+                worker_endpoints=args.trainer_endpoints.split(","),
                 server_endpoints=args.endpoints.split(","))
         else:
-            role = role_maker.PaddleCloudRoleMaker(
+            role = role_maker.UserDefinedRoleMaker(
                 is_collective=False,
-                is_user_defined=True,
                 init_gloo=True,
                 path=args.gloo_path,
                 current_id=args.current_id,
                 role=role_maker.Role.WORKER,
-                trainer_endpoints=args.trainer_endpoints.split(","),
+                worker_endpoints=args.trainer_endpoints.split(","),
                 server_endpoints=args.endpoints.split(","))
         self.role = role
         return role
