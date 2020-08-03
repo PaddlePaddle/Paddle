@@ -154,7 +154,7 @@ from .math import log1p  #DEFINE_ALIAS
 from .math import erf  #DEFINE_ALIAS
 from .math import addcmul  #DEFINE_ALIAS
 from .math import addmm  #DEFINE_ALIAS
-from .math import clamp  #DEFINE_ALIAS
+from .math import clip  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
 from .math import kron  #DEFINE_ALIAS
 # from .random import gaussin        #DEFINE_ALIAS
