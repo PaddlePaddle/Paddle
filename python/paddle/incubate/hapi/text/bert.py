@@ -18,4 +18,5 @@ from .model_utils import PreTrainedModel
 
 
 class BertForSequenceClassification(PreTrainedModel):
+	"""Bert class, which is used to complete sequence classification."""
     pass

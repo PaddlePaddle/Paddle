@@ -219,6 +219,7 @@ class WrapDataset(Dataset):
         return len(self.dataset)
 
     def shuffle(self, buffer_size=-1, seed=None):
+        """Shuffle the dataset."""
         if seed is not None:
             np_rand_state_bak = np.random.get_state()
             np.random.seed(seed)
@@ -232,6 +233,7 @@ class WrapDataset(Dataset):
         return self
 
     def sort(self, cmp=None, key=None, reverse=False, buffer_size=-1):
+        """Sort the dataset. """
         buffer_size = len(self.dataset) if buffer_size < 0 else buffer_size
         for i in range(0, len(self.dataset), buffer_size):
             self.dataset[i:i + buffer_size] = sorted(
@@ -242,6 +244,7 @@ class WrapDataset(Dataset):
         return self
 
     def filter(self, predicate_func):
+        """Filter the dataset by predicate_func."""
         self.dataset = [
             self.dataset[idx] for idx in range(len(self.dataset))
             if predicate_func(self.dataset[idx])
@@ -295,6 +298,10 @@ class SamplerHelper(object):
     .. note:: The :meth:`__len__` method isn't strictly required by
               :class:`DataLoader`, but is expected in any
               calculation involving the length of a :class:`DataLoader`.
+    Args:
+        dataset
+        iterable
+
     """
 
     # chain sampler
@@ -340,6 +347,7 @@ class SamplerHelper(object):
         self._length = length
 
     def apply(self, fn):
+        """Transformations would be performed."""
         rs = fn(self)
         if isinstance(rs, (list, tuple)):
             iterable, data_source = rs
@@ -349,6 +357,7 @@ class SamplerHelper(object):
         return sampler
 
     def shuffle(self, buffer_size=-1, seed=None):
+        """Shuffle the samples according to the seed."""
         if seed is not None:
             random_generator = np.random.RandomState(seed)
         else:  # use the global random generator
@@ -371,6 +380,7 @@ class SamplerHelper(object):
         return type(self)(self.data_source, _impl)
 
     def sort(self, cmp=None, key=None, reverse=False, buffer_size=-1):
+        """Sort samples"""
         def _impl():
             data_source = self.data_source
             buf = []
@@ -404,6 +414,13 @@ class SamplerHelper(object):
               batch_fn=None):
         """
         To produce a BatchSampler.
+        Agrs:
+            batch_size (int):
+            drop_last
+            batch_size_fn
+            batch_fn
+        Returns:
+            BatchSampler
         """
         if batch_size_fn is None:
             batch_size_fn = lambda new, count, sofar, data_source: count
@@ -438,6 +455,12 @@ class SamplerHelper(object):
         return sampler
 
     def shard(self, num_replicas=None, rank=None):
+        """
+
+        Args：
+            num_replicas
+            rank
+        """
         if num_replicas is None:
             num_replicas = ParallelEnv().nranks
         if rank is None:
@@ -475,7 +498,8 @@ class SamplerHelper(object):
 @six.add_metaclass(InitTrackerMeta)
 class PreTrainedTokenizer(object):
     """
-    预训练Tokenizer的基类，提供加载和保存预训练所用Tokenzier的接口
+    The base class of the pre-training tokenizer, which provides the interface for 
+    loading and saving the tokenzier used in the pre-raining.
     """
     tokenizer_config_file = "tokenizer_config.json"
     pretrained_init_configuration = {}
@@ -501,19 +525,41 @@ class PreTrainedTokenizer(object):
                 setattr(self, identifier, token)
 
     def convert_tokens_to_ids(self, tokens):
-        """Converts a sequence of tokens into ids using the vocab."""
+        """
+        Converts a sequence of tokens into ids using the vocab.
+        Args：
+            tokens (list(str)): list of tokens
+        Returns:
+            list: converted id list.
+
+        """
         return [self.vocab[token] for token in tokens]
 
     def convert_tokens_to_string(self, tokens):
-        """ Converts a sequence of tokens (string) in a single string.
-            The most simple way to do it is ' '.join(self.convert_ids_to_tokens(token_ids))
-            but we often want to remove sub-word tokenization artifacts at the same time.
+        """ 
+        Converts a sequence of tokens (string) in a single string.
+        The most simple way to do it is ' '.join(self.convert_ids_to_tokens(token_ids))
+        but we often want to remove sub-word tokenization artifacts at the same time.
+        Args:
+            tokens (list(str)): list of tokens
+        Returns:
+            str: converted string.
         """
         return " ".join(tokens)
 
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path, *init_inputs,
                         **kwargs):
+        """
+        get tokenizer from pretrained model.
+        Args:
+            cls:
+            pretrained_model_name_or_path (str):
+            *init_inputs:
+            kwargs:
+        Returns:
+            tokenizer
+        """
         pretrained_models = list(cls.pretrained_init_configuration.keys())
         vocab_files = {}
         init_configuration = {}
@@ -574,6 +620,11 @@ class PreTrainedTokenizer(object):
         return tokenizer
 
     def save_pretrained(self, save_directory):
+        """
+        Save tokenizer config and resources to files.
+        Args:
+            save_directory (str): directory to be saved
+        """
         assert os.path.isdir(
             save_directory
         ), "Saving directory ({}) should be a directory".format(save_directory)
@@ -586,6 +637,11 @@ class PreTrainedTokenizer(object):
         self.save_resources(save_directory)
 
     def save_resources(self, save_directory):
+        """
+        Save resources to a file.
+        Args:
+            save_directory (str):
+        """
         assert hasattr(self, 'vocab') and len(
             self.resource_files_names) == 1, "Must overwrite `save_resources`"
         file_name = os.path.join(save_directory,
@@ -594,6 +650,16 @@ class PreTrainedTokenizer(object):
 
     @staticmethod
     def load_vocabulary(filename, unk_token=None, **kwargs):
+        """
+        Load the vocabulary from a file.
+        Args:
+            filename (str): file path to load.
+            unk_token (str|None): unk token. Default: None.
+            kwargs (dict): 
+
+        Returns:
+            Vocab
+        """
         token_to_idx = {}
         with io.open(filename, 'r', encoding='utf-8') as f:
             for index, line in enumerate(f):
@@ -604,6 +670,12 @@ class PreTrainedTokenizer(object):
 
     @staticmethod
     def save_vocabulary(filename, vocab):
+        """
+        Save all tokens to a vocabulary file.
+        Agrs:
+            filename (str): file path to be saved.
+            vocab (Vocab): Vocab to be saved
+        """
         if isinstance(vocab, Vocab):
             tokens = vocab.idx_to_token
         else:
@@ -614,7 +686,13 @@ class PreTrainedTokenizer(object):
 
 
 def convert_to_unicode(text):
-    """Converts `text` to Unicode (if it's not already), assuming utf-8 input."""
+    """
+    Converts `text` to Unicode (if it's not already), assuming utf-8 input.
+    Args:
+        text (str|bytes): text to be converted to utf-8.
+    Returns: 
+        str: converted text.
+    """
     if six.PY3:
         if isinstance(text, str):
             return text
@@ -634,7 +712,13 @@ def convert_to_unicode(text):
 
 
 def whitespace_tokenize(text):
-    """Runs basic whitespace cleaning and splitting on a peice of text."""
+    """
+    Runs basic whitespace cleaning and splitting on a peice of text.
+    Args:
+        text (str): text to be processed.
+    Returns:
+        list(str): processed token list.
+    """
     text = text.strip()
     if not text:
         return []
@@ -683,18 +767,27 @@ def _is_punctuation(char):
 
 
 class BertBasicTokenizer(object):
-    """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
+    """
+    Runs basic tokenization (punctuation splitting, lower casing, etc.).
+    Args:
+        do_lower_case (bool):Whether to convert the input to lowercase. Default: True.
+    """
 
     def __init__(self, do_lower_case=True):
-        """Constructs a BasicTokenizer.
+        """Constructs a BasicTokenizer."""
 
-        Args:
-            do_lower_case: Whether to lower case the input.
-        """
+     
         self.do_lower_case = do_lower_case
 
     def tokenize(self, text):
-        """Tokenizes a piece of text."""
+        """Tokenizes a piece of text.
+        Args:
+            text (str):
+
+        Returns:
+
+
+        """
         text = convert_to_unicode(text)
         text = self._clean_text(text)
 
@@ -798,7 +891,13 @@ class BertBasicTokenizer(object):
 
 
 class WordpieceTokenizer(object):
-    """Runs WordPiece tokenization."""
+    """
+    Runs WordPiece tokenization.
+    Args:
+        vocab
+        unk_token (str):
+        max_input_chars_per_word (int):  Default: 100.
+    """
 
     def __init__(self, vocab, unk_token, max_input_chars_per_word=100):
         self.vocab = vocab
@@ -811,16 +910,15 @@ class WordpieceTokenizer(object):
         This uses a greedy longest-match-first algorithm to perform tokenization
         using the given vocabulary.
 
-        For example:
-          input = "unaffable"
-          output = ["un", "##aff", "##able"]
-
         Args:
-          text: A single token or whitespace separated tokens. This should have
-            already been passed through `BasicTokenizer`.
+            text: A single token or whitespace separated tokens. This should have
+                already been passed through `BasicTokenizer`.
 
+        Example:
+            input = "unaffable"
+            output = ["un", "##aff", "##able"]
         Returns:
-          A list of wordpiece tokens.
+            A list of wordpiece tokens.
         """
 
         output_tokens = []
@@ -858,6 +956,19 @@ class WordpieceTokenizer(object):
 
 
 class BertTokenizer(PreTrainedTokenizer):
+    """
+    Runs bert tokenization.
+    Args:
+        vocab_file (str): filename of the vocab
+        do_lower_case (bool): Whether to convert the input to lowercase. Default: True.
+        unk_token (str): Default: "[UNK]".
+        sep_token (str): Default: "[SEP]".
+        pad_token (str): Default: "[PAD]".
+        cls_token (str): Default: "[CLS]".
+        mask_token (str): Default: "[MASK]".
+        kwargs (dict): 
+
+    """
     resource_files_names = {"vocab_file": "vocab.txt"}  # for save_pretrained
     pretrained_resource_files_map = {
         "vocab_file": {
@@ -924,6 +1035,7 @@ class BertTokenizer(PreTrainedTokenizer):
 
     @property
     def vocab_size(self):
+        """return size of the vocab."""
         return len(self.vocab)
 
     def _tokenize(self, text):
@@ -934,9 +1046,16 @@ class BertTokenizer(PreTrainedTokenizer):
         return split_tokens
 
     def __call__(self, text):
+        """return list of tokens of text."""
         return self._tokenize(text)
 
     def convert_tokens_to_string(self, tokens):
-        """ Converts a sequence of tokens (string) in a single string. """
+        """
+        Converts a sequence of tokens (string) in a single string.
+        Args:
+            tokens (list): tokens to be converted.
+        Returns:
+            str: converted string from tokens.
+        """
         out_string = " ".join(tokens).replace(" ##", "").strip()
         return out_string

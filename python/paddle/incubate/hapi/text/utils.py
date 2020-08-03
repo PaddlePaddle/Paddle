@@ -19,12 +19,19 @@ import paddle
 
 class InitTrackerMeta(type(paddle.fluid.dygraph.Layer)):
     """
+    InitTrackerMeta is the metaclass of the pre-training class, and it is used to construct class
+    encapsulated by __ init__ to record the initialization parameters, which is convenient to 
+    save and load the pre-training information.
     Since InitTrackerMeta would be used as metaclass for model, thus use
     type(Layer) rather than type to avoid multiple inheritance metaclass
     conflicts temporarily.
-    预训练类的metaclass，用于构造对__init__封装后的class，封装用以记录初始化的参数方便保存与加载预训练信息。
+    
+    Args:
+        cls
+        name
+        bases
+        attrs
     """
-
     # def __new__(cls, name, bases, attrs):
     #     if '__init__' in attrs:
     #         init_func = attrs['__init__']
@@ -46,6 +53,8 @@ class InitTrackerMeta(type(paddle.fluid.dygraph.Layer)):
 
     @staticmethod
     def init_then_track_conf(init_func, help_func=None):
+        """
+        """
         @functools.wraps(init_func)
         def __impl__(self, *args, **kwargs):
             args_bak = copy.deepcopy(args)

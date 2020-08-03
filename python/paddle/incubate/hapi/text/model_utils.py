@@ -30,7 +30,8 @@ from .utils import InitTrackerMeta
 @six.add_metaclass(InitTrackerMeta)
 class PreTrainedModel(Model):
     """
-    预训练模型的基类，提供加载和保存预训练所用模型的接口
+    The base class of the pre-training model, which provides the interface for 
+    loading and saving models used in the pre-training.
     """
     model_config_file = "model_config.json"
     pretrained_init_configuration = {}
@@ -43,6 +44,7 @@ class PreTrainedModel(Model):
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path, *init_inputs,
                         **kwargs):
+        """Get model from pre-trained model."""
         pretrained_models = list(cls.pretrained_init_configuration.keys())
         resource_files = {}
         init_configuration = {}
@@ -99,6 +101,13 @@ class PreTrainedModel(Model):
         return model
 
     def save_pretrained(self, save_directory):
+        """
+        Save pre-trained model to files.
+        Args:
+            save_directory (str): the directory to save the pre-trained model.
+        Returns:
+            None
+        """
         assert os.path.isdir(
             save_directory
         ), "Saving directory ({}) should be a directory".format(save_directory)
