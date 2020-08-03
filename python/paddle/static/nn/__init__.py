@@ -36,9 +36,9 @@ __all__ = [
     'spectral_norm',
 ]
 
-from ..fluid.layers import fc, batch_norm, bilinear_tensor_product, \
+from ...fluid.layers import fc, batch_norm, bilinear_tensor_product, \
         conv2d, conv2d_transpose, conv3d, conv3d_transpose, create_parameter, \
         crf_decoding, data_norm, deformable_conv, group_norm, hsigmoid, instance_norm, \
         layer_norm, multi_box_head, nce, prelu, row_conv, spectral_norm
 
-from ..fluid.input import embedding
+from ...fluid.input import embedding

@@ -239,4 +239,19 @@ from . import incubate
 from .incubate import hapi
 from .fluid.dygraph.base import enable_dygraph as enable_imperative  #DEFINE_ALIAS
 from .fluid.dygraph.base import disable_dygraph as disable_imperative  #DEFINE_ALIAS
-from .fluid.framework import in_dygraph_mode as in_imperative_mode  #DEFINE_ALIAS
+from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
+
+from paddle.fluid import core
+from .fluid.dygraph.base import no_grad, to_variable, grad
+from .fluid.dygraph.checkpoint import load_dygraph as load
+from .fluid.dygraph.checkpoint import save_dygraph as save
+from .fluid.dygraph.parallel import prepare_context, ParallelEnv, DataParallel
+from . import jit
+from . import static
+
+BackwardStrategy = core.BackwardStrategy
+
+enable_static = disable_imperative
+disable_static = enable_imperative
+
+enable_imperative()
