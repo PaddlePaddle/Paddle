@@ -111,6 +111,9 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
+    def role_id(self):
+        return self.worker_index() if self.is_worker() else self.server_index()
+
     def worker_index(self):
         """
         Get current worker id.

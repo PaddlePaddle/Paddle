@@ -632,7 +632,7 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]]
     """
     if in_dygraph_mode():
-        if axis:
+        if axis is not None:
             return core.ops.cross(x, y, 'dim', axis)
         else:
             return core.ops.cross(x, y)

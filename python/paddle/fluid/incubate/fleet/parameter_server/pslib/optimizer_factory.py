@@ -284,7 +284,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     "vs %s" % (len(sparse_table_to_index), len(emb_to_table)))
             for key in sparse_table_to_index:
                 if key not in emb_to_table or \
-                        sparse_table_to_index[key] != emb_to_table[key]:
+                                sparse_table_to_index[key] != emb_to_table[key]:
                     print("sparse_table_to_index ", sparse_table_to_index)
                     print("emb_to_table ", emb_to_table)
                     raise ValueError("key error: %s" % key)
@@ -309,7 +309,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                     and op.has_attr("AccessorClass"):
                                 op._set_attr("AccessorClass", accessor)
                             if one_slot is None:
-                                one_slot = loss.block.program.\
+                                one_slot = loss.block.program. \
                                     global_block().var(op.input("Ids")[0])
 
                 # if accessor is None, use default accessor in op definition

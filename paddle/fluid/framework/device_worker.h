@@ -440,6 +440,7 @@ class SectionWorker : public DeviceWorker {
   void SetSkipVars(const std::vector<std::string>& skip_vars) {
     skip_vars_ = skip_vars;
   }
+  static void ResetBatchId() { batch_id_ = 0; }
 
   static std::atomic<int> cpu_id_;
 

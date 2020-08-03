@@ -485,9 +485,15 @@ def embedding(input,
                              'fluid.layers.embedding')
     check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
                 'fluid.layers.embedding')
-    remote_prefetch = is_sparse and (not is_distributed)
-    if remote_prefetch:
-        assert is_sparse is True and is_distributed is False
+
+    if is_distributed:
+        is_distributed = False
+        warnings.warn(
+            "is_distributed is go out of use, `fluid.contrib.layers.sparse_embedding` is your needed"
+        )
+
+    remote_prefetch = True if is_sparse else False
+
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_variable_for_type_inference(dtype)
@@ -4807,47 +4813,57 @@ def split(input, num_or_sections, dim=-1, name=None):
     Split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
-        num_or_sections (int|list|tuple): If :attr:`num_or_sections` is an integer,
-            then the integer indicates the number of equal sized sub-Tensors
-            that the Tensor will be divided into. If :attr:`num_or_sections`
-            is a list or tuple, the length of it indicates the number of
-            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
-            :attr:`dim` dimension orderly. The length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
-        dim (int32|Varible, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. The dimension along which to split. If :math:`dim < 0`, the
-            dimension to split along is :math:`rank(input) + dim`. Default is -1.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+        input (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        num_or_sections (int|list|tuple): If ``num_or_sections`` is int, then the ``num_or_sections`` 
+            indicates the number of equal sized sub-Tensors that the ``input``
+            will be divided into. If ``num_or_sections`` is a list or tuple, the length of it 
+            indicates the number of sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
+            dimension orderly. The length of the list mustn't be larger than the ``input`` 's size of specified dim.
+        dim (int|Tensor, optional): The dimension along which to split, it can be a scalar with type ``int`` or
+            a ``Tensor`` with shape [1] and data type ``int32`` or ``int64``. If :math:`dim < 0`,
+            the dimension to split along is :math:`rank(input) + dim`. Default is -1.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        list(Variable): The list of segmented Tensor variables.
+        list(Tensor): The list of segmented Tensors.
 
     Raises:
-        TypeError: num_or_sections is not int, list or tuple.
-        TypeError: dim is not int or Variable.
+        TypeError: The data type of ``input`` must be one of bool, float16, float32, float64, int32, int64.
+        TypeError: ``num_or_sections`` is not int, list or tuple.
+        TypeError: ``dim`` is not int or Tensor. The data type of ``dim`` must be int32 or int64 when it's a Tensor.
 
     Example:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            # input is a variable which shape is [3, 9, 5]
+            # input is a Tensor which shape is [3, 9, 5]
             input = fluid.data(
                  name="input", shape=[3, 9, 5], dtype="float32")
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=1)
-            # x0.shape [3, 3, 5]
-            # x1.shape [3, 3, 5]
-            # x2.shape [3, 3, 5]
+            out0, out1, out2 = fluid.layers.split(input, num_or_sections=3, dim=1)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, 4], dim=1)
-            # x0.shape [3, 2, 5]
-            # x1.shape [3, 3, 5]
-            # x2.shape [3, 4, 5]
+            out0, out1, out2 = fluid.layers.split(input, num_or_sections=[2, 3, 4], dim=1)
+            # out0.shape [3, 2, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 4, 5]
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, -1], dim=1)
-            # x0.shape [3, 2, 5]
-            # x1.shape [3, 3, 5]
-            # x2.shape [3, 4, 5]
+            out0, out1, out2 = fluid.layers.split(input, num_or_sections=[2, 3, -1], dim=1)
+            # out0.shape [3, 2, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 4, 5]
+            
+            # dim is negative, the real dim is (rank(input) + axis) which real
+            # value is 1.
+            out0, out1, out2 = fluid.layers.split(input, num_or_sections=3, dim=-2)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
+
     """
     if in_dygraph_mode():
         num = None
@@ -4855,8 +4871,6 @@ def split(input, num_or_sections, dim=-1, name=None):
 
         if isinstance(dim, Variable):
             dim = dim.numpy()
-            assert dim.shape == (1,
-                                 ), "dim of type Variable should have shape [1]"
             dim = dim[0]
         dim = (len(input.shape) + dim) if dim < 0 else dim
         attrs += ('axis', dim)
@@ -4867,28 +4881,29 @@ def split(input, num_or_sections, dim=-1, name=None):
         elif isinstance(num_or_sections, (list, tuple)):
             num = len(num_or_sections)
             if utils._contain_var(num_or_sections):
-                raise TypeError(
-                    "The type of 'num_or_sections' in split must be int or list[int] or tuple[int] in Dygraph mode, but "
-                    "received %s, which contains Variable." %
-                    (type(num_or_sections)))
+                for index, item in enumerate(num_or_sections):
+                    if isinstance(item, Variable):
+                        num_or_sections[index] = num_or_sections[index].numpy()[
+                            0]
+                attrs += ('sections', list(num_or_sections))
             else:
                 attrs += ('sections', list(num_or_sections))
         else:
             raise TypeError(
-                "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
+                "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
         return core.ops.split(input, num, *attrs)
 
-    if not isinstance(num_or_sections, (int, list, tuple)):
-        raise TypeError(
-            "The type of 'num_or_sections' in split must be int, list or "
-            "tuple, but received %s." % (type(num_or_sections)))
-    if not isinstance(dim, (int, Variable)):
-        raise TypeError(
-            "The type of 'dim' in split must be int or Variable, but "
-            "received %s." % (type(dim)))
+    check_variable_and_dtype(
+        input, 'input',
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'in64'], 'split')
+    check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
+    check_type(dim, 'dim', (int, Variable), 'split')
+    if isinstance(dim, Variable):
+        check_dtype(dim.dtype, 'dim', ['int32', 'int64'], 'split')
 
     helper = LayerHelper('split', **locals())
+
     input_shape = input.shape
     inputs = {'X': input}
     attrs = {'num': num_or_sections if isinstance(num_or_sections, int) else 0}
@@ -6203,6 +6218,10 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
+    if in_dygraph_mode():
+        out, _ = core.ops.squeeze2(input, 'axes', axes)
+        return out
+
     helper = LayerHelper("squeeze", **locals())
     check_variable_and_dtype(
         input, 'input',
@@ -10423,47 +10442,58 @@ def gaussian_random(shape,
                     dtype='float32',
                     name=None):
     """
-    Generate a random tensor whose data is drawn from a Gaussian distribution.
+    This OP returns a Tensor filled with random values sampled from a Gaussian
+    distribution, with ``shape`` and ``dtype``.
 
     Args:
-        shape(list|tuple|Variable): Shape of the Tensor to be created. The data
-            type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
-            the elements of it should be integers or Tensors with shape [1]. If
-            ``shape`` is a Variable, it should be an 1-D Tensor .
-        mean(float): Mean of the random tensor, defaults to 0.0.
-        std(float): Standard deviation of the random tensor, defaults to 1.0.
-        seed(int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output
-            tensor, which can be float32, float64. Default is float32.
-        name(str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-            Default is None.
+        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+            is a list or tuple, the elements of it should be integers or Tensors
+            (with the shape [1], and the data type int32 or int64). If ``shape``
+            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
+            int64).
+        mean(float|int, optional): Mean of the output tensor, default is 0.0.
+        std(float|int, optional): Standard deviation of the output tensor, default
+            is 1.0.
+        seed(int, optional): ${seed_comment}
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
+            the output Tensor. Supported data types: float32, float64.
+            Default is float32.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Random tensor whose data is drawn from a Gaussian distribution, dtype: flaot32 or float64 as specified.
+        Tensor: A Tensor filled with random values sampled from a Gaussian
+        distribution, with ``shape`` and ``dtype``.
 
     Examples:
-
        .. code-block:: python
 
             import paddle.fluid as fluid
 
             # example 1:
-            # attr shape is a list which doesn't contain tensor Variable.
+            # attr shape is a list which doesn't contain Tensor.
             result_1 = fluid.layers.gaussian_random(shape=[3, 4])
+            # [[-0.31261674,  1.8736548,  -0.6274357,   0.96988016],
+            #  [-0.12294637,  0.9554768,   1.5690808,  -1.2894802 ],
+            #  [-0.60082096, -0.61138713,  1.5345167,  -0.21834975]]
 
             # example 2:
-            # attr shape is a list which contains tensor Variable.
-            dim_1 = fluid.layers.fill_constant([1],"int64",3)
-            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            # attr shape is a list which contains Tensor.
+            dim_1 = fluid.layers.fill_constant([1], "int64", 2)
+            dim_2 = fluid.layers.fill_constant([1], "int32", 3)
             result_2 = fluid.layers.gaussian_random(shape=[dim_1, dim_2])
+            # [[ 0.51398206, -0.3389769,   0.23597084],
+            #  [ 1.0388143,  -1.2015356,  -1.0499583 ]]
 
             # example 3:
-            # attr shape is a Variable, the data type must be int64 or int32.
+            # attr shape is a Tensor, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = fluid.layers.gaussian_random(var_shape)
-            var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
-            result_4 = fluid.layers.gaussian_random(var_shape_int32)
+            # if var_shape's value is [2, 3]
+            # result_3 is:
+            # [[-0.12310527,  0.8187662,   1.923219  ]
+            #  [ 0.70721835,  0.5210541,  -0.03214082]]
        
        .. code-block:: python
        
@@ -10505,8 +10535,10 @@ def gaussian_random(shape,
 
     if in_dygraph_mode():
         shape = utils._convert_shape_to_list(shape)
-        return core.ops.gaussian_random('shape', shape, 'mean', mean, 'std',
-                                        std, 'seed', seed, 'dtype', dtype)
+        return core.ops.gaussian_random('shape', shape, 'mean',
+                                        float(mean), 'std',
+                                        float(std), 'seed', seed, 'dtype',
+                                        dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'gaussian_random/randn')
     check_dtype(dtype, 'dtype', ['float32', 'float64'], 'gaussian_random/randn')
@@ -14913,8 +14945,8 @@ def gather_tree(ids, parents):
 def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
                    name=None):
     """
-    This OP initializes a variable with random values sampled from a
-    uniform distribution in the range [min, max).
+    This OP returns a Tensor filled with random values sampled from a uniform
+    distribution in the range [``min``, ``max``), with ``shape`` and ``dtype``.
 
     Examples:
     ::
@@ -14926,30 +14958,33 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape (list|tuple|Variable): The shape of the output Tensor,  if the
-            shape is a list or tuple, its elements can be an integer or a
-            Tensor with the shape [1], and the type of the Tensor must be
-            int32 or int64. If the shape is a Variable, it is a 1-D Tensor, and
-            the type of the Tensor must be int32 or int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the
-            output Tensor. Supported data types: float32, float64. Default: float32.
-        min (float, optional): The lower bound on the range of random values
-            to generate, the min is included in the range. Default -1.0.
-        max (float, optional): The upper bound on the range of random values
-            to generate, the max is excluded in the range. Default 1.0.
-        seed (int, optional): Random seed used for generating samples. 0 means
+        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+            is a list or tuple, the elements of it should be integers or Tensors
+            (with the shape [1], and the data type int32 or int64). If ``shape``
+            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
+            int64).
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
+            the output Tensor. Supported data types: float32, float64.
+            Default is float32.
+        min(float|int, optional): The lower bound on the range of random values
+            to generate, ``min`` is included in the range. Default is -1.0.
+        max(float|int, optional): The upper bound on the range of random values
+            to generate, ``max`` is excluded in the range. Default is 1.0.
+        seed(int, optional): Random seed used for generating samples. 0 means
             use a seed generated by the system. Note that if seed is not 0,
             this operator will always generate the same random numbers every
-            time. Default 0.
+            time. Default is 0.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor of the specified shape filled with uniform_random values.
+        Tensor: A Tensor filled with random values sampled from a uniform
+        distribution in the range [``min``, ``max``), with ``shape`` and ``dtype``.
 
     Raises:
-        TypeError: The shape type should be list or tuple or variable.
+        TypeError: If ``shape`` is not list, tuple, Tensor.
+        TypeError: If ``dtype`` is not float32, float64.
 
     Examples:
         .. code-block:: python
@@ -14957,21 +14992,28 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
             import paddle.fluid as fluid
 
             # example 1:
-            # attr shape is a list which doesn't contain tensor Variable.
+            # attr shape is a list which doesn't contain Tensor.
             result_1 = fluid.layers.uniform_random(shape=[3, 4])
+            # [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357],
+            #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249],
+            #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]]
 
             # example 2:
-            # attr shape is a list which contains tensor Variable.
-            dim_1 = fluid.layers.fill_constant([1],"int64",3)
-            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            # attr shape is a list which contains Tensor.
+            dim_1 = fluid.layers.fill_constant([1], "int64", 2)
+            dim_2 = fluid.layers.fill_constant([1], "int32", 3)
             result_2 = fluid.layers.uniform_random(shape=[dim_1, dim_2])
+            # [[-0.9951253,   0.30757582, 0.9899647 ],
+            #  [ 0.5864527,   0.6607096,  -0.8886161 ]]
 
             # example 3:
-            # attr shape is a Variable, the data type must be int64 or int32.
+            # attr shape is a Tensor, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = fluid.layers.uniform_random(var_shape)
-            var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
-            result_4 = fluid.layers.uniform_random(var_shape_int32)
+            # if var_shape's value is [2, 3]
+            # result_3 is:
+            # [[-0.8517412,  -0.4006908,   0.2551912 ],
+            #  [ 0.3364414,   0.36278176, -0.16085452]]
 
     """
     if not isinstance(dtype, core.VarDesc.VarType):

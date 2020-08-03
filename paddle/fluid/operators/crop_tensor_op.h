@@ -132,11 +132,6 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   }
 
   if (ctx.HasInput("Offsets")) {
-    PADDLE_ENFORCE_EQ(
-        ctx.Attr<std::vector<int>>("offsets").empty(), true,
-        platform::errors::InvalidArgument(
-            "Input 'Offsets' and attribute 'offsets' for Op(crop_tensor) "
-            "cannot be used at the same time."));
     const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1,
                       platform::errors::InvalidArgument(
@@ -149,6 +144,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
                           "input 'Offsets' must be equal to "
                           "the number of dimensions (%d) of the input tensor.",
                           offsets_tensor->dims()[0], rank));
+
     const int* offsets_data;
     framework::Tensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {
