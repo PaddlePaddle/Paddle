@@ -1527,7 +1527,7 @@ class Model(object):
                              params_filename=None,
                              model_only=False):
         """
-        Save inference model can in static or dynamic mode.
+        Save inference model can be in static or dynamic mode.
 
         Args:
             save_dir (str): The directory path to save the inference model.
