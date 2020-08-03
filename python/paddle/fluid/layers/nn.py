@@ -37,6 +37,7 @@ from functools import reduce
 from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
+from paddle.utils.deprecated import deprecated
 
 __all__ = [
     'fc',
@@ -11614,6 +11615,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
+@deprecated(since="2.0.0", new_api="paddle.nn.multiply")
 def elementwise_mul(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_mul
