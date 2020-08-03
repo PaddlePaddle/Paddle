@@ -92,6 +92,8 @@ message DistributedStrategy {
   optional int32 hierarchical_allreduce_inter_nranks = 16 [ default = 1 ];
   optional bool sync_batch_norm = 17 [ default = false ];
   optional bool fuse_all_reduce_ops = 18 [ default = true ];
+  optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
+  optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
   // optional bool enable_backward_optimizer_op_deps = 19 [ default = true ];
 
   optional RecomputeConfig recompute_configs = 101;
