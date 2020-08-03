@@ -13,8 +13,8 @@
 # limitations under the License.
 """Test cases for role makers."""
 
-import paddle
 from __future__ import print_function
+import paddle
 import os
 import unittest
 

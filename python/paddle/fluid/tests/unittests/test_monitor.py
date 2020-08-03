@@ -15,8 +15,8 @@
 TestCases for Monitor
 """
 
-import paddle
 from __future__ import print_function
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
