@@ -41,9 +41,6 @@ class PipelineOptimizer(MetaOptimizerBase):
         dist_strategy.pipeline = False
         dist_strategy.pipeline_configs = {"micro_batch": 1}
 
-        return self.wrapped_opt.backward(loss, startup_program, parameter_list,
-                                         no_grad_set, callbacks)
-
     def minimize_impl(self,
                       loss,
                       startup_program=None,
