@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/communicator.h"
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_send.h"
-#include "paddle/fluid/operators/distributed/rpc_common.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -40,7 +40,7 @@ class SendOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     auto ins = Inputs("X");
 
-    auto epmap = Attr<std::vector<std::string>>("epmap");
+    auto epmap = Attr<std::vector<std::string>>("endpoints");
     auto trainer_id = Attr<int>("trainer_id");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
@@ -105,7 +105,7 @@ Send operator
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::vector<std::string>>("epmap",
+    AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints in the order of input "
                                       "variables for mapping")

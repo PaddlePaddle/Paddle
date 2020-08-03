@@ -69,6 +69,12 @@ def parse_args():
         default='',
         help='A comma separated list of operator ids to skip in quantization.')
     parser.add_argument(
+        '--targets',
+        type=str,
+        default='quant,int8,fp32',
+        help='A comma separated list of inference types to run ("int8", "fp32", "quant"). Default: "quant,int8,fp32"'
+    )
+    parser.add_argument(
         '--debug',
         action='store_true',
         help='If used, the graph of Quant model is drawn.')
@@ -167,7 +173,8 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                  batch_size=1,
                  batch_num=1,
                  skip_batch_num=0,
-                 transform_to_int8=False):
+                 target='quant'):
+        assert target in ['quant', 'int8', 'fp32']
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         inference_scope = fluid.executor.global_scope()
@@ -183,17 +190,19 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if (self._debug):
                 graph.draw('.', 'quant_orig', graph.all_op_nodes())
-            if (transform_to_int8):
-                transform_to_mkldnn_int8_pass = Quant2Int8MkldnnPass(
-                    self._quantized_ops,
-                    _op_ids_to_skip=self._op_ids_to_skip,
-                    _scope=inference_scope,
-                    _place=place,
-                    _core=core,
-                    _debug=self._debug)
-                graph = transform_to_mkldnn_int8_pass.apply(graph)
-            else:
+            quant_transform_pass = Quant2Int8MkldnnPass(
+                self._quantized_ops,
+                _op_ids_to_skip=self._op_ids_to_skip,
+                _scope=inference_scope,
+                _place=place,
+                _core=core,
+                _debug=self._debug)
+            if (target == 'quant'):
                 graph = self._prepare_for_fp32_mkldnn(graph)
+            elif (target == 'int8'):
+                graph = quant_transform_pass.apply(graph)
+            else:  # target == fp32
+                graph = quant_transform_pass.prepare_and_optimize_fp32(graph)
 
             inference_program = graph.to_program()
 
@@ -222,18 +231,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 images = np.array(images).astype('float32')
                 labels = np.array([x[1] for x in data]).astype('int64')
 
-                if (transform_to_int8 == True):
-                    # INT8 models obtained from Quant models do not have accuracy measuring layers
-                    start = time.time()
-                    out = exe.run(inference_program,
-                                  feed={feed_target_names[0]: images},
-                                  fetch_list=fetch_targets)
-                    batch_time = (time.time() - start) * 1000  # in miliseconds
-                    outputs.append(out[0])
-                    # Calculate accuracy result
-                    batch_acc1, batch_acc5 = self._get_batch_accuracy(out[0],
-                                                                      labels)
-                else:
+                if (target == 'fp32'):
                     # FP32 models have accuracy measuring layers
                     labels = labels.reshape([-1, 1])
                     start = time.time()
@@ -246,6 +244,18 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                     batch_time = (time.time() - start) * 1000  # in miliseconds
                     batch_acc1, batch_acc5 = out[1][0], out[2][0]
                     outputs.append(batch_acc1)
+                else:
+                    # Quant INT8 models do not have accuracy measuring layers
+                    start = time.time()
+                    out = exe.run(inference_program,
+                                  feed={feed_target_names[0]: images},
+                                  fetch_list=fetch_targets)
+                    batch_time = (time.time() - start) * 1000  # in miliseconds
+                    outputs.append(out[0])
+                    # Calculate accuracy result
+                    batch_acc1, batch_acc5 = self._get_batch_accuracy(out[0],
+                                                                      labels)
+
                 infer_accs1.append(batch_acc1)
                 infer_accs5.append(batch_acc5)
                 samples = len(data)
@@ -274,28 +284,43 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
-    def _summarize_performance(self, fp32_fps, fp32_lat, int8_fps, int8_lat):
-        _logger.info('--- Performance summary ---')
-        _logger.info('FP32: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
-            fp32_fps, fp32_lat))
-        _logger.info('INT8: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
-            int8_fps, int8_lat))
+    def _print_performance(self, title, fps, lat):
+        _logger.info('{0}: avg fps: {1:.2f}, avg latency: {2:.4f} ms'.format(
+            title, fps, lat))
 
-    def _compare_accuracy(self, fp32_acc1, fp32_acc5, int8_acc1, int8_acc5,
-                          threshold):
+    def _print_accuracy(self, title, acc1, acc5):
+        _logger.info(
+            '{0}: avg top1 accuracy: {1:.4f}, avg top5 accuracy: {2:.4f}'.
+            format(title, acc1, acc5))
+
+    def _summarize_performance(self, int8_fps, int8_lat, fp32_fps, fp32_lat):
+        _logger.info('--- Performance summary ---')
+        self._print_performance('INT8', int8_fps, int8_lat)
+        if fp32_lat >= 0:
+            self._print_performance('FP32', fp32_fps, fp32_lat)
+
+    def _summarize_accuracy(self, quant_acc1, quant_acc5, int8_acc1, int8_acc5,
+                            fp32_acc1, fp32_acc5):
         _logger.info('--- Accuracy summary ---')
+        self._print_accuracy('Quant', quant_acc1, quant_acc5)
+        self._print_accuracy('INT8', int8_acc1, int8_acc5)
+        if fp32_acc1 >= 0:
+            self._print_accuracy('FP32', fp32_acc1, fp32_acc5)
+
+    def _compare_accuracy(self, threshold, quant_acc1, int8_acc1):
         _logger.info(
-            'Accepted top1 accuracy drop threshold: {0}. (condition: (FP32_top1_acc - IN8_top1_acc) <= threshold)'
+            'Accepted top1 accuracy drop threshold: {0}. (condition: (Quant_top1_acc - IN8_top1_acc) <= threshold && Quant_top1_acc > 0.5 && INT8_top1_acc > 0.5)'
             .format(threshold))
-        _logger.info(
-            'FP32: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.
-            format(fp32_acc1, fp32_acc5))
-        _logger.info(
-            'INT8: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.
-            format(int8_acc1, int8_acc5))
-        assert fp32_acc1 > 0.0
-        assert int8_acc1 > 0.0
-        assert fp32_acc1 - int8_acc1 <= threshold
+        # We assume valid accuracy to be at least 0.5
+        assert quant_acc1 > 0.5
+        assert int8_acc1 > 0.5
+        assert quant_acc1 - int8_acc1 <= threshold
+
+    def _strings_from_csv(self, string):
+        return set(s.strip() for s in string.split(','))
+
+    def _ints_from_csv(self, string):
+        return set(map(int, string.split(',')))
 
     def test_graph_transformation(self):
         if not fluid.core.is_compiled_with_mkldnn():
@@ -303,10 +328,9 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
 
         quant_model_path = test_case_args.quant_model
         assert quant_model_path, 'The Quant model path cannot be empty. Please, use the --quant_model option.'
-        fp32_model_path = test_case_args.fp32_model
-        assert fp32_model_path, 'The FP32 model path cannot be empty. Please, use the --fp32_model option.'
         data_path = test_case_args.infer_data
         assert data_path, 'The dataset path cannot be empty. Please, use the --infer_data option.'
+        fp32_model_path = test_case_args.fp32_model
         batch_size = test_case_args.batch_size
         batch_num = test_case_args.batch_num
         skip_batch_num = test_case_args.skip_batch_num
@@ -314,18 +338,24 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
         self._debug = test_case_args.debug
 
         self._quantized_ops = set()
-        if len(test_case_args.ops_to_quantize) > 0:
-            self._quantized_ops = set(
-                op.strip() for op in test_case_args.ops_to_quantize.split(','))
+        if test_case_args.ops_to_quantize:
+            self._quantized_ops = self._strings_from_csv(
+                test_case_args.ops_to_quantize)
 
         self._op_ids_to_skip = set([-1])
-        if len(test_case_args.op_ids_to_skip) > 0:
-            self._op_ids_to_skip = set(
-                map(int, test_case_args.op_ids_to_skip.split(',')))
+        if test_case_args.op_ids_to_skip:
+            self._op_ids_to_skip = self._ints_from_csv(
+                test_case_args.op_ids_to_skip)
 
-        _logger.info('FP32 & Quant INT8 prediction run.')
+        self._targets = self._strings_from_csv(test_case_args.targets)
+        assert self._targets.intersection(
+            {'quant', 'int8', 'fp32'}
+        ), 'The --targets option, if used, must contain at least one of the targets: "quant", "int8", "fp32".'
+
+        _logger.info('Quant & INT8 prediction run.')
         _logger.info('Quant model: {}'.format(quant_model_path))
-        _logger.info('FP32 model: {}'.format(fp32_model_path))
+        if fp32_model_path:
+            _logger.info('FP32 model: {}'.format(fp32_model_path))
         _logger.info('Dataset: {}'.format(data_path))
         _logger.info('Batch size: {}'.format(batch_size))
         _logger.info('Batch number: {}'.format(batch_num))
@@ -335,31 +365,57 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
         _logger.info('Op ids to skip quantization: {}.'.format(','.join(
             map(str, self._op_ids_to_skip)) if test_case_args.op_ids_to_skip
                                                                else 'none'))
+        _logger.info('Targets: {}.'.format(','.join(self._targets)))
 
-        _logger.info('--- FP32 prediction start ---')
-        val_reader = paddle.batch(
-            self._reader_creator(data_path), batch_size=batch_size)
-        fp32_output, fp32_acc1, fp32_acc5, fp32_fps, fp32_lat = self._predict(
-            val_reader,
-            fp32_model_path,
-            batch_size,
-            batch_num,
-            skip_batch_num,
-            transform_to_int8=False)
-        _logger.info('--- Quant INT8 prediction start ---')
-        val_reader = paddle.batch(
-            self._reader_creator(data_path), batch_size=batch_size)
-        int8_output, int8_acc1, int8_acc5, int8_fps, int8_lat = self._predict(
-            val_reader,
-            quant_model_path,
-            batch_size,
-            batch_num,
-            skip_batch_num,
-            transform_to_int8=True)
+        if 'quant' in self._targets:
+            _logger.info('--- Quant prediction start ---')
+            val_reader = paddle.batch(
+                self._reader_creator(data_path), batch_size=batch_size)
+            quant_output, quant_acc1, quant_acc5, quant_fps, quant_lat = self._predict(
+                val_reader,
+                quant_model_path,
+                batch_size,
+                batch_num,
+                skip_batch_num,
+                target='quant')
+            self._print_performance('Quant', quant_fps, quant_lat)
+            self._print_accuracy('Quant', quant_acc1, quant_acc5)
 
-        self._summarize_performance(fp32_fps, fp32_lat, int8_fps, int8_lat)
-        self._compare_accuracy(fp32_acc1, fp32_acc5, int8_acc1, int8_acc5,
-                               acc_diff_threshold)
+        if 'int8' in self._targets:
+            _logger.info('--- INT8 prediction start ---')
+            val_reader = paddle.batch(
+                self._reader_creator(data_path), batch_size=batch_size)
+            int8_output, int8_acc1, int8_acc5, int8_fps, int8_lat = self._predict(
+                val_reader,
+                quant_model_path,
+                batch_size,
+                batch_num,
+                skip_batch_num,
+                target='int8')
+            self._print_performance('INT8', int8_fps, int8_lat)
+            self._print_accuracy('INT8', int8_acc1, int8_acc5)
+
+        fp32_acc1 = fp32_acc5 = fp32_fps = fp32_lat = -1
+        if 'fp32' in self._targets and fp32_model_path:
+            _logger.info('--- FP32 prediction start ---')
+            val_reader = paddle.batch(
+                self._reader_creator(data_path), batch_size=batch_size)
+            fp32_output, fp32_acc1, fp32_acc5, fp32_fps, fp32_lat = self._predict(
+                val_reader,
+                fp32_model_path,
+                batch_size,
+                batch_num,
+                skip_batch_num,
+                target='fp32')
+            self._print_performance('FP32', fp32_fps, fp32_lat)
+            self._print_accuracy('FP32', fp32_acc1, fp32_acc5)
+
+        if {'int8', 'fp32'}.issubset(self._targets):
+            self._summarize_performance(int8_fps, int8_lat, fp32_fps, fp32_lat)
+        if {'int8', 'quant'}.issubset(self._targets):
+            self._summarize_accuracy(quant_acc1, quant_acc5, int8_acc1,
+                                     int8_acc5, fp32_acc1, fp32_acc5)
+            self._compare_accuracy(acc_diff_threshold, quant_acc1, int8_acc1)
 
 
 if __name__ == '__main__':

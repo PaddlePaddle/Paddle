@@ -52,8 +52,6 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
     // for remote prefetch
     auto epmap = context.Attr<std::vector<std::string>>("epmap");
     auto remote_prefetch = context.Attr<bool>("remote_prefetch");
-    auto height_sections =
-        context.Attr<std::vector<int64_t>>("height_sections");
     auto table_names = context.Attr<std::vector<std::string>>("table_names");
 
     if (remote_prefetch && !epmap.empty()) {
@@ -62,8 +60,8 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
 
 #ifdef PADDLE_WITH_DISTRIBUTE
       operators::distributed::prefetch(id_name, out_name, embedding_name, false,
-                                       table_names, epmap, height_sections,
-                                       context, context.scope());
+                                       table_names, epmap, context,
+                                       context.scope());
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "

@@ -71,15 +71,6 @@ class TestLogSumExpOp(unittest.TestCase):
                         x, keepdim=True).numpy(),
                     np.log(np.sum(np.exp(np_x), keepdims=True))))
 
-            np_x = np.random.uniform(0.1, 1, [2, 3, 4]).astype(np.float32)
-            x = fluid.dygraph.to_variable(np_x)
-            helper = LayerHelper("test_logsumexp")
-            out = helper.create_variable(
-                type=x.type, name='out', dtype=x.dtype, persistable=False)
-            paddle.logsumexp(x, out=out)
-            self.assertTrue(
-                np.allclose(out.numpy(), np.log(np.sum(np.exp(np_x)))))
-
 
 if __name__ == '__main__':
     unittest.main()

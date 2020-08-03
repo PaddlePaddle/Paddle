@@ -17,6 +17,7 @@
 __all__ = [
     #       'PReLU',
     'ReLU',
+    'LeakyReLU',
     'Sigmoid',
     #       'Softmax',
     'LogSoftmax',
@@ -205,6 +206,50 @@ class ReLU(layers.Layer):
 
     def forward(self, input):
         return functional.relu(input, self._inplace)
+
+
+class LeakyReLU(layers.Layer):
+    """
+	:alias_main: paddle.nn.LeakyReLU
+	:alias: paddle.nn.LeakyReLU,paddle.nn.layer.LeakyReLU,paddle.nn.layer.activation.LeakyReLU
+
+    Leaky ReLU Activation.
+
+    .. math:
+
+        out = max(x, alpha * x)
+
+    Parameters:
+        alpha (float, optional): Slope of the activation function at x < 0. Default: 0.01.
+        inplace (bool, optional): If inplace is True, the input and output of 
+            ``LeakyReLU`` are the same variable. Otherwise, the input and output of
+            ``LeakyReLU`` are different variables. Default False. Note that if x is
+            more than one OPs' input, inplace must be False. Default: False.
+    
+    Returns:
+        None
+    
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import paddle.nn as nn
+          import numpy as np
+
+          data = np.array([-2, 0, 1]).astype('float32')
+          lrelu = nn.LeakyReLU()
+          with fluid.dygraph.guard():
+              data = fluid.dygraph.to_variable(data)
+              res = lrelu(data)  # [-0.02, 0, 1]
+    """
+
+    def __init__(self, alpha=1e-2, inplace=False):
+        super(LeakyReLU, self).__init__()
+        self._alpha = alpha
+        self._inplace = inplace
+
+    def forward(self, input):
+        return functional.leaky_relu(input, self._alpha, self._inplace)
 
 
 class Sigmoid(layers.Layer):

@@ -111,6 +111,7 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
       handle_, CUDNN_BATCHNORM_SPATIAL_PERSISTENT, &alpha, &beta, x_desc_,
       x_ptr, y_desc_, y_ptr, b_desc_, scale_d, bias_d, 1., nullptr, nullptr,
       eps_, nullptr, nullptr);
+  return cudaGetLastError() != cudaSuccess;
 }
 
 }  // namespace plugin

@@ -16,9 +16,12 @@ import collections
 import contextlib
 import sys
 import numpy as np
-import collections
 import six
 import re
+import copy
+import weakref
+import warnings
+
 from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
@@ -26,9 +29,6 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
-import copy
-import weakref
-import warnings
 
 __all__ = ['Layer']
 
@@ -751,6 +751,41 @@ class Layer(core.Layer):
             self._non_persistable_buffer_names_set.discard(name)
         else:
             object.__delattr__(self, name)
+
+    def __dir__(self):
+        """
+        Return a list. Get all parameters, buffers(non-parameter variables), sublayers, method and attr of Layer.
+
+        Examples:
+            import paddle.fluid as fluid
+            import numpy as np
+
+            fluid.dygraph.enable_dygraph()
+
+            class Mylayer(fluid.dygraph.Layer):
+                def __init__(self):
+                    super(Mylayer, self).__init__()
+                    self.linear1 = fluid.dygraph.Linear(10, 10)
+                    self.linear2 = fluid.dygraph.Linear(5, 5)
+                    self.conv2d = fluid.dygraph.Conv2D(3, 2, 3)
+                    self.embedding = fluid.dygraph.Embedding(size=[128, 16])
+                    self.h_0 = fluid.dygraph.to_variable(np.zeros([10, 10]).astype('float32'))
+
+            mylayer = Mylayer()
+            print(dir(mylayer))
+            # only parts are shown, because of list have too much content
+            # ['__call__', '__class__',  ... , 'conv2d', 'embedding', 'h_0', 'linear1', 'linear2', ... , 'sublayers', 'train']
+
+        """
+        method = dir(self.__class__)
+        attrs = list(self.__dict__.keys())
+        parameters = list(self._parameters.keys())
+        sublayers = list(self._sub_layers.keys())
+        buffers = list(self._buffers.keys())
+
+        keys = method + attrs + parameters + sublayers + buffers
+
+        return keys
 
     def state_dict(self,
                    destination=None,

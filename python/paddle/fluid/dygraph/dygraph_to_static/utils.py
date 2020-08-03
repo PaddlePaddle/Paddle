@@ -369,6 +369,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     function, the other inner functions are invisible for the decorated function.
     """
     source = ast_to_source_code(ast_root)
+    import_fluid = "import paddle.fluid as fluid\n"
+    source = import_fluid + source
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
