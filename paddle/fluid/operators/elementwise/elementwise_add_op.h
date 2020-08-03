@@ -143,6 +143,9 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     auto *dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     // skip out
     auto *out = dout;
+    dx->mutable_data<T>(ctx.GetPlace());
+    dy->mutable_data<T>(ctx.GetPlace());
+    return;
 
     if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
