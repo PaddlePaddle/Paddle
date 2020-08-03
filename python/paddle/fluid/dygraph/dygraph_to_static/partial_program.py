@@ -113,13 +113,13 @@ class PartialProgramLayer(layers.Layer):
         self._params = parameters if parameters is not None else []
 
         main_program = self._verify_program(main_program)
-        self._infer_program = self._change_is_test_status(main_program, True)
+        self._infer_program = self._clone_for_test(main_program)
         self._train_program = self._append_backward_desc(main_program)
 
         self._set_grad_type(self._params)
         self._inner_scope = core.Scope()
         # Set default mode to train
-        self.train()
+        self.training = True
 
     def _verify_program(self, main_program):
         """
@@ -165,17 +165,8 @@ class PartialProgramLayer(layers.Layer):
 
         self._params = required_params
 
-    def train(self):
-        # self.training is inherited from layers.Layer
-        self.training = True
-
-    def eval(self):
-        self.training = False
-
     def forward(self, inputs):
         in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
-
-        trace_program = self._train_program if self.training else self._infer_program
 
         framework._dygraph_tracer().trace_op(
             type='run_program',
@@ -186,7 +177,7 @@ class PartialProgramLayer(layers.Layer):
             outputs={'Out': valid_vars(out_vars),
                      'OutScope': tmp_scope_vec},
             attrs={
-                'global_block': trace_program.desc.block(0),
+                'global_block': self.program.desc.block(0),
                 'start_op_index': 0,
                 'end_op_index': self._infer_program.desc.block(0).op_size(),
                 'is_test': not self.training
@@ -194,6 +185,10 @@ class PartialProgramLayer(layers.Layer):
 
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
+
+    @property
+    def program(self):
+        return self._train_program if self.training else self._infer_program
 
     def _prepare(self, inputs):
         """
@@ -287,15 +282,15 @@ class PartialProgramLayer(layers.Layer):
         return out_vars
 
     @switch_to_static_graph
-    def _change_is_test_status(self, main_program, is_test):
+    def _clone_for_test(self, main_program):
         """
-        Change all `is_test` attributes of given program.
+        Clone the main program and change all `is_test` attributes into true.
         """
         infer_program = main_program.clone()
         for block in infer_program.blocks:
             for op in block.ops:
                 if op.has_attr('is_test'):
-                    op._set_attr('is_test', is_test)
+                    op._set_attr('is_test', True)
 
         return infer_program
 
