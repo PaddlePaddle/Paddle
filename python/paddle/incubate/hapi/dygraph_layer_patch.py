@@ -71,9 +71,9 @@ def monkey_patch_layer():
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
+                matched_param_state.append(match_res)
             except ValueError as err:
                 warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
-            matched_param_state.append(match_res)
 
         if in_dygraph_mode():
             for param, state in matched_param_state:
