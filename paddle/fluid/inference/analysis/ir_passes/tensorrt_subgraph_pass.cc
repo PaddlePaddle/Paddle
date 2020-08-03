@@ -52,7 +52,6 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       ExtractParameters(graph->Nodes());
   // those parameter already exist in trt, and should not have another copy in
   // fluid.
-
   std::vector<std::string> repetitive_params;
 
   for (auto *node : graph->Nodes()) {
