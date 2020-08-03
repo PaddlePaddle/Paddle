@@ -245,7 +245,10 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
             add_vars_by_op_map(outputs, heter_program)
 
         entrance_vars = block_var_detail[index]["entrance"]
+        add_vars_by_var_list(entrance_vars, program, heter_program)
         exit_vars = block_var_detail[index]["exit"]
+        add_vars_by_var_list(exit_vars, program, heter_program)
+
         comm_info = get_communicate_var_info(
             program, index, entrance_vars, exit_vars)
         grad_to_block_id.append(
@@ -267,10 +270,10 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
             [(-1, comm_info["recv_var_slice_dim"][i])
              for i in range(len(comm_info["recv_var_slice_dim"]))]
         )
-        first_op_index += 1
+        first_op_index += len(comm_info["recv_var_slice_dim"])
 
         # create reshape op
-        for i in len(entrance_vars):
+        for i in range(len(entrance_vars)):
             var_name = entrance_vars[i]
             insert_reshape_op(
                 heter_program,
@@ -422,13 +425,13 @@ def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_l
     # recv
     # var@HETER_SEND_CONCAT -> slice -> var@HETER_SEND_RESHAPE -> reshape -> var
     for name in entrance_var_list:
-        var = program.global_block().vars[var_name]
+        var = program.global_block().vars[name]
         shape = var.shape
         if len(shape) < 2 or shape[0] != -1:
             raise ValueError("Variable {} not support heter training. its shape is {}".format(var_name, shape))
         recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
         recv_var_slice_dim.append(recv_var_dim)
-        recv_var_reshape_name.append("{}@HETER_RECV_RESHAPE".format(var_name))
+        recv_var_reshape_name.append("{}@HETER_RECV_RESHAPE".format(name))
 
     info = {"send_var_reshape_dim": send_var_reshape_dim,
             "send_var_reshape_name": send_var_reshape_name,
@@ -512,6 +515,12 @@ def add_vars_by_op_map(var_map, program):
             var = varlist[i]
             if var.name not in program.global_block().vars:
                 program.global_block()._clone_variable(var)
+
+def add_vars_by_var_list(var_name_list, origin_program, program):
+    for var_name in var_name_list:
+        if var_name not in program.global_block().vars:
+            var = origin_program.global_block().vars[var_name]
+            program.global_block()._clone_variable(var)
 
 
 def get_varlist_from_op_map(var_map):
@@ -649,10 +658,10 @@ def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype, type
     for i in range(len(new_var_name_list)):
         starts = []
         ends = []
-        attrs = {'axes': 1}
+        attrs = {'axes': [1]}
         end_index += new_var_shape_list[i][1]
         starts.append(start_index)
-        end_index.append(end_index)
+        ends.append(end_index)
         attrs['starts'] = starts
         attrs['ends'] = ends
 
