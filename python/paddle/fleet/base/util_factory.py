@@ -15,19 +15,20 @@
 """distributed operations"""
 """basic collective operations in python"""
 """remote file system"""
+import numpy as np
+import os
 
+import subprocess
+from paddle.fluid import core
+from collections import OrderedDict
+import paddle.fluid as fluid
+from google.protobuf import text_format
+from paddle.fluid import debugger
+from paddle.fluid.framework import Program
+from paddle.fluid.proto import framework_pb2
 from ..utils.fs import FS, LocalFS, HDFSClient
 
 __all__ = ['UtilBase']
-
-
-class UtilFactory(object):
-    def _create_util(self, dist_strategy, role_maker, optimize_ops,
-                     params_grads):
-        util = UtilBase()
-        util._set_strategy(dist_strategy)
-        util._set_role_maker(role_maker)
-        return util
 
 
 class UtilBase(object):
@@ -74,9 +75,9 @@ class UtilBase(object):
 
         return _comm_world
 
-    def all_reduce(self, input, output, mode, comm_world="worker"):
+    def all_reduce(self, input, mode, comm_world="worker"):
         _comm_world = self.__check_comm_world(comm_world)
-        self.role_maker._all_reduce(_comm_world, input, output, mode)
+        return self.role_maker._all_reduce(_comm_world, input, mode)
 
     def barrier(self, comm_world="worker"):
         _comm_world = self.__check_comm_world(comm_world)
@@ -84,7 +85,7 @@ class UtilBase(object):
 
     def all_gather(self, input, comm_world="worker"):
         _comm_world = self.__check_comm_world(comm_world)
-        self.role_maker._all_gather(input)
+        return self.role_maker._all_gather(_comm_world, input)
 
     def broadcast(self):
         pass
@@ -132,34 +133,7 @@ class UtilBase(object):
             return
         print(message)
 
-    def save_var(self, np_array, var_name, shape_list, dtype, save_path):
-        program = fluid.Program()
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        with fluid.program_guard(program):
-            d0_data = fluid.layers.data(var_name, shape=shape_list, dtype=dtype)
-            program.global_block().append_op(
-                type="save",
-                inputs={'X': [d0_data]},
-                outputs={},
-                attrs={'file_path': save_path})
-            exe.run(feed={var_name: np_array}, fetch_list=[])
-
-    def load_var(var_name, shape_list, dtype, save_path):
-        program = fluid.Program()
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        with fluid.program_guard(program):
-            d0_data = fluid.layers.data(var_name, shape=shape_list, dtype=dtype)
-            program.global_block().append_op(
-                type='load',
-                inputs={},
-                outputs={'Out': [d0_data]},
-                attrs={'file_path': save_path})
-            outs = exe.run(feed={}, fetch_list=[d0_data])
-            return outs
-
-    def save_program(self, program, model_filename='__model__', is_text=False):
+    def _save_program(self, program, model_filename='__model__', is_text=False):
         if is_text:
             with open(model_filename, "w") as f:
                 f.write(str(program))
@@ -167,7 +141,7 @@ class UtilBase(object):
             with open(model_filename, "wb") as f:
                 f.write(program.desc.serialize_to_string())
 
-    def load_program(self, path, is_text):
+    def _load_program(self, path, is_text):
         def load_program_binary(path):
             """load program from binary string file"""
             with open(path, "rb") as f:
@@ -188,17 +162,31 @@ class UtilBase(object):
         else:
             return load_program_binary(path)
 
-    def program_type_trans(self, prog_dir, prog_fn, is_text):
-        prog = self.load_program(os.path.join(prog_dir, prog_fn), is_text)
+    def _program_type_trans(self, prog_dir, prog_fn, is_text):
+        prog = self._load_program(os.path.join(prog_dir, prog_fn), is_text)
         prog_out_fn = prog_fn + ".bin" if is_text else prog_fn + ".pbtxt"
-        self.save_program(prog,
-                          os.path.join(prog_dir, prog_out_fn), 1 - is_text)
+        self._save_program(prog,
+                           os.path.join(prog_dir, prog_out_fn), 1 - is_text)
         return prog_out_fn
 
-    def proto_check(self, train_prog_path, train_prog_is_text, pruned_prog_path,
-                    pruned_prog_is_text):
-        train_prog = self.load_program(train_prog_path, train_prog_is_text)
-        pruned_prog = self.load_program(pruned_prog_path, pruned_prog_is_text)
+    def _visualize_graphviz(self, program, output_dir, output_filename):
+        block = program.global_block()
+        dot_path = os.path.join(output_dir, output_filename + '.dot')
+        pdf_path = os.path.join(output_dir, output_filename + '.pdf')
+        debugger.draw_block_graphviz(block, path=dot_path)
+        cmd = ["dot", "-Tpdf", dot_path, "-o", pdf_path]
+        p = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        p.wait()
+
+    def _proto_check(self, config):
+        train_prog = self._load_program(config.train_prog_path,
+                                        config.is_text_train_program)
+        pruned_prog = self._load_program(config.pruned_prog_path,
+                                         config.is_text_pruned_program)
 
         is_match = True
 
@@ -206,8 +194,7 @@ class UtilBase(object):
                        if fluid.io.is_persistable(v)]
         pruned_vars = OrderedDict(pruned_vars)
         pruned_vars_name = [name for name in pruned_vars]
-        logger.info("persistable vars in pruned program: {}".format(
-            pruned_vars_name))
+        print("persistable vars in pruned program: {}".format(pruned_vars_name))
 
         # feed and fetch op is added in pruned program when pruning, not need to be found in train program
         feed_fetch_type_list = [
@@ -235,19 +222,43 @@ class UtilBase(object):
                 is_match = False
         return is_match
 
-    def params_check(self,
-                     save_dir,
-                     model_filename,
-                     feed_config,
-                     fetch_config,
-                     model_is_text=False,
-                     batch_size=1,
-                     save_filename=None):
-        prog = self.load_program(
-            os.path.join(save_dir, model_filename), model_is_text)
-        if model_is_text:
-            model_filename = self.program_type_trans(save_dir, model_filename,
-                                                     model_is_text)
+    def _params_check(self, config):
+        def feed_gen(batch_size, feeded_vars_dims, feeded_vars_filelist):
+            def reader(batch_size, fn, dim):
+                data = []
+                if isinstance(dim, list) or isinstance(dim, tuple):
+                    shape = list(dim)
+                    _temp = 1
+                    for x in dim:
+                        _temp = _temp * x
+                    dim = _temp
+                else:
+                    shape = [dim]
+
+                shape = [batch_size] + shape
+                dim = dim * batch_size
+
+                for line in open(fn, 'r'):
+                    fields = line.strip().split(' ')
+                    fields = [float(d) for d in fields]
+                    while len(fields) >= dim:
+                        tmp = fields[:dim]
+                        fields = fields[dim:]
+                        data.append(np.array(tmp).reshape(shape))
+                return data
+
+            batch_feed = []
+            for i, fn in enumerate(feeded_vars_filelist):
+                batch_feed.append(reader(batch_size, fn, feeded_vars_dims[i]))
+            return batch_feed
+
+        prog = self._load_program(
+            os.path.join(config.dump_model_dir, config.dump_program_filename),
+            config.is_text_dump_program)
+        if config.is_text_dump_program:
+            model_filename = self._program_type_trans(
+                config.dump_model_dir, config.dump_program_filename,
+                config.is_text_dump_program)
 
         saved_params = [
             v for v in prog.list_vars() if fluid.io.is_persistable(v)
@@ -274,7 +285,8 @@ class UtilBase(object):
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
             inference_program, feed_target_names, fetch_targets = \
-                fluid.io.load_inference_model(save_dir, exe, model_filename=model_filename, params_filename=save_filename)
+                fluid.io.load_inference_model(config.dump_model_dir, exe, model_filename=model_filename,
+                                            params_filename=config.save_params_filename)
 
             # check program vars and saved vars shape
             orig_para_shape = {
@@ -284,7 +296,8 @@ class UtilBase(object):
             for each_var in saved_params:
                 var_temp = fluid.global_scope().find_var(each_var.name)
                 assert var_temp != None, "can't not find var: " + each_var.name
-                new_shape = (np.array(var_temp.get_tensor())).Shape
+                new_shape = (np.array(var_temp.get_tensor())).shape
+                assert each_var.name in orig_para_shape, each_var.name + "MUST in var list"
                 orig_shape = orig_para_shape.get(each_var.name)
                 if new_shape != orig_shape:
                     raise RuntimeError(
@@ -293,12 +306,13 @@ class UtilBase(object):
                         format(orig_shape, each_var.name, new_shape))
 
             # check feed/fetch vars in program and config
+            feed_config = config.feed_config
+            fetch_config = config.fetch_config
             fetch_targets_names = [v.name for v in fetch_targets]
             if not feed_target_names:
                 print("warning! no feed targets in program.")
             if not fetch_targets_names:
                 print("warning! no fetch targets in program.")
-
             fetch_list = fetch_targets
             feed_name_list = feed_target_names
             if feed_config.feeded_vars_names is not None and feed_target_names != feed_config.feeded_vars_names:
@@ -315,6 +329,24 @@ class UtilBase(object):
                         need_to_remove_op_index.append(i)
                 for index in need_to_remove_op_index[::-1]:
                     global_block._remove_op(index)
+            if fetch_config.fetch_vars_names is not None and fetch_targets_names != fetch_config.fetch_vars_names:
+                print(
+                    "warning! fetch vars in program and config are diff: fetch in program: {}. fetch in config {}.".
+                    format(fetch_targets_names, fetch_config.fetch_vars_names))
+                fetch_list = [
+                    inference_program.global_block().var(i)
+                    for i in fetch_config.fetch_vars_names
+                ]
+                # remove fetch op in inference_program. new fetch op will be added in exe.run
+                global_block = inference_program.global_block()
+                need_to_remove_op_index = []
+                for i, op in enumerate(global_block.ops):
+                    op.desc.set_is_target(False)
+                    if op.type == "fetch":  # only remove fetch op here
+                        need_to_remove_op_index.append(i)
+                for index in need_to_remove_op_index[::-1]:
+                    global_block._remove_op(index)
+
             # if fetch_list have lod tensor
             return_numpy = all([v.lod_level == 0 for v in fetch_list])
 
@@ -350,18 +382,18 @@ class UtilBase(object):
                         feed_tensors.append(
                             np.array(
                                 np.random.random(
-                                    tuple([batch_size] + list(
+                                    tuple([config.batch_size] + list(
                                         feed_config.feeded_vars_dims[i]))),
                                 dtype=feed_config.feeded_vars_types[i]))
                     elif var.lod_level == 1:
                         t = np.array(
                             np.random.random(
-                                tuple([batch_size] + list(
+                                tuple([config.batch_size] + list(
                                     feed_config.feeded_vars_dims[i]))),
                             dtype=feed_config.feeded_vars_types[i])
                         feed_tensors.append(
-                            fluid.create_lod_tensor(t, [[1] * batch_size],
-                                                    place))
+                            fluid.create_lod_tensor(t, [[1] * config.batch_size
+                                                        ], place))
                     else:
                         raise RuntimeError(
                             "vars with lod_level >= 2 is not supported now in this infer program check tool."
@@ -382,15 +414,27 @@ class UtilBase(object):
                     for i in range(len(feed_config.feeded_vars_names))
                 ]
                 feeder = fluid.DataFeeder(feed_list=feed_vars, place=place)
-                batch_feed = feed_gen(batch_size, feed_config.feeded_vars_dims,
+                batch_feed = feed_gen(config.batch_size,
+                                      feed_config.feeded_vars_dims,
                                       feed_config.feeded_vars_filelist)
                 slots = [batch_feed]
                 results = exe.run(inference_program,
                                   feed=feeder.feed(slots),
                                   fetch_list=fetch_list,
                                   return_numpy=return_numpy)
-
             for i, v in enumerate(fetch_list):
                 print("fetch_targets name: %s" % v.name)
                 print("fetch_targets: {}".format(results[i]))
-            return True
+            return results
+
+
+class UtilFactory(object):
+    def _create_util(self, dist_strategy, role_maker, optimize_ops,
+                     params_grads):
+        util = UtilBase()
+        util._set_strategy(dist_strategy)
+        util._set_role_maker(role_maker)
+        return util
+
+
+fleet_util = UtilFactory()._create_util(None, None, [], [])

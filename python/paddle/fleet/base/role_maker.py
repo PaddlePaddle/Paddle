@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Defination of Role Makers."""
+import os
+import numpy as np
+from multiprocessing import Process, Manager
+import paddle.fluid as fluid
+
+__all__ = ['RoleMakerBase', 'PaddleCloudRoleMaker']
 
 # __all__ = ['RoleMakerBase', 'UserDefinedRoleMaker', 'PaddleCloudRoleMaker']
 
@@ -143,8 +149,11 @@ class RoleMakerBase(object):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
-    def __init__(self, is_collective=False):
+    def __init__(self, is_collective=False, is_user_defined=False, **kwargs):
         self._is_collective = is_collective
+        self._is_user_defined = is_user_defined
+        self._kwargs = kwargs
+
         self._role_is_generated = False
 
         self._server_endpoints = None
@@ -178,27 +187,30 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._prefix = os.getenv("SYS_JOB_ID", "")
 
     def _barrier(self, comm_world):
-        if not comm_world:
+        if comm_world:
             comm_world.barrier()
 
     def _all_gather(self, comm_world, input):
-        if not comm_world:
+        if comm_world:
             self._barrier(comm_world)
-            return comm_world.all_gather(input)
+            output = comm_world.all_gather(input)
+            return output
         else:
             return None
 
-    def _all_reduce(self, comm_world, input, output, mode="sum"):
+    def _all_reduce(self, comm_world, input, mode="sum"):
         if not comm_world:
-            return
+            return None
 
         input = np.array(input)
 
         input_shape = input.shape
         input_list = input.reshape(-1).tolist()
 
+        self._barrier(comm_world)
         ans = comm_world.all_reduce(input_list, mode)
         output = np.array(ans).reshape(input_shape)
+        return output
 
     def is_worker(self):
         """
@@ -246,7 +258,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self.generate_role()
-        return self._worker_num()
+        return self._trainers_num
 
     def server_num(self):
         """
@@ -254,7 +266,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self.generate_role()
-        return self._server_num()
+        return self._trainers_num
 
     def get_trainer_endpoints(self):
         """
@@ -288,44 +300,50 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._size
 
+    def _user_defined_env(self):
+        self._server_endpoints = self._kwargs.get("server_endpoints")
+        self._worker_endpoints = self._kwargs.get("trainer_endpoints")
+        self._role = self._kwargs.get("role")
+        self._current_id = self._kwargs.get("current_id")
+        if self._role == Role.WORKER:
+            self._cur_endpoint = self._worker_endpoints[self._current_id]
+        elif self._role == Role.SERVER:
+            self._cur_endpoint = self._server_endpoints[self._current_id]
+        self._trainers_num = len(self._worker_endpoints)
+
     def _ps_env(self):
         try:
             # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
             # format: string(ip:port), eg. 127.0.0.1:6001
-            pserver_endpoints = os.environ[
-                "PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
-            worker_endpoints = os.getenv("PADDLE_TRINERS_IP_PORT_LIST", None)
-            if worker_endpoints:
-                # paddlecloud env support gloo
-                self._worker_endpoints = worker_endpoints.split(",")
+            self._server_endpoints = os.environ[
+                "PADDLE_PSERVER_ENDPOINTS"].split(",")
+            self._worker_endpoints = os.getenv(
+                "PADDLE_TRAINER_ENDPOINTS").split(",")
+
+            trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
+            training_role = os.environ["TRAINING_ROLE"]
+
+            if training_role not in ["TRAINER", "PSERVER"]:
+                raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
+
+            if training_role == "TRAINER":
+                role = Role.WORKER
+                current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                self._cur_endpoint = self._worker_endpoints[current_id]
+            elif training_role == "PSERVER":
+                role = Role.SERVER
+                port = os.environ["PADDLE_PORT"]
+                ip = os.environ["POD_IP"]
+                self._cur_endpoint = ip + ":" + port
+                print(ip, port, self._cur_endpoint)
+                current_id = self._server_endpoints.index(self._cur_endpoint)
             else:
-                # note that, we usually assign the same port to different ips
-                # if we run parameter server training in local mode
-                # port should be different in environment variables
-
-                trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
-                training_role = os.environ["TRAINING_ROLE"]
-
-                if training_role not in ["TRAINER", "PSERVER"]:
-                    raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
-
-                if training_role == "TRAINER":
-                    role = Role.WORKER
-                    current_id = int(os.environ["PADDLE_TRAINER_ID"])
-                elif training_role == "PSERVER":
-                    role = Role.SERVER
-                    cur_ip = os.environ["POD_IP"]
-                    curr_port = os.environ["PADDLE_PORT"]
-                    curr_endpoint = ":".join([cur_ip, curr_port])
-                    current_id = eplist.index(curr_endpoint)
-                else:
-                    raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
+                raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
         except ValueError as ve:
             raise ValueError(
                 "something wrong with PaddleCloud, please check environment")
 
         self._trainers_num = trainers_num
-        self._server_endpoints = eplist
         self._role = role
         self._current_id = current_id
 
@@ -334,7 +352,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         assert (self._training_role == "TRAINER")
         self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-        self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
+        self._cur_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
         assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
@@ -343,7 +361,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         def init_gloo_instance(role="trainer"):
             role = role.lower()
             assert role in ["trainer", "pserver", "all"]
-            if role is "trainer":
+            if role == "trainer":
                 all_list = self._worker_endpoints
                 rank = self._current_id
             elif role == "pserver":
@@ -352,6 +370,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 all_list = self._worker_endpoints + self._server_endpoints
                 rank = all_list.index(self._cur_endpoint)
+            print(role, all_list, rank)
             gloo = fluid.core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(len(all_list))
@@ -414,13 +433,11 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             if not self._is_collective:
-                self._ps_env()
-                if self._worker_endpoints:
-                    # branch: paddlecloud supports gloo
-                    self._init_gloo_env()
+                if self._is_user_defined:
+                    self._user_defined_env()
                 else:
-                    # compatible branch: paddlecloud don't supports gloo
-                    pass
+                    self._ps_env()
+                self._init_gloo_env()
             else:
                 self._collective_env()
             self._role_is_generated = True

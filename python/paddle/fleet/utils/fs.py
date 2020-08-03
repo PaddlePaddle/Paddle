@@ -24,15 +24,17 @@ import errno
 import time
 import logging
 import six
-from . import fs
-from .fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut
+import abc
 import paddle.fluid as fluid
 import functools
 
 from pathlib import PurePosixPath, Path
 import shutil
 
-__all__ = ['FS', 'LocalFS', 'HDFSClient']
+__all__ = [
+    'FS', 'LocalFS', 'HDFSClient', 'ExecuteError', 'FSTimeOut',
+    'FSFileExistsError', 'FSFileNotExistsError'
+]
 
 
 class ExecuteError(Exception):
@@ -101,21 +103,46 @@ class FS(object):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def list_dirs(self, fs_path):
+    def glob(self, fs_path):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def stat(self, fs_path):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def walk(self, fs_path):
         raise NotImplementedError
 
 
 class LocalFS(FS):
     def ls_dir(self, fs_path):
-        return [f for f in os.listdir(fs_path)]
+        if not self.is_exist(fs_path):
+            return []
+
+        dirs = []
+        files = []
+        for f in os.listdir(fs_path):
+            if os.path.isdir(fs_path + "/" + f):
+                dirs.append(f)
+            else:
+                files.append(f)
+
+        return dirs, files
 
     def mkdirs(self, fs_path):
         assert not os.path.isfile(fs_path), "{} is already a file".format(
             fs_path)
         os.system("mkdir -p {}".format(fs_path))
 
-    def rename(self, fs_src_path, fs_dst_path):
-        os.rename(fs_src_path, fs_dst_path)
+    def is_file(self, fs_path):
+        return os.path.isfile(fs_path)
+
+    def is_dir(self, fs_path):
+        return os.path.isdir(fs_path)
+
+    def is_exist(self, fs_path):
+        return os.path.exists(fs_path)
 
     def _rmr(self, fs_path):
         shutil.rmtree(fs_path)
@@ -132,17 +159,11 @@ class LocalFS(FS):
 
         return self._rmr(fs_path)
 
+    def rename(self, fs_src_path, fs_dst_path):
+        os.rename(fs_src_path, fs_dst_path)
+
     def need_upload_download(self):
         return False
-
-    def is_file(self, fs_path):
-        return os.path.isfile(fs_path)
-
-    def is_dir(self, fs_path):
-        return os.path.isdir(fs_path)
-
-    def is_exist(self, fs_path):
-        return os.path.exists(fs_path)
 
     def touch(self, fs_path):
         return Path(fs_path).touch()
@@ -155,19 +176,6 @@ class LocalFS(FS):
             raise FSFileExistsError
 
         return self.rename(src_path, dst_path)
-
-    def list_dirs(self, fs_path):
-        """	
-        list directory under fs_path, and only give the pure name, not include the fs_path	
-        """
-        if not self.is_exist(fs_path):
-            return []
-
-        dirs = [
-            f for f in os.listdir(fs_path) if os.path.isdir(fs_path + "/" + f)
-        ]
-
-        return dirs
 
 
 """HDFS Utils."""
@@ -219,13 +227,6 @@ class HDFSClient(FS):
     def _run_cmd(self, cmd, redirect_stderr=False):
         ret, output = fluid.core.shell_execute_cmd(cmd, 0, 0, redirect_stderr)
         return int(ret), output.splitlines()
-
-    def list_dirs(self, fs_path):
-        if not self.is_exist(fs_path):
-            return []
-
-        dirs, _ = self.ls_dir(fs_path)
-        return dirs
 
     @_handle_errors
     def ls_dir(self, fs_path):
