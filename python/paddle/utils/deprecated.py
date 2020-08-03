@@ -46,7 +46,6 @@ def deprecated(update_to="", since="", reason=""):
         msg += ", and may be removed in future versions."
         if len(_update_to) > 0:
             assert _update_to.startswith("paddle."), 'Argument update_to must start with "paddle.", your value is "{}"'.format(update_to)
-            assert len(_update_to) > len("paddle."), 'No api found in argument update_to, your value is "{}".'.format(update_to)
             msg += ' Use "{}" instead.'.format(_update_to)
         if len(_reason) > 0:
             msg += "\n reason: {}".format(_reason)

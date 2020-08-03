@@ -11615,7 +11615,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
-@deprecated(since="2.0.0", update_to="paddle.nn.multiply")
+@deprecated(since="2.0.0", update_to="paddle.multiply")
 def elementwise_mul(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_mul
