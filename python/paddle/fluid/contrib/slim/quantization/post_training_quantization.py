@@ -436,6 +436,7 @@ class PostTrainingQuantization(object):
         graph = IrGraph(core.Graph(self._program.desc), for_test=True)
         graph = _remove_ctrl_vars(graph)
         graph = _apply_pass(self._scope, graph, 'conv_bn_fuse_pass')
+        graph = _apply_pass(self._scope, graph, 'depthwise_conv_bn_fuse_pass')
         self._program = graph.to_program()
 
     def _collect_target_varnames(self):
