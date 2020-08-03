@@ -35,6 +35,24 @@ class AsyncOptimizer(MetaOptimizerBase):
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         return True if k_steps >= 0 else False
 
+    def get_distributed_strategy(self):
+        k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
+        strategy = None
+
+        if not self.user_defined_strategy.a_sync and k_steps == 0:
+            strategy = StrategyFactory.create_sync_strategy()
+
+        if self.user_defined_strategy.a_sync and k_steps == 0:
+            strategy = StrategyFactory.create_async_strategy()
+
+        if self.user_defined_strategy.a_sync and k_steps > 0:
+            strategy = StrategyFactory.create_geo_strategy(k_steps)
+
+        if not strategy:
+            raise ValueError("k_steps must be invalid value, please check")
+
+        return strategy
+
     def _build_trainer_programs(self, compiled_config):
         _main = compiled_config.origin_main_program.clone()
         _startup = compiled_config.origin_startup_program.clone()
@@ -99,21 +117,7 @@ class AsyncOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         self.inner_opt.minimize(loss, startup_program, parameter_list,
                                 no_grad_set)
-
-        k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
-        strategy = None
-
-        if not self.user_defined_strategy.a_sync and k_steps == 0:
-            strategy = StrategyFactory.create_sync_strategy()
-
-        if self.user_defined_strategy.a_sync and k_steps == 0:
-            strategy = StrategyFactory.create_async_strategy()
-
-        if self.user_defined_strategy.a_sync and k_steps > 0:
-            strategy = StrategyFactory.create_geo_strategy(k_steps)
-
-        if not strategy:
-            raise ValueError("k_steps must be invalid value, please check")
+        strategy = self.get_distributed_strategy()
 
         _origin_main_program = loss.block.program
         _origin_startup_program = startup_program

@@ -19,6 +19,7 @@ from .async_optimizer import AsyncOptimizer
 from .pipeline_optimizer import PipelineOptimizer
 from .localsgd_optimizer import LocalSGDOptimizer
 from .lars_optimizer import LarsOptimizer
+from .async_graph_execution_optimizer import AsyncGraphExecutionOptimizer
 
 __all__ = [
     'AMPOptimizer',
@@ -29,4 +30,5 @@ __all__ = [
     'PipelineOptimizer',
     'LocalSGDOptimizer',
     'LarsOptimizer',
+    'AsyncGraphExecutionOptimizer',
 ]
