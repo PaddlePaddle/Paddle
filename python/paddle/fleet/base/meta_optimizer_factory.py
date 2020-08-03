@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ..meta_optimizers import AMPOptimizer
 from ..meta_optimizers import RecomputeOptimizer
 from ..meta_optimizers import GradientMergeOptimizer
 from ..meta_optimizers import GraphExecutionOptimizer
@@ -22,6 +23,7 @@ from ..meta_optimizers import LarsOptimizer
 __all__ = ["MetaOptimizerFactory"]
 
 meta_optimizer_names = [
+    "AMPOptimizer",
     "RecomputeOptimizer",
     "GradientMergeOptimizer",
     "GraphExecutionOptimizer",
