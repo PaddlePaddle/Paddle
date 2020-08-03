@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -339,21 +341,6 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     }
     LOG_FIRST_N(INFO, 1) << "Inplace strategy is enabled, when "
                             "build_strategy.enable_inplace = True";
-  }
-
-  /**
-   * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
-   * set BuildStrategy.memory_optimize according to whether gc is enabled.
-   * If gc is enabled, BuildStrategy.memory_optimize = False.
-   * If gc is disabled, BuildStrategy.memory_optimize = True.
-   * This is because gc+memory_optimize is worse than gc only.
-   *
-   * As an option, users can enable BuildStrategy.memory_optimize forcely
-   * by setting True, and disable it forcely by setting False.
-   */
-  bool is_gc_enabled = (GetEagerDeletionThreshold() >= 0);
-  if (!build_strategy_.memory_optimize_) {
-    build_strategy_.memory_optimize_ = !is_gc_enabled;
   }
 
   if (build_strategy_.memory_optimize_.get()) {
