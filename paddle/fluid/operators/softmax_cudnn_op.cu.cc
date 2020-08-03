@@ -44,41 +44,29 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     Out->mutable_data<T>(ctx.GetPlace());
 
-    if (axis == rank - 1) {
-      auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-      framework::LoDTensor flattened_x;
-      framework::LoDTensor flattened_out;
-      flattened_x.ShareDataWith(*X).Resize(flattened_dims);
-      flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
+    const int axis_dim = dims[axis];
+    const int N = SizeToAxis(axis, dims);
+    const int D = SizeOutAxis(axis, dims);
 
-      math::SoftmaxCUDNNFunctor<T>()(
-          ctx.template device_context<platform::CUDADeviceContext>(),
-          &flattened_x, &flattened_out);
+    auto* out_data = Out->data<T>();
+    cudnnTensorDescriptor_t desc_;
+    cudnnDataType_t type = platform::ToCudnnDataType(
+        framework::ToDataType(std::type_index(typeid(T))));
 
-    } else {
-      const int axis_dim = dims[axis];
-      const int N = SizeToAxis(axis, dims);
-      const int D = SizeOutAxis(axis, dims);
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensor4dDescriptor(
+        desc_, CUDNN_TENSOR_NCHW, type, N, axis_dim, D, 1));
 
-      auto* out_data = Out->data<T>();
-      cudnnTensorDescriptor_t desc_;
-      cudnnDataType_t type = platform::ToCudnnDataType(
-          framework::ToDataType(std::type_index(typeid(T))));
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
+    auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
+                                 : CUDNN_SOFTMAX_MODE_CHANNEL;
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnCreateTensorDescriptor(&desc_));
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensor4dDescriptor(
-          desc_, CUDNN_TENSOR_NCHW, type, N, axis_dim, D, 1));
-
-      auto& dev_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
-      auto handle = dev_ctx.cudnn_handle();
-
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
-          handle, CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL,
-          platform::CudnnDataType<T>::kOne(), desc_, X->data<T>(),
-          platform::CudnnDataType<T>::kZero(), desc_, out_data));
-    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+        handle, CUDNN_SOFTMAX_ACCURATE, mode,
+        platform::CudnnDataType<T>::kOne(), desc_, X->data<T>(),
+        platform::CudnnDataType<T>::kZero(), desc_, out_data));
   }
 };
 
@@ -96,45 +84,30 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     dX->mutable_data<T>(ctx.GetPlace());
 
-    if (axis == rank - 1) {
-      auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-      framework::LoDTensor flattened_out;
-      framework::LoDTensor flattened_d_out;
-      framework::LoDTensor flattened_d_x;
-      flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
-      flattened_d_out.ShareDataWith(*dOut).Resize(flattened_dims);
-      flattened_d_x.ShareDataWith(*dX).Resize(flattened_dims);
+    const int axis_dim = dims[axis];
+    const int N = SizeToAxis(axis, dims);
+    const int D = SizeOutAxis(axis, dims);
 
-      math::SoftmaxGradCUDNNFunctor<T>()(
-          ctx.template device_context<platform::CUDADeviceContext>(),
-          &flattened_out, &flattened_d_out, &flattened_d_x);
+    auto* dx_data = dX->data<T>();
 
-    } else {
-      const int axis_dim = dims[axis];
-      const int N = SizeToAxis(axis, dims);
-      const int D = SizeOutAxis(axis, dims);
+    cudnnTensorDescriptor_t desc_;
+    cudnnDataType_t type = platform::ToCudnnDataType(
+        framework::ToDataType(std::type_index(typeid(T))));
 
-      auto* dx_data = dX->data<T>();
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensor4dDescriptor(
+        desc_, CUDNN_TENSOR_NCHW, type, N, axis_dim, D, 1));
 
-      cudnnTensorDescriptor_t desc_;
-      cudnnDataType_t type = platform::ToCudnnDataType(
-          framework::ToDataType(std::type_index(typeid(T))));
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
+    auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
+                                 : CUDNN_SOFTMAX_MODE_CHANNEL;
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnCreateTensorDescriptor(&desc_));
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensor4dDescriptor(
-          desc_, CUDNN_TENSOR_NCHW, type, N, axis_dim, D, 1));
-
-      auto& dev_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
-      auto handle = dev_ctx.cudnn_handle();
-
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
-          handle, CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL,
-          platform::CudnnDataType<T>::kOne(), desc_, Out->data<T>(), desc_,
-          dOut->data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
-          dx_data));
-    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+        handle, CUDNN_SOFTMAX_ACCURATE, mode,
+        platform::CudnnDataType<T>::kOne(), desc_, Out->data<T>(), desc_,
+        dOut->data<T>(), platform::CudnnDataType<T>::kZero(), desc_, dx_data));
   }
 };
 
