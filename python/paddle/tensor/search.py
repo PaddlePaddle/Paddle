@@ -381,7 +381,8 @@ def sort(x, axis=-1, descending=False, name=None):
 	:alias_main: paddle.sort
 	:alias: paddle.sort,paddle.tensor.sort,paddle.tensor.search.sort
 
-    This OP sorts the input along the given axis, and returns the sorted output tensor.
+    This OP sorts the input along the given axis, and returns the sorted output tensor. 
+    **Note:** The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.     
 
     Args:
         x(Tensor): An input N-D Tensor with type float32, float64, int16,
