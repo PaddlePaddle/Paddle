@@ -41,7 +41,12 @@ int PaddleDtypeSize(PaddleDType dtype) {
 }
 
 void LoadCustomOpLibrary(std::string lib_path) {
+#if defined(__APPLE__) || defined(__OSX__) || defined(_WIN32)
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Loading custom cpp op in inference does not support Apple or Windows."));
+#else
   framework::LoadOpLib(lib_path);
+#endif
 }
 
 PaddleBuf::PaddleBuf(PaddleBuf &&other)

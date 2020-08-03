@@ -21,6 +21,10 @@ namespace paddle {
 namespace framework {
 
 void LoadOpLib(const std::string &dso_name) {
+#if defined(__APPLE__) || defined(__OSX__) || defined(_WIN32)
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Loading custom cpp op in inference does not support Apple or Windows."));
+#else
   void *handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
 
   typedef OpInfoMap &get_op_info_t();
@@ -92,6 +96,7 @@ void LoadOpLib(const std::string &dso_name) {
   init_device_t *init_dev =
       DynLoad<init_device_t>(handle, "PD_InitDevicesPool");
   init_dev(&(platform::DeviceContextPool::Instance()));
+#endif
 }
 
 }  // namespace framework
