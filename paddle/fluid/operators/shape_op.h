@@ -24,7 +24,7 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 
 template <typename T>
-class ShapeKernel : public framework::OpKernel<T> {
+class ShapeCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in_var = ctx.InputVar("Input");
@@ -36,7 +36,7 @@ class ShapeKernel : public framework::OpKernel<T> {
     }
     auto* out_t = ctx.Output<Tensor>("Out");
     out_t->Resize({in_dims.size()});
-    auto out_data = out_t->mutable_data<int32_t>(platform::CPUPlace());
+    auto out_data = out_t->mutable_data<int64_t>(ctx.GetPlace());
     for (int i = 0; i < in_dims.size(); ++i) {
       out_data[i] = in_dims[i];
     }
