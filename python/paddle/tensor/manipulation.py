@@ -69,6 +69,7 @@ def concat(x, axis=0, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Raises:
+        TypeError: ``x`` must be list or tuple.
         TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32 and int64. 
         TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
         TypeError: All the Tensors in ``x`` must have the same data type.
