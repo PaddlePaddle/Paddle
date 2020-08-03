@@ -28,7 +28,7 @@ from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_bu
 from .unique_name import UniqueNameGenerator
 import logging
 import warnings
-from paddle.fleet import DatasetBase, InMemoryDataset
+import paddle.fleet.DatasetBase as DatasetBase
 
 ### Dygraph DataLoader configs ###
 import os
