@@ -441,6 +441,7 @@ class TestModelFunction(unittest.TestCase):
         inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
         tensor_img = np.array(
             np.random.random((1, 1, 28, 28)), dtype=np.float32)
+        tensor_img1 = tensor_img
         device = hapi.set_device('cpu')
         for dynamic in [True, False]:
             save_dir = tempfile.mkdtemp()
@@ -459,7 +460,7 @@ class TestModelFunction(unittest.TestCase):
                 net = LeNet()
                 model = Model(net, inputs)
                 model.prepare()
-                ori_results = model.test_batch(tensor_img)
+                ori_results = model.test_batch(tensor_img1)
                 model.save_inference_model(save_dir)
 
             fluid.disable_dygraph() if dynamic else None
