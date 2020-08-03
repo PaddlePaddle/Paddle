@@ -103,6 +103,15 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
+    def role_id(self):
+        """
+        Get current id.
+
+        Returns:
+            int: node id
+        """
+        raise NotImplementedError("Please implement this method in child class")
+
     def get_trainer_endpoints(self):
         """
         return trainer endpoints
@@ -256,6 +265,15 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             self.generate_role()
         return self._current_id
+
+    def role_id(self):
+        """
+        get index of current node
+        """
+        if self.is_server():
+            return self.server_index()
+        elif self.is_worker():
+            return self.worker_index()
 
     def worker_num(self):
         """
