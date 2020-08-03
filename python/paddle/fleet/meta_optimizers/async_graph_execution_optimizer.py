@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle
+from paddle import fluid
 from paddle.fluid import compiler
 from .async_optimizer import AsyncOptimizer
 
@@ -26,7 +26,7 @@ class AsyncGraphExecutionOptimizer(AsyncOptimizer):
     def _is_graph_out(self):
         return True
 
-    def _try_to_compile(self, startup_program, main_program, loss):
+    def _try_to_compile(self, main_program, loss):
         dist_strategy = self.get_distributed_strategy()
 
         build_strategy = dist_strategy.get_build_strategy()
@@ -47,11 +47,8 @@ class AsyncGraphExecutionOptimizer(AsyncOptimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        if startup_program == None:
-            startup_program = paddle.default_startup_program()
-        compiled_program = self._try_to_compile(startup_program,
-                                                loss.block.program, loss)
-        loss.block.program._graph = compiled_program
-
+        compiled_program = self._try_to_compile(loss.block.program, loss)
+        program = fluid.default_main_program()
+        program._graph = compiled_program
         # just return self.optimizer_ops and self.param_grads
         return None, None
