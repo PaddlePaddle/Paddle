@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,21 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-__all__ = ["MetaOptimizerFactory"]
-
-from ..meta_optimizers import *
-
-meta_optimizer_names = list(
-    filter(lambda name: name.endswith("Optimizer"), dir()))
+from multiprocessing import Pool, Process
+import os
 
 
-class MetaOptimizerFactory(object):
-    def __init__(self):
-        pass
-
-    def _get_valid_meta_optimizers(self, user_defined_optimizer):
-        opt_list = []
-        for opt_name in meta_optimizer_names:
-            opt_list.append(globals()[opt_name](user_defined_optimizer))
-        return opt_list
+def launch_func(func, env_dict):
+    for key in env_dict:
+        os.environ[key] = env_dict[key]
+    proc = Process(target=func)
+    return proc
