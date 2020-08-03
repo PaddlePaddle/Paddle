@@ -81,9 +81,6 @@ def train(attn_model=False):
             word_count = 0.0
             batch_start_time = time.time()
             input_data_feed, word_num = prepare_input(batch)
-            input_data_feed = [
-                fluid.dygraph.to_variable(np_inp) for np_inp in input_data_feed
-            ]
             word_count += word_num
             loss = model(input_data_feed)
             loss.backward()
