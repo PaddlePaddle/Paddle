@@ -75,11 +75,11 @@ class TestDatasetWithStat(unittest.TestCase):
                     exe.run(fluid.default_main_program(), feed=data)
         else:
             for i in range(self.epoch_num):
-                # try:
-                exe.train_from_dataset(fluid.default_main_program(),
-                                       dataset)
-                # except Exception as e:
-                #     self.assertTrue(False)
+                try:
+                    exe.train_from_dataset(fluid.default_main_program(),
+                                           dataset)
+                except Exception as e:
+                    self.assertTrue(False)
 
         int_stat = core.get_int_stats()
         # total 56 keys
