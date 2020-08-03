@@ -82,8 +82,9 @@ def _generate_doc_string_(op_proto,
     buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:
-        line_begin = '    {0}: '.format(_convert_(each_input.name))
+        line_begin = '    {0}'.format(_convert_(each_input.name))
         buf.write(line_begin)
+        buf.write(" (Tensor): ")
         buf.write(escape_math(each_input.comment))
         if each_input.duplicable:
             buf.write("  Duplicatable.")
@@ -125,6 +126,8 @@ def _generate_doc_string_(op_proto,
         for each_opt in op_proto.outputs:
             if not each_opt.intermediate:
                 break
+        buf.write(_convert_(each_opt.name))
+        buf.write(' (Tensor): ')
         buf.write(escape_math(each_opt.comment))
 
     return buf.getvalue()
@@ -275,12 +278,9 @@ def generate_activation_fn(op_type):
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=[
-            "name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` ."
+            "name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` ."
         ])
     func.__doc__ = func.__doc__ + """
-
-Return type
-  Variable
 
 Examples:
     .. code-block:: python
@@ -297,7 +297,7 @@ Examples:
     return func
 
 
-def deprecated(func_or_class):
+def deprecated(func):
     """
     Deprecated warning decorator. It will result a warning message.
     Should be used before class or function, member function
