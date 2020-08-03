@@ -35,6 +35,7 @@ import os
 import warnings
 
 import six
+import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.core import CommContext
 import paddle.fluid.framework as framework
@@ -127,6 +128,9 @@ def _is_same_device(op, pre_device, default_device="cpu"):
     op_device = op.attr("op_device")
     if op_device == pre_device:
         return True
+    if pre_device == default_device:
+        # for cpu-op , xpu-op
+        return True
     return False
 
 
@@ -189,9 +193,14 @@ def find_heter_ops(program, default_device="cpu"):
             current_heter_block_ops = []
             current_heter_device = default_device
             is_heter = False
+            current_default_block_ops.append(op)
         else:
             # for cpu-op
             current_default_block_ops.append(op)
+    if current_default_block_ops != []:
+        default_ops[default_device][block_index] = current_default_block_ops
+        program_block_ops.append(current_default_block_ops)
+
 
     if len(heter_ops) == 0:
         warnings.warn(
@@ -199,12 +208,14 @@ def find_heter_ops(program, default_device="cpu"):
             " please using fluid.device_guard() to run OPs on different device.")
 
     total_heter_ops = 0
+    heter_blocks=0 
     for device in heter_ops.keys():
-        heter_block_list = heter_ops[device]
-        for heter_block in heter_block_list:
+        heter_block_dict = heter_ops[device]
+        heter_blocks += len(heter_block_dict)
+        for _,heter_block in heter_block_dict.items():
             total_heter_ops += len(heter_block)
     print(
-        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, len(heter_ops)))
+        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, heter_blocks))
     return program, heter_ops, default_ops, program_block_ops
 
 
@@ -214,7 +225,7 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
     grad_to_block_id = []
 
     lr_decay_block = heter_program._create_block(heter_program.num_blocks - 1)
-    optimize_blocks.append(lr_decay_block)
+    optimizer_block.append(lr_decay_block)
     lr_decay_block_id = lr_decay_block.idx
 
     pre_block_idx = heter_program.num_blocks - 1
@@ -236,16 +247,22 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
         entrance_vars = block_var_detail[index]["entrance"]
         exit_vars = block_var_detail[index]["exit"]
         comm_info = get_communicate_var_info(
-            heter_program, index, entrance_vars, exit_vars)
+            program, index, entrance_vars, exit_vars)
         grad_to_block_id.append(
             comm_info["recv_var_listen_recv_name"] + ":" + str(heter_block.idx))
         # create slice op
         first_op_index = 0
+
+        get_type_var_name = comm_info["recv_var_reshape_name"][0].split("@")[0]
+        get_type_var = heter_program.global_block().vars[get_type_var_name]
         insert_recv_slice_op(
             heter_program,
             heter_block,
             first_op_index,
             comm_info["recv_var_listen_recv_name"],
+            (-1, sum(comm_info["recv_var_slice_dim"])),
+            get_type_var.dtype,
+            get_type_var.type,
             comm_info["recv_var_reshape_name"],
             [(-1, comm_info["recv_var_slice_dim"][i])
              for i in range(len(comm_info["recv_var_slice_dim"]))]
@@ -313,7 +330,7 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
     mode = config.get_distributed_mode()
     # Todo: replace by XPU endpoints
     pserver_endpoints = config.get_ps_endpoints()
-    entrance_var = ops_detail["entrance_var"]
+    entrance_var = ops_detail["entrance"]
     private_var = ops_detail["private"]
     exit_var = ops_detail["exit"]
 
@@ -398,7 +415,7 @@ def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_l
         var = program.global_block().vars[var_name]
         shape = var.shape
         if len(shape) < 2 or shape[0] != -1:
-            raise("Variable {} not support heter training.".format(var_name))
+            raise ValueError("Variable {} not support heter training. its shape is {}".format(var_name, shape))
         send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
         send_var_reshape_dim.append(send_reshape_dim)
         send_var_reshape_name.append("{}@HETER_SEND_RESHAPE".format(var_name))
@@ -408,7 +425,7 @@ def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_l
         var = program.global_block().vars[var_name]
         shape = var.shape
         if len(shape) < 2 or shape[0] != -1:
-            raise("Variable {} not support heter training.".format(var_name))
+            raise ValueError("Variable {} not support heter training. its shape is {}".format(var_name, shape))
         recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
         recv_var_slice_dim.append(recv_var_dim)
         recv_var_reshape_name.append("{}@HETER_RECV_RESHAPE".format(var_name))
@@ -507,23 +524,6 @@ def get_varlist_from_op_map(var_map):
             var_list.append(var.name)
     return var_list
 
-
-def find_block_input_output(program, block):
-    input_var_list = []
-    output_var_list = []
-    for op in block.ops:
-        inputs = _get_input_map_from_op(
-            program.global_block().vars, op)
-        input_var_list += get_varlist_from_op_map(inputs)
-        outputs = _get_output_map_from_op(
-            program.global_block().vars, op)
-        output_var_list += get_varlist_from_op_map(outputs)
-
-    input_var_list = list(set(input_var_list))
-    output_var_list = list(set(output_var_list))
-    return input_var_list, output_var_list
-
-
 def find_ops_list_input_output(program, ops_list):
     input_var_list = []
     output_var_list = []
@@ -536,8 +536,24 @@ def find_ops_list_input_output(program, ops_list):
         output_var_list += get_varlist_from_op_map(outputs)
 
     input_var_list = list(set(input_var_list))
+    screen_persistables(program, input_var_list)
     output_var_list = list(set(output_var_list))
+    screen_persistables(program, output_var_list)
     return input_var_list, output_var_list
+
+def screen_persistables(program, var_list):
+    need_remove = []
+    for var_name in var_list:
+        if "@GRAD" in var_name:
+            origin_var_name = var_name.split("@GRAD")[0]
+            var = program.global_block().vars[origin_var_name]
+        else:
+            var = program.global_block().vars[var_name]
+        if fluid.io.is_persistable(var):
+            need_remove.append(var_name)
+
+    for var_name in need_remove:
+        var_list.remove(var_name)
 
 
 def find_op_input_output(program, block, op):
@@ -571,20 +587,20 @@ def insert_reshape_op(program, block, index, var_name, new_var_name, new_var_sha
         out = program.global_block().create_var(
             name=new_var_name,
             shape=new_var_shape,
-            dtype=input_var.dtype(),
-            type=input_var.type())
+            dtype=input_var.dtype,
+            type=input_var.type)
     else:
         out = program.global_block().vars[new_var_name]
         new_var_shape = out.shape
 
     x_shape = program.global_block().create_var(
         name="{}@XShape".format(var_name),
-        dtype=input_var.dtype())
+        dtype=input_var.dtype)
 
     block._insert_op(
         index=index,
         type="reshape2",
-        inputs=input_var,
+        inputs={"X": input_var},
         attrs={'shape': new_var_shape},
         outputs={"Out": out,
                  "XShape": x_shape}
@@ -598,28 +614,33 @@ def insert_send_concat_op(program, block, index, var_name_list, new_var_name, ne
     out = program.global_block().create_var(
         name=new_var_name,
         shape=new_var_shape,
-        dtype=input_var_list[0].dtype(),
-        type=input_var_list[0].type())
+        dtype=input_var_list[0].dtype,
+        type=input_var_list[0].type)
 
     block._insert_op(
         index=index,
         type='concat',
-        inputs=input_var_list,
+        inputs={'X':input_var_list},
         outputs={'Out': [out]},
         attrs={'axis': -1,
                'use_stack': False}
     )
 
 
-def insert_recv_slice_op(program, block, index, var_name, new_var_name_list, new_var_shape_list):
-    input_var = program.global_block().vars[var_name]
+def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype, type, new_var_name_list, new_var_shape_list):
+    
+    input_var = program.global_block().create_var(
+        name=var_name,
+        shape=var_shape,
+        dtype=dtype,
+        type=type)
 
     out_list = [
         program.global_block().create_var(
             name=new_var_name_list[i],
             shape=new_var_shape_list[i],
-            dtype=input_var.dtype(),
-            type=input_var.type()
+            dtype=input_var.dtype,
+            type=input_var.type
         ) for i in range(len(new_var_name_list))
     ]
 
@@ -638,7 +659,7 @@ def insert_recv_slice_op(program, block, index, var_name, new_var_name_list, new
         block._insert_op(
             index=index,
             type='slice',
-            inputs=input_var,
+            inputs={'Input':input_var},
             attrs=attrs,
             outputs={'Out': out_list[i]}
         )
@@ -652,6 +673,8 @@ def _get_input_map_from_op(varmap, op):
     for key in op.input_names:
         vars = []
         for varname in op.input(key):
+            if varname == "@EMPTY@":
+                continue
             vars.append(varmap[varname])
         if len(vars) == 1:
             iomap[key] = vars[0]
@@ -666,6 +689,8 @@ def _get_output_map_from_op(varmap, op):
     for key in op.output_names:
         vars = []
         for varname in op.output(key):
+            if varname == "@EMPTY@":
+                continue
             vars.append(varmap[varname])
         if len(vars) == 1:
             iomap[key] = vars[0]
@@ -681,6 +706,7 @@ def delete_same_ops(block, ops):
                 if is_same_op(origin_op, op):
                     idx = list(block.ops).index(origin_op)
                     block._remove_op(idx)
+                    break
         except Exception as e:
             print(e)
 

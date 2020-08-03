@@ -791,8 +791,6 @@ class ParameterServerOptimizer(DistributedOptimizer):
             if fleet._role_maker._is_heter_worker():
                 _main = heter_worker.split_heter_worker_ops_pass(
                     _main, compiled_config)
-                _main = heter_worker.append_heter_worker_communicate_ops_pass(
-                    _main, compiled_config)
             else:
                 _main = heter_worker.split_trainer_ops_pass(
                     _main, compiled_config)
@@ -863,5 +861,5 @@ class ParameterServerOptimizer(DistributedOptimizer):
 
         fleet.compiled_config = compiled_config
         fleet.main_program, fleet.startup_program = \
-            self._build_trainer_programs(compiled_config) if fleet.is_worker() \
+            self._build_trainer_programs(compiled_config) if fleet.is_worker() or fleet._role_maker._is_heter_worker() \
             else self._build_pserver_programs(compiled_config)
