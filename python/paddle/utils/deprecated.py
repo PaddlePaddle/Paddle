@@ -16,6 +16,16 @@ import functools
 import inspect
 
 def deprecated(since="", new_api="", detail=""):
+    """Decorate a function to signify its deprecation.
+       
+       This function wraps a method that will soon be removed and does two things:
+           - The docstring of the API will be modified to include a notice
+             about deprecation."
+           - Raises a :class:`~deprecation.DeprecatedWarning` when old API is called.
+       :param since: The version at which the decorated method is considered deprecated.
+       :param new_api: The new API users should use.
+       :param detail: Extra details about the deprecation. For example, the reason why the API is deprecated.
+    """
     def decorator(func):
         assert isinstance(since, str)
         assert isinstance(new_api, str)
