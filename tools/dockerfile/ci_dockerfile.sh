@@ -24,6 +24,9 @@ function make_centos_dockerfile(){
   sed 's/<baseimg>/9.0-cudnn7-devel-centos6/g' Dockerfile.centos >${dockerfile_name}
   sed -i 's#COPY build_scripts /build_scripts#COPY tools/dockerfile/build_scripts ./build_scripts#g' ${dockerfile_name} 
   dockerfile_line=`wc -l ${dockerfile_name}|awk '{print $1}'`
+  sed -i "${dockerfile_line}i RUN ln -s /usr/lib64/libz.so /usr/local/lib/libz.so && \
+     ln -s /usr/local/lib/libnccl.so /usr/local/cuda/lib64/ && \
+     rm -rf /usr/include/NvInfer* "
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate  -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
 }
