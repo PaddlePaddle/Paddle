@@ -327,6 +327,12 @@ class Fleet(object):
                 startup_program=startup_program,
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set)
+        else:
+            optimize_ops, params_grads = self.user_defined_optimizer.minimize(
+                loss,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set)
 
         if graph_optimizer:
             optimizer_ops, params_grads = graph_optimizer.minimize(
@@ -338,7 +344,6 @@ class Fleet(object):
             # if a graph optimizer takes effect, mostly
             # optimizers_ops and params_grads are None
             # i.e. users can not modify current computation graph anymore
-
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(
                 valid_strategy, self._role_maker, optimize_ops, params_grads)
