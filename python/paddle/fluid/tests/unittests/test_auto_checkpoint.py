@@ -35,7 +35,7 @@ from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBas
 logger = get_logger()
 
 
-class AutoCheckpointTest(AutoCheckpointBase):
+class AutoCheckPointACLBase(AutoCheckpointBase):
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -167,6 +167,28 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(save_dir)
         logger.info("begin _run_load_0")
 
+
+class AutoCheckpointTest(AutoCheckPointACLBase):
+    def setUp(self):
+        get_logger()
+        logger.info("enter tests")
+
+        self._old_environ = dict(os.environ)
+        proc_env = {
+            "PADDLE_RUNNING_ENV": "PADDLE_EDL_AUTO_CHECKPOINT",
+            "PADDLE_TRAINER_ID": "0",
+            "PADDLE_RUNNING_PLATFORM": "PADDLE_CLOUD",
+            "PADDLE_JOB_ID": "test_job_auto_1",
+            "PADDLE_EDL_HDFS_HOME": "/usr/local/hadoop-2.7.7",
+            "PADDLE_EDL_HDFS_NAME": "",
+            "PADDLE_EDL_HDFS_UGI": "",
+            "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint",
+            "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
+            "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_1",
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+        }
+        os.environ.update(proc_env)
+
     def test_normal(self):
         logger.info("begin test_normal")
         checker = acp._get_checker()
@@ -194,21 +216,6 @@ class AutoCheckpointTest(AutoCheckpointBase):
         self._run_load_0()
 
         logger.info("end test_basic")
-
-    def test_corner_epoch_no(self):
-        logger.info("begin test_corener_epoch_no")
-        checker = acp._get_checker()
-        fs = HDFSClient(checker.hdfs_home, None)
-
-        for i in range(3):
-            fs.delete(checker.hdfs_checkpoint_path)
-            self._reset_generator()
-            self._run_save_0(break_epoch_no=i)
-            self._reset_generator()
-            self._run_load_0(break_epoch_no=i)
-
-        fs.delete(checker.hdfs_checkpoint_path)
-        logger.info("end test_corener_epoch_no")
 
     def test_multiple(self):
         checker = acp._get_checker()
