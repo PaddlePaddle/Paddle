@@ -89,6 +89,12 @@ class TestFleetUtil(unittest.TestCase):
 
     def test_get_file_shard(self):
         self.assertRaises(Exception, fleet_util.get_file_shard, "files")
+        try:
+            import netifaces
+        except:
+            print("warning: no netifaces, skip test_get_file_shard")
+            return
+
         role = role_maker.PaddleCloudRoleMaker(
             is_collective=False,
             is_user_defined=True,

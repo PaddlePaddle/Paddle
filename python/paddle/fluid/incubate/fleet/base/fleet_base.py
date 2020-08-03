@@ -199,7 +199,10 @@ class Fleet(object):
         self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
-            raise TypeError("role_maker must be an instance of RoleMakerBase")
+            from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase as RoleMakerBaseIncubate
+            if role_maker and not isinstance(role_maker, RoleMakerBaseIncubate):
+                raise TypeError(
+                    "role_maker must be an instance of RoleMakerBase")
 
         self._role_maker = role_maker
         self._role_maker.generate_role()
