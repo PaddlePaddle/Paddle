@@ -359,9 +359,9 @@ class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of atan operator");
     AddOutput("Out", "Output of atan operator");
     AddComment(R"DOC(
-Arctanh Activation Operator.
+Arctangent Operator.
 
-$$out = \tanh^{-1}(x)$$
+$$out = \tan^{-1}(x)$$
 
 )DOC");
   }
