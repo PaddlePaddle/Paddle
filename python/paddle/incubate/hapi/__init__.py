@@ -21,7 +21,6 @@ from . import model
 from .model import *
 
 from . import metrics
-from . import loss
 from . import datasets
 from . import distributed
 from . import vision
@@ -40,7 +39,6 @@ __all__ = [
     'distributed',
     'download',
     'metrics',
-    'loss',
     'vision',
     'text',
 ] + model.__all__ + device.__all__

@@ -16,27 +16,21 @@ from __future__ import print_function
 """
     high level unit test for distribute fleet.
 """
-import argparse
-import os
-import pickle
-import subprocess
-import sys
-import time
-import traceback
-import math
-import collections
-import socket
-from contextlib import closing
 
-import six
-import unittest
-import numpy as np
+import os
+import sys
+import subprocess
+
+import argparse
+from contextlib import closing
+import socket
+import time
 import tempfile
+import unittest
 
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
@@ -106,7 +100,16 @@ class FleetDistRunnerBase(object):
                 fluid.clip.set_gradient_clip(
                     clip=fluid.clip.GradientClipByGlobalNorm(2.0))
 
-        optimizer = fluid.optimizer.SGD(LEARNING_RATE)
+        use_decay = int(os.getenv("DECAY", "0"))
+        if use_decay:
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=fluid.layers.exponential_decay(
+                    learning_rate=LEARNING_RATE,
+                    decay_steps=500,
+                    decay_rate=0.969,
+                    staircase=True))
+        else:
+            optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
@@ -232,13 +235,11 @@ class TestFleetBase(unittest.TestCase):
 
     def _run_cluster(self, model, envs):
         env = {'GRAD_CLIP': str(self._grad_clip_mode)}
-        env.update(envs)
-
         python_path = self._python_interp
-
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             python_path += " -m coverage run --branch -p"
+        env.update(envs)
 
         tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {6}".format(
             python_path, model, self._ps_endpoints, self._trainers, self._mode,
@@ -258,6 +259,7 @@ class TestFleetBase(unittest.TestCase):
             time.sleep(0.1)
             if stat0 is not None:
                 break
+
         while True:
             stat1 = tr1.poll()
             time.sleep(0.1)
@@ -266,6 +268,12 @@ class TestFleetBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0.communicate()
         tr1_out, tr1_err = tr1.communicate()
+
+        tr0_ret = tr0.returncode
+        tr1_ret = tr0.returncode
+
+        self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
+        self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")
 
         # close trainer file
         tr0_pipe.close()
