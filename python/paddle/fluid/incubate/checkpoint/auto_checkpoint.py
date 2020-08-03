@@ -313,6 +313,7 @@ class TrainEpochRange(SerializableBase):
         _thread_checker()
 
         self._get_last_valid_checkpoint()
+        self._generate_flag()
 
     def _look_for_valid(self, cp_nos):
         cps = []
@@ -458,7 +459,6 @@ class TrainEpochRange(SerializableBase):
     def save_checkpoint(self):
         # not save last one because exe and program can't be restored.
         if self._checker.trainer_id == 0:
-            self._generate_flag()
 
             if time.time() - self._last_checkpoint_time >= \
                     self._save_checkpoint_inter:
