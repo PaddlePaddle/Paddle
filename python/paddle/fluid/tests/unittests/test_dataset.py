@@ -37,12 +37,14 @@ class TestDataset(unittest.TestCase):
     def test_dataset_create(self):
         """ Testcase for dataset create. """
         try:
-            dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset = paddle.fleet.DatasetFactory().create_dataset(
+                "InMemoryDataset")
         except:
             self.assertTrue(False)
 
         try:
-            dataset = paddle.fleet.DatasetFactory().create_dataset("QueueDataset")
+            dataset = paddle.fleet.DatasetFactory().create_dataset(
+                "QueueDataset")
         except:
             self.assertTrue(False)
 
@@ -53,7 +55,8 @@ class TestDataset(unittest.TestCase):
             self.assertTrue(False)
 
         try:
-            dataset = paddle.fleet.DatasetFactory().create_dataset("MyOwnDataset")
+            dataset = paddle.fleet.DatasetFactory().create_dataset(
+                "MyOwnDataset")
             self.assertTrue(False)
         except:
             self.assertTrue(True)
@@ -91,7 +94,8 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
         dataset.set_filelist(
@@ -171,7 +175,8 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
         dataset.set_filelist([filename1, filename2])
@@ -222,7 +227,8 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
         dataset.set_filelist([
@@ -293,7 +299,8 @@ class TestDataset(unittest.TestCase):
                     name=slot, shape=[1], dtype="float32", lod_level=1)
                 slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(1)
         dataset.set_parse_ins_id(True)
@@ -359,7 +366,8 @@ class TestDataset(unittest.TestCase):
                 name="slot4", shape=[1], dtype="float32", lod_level=0)
             slots_vars = [var1, var2, var3, var4]
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(1)
         dataset.set_parse_ins_id(True)
@@ -414,7 +422,8 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="float32", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
         dataset.set_filelist([
@@ -507,7 +516,8 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("QueueDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "QueueDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
         dataset.set_filelist(
@@ -532,7 +542,8 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        dataset2 = paddle.fleet.DatasetFactory().create_dataset("QueueDataset")
+        dataset2 = paddle.fleet.DatasetFactory().create_dataset(
+            "QueueDataset")
         dataset2.set_use_var(slots_vars)
         dataset2.set_batch_size(32)
         dataset2.set_thread(3)
@@ -628,7 +639,8 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[None, 1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "InMemoryDataset")
         dataset.set_input_type(1)
         dataset.set_batch_size(1)
         dataset.set_thread(2)
@@ -864,7 +876,8 @@ class TestDataset2(unittest.TestCase):
             except ImportError as e:
                 print("warning: no mpi4py")
             exe.run(startup_program)
-            dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset = paddle.fleet.DatasetFactory().create_dataset(
+                "InMemoryDataset")
             dataset.set_batch_size(32)
             dataset.set_thread(3)
             dataset.set_filelist([
@@ -936,7 +949,8 @@ class TestDataset2(unittest.TestCase):
             except ImportError as e:
                 print("warning: no mpi4py")
             exe.run(startup_program)
-            dataset = paddle.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset = paddle.fleet.DatasetFactory().create_dataset(
+                "InMemoryDataset")
             dataset.set_batch_size(32)
             dataset.set_thread(3)
             dataset.set_filelist([

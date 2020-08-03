@@ -20,12 +20,9 @@ from .dataset import *
 #from .base.role_maker import PaddleCloudRoleMaker
 
 __all__ = [
-    "DistributedStrategy",
-    "UtilBase",
-    "DatasetFactory",
-    "DatasetBase",
-    "InMemoryDataset",
-    "QueueDataset"]
+    "DistributedStrategy", "UtilBase", "DatasetFactory", "DatasetBase",
+    "InMemoryDataset", "QueueDataset"
+]
 
 fleet = Fleet()
 init = fleet.init
