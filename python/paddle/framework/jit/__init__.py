@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.dygraph.jit import save, load, SaveLoadConfig, TracedLayer
-from ..fluid.dygraph.jit import declarative as to_static
-from ..fluid.dygraph import ProgramTranslator
-from ..fluid.dygraph.io import TranslatedLayer
+from ...fluid.dygraph.jit import save, load, SaveLoadConfig, TracedLayer
+from ...fluid.dygraph.jit import declarative as to_static
+from ...fluid.dygraph import ProgramTranslator
+from ...fluid.dygraph.io import TranslatedLayer
 
 __all__ = [
     'save', 'load', 'SaveLoadConfig', 'TracedLayer', 'to_static',

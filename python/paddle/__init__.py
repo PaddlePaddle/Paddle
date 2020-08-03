@@ -38,7 +38,6 @@ import paddle.tensor
 import paddle.nn
 import paddle.fleet
 import paddle.framework
-import paddle.imperative
 import paddle.optimizer
 import paddle.metric
 import paddle.incubate.complex as complex
@@ -201,6 +200,7 @@ from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
 from .framework.random import manual_seed  #DEFINE_ALIAS
+"""
 from .framework import append_backward  #DEFINE_ALIAS
 from .framework import gradients  #DEFINE_ALIAS
 from .framework import Executor  #DEFINE_ALIAS
@@ -208,9 +208,6 @@ from .framework import global_scope  #DEFINE_ALIAS
 from .framework import scope_guard  #DEFINE_ALIAS
 from .framework import BuildStrategy  #DEFINE_ALIAS
 from .framework import CompiledProgram  #DEFINE_ALIAS
-from .framework import default_main_program  #DEFINE_ALIAS
-from .framework import default_startup_program  #DEFINE_ALIAS
-from .framework import create_global_var  #DEFINE_ALIAS
 from .framework import create_parameter  #DEFINE_ALIAS
 from .framework import Print  #DEFINE_ALIAS
 from .framework import py_func  #DEFINE_ALIAS
@@ -218,13 +215,29 @@ from .framework import ExecutionStrategy  #DEFINE_ALIAS
 from .framework import name_scope  #DEFINE_ALIAS
 from .framework import ParallelExecutor  #DEFINE_ALIAS
 from .framework import ParamAttr  #DEFINE_ALIAS
-from .framework import Program  #DEFINE_ALIAS
 from .framework import program_guard  #DEFINE_ALIAS
-from .framework import Variable  #DEFINE_ALIAS
 from .framework import WeightNormParamAttr  #DEFINE_ALIAS
+"""
+from .framework import default_main_program  #DEFINE_ALIAS
+from .framework import default_startup_program  #DEFINE_ALIAS
+from .framework import Program  #DEFINE_ALIAS
+from .framework import Variable  #DEFINE_ALIAS
+from .framework import create_global_var  #DEFINE_ALIAS
 from .framework import CPUPlace  #DEFINE_ALIAS
 from .framework import CUDAPlace  #DEFINE_ALIAS
 from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
+
+from .framework import BackwardStrategy  #DEFINE_ALIAS
+from .framework import to_variable  #DEFINE_ALIAS
+from .framework import grad  #DEFINE_ALIAS
+from .framework import no_grad  #DEFINE_ALIAS
+from .framework import save  #DEFINE_ALIAS
+from .framework import load  #DEFINE_ALIAS
+from .framework import prepare_context  #DEFINE_ALIAS
+from .framework import ParallelEnv  #DEFINE_ALIAS
+from .framework import DataParallel  #DEFINE_ALIAS
+from .framework import jit  #DEFINE_ALIAS
+
 from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.stat import mean  #DEFINE_ALIAS
 from .tensor.stat import reduce_mean  #DEFINE_ALIAS
@@ -237,21 +250,10 @@ from .fluid.data import data
 
 from . import incubate
 from .incubate import hapi
-from .fluid.dygraph.base import enable_dygraph as enable_imperative  #DEFINE_ALIAS
-from .fluid.dygraph.base import disable_dygraph as disable_imperative  #DEFINE_ALIAS
+from .fluid.dygraph.base import enable_dygraph as disable_static  #DEFINE_ALIAS
+from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
 
-from paddle.fluid import core
-from .fluid.dygraph.base import no_grad, to_variable, grad
-from .fluid.dygraph.checkpoint import load_dygraph as load
-from .fluid.dygraph.checkpoint import save_dygraph as save
-from .fluid.dygraph.parallel import prepare_context, ParallelEnv, DataParallel
-from . import jit
 from . import static
 
-BackwardStrategy = core.BackwardStrategy
-
-enable_static = disable_imperative
-disable_static = enable_imperative
-
-enable_imperative()
+disable_static()
