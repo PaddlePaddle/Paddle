@@ -70,6 +70,12 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
+class TestMaxMinAreInt(TestUniformRandomOp_attr_tensorlist):
+    def init_attrs(self):
+        self.attrs = {"min": -5, "max": 10, "seed": 10}
+        self.output_hist = output_hist
+
+
 class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"

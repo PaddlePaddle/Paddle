@@ -297,7 +297,7 @@ class TestFillConstantOpError(unittest.TestCase):
             #for ci coverage
             x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
             self.assertRaises(
-                ValueError,
+                TypeError,
                 fluid.layers.fill_constant,
                 shape=[1],
                 value=5,

@@ -714,6 +714,23 @@ class TestRecomputeOptimizer(unittest.TestCase):
             "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
         ])
 
+    def test_str_checkpoints(self):
+        mul_out, b1_out, b2_out, mean_out = self.net()
+        self.assertEqual(len(mean_out.block.ops), 4)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b1_out.name])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 13)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "mean",
+            "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
+            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
+        ])
+
     def test_multi_checkpoint(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
         self.assertEqual(len(mean_out.block.ops), 4)

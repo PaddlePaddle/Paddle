@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import six
 import logging
 from collections import defaultdict
 
@@ -783,9 +784,6 @@ class Optimizer(object):
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
-        params_grads, table_param_and_grad, table_optimize_op = \
-            self._process_distribute_lookuptable(params_grads)
-
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
@@ -793,14 +791,10 @@ class Optimizer(object):
             params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
-        params_grads = append_regularization_ops(
-            params_grads, self.regularization, self._param_device_map)
+        params_grads = append_regularization_ops(params_grads,
+                                                 self.regularization)
 
         optimize_ops = self._create_optimization_pass(params_grads)
-        if table_optimize_op is not None:
-            optimize_ops.append(table_optimize_op)
-            params_grads.append(table_param_and_grad)
-
         return optimize_ops
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -4554,6 +4548,17 @@ class RecomputeOptimizer(Optimizer):
         self._learning_rate_map = self._optimizer._learning_rate_map
 
     def _set_checkpoints(self, checkpoints):
+        """
+        Args:
+            checkpoints (list): List of Variable or string    
+        """
+        assert isinstance(
+            checkpoints, list
+        ), "_checkpoints should be a list of Variable or a list of String"
+        for ckpt in checkpoints:
+            assert (
+                isinstance(ckpt, six.string_types) or isinstance(ckpt, Variable)
+            ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
     def load(self, stat_dict):
@@ -4690,6 +4695,8 @@ class RecomputeOptimizer(Optimizer):
                     no_grad_set=None)
                 print("Finished backward")
         """
+        assert (self._checkpoints is not None
+                ), "You should call _set_checkpoints first"
 
         if framework.in_dygraph_mode():
             raise NotImplementedError(
@@ -4698,11 +4705,15 @@ class RecomputeOptimizer(Optimizer):
         self._dtype = loss.dtype
         program = loss.block.program
         with program_guard(program, startup_program):
+            checkpoint_vars = []
+            for ckpt in self._checkpoints:
+                if isinstance(ckpt, Variable):
+                    checkpoint_vars.append(ckpt)
+                else:
+                    checkpoint_vars.append(loss.block.var(ckpt))
+
             params_grads = append_backward(
-                loss,
-                parameter_list,
-                no_grad_set,
-                checkpoints=self._checkpoints)
+                loss, parameter_list, no_grad_set, checkpoints=checkpoint_vars)
             # Note: since we can't use all_reduce_op now,
             #  dgc_op should be the last op of one grad.
             if hasattr(self._optimizer, "_append_dgc_ops"):
@@ -5004,6 +5015,12 @@ class GradientMergeOptimizer(object):
         self.inner_optimizer = inner_optimizer
         self.k_steps = k_steps
         self.type = "gradient_merge"
+        self.avg = avg
+
+    def _set_k_steps(self, k_steps):
+        self.k_steps = k_steps
+
+    def _set_avg(self, avg):
         self.avg = avg
 
     def minimize(self,

@@ -196,34 +196,11 @@ class TestMNISTWithDeclarative(TestMNIST):
                         mnist.eval()
                         prediction, acc, avg_loss = mnist(img, label)
                         loss_data.append(avg_loss.numpy()[0])
-                        self.check_save_inference_model([dy_x_data, y_data],
-                                                        prog_trans, to_static,
-                                                        prediction)
                         # new save load check
                         self.check_jit_save_load(mnist, [dy_x_data], [img],
                                                  to_static, prediction)
                         break
         return loss_data
-
-    def check_save_inference_model(self, inputs, prog_trans, to_static, gt_out):
-        if to_static:
-            infer_model_path = "./test_mnist_inference_model"
-            prog_trans.save_inference_model(infer_model_path)
-            infer_out = self.load_and_run_inference(infer_model_path, inputs)
-            self.assertTrue(np.allclose(gt_out.numpy(), infer_out))
-
-    @switch_to_static_graph
-    def load_and_run_inference(self, model_path, inputs):
-        exe = fluid.Executor(self.place)
-        [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(
-             dirname=model_path, executor=exe)
-        assert len(inputs) == len(feed_target_names)
-        results = exe.run(inference_program,
-                          feed=dict(zip(feed_target_names, inputs)),
-                          fetch_list=fetch_targets)
-
-        return np.array(results[0])
 
     def check_jit_save_load(self, model, inputs, input_spec, to_static, gt_out):
         if to_static:

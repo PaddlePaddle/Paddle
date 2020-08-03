@@ -272,7 +272,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     program = traced_layer.program
 
                     traced_layer.save_inference_model(
-                        './infe_imperative_ptb_rnn', feed=range(4))
+                        './infe_imperative_ptb_rnn', feed=list(range(4)))
                 else:
                     outs = ptb_model(x, y, init_hidden, init_cell)
 
