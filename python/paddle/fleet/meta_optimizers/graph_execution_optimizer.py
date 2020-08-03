@@ -55,10 +55,6 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         current_endpoint = self.role_maker.get_trainer_endpoints()[trainer_id]
         trainer_endpoints_env = ",".join(trainer_endpoints)
         trainers_num = self.role_maker.worker_num()
-        if trainer_id == 0:
-            other_trainer_endpoints = trainer_endpoints[:]
-            other_trainer_endpoints.remove(current_endpoint)
-            wait_server_ready(other_trainer_endpoints)
         nccl_id_var = startup_program.global_block().create_var(
             name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
         for i in range(1, build_strategy.nccl_comm_num):
