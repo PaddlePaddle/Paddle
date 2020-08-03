@@ -288,6 +288,10 @@ class DataLoader(object):
 
             # -------------------------------------------------------
 
+    Note:
+        For reading iterable dataset with multiprocess Dataloader,
+        please see :code:`paddle.io.IterableDataset`
+
     """
 
     def __init__(self,

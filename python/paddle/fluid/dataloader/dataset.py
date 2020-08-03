@@ -99,14 +99,14 @@ class IterableDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
             
-                def __iter__(self, idx):
-                    for i in range(self.num_samples)
+                def __iter__(self):
+                    for i in range(self.num_samples):
                         image = np.random.random([784]).astype('float32')
                         label = np.random.randint(0, 9, (1, )).astype('int64')
                         yield image, label
             
             dataset = RandomDataset(10)
-            for img, lbl in iter(dataset):
+            for img, lbl in dataset:
                 print(img, lbl)
 
     When :attr:`num_workers > 0`, each worker has a different copy of the dataset object and
@@ -166,7 +166,7 @@ class IterableDataset(Dataset):
             import math
             import numpy as np
             import paddle.fluid as fluid
-            from paddle.io import IterableDataset, DataLoader
+            from paddle.io import IterableDataset, DataLoader, get_worker_info
 
             class RangeIterableDataset(IterableDataset):
                 def __init__(self, start, end):
