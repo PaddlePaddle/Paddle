@@ -16,6 +16,7 @@ from paddle.fluid.framework import core
 from paddle.fluid import compiler
 from .meta_optimizer_base import MetaOptimizerBase
 from ..base.private_helper_function import wait_server_ready
+import logging
 
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
@@ -32,6 +33,10 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         """
         Basically, this is PE, and almost all programs can be executed here
         """
+        if not self.role_maker._is_collective:
+            # update me. currently, if parameter server is used
+            # graph execution optimizer can not be applied
+            return False
         return True
 
     def backward(self,
@@ -45,14 +50,11 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
     # should fix the variable 
     def _setup_nccl_op(self, startup_program, main_program, build_strategy):
         trainer_endpoints = self.role_maker.get_trainer_endpoints()
+        trainers = trainer_endpoints
         trainer_id = self.role_maker.worker_index()
         current_endpoint = self.role_maker.get_trainer_endpoints()[trainer_id]
         trainer_endpoints_env = ",".join(trainer_endpoints)
         trainers_num = self.role_maker.worker_num()
-        if trainer_id == 0:
-            other_trainer_endpoints = trainer_endpoints[:]
-            other_trainer_endpoints.remove(current_endpoint)
-            wait_server_ready(other_trainer_endpoints)
         nccl_id_var = startup_program.global_block().create_var(
             name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
         for i in range(1, build_strategy.nccl_comm_num):
@@ -177,6 +179,10 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             share_vars_from=None)
 
         return self._compiled_program
+
+    def _disable_strategy(self, dist_strategy):
+        # TODO(guru4elephant): should close all PE related flags here
+        pass
 
     def minimize(self,
                  loss,

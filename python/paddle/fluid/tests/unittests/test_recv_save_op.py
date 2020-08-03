@@ -29,7 +29,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.transpiler.details import VarStruct, VarsDistributed
 from dist_test_utils import *
-from paddle.fluid.transpiler.distribute_transpiler import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 
 def run_pserver(pserver_id):
@@ -109,6 +109,7 @@ class TestListenAndServOp(unittest.TestCase):
                     slice_shapes=["5,8", "5,8"],
                     slice_varnames=["table", "table"],
                     remote_varnames=['table', 'table'],
+                    is_sparse=False,
                     endpoints=emaps,
                     file_path=model_file)
 
@@ -180,58 +181,8 @@ class TestListenAndServOp(unittest.TestCase):
         np.testing.assert_equal(origin[5:10], slice1)
 
     def _save_by_io_persistables(self, place, port0, port1, dirname, var_name):
-        exe = fluid.Executor(place=place)
-
-        vars_overview = VarsDistributed()
-
-        orig_var = VarStruct(
-            name=var_name,
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
-            shape=[10, 8],
-            dtype="float32",
-            lod_level=0,
-            persistable=True)
-
-        slice_0_var = VarStruct(
-            name=var_name,
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
-            shape=[5, 8],
-            dtype="float32",
-            lod_level=0,
-            persistable=True)
-
-        slice_1_var = VarStruct(
-            name=var_name,
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
-            shape=[5, 8],
-            dtype="float32",
-            lod_level=0,
-            persistable=True)
-
-        vars_overview.add_distributed_var(
-            origin_var=orig_var,
-            slice_var=slice_0_var,
-            block_id=0,
-            offset=0,
-            is_slice=True,
-            vtype="RemotePrefetch",
-            endpoint="{}:{}".format("127.0.0.1", port0))
-
-        vars_overview.add_distributed_var(
-            origin_var=orig_var,
-            slice_var=slice_1_var,
-            block_id=1,
-            offset=40,
-            is_slice=True,
-            vtype="RemotePrefetch",
-            endpoint="{}:{}".format("127.0.0.1", port1))
-
-        program = Program()
-        program._is_distributed = True
-        program._is_chief = True
-        program._parameters_on_pservers = vars_overview
-
-        fluid.io.save_persistables(exe, dirname, program)
+        self._run_nce_op_two_pserver(place, port0, port1,
+                                     os.path.join(dirname, var_name))
 
     def test_recv_save_op_remote(self):
         # run pserver on CPU in sync mode

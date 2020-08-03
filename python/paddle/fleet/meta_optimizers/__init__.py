@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 
 from .recompute_optimizer import RecomputeOptimizer
+from .gradient_merge_optimizer import GradientMergeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
+from .pipeline_optimizer import PipelineOptimizer
+from .localsgd_optimizer import LocalSGDOptimizer
+from .lars_optimizer import LarsOptimizer
 
-__all__ = ['RecomputeOptimizer']
+__all__ = [
+    'RecomputeOptimizer',
+    'GradientMergeOptimizer',
+    'PipelineOptimizer',
+    'LocalSGDOptimizer',
+    'LarsOptimizer',
+]

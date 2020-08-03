@@ -54,27 +54,27 @@ __all__ = [
 def concat(x, axis=0, name=None):
     """
 	:alias_main: paddle.concat
-	:alias: paddle.concat,paddle.tensor.concat,paddle.tensor.manipulation.concat
+	:alias: paddle.tensor.concat, paddle.tensor.manipulation.concat
 
     This OP concatenates the input along the axis.
 
     Args:
         x(list): List of input Tensors with data type float16, float32, float64, int32, int64.
             All the Tensors in ``x`` must have same data type.
-        axis(int|Variable, optional): Specify the axis to operate on the input Tensors.
-            It's a scalar with type ``int`` or a ``Tensor`` with shape [1] and data type ``int32`` 
-            or ``int64``. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
-            it works the same way as axis+R. Default is 0.
+        axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
+            It's a scalar with data type int or a Tensor with shape [1] and data type int32 
+            or int64. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
+            it works the same way as ``axis+R``. Default is 0.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Raises:
         TypeError: The dtype of ``x`` must be one of float16, float32, float64, int32 and int64. 
-        TypeError: The ``axis`` must be int or Variable. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
+        TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
         TypeError: All the Tensors in ``x`` must have the same data type.
 
     Returns:
-        Variable: A Tensor with the same data type as ``x``.
+        Tensor: A Tensor with the same data type as ``x``.
 
     Examples:
         .. code-block:: python
@@ -363,143 +363,66 @@ def stack(x, axis=0, out=None, name=None):
     return out
 
 
-def split(input, num_or_sections, dim=-1, name=None):
+def split(x, num_or_sections, axis=0, name=None):
     """
 	:alias_main: paddle.split
-	:alias: paddle.split,paddle.tensor.split,paddle.tensor.manipulation.split
-
+        :alias: paddle.tensor.split, paddle.tensor.manipulation.split
+    
     Split the input tensor into multiple sub-Tensors.
+    
     Args:
-        input (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
-        num_or_sections (int|list|tuple): If :attr:`num_or_sections` is an integer,
-            then the integer indicates the number of equal sized sub-Tensors
-            that the Tensor will be divided into. If :attr:`num_or_sections`
-            is a list or tuple, the length of it indicates the number of
-            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
-            :attr:`dim` dimension orderly. The length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
-        dim (int32|Varible, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. The dimension along which to split. If :math:`dim < 0`, the
-            dimension to split along is :math:`rank(input) + dim`. Default is -1.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections`` 
+            indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
+            If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
+            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
+            The length of the list must not  be larger than the ``x`` 's size of specified ``axis``.
+        axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type 
+            ``int`` or a ``Tensor`` with shape [1] and data type  ``int32`` or ``int64``.
+            If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
     Returns:
-        list(Variable): The list of segmented Tensor variables.
+        list(Tensor): The list of segmented Tensors.
     Raises:
-        TypeError: num_or_sections is not int, list or tuple.
-        TypeError: dim is not int or Variable.
+        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
+        TypeError: ``num_or_sections`` is not int, list or tuple.
+        TypeError: ``axis`` is not int or Tensor. the data type of ``axis`` must be int32 or int64 when it's a Tensor.
     Example:
         .. code-block:: python
+            
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
             
-            with fluid.dygraph.guard():
-                input_1 = np.random.random([4, 6, 6]).astype("int32")
-                # input is a variable which shape is [4, 6, 6]
-                input = fluid.dygraph.to_variable(input_1)
+            paddle.enable_imperative()
+            # x is a Tensor which shape is [3, 9, 5]
+            x_np = np.random.random([3, 9, 5]).astype("int32")
+            x = paddle.imperative.to_variable(x_np)
 
-                x0, x1, x2 = paddle.split(input, num_or_sections=3, dim=1)
-                # x0.shape [4, 2, 6]
-                # x1.shape [4, 2, 6]
-                # x2.shape [4, 2, 6]
+            out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
+
+            out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, 4], axis=1)
+            # out0.shape [3, 2, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 4, 5]
+
+            out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, -1], axis=1)
+            # out0.shape [3, 2, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 4, 5]
+            
+            # axis is negative, the real axis is (rank(x) + axis) which real
+            # value is 1.
+            out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=-2)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
     """
-    if in_dygraph_mode():
-        num = None
-        attrs = ()
-
-        if isinstance(dim, Variable):
-            dim = dim.numpy()
-            assert dim.shape == (1,
-                                 ), "dim of type Variable should have shape [1]"
-            dim = dim[0]
-        dim = (len(input.shape) + dim) if dim < 0 else dim
-        attrs += ('axis', dim)
-
-        if isinstance(num_or_sections, int):
-            num = num_or_sections
-            attrs += ('num', num_or_sections)
-        elif isinstance(num_or_sections, (list, tuple)):
-            num = len(num_or_sections)
-            if utils._contain_var(num_or_sections):
-                raise TypeError(
-                    "The type of 'num_or_sections' in split must be int or list[int] or tuple[int] in Dygraph mode, but "
-                    "received %s, which contains Variable." %
-                    (type(num_or_sections)))
-            else:
-                attrs += ('sections', list(num_or_sections))
-        else:
-            raise TypeError(
-                "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
-                "received %s." % (type(num_or_sections)))
-        return core.ops.split(input, num, *attrs)
-
-    if not isinstance(num_or_sections, (int, list, tuple)):
-        raise TypeError(
-            "The type of 'num_or_sections' in split must be int, list or "
-            "tuple, but received %s." % (type(num_or_sections)))
-    if not isinstance(dim, (int, Variable)):
-        raise TypeError(
-            "The type of 'dim' in split must be int or Variable, but "
-            "received %s." % (type(dim)))
-
-    helper = LayerHelper('split', **locals())
-    input_shape = input.shape
-    inputs = {'X': input}
-    attrs = {'num': num_or_sections if isinstance(num_or_sections, int) else 0}
-
-    def _get_SectionsTensorList(one_list):
-        tensor_list = []
-        unk_dim_idx = -1
-        for idx, dim_size in enumerate(one_list):
-            if isinstance(dim_size, Variable):
-                dim_size.stop_gradient = True
-                tensor_list.append(dim_size)
-            else:
-                assert (isinstance(dim_size, int))
-                if dim_size == -1:
-                    assert unk_dim_idx == -1, (
-                        "Only one value of 'num_or_section' in split can "
-                        "be -1. But received num_or_section[%d] is also -1." %
-                        idx)
-                    unk_dim_idx = idx
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant(
-                    [1], 'int32', dim_size, force_cpu=True, out=temp_out)
-                tensor_list.append(temp_out)
-        return tensor_list
-
-    if isinstance(dim, Variable):
-        dim.stop_gradient = True
-        inputs['AxisTensor'] = dim
-    else:
-        dim = (len(input_shape) + dim) if dim < 0 else dim
-        attrs['axis'] = dim
-
-    if isinstance(num_or_sections, int):
-        assert num_or_sections > 1, 'num_or_sections must be more than 1.'
-        if isinstance(dim, int) and input_shape[dim] > 0:
-            assert input_shape[dim] % num_or_sections ==0, \
-                "The input's size along the split dimension " \
-                "must be evenly divisible by Attr(num_or_sections). " \
-                "But %d is not evenly divisible by %d. " % (num_or_sections,input_shape[dim])
-        num = num_or_sections
-    else:
-        if isinstance(dim, int) and input_shape[dim] > 0:
-            assert len(num_or_sections) <= input_shape[
-                dim], 'len(num_or_sections) must not be more than input.shape[dim].'
-        num = len(num_or_sections)
-        attrs['sections'] = list(
-            map(lambda ele: -1 if isinstance(ele, Variable) else ele,
-                num_or_sections))
-        if utils._contain_var(num_or_sections):
-            inputs['SectionsTensorList'] = _get_SectionsTensorList(
-                num_or_sections)
-
-    outs = [
-        helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-        for i in range(num)
-    ]
-    helper.append_op(
-        type='split', inputs=inputs, outputs={'Out': outs}, attrs=attrs)
-    return outs
+    return paddle.fluid.layers.split(
+        input=x, num_or_sections=num_or_sections, dim=axis, name=name)
 
 
 def squeeze(x, axis=None, name=None):

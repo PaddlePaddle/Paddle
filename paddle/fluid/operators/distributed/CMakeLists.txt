@@ -13,6 +13,7 @@ cc_library(async_sparse_param_update_recorder SRCS async_sparse_param_update_rec
 cc_test(async_sparse_param_update_recorder_test SRCS async_sparse_param_update_recorder_test.cc DEPS async_sparse_param_update_recorder)
 
 cc_library(heart_beat_monitor SRCS heart_beat_monitor.cc DEPS enforce simple_threadpool)
+cc_library(large_scale_kv SRCS large_scale_kv.cc DEPS enforce simple_threadpool device_context)
 cc_test(heart_beat_monitor_test SRCS heart_beat_monitor_test.cc DEPS heart_beat_monitor)
 
 # FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files
@@ -26,7 +27,7 @@ if(WITH_GRPC)
         collective_client.cc collective_server.cc
         ${GRPC_SRCS}
       PROTO send_recv.proto 
-      DEPS lod_tensor selected_rows_functor memory scope ${GRPC_DEPS} async_sparse_param_update_recorder heart_beat_monitor)
+      DEPS lod_tensor selected_rows_functor memory scope ${GRPC_DEPS} async_sparse_param_update_recorder heart_beat_monitor large_scale_kv)
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})
@@ -50,12 +51,12 @@ else()
 
   set(RPC_DEPS sendrecvop_rpc ${BRPC_DEPS})
   cc_test(brpc_serde_test SRCS brpc/brpc_serde_test.cc
-      DEPS ${RPC_DEPS} gflags glog executor proto_desc lookup_sparse_table_op)
+      DEPS ${RPC_DEPS} gflags glog executor proto_desc lookup_sparse_table_read_op)
 endif()
 
 
 cc_test(rpc_server_test SRCS rpc_server_test.cc
-    DEPS ${RPC_DEPS} executor scope proto_desc lookup_sparse_table_op)
+    DEPS ${RPC_DEPS} executor scope proto_desc lookup_sparse_table_read_op)
 cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler scope)
 cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory)
 cc_library(parameter_send SRCS parameter_send.cc DEPS sendrecvop_rpc memory)

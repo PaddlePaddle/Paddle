@@ -40,6 +40,17 @@ message GradientMergeConfig {
   optional bool avg = 2 [ default = true ];
 }
 
+message LarsConfig {
+  optional float lars_coeff = 1 [ default = 0.001 ];
+  optional float lars_weight_decay = 2 [ default = 0.0005 ];
+}
+
+message LambConfig {
+  optional float beta1 = 1 [ default = 0.001 ];
+  optional float beta2 = 2 [ default = 0.999 ];
+  optional float epsilon = 3 [ default = 0.000001 ];
+}
+
 message BuildStrategy {
   optional bool enable_sequential_execution = 1 [ default = false ];
   optional bool fuse_elewise_add_act_ops = 2 [ default = false ];
@@ -85,13 +96,15 @@ message DistributedStrategy {
   optional bool pipeline = 9 [ default = false ];
   optional bool elastic = 10 [ default = false ];
   optional bool auto = 11 [ default = false ];
-  optional bool async = 12 [ default = true ];
+  optional bool a_sync = 12 [ default = true ];
   optional bool sync_nccl_allreduce = 13 [ default = true ];
   optional int32 nccl_comm_num = 14 [ default = 1 ];
   optional bool use_hierarchical_allreduce = 15 [ default = false ];
   optional int32 hierarchical_allreduce_inter_nranks = 16 [ default = 1 ];
   optional bool sync_batch_norm = 17 [ default = false ];
   optional bool fuse_all_reduce_ops = 18 [ default = true ];
+  optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
+  optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
   // optional bool enable_backward_optimizer_op_deps = 19 [ default = true ];
 
   optional RecomputeConfig recompute_configs = 101;
@@ -99,8 +112,9 @@ message DistributedStrategy {
   optional LocalSGDConfig localsgd_configs = 103;
   optional GradientMergeConfig gradient_merge_configs = 104;
   optional PipelineConfig pipeline_configs = 106;
-  optional AsyncConfig async_configs = 107;
-
+  optional AsyncConfig a_sync_configs = 107;
+  optional LarsConfig lars_configs = 108;
+  optional LambConfig lamb_configs = 109;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }

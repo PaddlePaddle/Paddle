@@ -99,7 +99,7 @@ void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
 }
 
 void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     InitDumpEnv();
   }
   pull_dense_worker_->SetRootScope(root_scope_);
@@ -158,7 +158,7 @@ void DistMultiTrainer::Finalize() {
     }
   }
 
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
   pull_dense_worker_->Stop();
