@@ -461,8 +461,8 @@ def dot(x, y, name=None):
        Only support 1-d Tensor(vector).
 
     Parameters:
-        x(Variable): 1-D ``Tensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
-        y(Variable): 1-D ``Tensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        x(Tensor): 1-D ``Tensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
+        y(Tensor): 1-D ``Tensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
@@ -698,6 +698,8 @@ def cholesky(x, upper=False, name=None):
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
+    if in_dygraph_mode():
+        return core.ops.cholesky(x, upper)
     helper = LayerHelper('cholesky', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
