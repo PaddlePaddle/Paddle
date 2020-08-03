@@ -331,7 +331,7 @@ class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of acos operator");
     AddOutput("Out", "Output of acos operator");
     AddComment(R"DOC(
-Arccosine Activation Operator.
+Arccosine Operator.
 
 $$out = \cos^{-1}(x)$$
 
