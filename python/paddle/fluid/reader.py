@@ -28,7 +28,6 @@ from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_bu
 from .unique_name import UniqueNameGenerator
 import logging
 import warnings
-import paddle.fleet.DatasetBase as DatasetBase
 
 ### Dygraph DataLoader configs ###
 import os
@@ -1670,8 +1669,6 @@ class PyReader(DataLoaderBase):
 
 class DatasetLoader(DataLoaderBase):
     def __init__(self, dataset, places, drop_last):
-        assert isinstance(dataset,
-                          DatasetBase), "dataset must be type of DatasetBase"
         assert not in_dygraph_mode(
         ), "DatasetLoader is not supported in dygraph mode yet"
 
