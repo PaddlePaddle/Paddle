@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid.core as core
 
 
-class ApiMaximumTest(unittest.TestCase):
+class ApiMinimumTest(unittest.TestCase):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
