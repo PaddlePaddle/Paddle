@@ -208,11 +208,19 @@ def find_heter_ops(program, default_device="cpu"):
     return program, heter_ops, default_ops, program_block_ops
 
 
-def create_heter_program(program, heter_program, heter_ops, block_var_detail, current_device):
+def create_heter_program(program, config, heter_program, heter_ops, block_var_detail, current_device):
     # add heter op
+    optimizer_block = []
+    grad_to_block_id = []
+
+    lr_decay_block = heter_program._create_block(heter_program.num_blocks - 1)
+    optimize_blocks.append(lr_decay_block)
+    lr_decay_block_id = lr_decay_block.idx
+
     pre_block_idx = heter_program.num_blocks - 1
     for index, heter_block_ops in heter_ops[current_device].items():
         heter_block = heter_program._create_block(pre_block_idx)
+        optimizer_block.append(heter_block)
         for _, op in enumerate(heter_block_ops):
             block_append_op(heter_program, program, heter_block, op)
 
@@ -225,41 +233,73 @@ def create_heter_program(program, heter_program, heter_ops, block_var_detail, cu
                 program.global_block().vars, op)
             add_vars_by_op_map(outputs, heter_program)
 
-        # entrance_vars = block_vars_detail[index]["entrance"]
-        # exit_vars = block_vars_detail[index]["exit"]
+        entrance_vars = block_var_detail[index]["entrance"]
+        exit_vars = block_var_detail[index]["exit"]
+        comm_info = get_communicate_var_info(
+            heter_program, index, entrance_vars, exit_vars)
+        grad_to_block_id.append(
+            comm_info["recv_var_listen_recv_name"] + ":" + str(heter_block.idx))
         # create slice op
+        first_op_index = 0
+        insert_recv_slice_op(
+            heter_program,
+            heter_block,
+            first_op_index,
+            comm_info["recv_var_listen_recv_name"],
+            comm_info["recv_var_reshape_name"],
+            [(-1, comm_info["recv_var_slice_dim"][i])
+             for i in range(len(comm_info["recv_var_slice_dim"]))]
+        )
+        first_op_index += 1
+
         # create reshape op
+        for i in len(entrance_vars):
+            var_name = entrance_vars[i]
+            insert_reshape_op(
+                heter_program,
+                heter_block,
+                first_op_index,
+                comm_info["recv_var_reshape_name"][i],
+                var_name,
+            )
+            first_op_index += 1
+
         # add info in listen&serv
 
-    # attrs = {
-    #     "optimize_blocks": optimize_block,
-    #     "endpoint": endpoint,
-    #     "Fanin": self.trainer_num,
-    #     "distributed_mode": DistributedMode.GEO,
-    #     "grad_to_block_id": param_to_block_id,
-    #     "sparse_grad_to_param": sparse_grad_to_param,
-    #     "rpc_get_thread_num": self.server_config._rpc_get_thread_num,
-    #     "rpc_send_thread_num": self.server_config._rpc_send_thread_num,
-    #     "rpc_prefetch_thread_num":
-    #         self.server_config._rpc_prefetch_thread_num
-    # }
+    attrs = {
+        "grad_to_block_id": grad_to_block_id,
+        "sparse_grad_to_param": None,
+        "lr_decay_block_id": lr_decay_block_id,
+        "dense_optimize_blocks": None,
+        "sparse_optimize_blocks": None,
+        "optimizer_block": optimizer_block,
+
+        # runtime attribute
+        "endpoint": config.get_ps_endpoint(),
+        "pserver_id": config.get_role_id(),
+        "Fanin": config.get_trainers(),
+        "distributed_mode": config.get_distributed_mode(),
+        "rpc_get_thread_num": -1,
+        "rpc_send_thread_num": -1,
+        "rpc_prefetch_thread_num": -1
+    }
 
     # append the listen_and_serv op
-    program.global_block().append_op(
+    heter_program.global_block().append_op(
         type="listen_and_serv",
         inputs={'X': []},
         outputs={},
-        attrs={})
+        attrs=attrs)
 
 
 def create_trainer_program(program, config, heter_ops, block_var_detail):
     for device in heter_ops.keys():
         for heter_block_index in sorted(heter_ops[device]):
             replace_ops_by_communicate_op(
-                program, config, heter_ops[device][heter_block_index], block_var_detail[heter_block_index])
+                program, config, heter_block_index, heter_ops[device][heter_block_index], block_var_detail[heter_block_index])
 
 
-def replace_ops_by_communicate_op(program, config, ops_list, ops_detail):
+def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, ops_detail):
     all_op = program.global_block().ops
     start_op = ops_list[0]
     first_op_idx = -1
@@ -275,12 +315,37 @@ def replace_ops_by_communicate_op(program, config, ops_list, ops_detail):
     pserver_endpoints = config.get_ps_endpoints()
     entrance_var = ops_detail["entrance_var"]
     private_var = ops_detail["private"]
-    # create reshape op
-    # create concat op
+    exit_var = ops_detail["exit"]
 
+    comm_info = get_communicate_var_info(
+        program, heter_block_index, entrance_var, exit_var)
+
+    # create reshape op
+    for i in range(len(exit_var)):
+        insert_reshape_op(
+            program,
+            program.global_block(),
+            first_op_idx,
+            exit_var[i],
+            comm_info["send_var_reshape_name"][i],
+            (-1, comm_info["send_var_reshape_dim"][i])
+        )
+        first_op_idx += 1
+
+    # create concat op
+    insert_send_concat_op(
+        program,
+        program.global_block(),
+        first_op_idx,
+        comm_info["send_var_reshape_name"],
+        comm_info["send_var_concat_name"],
+        (-1, sum(comm_info["send_var_reshape_dim"]))
+    )
+    first_op_idx += 1
+
+    # send
     send_input_vars = [
-        program.global_block().vars[union_var]
-        for union_var in ops_detail["entrance_var"]
+        program.global_block().vars[comm_info["send_var_concat_name"]]
     ]
     dummy_output = []
     if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
@@ -300,7 +365,16 @@ def replace_ops_by_communicate_op(program, config, ops_list, ops_detail):
         }
     )
 
-    # exit_var = ops_detail["exit"] # for recv
+    # recv
+    program.global_block().append_op(
+        type="recv",
+        inputs={"X": []},
+        outputs={"Out": []},
+        attrs={
+            "recv_varnames": exit_var,
+            "trainer_id": config.get_role_id(),
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+        })
     # create slice op
     # create reashpe op
 
@@ -490,20 +564,86 @@ def is_same_op(op1, op2):
     return True
 
 
-def insert_send_reshape_op(program, block, index, var, new_var_name):
-    pass
+def insert_reshape_op(program, block, index, var_name, new_var_name, new_var_shape=None):
+    input_var = program.global_block().vars[var_name]
+
+    if new_var_name not in program.global_block().vars:
+        out = program.global_block().create_var(
+            name=new_var_name,
+            shape=new_var_shape,
+            dtype=input_var.dtype(),
+            type=input_var.type())
+    else:
+        out = program.global_block().vars[new_var_name]
+        new_var_shape = out.shape
+
+    x_shape = program.global_block().create_var(
+        name="{}@XShape".format(var_name),
+        dtype=input_var.dtype())
+
+    block._insert_op(
+        index=index,
+        type="reshape2",
+        inputs=input_var,
+        attrs={'shape': new_var_shape},
+        outputs={"Out": out,
+                 "XShape": x_shape}
+    )
 
 
-def insert_send_concat_op(program, block, index, var_list, new_var_name_list):
-    pass
+def insert_send_concat_op(program, block, index, var_name_list, new_var_name, new_var_shape):
+    input_var_list = [program.global_block().vars[var_name]
+                      for var_name in var_name_list]
+
+    out = program.global_block().create_var(
+        name=new_var_name,
+        shape=new_var_shape,
+        dtype=input_var_list[0].dtype(),
+        type=input_var_list[0].type())
+
+    block._insert_op(
+        index=index,
+        type='concat',
+        inputs=input_var_list,
+        outputs={'Out': [out]},
+        attrs={'axis': -1,
+               'use_stack': False}
+    )
 
 
-def insert_recv_slice_op(program, block, index, var, new_var_name_list):
-    pass
+def insert_recv_slice_op(program, block, index, var_name, new_var_name_list, new_var_shape_list):
+    input_var = program.global_block().vars[var_name]
 
+    out_list = [
+        program.global_block().create_var(
+            name=new_var_name_list[i],
+            shape=new_var_shape_list[i],
+            dtype=input_var.dtype(),
+            type=input_var.type()
+        ) for i in range(len(new_var_name_list))
+    ]
 
-def insert_recv_reshape_op(program, block, index, var, old_var_name):
-    pass
+    start_index = 0
+    end_index = 0
+    for i in range(len(new_var_name_list)):
+        starts = []
+        ends = []
+        attrs = {'axes': 1}
+        end_index += new_var_shape_list[i][1]
+        starts.append(start_index)
+        end_index.append(end_index)
+        attrs['starts'] = starts
+        attrs['ends'] = ends
+
+        block._insert_op(
+            index=index,
+            type='slice',
+            inputs=input_var,
+            attrs=attrs,
+            outputs={'Out': out_list[i]}
+        )
+        start_index = end_index
+        index += 1
 
 
 def _get_input_map_from_op(varmap, op):

@@ -21,7 +21,7 @@ from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_heter_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import create_heter_program
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import create_trainer_program
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_block_joint
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_block_joints
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_op_input_output
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_vars_name_in_block
 
@@ -43,11 +43,11 @@ def split_heter_worker_ops_pass(program, config):
         raise ValueError(
             "Op which run on device {} not exist.".format(current_device))
 
-    block_vars_detail = find_block_joint(program, program_block_ops)
+    block_vars_detail = find_block_joints(program, program_block_ops)
     heter_program = framework.Program()
-    create_heter_program(program, heter_program, heter_ops,
+    create_heter_program(program, config, heter_program, heter_ops,
                          block_vars_detail, current_device)
-    return program
+    return heter_program
 
 
 def split_trainer_ops_pass(program, config):
@@ -60,7 +60,7 @@ def split_trainer_ops_pass(program, config):
     default_deveice = "cpu"
     program, heter_ops, _, program_block_ops = find_heter_ops(
         program, default_deveice)
-    block_vars_detail = find_block_joint(program, program_block_ops)
+    block_vars_detail = find_block_joints(program, program_block_ops)
     create_trainer_program(program, config, heter_ops, block_vars_detail)
     return program
 
