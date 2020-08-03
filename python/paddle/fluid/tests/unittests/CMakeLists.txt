@@ -86,8 +86,7 @@ endif()
 
 
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
-LIST(REMOVE_ITEM TEST_OPS test_dataloader_auto_checkpoint)
-LIST(REMOVE_ITEM TEST_OPS test_dataloader_auto_checkpoint2)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
 if(APPLE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_hdfs)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
