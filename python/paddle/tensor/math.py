@@ -544,11 +544,8 @@ Examples:
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def multiply(x, y, axis=-1, name=None):
+def multiply(x, y, name=None):
     """
-	:alias_main: paddle.multiply
-	:alias: paddle.multiply,paddle.tensor.multiply,paddle.tensor.math.multiply
-
 Examples:
 
     .. code-block:: python
@@ -563,20 +560,12 @@ Examples:
         y = paddle.imperative.to_variable(y_data)
         res = paddle.multiply(x, y)
         print(res.numpy()) # [[5, 12], [21, 32]]
-
-        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
-        y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
-        res = paddle.multiply(x, y, axis=1)
-        print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
-
     """
     op_type = 'elementwise_mul'
     act = None
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
+            x, y, axis=-1, act=act, op_name=op_type)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
@@ -589,9 +578,6 @@ for func in [
     proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div', 'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
     if func.__name__ in ['add']:
-        alias_main = ':alias_main: paddle.%(func)s' % {'func': func.__name__}
-        alias = ':alias: paddle.%(func)s, paddle.tensor.%(func)s, paddle.tensor.math.%(func)s' % {'func': func.__name__}
-
         additional_args_lines = [
             "alpha (int|float, optional): The alpha factor of the input. Default is 1. If alpha is not 1, the equation becomes Out = X + alpha * Y.",
             "name (string, optional): Name of the output. \
@@ -605,7 +591,7 @@ for func in [
             :ref:`api_guide_Name` "
         ]
 
-    func.__doc__ = alias_main + """\n""" + alias + """\n""" + _generate_doc_string_(
+    func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=additional_args_lines,
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
