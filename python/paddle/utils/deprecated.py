@@ -16,9 +16,6 @@ import warnings
 import functools
 import inspect
 from exceptions import DeprecationWarning
-from packaging import version
-
-_current_version = version.parse(paddle.__version__)
 
 def deprecated(update_to="", since="", reason=""):
     """Decorate a function to signify its deprecation.
@@ -52,10 +49,19 @@ def deprecated(update_to="", since="", reason=""):
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            if len(_since) == 0 or _current_version >= version.parse(_since):
+            try:
+                if _since == "":
+                    paddle.fluid.require_version("0.0.0")
+                else:
+                    paddle.fluid.require_version(_since)
+                # if current version is newer than _since, print deprecation warning.
                 warnings.simplefilter('always', DeprecationWarning)  # turn off filter
                 warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
                 warnings.simplefilter('default', DeprecationWarning) # reset filter
+            except Exception as e:
+                # if current version is older than _since, do nothing.
+                pass
+
             return func(*args, **kwargs)
 
         return wrapper
