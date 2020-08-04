@@ -14,7 +14,14 @@
 """Http Server."""
 
 import logging
-import BaseHTTPServer
+
+import six
+# NOTE: HTTPServer has a different name in python2 and python3
+if six.PY2:
+    from BaseHTTPServer import HTTPServer
+else:
+    from http.server import HTTPServer
+
 import SimpleHTTPServer
 import time
 import threading
@@ -123,7 +130,7 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.end_headers()
 
 
-class KVHTTPServer(BaseHTTPServer.HTTPServer, object):
+class KVHTTPServer(HTTPServer, object):
     """
     it is a http server storing kv pairs.
     """
