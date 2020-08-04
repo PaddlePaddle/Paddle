@@ -46,9 +46,26 @@ _fake_quant_dequant_op_list = [
 ]
 
 _out_scale_op_list = [
-    "conv2d", "depthwise_conv2d", "mul", "matmul", "relu", "leaky_relu",
-    "relu6", "sigmoid", "tanh", "prelu", "swish", "softmax", "batch_norm",
-    "elementwise_add", "pool2d", "reshape2", "transpose2", "concat"
+    "conv2d",
+    "depthwise_conv2d",
+    "mul",
+    "matmul",
+    "relu",
+    "leaky_relu",
+    "relu6",
+    "sigmoid",
+    "tanh",
+    "prelu",
+    "swish",
+    "softmax",
+    "batch_norm",
+    "elementwise_add",
+    "pool2d",
+    "reshape2",
+    "transpose2",
+    "concat",
+    "elementwise_mul",
+    "scale",
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
@@ -89,6 +106,8 @@ _op_real_in_out_name = {
     "dropout": [["X"], ["Out"]],
     "batch_norm": [["X"], ["Y"]],
     "sigmoid": [["X"], ["Out"]],
+    "elementwise_mul": [["X", "Y"], ["Out"]],
+    "scale": [["X"], ["Out"]],
 }
 
 
