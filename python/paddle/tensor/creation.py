@@ -574,13 +574,13 @@ def tril(x, diagonal=0, name=None):
             #        [ 9, 10, 11,  0]])
 
             # example 2, positive diagonal value
-            tril2 = tensor.tril(x, diagonal=2)
+            tril2 = paddle.tensor.tril(x, diagonal=2)
             # array([[ 1,  2,  3,  0], 
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
             # example 3, negative diagonal value
-            tril3 = tensor.tril(x, diagonal=-1)
+            tril3 = paddle.tensor.tril(x, diagonal=-1)
             # array([[ 0,  0,  0,  0],
             #        [ 5,  0,  0,  0],
             #        [ 9, 10,  0,  0]])
