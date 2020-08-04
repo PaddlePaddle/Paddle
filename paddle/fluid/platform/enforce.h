@@ -24,7 +24,10 @@ limitations under the License. */
 #ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #endif
+// clang-format off
+#include <dbghelp.h>
 #include <windows.h>  // GetModuleFileName
+// clang-format on
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -227,6 +230,12 @@ inline std::string SimplifyDemangleStr(std::string str) {
   return str;
 }
 
+#if defined(_WIN32)
+// CaptureStackBackTrace API usage:
+// https://docs.microsoft.com/en-us/windows/win32/debug/capturestackbacktrace
+int num_frames = CaptureStackBackTrace(0, kMaxStackFrames, trace, NULL);
+#endif
+
 template <typename StrType>
 inline std::string GetTraceBackString(StrType&& what, const char* file,
                                       int line) {
@@ -253,7 +262,31 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
     }
   }
 #else
-  sout << "Windows not support stack backtrace yet.\n";
+  static constexpr int TRACE_MAX_FUNCTION_NAME_LENGTH = 1024;
+  // https://docs.microsoft.com/en-us/windows/win32/debug/capturestackbacktrace
+  int size = CaptureStackBackTrace(0, TRACE_STACK_LIMIT, call_stack, NULL);
+
+  HANDLE process = GetCurrentProcess();
+
+  static std::once_flag sym_initialized;
+  std::call_once(sym_initialized, [&]() {
+    SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
+    SymInitialize(process, NULL, true);
+  });
+
+  char symbol_buf[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+  SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(symbol_buf);
+  symbol->MaxNameLen = MAX_SYM_NAME;
+  symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+  int idx = 0;
+  static std::mutex mu;
+  for (int i = size - 1; i >= 0; --i) {
+    DWORD64 address = reinterpret_cast<DWORD64>(call_stack[i]);
+    std::lock_guard<std::mutex> g(mu);
+    SymFromAddr(process, address, NULL, symbol);
+    sout << string::Sprintf("%-3d %s\n", idx++, symbol->name);
+  }
 #endif
   sout << "\n----------------------\nError Message "
           "Summary:\n----------------------\n";
