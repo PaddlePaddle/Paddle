@@ -56,6 +56,8 @@ inline LibraryType StringToLibraryType(const char* ctype) {
     // CPU, CUDA, PLAIN are same library type.
   } else if (s == std::string("CPU")) {
     return LibraryType::kPlain;
+  } else if (s == std::string("XPU")) {
+    return LibraryType::kPlain;
   } else if (s == std::string("CUDA")) {
     return LibraryType::kPlain;
   } else {
