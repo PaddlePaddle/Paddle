@@ -27,17 +27,22 @@ from op_test import OpTest
 class TestGaussianRandomOp(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
+        self.set_attrs()
         self.inputs = {}
         self.use_mkldnn = False
         self.attrs = {
             "shape": [123, 92],
-            "mean": 1.0,
-            "std": 2.,
+            "mean": self.mean,
+            "std": self.std,
             "seed": 10,
             "use_mkldnn": self.use_mkldnn
         }
 
         self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
+
+    def set_attrs(self):
+        self.mean = 1.0
+        self.std = 2.
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
@@ -55,6 +60,12 @@ class TestGaussianRandomOp(OpTest):
             np.allclose(
                 hist, hist2, rtol=0, atol=0.01),
             "hist: " + str(hist) + " hist2: " + str(hist2))
+
+
+class TestMeanStdAreInt(TestGaussianRandomOp):
+    def set_attrs(self):
+        self.mean = 1
+        self.std = 2
 
 
 # Situation 2: Attr(shape) is a list(with tensor)

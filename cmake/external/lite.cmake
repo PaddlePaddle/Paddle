@@ -18,6 +18,15 @@ if(NOT LINUX OR NOT WITH_MKL)
   return()
 endif()
 
+if(XPU_SDK_ROOT)
+  set(LITE_WITH_XPU ON)
+  include_directories("${XPU_SDK_ROOT}/XTDK/include")
+  include_directories("${XPU_SDK_ROOT}/XTCL/include")
+  add_definitions(-DPADDLE_WITH_XPU)
+  LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/shlib/")
+  LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/runtime/shlib/")
+endif()
+
 if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
@@ -25,7 +34,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG ab8af5c4b4dc5b40217633e0aa436315912d7b53)
+    set(LITE_GIT_TAG 42ab4d559f6659edfc35040fb30fdcec3dc3f8aa)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -47,6 +56,8 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                          -DCUDNN_ROOT=${CUDNN_ROOT}
                          -DLITE_WITH_STATIC_CUDA=OFF
                          -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
+                         -DLITE_WITH_XPU=${LITE_WITH_XPU}
+                         -DXPU_SDK_ROOT=${XPU_SDK_ROOT}
                          -DLITE_WITH_ARM=OFF)
 
   ExternalProject_Add(
@@ -83,7 +94,7 @@ message(STATUS "Paddle-lite SOURCE_DIR: ${LITE_SOURCE_DIR}")
 include_directories(${LITE_SOURCE_DIR})
 include_directories(${LITE_BINARY_DIR})
 
-function(external_lite_static_libs alias path)
+function(external_lite_libs alias path)
   add_library(${alias} SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET ${alias} PROPERTY IMPORTED_LOCATION
                ${path})
@@ -92,7 +103,7 @@ function(external_lite_static_libs alias path)
   endif()
 endfunction()
 
-external_lite_static_libs(lite_full_static ${LITE_BINARY_DIR}/inference_lite_lib/cxx/lib/libpaddle_full_api_shared.so)
+external_lite_libs(lite_full_static ${LITE_BINARY_DIR}/inference_lite_lib/cxx/lib/libpaddle_full_api_shared.so)
 set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/inference_lite_lib/cxx/lib/libpaddle_full_api_shared.so)
 
 add_definitions(-DPADDLE_WITH_LITE)

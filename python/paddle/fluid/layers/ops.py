@@ -35,6 +35,8 @@ __activations_noattr__ = [
     'acos',
     'asin',
     'sin',
+    'sinh',
+    'cosh',
     'round',
     'reciprocal',
     'square',

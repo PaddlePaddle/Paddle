@@ -34,7 +34,7 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace distributed = paddle::operators::distributed;
 
-USE_NO_KERNEL_OP(lookup_sparse_table);
+USE_NO_KERNEL_OP(lookup_sparse_table_read);
 
 std::unique_ptr<distributed::RPCServer> g_rpc_service;
 std::unique_ptr<distributed::RequestHandler> g_req_handler;
@@ -46,10 +46,12 @@ framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
   framework::VariableNameMap input({{"W", {"w"}}, {"Ids", {"ids"}}});
   framework::VariableNameMap output({{"Output", {"out"}}});
   auto op = block->AppendOp();
-  op->SetType("lookup_sparse_table");
+  op->SetType("lookup_sparse_table_read");
   op->SetInput("W", {"w"});
   op->SetInput("Ids", {"ids"});
   op->SetOutput("Out", {"out"});
+  op->SetAttr("tablename", {"w"});
+  op->SetAttr("value_names", {"Param"});
 
   auto& out = *root_block->Var("out");
   out.SetType(framework::proto::VarType::LOD_TENSOR);
@@ -99,16 +101,10 @@ void StartServer(const std::string& rpc_name) {
   platform::CPUPlace place;
   framework::Executor exe(place);
   platform::CPUDeviceContext ctx(place);
-  auto* block = AppendPrefetchBlcok(&program);
-  std::string in_var_name("ids");
-  std::vector<int> prefetch_block_ids{block->ID()};
-  auto prepared = exe.Prepare(program, prefetch_block_ids);
-  InitTensorsOnServer(&scope, &place, 10);
 
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
       prefetch_var_name_to_prepared;
-  prefetch_var_name_to_prepared[in_var_name] = prepared[0];
 
   g_req_handler->SetProgram(&program);
   g_req_handler->SetPrefetchPreparedCtx(&prefetch_var_name_to_prepared);
@@ -126,49 +122,6 @@ void StartServer(const std::string& rpc_name) {
       std::bind(&distributed::RPCServer::StartServer, g_rpc_service.get()));
 
   server_thread.join();
-}
-
-TEST(PREFETCH, CPU) {
-  setenv("http_proxy", "", 1);
-  setenv("https_proxy", "", 1);
-  g_req_handler.reset(new distributed::RequestPrefetchHandler(
-      distributed::DistributedMode::kSync));
-  g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
-  distributed::RPCClient* client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
-
-  std::thread server_thread(StartServer, distributed::kRequestPrefetch);
-  g_rpc_service->WaitServerReady();
-
-  int port = g_rpc_service->GetSelectedPort();
-  std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
-
-  framework::Scope scope;
-  platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
-  {
-    // create var on local scope
-    int64_t rows_numel = 5;
-    InitTensorsOnClient(&scope, &place, rows_numel);
-    std::string in_var_name("ids");
-    std::string out_var_name("out");
-
-    client->AsyncPrefetchVar(ep, ctx, scope, in_var_name, out_var_name);
-    client->Wait();
-    auto var = scope.Var(out_var_name);
-    auto value = var->GetMutable<framework::LoDTensor>();
-    auto ptr = value->mutable_data<float>(place);
-
-    for (int64_t i = 0; i < rows_numel; ++i) {
-      EXPECT_EQ(ptr[0 + i * value->dims()[1]], static_cast<float>(i * 2));
-    }
-  }
-
-  g_rpc_service->ShutDown();
-  server_thread.join();
-  LOG(INFO) << "begin reset";
-  g_rpc_service.reset(nullptr);
-  g_req_handler.reset(nullptr);
 }
 
 TEST(COMPLETE, CPU) {
