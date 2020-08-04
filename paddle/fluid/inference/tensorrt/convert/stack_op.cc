@@ -15,8 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/stack_op_plugin.h"
 
-#include <iostream>
-
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -39,10 +37,6 @@ class StackOpConverter : public OpConverter {
     for (int i = 0; i < input_num; ++i) {
       inputs[i] = engine_->GetITensor(input[i]);
     }
-
-    auto idim = inputs[0]->getDimensions();
-    std::cerr << "Stack input: " << idim.nbDims << " " << idim.d[0] << " "
-              << idim.d[1] << " " << idim.d[2] << std::endl;
 
     int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
     if (axis < 0) {
