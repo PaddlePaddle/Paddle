@@ -22,6 +22,10 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+static constexpr float FP32_PRECISION = 0.89211;
+static constexpr float FP32_RECALL = 0.89442;
+static constexpr float FP32_F1_SCORE = 0.89326;
+
 void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model);
   cfg->DisableGpu();
@@ -159,8 +163,13 @@ TEST(Analyzer_lexical_analysis_xnli, quantization) {
     }
     // nums_infer, nums_label, nums_correct
     auto precision =
-        acc_sum[0] ? static_cast<float>(acc_sum[2]) / acc_sum[0] : 0;
-    auto recall = acc_sum[1] ? static_cast<float>(acc_sum[2]) / acc_sum[1] : 0;
+        acc_sum[0]
+            ? static_cast<double>(acc_sum[2]) / static_cast<double>(acc_sum[0])
+            : 0;
+    auto recall =
+        acc_sum[1]
+            ? static_cast<double>(acc_sum[2]) / static_cast<double>(acc_sum[1])
+            : 0;
     auto f1_score =
         acc_sum[2]
             ? static_cast<float>(2 * precision * recall) / (precision + recall)
@@ -172,6 +181,10 @@ TEST(Analyzer_lexical_analysis_xnli, quantization) {
               << std::setprecision(5) << recall;
     LOG(INFO) << "F1 score: " << std::fixed << std::setw(6)
               << std::setprecision(5) << f1_score;
+
+    CHECK_LE(std::abs(FP32_PRECISION - precision), FLAGS_quantized_accuracy);
+    CHECK_LE(std::abs(FP32_RECALL - recall), FLAGS_quantized_accuracy);
+    CHECK_LE(std::abs(FP32_F1_SCORE - f1_score), FLAGS_quantized_accuracy);
   } else {
     EXPECT_GT(outputs.size(), 0UL);
     EXPECT_EQ(1UL, outputs[0].size());
