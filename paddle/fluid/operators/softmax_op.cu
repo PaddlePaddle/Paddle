@@ -26,7 +26,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void ExpCUDAKernel(const int N, const T* x, T* out) {
+__global__ void ExpCUDAKernel(const int N, const T* __restrict__ x,
+                              T* __restrict__ out) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < N; idx += blockDim.x * gridDim.x) {
     out[idx] = exp(x[idx]);
@@ -36,7 +37,8 @@ __global__ void ExpCUDAKernel(const int N, const T* x, T* out) {
 
 template <typename T>
 __global__ void SumCUDAKernel(const int n, const int d, const int in,
-                              const int axis_dim, const T* exp_x, T* sum) {
+                              const int axis_dim, const T* __restrict__ exp_x,
+                              T* __restrict__ sum) {
   for (int idx = blockIdx.x; idx < n; idx += gridDim.x) {
     for (int idy = blockIdx.y * blockDim.x + threadIdx.x; idy < in;
          idy += gridDim.y * blockDim.x) {
@@ -54,8 +56,10 @@ __global__ void SumCUDAKernel(const int n, const int d, const int in,
 
 template <typename T>
 __global__ void softmaxCUDAKernel(const int n, const int d, const int in,
-                                  const int axis_dim, const T* exp_x,
-                                  const T* sum, T* out) {
+                                  const int axis_dim,
+                                  const T* __restrict__ exp_x,
+                                  const T* __restrict__ sum,
+                                  T* __restrict__ out) {
   for (int idx = blockIdx.x; idx < n; idx += gridDim.x) {
     for (int idy = blockIdx.y * blockDim.x + threadIdx.x; idy < d;
          idy += gridDim.y * blockDim.x) {
@@ -69,8 +73,8 @@ __global__ void softmaxCUDAKernel(const int n, const int d, const int in,
 
 template <typename T>
 __global__ void DotCUDAKernel(const int n, const int d, const int in,
-                              const int axis_dim, const T* dout, const T* out,
-                              T* dot) {
+                              const int axis_dim, const T* __restrict__ dout,
+                              const T* __restrict__ out, T* __restrict__ dot) {
   for (int idx = blockIdx.x; idx < n; idx += gridDim.x) {
     for (int idy = blockIdx.y * blockDim.x + threadIdx.x; idy < in;
          idy += gridDim.y * blockDim.x) {
@@ -89,8 +93,10 @@ __global__ void DotCUDAKernel(const int n, const int d, const int in,
 template <typename T>
 __global__ void softmaxgradientCUDAKernel(const int n, const int d,
                                           const int in, const int axis_dim,
-                                          const T* dout, const T* out,
-                                          const T* dot, T* dx) {
+                                          const T* __restrict__ dout,
+                                          const T* __restrict__ out,
+                                          const T* __restrict__ dot,
+                                          T* __restrict__ dx) {
   for (int idx = blockIdx.x; idx < n; idx += gridDim.x) {
     for (int idy = blockIdx.y * blockDim.x + threadIdx.x; idy < d;
          idy += gridDim.y * blockDim.x) {
