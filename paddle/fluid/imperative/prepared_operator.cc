@@ -21,16 +21,6 @@
 namespace paddle {
 namespace imperative {
 
-const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
-  if (var.IsType<framework::LoDTensor>()) {
-    return &(var.Get<framework::LoDTensor>());
-  } else if (var.IsType<framework::SelectedRows>()) {
-    return &(var.Get<framework::SelectedRows>().value());
-  } else {
-    return nullptr;
-  }
-}
-
 template <typename VarType>
 static void PrepareData(const platform::Place& place,
                         const NameVarMap<VarType>& ins,
@@ -38,7 +28,7 @@ static void PrepareData(const platform::Place& place,
                         const framework::OpKernelType& expected_kernel_key) {
   for (const auto& name_pair : ins) {
     for (const auto& var_base : name_pair.second) {
-      const auto* tensor = GetTensorFromVar(var_base->Var());
+      const auto* tensor = var_base->GetTensorPtr();
       if (tensor && tensor->IsInitialized()) {
         auto tmp_place = tensor->place();
 

@@ -26,8 +26,6 @@
 namespace paddle {
 namespace imperative {
 
-const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
-
 class PreparedOp {
  public:
   PreparedOp(const framework::OperatorBase& op,
