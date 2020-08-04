@@ -17,6 +17,7 @@ import functools
 import inspect
 from exceptions import DeprecationWarning
 
+
 def deprecated(update_to="", since="", reason=""):
     """Decorate a function to signify its deprecation.
        
@@ -24,11 +25,16 @@ def deprecated(update_to="", since="", reason=""):
            - The docstring of the API will be modified to include a notice
              about deprecation."
            - Raises a :class:`~exceptions.DeprecatedWarning` when old API is called.
-       :param since: The version at which the decorated method is considered deprecated.
-       :param update_to: The new API users should use.
-       :param reason: The reason why the API is deprecated.
+       Args:
+           since(str): The version at which the decorated method is considered deprecated.
+           update_to(str): The new API users should use.
+           reason(str): The reason why the API is deprecated.
+       Returns:
+           decorator: decorated function or class.
     """
+
     def decorator(func):
+        """Decorate a func or class"""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
         assert isinstance(reason, str), 'type of "reason" must be str.'
@@ -42,22 +48,28 @@ def deprecated(update_to="", since="", reason=""):
             msg += " since {}".format(_since)
         msg += ", and may be removed in future versions."
         if len(_update_to) > 0:
-            assert _update_to.startswith("paddle."), 'Argument update_to must start with "paddle.", your value is "{}"'.format(update_to)
+            assert _update_to.startswith(
+                "paddle."
+            ), 'Argument update_to must start with "paddle.", your value is "{}"'.format(
+                update_to)
             msg += ' Use "{}" instead.'.format(_update_to)
         if len(_reason) > 0:
             msg += "\n reason: {}".format(_reason)
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            """wrapper a function or class"""
             try:
                 if _since == "":
                     paddle.fluid.require_version("0.0.0")
                 else:
                     paddle.fluid.require_version(_since)
                 # if current version is newer than _since, print deprecation warning.
-                warnings.simplefilter('always', DeprecationWarning)  # turn off filter
+                warnings.simplefilter('always',
+                                      DeprecationWarning)  # turn off filter
                 warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
-                warnings.simplefilter('default', DeprecationWarning) # reset filter
+                warnings.simplefilter('default',
+                                      DeprecationWarning)  # reset filter
             except Exception as e:
                 # if current version is older than _since, do nothing.
                 pass
@@ -65,5 +77,5 @@ def deprecated(update_to="", since="", reason=""):
             return func(*args, **kwargs)
 
         return wrapper
+
     return decorator
-    
