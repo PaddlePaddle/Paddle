@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -50,7 +51,7 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
   using VariableNameMap = std::map<std::string, std::vector<std::string>>;
   std::map<std::string, std::map<std::string, LoDTensor>> gathered_data;
   for (const auto* op : predictor_.inference_program_->Block(0).AllOps()) {
-    if (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8") {
+    if (platform::HasOpINT8DataType(op)) {
       const VariableNameMap& connections_in = op->Inputs();
       const VariableNameMap& connections_out = op->Outputs();
 

@@ -98,7 +98,7 @@ void MainTest(std::initializer_list<std::string> quantize_enabled_op_types,
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
-      if (platform::HasOpINT8DataType(node)) {
+      if (platform::HasOpINT8DataType(node->Op())) {
         ++int8_data_type_count;
       }
     }
@@ -116,7 +116,7 @@ void DefaultAttrTest(unsigned expected_int8_data_type_count) {
   unsigned int8_data_type_count = 0;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
-      if (platform::HasOpINT8DataType(node)) {
+      if (platform::HasOpINT8DataType(node->Op())) {
         ++int8_data_type_count;
       }
     }

@@ -19,7 +19,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "mkldnn.hpp"
-#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
@@ -421,8 +420,8 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
   }
 }
 
-inline bool HasOpINT8DataType(const paddle::framework::ir::Node* node) {
-  return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8";
+inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
+  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8";
 }
 
 }  // namespace platform

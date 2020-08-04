@@ -229,11 +229,12 @@ double CPUQuantizePass::GetScaleValueForNode(const Node* node,
 
 bool CPUQuantizePass::IsOpDequantized(const Node* node) const {
   return node->Op()->Type() == "dequantize" ||
-         platform::HasOpINT8DataType(node);
+         platform::HasOpINT8DataType(node->Op());
 }
 
 bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
-  return node->Op()->Type() == "quantize" || platform::HasOpINT8DataType(node);
+  return node->Op()->Type() == "quantize" ||
+         platform::HasOpINT8DataType(node->Op());
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,
@@ -250,7 +251,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
 
     // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(conv_op)) {
+    if (!platform::HasOpINT8DataType(conv_op->Op())) {
       LogQuantizationDisabled(conv_op);
       return;
     }
@@ -354,7 +355,7 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
 
     // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(fc)) {
+    if (!platform::HasOpINT8DataType(fc->Op())) {
       LogQuantizationDisabled(fc);
       return;
     }
@@ -420,7 +421,7 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(pool_op, pool_op, pool_pattern);
 
     // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(pool_op)) {
+    if (!platform::HasOpINT8DataType(pool_op->Op())) {
       LogQuantizationDisabled(pool_op);
       return;
     }
@@ -464,7 +465,7 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(concat_op, concat_op, concat_pattern);
 
     // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(concat_op)) {
+    if (!platform::HasOpINT8DataType(concat_op->Op())) {
       LogQuantizationDisabled(concat_op);
       return;
     }
@@ -509,7 +510,7 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(prior_box_op, prior_box_op, prior_box_pattern);
 
     // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(prior_box_op)) {
+    if (!platform::HasOpINT8DataType(prior_box_op->Op())) {
       LogQuantizationDisabled(prior_box_op);
       return;
     }
@@ -551,7 +552,7 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(transpose_op, transpose_op, transpose_pattern);
 
     // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(transpose_op)) {
+    if (!platform::HasOpINT8DataType(transpose_op->Op())) {
       LogQuantizationDisabled(transpose_op);
       return;
     }
@@ -605,7 +606,7 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(reshape_op, reshape_op, reshape_pattern);
 
     // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(reshape_op)) {
+    if (!platform::HasOpINT8DataType(reshape_op->Op())) {
       LogQuantizationDisabled(reshape_op);
       return;
     }
@@ -657,7 +658,7 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, matmul_pattern);
 
     // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(matmul_op)) {
+    if (!platform::HasOpINT8DataType(matmul_op->Op())) {
       LogQuantizationDisabled(matmul_op);
       return;
     }
@@ -726,7 +727,7 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
                               elementwise_add_pattern);
 
     // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(elementwise_add_op)) {
+    if (!platform::HasOpINT8DataType(elementwise_add_op->Op())) {
       LogQuantizationDisabled(elementwise_add_op);
       return;
     }
