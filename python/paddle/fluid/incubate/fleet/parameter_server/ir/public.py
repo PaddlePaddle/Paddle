@@ -42,6 +42,7 @@ import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
+from paddle.fluid.transpiler.details.program_utils import delete_ops
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -114,10 +115,10 @@ def _is_heter_op(op, current_heter_device, default_device="cpu"):
     op_type = op.type
     if op_device in heter_devices:
         return True
-    elif op_type in COMMUNICATE_OPS_TYPE and current_heter_device != default_device:
-        # for distributed communciate ops: send & recv & barrier
-        op._set_attr('op_device', current_heter_device)
-        return True
+    # elif op_type in COMMUNICATE_OPS_TYPE and current_heter_device != default_device:
+    #     # for distributed communciate ops: send & recv & barrier
+    #     op._set_attr('op_device', current_heter_device)
+    #     return True
     elif op_device == None or op_device == default_device:
         op._set_attr('op_device', default_device)
         return False
@@ -146,6 +147,7 @@ def find_heter_ops(program, default_device="cpu"):
         raise ValueError("Given device {} is not in default device list {}".format(
             default_device, DEVICE_LIST))
 
+    origin_porgram = program.clone()
     block = program.global_block()
 
     program_block_ops = []
@@ -197,10 +199,16 @@ def find_heter_ops(program, default_device="cpu"):
         else:
             # for cpu-op
             current_default_block_ops.append(op)
+    if current_heter_block_ops != []:
+        op_device = current_heter_block_ops[0].attr("op_device")
+        heter_ops[op_device][block_index] = current_heter_block_ops
+        program_block_ops.append(current_heter_block_ops)
+
     if current_default_block_ops != []:
         default_ops[default_device][block_index] = current_default_block_ops
         program_block_ops.append(current_default_block_ops)
 
+    #remove_communicate_op(origin_porgram, heter_ops, default_ops, program_block_ops)
 
     if len(heter_ops) == 0:
         warnings.warn(
@@ -216,7 +224,52 @@ def find_heter_ops(program, default_device="cpu"):
             total_heter_ops += len(heter_block)
     print(
         "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, heter_blocks))
-    return program, heter_ops, default_ops, program_block_ops
+    return origin_porgram, heter_ops, default_ops, program_block_ops
+
+
+def remove_communicate_op(program, heter_ops, default_ops, program_block_ops):
+    send_op_list = get_send_op_list(program)
+    send_op_input = []
+    for send_op in send_op_list:
+        # fail when send op has multi input var
+        inputs = _get_input_map_from_op(program.global_block().vars, send_op)
+        send_op_input += get_varlist_from_op_map(inputs)
+
+    need_delete_op = []
+    for device in heter_ops:
+        for index, op_list in heter_ops[device].items():
+            _, block_output = find_ops_list_input_output(program, op_list)
+            send_var = list(set(send_op_input) & set(block_output))
+            if send_var != None:
+                for var in send_var:
+                    send_op_index = list(send_op_input).index(var)
+                    # 1. append send op in heter_block
+                    heter_ops[device][index].append(send_op_list[send_op_index])
+                    program_block_ops[index].append(send_op_list[send_op_index])
+                    # 2. delete send op in origin block 
+                    need_delete_op.append(send_op_list[send_op_index])
+
+    for device in default_ops:
+        for index, op_list in default_ops[device].items():
+            block_input, _ = find_ops_list_input_output(program, op_list)
+            send_var = list(set(send_op_input) & set(block_input))
+            if send_var != None:
+                for var in send_var:
+                    # 3. delete send op in ops_list
+                    send_op_index = list(send_op_input).index(var)
+                    delete_same_ops_in_list(default_ops[device][index], [send_op_list[send_op_index]])
+                    delete_same_ops_in_list(program_block_ops[index], [send_op_list[send_op_index]])
+
+    delete_ops(program.global_block(), need_delete_op)
+    program.global_block()._sync_with_cpp()
+
+def get_send_op_list(program):
+    send_op_list = []
+    block = program.global_block()
+    for op in block.ops:
+        if op.type == "send":
+            send_op_list.append(op)
+    return send_op_list
 
 
 def create_heter_program(program, config, heter_program, heter_ops, block_var_detail, current_device):
@@ -386,15 +439,15 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
     )
 
     # recv
-    program.global_block().append_op(
-        type="recv",
-        inputs={"X": []},
-        outputs={"Out": []},
-        attrs={
-            "recv_varnames": exit_var,
-            "trainer_id": config.get_role_id(),
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-        })
+    # program.global_block().append_op(
+    #     type="recv",
+    #     inputs={"X": []},
+    #     outputs={"Out": []},
+    #     attrs={
+    #         "recv_varnames": exit_var,
+    #         "trainer_id": config.get_role_id(),
+    #         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+    #     })
     # create slice op
     # create reashpe op
 
@@ -457,6 +510,8 @@ def find_entrance_exit_private(program, program_block_ops_list):
     for block_op_list in program_block_ops_list:
         block_input, block_output = find_ops_list_input_output(
             program, block_op_list)
+        screen_persistables(program, block_input)
+        screen_persistables(program, block_output)
         # find entrance & exit
         block_private_vars = list(set(block_input) & set(block_output))
         block_entrance = list(set(block_input)-set(block_private_vars))
@@ -545,9 +600,7 @@ def find_ops_list_input_output(program, ops_list):
         output_var_list += get_varlist_from_op_map(outputs)
 
     input_var_list = list(set(input_var_list))
-    screen_persistables(program, input_var_list)
     output_var_list = list(set(output_var_list))
-    screen_persistables(program, output_var_list)
     return input_var_list, output_var_list
 
 def screen_persistables(program, var_list):
@@ -719,6 +772,15 @@ def delete_same_ops(block, ops):
         except Exception as e:
             print(e)
 
+def delete_same_ops_in_list(op_list, ops):
+    for op in ops:
+        try:
+            for origin_op in op_list:
+                if is_same_op(origin_op, op):
+                    op_list.remove(origin_op)
+                    break
+        except Exception as e:
+            print(e)
 
 def block_append_op(program, origin_program, block, op):
     inputs = _get_input_map_from_op(origin_program.global_block().vars, op)
@@ -726,7 +788,7 @@ def block_append_op(program, origin_program, block, op):
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
-            if var not in program.global_block().vars:
+            if var.name not in program.global_block().vars:
                 program.global_block()._clone_variable(var)
 
     outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
@@ -734,7 +796,7 @@ def block_append_op(program, origin_program, block, op):
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
-            if var not in program.global_block().vars:
+            if var.name not in program.global_block().vars:
                 program.global_block()._clone_variable(var)
 
     if "_grad" not in op.type:
