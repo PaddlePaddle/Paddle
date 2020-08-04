@@ -33,6 +33,7 @@ limitations under the License. */
 #include <curand.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
+
 #include "paddle/fluid/platform/cuda_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
@@ -229,7 +230,7 @@ inline std::string SimplifyDemangleStr(std::string str) {
 template <typename StrType>
 inline std::string GetTraceBackString(StrType&& what, const char* file,
                                       int line) {
-  static constexpr int TRACE_STACK_LIMIT = 100;
+  static constexpr int TRACE_STACK_LIMIT = 128;
   std::ostringstream sout;
 
   sout << "\n\n--------------------------------------\n";
@@ -238,7 +239,6 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 #if !defined(_WIN32)
   void* call_stack[TRACE_STACK_LIMIT];
   auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
-  auto symbols = backtrace_symbols(call_stack, size);
   Dl_info info;
   int idx = 0;
   for (int i = size - 1; i >= 0; --i) {
@@ -252,7 +252,6 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
       }
     }
   }
-  free(symbols);
 #else
   sout << "Windows not support stack backtrace yet.\n";
 #endif
@@ -427,7 +426,7 @@ struct EnforceNotMet : public std::exception {
  *
  * Examples:
  *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
-*/
+ */
 #define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                   \
   (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {          \
     auto* __ptr = (__PTR);                                                  \
@@ -463,7 +462,7 @@ struct EnforceNotMet : public std::exception {
  *
  * Examples:
  *    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
-*/
+ */
 #define OP_INOUT_CHECK(__EXPR, __ROLE, __NAME, __OP_TYPE)                   \
   do {                                                                      \
     PADDLE_ENFORCE_EQ(__EXPR, true, paddle::platform::errors::NotFound(     \
@@ -491,7 +490,7 @@ struct EnforceNotMet : public std::exception {
  * Note: GCC 4.8 cannot select right overloaded function here, so need
  *    to define different functions and macros here, after we upgreade
  *    CI gcc version, we can only define one BOOST_GET macro.
-*/
+ */
 namespace details {
 
 #define DEFINE_SAFE_BOOST_GET(__InputType, __OutputType, __OutputTypePtr,      \
