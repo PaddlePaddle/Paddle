@@ -15,9 +15,8 @@
 # TODO: import framework api under this directory 
 __all__ = [
     'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
-    'BuildStrategy', 'CompiledProgram', 'create_parameter', 'Print', 'py_func',
-    'ExecutionStrategy', 'name_scope', 'ParallelExecutor', 'program_guard',
-    'WeightNormParamAttr'
+    'BuildStrategy', 'CompiledProgram', 'Print', 'py_func', 'ExecutionStrategy',
+    'name_scope', 'ParallelExecutor', 'program_guard', 'WeightNormParamAttr'
 ]
 
 from ..fluid.executor import Executor, global_scope, scope_guard
@@ -28,4 +27,3 @@ from ..fluid.layers.control_flow import Print
 from ..fluid.layers.nn import py_func
 from ..fluid.parallel_executor import ParallelExecutor
 from ..fluid.param_attr import WeightNormParamAttr
-from ..fluid.layers.tensor import create_parameter
