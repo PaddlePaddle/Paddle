@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
-from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph import declarative, ProgramTranslator
 
 BATCH_SIZE = 32
 BATCH_NUM = 20
@@ -77,8 +77,8 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
 
 def train(layer):
     # create optimizer
-    adam = fluid.optimizer.AdamOptimizer(
-        learning_rate=0.1, parameter_list=layer.parameters())
+    adam = fluid.optimizer.SGDOptimizer(
+        learning_rate=0.01, parameter_list=layer.parameters())
     # create data loader
     train_loader = fluid.io.DataLoader.from_generator(capacity=5)
     train_loader.set_batch_generator(random_batch_reader())
@@ -121,27 +121,29 @@ class TestJitSaveLoad(unittest.TestCase):
         self.assertEqual(orig_input_types, new_input_types)
         return layer
 
-    def test_save(self):
-        # train and save model
-        self.train_and_save_model()
-
-    def test_load_infernece(self):
+    def test_save_load(self):
         # train and save model
         train_layer = self.train_and_save_model()
         # load model
-        infer_layer = fluid.dygraph.jit.load(self.model_path)
+        program_translator = ProgramTranslator()
+        program_translator.enable(False)
+        loaded_layer = fluid.dygraph.jit.load(self.model_path)
+        self.load_and_inference(train_layer, loaded_layer)
+        self.load_dygraph_state_dict(train_layer)
+        self.load_and_finetune(train_layer, loaded_layer)
+        program_translator.enable(True)
+
+    def load_and_inference(self, train_layer, infer_layer):
         train_layer.eval()
+        infer_layer.eval()
         # inference & compare
         x = fluid.dygraph.to_variable(
             np.random.random((1, 784)).astype('float32'))
         self.assertTrue(
             np.array_equal(train_layer(x).numpy(), infer_layer(x).numpy()))
 
-    def test_load_finetune(self):
-        # train and save model
-        train_layer = self.train_and_save_model()
-        # load model
-        load_train_layer = fluid.dygraph.jit.load(self.model_path)
+    def load_and_finetune(self, train_layer, load_train_layer):
+        train_layer.train()
         load_train_layer.train()
         # train & compare
         _, _, train_loss = train(train_layer)
@@ -149,9 +151,7 @@ class TestJitSaveLoad(unittest.TestCase):
         self.assertTrue(
             np.array_equal(train_loss.numpy(), load_train_loss.numpy()))
 
-    def test_load_dygraph_state_dict(self):
-        # train and save model
-        train_layer = self.train_and_save_model()
+    def load_dygraph_state_dict(self, train_layer):
         train_layer.eval()
         # contruct new model
         new_layer = LinearNet(784, 1)
