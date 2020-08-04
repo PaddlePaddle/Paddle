@@ -3228,7 +3228,7 @@ class Flatten(layers.Layer):
         out = self._helper.create_variable_for_type_inference(input.dtype)
         x_shape = self._helper.create_variable_for_type_inference(input.dtype)
         self._helper.append_op(
-            type="flatten2",
+            type="flatten_contiguous_range",
             inputs={"X": input},
             outputs={"Out": out,
                      "XShape": x_shape},
