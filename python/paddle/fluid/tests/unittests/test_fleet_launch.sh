@@ -33,9 +33,8 @@ export PADDLE_TRAINER_ID=0
 export PADDLE_PORT=35019
 export TRAINER_PORTS_NUM=2
 
-# CUDA_VISIBLE_DEVICES=0,1 python ${launch_py} ${distributed_args} multi_process.py
 distributed_args="--ips=${cluster_node_ips} --gpus=0,1 --log_dir=testlog"
-fleetrun ${distributed_args} multi_process.py
+CUDA_VISIBLE_DEVICES=0,1 fleetrun ${distributed_args} multi_process.py
 
 str1="selected_gpus:0 worker_endpoints:127.0.0.1:35019,127.0.0.1:35020,127.0.0.2:35019,127.0.0.2:35020 trainers_num:4 current_endpoint:127.0.0.1:35019 trainer_id:0"
 str2="selected_gpus:1 worker_endpoints:127.0.0.1:35019,127.0.0.1:35020,127.0.0.2:35019,127.0.0.2:35020 trainers_num:4 current_endpoint:127.0.0.1:35020 trainer_id:1"
@@ -71,7 +70,7 @@ unset TRAINER_PORTS_NUM
 
 echo ""
 echo "paddle.distributed.launch async poll process test"
-if ! fleetrun ${distributed_args} multi_process.py abort; then
+if ! CUDA_VISIBLE_DEVICES=0,1 fleetrun ${distributed_args} multi_process.py abort; then
     echo "train abort as planned"
 fi
 
