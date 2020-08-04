@@ -91,7 +91,7 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
     """
     :api_attr: imperative
 
-    Create a context which enables autocast of operators executed in imperative mode.
+    Create a context which enables auto-mixed-precision(AMP) of operators executed in imperative mode.
     If enabled, the input data type (float32 or float16) of each operator is decided 
     by autocast algorithm for better performance. 
     
@@ -99,7 +99,7 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
     imperative mode.
 
     Args:
-        enable(bool, optional): Enable loss scaling or not. Default is True.
+        enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
         custom_white_list(set|list, optional): The custom white_list.
         custom_black_list(set|list, optional): The custom black_list.
         
