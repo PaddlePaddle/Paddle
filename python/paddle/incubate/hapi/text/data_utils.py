@@ -46,7 +46,7 @@ class Stack(object):
         dtype (str|numpy.dtype): The value type of the output. If it is set to None, the input data type is used. Default: None.
 
     Example:
-        .. code-block:: python:
+        .. code-block:: python
 
             from paddle.incubate.hapi.text import Stack
             # Stack multiple lists
@@ -92,7 +92,7 @@ class Pad(object):
         round_to (int): If specified, the padded dimension will be rounded to be multiple of this argument. Default: None.
 
         Example:
-            .. code-block:: python:
+            .. code-block:: python
                 from paddle.incubate.hapi.text import Pad
                 # Inputs are multiple lists
                 a = [1, 2, 3, 4]
@@ -117,7 +117,8 @@ class Pad(object):
         The input can be list of numpy.ndarray, list of numbers or list of mxnet.nd.NDArray. 
         Inputting mxnet.nd.NDArray is discouraged as each array need to be converted to numpy for efficient padding.
 
-        The arrays will be padded to the largest dimension at axis and then stacked to form the final output. In addition, the function will output the original dimensions at the axis if ret_length is turned on.
+        The arrays will be padded to the largest dimension at axis and then stacked to form the final output. 
+        In addition, the function will output the original dimensions at the axis if ret_length is turned on.
 
         Args:
             data (List[np.ndarray]|List[List[dtype]]|List[mx.nd.NDArray]): List of samples to pad and stack.
@@ -155,13 +156,16 @@ class Pad(object):
 class Tuple(object):
     """
     Wrap multiple batchify functions together. The input functions will be applied to the corresponding input fields.
-    Each data sample should be a list or tuple containing multiple attributes. The i`th batchify function stored in `Tuple will be applied on the i`th attribute. For example, each data sample is (nd_data, label). You can wrap two batchify functions using `Tuple(DataBatchify, LabelBatchify) to batchify nd_data and label correspondingly.
+    Each data sample should be a list or tuple containing multiple attributes. The i`th batchify function stored in 
+    `Tuple will be applied on the i`th attribute. For example, each data sample is (nd_data, label). 
+    You can wrap two batchify functions using `Tuple(DataBatchify, LabelBatchify) to batchify nd_data and label correspondingly.
 
     Args:
         fn (list|tuple|callable): The batchify functions to wrap.
         *args (tuple of callable): The additional batchify functions to wrap.
+
     Example:
-        .. code-block:: python:
+        .. code-block:: python
             from paddle.incubate.hapi.text import Tuple, Pad, Stack
             batchify_fn = Tuple(Pad(axis=0, pad_val=0), Stack())
 
@@ -183,7 +187,7 @@ class Tuple(object):
         Batchify the input data.
 
         Args:
-            list: The samples to batchfy. Each sample should contain N attributes.
+            data (list): The samples to batchfy. Each sample should contain N attributes.
         Returns:
             tuple: A tuple of length N. Contains the batchified result of each attribute in the input.
         
@@ -219,7 +223,13 @@ class WrapDataset(Dataset):
         return len(self.dataset)
 
     def shuffle(self, buffer_size=-1, seed=None):
-        """Shuffle the dataset."""
+        """
+        Shuffle the dataset according to the given buffer_size and random seed.
+        Args:
+
+            buffer_size (int): buffer size for dataset. if buffer_size < 0, buffer_size is the length of the dataset. Default: -1. 
+            seed (int): Seed for the random. Default: None.
+        """
         if seed is not None:
             np_rand_state_bak = np.random.get_state()
             np.random.seed(seed)
@@ -233,7 +243,15 @@ class WrapDataset(Dataset):
         return self
 
     def sort(self, cmp=None, key=None, reverse=False, buffer_size=-1):
-        """Sort the dataset. """
+        """
+        Sort the dataset.
+        Args:
+            cmp (callable): The funcation of comparison. Default: None. 
+            key (): Default: None. # ?
+            reverse (bool): True means in descending order, and False means in ascending order. Default: False.
+            buffer_size (int): buffer size for sort. Default: -1.
+
+        """
         buffer_size = len(self.dataset) if buffer_size < 0 else buffer_size
         for i in range(0, len(self.dataset), buffer_size):
             self.dataset[i:i + buffer_size] = sorted(
@@ -244,7 +262,12 @@ class WrapDataset(Dataset):
         return self
 
     def filter(self, predicate_func):
-        """Filter the dataset by predicate_func."""
+        """
+        Filter the dataset with predicate_func.
+
+        Args:
+            predicate_func (callable): Return whether the data can be left in dataset.
+        """
         self.dataset = [
             self.dataset[idx] for idx in range(len(self.dataset))
             if predicate_func(self.dataset[idx])
@@ -253,10 +276,14 @@ class WrapDataset(Dataset):
 
     def apply(self, transform_func, lazy=False):
         """
-        If `lazy`, transformations would be delayed and performed when calling
-        `__getitem__`, which would run multi-times for each sample but can take
-        advantage of DataLoader multi-processing. `transform_func` receives single
-        sample as argument rather than dataset.
+        Transformations would be performed to dataset.
+        Args:
+
+            transform_func (callable): Transformations to be performed. It receives single
+                sample as argument rather than dataset.
+            lazy (bool): If True, transformations would be delayed and performed when calling
+                `__getitem__`, which would run multi-times for each sample but can take
+                advantage of DataLoader multi-processing. Defalt: False.
         """
         if lazy:
             self._transform_func = transform_func
@@ -268,6 +295,15 @@ class WrapDataset(Dataset):
         return self
 
     def shard(self, num_replicas=None, rank=None):
+        """
+        Operates slice using multi GPU
+        Args:
+            num_replicas (int|None): The number of training process, and is also the number of GPU cards used in training. 
+                Default: None.
+            rank (int|None): Number of training process. Equal to the value of the environment variable PADDLE_TRAINER_ID.
+                Default: None.
+
+        """
         if num_replicas is None:
             num_replicas = ParallelEnv().nranks
         if rank is None:
@@ -299,8 +335,8 @@ class SamplerHelper(object):
               :class:`DataLoader`, but is expected in any
               calculation involving the length of a :class:`DataLoader`.
     Args:
-        dataset
-        iterable
+        dataset: 
+        iterable: 
 
     """
 
@@ -347,7 +383,15 @@ class SamplerHelper(object):
         self._length = length
 
     def apply(self, fn):
-        """Transformations would be performed."""
+        """
+        Transformations would be performed.
+        Args:
+            fn (callable): Transformations would be performed.
+
+        Returns:
+          
+
+        """
         rs = fn(self)
         if isinstance(rs, (list, tuple)):
             iterable, data_source = rs
@@ -357,7 +401,14 @@ class SamplerHelper(object):
         return sampler
 
     def shuffle(self, buffer_size=-1, seed=None):
-        """Shuffle the samples according to the seed."""
+        """Shuffle the samples according to the seed.
+         Args:
+            buffer_size=-1, 
+            seed=None
+
+        Returns:
+
+         """
         if seed is not None:
             random_generator = np.random.RandomState(seed)
         else:  # use the global random generator
@@ -380,7 +431,17 @@ class SamplerHelper(object):
         return type(self)(self.data_source, _impl)
 
     def sort(self, cmp=None, key=None, reverse=False, buffer_size=-1):
-        """Sort samples"""
+        """
+        Sort samples
+
+        Args:
+             cmp=None
+             key=None
+             reverse=False
+             buffer_size=-1
+        Returns:
+
+        """
         def _impl():
             data_source = self.data_source
             buf = []
@@ -420,7 +481,7 @@ class SamplerHelper(object):
             batch_size_fn
             batch_fn
         Returns:
-            BatchSampler
+
         """
         if batch_size_fn is None:
             batch_size_fn = lambda new, count, sofar, data_source: count
@@ -456,10 +517,14 @@ class SamplerHelper(object):
 
     def shard(self, num_replicas=None, rank=None):
         """
+        Operates slice using multi GPU.
+        Args:
+            num_replicas (int|None): The number of training process, and is also the number of GPU cards used in training. 
+                Default: None.
+            rank (int|None): Number of training process. Equal to the value of the environment variable PADDLE_TRAINER_ID.
+                Default: None.
+        Returns:
 
-        Args：
-            num_replicas
-            rank
         """
         if num_replicas is None:
             num_replicas = ParallelEnv().nranks
@@ -654,11 +719,11 @@ class PreTrainedTokenizer(object):
         Load the vocabulary from a file.
         Args:
             filename (str): file path to load.
-            unk_token (str|None): unk token. Default: None.
+            unk_token (str|None): UNK token. Default: None.
             kwargs (dict): 
 
         Returns:
-            Vocab
+            dict: vocab.
         """
         token_to_idx = {}
         with io.open(filename, 'r', encoding='utf-8') as f:
@@ -689,7 +754,7 @@ def convert_to_unicode(text):
     """
     Converts `text` to Unicode (if it's not already), assuming utf-8 input.
     Args:
-        text (str|bytes): text to be converted to utf-8.
+        text (str|bytes): text to be converted to unicode.
     Returns: 
         str: converted text.
     """
@@ -715,9 +780,9 @@ def whitespace_tokenize(text):
     """
     Runs basic whitespace cleaning and splitting on a peice of text.
     Args:
-        text (str): text to be processed.
+        text (str): text to be tokened.
     Returns:
-        list(str): processed token list.
+        list(str): token list.
     """
     text = text.strip()
     if not text:
@@ -769,8 +834,9 @@ def _is_punctuation(char):
 class BertBasicTokenizer(object):
     """
     Runs basic tokenization (punctuation splitting, lower casing, etc.).
+
     Args:
-        do_lower_case (bool):Whether to convert the input to lowercase. Default: True.
+        do_lower_case (bool): Whether to convert the input to lowercase. Default: True.
     """
 
     def __init__(self, do_lower_case=True):
@@ -780,12 +846,14 @@ class BertBasicTokenizer(object):
         self.do_lower_case = do_lower_case
 
     def tokenize(self, text):
-        """Tokenizes a piece of text.
+        """
+        Tokenizes a piece of text using basic tokenizer.
+
         Args:
-            text (str):
+            text (str): A piece of text.
 
-        Returns:
-
+        Returns: 
+            list(str): A list of tokens.
 
         """
         text = convert_to_unicode(text)
@@ -894,9 +962,10 @@ class WordpieceTokenizer(object):
     """
     Runs WordPiece tokenization.
     Args:
-        vocab
-        unk_token (str):
-        max_input_chars_per_word (int):  Default: 100.
+        vocab (dict): Vocab of the word piece tokenizer.
+        unk_token (str):  A specific token to replace all unkown tokens.
+        max_input_chars_per_word (int):  If a word's length is more than 'max_input_chars_per_word', it will be 
+            dealt as unknown word. Default: 100.
     """
 
     def __init__(self, vocab, unk_token, max_input_chars_per_word=100):
@@ -914,11 +983,12 @@ class WordpieceTokenizer(object):
             text: A single token or whitespace separated tokens. This should have
                 already been passed through `BasicTokenizer`.
 
+        Returns:
+            list (str): A list of wordpiece tokens.
+
         Example:
             input = "unaffable"
             output = ["un", "##aff", "##able"]
-        Returns:
-            A list of wordpiece tokens.
         """
 
         output_tokens = []
@@ -957,16 +1027,15 @@ class WordpieceTokenizer(object):
 
 class BertTokenizer(PreTrainedTokenizer):
     """
-    Runs bert tokenization.
+    Runs bert tokenization, including BertBasicTokenize and WordpieceTokenizer.
     Args:
         vocab_file (str): filename of the vocab
         do_lower_case (bool): Whether to convert the input to lowercase. Default: True.
-        unk_token (str): Default: "[UNK]".
-        sep_token (str): Default: "[SEP]".
-        pad_token (str): Default: "[PAD]".
-        cls_token (str): Default: "[CLS]".
-        mask_token (str): Default: "[MASK]".
-        kwargs (dict): 
+        unk_token (str): A specific token for unkown words. Default: "[UNK]".
+        sep_token (str): A specific token for separator token . Default: "[SEP]".
+        pad_token (str): A specific token for padding. Default: "[PAD]".
+        cls_token (str): A specific token for cls. Default: "[CLS]".
+        mask_token (str): A specific token for mask. Default: "[MASK]".
 
     """
     resource_files_names = {"vocab_file": "vocab.txt"}  # for save_pretrained

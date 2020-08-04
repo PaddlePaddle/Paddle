@@ -51,7 +51,7 @@ class TSVDataset(Dataset):
         b\tLaoban\tZha
         discard the first line and select the 0th and 2nd fields
 
-        .. code-block:: python:
+        .. code-block:: python
 
             dataset = data.TSVDataset('test.tsv', num_discard_samples=1, field_indices=[0, 2])
             assert dataset[0] == ['a', 'Jiang']
@@ -189,7 +189,7 @@ class GlueCoLA(_GlueDataset):
 
     Example:
 
-        .. code-block:: python:
+        .. code-block:: python
 
             cola_dev = gluonnlp.data.GlueCoLA('dev', root='./datasets/cola')
             len(cola_dev) # 1043
@@ -233,7 +233,7 @@ class GlueSST2(_GlueDataset):
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Examples:
-        .. code-block:: python:
+        .. code-block:: python
 
             sst_dev = gluonnlp.data.GlueSST2('dev', root='./datasets/sst')
             len(sst_dev) # 872
@@ -278,7 +278,7 @@ class GlueMRPC(_GlueDataset):
         root (str): Path to temp folder for storing data. MXNET_HOME defaults to ‘~/.mxnet’. Default: '$MXNET_HOME/datasets/glue_mrpc'.
 
     Example:
-        .. code-block:: python:
+        .. code-block:: python
 
             mrpc_dev = gluonnlp.data.GlueMRPC('dev', root='./datasets/mrpc')
             len(mrpc_dev) # 408
@@ -393,7 +393,7 @@ class GlueSTSB(_GlueDataset):
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Example:
-        .. code-block:: python:
+        .. code-block:: python
 
             stsb_dev = gluonnlp.data.GlueSTSB('dev', root='./datasets/stsb')
             len(stsb_dev) # 1500
@@ -437,7 +437,7 @@ class GlueQQP(_GlueDataset):
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Example:
-        .. code-block:: python:
+        .. code-block:: python
 
             import warnings
             with warnings.catch_warnings():
@@ -492,7 +492,7 @@ class GlueMNLI(_GlueDataset):
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Example:
-        .. code-block:: python:
+        .. code-block:: python
 
             mnli_dev = gluonnlp.data.GlueMNLI('dev_matched', root='./datasets/mnli')
             len(mnli_dev) # 9815
@@ -544,7 +544,7 @@ class GlueQNLI(_GlueDataset):
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
        
     Example:
-        .. code-block:: python:
+        .. code-block:: python
 
             qnli_dev = gluonnlp.data.GlueQNLI('dev', root='./datasets/qnli')
             len(qnli_dev) # 5732
@@ -590,7 +590,7 @@ class GlueRTE(_GlueDataset):
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Examples:
-        .. code-block:: python:
+        .. code-block:: python
 
             rte_dev = gluonnlp.data.GlueRTE('dev', root='./datasets/rte')
             len(rte_dev) # 277
@@ -636,7 +636,7 @@ class GlueWNLI(_GlueDataset):
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Example:
-        .. code-block:: python:
+        .. code-block:: python
                 wnli_dev = gluonnlp.data.GlueWNLI('dev', root='./datasets/wnli')
                 len(wnli_dev) # 71
                 len(wnli_dev[0]) # 3
