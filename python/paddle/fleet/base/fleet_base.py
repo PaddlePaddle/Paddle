@@ -189,12 +189,12 @@ class Fleet(object):
         assert self._runtime_handle is not None
         self._runtime_handle._init_worker()
 
-    def init_server(self, model_dir=None):
+    def init_server(self, *args, **kwargs):
         """
         init server
         """
         assert self._runtime_handle is not None
-        self._runtime_handle._init_server()
+        self._runtime_handle._init_server(*args, **kwargs)
 
     def run_server(self):
         """
@@ -321,6 +321,7 @@ class Fleet(object):
 
         optimize_ops = []
         params_grads = []
+
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss,
@@ -346,7 +347,8 @@ class Fleet(object):
             # i.e. users can not modify current computation graph anymore
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(
-                valid_strategy, self._role_maker, optimize_ops, params_grads)
+                valid_strategy, self._role_maker, optimize_ops, params_grads,
+                self.origin_main_program, self.origin_startup_program)
 
         if self._util is None:
             self._util = UtilFactory()._create_util(
