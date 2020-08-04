@@ -433,6 +433,8 @@ PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 
 PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
+PD_INFER_DECL void LoadCustomOpLibrary(std::string lib_path);
+
 PD_INFER_DECL std::string get_version();
 
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);

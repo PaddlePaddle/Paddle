@@ -21,6 +21,12 @@
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
+
 namespace paddle {
 
 int PaddleDtypeSize(PaddleDType dtype) {
@@ -37,6 +43,100 @@ int PaddleDtypeSize(PaddleDType dtype) {
       assert(false);
       return -1;
   }
+}
+
+template <typename T>
+T *DynLoad(void *handle, std::string name) {
+  T *func = reinterpret_cast<T *>(dlsym(handle, name.c_str()));
+#if !defined(_WIN32)
+  auto errorno = dlerror();
+#else
+  auto errorno = GetLastError();
+#endif  // !_WIN32
+  PADDLE_ENFORCE_NOT_NULL(
+      func,
+      platform::errors::NotFound(
+          "Failed to load dynamic operator library, error code(%s).", errorno));
+  return func;
+}
+
+void LoadCustomOpLibrary(std::string lib_path) {
+#if defined(__APPLE__) || defined(__OSX__) || defined(_WIN32)
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Loading custom cpp op in inference does not support Apple or Windows."));
+#else
+  void *handle = paddle::platform::dynload::GetOpDsoHandle(lib_path);
+
+  typedef framework::OpInfoMap &get_op_info_t();
+  get_op_info_t *get_op_info =
+      DynLoad<get_op_info_t>(handle, "PD_GetOpInfoMap");
+  auto &op_info = get_op_info();
+  auto *dyn_info_map = op_info.mutable_map();
+
+  typedef std::vector<std::string> grad_op_desc_maker_t(
+      const framework::OpDesc &, const std::unordered_set<std::string> &,
+      std::unordered_map<std::string, std::string> *,
+      const std::vector<framework::BlockDesc *> &);
+
+  grad_op_desc_maker_t *grad_op_desc_maker =
+      DynLoad<grad_op_desc_maker_t>(handle, "PD_GetGradOpDescStrs");
+
+  auto &info_map = framework::OpInfoMap::Instance();
+  for (const auto &n : *(dyn_info_map)) {
+    auto type = n.first;
+    if (type == "recurrent" || type == "recurrent_grad" ||
+        type == "conditional_block" || type == "conditional_block_grad") {
+      continue;
+    }
+    PADDLE_ENFORCE_NE(info_map.Has(n.first), true,
+                      platform::errors::AlreadyExists(
+                          "Operator (%s) has been registered.", type));
+    framework::OpInfo info;
+    info.creator_ = n.second.creator_;
+
+    // If get the protocol buffer from dynamic library directly, there
+    // will be deconstruction error
+    // ** Error in `python`: free(): invalid pointer:
+    //  ...  paddle::framework::proto::OpDesc::SharedDtor()
+    // It seems a bug in protobuf, see
+    // https://github.com/protocolbuffers/protobuf/issues/435
+    // So, get the serialized binary string from dynamic library,
+    // then deserialize to protocol buffer.
+    info.grad_op_maker_ = [grad_op_desc_maker](
+        const framework::OpDesc &op_desc,
+        const std::unordered_set<std::string> &no_grad_set,
+        std::unordered_map<std::string, std::string> *grad_to_var,
+        const std::vector<framework::BlockDesc *> &grad_block) {
+      std::vector<std::string> strs =
+          grad_op_desc_maker(op_desc, no_grad_set, grad_to_var, grad_block);
+      std::vector<std::unique_ptr<framework::OpDesc>> ret;
+      for (auto &str : strs) {
+        framework::proto::OpDesc proto_desc;
+        PADDLE_ENFORCE_EQ(proto_desc.ParseFromString(str), true,
+                          platform::errors::InvalidArgument(
+                              "Failed to parse OpDesc from string."));
+        ret.emplace_back(new framework::OpDesc(proto_desc, nullptr));
+      }
+      return ret;
+    };
+    info.proto_ = n.second.proto_;
+    info.checker_ = n.second.checker_;
+    info.infer_var_type_ = n.second.infer_var_type_;
+    info.infer_shape_ = n.second.infer_shape_;
+    info.infer_inplace_ = n.second.infer_inplace_;
+    info.infer_no_need_buffer_vars_ = n.second.infer_no_need_buffer_vars_;
+    info.use_default_grad_op_desc_maker_ =
+        n.second.use_default_grad_op_desc_maker_;
+    info.use_empty_grad_op_desc_maker_ = n.second.use_empty_grad_op_desc_maker_;
+
+    info_map.Insert(type, info);
+  }
+
+  typedef void init_device_t(platform::DeviceContextPool *);
+  init_device_t *init_dev =
+      DynLoad<init_device_t>(handle, "PD_InitDevicesPool");
+  init_dev(&(platform::DeviceContextPool::Instance()));
+#endif
 }
 
 PaddleBuf::PaddleBuf(PaddleBuf &&other)
