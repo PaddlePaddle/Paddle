@@ -19,10 +19,11 @@ import six
 # NOTE: HTTPServer has a different name in python2 and python3
 if six.PY2:
     from BaseHTTPServer import HTTPServer
+    import SimpleHTTPServer
 else:
     from http.server import HTTPServer
+    import http.server as SimpleHTTPServer
 
-import SimpleHTTPServer
 import time
 import threading
 import socket
