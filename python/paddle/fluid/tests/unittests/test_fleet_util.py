@@ -87,6 +87,12 @@ class TestFleetUtil(unittest.TestCase):
         fleet_util.set_file_system(fs)
 
     def test_barrier(self):
+        try:
+            import netifaces
+        except:
+            print("warning: no netifaces, skip test_barrier")
+            return
+
         gloo = fluid.core.Gloo()
         gloo.set_rank(0)
         gloo.set_size(1)
@@ -108,7 +114,13 @@ class TestFleetUtil(unittest.TestCase):
 
         fleet_util.barrier("worker")
 
-    def test_reduce(self):
+    def test_all_reduce(self):
+        try:
+            import netifaces
+        except:
+            print("warning: no netifaces, skip test_all_reduce")
+            return
+
         gloo = fluid.core.Gloo()
         gloo.set_rank(0)
         gloo.set_size(1)
@@ -131,7 +143,13 @@ class TestFleetUtil(unittest.TestCase):
         output = fleet_util.all_reduce(1, "sum", comm_world="server")
         self.assertEqual(output, 1)
 
-    def test_gather(self):
+    def test_all_gather(self):
+        try:
+            import netifaces
+        except:
+            print("warning: no netifaces, skip test_all_gather")
+            return
+
         gloo = fluid.core.Gloo()
         gloo.set_rank(0)
         gloo.set_size(1)

@@ -501,14 +501,15 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
     def _user_defined_ps_env(self):
         self._server_endpoints = self._kwargs.get("server_endpoints")
         self._worker_endpoints = self._kwargs.get("worker_endpoints", [])
-        self._trainer_num = self._kwargs.get("worker_num")
-        assert (self._trainer_num == len(self._worker_endpoints) or
-                len(self._worker_endpoints) == 0)
+        self._trainers_num = self._kwargs.get("worker_num", 0)
+
+        if self._trainers_num == 0:
+            assert (len(self._worker_endpoints) > 0)
+            self._trainers_num = len(self._worker_endpoints)
 
         self._role = self._kwargs.get("role")
         self._current_id = self._kwargs.get("current_id")
 
-        assert (self._current_id < self._trainer_num)
         if self._role == Role.WORKER and len(
                 self._worker_endpoints) > self._current_id:
             self._cur_endpoint = self._worker_endpoints[self._current_id]
@@ -518,7 +519,7 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
     def _user_defined_collective_env(self):
         self._worker_endpoints = self._kwargs.get("worker_endpoints")
         self._current_id = self._kwargs.get("current_id")
-        self._trainer_num = len(self._worker_endpoints)
+        self._trainers_num = len(self._worker_endpoints)
         self._training_role = Role.Worker
 
     def generate_role(self):
