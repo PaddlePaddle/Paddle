@@ -26,7 +26,7 @@ __all__ = ['uncombined_weight_to_state_dict']
 
 def uncombined_weight_to_state_dict(weight_dir):
     """
-    Convert uncombined weight which was getted by using `fluid.io.save_params` or `fluid.io.save_persistables` to state_dict
+    Convert uncombined weight which getted by using `fluid.io.save_params` or `fluid.io.save_persistables` to state_dict
 
     Args:
         weight_dir (str): weight direcotory path.
