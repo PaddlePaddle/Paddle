@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
@@ -21,6 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
+using DataLayout = platform::DataLayout;
 using Tensor = framework::Tensor;
 
 static inline int SizeOutAxis(const int axis, DDim dims) {
@@ -35,28 +36,22 @@ template <typename T>
 class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>("X");
-    auto* Out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+    auto* out_data = out->data<T>();
 
-    auto dims = X->dims();
+    auto dims = x->dims();
     const int rank = dims.size();
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
-    // allocate memory on device.
-    Out->mutable_data<T>(ctx.GetPlace());
-
-    const int axis_dim = dims[axis];
+    const int dim = dims[axis];
     const int N = SizeToAxis(axis, dims);
     const int D = SizeOutAxis(axis, dims);
 
-    auto* out_data = Out->data<T>();
-    cudnnTensorDescriptor_t desc_;
-    cudnnDataType_t type = platform::ToCudnnDataType(
-        framework::ToDataType(std::type_index(typeid(T))));
-
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateTensorDescriptor(&desc_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensor4dDescriptor(
-        desc_, CUDNN_TENSOR_NCHW, type, N, axis_dim, D, 1));
+    ScopedTensorDescriptor desc;
+    std::vector<int> tensor_dims = {N, dim, D, 1};
+    DataLayout layout = DataLayout::kNCHW;
+    cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
@@ -65,7 +60,7 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
         handle, CUDNN_SOFTMAX_ACCURATE, mode,
-        platform::CudnnDataType<T>::kOne(), desc_, X->data<T>(),
+        platform::CudnnDataType<T>::kOne(), desc_, x->data<T>(),
         platform::CudnnDataType<T>::kZero(), desc_, out_data));
   }
 };
@@ -74,30 +69,23 @@ template <typename T>
 class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* Out = ctx.Input<Tensor>("Out");
-    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
+    auto* dx_data = dx->data<T>();
 
-    auto dims = Out->dims();
+    auto dims = out->dims();
     const int rank = dims.size();
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
-    // allocate memory on device.
-    dX->mutable_data<T>(ctx.GetPlace());
-
-    const int axis_dim = dims[axis];
+    const int dim = dims[axis];
     const int N = SizeToAxis(axis, dims);
     const int D = SizeOutAxis(axis, dims);
 
-    auto* dx_data = dX->data<T>();
-
-    cudnnTensorDescriptor_t desc_;
-    cudnnDataType_t type = platform::ToCudnnDataType(
-        framework::ToDataType(std::type_index(typeid(T))));
-
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateTensorDescriptor(&desc_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensor4dDescriptor(
-        desc_, CUDNN_TENSOR_NCHW, type, N, axis_dim, D, 1));
+    ScopedTensorDescriptor desc;
+    std::vector<int> tensor_dims = {N, dim, D, 1};
+    DataLayout layout = DataLayout::kNCHW;
+    cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
@@ -106,8 +94,8 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
         handle, CUDNN_SOFTMAX_ACCURATE, mode,
-        platform::CudnnDataType<T>::kOne(), desc_, Out->data<T>(), desc_,
-        dOut->data<T>(), platform::CudnnDataType<T>::kZero(), desc_, dx_data));
+        platform::CudnnDataType<T>::kOne(), desc_, out->data<T>(), desc_,
+        dout->data<T>(), platform::CudnnDataType<T>::kZero(), desc_, dx_data));
   }
 };
 
