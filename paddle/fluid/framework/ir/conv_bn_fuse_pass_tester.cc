@@ -49,7 +49,9 @@ void TestMain(const std::string& conv_type) {
   auto* filters = layers.data("filters", {3, 3, 2, 2}, true);
   auto* bias_0 = layers.data("bias_0", {3}, true);
   VarDesc* conv_out;
-  if (conv_type == "conv_transpose") {
+  if (conv_type == "depthwise_conv") {
+    conv_out = layers.depthwise_conv2d(in, filters, bias_0);
+  } else if (conv_type == "conv_transpose") {
     conv_out = layers.conv2d_transpose(in, filters, bias_0);
   } else {
     conv_out = layers.conv2d(in, filters, bias_0);
@@ -87,8 +89,11 @@ TEST(ConvBNFusePass, conv2d) { TestMain("conv"); }
 
 TEST(ConvBNFusePass, conv2d_tranpose) { TestMain("conv_transpose"); }
 
+TEST(ConvBNFusePass, conv2d_tranpose) { TestMain("depthwise_conv"); }
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 USE_PASS(conv_bn_fuse_pass);
+USE_PASS(depthwise_conv_bn_fuse_pass);
