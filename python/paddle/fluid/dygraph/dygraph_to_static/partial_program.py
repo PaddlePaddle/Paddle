@@ -113,7 +113,7 @@ class PartialProgramLayer(layers.Layer):
         self._params = parameters if parameters is not None else []
 
         main_program = self._verify_program(main_program)
-        self._infer_program = main_program.clone(for_test=True)
+        self._infer_program = self._clone_for_test(main_program)
         self._train_program = self._append_backward_desc(main_program)
 
         self._set_grad_type(self._params)
@@ -247,6 +247,10 @@ class PartialProgramLayer(layers.Layer):
             outs = outs[0]
 
         return outs
+
+    @switch_to_static_graph
+    def _clone_for_test(self, main_program):
+        return main_program.clone(for_test=True)
 
     def _is_no_value(self, var):
         if isinstance(var, core.VarBase):
