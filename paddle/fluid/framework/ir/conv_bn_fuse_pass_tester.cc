@@ -89,11 +89,10 @@ TEST(ConvBNFusePass, conv2d) { TestMain("conv"); }
 
 TEST(ConvBNFusePass, conv2d_tranpose) { TestMain("conv_transpose"); }
 
-TEST(ConvBNFusePass, conv2d_tranpose) { TestMain("depthwise_conv"); }
+TEST(ConvBNFusePass, depthwise_conv2d) { TestMain("depthwise_conv"); }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 USE_PASS(conv_bn_fuse_pass);
-USE_PASS(depthwise_conv_bn_fuse_pass);
