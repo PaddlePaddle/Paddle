@@ -1460,8 +1460,8 @@ class Executor(object):
 
                 place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
                 exe = fluid.Executor(place)
-                x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
-                y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
+                x = fluid.data(name="x", shape=[None, 10, 10], dtype="int64")
+                y = fluid.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
                 dataset = fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
                 dataset.set_thread(1)
@@ -1526,8 +1526,8 @@ class Executor(object):
 
               place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
               exe = fluid.Executor(place)
-              x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
-              y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
+              x = fluid.data(name="x", shape=[None, 10, 10], dtype="int64")
+              y = fluid.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
               dataset = fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
               dataset.set_thread(1)
