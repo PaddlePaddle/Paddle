@@ -72,8 +72,8 @@ def create_paddle_case(op_type, callback):
     class PaddleCls(unittest.TestCase):
         def setUp(self):
             self.op_type = op_type
-            self.input_x = np.array([1, 2, 3, 4])
-            self.input_y = np.array([1, 3, 2, 4])
+            self.input_x = np.array([1, 2, 3, 4]).astype(np.int64)
+            self.input_y = np.array([1, 3, 2, 4]).astype(np.int64)
             self.real_result = callback(self.input_x, self.input_y)
             self.place = fluid.CPUPlace()
             if core.is_compiled_with_cuda():
