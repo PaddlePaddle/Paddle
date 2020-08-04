@@ -146,7 +146,7 @@ class Layer(core.Layer):
               import paddle
               import paddle.nn as nn
               
-              paddle.fluid.enable_imperative()
+              paddle.enable_imperative()
               
               net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
 
