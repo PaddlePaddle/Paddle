@@ -17,7 +17,6 @@ decorator to deprecate a function or class
 
 import warnings
 import functools
-from exceptions import DeprecationWarning
 import paddle
 
 
