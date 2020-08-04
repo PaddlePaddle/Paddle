@@ -17,6 +17,7 @@
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace imperative {
@@ -137,12 +138,19 @@ static void PreparedOpRunImpl(
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
 
-  DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs);
-  static_cast<const framework::OperatorWithKernel&>(op).InferShape(
-      &infer_shape_ctx);
+  {
+    platform::RecordEvent run_event("infer_shape",
+                                    platform::EventRole::kInnerOp);
+    DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs);
+    static_cast<const framework::OperatorWithKernel&>(op).InferShape(
+        &infer_shape_ctx);
+  }
 
-  func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
-                                        attrs));
+  {
+    platform::RecordEvent run_event("compute", platform::EventRole::kInnerOp);
+    func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
+                                          attrs));
+  }
 }
 
 void PreparedOp::Run(const NameVarMap<VarBase>& ins,
