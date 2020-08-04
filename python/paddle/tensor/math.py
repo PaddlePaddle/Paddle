@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -140,7 +140,7 @@ def generate_op_noattr(op_type):
     """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
-    def func(x, name=None, out=None):
+    def func(x, name=None):
         if in_dygraph_mode():
             op = getattr(core.ops, op_type)
             return op(x)
@@ -149,14 +149,7 @@ def generate_op_noattr(op_type):
                                  op_type)
         helper = LayerHelper(op_type, **locals())
 
-        if name and out:
-            warnings.warn(
-                "Both name and out parameters have been set in fluid.tensor.math.%s(), only out will take effect to specify the result storage. "
-                "You can discard either one to solve this warning." % op_type,
-                category=UserWarning,
-                stacklevel=2)
-        if not out:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": out})
         return out
 
@@ -193,7 +186,7 @@ Examples:
     return func
 
 @templatedoc()
-def pow(input, exponent, out=None, name=None):
+def pow(input, exponent, name=None):
     """
 	:alias_main: paddle.pow
 	:alias: paddle.pow,paddle.tensor.pow,paddle.tensor.math.pow
@@ -205,8 +198,6 @@ def pow(input, exponent, out=None, name=None):
     Args:
         input(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
         exponent(float32|Variable): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.
-        out (Variable, optional):  The Variable that stores results of the operation.
-            If out is None, a new Variable will be created to store the results.
         name(str, optional): The default value is None. Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -223,16 +214,17 @@ def pow(input, exponent, out=None, name=None):
             x = fluid.data(name="x", shape=[32,32], dtype="float32")
 
             # example 1: argument exponent is float
-            res = fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_1 = paddle.pow(x, 2.0, out=res)
+            y_1 = paddle.pow(x, 2.0)
             # y_1 is x^{2.0}
 
             # example 2: argument exponent is Variable
             exponent_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
-            res = fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_2 = paddle.pow(x, exponent_tensor, out=res)
+            y_2 = paddle.pow(x, exponent_tensor)
             # y_2 is x^{3.0}
     """
+    if in_dygraph_mode():
+        return core.ops.pow(input, "exponent", exponent)
+
     helper = LayerHelper('pow', **locals())
     inputs = {'X': input}
     attrs = {}
@@ -242,22 +234,11 @@ def pow(input, exponent, out=None, name=None):
     else:
         attrs['factor'] = exponent
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    else:
-        check_dtype(
-            out.dtype, out.name,
-            convert_dtype(input.dtype), 'pow',
-            '(The out data type in pow must be the same with input data type.)')
-        if name:
-            warnings.warn(
-                "The output Variable name of the paddle.tensor.pow operation can only be given by parameter out or name. \
-                When parameter out and name are set at the same time, out has a higher priority than name. \
-                Finally, the output Variable name is same as the out name %s"
-                                                                              %
-                out.name,
-                category=UserWarning,
-                stacklevel=2)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    check_dtype(
+        out.dtype, out.name,
+        convert_dtype(input.dtype), 'pow',
+        '(The out data type in pow must be the same with input data type.)')
 
     helper.append_op(
         type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
@@ -307,13 +288,11 @@ def _elementwise_op(helper):
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
-    out = helper.kwargs.get('out', None)
-    if out is None:
-        if name is None:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        else:
-            out = helper.create_variable(
-                name=name, dtype=x.dtype, persistable=False)
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type=op_type,
@@ -325,7 +304,7 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
-def add(x, y, alpha=1, out=None, name=None):
+def add(x, y, alpha=1, name=None):
     """
 Examples:
 
@@ -417,9 +396,7 @@ Examples:
 
         x = fluid.data(name="x", shape=[3], dtype="float32")
         y = fluid.data(name='y', shape=[3], dtype='float32')
-
-        output = fluid.data(name="output", shape=[3], dtype="float32")
-        z = paddle.add(x, y, out=output)
+        z = paddle.add(x, y)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -456,18 +433,10 @@ Examples:
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
 
-    original_op_type = 'add'
-    if name and out:
-        warnings.warn(
-            "Both name and out parameters have been set in paddle.tensor.%s, only out will take effect to specify the result storage. "
-            "You can discard either one to solve this warning." %
-            original_op_type,
-            category=UserWarning,
-            stacklevel=2)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def div(x, y, out=None, name=None):
+def div(x, y, name=None):
     """
 Examples:
 
@@ -537,8 +506,7 @@ Examples:
 
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
-        output = fluid.data(name="output", shape=[2,3,4,5], dtype="float32")
-        z = paddle.div(x, y, out=output)
+        z = paddle.div(x, y)
         # z = x / y
 
         place = fluid.CPUPlace()
@@ -573,14 +541,6 @@ Examples:
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
 
-    original_op_type = 'div'
-    if name and out:
-        warnings.warn(
-            "Both name and out parameters have been set in paddle.tensor.%s, only out will take effect to specify the result storage. "
-            "You can discard either one to solve this warning." %
-            original_op_type,
-            category=UserWarning,
-            stacklevel=2)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -634,9 +594,6 @@ for func in [
 
         additional_args_lines = [
             "alpha (int|float, optional): The alpha factor of the input. Default is 1. If alpha is not 1, the equation becomes Out = X + alpha * Y.",
-            "out (Variable, optinal): The Variable that stores results of the operation. Default is None. If out is None, \
-            a new Variable will be created to store the results."
-                                                                 ,
             "name (string, optional): Name of the output. \
             Default is None. It's used to print debug info for developers. Details: \
             :ref:`api_guide_Name` "
@@ -858,7 +815,7 @@ def elementwise_sum(inputs, name=None):
     return out
 
 
-def mm(input, mat2, out=None, name=None):
+def mm(input, mat2, name=None):
     """
 	:alias_main: paddle.mm
 	:alias: paddle.mm,paddle.tensor.mm,paddle.tensor.math.mm
@@ -876,9 +833,6 @@ def mm(input, mat2, out=None, name=None):
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
         mat2 (Variable): The input variable which is a Tensor or LoDTensor.
-        out(Variable, optional): Optional output which can be any created
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
         name(str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
@@ -914,8 +868,7 @@ def mm(input, mat2, out=None, name=None):
             out = paddle.mm(x, mat2) # out shape is [2, 2]
     """
     if in_dygraph_mode():
-        if out is None:
-            out = _varbase_creator(dtype=input.dtype)
+        out = _varbase_creator(dtype=input.dtype)
         core.ops.matmul(input, mat2, out)
         return out
 
@@ -955,8 +908,7 @@ def mm(input, mat2, out=None, name=None):
     __check_input(input, mat2)
 
     helper = LayerHelper('mm', **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='matmul', inputs={'X': input,
                                'Y': mat2}, outputs={'Out': out})
@@ -1032,7 +984,7 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
     return out
 
 
-def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
+def logsumexp(x, dim=None, keepdim=False, name=None):
     """
 	:alias_main: paddle.logsumexp
 	:alias: paddle.logsumexp,paddle.tensor.logsumexp,paddle.tensor.math.logsumexp
@@ -1052,7 +1004,6 @@ def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
        keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor.
          The result tensor will have one fewer dimension than the :attr:`input` unless :attr:`keep_dim`
          is true, default value is False.
-       out (Variable), optional):  Enable user to explicitly specify an output variable to save result.
        name (str, optional): The default value is None.  Normally there is no need for user to
          set this property.  For more information, please refer to :ref:`api_guide_Name`
 
@@ -1094,13 +1045,8 @@ def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
     exp_out = layers.exp(x)
     sum_out = layers.reduce_sum(exp_out, dim, keepdim)
 
-    if out is not None:
-        check_variable_and_dtype(out, 'out', [x.dtype], op_type)
-        helper = LayerHelper(op_type, **locals())
-        helper.append_op(type="log", inputs={"X": sum_out}, outputs={"Out": out})
-        return out
-
     return layers.log(sum_out, name)
+
 
 
 def inverse(x, name=None):
@@ -1149,9 +1095,7 @@ def inverse(x, name=None):
                 "The input of inverse is expected to be a Tensor whose number "
                 "of dimensions is no less than 2. But reviced: %d, "
                 "x's shape: %s." % (len(x.shape), x.shape))
-
     _check_input(x)
-
     helper = LayerHelper('inverse', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -1159,7 +1103,7 @@ def inverse(x, name=None):
     return out
 
 
-def max(input, dim=None, keep_dim=False, out=None, name=None):
+def max(input, dim=None, keep_dim=False, name=None):
     """
 	:alias_main: paddle.max
 	:alias: paddle.max,paddle.tensor.max,paddle.tensor.math.max
@@ -1178,9 +1122,6 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true, default
             value is False.
-        out(Variable, optional): Optional output which can be any created
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
@@ -1212,8 +1153,7 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
     """
 
     helper = LayerHelper('max', **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(
+    out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
@@ -1239,7 +1179,7 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
     return out
 
 
-def min(input, dim=None, keep_dim=False, out=None, name=None):
+def min(input, dim=None, keep_dim=False, name=None):
     """
 	:alias_main: paddle.min
 	:alias: paddle.min,paddle.tensor.min,paddle.tensor.math.min
@@ -1258,10 +1198,7 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true, default
             value is False.
-        out(Variable, optional): Optional output which can be any created
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
-        name(str, optional): The default value is None.  Normally there is no need for
+        name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
@@ -1291,9 +1228,8 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
     """
 
     helper = LayerHelper('min', **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
 
@@ -1361,7 +1297,7 @@ def log1p(x, name=None):
     return out
 
 
-def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
+def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     """
 	:alias_main: paddle.addcmul
 	:alias: paddle.addcmul,paddle.tensor.addcmul,paddle.tensor.math.addcmul
@@ -1377,10 +1313,6 @@ def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
         tensor1(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
         tensor2(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
         value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
-        out(Variable, Optional): The variable that specifies the output of the
-            operator, which can be Variable that has been created in the
-            program. The default value is None, and a new Variable will be
-            created to save the output. Default: None.
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
     Returns:
@@ -1403,14 +1335,11 @@ def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
     if convert_dtype(input.dtype) in ['int32', 'int64']:
         check_type(value, 'value', int, 'addcmul')
 
-    if out is not None:
-        layers.assign(layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value), out)
-    else:
-        out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
+    out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
     return out
 
 
-def clamp(input, min=None, max=None, output=None, name=None):
+def clamp(input, min=None, max=None, name=None):
     """
 	:alias_main: paddle.clamp
 	:alias: paddle.clamp,paddle.tensor.clamp,paddle.tensor.math.clamp
@@ -1431,8 +1360,6 @@ def clamp(input, min=None, max=None, output=None, name=None):
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         max (float32|Variable): The upper bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        output (Variable, optional): A tensor or LoDTensor. If :attr:`output` is None,
-            a new tensor will be created as :attr:`output`. Default: None.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -1463,6 +1390,11 @@ def clamp(input, min=None, max=None, output=None, name=None):
 
     assert min is not None or max is not None, "either min or max should be defined."
 
+    if in_dygraph_mode():
+        min = sys.float_info.min if min is None else min
+        max = sys.float_info.max if max is None else max
+        return core.ops.clip(input, "min", min, "max", max)
+
     if min is not None:
         check_type(min, 'min', (float, Variable), 'clamp')
         if isinstance(min, Variable):
@@ -1490,13 +1422,13 @@ def clamp(input, min=None, max=None, output=None, name=None):
         attrs['max'] = max
 
     helper = LayerHelper('clamp', **locals())
-    if output is None:
-        output = helper.create_variable_for_type_inference(
+    output = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
     helper.append_op(
         type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
 
     return output
+
 
 def trace(x, offset=0, axis1=0, axis2=1, name=None):
     """
@@ -1592,7 +1524,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     return out
 
 @templatedoc(op_type="kron")
-def kron(x, y, out=None, name=None):
+def kron(x, y, name=None):
     """
 	:alias_main: paddle.kron
 	:alias: paddle.kron,paddle.tensor.kron,paddle.tensor.math.kron
@@ -1605,10 +1537,6 @@ ${comment}
         y (Variable): the second operand of kron op, data type: float16,
             float32, float64, int32 or int64. Its data type should be the same
             with x.
-        out (Variable, optional): Optional output which can be any created
-            Variable that meets the requirements to store the result of
-            operation. If out is None, a new Varibale will be create to store
-            the result. Defaults to None.
         name(str, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
@@ -1649,9 +1577,6 @@ ${comment}
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
     check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        check_variable_and_dtype(out, 'out', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})
     return out

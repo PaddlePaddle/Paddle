@@ -1154,6 +1154,23 @@ class Executor(object):
 
         # For backward compatibility, run directly.
         if not compiled:
+            # In distributed training, the compiled program is saved in Program._graph
+            has_compiled_graph = isinstance(program._graph,
+                                            compiler.CompiledProgram)
+            if has_compiled_graph:
+                program._graph._compile(scope, self.place)
+                # _graph in program does not support inference since the _graph is optimized
+                # through optimizer.minimize function and should not be used as inference graph
+                # assert not program._graph._is_inference
+                return self._run_parallel(
+                    program._graph,
+                    scope=scope,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    fetch_var_name=fetch_var_name,
+                    return_numpy=return_numpy,
+                    return_merged=return_merged)
+
             return self._run_program(
                 program,
                 feed=feed,
@@ -1443,8 +1460,8 @@ class Executor(object):
 
                 place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
                 exe = fluid.Executor(place)
-                x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
-                y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
+                x = fluid.data(name="x", shape=[None, 10, 10], dtype="int64")
+                y = fluid.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
                 dataset = fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
                 dataset.set_thread(1)
@@ -1509,8 +1526,8 @@ class Executor(object):
 
               place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
               exe = fluid.Executor(place)
-              x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
-              y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
+              x = fluid.data(name="x", shape=[None, 10, 10], dtype="int64")
+              y = fluid.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
               dataset = fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
               dataset.set_thread(1)

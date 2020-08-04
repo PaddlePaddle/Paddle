@@ -59,8 +59,8 @@ def concat(x, axis=0, name=None):
     This OP concatenates the input along the axis.
 
     Args:
-        x(list): List of input Tensors with data type float16, float32, float64, int32, int64.
-            All the Tensors in ``x`` must have same data type.
+        x(list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16, 
+            float32, float64, int32, int64. All the Tensors in ``x`` must have same data type.
         axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with data type int or a Tensor with shape [1] and data type int32 
             or int64. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
@@ -69,7 +69,8 @@ def concat(x, axis=0, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Raises:
-        TypeError: The dtype of ``x`` must be one of float16, float32, float64, int32 and int64. 
+        TypeError: ``x`` must be list or tuple.
+        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32 and int64. 
         TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
         TypeError: All the Tensors in ``x`` must have the same data type.
 
@@ -83,21 +84,21 @@ def concat(x, axis=0, name=None):
             import numpy as np
             
             paddle.enable_imperative()  # Now we are in imperative mode
-            in1 = np.array([[1,2,3],
-                            [4,5,6]])
-            in2 = np.array([[11,12,13],
-                            [14,15,16]])
-            in3 = np.array([[21,22],
-                            [23,24]])
+            in1 = np.array([[1, 2, 3],
+                            [4, 5, 6]])
+            in2 = np.array([[11, 12, 13],
+                            [14, 15, 16]])
+            in3 = np.array([[21, 22],
+                            [23, 24]])
             x1 = paddle.imperative.to_variable(in1)
             x2 = paddle.imperative.to_variable(in2)
             x3 = paddle.imperative.to_variable(in3)
             zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             # When the axis is negative, the real axis is (axis + Rank(x))
             # As follow, axis is -1, Rank(x) is 2, the real axis is 1
-            out1 = paddle.concat(x=[x1,x2,x3], axis=-1)
-            out2 = paddle.concat(x=[x1,x2], axis=0)
-            out3 = paddle.concat(x=[x1,x2], axis=zero)
+            out1 = paddle.concat(x=[x1, x2, x3], axis=-1)
+            out2 = paddle.concat(x=[x1, x2], axis=0)
+            out3 = paddle.concat(x=[x1, x2], axis=zero)
             # out1
             # [[ 1  2  3 11 12 13 21 22]
             #  [ 4  5  6 14 15 16 23 24]]
@@ -107,6 +108,7 @@ def concat(x, axis=0, name=None):
             #  [11 12 13]
             #  [14 15 16]]
     """
+    check_type(x, 'x', (list, tuple), 'concat')
     return paddle.fluid.layers.concat(input=x, axis=axis, name=name)
 
 

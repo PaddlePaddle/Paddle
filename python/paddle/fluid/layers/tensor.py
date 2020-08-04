@@ -18,7 +18,7 @@ from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
-from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
+from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard
 from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc
@@ -266,8 +266,8 @@ def concat(input, axis=0, name=None):
     This OP concatenates the input along the axis.
 
     Args:
-        input(list): List of input Tensors with data type float16, float32, float64, int32,
-            int64. All the Tensors in ``input`` must have the same data type.
+        input(list|tuple|Tensor): ``input`` can be Tensor, Tensor list or Tensor tuple which is with data type
+            bool, float16, float32, float64, int32, int64. All the Tensors in ``input`` must have the same data type. 
         axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with data type int or a Tensor with shape [1] and data type int32 or int64.
             The effective range is [-R, R), where R is Rank(x). When ``axis < 0``, it works the same way
@@ -276,7 +276,8 @@ def concat(input, axis=0, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Raises:
-        TypeError: The dtype of ``input`` must be one of float16, float32, float64, int32 and int64. 
+        TypeError: ``input`` must be one of list, tuple or Tensor.
+        TypeError: The data type of ``input`` must be one of bool, float16, float32, float64, int32 and int64. 
         TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
         TypeError: All the Tensors in ``input`` must have the same data type.
 
@@ -289,20 +290,20 @@ def concat(input, axis=0, name=None):
             import paddle.fluid as fluid
             import numpy as np
 
-            in1 = np.array([[1,2,3],
-                            [4,5,6]])
-            in2 = np.array([[11,12,13],
-                            [14,15,16]])
-            in3 = np.array([[21,22],
-                            [23,24]])
+            in1 = np.array([[1, 2, 3],
+                            [4, 5, 6]])
+            in2 = np.array([[11, 12, 13],
+                            [14, 15, 16]])
+            in3 = np.array([[21, 22],
+                            [23, 24]])
             with fluid.dygraph.guard():
                 x1 = fluid.dygraph.to_variable(in1)
                 x2 = fluid.dygraph.to_variable(in2)
                 x3 = fluid.dygraph.to_variable(in3)
                 # When the axis is negative, the real axis is (axis + Rank(x)).
                 # As follows, axis is -1, Rank(x) is 2, the real axis is 1
-                out1 = fluid.layers.concat(input=[x1,x2,x3], axis=-1)
-                out2 = fluid.layers.concat(input=[x1,x2], axis=0)
+                out1 = fluid.layers.concat(input=[x1, x2, x3], axis=-1)
+                out2 = fluid.layers.concat(input=[x1, x2], axis=0)
                 print(out1.numpy())
                 # [[ 1  2  3 11 12 13 21 22]
                 #  [ 4  5  6 14 15 16 23 24]]
@@ -319,18 +320,18 @@ def concat(input, axis=0, name=None):
             axis = axis[0]
         return core.ops.concat(input, 'axis', axis)
 
-    if not isinstance(input, list):
-        warnings.warn(
-            "The type of input in concat should be list, but received %s." %
-            (type(input)))
+    check_type(input, 'input', (list, tuple, Variable), 'concat')
+    if not isinstance(input, Variable):
+        for id, x in enumerate(input):
+            check_variable_and_dtype(
+                x, 'input[' + str(id) + ']',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'concat')
+            if x.dtype != input[0].dtype:
+                raise TypeError(
+                    "All the Tensors in the input must have the same data type.")
+    else:
         input = [input]
-    for id, x in enumerate(input):
-        check_variable_and_dtype(
-            x, 'input[' + str(id) + ']',
-            ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
-        if x.dtype != input[0].dtype:
-            raise TypeError(
-                "All the Tensors in the input must have the same data type.")
     check_type(axis, 'axis', (int, Variable), 'concat')
 
     if isinstance(axis, Variable):
@@ -343,7 +344,7 @@ def concat(input, axis=0, name=None):
 
     if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
-                            "number of the elements must be 1, but received %s." % len(x)
+                "number of the elements must be 1, but received %s." % len(input)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
         helper.append_op(
             type='tensor_array_to_tensor',
@@ -1045,8 +1046,7 @@ def ones(shape, dtype, force_cpu=False):
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
     Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None
-            and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64.
         TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
             be int32 or int64 when it's a Tensor.
 
@@ -1082,8 +1082,7 @@ def zeros(shape, dtype, force_cpu=False, name=None):
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
     Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None
-            and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64.
         TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
             be int32 or int64 when it's a Tensor.
     Examples:
@@ -1394,17 +1393,20 @@ def range(start, end, step, dtype, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if not isinstance(start, Variable):
-        start = fill_constant([1], dtype, start)
+        with device_guard("cpu"):
+            start = fill_constant([1], dtype, start)
     elif start.dtype != dtype:
         start = cast(start, dtype)
 
     if not isinstance(end, Variable):
-        end = fill_constant([1], dtype, end)
+        with device_guard("cpu"):
+            end = fill_constant([1], dtype, end)
     elif end.dtype != dtype:
         end = cast(end, dtype)
 
     if not isinstance(step, Variable):
-        step = fill_constant([1], dtype, step)
+        with device_guard("cpu"):
+            step = fill_constant([1], dtype, step)
     elif step.dtype != dtype:
         step = cast(step, dtype)
 
