@@ -517,8 +517,7 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset(
-            "QueueDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset("QueueDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
         dataset.set_filelist(
@@ -543,8 +542,7 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        dataset2 = paddle.fleet.DatasetFactory().create_dataset(
-            "QueueDataset")
+        dataset2 = paddle.fleet.DatasetFactory().create_dataset("QueueDataset")
         dataset2.set_use_var(slots_vars)
         dataset2.set_batch_size(32)
         dataset2.set_thread(3)
