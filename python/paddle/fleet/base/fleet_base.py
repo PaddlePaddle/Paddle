@@ -335,7 +335,7 @@ class Fleet(object):
                 no_grad_set=no_grad_set)
 
         if graph_optimizer:
-            optimizer_ops, params_grads = graph_optimizer.minimize(
+            optimize_ops, params_grads = graph_optimizer.minimize(
                 loss,
                 startup_program=startup_program,
                 parameter_list=parameter_list,
