@@ -100,7 +100,7 @@ class CollectiveHelper(object):
             'ring_id': ring_id,
             OP_ROLE_KEY: OpRole.Forward
         }
-        if use_pipeline:
+        if self.use_pipeline:
             comm_init_attrs['device_id'] = ring_id
         block.append_op(
             type='c_comm_init',
