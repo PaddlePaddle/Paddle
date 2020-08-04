@@ -182,7 +182,7 @@ class AutoCheckpointTest(AutoCheckPointACLBase):
             "PADDLE_EDL_HDFS_HOME": "/usr/local/hadoop-2.7.7",
             "PADDLE_EDL_HDFS_NAME": "",
             "PADDLE_EDL_HDFS_UGI": "",
-            "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint",
+            "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_1",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_1",
             "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"

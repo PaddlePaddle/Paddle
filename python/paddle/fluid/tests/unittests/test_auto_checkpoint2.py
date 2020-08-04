@@ -37,6 +37,26 @@ logger = get_logger()
 
 
 class AutoCheckpointTest2(AutoCheckPointACLBase):
+    def setUp(self):
+        get_logger()
+        logger.info("enter tests")
+
+        self._old_environ = dict(os.environ)
+        proc_env = {
+            "PADDLE_RUNNING_ENV": "PADDLE_EDL_AUTO_CHECKPOINT",
+            "PADDLE_TRAINER_ID": "0",
+            "PADDLE_RUNNING_PLATFORM": "PADDLE_CLOUD",
+            "PADDLE_JOB_ID": "test_job_auto_2",
+            "PADDLE_EDL_HDFS_HOME": "/usr/local/hadoop-2.7.7",
+            "PADDLE_EDL_HDFS_NAME": "",
+            "PADDLE_EDL_HDFS_UGI": "",
+            "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_2",
+            "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
+            "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_2",
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+        }
+        os.environ.update(proc_env)
+
     def test_corner_epoch_no(self):
         logger.info("begin test_corener_epoch_no")
         checker = acp._get_checker()
