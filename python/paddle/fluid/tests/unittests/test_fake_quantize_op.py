@@ -273,5 +273,31 @@ class TestFakeQuantDequantAbsOp(OpTest):
         self.check_grad(["X"], "Out", user_defined_grads=gradient)
 
 
+# class TestChannelWiseFakeQuantDequantAbsMaxOp(OpTest):
+#     def setUp(self):
+#         self.op_type = "fake_quantize_dequantize_abs_max"
+#         self.attrs = {'bit_length': 8}
+#         self.inputs = {'X': np.random.random((4, 3, 64, 64)).astype("float32"), }
+#         scales = []
+#         for i in range(self.inputs['X'].shape[0]):
+#             scales.append(np.max(np.abs(self.inputs['X'][i])).astype("float32"))
+#         outputs = self.inputs['X'].copy()
+#         range_v = (1 << (self.attrs['bit_length'] - 1)) - 1
+#         for i, scale in enumerate(scales):
+#             outputs[i] = np.round(outputs[i] / scale * range_v) * scale / range_v
+
+#         self.outputs = {
+#             'Out': outputs,
+#             'OutScale': np.array(scales).astype("float32"),
+#         }
+
+#     def test_check_output(self):
+#         self.check_output()
+
+#     def test_check_grad(self):
+#         x = self.inputs["X"]
+#         gradient = [np.ones(x.shape) / np.product(x.shape)]
+#         self.check_grad(["X"], "Out", user_defined_grads=gradient)
+
 if __name__ == "__main__":
     unittest.main()

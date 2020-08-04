@@ -118,7 +118,37 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
 
 template struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext,
                                                float>;
+template <typename T>
+struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx,
+                  const framework::Tensor& in, const framework::Tensor& scale,
+                  const int bin_cnt, framework::Tensor* out) {
+    const int channel = in.dims()[0];
+    auto* scale_data = scale.data<T>();
+    auto* in_data = in.data<T>();
+    auto* out_data = out->mutable_data<T>(ctx.GetPlace());
+    const int channel_size = in.numel() / channel;
+    platform::Transform<platform::CPUDeviceContext> trans;
+    for (int i = 0; i < channel; i++) {
+      T s = scale_data[i];
+      auto* start = in_data + i * channel_size;
+      auto* end = in_data + (i + 1) * channel_size;
+      trans(ctx, start, end, out_data + i * channel_size,
+            ClipFunctor<T>(-s, s));
+    }
+    for (int i = 0; i < channel; i++) {
+      T s = scale_data[i];
+      T inv_s = inverse(s);
+      framework::Tensor one_channel_out = out->Slice(i, i + 1);
+      auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+      out_e.device(*ctx.eigen_device()) =
+          (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
+    }
+  }
+};
 
+template struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext,
+                                                   float>;
 template <typename T>
 struct FindRangeAbsMaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
@@ -268,6 +298,62 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
     AddOutput("Out",
               "(Tensor) Output of quantized low level tensor, "
               "but also saved as float data type.");
+    AddOutput("OutScale", "(Tensor) Current channel wise scale");
+    AddAttr<int>("bit_length", "(int, default 8)")
+        .SetDefault(8)
+        .AddCustomChecker([](const int& bit_length) {
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+                            platform::errors::InvalidArgument(
+                                "'bit_length' should be between 1 and 16, but "
+                                "the received is %d",
+                                bit_length));
+        });
+    AddComment(R"DOC(
+The scale of FakeChannelWiseQuantize operator is a vector.
+In detail, each channel of the input X has a scale value.
+
+$$scale_c = max(abs(X_c))$$
+$$range = 2^{bit\_length - 1} - 1$$
+$$Out_c = round(\frac{X_c * range} {scale_c})$$
+In above three formulas, the range value of c is as follow:
+$$0 \leq c \lt \ the\ channel\ number\ of\ X$$
+)DOC");
+  }
+};
+
+class FakeChannelWiseQuantizeDequantizeAbsMaxOp
+    : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "FakeChannelWiseQuantizeDequantizeAbsMax");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FakeChannelWiseQuantizeDequantizeAbsMax");
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+                   "FakeChannelWiseQuantizeDequantizeAbsMax");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("OutScale", {ctx->GetInputDim("X")[0]});
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  }
+};
+
+class FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker
+    : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor) Input is float data type.");
+    AddOutput("Out",
+              "(Tensor) Output of quantized and dequantized low level tensor, "
+              "saved as float data type.");
     AddOutput("OutScale", "(Tensor) Current channel wise scale");
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
@@ -603,3 +689,12 @@ REGISTER_OP_CPU_KERNEL(moving_average_abs_max_scale,
 REGISTER_OPERATOR(fake_quantize_dequantize_grad, ops::FakeQuantDequantGradOp);
 REGISTER_OP_CPU_KERNEL(fake_quantize_dequantize_grad,
                        ops::FakeQuantDequantGradKernel<CPU, float>);
+
+REGISTER_OPERATOR(fake_channel_wise_quantize_dequantize_abs_max,
+                  ops::FakeChannelWiseQuantizeDequantizeAbsMaxOp,
+                  ops::FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker,
+                  ops::FakeQuantDequantGradMaker<paddle::framework::OpDesc>,
+                  ops::FakeQuantDequantGradMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(
+    fake_channel_wise_quantize_dequantize_abs_max,
+    ops::FakeChannelWiseQuantizeDequantizeAbsMaxKernel<CPU, float>);
