@@ -113,7 +113,7 @@ class PartialProgramLayer(layers.Layer):
         self._params = parameters if parameters is not None else []
 
         main_program = self._verify_program(main_program)
-        self._infer_program = self._clone_for_test(main_program)
+        self._infer_program = main_program.clone(for_test=True)
         self._train_program = self._append_backward_desc(main_program)
 
         self._set_grad_type(self._params)
@@ -280,19 +280,6 @@ class PartialProgramLayer(layers.Layer):
             return res
 
         return out_vars
-
-    @switch_to_static_graph
-    def _clone_for_test(self, main_program):
-        """
-        Clone the main program and change all `is_test` attributes into true.
-        """
-        infer_program = main_program.clone()
-        for block in infer_program.blocks:
-            for op in block.ops:
-                if op.has_attr('is_test'):
-                    op._set_attr('is_test', True)
-
-        return infer_program
 
     def _set_grad_type(self, params):
         # NOTE: if user set sparse gradient mode, the param's gradient
