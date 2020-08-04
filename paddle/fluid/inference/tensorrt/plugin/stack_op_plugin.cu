@@ -23,12 +23,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-// Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
-size_t StackPluginDynamic::getSerializationSize() const { return 0; }
-
-void StackPluginDynamic::serialize(void* buffer) const {}
-
 nvinfer1::DimsExprs StackPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) {
@@ -119,9 +114,9 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                   sizeof(void*) * out_dims.d[axis_], cudaMemcpyHostToDevice,
                   stream);
 
-  int num_stacks = out_dims.d[axis_];
+  const int num_stacks = out_dims.d[axis_];
   dim3 num_blocks(num_stacks, lead_unit);
-  int num_threads = 256;
+  const int num_threads = 256;
   auto infer_type = input_desc[0].type;
 
   if (infer_type == nvinfer1::DataType::kFLOAT) {

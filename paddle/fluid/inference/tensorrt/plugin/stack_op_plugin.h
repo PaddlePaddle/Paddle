@@ -30,25 +30,47 @@ class StackPluginDynamic : public DynamicPluginTensorRT {
  public:
   StackPluginDynamic(int axis, int num_stack)
       : axis_(axis), num_stack_(num_stack) {
-    int device_id;
-    cudaGetDevice(&device_id);
-    in_ptr_tensor_.Resize({num_stack});
-    in_ptr_gpu_ =
-        in_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id));
+    init();
   }
-  StackPluginDynamic(void const* serialData, size_t serialLength) {}
+
+  StackPluginDynamic(void const* serialData, size_t serialLength) {
+    DeserializeValue(&serialData, &serialLength, &axis_);
+    DeserializeValue(&serialData, &serialLength, &num_stack_);
+    init();
+  }
 
   ~StackPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new StackPluginDynamic(axis_, num_stack_);
   }
 
+  void init() {
+    int device_id;
+    cudaGetDevice(&device_id);
+    in_ptr_tensor_.Resize({num_stack_});
+    in_ptr_gpu_ =
+        in_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id));
+  }
+
   const char* getPluginType() const override { return "stack_plugin"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override { return 0; }
 
-  size_t getSerializationSize() const override;
-  void serialize(void* buffer) const override;
+  size_t getSerializationSize() const override {
+    size_t serialize_size = 0;
+
+    serialize_size += SerializedSize(axis_);
+    serialize_size += SerializedSize(num_stack_);
+    // serialize_size += num_stack_ * sizeof(int64_t);
+
+    return serialize_size;
+  }
+
+  void serialize(void* buffer) const override {
+    SerializeValue(&buffer, axis_);
+    SerializeValue(&buffer, num_stack_);
+    // SerializeCudaPointer(&buffer, in_ptr_gpu_, num_stack_);
+  }
 
   nvinfer1::DimsExprs getOutputDimensions(
       int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
