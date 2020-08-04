@@ -26,7 +26,7 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs, bool use_mkldnn,
-           const std::string mkldnn_data_type = "float32") {
+           const std::string& mkldnn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
@@ -142,7 +142,8 @@ static const std::initializer_list<std::string> variable_names{
 // d->Dropout1->g and (g, w5, b3)->Fc1->h and (h,w3,b1,i)->Conv3->j
 //
 // (d,w4, b2)->Conv4->i
-ProgramDesc BuildProgramDesc(bool use_mkldnn, std::string mkldnn_data_type) {
+ProgramDesc BuildProgramDesc(bool use_mkldnn,
+                             const std::string& mkldnn_data_type) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     auto* var = prog.MutableBlock(0)->Var(v);

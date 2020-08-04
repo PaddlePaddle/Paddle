@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_placement_pass.h"
 
 #include <gtest/gtest.h>
-#include <boost/logic/tribool.hpp>
+#include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -24,7 +24,7 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           const std::string mkldnn_data_type = "float32") {
+           const std::string& mkldnn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
 
   op->SetType(type);
@@ -98,8 +98,7 @@ void MainTest(std::initializer_list<std::string> quantize_enabled_op_types,
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
-      auto* op = node->Op();
-      if (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8") {
+      if (platform::HasOpINT8DataType(node)) {
         ++int8_data_type_count;
       }
     }
@@ -117,8 +116,7 @@ void DefaultAttrTest(unsigned expected_int8_data_type_count) {
   unsigned int8_data_type_count = 0;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
-      auto* op = node->Op();
-      if (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8") {
+      if (platform::HasOpINT8DataType(node)) {
         ++int8_data_type_count;
       }
     }
