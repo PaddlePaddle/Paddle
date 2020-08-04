@@ -11,16 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle
+"""
+decorator to deprecate a function or class
+"""
+
 import warnings
 import functools
-import inspect
 from exceptions import DeprecationWarning
+import paddle
 
 
 def deprecated(update_to="", since="", reason=""):
     """Decorate a function to signify its deprecation.
-       
+
        This function wraps a method that will soon be removed and does two things:
            - The docstring of the API will be modified to include a notice
              about deprecation."
@@ -70,7 +73,7 @@ def deprecated(update_to="", since="", reason=""):
                 warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
                 warnings.simplefilter('default',
                                       DeprecationWarning)  # reset filter
-            except Exception as e:
+            except Exception:
                 # if current version is older than _since, do nothing.
                 pass
 
