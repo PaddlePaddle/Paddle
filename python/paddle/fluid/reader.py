@@ -1669,8 +1669,8 @@ class PyReader(DataLoaderBase):
 
 class DatasetLoader(DataLoaderBase):
     def __init__(self, dataset, places, drop_last):
-        assert isinstance(
-            dataset, paddle.fleet.dataset.DatasetBase), "dataset must be type of DatasetBase"
+        assert isinstance(dataset, paddle.fleet.dataset.
+                          DatasetBase), "dataset must be type of DatasetBase"
         assert not in_dygraph_mode(
         ), "DatasetLoader is not supported in dygraph mode yet"
 
@@ -1685,8 +1685,8 @@ class DatasetLoader(DataLoaderBase):
 
         dataset.set_thread(thread_num)
 
-        if isinstance(
-            dataset, paddle.fleet.dataset.InMemoryDataset) and dataset.queue_num > thread_num:
+        if isinstance(dataset, paddle.fleet.dataset.
+                      InMemoryDataset) and dataset.queue_num > thread_num:
             logging.warn("queue_num {} which is set in Dataset is ignored".
                          format(dataset.queue_num))
             dataset.set_queue_num(thread_num)
