@@ -37,7 +37,7 @@ def deprecated(update_to="", since="", reason=""):
     """
 
     def decorator(func):
-        """Decorate a func or class"""
+        """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
         assert isinstance(reason, str), 'type of "reason" must be str.'
@@ -61,7 +61,7 @@ def deprecated(update_to="", since="", reason=""):
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            """wrapper a function or class"""
+            """check version, and print warning if current version is newer than deprecated version."""
             try:
                 if _since == "":
                     paddle.fluid.require_version("0.0.0")
@@ -76,7 +76,6 @@ def deprecated(update_to="", since="", reason=""):
             except Exception:
                 # if current version is older than _since, do nothing.
                 pass
-
             return func(*args, **kwargs)
 
         return wrapper
