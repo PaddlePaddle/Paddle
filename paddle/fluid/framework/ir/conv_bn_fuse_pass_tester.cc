@@ -50,7 +50,7 @@ void TestMain(const std::string& conv_type) {
   auto* bias_0 = layers.data("bias_0", {3}, true);
   VarDesc* conv_out;
   if (conv_type == "depthwise_conv") {
-    conv_out = layers.depthwise_conv2d(in, filters, bias_0);
+    conv_out = layers.depthwise_conv2d(in, filters, bias_0, false);
   } else if (conv_type == "conv_transpose") {
     conv_out = layers.conv2d_transpose(in, filters, bias_0);
   } else {
