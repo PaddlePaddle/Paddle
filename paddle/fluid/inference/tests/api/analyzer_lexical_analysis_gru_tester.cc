@@ -26,7 +26,12 @@ static constexpr float FP32_PRECISION = 0.89211;
 static constexpr float FP32_RECALL = 0.89442;
 static constexpr float FP32_F1_SCORE = 0.89326;
 
-void SetConfig(AnalysisConfig *cfg) {
+void SetNativeConfig(AnalysisConfig *cfg) {
+  cfg->SetModel(FLAGS_infer_model);
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_num_threads);
+}
+
+void SetAnalysisConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model);
   cfg->DisableGpu();
   cfg->SwitchIrOptim(true);
@@ -141,24 +146,22 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   }
 }
 
-TEST(Analyzer_lexical_analysis_xnli, quantization) {
-  AnalysisConfig config;
-  SetConfig(&config);
-
-  std::vector<std::vector<PaddleTensor>> outputs;
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
-                 input_slots_all, &outputs, FLAGS_num_threads,
+std::vector<double> Lexical_Test(
+    const std::vector<std::vector<PaddleTensor>> &input_slots_all,
+    std::vector<std::vector<PaddleTensor>> *outputs, AnalysisConfig *config,
+    const bool use_analysis) {
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(config),
+                 input_slots_all, outputs, FLAGS_num_threads,
                  FLAGS_use_analysis);
+  std::vector<double> acc_res(3);
   if (FLAGS_with_accuracy_layer) {
-    EXPECT_GT(outputs.size(), 0UL);
-    EXPECT_EQ(3UL, outputs[0].size());
+    EXPECT_GT(outputs->size(), 0UL);
+    EXPECT_EQ(3UL, (*outputs)[0].size());
     std::vector<int64_t> acc_sum(3);
-    for (size_t i = 0; i < outputs.size(); i++) {
+    for (size_t i = 0; i < outputs->size(); i++) {
       for (size_t j = 0; j < 3UL; j++) {
         acc_sum[j] =
-            acc_sum[j] + *static_cast<int64_t *>(outputs[i][j].data.data());
+            acc_sum[j] + *static_cast<int64_t *>((*outputs)[i][j].data.data());
       }
     }
     // nums_infer, nums_label, nums_correct
@@ -182,15 +185,37 @@ TEST(Analyzer_lexical_analysis_xnli, quantization) {
     LOG(INFO) << "F1 score: " << std::fixed << std::setw(6)
               << std::setprecision(5) << f1_score;
 
-    CHECK_LE(std::abs(FP32_PRECISION - precision), FLAGS_quantized_accuracy);
-    CHECK_LE(std::abs(FP32_RECALL - recall), FLAGS_quantized_accuracy);
-    CHECK_LE(std::abs(FP32_F1_SCORE - f1_score), FLAGS_quantized_accuracy);
+    acc_res = {precision, recall, f1_score};
+    // return acc_res;
   } else {
-    EXPECT_GT(outputs.size(), 0UL);
-    EXPECT_EQ(1UL, outputs[0].size());
+    EXPECT_GT(outputs->size(), 0UL);
+    EXPECT_EQ(outputs[0].size(), 1UL);
     LOG(INFO) << "No accuracy result. To get accuracy result provide a model "
                  "with accuracy layers in it and use --with_accuracy_layer "
                  "option.";
+  }
+  return acc_res;
+}
+
+TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
+  AnalysisConfig native_cfg;
+
+  std::vector<std::vector<PaddleTensor>> outputs;
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  SetNativeConfig(&native_cfg);
+  std::vector<double> acc_ref(3);
+  acc_ref = Lexical_Test(input_slots_all, &outputs, &native_cfg, false);
+  if (FLAGS_use_analysis) {
+    AnalysisConfig analysis_cfg;
+    SetAnalysisConfig(&analysis_cfg);
+    std::vector<double> acc_analysis(3);
+    acc_analysis = Lexical_Test(input_slots_all, &outputs, &analysis_cfg, true);
+    for (size_t i = 0; i < acc_analysis.size(); i++) {
+      CHECK_LE(std::abs(acc_ref[i] - acc_analysis[i]),
+               FLAGS_quantized_accuracy);
+    }
+    LOG(INFO) << "FINISHED!";
   }
 }
 
