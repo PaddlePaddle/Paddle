@@ -154,13 +154,17 @@ class AmpScaler(object):
 
     def minimize(self, optimizer, *args, **kwargs):
         """
-        Similar as `Optimizer.minimize()`, performs parameters updating.
-        It first unscale the scaled gradients of paramers, then do one step parameter updating,
-        and finally update loss scaling ratio. 
+        This function is similar as `Optimizer.minimize()`, which performs parameters updating.
+        
+        If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
+        Otherwise, it first unscales the scaled gradients of parameters, then updates the parameters.
+
+        Finally, the loss scaling ratio is updated.
 
         Args:
             optimizer(Optimizer):  The optimizer used to update parameters.
-            Examples:
+            args:  Arguments, which will be forward to `optimizer.minimize()`.
+            kwargs: Keyword arguments, which will be forward to `Optimizer.minimize()`.
 
         Examples:
             .. code-block:: python
