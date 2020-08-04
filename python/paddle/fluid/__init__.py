@@ -68,7 +68,7 @@ from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
-from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .core import LoDTensor, LoDTensorArray, CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
 from .incubate import fleet
 from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
@@ -118,6 +118,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'LoDTensor',
         'LoDTensorArray',
         'CPUPlace',
+        'XPUPlace',
         'CUDAPlace',
         'CUDAPinnedPlace',
         'Tensor',
