@@ -15,8 +15,8 @@
 # TODO: import framework api under this directory 
 __all__ = [
     'default_main_program', 'default_startup_program', 'create_global_var',
-    'ParamAttr', 'Program', 'Variable', 'CPUPlace', 'CUDAPlace',
-    'CUDAPinnedPlace'
+    'create_parameter', 'ParamAttr', 'Program', 'Variable', 'CPUPlace',
+    'CUDAPlace', 'CUDAPinnedPlace'
 ]
 
 __all__ += [
@@ -33,7 +33,7 @@ from . import random
 from .random import manual_seed
 from ..fluid.framework import default_main_program, default_startup_program, Program, Variable
 from ..fluid.param_attr import ParamAttr
-from ..fluid.layers.tensor import create_global_var
+from ..fluid.layers.tensor import create_global_var, create_parameter
 from ..fluid.core import CPUPlace, CUDAPlace, CUDAPinnedPlace
 
 from paddle.fluid import core

@@ -16,23 +16,23 @@ __all__ = [
     'fc',
     'batch_norm',
     'embedding',
-    'bilinear_tensor_product'
-    'conv2d'
-    'conv2d_transpose'
-    'conv3d'
-    'conv3d_transpose'
-    'create_parameter'
-    'crf_decoding'
-    'data_norm'
-    'deformable_conv'
-    'group_norm'
-    'hsigmoid'
-    'instance_norm'
-    'layer_norm'
-    'multi_box_head'
-    'nce'
-    'prelu'
-    'row_conv'
+    'bilinear_tensor_product',
+    'conv2d',
+    'conv2d_transpose',
+    'conv3d',
+    'conv3d_transpose',
+    'create_parameter',
+    'crf_decoding',
+    'data_norm',
+    'deformable_conv',
+    'group_norm',
+    'hsigmoid',
+    'instance_norm',
+    'layer_norm',
+    'multi_box_head',
+    'nce',
+    'prelu',
+    'row_conv',
     'spectral_norm',
 ]
 
