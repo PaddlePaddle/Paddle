@@ -23,6 +23,11 @@ class AsyncGraphExecutionOptimizer(AsyncOptimizer):
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
 
+    def _can_apply(self):
+        if self.role_maker.is_server():
+            return False
+        return True
+
     def _is_graph_out(self):
         return True
 
@@ -47,8 +52,8 @@ class AsyncGraphExecutionOptimizer(AsyncOptimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        compiled_program = self._try_to_compile(loss.block.program, loss)
         program = fluid.default_main_program()
+        compiled_program = self._try_to_compile(program, loss)
         program._graph = compiled_program
         # just return self.optimizer_ops and self.param_grads
         return None, None

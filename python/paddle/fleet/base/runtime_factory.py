@@ -35,3 +35,4 @@ class RuntimeFactory(object):
             ps_runtime._set_basic_info(final_dist_strategy, role_maker, opt_ops,
                                        params_grads, origin_main_program,
                                        origin_startup_program)
+            return ps_runtime
