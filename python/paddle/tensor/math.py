@@ -1310,6 +1310,7 @@ def min(x, axis=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import numpy as np
             import paddle
             import paddle.imperative as imperative
 
