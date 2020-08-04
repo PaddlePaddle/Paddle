@@ -149,6 +149,21 @@ class TestJitSaveLoad(unittest.TestCase):
         self.assertTrue(
             np.array_equal(train_loss.numpy(), load_train_loss.numpy()))
 
+    def test_load_dygraph_state_dict(self):
+        # train and save model
+        train_layer = self.train_and_save_model()
+        train_layer.eval()
+        # contruct new model
+        new_layer = LinearNet(784, 1)
+        model_dict, _ = fluid.dygraph.load_dygraph(self.model_path)
+        new_layer.set_dict(model_dict)
+        new_layer.eval()
+        # inference & compare
+        x = fluid.dygraph.to_variable(
+            np.random.random((1, 784)).astype('float32'))
+        self.assertTrue(
+            np.array_equal(train_layer(x).numpy(), new_layer(x).numpy()))
+
     def test_save_get_program_failed(self):
         layer = LinearNetNotDeclarative(784, 1)
         example_inputs, layer, _ = train(layer)
