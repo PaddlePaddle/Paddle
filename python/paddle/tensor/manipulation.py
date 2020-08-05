@@ -196,11 +196,11 @@ def stack(x, axis=0, name=None):
 	:alias_main: paddle.stack
 	:alias: paddle.stack, paddle.tensor.stack, paddle.tensor.manipulation.stack
 
-    This OP stacks all the input tensors :code:`x` along :code:`axis` dimemsion. 
-    All tensors should to be of the same shape and same dtype.
-    For example, given N tensors of shape [A, B], if :code:`axis == 0`, the shape of stacked 
-    tensor is [N, A, B]; if :code:`axis == 1`, the shape of stacked 
-    tensor is [A, N, B]. 
+    This OP stacks all the input tensors ``x`` along ``axis`` dimemsion. 
+    All tensors must be of the same shape and same dtype.
+    For example, given N tensors of shape [A, B], if `axis == 0``, the shape of stacked 
+    tensor is [N, A, B]; if ``axis == 1``, the shape of stacked 
+    tensor is [A, N, B], etc.
     
 
     .. code-block:: text
@@ -246,15 +246,12 @@ def stack(x, axis=0, name=None):
                           [5.0, 6.0] ] ]
 
     Args:
-        x (Tensor|list(Tensor)): Input :code:`x` can be a single Tensor, or a :code:`list` of Tensors.
-                                     If :code:`x` is a :code:`list`, the shapes of all these Tensors
-                                     must be the same. Supposing input is N dims
-                                     Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
-                                     Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
-                                     Support data types: float32, float64, int32, int64.
-        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`,
-                              where R is the number of dimensions of the first input tensor :code:`x[0]`. 
-                              If ``axis`` < 0, :math:`axis = axis+R+1`. The default value of axis is 0.
+        x (Tensor|list(Tensor)): Input ``x`` can be a single Tensor, or a ``list`` of Tensors.
+                                     If ``x`` is a ``list``, the Tensors in ``x``
+                                     must be of the same shape and dtype. Support data types: float32, float64, int32, int64.
+        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
+                              where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
+                              If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
 
     Returns:
         Tensor: The stacked Tensor with same data type as input.
