@@ -106,7 +106,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 }
 
 void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     InitDumpEnv();
   }
   VLOG(3) << "init other env done.";
@@ -133,7 +133,7 @@ void MultiTrainer::Run() {
 }
 
 void MultiTrainer::Finalize() {
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
   root_scope_->DropKids();
