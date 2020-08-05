@@ -14,10 +14,14 @@
 
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/softmax_op.h"
+#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_launch_param_config.h"
 // #include "paddle/fluid/platform/float16.h"
 // #include "stdio.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace platform = paddle::platform;
 namespace ops = paddle::operators;
@@ -128,7 +132,7 @@ class SoftmaxKernel<platform::CUDADeviceContext, T>
     int in = d / axis_dim;
 
     // LOG(INFO) << "numel: " << numel << " n: " << n << " d: " << d
-    //          << " axis_dim: " << axis_dim << " in: " << in;
+    //         << " axis_dim: " << axis_dim << " in: " << in;
 
     auto* x_data = X->data<T>();
 
@@ -145,12 +149,27 @@ class SoftmaxKernel<platform::CUDADeviceContext, T>
         numel, x_data, exp_x_data);
 
     framework::Tensor sum_x;
-    sum_x.Resize({n * axis_dim});
+    sum_x.Resize({n * in});
     auto* sum_x_data = sum_x.mutable_data<T>(context.GetPlace());
-    dim3 block(std::min(512, in));
-    dim3 grid(n, (in + block.x - 1) / block.x);
-    SumCUDAKernel<T><<<grid, block, 0, stream>>>(n, d, in, axis_dim, exp_x_data,
-                                                 sum_x_data);
+
+    if (axis == rank - 1) {
+      auto& dev_ctx =
+          context.template device_context<platform::CUDADeviceContext>();
+
+      framework::Tensor one;
+      one.mutable_data<T>({d}, context.GetPlace());
+      math::SetConstant<platform::CUDADeviceContext, T> set;
+      set(dev_ctx, &one, static_cast<T>(1.0));
+
+      math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx).GEMV(
+          false, n, d, 1.0, exp_x_data, one.data<T>(), 0.0, sum_x_data);
+
+    } else {
+      dim3 block(std::min(512, in));
+      dim3 grid(n, (in + block.x - 1) / block.x);
+      SumCUDAKernel<T><<<grid, block, 0, stream>>>(n, d, in, axis_dim,
+                                                   exp_x_data, sum_x_data);
+    }
 
     auto* out_data = Out->mutable_data<T>(context.GetPlace());
     dim3 block1(std::min(512, d));
