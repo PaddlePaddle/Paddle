@@ -60,6 +60,7 @@ from .loss import MSELoss  #DEFINE_ALIAS
 from .loss import L1Loss  #DEFINE_ALIAS
 from .loss import NLLLoss  #DEFINE_ALIAS
 from .loss import BCELoss  #DEFINE_ALIAS
+from .loss import KLDivLoss  #DEFINE_ALIAS
 from .norm import BatchNorm  #DEFINE_ALIAS
 from .norm import GroupNorm  #DEFINE_ALIAS
 from .norm import LayerNorm  #DEFINE_ALIAS

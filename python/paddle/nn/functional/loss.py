@@ -18,7 +18,7 @@ from ...fluid.layers import center_loss  #DEFINE_ALIAS
 from ...fluid.layers import cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import dice_loss  #DEFINE_ALIAS
 from ...fluid.layers import iou_similarity  #DEFINE_ALIAS
-from ...fluid.layers import kldiv_loss  #DEFINE_ALIAS
+from ...fluid.layers import kldiv_loss as kl_div  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import mse_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
@@ -44,7 +44,7 @@ __all__ = [
     'edit_distance',
     'huber_loss',
     'iou_similarity',
-    'kldiv_loss',
+    'kl_div',
     'log_loss',
     'margin_rank_loss',
     'mse_loss',

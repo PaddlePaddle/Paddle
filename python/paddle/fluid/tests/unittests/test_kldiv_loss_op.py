@@ -13,6 +13,7 @@
 
 from __future__ import division
 
+import paddle
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -75,6 +76,32 @@ class TestKLDivLossOp4(TestKLDivLossOp):
     def initTestCase(self):
         self.x_shape = (5, 20)
         self.reduction = 'sum'
+
+
+class TestKLDivLossDygraph(unittest.TestCase):
+    def run_kl_loss(self, reduction, shape=(5, 20)):
+        x = np.random.uniform(-10, 10, shape).astype('float64')
+        target = np.random.uniform(-10, 10, shape).astype('float64')
+        gt_loss = kldiv_loss(x, target, reduction)
+
+        with paddle.imperative.guard():
+            kldiv_criterion = paddle.nn.KLDivLoss(reduction)
+            pred_loss = kldiv_criterion(
+                paddle.imperative.to_variable(x),
+                paddle.imperative.to_variable(target))
+        self.assertTrue(np.allclose(pred_loss.numpy(), gt_loss))
+
+    def test_kl_loss_batchmean(self):
+        self.run_kl_loss('batchmean')
+
+    def test_kl_loss_batchmean(self):
+        self.run_kl_loss('mean')
+
+    def test_kl_loss_batchmean(self):
+        self.run_kl_loss('sum')
+
+    def test_kl_loss_batchmean(self):
+        self.run_kl_loss('none')
 
 
 if __name__ == "__main__":

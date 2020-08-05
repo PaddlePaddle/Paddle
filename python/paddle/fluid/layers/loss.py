@@ -1622,8 +1622,8 @@ def huber_loss(input, label, delta):
 @templatedoc()
 def kldiv_loss(x, target, reduction='mean', name=None):
     """
-    :alias_main: paddle.nn.functional.kldiv_loss
-	:alias: paddle.nn.functional.kldiv_loss,paddle.nn.functional.loss.kldiv_loss
+    :alias_main: paddle.nn.functional.kl_div
+	:alias: paddle.nn.functional.kl_div,paddle.nn.functional.loss.kl_div
 	:old_api: paddle.fluid.layers.kldiv_loss
 
     ${comment}

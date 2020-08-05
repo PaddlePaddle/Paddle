@@ -22,7 +22,8 @@ __all__ = [
     'MSELoss',
     'L1Loss',
     'NLLLoss',
-    'BCELoss'
+    'BCELoss',
+    'KLDivLoss'
 ]
 
 
@@ -606,5 +607,89 @@ class NLLLoss(fluid.dygraph.Layer):
             type='nll_loss', inputs=inputs, outputs=outputs, attrs=attrs)
         if x_dims != 2 and x_dims != 4 and self.reduction == 'none':
             out = fluid.layers.reshape(out, shape=out_shape)
+
+        return out
+
+
+class KLDivLoss(fluid.dygraph.Layer):
+    """
+	:alias_main: paddle.nn.KLDivLoss
+	:alias: paddle.nn.KLDivLoss,paddle.nn.layer.KLDivLoss,paddle.nn.layer.loss.KLDivLoss
+
+    This operator calculates the Kullback-Leibler divergence loss
+    between Input(X) and Input(Target). Notes that Input(X) is the
+    log-probability and Input(Target) is the probability.
+
+    KL divergence loss is calculated as follows:
+
+    $$l(x, y) = y * (\log(y) - x)$$
+
+    Parameters:
+        reduction (str, optional): Indicate how to average the loss, 
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            Default is ``'mean'``.
+
+    Returns:
+        Tensor: The KL divergence loss. The data type is same as input tensor
+
+    Return type: Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            import paddle.nn as nn
+            
+            paddle.enable_imperative()
+
+            shape = (5, 20)
+            x = np.random.uniform(-10, 10, shape).astype('float32')
+            target = np.random.uniform(-10, 10, shape).astype('float32')
+
+            # 'batchmean' reduction, loss shape will be [N]
+            kldiv_criterion = paddle.nn.KLDivLoss(reduction='batchmean')
+            pred_loss = kldiv_criterion(paddle.imperative.to_variable(x),
+                                        paddle.imperative.to_variable(target))
+            # shape=[5]
+            
+            # 'mean' reduction, loss shape will be [1]
+            kldiv_criterion = paddle.nn.KLDivLoss(reduction='mean')
+            pred_loss = kldiv_criterion(paddle.imperative.to_variable(x),
+                                        paddle.imperative.to_variable(target))
+            # shape=[1]
+
+            # 'sum' reduction, loss shape will be [1]
+            kldiv_criterion = paddle.nn.KLDivLoss(reduction='sum')
+            pred_loss = kldiv_criterion(paddle.imperative.to_variable(x),
+                                        paddle.imperative.to_variable(target))
+            # shape=[1]
+
+            # 'none' reduction, loss shape is same with X shape
+            kldiv_criterion = paddle.nn.KLDivLoss(reduction='none')
+            pred_loss = kldiv_criterion(paddle.imperative.to_variable(x),
+                                        paddle.imperative.to_variable(target))
+            # shape=[5, 20]
+    """
+
+    def __init__(self, reduction='mean'):
+        super(KLDivLoss, self).__init__()
+        self.reduction = reduction
+
+    def forward(self, input, target):
+        fluid.data_feeder.check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'KLDivLoss')
+        fluid.data_feeder.check_variable_and_dtype(
+            target, 'target', ['float32', 'float64'], 'KLDivLoss')
+        fluid.data_feeder.check_type(self.reduction, 'reduction', str,
+                                     'KLDivLoss')
+
+        if self.reduction not in ['batchmean', 'sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in KLDivLoss should be 'batchmean', 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % self.reduction)
+
+        out = paddle.nn.functional.kl_div(input, target, self.reduction)
 
         return out
