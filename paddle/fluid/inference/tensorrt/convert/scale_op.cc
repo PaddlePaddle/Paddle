@@ -90,7 +90,8 @@ class ScaleOpConverter : public OpConverter {
           power_weights.get(), scale_weights.get(), power_weights.get());
     }
 
-    PADDLE_ENFORCE_EQ(layer != nullptr, true);
+    PADDLE_ENFORCE_EQ(layer != nullptr, true,
+                      platform::errors::Fatal("Create scale layer failed."));
 
     if (idim.nbDims == 3) {
       // TensorRT scale layer is not supporting input dims < 4 when using
