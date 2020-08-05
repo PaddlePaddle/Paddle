@@ -140,6 +140,11 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("");
     AddAttr<std::string>("y_data_format", "This parameter is no longer used.")
         .SetDefault("");
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
+        .SetDefault(false);
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")

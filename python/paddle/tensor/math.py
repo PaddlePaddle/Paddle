@@ -652,7 +652,7 @@ for func in [
         op_proto,
         additional_args_lines=additional_args_lines,
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
-            "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
+            "use_quantizer", "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
 
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):

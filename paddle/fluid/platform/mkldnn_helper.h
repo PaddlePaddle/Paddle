@@ -421,7 +421,8 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
 }
 
 inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
-  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8";
+  return (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8" ||
+          op->GetAttrIfExists<bool>("use_quantizer"));
 }
 
 }  // namespace platform
