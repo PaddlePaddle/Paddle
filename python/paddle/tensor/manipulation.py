@@ -198,6 +198,11 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if start_axis > stop_axis:
         raise ValueError("The stop_axis should be larger than stat_axis")
 
+    if in_dygraph_mode():
+        dy_out, _ = core.ops.flatten_contiguous_range(
+            x, 'start_axis', start_axis, 'stop_axis', stop_axis)
+        return dy_out
+
     out = helper.create_variable_for_type_inference(x.dtype)
     x_shape = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
