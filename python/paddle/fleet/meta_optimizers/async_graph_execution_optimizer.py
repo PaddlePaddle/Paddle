@@ -24,8 +24,13 @@ class AsyncGraphExecutionOptimizer(AsyncOptimizer):
         self.meta_optimizers_white_list = []
 
     def _can_apply(self):
+        k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
+        if k_steps < 0:
+            return False
+
         if self.role_maker.is_server():
             return False
+
         return True
 
     def _is_graph_out(self):
