@@ -19,20 +19,14 @@ class RuntimeFactory(object):
     def __init__(self):
         pass
 
-    def _create_runtime(self, final_dist_strategy, role_maker, opt_ops,
-                        params_grads, origin_main_program,
-                        origin_startup_program):
-        if role_maker._is_collective:
+    def _create_runtime(self, context):
+        if context["role_maker"]._is_collective:
             collective_runtime = CollectiveRuntime()
-            collective_runtime._set_basic_info(
-                final_dist_strategy, role_maker, opt_ops, params_grads,
-                origin_main_program, origin_startup_program)
+            collective_runtime._set_basic_info(context)
             return collective_runtime
 
-        k_steps = final_dist_strategy.a_sync_configs["k_steps"]
-        if not role_maker._is_collective and k_steps >= 0:
+        k_steps = context["valid_strategy"].a_sync_configs["k_steps"]
+        if not context["role_maker"]._is_collective and k_steps >= 0:
             ps_runtime = ParameterServerRuntime()
-            ps_runtime._set_basic_info(final_dist_strategy, role_maker, opt_ops,
-                                       params_grads, origin_main_program,
-                                       origin_startup_program)
+            ps_runtime._set_basic_info(context)
             return ps_runtime

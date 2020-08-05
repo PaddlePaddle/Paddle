@@ -20,11 +20,10 @@ __all__ = ['UtilBase']
 
 
 class UtilFactory(object):
-    def _create_util(self, dist_strategy, role_maker, optimize_ops,
-                     params_grads):
+    def _create_util(self, context):
         util = UtilBase()
-        util._set_strategy(dist_strategy)
-        util._set_role_maker(role_maker)
+        util._set_strategy(context["valid_strategy"])
+        util._set_role_maker(context["role_maker"])
         return util
 
 

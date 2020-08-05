@@ -34,29 +34,27 @@ class ParameterServerRuntime(RuntimeBase):
         super(ParameterServerRuntime, self).__init__()
         self._communicator = None
 
-    def _set_basic_info(self, dist_strategy, role_maker, optimize_ops,
-                        params_grads, origin_main_program,
-                        origin_startup_program):
-        self.strategy = dist_strategy
-        self.role_maker = role_maker
-        self.optimizer_ops = optimize_ops
-        self.params_grads = params_grads
-        self.origin_main_program = origin_main_program
-        self.origin_startup_program = origin_startup_program
+    def _set_basic_info(self, context):
+        self.context = context
+        self.role_maker = context["role_maker"]
+        self.origin_main_program = context["origin_main_program"]
+        self.origin_startup_program = context["origin_startup_program"]
         self.async_strategy = self.get_distributed_strategy()
         self.compiled_strategy = self.build_compiled_startegy()
 
     def get_distributed_strategy(self):
-        k_steps = self.strategy.a_sync_configs["k_steps"]
         strategy = None
 
-        if not self.strategy.a_sync and k_steps == 0:
+        dist_strategy = self.context["valid_strategy"]
+        k_steps = dist_strategy.a_sync_configs["k_steps"]
+
+        if not dist_strategy.a_sync and k_steps == 0:
             strategy = StrategyFactory.create_sync_strategy()
 
-        if self.strategy.a_sync and k_steps == 0:
+        if dist_strategy.a_sync and k_steps == 0:
             strategy = StrategyFactory.create_async_strategy()
 
-        if self.strategy.a_sync and k_steps > 0:
+        if dist_strategy.a_sync and k_steps > 0:
             strategy = StrategyFactory.create_geo_strategy(k_steps)
 
         if not strategy:

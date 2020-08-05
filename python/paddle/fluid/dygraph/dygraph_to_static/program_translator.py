@@ -487,6 +487,8 @@ class ProgramTranslator(object):
         _, partial_program_layer = self._program_cache[function_spec]
 
         if args and isinstance(args[0], layers.Layer):
+            # Synchronize self.training attribute.
+            partial_program_layer.training = args[0].training
             args = args[1:]
 
         return partial_program_layer(args)
