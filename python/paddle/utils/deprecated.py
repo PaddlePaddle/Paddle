@@ -35,13 +35,6 @@ def deprecated(update_to="", since="", reason=""):
            decorator: decorated function or class.
     """
 
-    def _is_newer_version(v1, v2):
-        """compare two versions."""
-
-        _v1 = [int(i) for i in v1.split(".")] + [0] * (4 - len(v1))
-        _v2 = [int(i) for i in v2.split(".")] + [0] * (4 - len(v2))
-        return _v1 >= _v2
-
     def decorator(func):
         """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
@@ -72,8 +65,11 @@ def deprecated(update_to="", since="", reason=""):
                2. since version is empty, in this case, API is deprecated in all versions.
                3. current version is newer than since version.
             """
-            if paddle.__version__ == "0.0.0" or _since == "" or _is_newer_version(
-                    paddle.__version__, _since):
+            v_current = [int(i) for i in paddle.__version__.split(".")
+                         ] + [0] * (4 - len(paddle.__version__))
+            v_since = [int(i) for i in _since.split(".")] + [0] * (4 -
+                                                                   len(_since))
+            if paddle.__version__ == "0.0.0" or _since == "" or v_current >= v_since:
                 warnings.simplefilter('always',
                                       DeprecationWarning)  # turn off filter
                 warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
