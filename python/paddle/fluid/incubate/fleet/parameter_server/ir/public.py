@@ -153,8 +153,6 @@ def find_heter_ops(program, default_device="cpu"):
             if len(current_default_block_ops) > 1:
                 default_ops[default_device][block_index] = current_default_block_ops
                 program_block_ops.append(current_default_block_ops)
-                print("append {} cpu op-block: {}".format(block_index,
-                                                          current_default_block_ops))
                 current_default_block_ops = []
                 block_index += 1
 
@@ -167,8 +165,6 @@ def find_heter_ops(program, default_device="cpu"):
                 op_device = current_heter_block_ops[0].attr("op_device")
                 heter_ops[op_device][block_index] = current_heter_block_ops
                 program_block_ops.append(current_heter_block_ops)
-                print("append {} xpu op-block: {}".format(block_index,
-                                                          current_heter_block_ops))
                 block_index += 1
                 current_heter_block_ops = []
                 current_heter_device = op.attr("op_device")
@@ -179,8 +175,6 @@ def find_heter_ops(program, default_device="cpu"):
             op_device = current_heter_block_ops[0].attr("op_device")
             heter_ops[op_device][block_index] = current_heter_block_ops
             program_block_ops.append(current_heter_block_ops)
-            print("append {} xpu op-block: {}".format(block_index,
-                                                      current_heter_block_ops))
             block_index += 1
             current_heter_block_ops = []
             current_heter_device = default_device
@@ -193,16 +187,11 @@ def find_heter_ops(program, default_device="cpu"):
     if current_default_block_ops != []:
         default_ops[default_device][block_index] = current_default_block_ops
         program_block_ops.append(current_default_block_ops)
-        print("append {} cpu op-block: {}".format(block_index,
-                                                  current_default_block_ops))
 
     if current_heter_block_ops != []:
         op_device = current_heter_block_ops[0].attr("op_device")
         heter_ops[op_device][block_index] = current_heter_block_ops
         program_block_ops.append(current_heter_block_ops)
-        print("append {} xpu op-block: {}".format(block_index, current_heter_block_ops))
-
-    #remove_communicate_op(origin_porgram, heter_ops, default_ops, program_block_ops)
 
     if len(heter_ops) == 0:
         warnings.warn(
@@ -216,7 +205,6 @@ def find_heter_ops(program, default_device="cpu"):
         heter_blocks += len(heter_block_dict)
         for _, heter_block in heter_block_dict.items():
             total_heter_ops += len(heter_block)
-    print("total op block {}".format(len(program_block_ops)))
     print(
         "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, heter_blocks))
     return origin_porgram, heter_ops, default_ops, program_block_ops
@@ -346,17 +334,14 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
 
 
 def create_trainer_program(program, config, heter_ops, block_var_detail):
-    print("create_trainer_program begin")
     for device in heter_ops.keys():
         for heter_block_index in sorted(heter_ops[device]):
-            print("heter_block_index: {}".format(heter_block_index))
-
             replace_ops_by_communicate_op(
                 program, config, heter_block_index, heter_ops[device][heter_block_index], block_var_detail)
+    deleter_trainer_useless_var(program)
 
 
 def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, block_var_detail):
-    print("replace_ops_by_communicate_op begin")
     all_op = program.global_block().ops
     start_op = ops_list[0]
     first_op_idx = -1
@@ -377,10 +362,6 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
         program, heter_block_index-1, block_var_detail[heter_block_index-1]["entrance"], block_var_detail[heter_block_index-1]["exit"])
     comm_info = get_communicate_var_info(
         program, heter_block_index, entrance_var, exit_var)
-
-    print("block_index {}, comm_info {}".format(
-        heter_block_index-1, default_device_comm_info))
-    print("block_index {}, comm_info {}".format(heter_block_index, comm_info))
 
     # create reshape op
     for i in range(len(entrance_var)):
@@ -462,14 +443,6 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
         )
         first_op_idx += 1
 
-    # for var in private_var:
-    #    if var in entrance_var:
-    #        continue
-    #    if var in exit_var:
-    #        continue
-    #    if program.global_block().has_var(var):
-    #        program.global_block()._remove_var(var)
-
 
 def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_list):
     input_var_reshape_dim = []
@@ -517,19 +490,12 @@ def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_l
 
 
 def find_block_joints(program, program_block_ops_list, heter_ops):
-    print("find_block_joints begin")
     block_var_detail = find_entrance_exit_private(
         program, program_block_ops_list)
-    for i in range(len(block_var_detail)):
-        print("1#_block_var_detail_{} {}".format(i, block_var_detail[i]))
     block_var_detail = entrance_exit_check(
         program, program_block_ops_list, block_var_detail, heter_ops)
-    for i in range(len(block_var_detail)):
-        print("2#_block_var_detail_{} {}".format(i, block_var_detail[i]))
     block_var_detail = delete_block_useless_exit(
         program, program_block_ops_list, block_var_detail)
-    for i in range(len(block_var_detail)):
-        print("3#_block_var_detail_{} {}".format(i, block_var_detail[i]))
     return block_var_detail
 
 
@@ -583,20 +549,17 @@ def find_need_var_from_previous_block(need_add_vars, block_var_detail, current_i
     for device in heter_ops:
         for index in heter_ops[device].keys():
             index_device_map[index] = device
-    print("index_device_map {}".format(index_device_map))
 
     pre_index = current_index - 1
     need_ignore_var = []
 
-    # if need_add_var in current device, no need comm
-    print("need_add_vars: {}".format(need_add_vars))
+    # if need_add_var in current device, no need communicate
     for var in need_add_vars:
         while(pre_index >= 0):
             previous_block_private = block_var_detail[pre_index]["private"]
             previous_block_exit = block_var_detail[pre_index]["exit"]
             previous_block_entrance = block_var_detail[pre_index]["entrance"]
             total_var = previous_block_private + previous_block_exit + previous_block_entrance
-            print("previous_block_total_var: {}".format(total_var))
             if var in total_var:
                 if index_device_map[current_index] == index_device_map[pre_index] and index_device_map[current_index] == DEFAULT_DEVICE:
                     need_ignore_var.append(var)
@@ -731,7 +694,19 @@ def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype, type
 
 
 def deleter_trainer_useless_var(program):
-    pass
+    porgram_useful_var_list = []
+    for op in program.global_block().ops:
+        input_var_list, output_var_list = find_op_input_output(
+            program, program.global_block(), op)
+        op_var_list = list(set(input_var_list).union(set(output_var_list)))
+        porgram_useful_var_list = list(
+            set(porgram_useful_var_list).union(set(op_var_list)))
+
+    program_useless_var_list = list(
+        set(get_vars_name_in_block(program.global_block())).difference(set(porgram_useful_var_list)))
+    for var in program_useless_var_list:
+        program.global_block()._remove_var(var)
+    return program_useless_var_list
 
 
 def add_vars_by_op_map(var_map, program):
@@ -781,13 +756,14 @@ def find_ops_list_input_output(program, ops_list):
 def find_op_input_output(program, block, op):
     input_var_list = []
     output_var_list = []
-    print("block.vars {}".format(block.vars))
     inputs = _get_input_map_from_op(
         block.vars, op)
     input_var_list += get_varlist_from_op_map(inputs)
     outputs = _get_output_map_from_op(
         block.vars, op)
     output_var_list += get_varlist_from_op_map(outputs)
+    input_var_list = list(set(input_var_list))
+    output_var_list = list(set(output_var_list))
     return input_var_list, output_var_list
 
 
