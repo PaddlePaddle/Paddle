@@ -72,24 +72,39 @@ def create_paddle_case(op_type, callback):
     class PaddleCls(unittest.TestCase):
         def setUp(self):
             self.op_type = op_type
-            self.input_x = np.array([1, 2, 3, 4])
-            self.input_y = np.array([1, 3, 2, 4])
+            self.input_x = np.array([1, 2, 3, 4]).astype(np.int64)
+            self.input_y = np.array([1, 3, 2, 4]).astype(np.int64)
             self.real_result = callback(self.input_x, self.input_y)
+            self.place = fluid.CPUPlace()
+            if core.is_compiled_with_cuda():
+                self.place = paddle.CUDAPlace(0)
 
         def test_api(self):
             with program_guard(Program(), Program()):
-                x = fluid.layers.data(name='x', shape=[4], dtype='int64')
-                y = fluid.layers.data(name='y', shape=[4], dtype='int64')
+                x = fluid.data(name='x', shape=[4], dtype='int64')
+                y = fluid.data(name='y', shape=[4], dtype='int64')
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
-                place = fluid.CPUPlace()
-                if core.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                exe = fluid.Executor(place)
+                exe = fluid.Executor(self.place)
                 res, = exe.run(feed={"x": self.input_x,
                                      "y": self.input_y},
                                fetch_list=[out])
             self.assertEqual((res == self.real_result).all(), True)
+
+        def test_broadcast_api_1(self):
+            with program_guard(Program(), Program()):
+                x = paddle.nn.data(name='x', shape=[1, 2, 1, 3], dtype='int32')
+                y = paddle.nn.data(name='y', shape=[1, 2, 3], dtype='int32')
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                exe = paddle.Executor(self.place)
+                input_x = np.arange(1, 7).reshape((1, 2, 1, 3)).astype(np.int32)
+                input_y = np.arange(0, 6).reshape((1, 2, 3)).astype(np.int32)
+                real_result = callback(input_x, input_y)
+                res, = exe.run(feed={"x": input_x,
+                                     "y": input_y},
+                               fetch_list=[out])
+            self.assertEqual((res == real_result).all(), True)
 
         def test_attr_name(self):
             with program_guard(Program(), Program()):
@@ -104,6 +119,7 @@ def create_paddle_case(op_type, callback):
     globals()[cls_name] = PaddleCls
 
 
+create_paddle_case('less_than', lambda _a, _b: _a < _b)
 create_paddle_case('less_equal', lambda _a, _b: _a <= _b)
 create_paddle_case('greater_than', lambda _a, _b: _a > _b)
 create_paddle_case('greater_equal', lambda _a, _b: _a >= _b)
