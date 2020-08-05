@@ -27,6 +27,8 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
+void* GetTensorRtHandle();
+
 extern std::once_flag tensorrt_dso_flag;
 extern void* tensorrt_dso_handle;
 
@@ -36,8 +38,7 @@ extern void* tensorrt_dso_handle;
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {          \
       using tensorrt_func = decltype(&::__name);                              \
       std::call_once(tensorrt_dso_flag, []() {                                \
-        tensorrt_dso_handle =                                                 \
-            paddle::platform::dynload::GetTensorRtDsoHandle();                \
+        tensorrt_dso_handle = paddle::platform::dynload::GetTensorRtHandle(); \
         PADDLE_ENFORCE_NOT_NULL(tensorrt_dso_handle,                          \
                                 platform::errors::Unavailable(                \
                                     "Load tensorrt %s failed", #__name));     \
@@ -53,7 +54,8 @@ extern void* tensorrt_dso_handle;
 
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
   __macro(createInferBuilder_INTERNAL);     \
-  __macro(createInferRuntime_INTERNAL);
+  __macro(createInferRuntime_INTERNAL);     \
+  __macro(getPluginRegistry);
 
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
 

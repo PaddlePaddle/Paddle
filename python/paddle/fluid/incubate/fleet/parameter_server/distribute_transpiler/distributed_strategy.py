@@ -19,7 +19,8 @@ __all__ = [
 
 import os
 import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig, DistributedMode
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 
 class TrainerRuntimeConfig(object):
@@ -68,7 +69,8 @@ class TrainerRuntimeConfig(object):
         elif self.mode == DistributedMode.GEO:
             mode_str = "GEO"
             need_keys = [
-                'communicator_thread_pool_size', 'communicator_send_wait_times'
+                'communicator_thread_pool_size', 'communicator_send_wait_times',
+                'communicator_max_merge_var_num', 'communicator_send_queue_size'
             ]
         else:
             raise ValueError("Unsupported Mode")
@@ -124,10 +126,19 @@ class TrainerRuntimeConfig(object):
         return self.display(self.get_communicator_flags())
 
 
+class PSLibRuntimeConfig(object):
+    def __init__(self):
+        self.runtime_configs = {}
+
+    def get_runtime_configs(self):
+        return self.runtime_configs
+
+
 class DistributedStrategy(object):
     def __init__(self):
         self._program_config = DistributeTranspilerConfig()
         self._trainer_runtime_config = TrainerRuntimeConfig()
+        self._pslib_runtime_config = PSLibRuntimeConfig()
         self._server_runtime_config = ServerRuntimeConfig()
         num_threads = int(os.getenv("CPU_NUM", "1"))
 
@@ -203,6 +214,12 @@ class DistributedStrategy(object):
         raise NotImplementedError(
             "check_trainer_runtime_config must be implemented by derived class. You should use StrategyFactory to create DistributedStrategy."
         )
+
+    def get_pslib_runtime_config(self):
+        return self._pslib_runtime_config
+
+    def set_pslib_runtime_config(self, config):
+        self._pslib_runtime_config.runtime_configs = config
 
     def get_server_runtime_config(self):
         return self._server_runtime_config
@@ -374,6 +391,12 @@ class GeoStrategy(DistributedStrategy):
 
     def check_trainer_runtime_config(self):
         self._trainer_runtime_config.mode = DistributedMode.GEO
+
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_queue_size'] = self._program_config.geo_sgd_need_push_nums
+
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_max_merge_var_num'] = self._program_config.geo_sgd_need_push_nums
 
     def check_server_runtime_config(self):
         pass

@@ -15,7 +15,7 @@
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 import os
@@ -201,8 +201,11 @@ class TestCreateDefaultStrategy(unittest.TestCase):
             server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
         fleet.init(role)
 
-        optimizer = fluid.optimizer.SGD(0.0001)
-        optimizer = fleet.distributed_optimizer(optimizer)
+        def type_error_optimizer():
+            optimizer = fluid.optimizer.SGD(0.0001)
+            optimizer = fleet.distributed_optimizer(optimizer)
+
+        self.assertRaises(TypeError, type_error_optimizer)
 
 
 class TestHalfAsyncStrategy(unittest.TestCase):

@@ -83,26 +83,6 @@ class TestFillConstantOp4(OpTest):
         self.check_output()
 
 
-class TestFillConstantOp5(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program()):
-            out_np = np.zeros(shape=(1), dtype='float32')
-            out = paddle.zeros(shape=[1], dtype="float32")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result = exe.run(fetch_list=[out])
-            self.assertEqual((result == out_np).all(), True)
-        with program_guard(Program()):
-            data = fluid.data(name="X", shape=[1], dtype="float32")
-            out = paddle.ones(shape=[1], out=data, dtype="float32")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result = exe.run(feed={"X": np.array(
-                [0.1], dtype="float32")},
-                             fetch_list=[data, out])
-            self.assertEqual(result[0], result[1])
-
-
 class TestFillConstantOpWithSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
@@ -317,7 +297,7 @@ class TestFillConstantOpError(unittest.TestCase):
             #for ci coverage
             x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
             self.assertRaises(
-                ValueError,
+                TypeError,
                 fluid.layers.fill_constant,
                 shape=[1],
                 value=5,

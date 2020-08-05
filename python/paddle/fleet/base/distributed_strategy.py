@@ -12,8 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fleet.proto import distributed_strategy_pb2
 from paddle.fluid.framework import Variable
+import google.protobuf.text_format
+
+
+def get_msg_dict(msg):
+    res_dict = {}
+    fields = msg.DESCRIPTOR.fields
+    for f in fields:
+        res_dict[f.name] = getattr(msg, f.name)
+    return res_dict
+
+
+def assign_configs_value(msg, config):
+    fields = msg.DESCRIPTOR.fields
+    for key in config:
+        for f in fields:
+            if key == f.name:
+                if f.label == 3:
+                    getattr(msg, f.name).extend(config[f.name])
+                elif f.label == 1 or f.label == 2:
+                    setattr(msg, f.name, config[f.name])
+
+
+def check_configs_key(msg, config, field_name):
+    key_list = msg.DESCRIPTOR.fields_by_name.keys()
+    for key in config:
+        assert key in key_list, "key:{} not in {}".format(key, field_name)
 
 
 class DistributedJobInfo(object):
@@ -55,10 +82,208 @@ class DistributedJobInfo(object):
 
 class DistributedStrategy(object):
     def __init__(self):
+        """
+        DistributedStrategy is the main configuration entry for distributed training of Paddle.
+        All of the distributed training configurations can be configured in DistributedStrategy,
+        such as automatic mixed precision (AMP), Layer-wise Adaptive Rate Scaling (LARS), 
+        asynchronous update parameter server(ASGD), etc.
+        
+        DistributedStrategy can be serialized into protobuf file or deserialized from protobuf file
+
+        Users who run local training usually configure BuildStrategy and ExecutionStrategy, and 
+        DistributedStrategy supports configurations from BuildStrategy and ExecutionStrategy
+
+        """
         self.strategy = distributed_strategy_pb2.DistributedStrategy()
+
+    def save_to_prototxt(self, output):
+        """
+        Serialize current DistributedStrategy to string and save to output file
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.dgc = True
+            strategy.recompute = True
+            strategy.recompute_configs = {"checkpoint": ["x"]}
+            strategy.save_to_prototxt("dist_strategy.prototxt")
+        """
+        with open(output, "w") as fout:
+            fout.write(str(self.strategy))
+
+    def load_from_prototxt(self, pb_file):
+        """
+        Load from prototxt file for DistributedStrategy initialization
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.load_from_prototxt("dist_strategy.protoxt")
+        """
+        with open(pb_file, 'r') as f:
+            self.strategy = google.protobuf.text_format.Merge(
+                str(f.read()), self.strategy)
+
+    @property
+    def execution_strategy(self):
+        """
+        Configure ExecutionStrategy for DistributedStrategy
+
+        Examples:
+          .. code-block:: python
+
+            exe_strategy = paddle.fluid.ExecutionStrategy()
+            exe_strategy.num_threads = 10
+            exe_strategy.num_iteration_per_drop_scope = 10
+            exe_strategy.num_iteration_per_run = 10
+
+            strategy = paddle.fleet.DistributedStrategy()
+            strategy.execution_strategy = exe_strategy
+        """
+        execution_strategy = paddle.fluid.ExecutionStrategy()
+        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
+        for f in fields:
+            setattr(execution_strategy, f.name,
+                    getattr(self.strategy.execution_strategy, f.name))
+        return execution_strategy
+
+    @execution_strategy.setter
+    def execution_strategy(self, strategy):
+        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
+        for f in fields:
+            setattr(self.strategy.execution_strategy, f.name,
+                    getattr(strategy, f.name))
+
+    @property
+    def build_strategy(self):
+        """
+        Configure BuildStrategy for DistributedStrategy
+        Note that the properties of BuildStrategy are valid in DistributedStrategy
+        only if the property is non-distributed strategy.
+
+        Examples:
+          .. code-block:: python
+
+            build_strategy = paddle.fluid.BuildStrategy()
+            build_strategy.enable_sequential_execution = True
+            build_strategy.fuse_elewise_add_act_ops = True
+            build_strategy.fuse_bn_act_ops = True
+            build_strategy.enable_auto_fusion = True
+            build_strategy.fuse_relu_depthwise_conv = True
+            build_strategy.fuse_broadcast_ops = True
+            build_strategy.fuse_all_optimizer_ops = True
+            build_strategy.enable_inplace = True
+            
+            strategy = paddle.fleet.DistributedStrategy()
+            strategy.build_strategy = build_strategy
+        """
+
+        build_strategy = paddle.fluid.BuildStrategy()
+        fields = self.strategy.build_strategy.DESCRIPTOR.fields
+        for f in fields:
+            setattr(build_strategy, f.name,
+                    getattr(self.strategy.build_strategy, f.name))
+        return build_strategy
+
+    @build_strategy.setter
+    def build_strategy(self, strategy):
+        fields = self.strategy.build_strategy.DESCRIPTOR.fields
+        for f in fields:
+            if f.label == 1 or f.label == 2:  # optional and required field
+                setattr(self.strategy.build_strategy, f.name,
+                        getattr(strategy, f.name))
+            elif f.label == 3:  # repeated field
+                getattr(self.strategy.build_strategy,
+                        f.name).extend(getattr(strategy, f.name))
+
+    @property
+    def a_sync(self):
+        """
+        Indicating whether we are using asynchronous stocastic gradient descent updates
+        for training. This property is valid when we are using parameter server training, 
+        which is implied by setting approperate RoleMaker
+        Default value: True
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+
+            strategy = fleet.DistributedStrategy()
+            strategy.a_sync = True  # by default this is True
+            
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return self.strategy.a_sync
+
+    @a_sync.setter
+    def a_sync(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.a_sync = flag
+        else:
+            print("WARNING: a_sync should have value of bool type")
+
+    @property
+    def a_sync_configs(self):
+        """
+        Set a_sync update configurations. In general, asynchronous parameter server
+        training has serveral configurable settings that can be configured through
+        a dict.
+
+        **Notes**:
+            **Detailed arguments for a_sync_configs**
+            **k_step**: number of local optimization updates before communication
+            **max_merge_var_num**: maximum number of merged gradients before communication
+            **send_queue_size**: a buffer size of worker communication
+            **independent_recv_thread**: if we are using independent recv thread for communication
+            **thread_pool_size**: number of thread pool
+            **send_wait_times**: waiting time for sending gradients
+            **runtime_split_send_recv**: if we are using Tensor split for send and recv during runtime
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+
+            strategy = fleet.DistributedStrategy()
+            strategy.a_sync = True  # by default this is True
+            configs = {"k_step": 10000, "send_queue_size": 32}
+            strategy.a_sync_configs = configs
+
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return get_msg_dict(self.strategy.a_sync_configs)
+
+    @a_sync_configs.setter
+    def a_sync_configs(self, configs):
+        check_configs_key(self.strategy.a_sync_configs, configs,
+                          "a_sync_configs")
+        assign_configs_value(self.strategy.a_sync_configs, configs)
 
     @property
     def amp(self):
+        """
+        Indicating whether we are using automatic mixed precision training
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.amp = True # by default this is false
+
+        """
         return self.strategy.amp
 
     @amp.setter
@@ -69,19 +294,124 @@ class DistributedStrategy(object):
             print("WARNING: amp should have value of bool type")
 
     @property
-    def amp_loss_scaling(self):
-        return self.strategy.amp_loss_scaling
+    def amp_configs(self):
+        return get_msg_dict(self.strategy.amp_configs)
 
-    @amp_loss_scaling.setter
-    def amp_loss_scaling(self, value):
-        if isinstance(value, int):
-            self.strategy.amp_loss_scaling = value
-        else:
-            print("WARNING: amp_loss_scaling should have value of int type")
+    @amp_configs.setter
+    def amp_configs(self, configs):
+        check_configs_key(self.strategy.amp_configs, configs, "amp_configs")
+        assign_configs_value(self.strategy.amp_configs, configs)
 
     @property
     def recompute(self):
+        """
+        Indicating whether we are using forward recomputation for memory optimization
+        Default value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.recompute = True
+            # suppose x and y are names of checkpoint tensors for recomputation
+            strategy.recompute_configs = {"checkpoints": ["x", "y"]}
+        """
         return self.strategy.recompute
+
+    @property
+    def sync_nccl_allreduce(self):
+        return self.strategy.sync_nccl_allreduce
+
+    @sync_nccl_allreduce.setter
+    def sync_nccl_allreduce(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.sync_nccl_allreduce = flag
+        else:
+            print("WARNING: sync_nccl_allreduce should have value of bool type")
+
+    @property
+    def use_hierarchical_allreduce(self):
+        return self.strategy.use_hierarchical_allreduce
+
+    @use_hierarchical_allreduce.setter
+    def use_hierarchical_allreduce(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.use_hierarchical_allreduce = flag
+        else:
+            print(
+                "WARNING: use_hierarchical_allreduce should have value of bool type"
+            )
+
+    @property
+    def hierarchical_allreduce_inter_nranks(self):
+        return self.strategy.hierarchical_allreduce_inter_nranks
+
+    @hierarchical_allreduce_inter_nranks.setter
+    def hierarchical_allreduce_inter_nranks(self, value):
+        if isinstance(value, int):
+            self.strategy.hierarchical_allreduce_inter_nranks = value
+        else:
+            print(
+                "WARNING: hierarchical_allreduce_inter_nranks should have value of int type"
+            )
+
+    @property
+    def sync_batch_norm(self):
+        return self.strategy.sync_batch_norm
+
+    @sync_batch_norm.setter
+    def sync_batch_norm(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.sync_batch_norm = flag
+        else:
+            print("WARNING: sync_batch_norm should have value of bool type")
+
+    @property
+    def fuse_all_reduce_ops(self):
+        return self.strategy.fuse_all_reduce_ops
+
+    @fuse_all_reduce_ops.setter
+    def fuse_all_reduce_ops(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.fuse_all_reduce_ops = flag
+        else:
+            print("WARNING: fuse_all_reduce_ops should have value of bool type")
+
+    @property
+    def fuse_grad_size_in_MB(self):
+        return self.strategy.fuse_grad_size_in_MB
+
+    @fuse_grad_size_in_MB.setter
+    def fuse_grad_size_in_MB(self, value):
+        if isinstance(value, int):
+            self.strategy.fuse_grad_size_in_MB = value
+        else:
+            print("WARNING: fuse_grad_size_in_MB should have value of int type")
+
+    @property
+    def _fuse_grad_size_in_TFLOPS(self):
+        return self.strategy.fuse_grad_size_in_TFLOPS
+
+    @_fuse_grad_size_in_TFLOPS.setter
+    def _fuse_grad_size_in_TFLOPS(self, value):
+        if isinstance(value, float):
+            self.strategy.fuse_grad_size_in_TFLOPS = value
+        else:
+            print(
+                "WARNING: fuse_grad_size_in_TFLOPS should have value of float type"
+            )
+
+    @property
+    def nccl_comm_num(self):
+        return self.strategy.nccl_comm_num
+
+    @nccl_comm_num.setter
+    def nccl_comm_num(self, value):
+        if isinstance(value, int):
+            self.strategy.nccl_comm_num = value
+        else:
+            print("WARNING: nccl_comm_num should have value of int type")
 
     @recompute.setter
     def recompute(self, flag):
@@ -91,39 +421,44 @@ class DistributedStrategy(object):
             print("WARNING: recompute should have value of bool type")
 
     @property
-    def recompute_checkpoints(self):
-        return self.strategy.recompute_checkpoints
+    def recompute_configs(self):
+        """
+        Set recompute configurations. In general, the recompute strategy of current
+        implementation should have some manually assign checkpoints
 
-    @recompute_checkpoints.setter
-    def recompute_checkpoints(self, checkpoints):
-        if isinstance(checkpoints, list):
-            str_list = True
-            var_list = True
-            for item in checkpoints:
-                if not isinstance(item, str):
-                    str_list = False
-                if not isinstance(item, Variable):
-                    var_list = False
+        Examples:
+          .. code-block:: python
+        
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.recompute = True
+            strategy.recompute_configs = {"checkpionts": ["x", "y"]}
 
-            assert (str_list and var_list) == False
-            if str_list:
-                self.strategy.ClearField("recompute_checkpoints")
-                self.strategy.recompute_checkpoints.extend(checkpoints)
-            elif var_list:
-                names = [x.name for x in checkpoints]
-                self.strategy.ClearField("recompute_checkpoints")
-                self.strategy.recompute_checkpoints.extend(names)
-            else:
-                print(
-                    "WARNING: recompute_checkpoints should have value of list[Variable] or list[name] type"
-                )
-        else:
-            print(
-                "WARNING: recompute_checkpoints should have value of list[Variable] or list[name] type"
-            )
+        """
+        return get_msg_dict(self.strategy.recompute_configs)
+
+    @recompute_configs.setter
+    def recompute_configs(self, configs):
+        check_configs_key(self.strategy.recompute_configs, configs,
+                          "checkpoint_configs")
+        assign_configs_value(self.strategy.recompute_configs, configs)
 
     @property
     def pipeline(self):
+        """
+        Indicating whether we are using pipeline parallelism for distributed training.
+        Current implementation mainly focus on single GPU machine pipeline parallelism and
+        data parallelism across GPU machine. The pipeline information is indicated through
+        device_guard information in user-defined program.
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.pipeline = True
+
+        """
         return self.strategy.pipeline
 
     @pipeline.setter
@@ -134,15 +469,38 @@ class DistributedStrategy(object):
             print("WARNING: pipeline should have value of bool type")
 
     @property
-    def pipeline_micro_batch(self):
-        return self.strategy.pipeline_micro_batch
+    def pipeline_configs(self):
+        """
+        Set pipeline parallelism configurations. In pipeline parallelism,
+        different parts of neural networks are running on different GPUS.
+        There are Tensor queue buffer between each pair of neighborhood GPUS 
+        that are responsible for synchronizing hidden Tensor results between
+        GPUs. Pipeline parallelism consists of serveral producer-consumer style
+        hardware pairs, such as GPU-GPU, CPU-GPU, GPU-XPU. The best way to speedup
+        pipeline parallelism is to make the size of Tensor in Tensor queue smaller, 
+        so that we will have a faster producer for downstream consumers.
 
-    @pipeline_micro_batch.setter
-    def pipeline_micro_batch(self, value):
-        if isinstance(value, int):
-            self.strategy.pipeline_micro_batch = value
-        else:
-            print("WARNING: pipeline micro batch should have value of int type")
+        **Notes**:
+            **Detailed arguments for pipeline_configs**
+            **micro_batch**: the number of small batches in each user defined batch
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.pipeline = True
+            strategy.pipeline_configs = {"micro_batch": 12}
+
+        """
+
+        return get_msg_dict(self.strategy.pipeline_configs)
+
+    @pipeline_configs.setter
+    def pipeline_configs(self, configs):
+        check_configs_key(self.strategy.pipeline_configs, configs,
+                          "pipeline_configs")
+        assign_configs_value(self.strategy.pipeline_configs, configs)
 
     @property
     def localsgd(self):
@@ -156,15 +514,14 @@ class DistributedStrategy(object):
             print("WARNING: localsgd should have value of bool type")
 
     @property
-    def localsgd_k_step(self):
-        return self.strategy.localsgd_k_step
+    def localsgd_configs(self):
+        return get_msg_dict(self.strategy.localsgd_configs)
 
-    @localsgd_k_step.setter
-    def localsgd_k_step(self, value):
-        if isinstance(value, int):
-            self.strategy.localsgd_k_step = value
-        else:
-            print("WARNING: localsgd_k_step should have value of int type")
+    @localsgd_configs.setter
+    def localsgd_configs(self, configs):
+        check_configs_key(self.strategy.localsgd_configs, configs,
+                          "localsgd_configs")
+        assign_configs_value(self.strategy.localsgd_configs, configs)
 
     @property
     def dgc(self):
@@ -178,30 +535,33 @@ class DistributedStrategy(object):
             print("WARNING: dgc should have value of bool type")
 
     @property
-    def hierachical_allreduce(self):
-        return self.strategy.hierachical_allreduce
+    def dgc_configs(self):
+        return get_msg_dict(self.strategy.dgc_configs)
 
-    @hierachical_allreduce.setter
-    def hierachical_allreduce(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.hierachical_allreduce = flag
-        else:
-            print(
-                "WARNING: hierachical_allreduce should have value of bool type")
-
-    @property
-    def nccl_comm_num(self):
-        return self.strategy.nccl_comm_num
-
-    @nccl_comm_num.setter
-    def nccl_comm_num(self, value):
-        if isinstance(value, int):
-            self.strategy.nccl_comm_num = value
-        else:
-            print("WARNING: nccl_comm_num should have value of int type")
+    @dgc_configs.setter
+    def dgc_configs(self, configs):
+        check_configs_key(self.strategy.dgc_configs, configs, "dgc_configs")
+        assign_configs_value(self.strategy.dgc_configs, configs)
 
     @property
     def gradient_merge(self):
+        """
+        Gradient Merge, also called as Gradient Accumulation,
+        is a strategy for large batch training. With this strategy,
+        model parameter will not be updated until user-defined steps.
+        For each step, the forward network and the backward network
+        will run to calculate the gradient of model parameters.
+        For every k step, the optimization network will run,
+        applying a specific optimization method (such as SGD, Adam)
+        to model parameters.
+
+        Examples:
+        .. code-block:: python
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.gradient_merge = True
+            strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
+        """
         return self.strategy.gradient_merge
 
     @gradient_merge.setter
@@ -212,28 +572,26 @@ class DistributedStrategy(object):
             print("WARNING: gradient_merge should have value of bool type")
 
     @property
-    def gradient_merge_k_step(self):
-        return self.strategy.gradient_merge_k_step
+    def gradient_merge_configs(self):
+        """
+        the key-value configs of distribute_strategy
+        Keys: 
+            k_steps (int): the update period of the parameters
+            avg (bool): whether to average the gradients of each mini-batch,
+                the default value is `True`
+        Example:
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.gradient_merge = True
+            strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
+        """
+        return get_msg_dict(self.strategy.gradient_merge_configs)
 
-    @gradient_merge_k_step.setter
-    def gradient_merge_k_step(self, value):
-        if isinstance(value, int):
-            self.strategy.gradient_merge_k_step = value
-        else:
-            print(
-                "WARNING: gradient_merge_k_step should have value of int type")
-
-    @property
-    def sequential_execution(self):
-        return self.strategy.sequential_execution
-
-    @sequential_execution.setter
-    def sequential_execution(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.sequential_execution = flag
-        else:
-            print(
-                "WARNING: sequential_execution should have value of bool type")
+    @gradient_merge_configs.setter
+    def gradient_merge_configs(self, configs):
+        check_configs_key(self.strategy.gradient_merge_configs, configs,
+                          "gradient_configs")
+        assign_configs_value(self.strategy.gradient_merge_configs, configs)
 
     @property
     def lars(self):
@@ -258,237 +616,6 @@ class DistributedStrategy(object):
             print("WARNING: lamb should have value of bool type")
 
     @property
-    def fuse_elewise_add_act_ops(self):
-        return self.strategy.fuse_elewise_add_act_ops
-
-    @fuse_elewise_add_act_ops.setter
-    def fuse_elewise_add_act_ops(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.fuse_elewise_add_act_ops = flag
-        else:
-            print(
-                "WARNING: fuse_elewise_add_act_ops should have value of bool type"
-            )
-
-    @property
-    def fuse_bn_act_ops(self):
-        return self.strategy.fuse_bn_act_ops
-
-    @fuse_bn_act_ops.setter
-    def fuse_bn_act_ops(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.fuse_bn_act_ops = flag
-        else:
-            print("WARNING: fuse_bn_act_ops should have value of bool type")
-
-    @property
-    def enable_auto_fusion(self):
-        return self.strategy.enable_auto_fusion
-
-    @enable_auto_fusion.setter
-    def enable_auto_fusion(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.enable_auto_fusion = flag
-        else:
-            print("WARNING: enable_auto_fusion should have value of bool type")
-
-    @property
-    def fuse_relu_depthwise_conv(self):
-        return self.strategy.fuse_relu_depthwise_conv
-
-    @fuse_relu_depthwise_conv.setter
-    def fuse_relu_depthwise_conv(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.fuse_relu_depthwise_conv = flag
-        else:
-            print(
-                "WARNING: fuse_relu_depthwise_conv should have value of bool type"
-            )
-
-    @property
-    def enable_inplace(self):
-        return self.strategy.enable_inplace
-
-    @enable_inplace.setter
-    def enable_inplace(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.enable_inplace = flag
-        else:
-            print("WARNING: enable_inplace should have value of bool type")
-
-    @property
-    def fuse_all_reduce_ops(self):
-        return self.strategy.fuse_all_reduce_ops
-
-    @fuse_all_reduce_ops.setter
-    def fuse_all_reduce_ops(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.fuse_all_reduce_ops = flag
-        else:
-            print("WARNING: fuse_all_reduce_ops should have value of bool type")
-
-    @property
-    def num_iteration_per_drop_scope(self):
-        return self.strategy.num_iteration_per_drop_scope
-
-    @num_iteration_per_drop_scope.setter
-    def num_iteration_per_drop_scope(self, flag):
-        if isinstance(flag, int):
-            self.strategy.num_iteration_per_drop_scope = flag
-        else:
-            print(
-                "WARNING: num_iteration_per_drop_scope should have value of int type"
-            )
-
-    @property
-    def sync_batch_norm(self):
-        return self.strategy.sync_batch_norm
-
-    @sync_batch_norm.setter
-    def sync_batch_norm(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.sync_batch_norm = flag
-        else:
-            print("WARNING: sync_batch_norm should have value of bool type")
-
-    @property
-    def fuse_all_optimizer_ops(self):
-        return self.strategy.fuse_all_optimizer_ops
-
-    @fuse_all_optimizer_ops.setter
-    def fuse_all_optimizer_ops(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.fuse_all_optimizer_ops = flag
-        else:
-            print(
-                "WARNING: fuse_all_optimizer_ops should have value of bool type")
-
-    @property
-    def sync(self):
-        return self.strategy.sync
-
-    @sync.setter
-    def sync(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.sync = flag
-        else:
-            print("WARNING: sync should have value of bool type")
-
-    @property
-    def async_k_step(self):
-        return self.strategy.async_k_step
-
-    @async_k_step.setter
-    def async_k_step(self, value):
-        if isinstance(value, int):
-            self.strategy.async_k_step = value
-        else:
-            print("WARNING: async_k_step should have value of int type")
-
-    @property
-    def max_merge_var_num(self):
-        return self.strategy.max_merge_var_num
-
-    @max_merge_var_num.setter
-    def max_merge_var_num(self, value):
-        if isinstance(value, int):
-            self.strategy.max_merge_var_num = value
-        else:
-            print("WARNING: max_merge_var_num should have value of int type")
-
-    @property
-    def send_queue_size(self):
-        return self.strategy.send_queue_size
-
-    @send_queue_size.setter
-    def send_queue_size(self, value):
-        if isinstance(value, int):
-            self.strategy.send_queue_size = value
-        else:
-            print("WARNING: send_queue_size should have value of int type")
-
-    @property
-    def independent_recv_thread(self):
-        return self.strategy.independent_recv_thread
-
-    @independent_recv_thread.setter
-    def independent_recv_thread(self, value):
-        if isinstance(value, bool):
-            self.strategy.independent_recv_thread = value
-        else:
-            print(
-                "WARNING: independent_recv_thread should have value of int type")
-
-    @property
-    def min_send_grad_num_before_recv(self):
-        return self.strategy.min_send_grad_num_before_recv
-
-    @min_send_grad_num_before_recv.setter
-    def min_send_grad_num_before_recv(self, value):
-        if isinstance(value, int):
-            self.strategy.min_send_grad_num_before_recv = value
-        else:
-            print(
-                "WARNING: min_send_grad_num_before_recv should have value of int type"
-            )
-
-    @property
-    def thread_pool_size(self):
-        return self.strategy.thread_pool_size
-
-    @thread_pool_size.setter
-    def thread_pool_size(self, value):
-        if isinstance(value, int):
-            self.strategy.thread_pool_size = value
-        else:
-            print("WARNING:thread_pool_size should have value of int type")
-
-    @property
-    def send_wait_times(self):
-        return self.strategy.send_wait_times
-
-    @send_wait_times.setter
-    def send_wait_times(self, value):
-        if isinstance(value, int):
-            self.strategy.send_wait_times = value
-        else:
-            print("WARNING: send_wait_times should have value of int type")
-
-    @property
-    def runtime_split_send_recv(self):
-        return self.strategy.runtime_split_send_recv
-
-    @runtime_split_send_recv.setter
-    def runtime_split_send_recv(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.runtime_split_send_recv = flag
-        else:
-            print("WARNING: runtime_split_send_recv should be bool type")
-
-    @property
-    def use_thread_barrier(self):
-        return self.strategy.use_thread_barrier
-
-    @use_thread_barrier.setter
-    def use_thread_barrier(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.use_thread_barrier = flag
-        else:
-            print("WARNING: use_thread_barrier should be bool type")
-
-    @property
-    def enable_backward_optimizer_op_deps(self):
-        return self.strategy.enable_backward_optimizer_op_deps
-
-    @enable_backward_optimizer_op_deps.setter
-    def enable_backward_optimizer_op_deps(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.enable_backward_optimizer_op_deps = flag
-        else:
-            print(
-                "WARNING: enable_backward_optimizer_op_deps should be bool type")
-
-    @property
     def elastic(self):
         return self.strategy.elastic
 
@@ -511,4 +638,7 @@ class DistributedStrategy(object):
             print("WARNING: auto should have value of bool type")
 
     def __repr__(self):
+        fields = self.strategy.DESCRIPTOR.fields
+        for f in fields:
+            print("{}: {}".format(f.name, f.default_value))
         return str(self.strategy)

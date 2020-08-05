@@ -67,10 +67,17 @@ class CastOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CastOp kernel's device type is decided by input tensor place
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
-    return kt;
+    auto *tensor = ctx.Input<framework::LoDTensor>("X");
+    PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
+                      platform::errors::PreconditionNotMet(
+                          "The tensor of Input(X) is not initialized."));
+    auto &tensor_place = tensor->place();
+    // NOTE: cuda pinned tensor need to copy its data to target place
+    if (platform::is_cuda_pinned_place(tensor_place)) {
+      return framework::OpKernelType(tensor->type(), ctx.device_context());
+    }
+    return framework::OpKernelType(tensor->type(), tensor_place);
   }
 };
 
