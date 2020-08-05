@@ -278,7 +278,7 @@ def generate_activation_fn(op_type):
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=[
-            "name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` ."
+            "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
         ])
     func.__doc__ = func.__doc__ + """
 
@@ -286,13 +286,14 @@ Examples:
     .. code-block:: python
 
         import paddle
+        paddle.enable_imperative()
         import numpy as np
 
-        paddle.enable_imperative()
         x_data = np.array([1, 2, 3, 4]).astype(np.float32)
         x = paddle.imperative.to_variable(x_data)
         res = paddle.%s(x)
         print(res.numpy())
+
 """ % op_type
     return func
 
