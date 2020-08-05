@@ -136,12 +136,12 @@ def flip(x, axis, name=None):
           import paddle
           import numpy as np
 
-          paddle.enable_imperative()
+          paddle.disable_static()
 
           image_shape=(3, 2, 2)
           x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           x = x.astype('float32')
-          img = paddle.imperative.to_variable(x)
+          img = paddle.to_variable(x)
           out = paddle.flip(img, [0,1])
 
           print(out) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
@@ -197,8 +197,8 @@ def roll(x, shifts, axis=None, name=None):
             data = np.array([[1.0, 2.0, 3.0],
                              [4.0, 5.0, 6.0],
                              [7.0, 8.0, 9.0]])
-            paddle.enable_imperative()
-            x = paddle.imperative.to_variable(data)
+            paddle.disable_static()
+            x = paddle.to_variable(data)
             out_z1 = paddle.roll(x, shifts=1)
             print(out_z1.numpy())
             #[[9. 1. 2.]
@@ -396,10 +396,10 @@ def split(x, num_or_sections, axis=0, name=None):
             import numpy as np
             import paddle
             
-            paddle.enable_imperative()
+            paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.imperative.to_variable(x_np)
+            x = paddle.to_variable(x_np)
 
             out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -487,7 +487,7 @@ def squeeze(x, axis=None, name=None):
         .. code-block:: python
             import paddle
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             
             x = paddle.rand([5, 1, 10])
             output = paddle.squeeze(x, axis=1)

@@ -64,4 +64,7 @@ create_test_class('logical_not', lambda _a: np.logical_not(_a), False)
 create_test_class('logical_xor', lambda _a, _b: np.logical_xor(_a, _b))
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     unittest.main()

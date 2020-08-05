@@ -459,4 +459,7 @@ class TestFunctionalConv2DErrorCase10(TestFunctionalConv2DError):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     unittest.main()

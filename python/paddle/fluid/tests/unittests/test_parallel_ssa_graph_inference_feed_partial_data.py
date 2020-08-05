@@ -20,4 +20,7 @@ fluid.core.globals()['FLAGS_enable_parallel_graph'] = 1
 from test_parallel_executor_inference_feed_partial_data import *
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     unittest.main()

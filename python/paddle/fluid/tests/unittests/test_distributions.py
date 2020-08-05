@@ -652,4 +652,7 @@ class DistributionTestError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     unittest.main()

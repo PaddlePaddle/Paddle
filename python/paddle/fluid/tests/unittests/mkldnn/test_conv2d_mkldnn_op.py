@@ -216,4 +216,7 @@ class TestConv2dOp_AsyPadding_NHWC_MKLDNN(TestConv2dOp_Valid_NHWC_MKLDNN):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     unittest.main()

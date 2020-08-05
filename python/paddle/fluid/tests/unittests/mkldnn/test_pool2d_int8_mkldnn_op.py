@@ -122,4 +122,7 @@ create_test_s8_u8_class(TestCase1Max)
 create_test_s8_u8_class(TestCase2Max)
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     unittest.main()

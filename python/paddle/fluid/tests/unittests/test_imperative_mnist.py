@@ -153,7 +153,7 @@ class TestImperativeMnist(unittest.TestCase):
                     label.stop_gradient = True
 
                     if batch_id % 10 == 0:
-                        cost, traced_layer = paddle.imperative.TracedLayer.trace(
+                        cost, traced_layer = paddle.jit.TracedLayer.trace(
                             mnist, inputs=img)
                         if program is not None:
                             self.assertTrue(program, traced_layer.program)
@@ -259,4 +259,7 @@ class TestImperativeMnist(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     unittest.main()

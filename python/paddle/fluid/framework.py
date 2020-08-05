@@ -5154,7 +5154,7 @@ class ParamBase(core.VarBase):
             .. code-block:: python
 
                 import paddle
-                paddle.enable_imperative()
+                paddle.disable_static()
                 conv = paddle.nn.Conv2D(3, 3, 5)
                 print(conv.weight)
                 # Parameter: conv2d_0.w_0
@@ -5163,7 +5163,7 @@ class ParamBase(core.VarBase):
                 #   - layout: NCHW
                 #   - dtype: float
                 #   - data: [...] 
-                paddle.disable_imperative()
+                paddle.enable_static()
         """
         tensor = self.value().get_tensor()
         if tensor._is_initialized():

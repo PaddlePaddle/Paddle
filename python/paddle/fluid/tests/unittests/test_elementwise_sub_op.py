@@ -165,4 +165,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     unittest.main()

@@ -556,18 +556,18 @@ Examples:
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
         x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
         y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.multiply(x, y)
         print(res.numpy()) # [[5, 12], [21, 32]]
 
         x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
         y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.multiply(x, y, axis=1)
         print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
 
@@ -1482,11 +1482,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             case2 = np.random.randn(3, 10, 10).astype('float32')
             case3 = np.random.randn(3, 10, 5, 10).astype('float32')
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
-            case1 = paddle.imperative.to_variable(case1)
-            case2 = paddle.imperative.to_variable(case2)
-            case3 = paddle.imperative.to_variable(case3)
+            case1 = paddle.to_variable(case1)
+            case2 = paddle.to_variable(case2)
+            case3 = paddle.to_variable(case3)
             data1 = paddle.trace(case1) # data1.shape = [1]
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]

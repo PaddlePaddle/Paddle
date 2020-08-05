@@ -178,9 +178,10 @@ class TestCRFModel(unittest.TestCase):
             data = train_data()
             for i in range(10):
                 cur_batch = next(data)
-                print(exe.run(train_cp,
-                              feed=feeder.feed(cur_batch),
-                              fetch_list=[avg_cost.name])[0])
+                print(
+                    exe.run(train_cp,
+                            feed=feeder.feed(cur_batch),
+                            fetch_list=[avg_cost.name])[0])
 
     def _new_build_strategy(self, use_reduce=False):
         build_strategy = fluid.BuildStrategy()
@@ -240,4 +241,7 @@ class TestCRFModel(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     unittest.main()

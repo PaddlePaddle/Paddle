@@ -20,4 +20,7 @@ fluid.core._set_eager_deletion_mode(0.0, 0.55, True)
 from test_parallel_executor_transformer import TestTransformer
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     unittest.main()

@@ -50,4 +50,8 @@ def main():
 
 
 if __name__ == '__main__':
+    # yoki: for unittest, change the default mode to static graph mode.
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     main()

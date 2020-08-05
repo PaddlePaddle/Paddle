@@ -288,9 +288,9 @@ Examples:
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
         x_data = np.array([1, 2, 3, 4]).astype(np.float32)
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         res = paddle.%s(x)
         print(res.numpy())
 """ % op_type

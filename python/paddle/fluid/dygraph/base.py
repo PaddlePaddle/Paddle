@@ -122,7 +122,7 @@ def enabled():
 def enable_dygraph(place=None):
     """
     :alias_main: paddle.enable_dygraph
-	:alias: paddle.enable_dygraph,paddle.enable_imperative.enable_dygraph
+	:alias: paddle.enable_dygraph,paddle.disable_static.enable_dygraph
 	:old_api: paddle.fluid.dygraph.base.enable_dygraph
 
     This function enables dynamic graph mode.
@@ -156,7 +156,7 @@ def enable_dygraph(place=None):
 def disable_dygraph():
     """
     :alias_main: paddle.disable_dygraph
-	:alias: paddle.disable_dygraph,paddle.disable_imperative.disable_dygraph
+	:alias: paddle.disable_dygraph,paddle.enable_static.disable_dygraph
 	:old_api: paddle.fluid.dygraph.base.disable_dygraph
 
     This function disables dynamic graph mode.
