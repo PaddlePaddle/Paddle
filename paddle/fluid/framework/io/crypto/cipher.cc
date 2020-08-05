@@ -16,7 +16,7 @@
 #include "paddle/fluid/framework/io/crypto/aes_cipher.h"
 #include "paddle/fluid/framework/io/crypto/cipher_utils.h"
 #include "paddle/fluid/platform/enforce.h"
-#ifdef ON_INFER
+#ifdef PADDLE_ON_INFERENCE
 #include "paddle/fluid/inference/api/paddle_api.h"
 #endif
 namespace paddle {
@@ -59,7 +59,7 @@ std::shared_ptr<Cipher> CipherFactory::CreateCipher(
 }
 
 }  // namespace framework
-#ifdef ON_INFER
+#ifdef PADDLE_ON_INFERENCE
 std::shared_ptr<framework::Cipher> MakeCipher(const std::string& config_file) {
   return framework::CipherFactory::CreateCipher(config_file);
 }
