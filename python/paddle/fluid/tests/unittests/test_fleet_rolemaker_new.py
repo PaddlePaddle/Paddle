@@ -79,6 +79,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         self.assertTrue(ro.is_first_worker())
         worker_endpoints = ro.get_trainer_endpoints()
         self.assertEqual(worker_endpoints[0], '127.0.0.1:36001')
+        self.assertEqual(ro.role_id(), 0)
 
     def test_tr_rolemaker_collective(self):
         ro = role_maker.PaddleCloudRoleMaker(is_collective=True)
@@ -98,11 +99,14 @@ class TestCloudRoleMaker(unittest.TestCase):
 
         ro = role_maker.PaddleCloudRoleMaker(
             is_collective=False, init_gloo=False)
+        self.assertEqual(ro.server_index(), 0)
         self.assertFalse(ro.is_worker())
         self.assertTrue(ro.is_server())
         self.assertEqual(ro.server_num(), 2)
         pserver_endpoints = ro.get_pserver_endpoints()
         self.assertEqual(pserver_endpoints[0], '127.0.0.1:36001')
+        self.assertTrue(ro._all_gather(ro._all_comm, 1) is None)
+        self.assertTrue(ro._all_reduce(ro._all_comm, 1) is None)
 
     def test_traing_role(self):
         """Test training role."""
@@ -139,7 +143,10 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
             role=role_maker.Role.SERVER,
             current_id=0,
             worker_num=2)
+        self.assertEqual(ro.server_num(), 2)
         ro.generate_role()
+        self.assertTrue(ro.is_server())
+        self.assertEqual(ro.role_id(), 0)
 
     def test_tr_rolemaker(self):
         try:
@@ -155,7 +162,9 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
             role=role_maker.Role.WORKER,
             current_id=0,
             worker_num=2)
-        ro.generate_role()
+        self.assertIn("127.0.0.1:36001", ro.get_pserver_endpoints())
+        self.assertTrue(ro.is_worker())
+        self.assertEqual(ro.role_id(), 0)
 
 
 if __name__ == "__main__":
