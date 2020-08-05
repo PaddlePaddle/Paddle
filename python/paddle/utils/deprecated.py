@@ -41,7 +41,7 @@ def deprecated(update_to="", since="", reason=""):
         _v1 = [int(i) for i in v1.split(".")]
         _v2 = [int(i) for i in v2.split(".")]
         _v1 += [0] * (4 - len(v1))
-        _v2 += [0] * (4 - len(v1))
+        _v2 += [0] * (4 - len(v2))
         for i in range(4):
             if _v1[i] > _v2[i]:
                 return 1
