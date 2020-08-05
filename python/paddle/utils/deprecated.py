@@ -40,10 +40,9 @@ def deprecated(update_to="", since="", reason=""):
 
         _v1 = [int(i) for i in v1.split(".")]
         _v2 = [int(i) for i in v2.split(".")]
-        max_len = max(len(_v1), len(_v2))
-        _v1.extend([0] * (max_len - len(_v1)))
-        _v2.extend([0] * (max_len - len(_v2)))
-        for i in range(max_len):
+        _v1 += [0] * (4 - len(v1))
+        _v2 += [0] * (4 - len(v1))
+        for i in range(4):
             if _v1[i] > _v2[i]:
                 return 1
             elif _v1[i] < _v2[i]:
