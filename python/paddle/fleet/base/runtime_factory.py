@@ -19,7 +19,7 @@ class RuntimeFactory(object):
         pass
 
     def _create_runtime(self, context):
-        if role_maker._is_collective:
+        if context["role_maker"]._is_collective:
             collective_runtime = CollectiveRuntime()
             collective_runtime._set_basic_info(context)
             return collective_runtime
