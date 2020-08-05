@@ -43,7 +43,7 @@ def split_heter_worker_ops_pass(program, config):
         raise ValueError(
             "Op which run on device {} not exist.".format(current_device))
 
-    block_vars_detail = find_block_joints(program, program_block_ops)
+    block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
     heter_program = framework.Program()
     create_heter_program(program, config, heter_program, heter_ops,
                          block_vars_detail, current_device)

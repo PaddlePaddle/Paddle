@@ -12,20 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0(the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http:  // www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import print_function
 from functools import reduce
 
@@ -55,7 +41,7 @@ LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 DEVICE_LIST = ["cpu", "gpu", "xpu"]
 COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
-
+DEFAULT_DEVICE='cpu'
 
 def _get_lr_ops(program):
     lr_ops = []
@@ -203,8 +189,6 @@ def find_heter_ops(program, default_device="cpu"):
         default_ops[default_device][block_index] = current_default_block_ops
         program_block_ops.append(current_default_block_ops)
 
-    #remove_communicate_op(origin_porgram, heter_ops, default_ops, program_block_ops)
-
     if len(heter_ops) == 0:
         warnings.warn(
             "No heterogeneous OP was found in your program , "
@@ -220,51 +204,6 @@ def find_heter_ops(program, default_device="cpu"):
     print(
         "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, heter_blocks))
     return origin_porgram, heter_ops, default_ops, program_block_ops
-
-
-def remove_communicate_op(program, heter_ops, default_ops, program_block_ops):
-    send_op_list = get_send_op_list(program)
-    send_op_input = []
-    for send_op in send_op_list:
-        # fail when send op has multi input var
-        inputs = _get_input_map_from_op(program.global_block().vars, send_op)
-        send_op_input += get_varlist_from_op_map(inputs)
-
-    need_delete_op = []
-    for device in heter_ops:
-        for index, op_list in heter_ops[device].items():
-            _, block_output = find_ops_list_input_output(program, op_list)
-            send_var = list(set(send_op_input) & set(block_output))
-            if send_var != None:
-                for var in send_var:
-                    send_op_index = list(send_op_input).index(var)
-                    # 1. append send op in heter_block
-                    heter_ops[device][index].append(send_op_list[send_op_index])
-                    program_block_ops[index].append(send_op_list[send_op_index])
-                    # 2. delete send op in origin block 
-                    need_delete_op.append(send_op_list[send_op_index])
-
-    for device in default_ops:
-        for index, op_list in default_ops[device].items():
-            block_input, _ = find_ops_list_input_output(program, op_list)
-            send_var = list(set(send_op_input) & set(block_input))
-            if send_var != None:
-                for var in send_var:
-                    # 3. delete send op in ops_list
-                    send_op_index = list(send_op_input).index(var)
-                    delete_same_ops_in_list(default_ops[device][index], [send_op_list[send_op_index]])
-                    delete_same_ops_in_list(program_block_ops[index], [send_op_list[send_op_index]])
-
-    delete_ops(program.global_block(), need_delete_op)
-    program.global_block()._sync_with_cpp()
-
-def get_send_op_list(program):
-    send_op_list = []
-    block = program.global_block()
-    for op in block.ops:
-        if op.type == "send":
-            send_op_list.append(op)
-    return send_op_list
 
 
 def create_heter_program(program, config, heter_program, heter_ops, block_var_detail, current_device):
@@ -298,7 +237,7 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
         add_vars_by_var_list(exit_vars, program, heter_program)
 
         comm_info = get_communicate_var_info(
-            program, index, entrance_vars, exit_vars)
+            program, index, entrance_vars, exit_vars, current_device)
         grad_to_block_id.append(
             comm_info["recv_var_listen_recv_name"] + ":" + str(heter_block.idx))
         # create slice op
@@ -364,10 +303,10 @@ def create_trainer_program(program, config, heter_ops, block_var_detail):
     for device in heter_ops.keys():
         for heter_block_index in sorted(heter_ops[device]):
             replace_ops_by_communicate_op(
-                program, config, heter_block_index, heter_ops[device][heter_block_index], block_var_detail[heter_block_index])
+                program, config, heter_block_index, heter_ops[device][heter_block_index], block_var_detail[heter_block_index], device)
 
 
-def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, ops_detail):
+def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, ops_detail, device):
     all_op = program.global_block().ops
     start_op = ops_list[0]
     first_op_idx = -1
@@ -386,7 +325,7 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
     exit_var = ops_detail["exit"]
 
     comm_info = get_communicate_var_info(
-        program, heter_block_index, entrance_var, exit_var)
+        program, heter_block_index, entrance_var, exit_var, device)
 
     # create reshape op
     for i in range(len(exit_var)):
@@ -432,26 +371,45 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         }
     )
+    first_op_idx += 1
 
     # recv
-    # program.global_block().append_op(
-    #     type="recv",
-    #     inputs={"X": []},
-    #     outputs={"Out": []},
-    #     attrs={
-    #         "recv_varnames": exit_var,
-    #         "trainer_id": config.get_role_id(),
-    #         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-    #     })
     # create slice op
     # create reashpe op
+    get_type_var_name = comm_info["recv_var_reshape_name"][0].split("@")[0]
+    get_type_var = program.global_block().vars[get_type_var_name]
+    insert_recv_slice_op(
+        program,
+        program.global_block(),
+        first_op_idx,
+        comm_info["recv_var_listen_recv_name"],
+        (-1, sum(comm_info["recv_var_slice_dim"])),
+        get_type_var.dtype,
+        get_type_var.type,
+        comm_info["recv_var_reshape_name"],
+        [(-1, comm_info["recv_var_slice_dim"][i])
+            for i in range(len(comm_info["recv_var_slice_dim"]))]
+    )
+    first_op_index += len(comm_info["recv_var_slice_dim"])
+
+    # create reshape op
+    for i in range(len(entrance_vars)):
+        var_name = entrance_vars[i]
+        insert_reshape_op(
+            heter_program,
+            heter_block,
+            first_op_index,
+            comm_info["recv_var_reshape_name"][i],
+            var_name,
+        )
+        first_op_index += 1
 
     for var in private_var:
         if program.global_block().has_var(var):
             program.global_block()._remove_var(var)
 
 
-def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_list):
+def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_list, device):
     send_var_reshape_dim = []
     send_var_reshape_name = []
     send_var_concat_name = "HETER_BLOCK_{}@HETER_SEND_CONCAT".format(
@@ -462,7 +420,7 @@ def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_l
         block_index - 1)
     # send
     # var -> reshape -> var@HETER_SEND_RESHAPE -> concat -> var@HETER_BLOCK_INDEX@HETER_SEND_CONCAT
-    for var_name in exit_var_list:
+    for var_name in entrance_var_list:
         var = program.global_block().vars[var_name]
         shape = var.shape
         if len(shape) < 2 or shape[0] != -1:
@@ -472,7 +430,7 @@ def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_l
         send_var_reshape_name.append("{}@HETER_SEND_RESHAPE".format(var_name))
     # recv
     # var@HETER_SEND_CONCAT -> slice -> var@HETER_SEND_RESHAPE -> reshape -> var
-    for name in entrance_var_list:
+    for name in exit_var_list:
         var = program.global_block().vars[name]
         shape = var.shape
         if len(shape) < 2 or shape[0] != -1:
@@ -486,15 +444,17 @@ def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_l
             "send_var_concat_name": send_var_concat_name,
             "recv_var_slice_dim": recv_var_slice_dim,
             "recv_var_reshape_name": recv_var_reshape_name,
-            "recv_var_listen_recv_name": recv_var_listen_recv_name}
+            "recv_var_listen_recv_name": recv_var_listen_recv_name,
+            "block_index": block_index,
+            "block_device": device}
     return info
 
 
-def find_block_joints(program, program_block_ops_list):
+def find_block_joints(program, program_block_ops_list, heter_ops):
     block_var_detail = find_entrance_exit_private(
         program, program_block_ops_list)
     block_var_detail = entrance_exit_check(
-        program, program_block_ops_list, block_var_detail)
+        program, program_block_ops_list, block_var_detail, heter_ops)
     block_var_detail = delete_block_useless_exit(
         program, program_block_ops_list, block_var_detail)
     return block_var_detail
@@ -517,7 +477,7 @@ def find_entrance_exit_private(program, program_block_ops_list):
     return block_var_detail
 
 
-def entrance_exit_check(program, program_block_ops_list, block_var_detail):
+def entrance_exit_check(program, program_block_ops_list, block_var_detail, heter_ops):
     for index in range(len(block_var_detail)-1, -1, -1):
         if index - 1 < 0:
             break
@@ -530,6 +490,7 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail):
         exist_vars = list(set(previous_block_exit) &
                           set(current_block_entrance))
         need_add_vars = list(set(current_block_entrance)-set(exist_vars))
+        need_add_vars = find_need_var_from_previous_block(need_add_vars, block_var_detail, index, heter_ops)
 
         previous_block_private = block_var_detail[index - 1]["private"]
         previous_block_entrance = block_var_detail[index - 1]["entrance"]
@@ -539,13 +500,38 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail):
             previous_block_exit.append(var)
     return block_var_detail
 
+def find_need_var_from_previous_block(need_add_vars, block_var_detail, current_index, heter_ops):
+    # create index_device_map 
+    index_device_map = {}
+    for index in range(len(block_var_detail)):
+        index_device_map[index] = DEFAULT_DEVICE
+    for device in heter_ops:
+        for index in heter_ops[device].keys():
+            index_device_map[index] = device
+
+    pre_index = current_index - 1
+    need_ignore_var = []
+    
+    # if need_add_var in current device, no need comm
+    for var in need_add_vars:
+        while(pre_index >= 0):
+            previous_block_private = block_var_detail[pre_index]["private"]
+            if var in previous_block_private:
+                if index_device_map[current_index] == index_device_map[pre_index]:
+                    need_ignore_var.append(var)
+                    break
+            pre_index -= 1
+
+    need_add_vars = list(set(need_add_vars).difference(set(need_ignore_var)))
+    return need_add_vars
+
 
 def delete_block_useless_exit(program, program_block_ops_list, block_var_detail):
     for index in range(len(block_var_detail)):
         if index == len(block_var_detail) - 1:
             break
         current_block_exit = block_var_detail[index]["exit"]
-        next_block_entrance = block_var_detail[index]["entrance"]
+        next_block_entrance = block_var_detail[index+1]["entrance"]
         need_delete_var = []
         for var in current_block_exit:
             if var not in next_block_entrance:
