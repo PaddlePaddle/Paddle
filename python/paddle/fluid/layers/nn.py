@@ -1189,10 +1189,6 @@ def chunk_eval(input,
 
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
-    :alias_main: paddle.nn.functional.softmax
-	:alias: paddle.nn.functional.softmax,paddle.nn.functional.activation.softmax
-	:old_api: paddle.fluid.layers.softmax
-
     This operator implements the softmax layer. The calculation process is as follows:
 
     1. The dimension :attr:`axis` of the ``input`` will be permuted to the last.
@@ -1306,8 +1302,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
     attrs = {"axis": axis, "use_cudnn": use_cudnn}
 
     helper = LayerHelper('softmax', **locals())
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'softmax')
+    check_variable_and_dtype(input, 'input/x',
+                             ['float16', 'float32', 'float64'], 'softmax')
 
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)
