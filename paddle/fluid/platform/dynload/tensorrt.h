@@ -39,14 +39,11 @@ extern void* tensorrt_dso_handle;
       using tensorrt_func = decltype(&::__name);                              \
       std::call_once(tensorrt_dso_flag, []() {                                \
         tensorrt_dso_handle = paddle::platform::dynload::GetTensorRtHandle(); \
-        PADDLE_ENFORCE_NOT_NULL(tensorrt_dso_handle,                          \
-                                platform::errors::Unavailable(                \
-                                    "Load tensorrt %s failed", #__name));     \
       });                                                                     \
       static void* p_##__name = dlsym(tensorrt_dso_handle, #__name);          \
-      PADDLE_ENFORCE_NOT_NULL(                                                \
-          p_##__name,                                                         \
-          platform::errors::Unavailable("Load tensorrt %s failed", #__name)); \
+      if (p_##__name == nullptr) {                                            \
+        return nullptr;                                                       \
+      }                                                                       \
       return reinterpret_cast<tensorrt_func>(p_##__name)(args...);            \
     }                                                                         \
   };                                                                          \
