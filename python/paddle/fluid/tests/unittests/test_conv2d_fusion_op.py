@@ -367,7 +367,10 @@ create_test_padding_VALID_class(TestWithGroup_AsyPadding)
 create_test_padding_VALID_class(TestWithInput1x1Filter1x1_AsyPadding)
 
 if __name__ == '__main__':
+    """The framework of Paddle 2.0 is dynamic graph mode by default, but
+     Unittest is implemented based on static graph mode.
+     Here is a simple conversion from dygraph to static, and Unittest 
+     needs to be modified later."""
     import paddle
     paddle.enable_static()
-    print(paddle.in_dynamic_mode())
     unittest.main()

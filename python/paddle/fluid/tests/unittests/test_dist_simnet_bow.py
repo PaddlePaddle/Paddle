@@ -158,7 +158,10 @@ class TestDistSimnetBow2x2LookupTableNotContainLRSync(TestDistBase):
 
 
 if __name__ == "__main__":
+    """The framework of Paddle 2.0 is dynamic graph mode by default, but
+     Unittest is implemented based on static graph mode.
+     Here is a simple conversion from dygraph to static, and Unittest 
+     needs to be modified later."""
     import paddle
     paddle.enable_static()
-    print(paddle.in_dynamic_mode())
     unittest.main()
