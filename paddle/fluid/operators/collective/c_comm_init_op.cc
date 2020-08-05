@@ -50,8 +50,8 @@ class CCommInitOp : public framework::OperatorBase {
     ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
     int rid = Attr<int>("ring_id");
-    int nranks = Attr<int>("nranks");
     int rank_id = Attr<int>("rank");
+    int nranks = Attr<int>("nranks");
     int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
@@ -77,7 +77,9 @@ Initialize collective communicatoin context within this trainer
     AddAttr<int>("rank",
                  "(int) The rank of the trainer in distributed training.");
     AddAttr<int>("device_id",
-                 "(int) The deivce_id on which to initialize the communicator.")
+                 "(int) The deivce_id on which to initialize the communicator."
+                 "Now, you only have to set this attr manually for pipeline "
+                 "training. Make it as default otherwise.")
         .SetDefault(-1);
     AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
