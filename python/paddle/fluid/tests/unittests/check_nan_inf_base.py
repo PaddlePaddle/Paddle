@@ -101,6 +101,9 @@ def check(use_cuda):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
+    print(paddle.in_dynamic_mode())
     if core.is_compiled_with_cuda():
         try:
             check(use_cuda=True)

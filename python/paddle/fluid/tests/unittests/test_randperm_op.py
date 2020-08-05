@@ -17,7 +17,8 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
-from paddle import Program, program_guard
+from paddle import Program
+from paddle.static import program_guard
 
 
 def check_randperm_out(n, data_np):
