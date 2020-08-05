@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 
@@ -21,6 +22,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
 
 BATCH_SIZE = 32
 BATCH_NUM = 20
@@ -111,12 +113,16 @@ class TestJitSaveLoad(unittest.TestCase):
         # config seed
         fluid.default_main_program().random_seed = SEED
 
-    def train_and_save_model(self):
+    def train_and_save_model(self, model_path=None, configs=None):
         layer = LinearNet(784, 1)
         example_inputs, layer, _ = train(layer)
+        final_model_path = model_path if model_path else self.model_path
         orig_input_types = [type(x) for x in example_inputs]
         fluid.dygraph.jit.save(
-            layer=layer, model_path=self.model_path, input_spec=example_inputs)
+            layer=layer,
+            model_path=final_model_path,
+            input_spec=example_inputs,
+            configs=configs)
         new_input_types = [type(x) for x in example_inputs]
         self.assertEqual(orig_input_types, new_input_types)
         return layer
@@ -172,6 +178,31 @@ class TestJitSaveLoad(unittest.TestCase):
                 layer=layer,
                 model_path=self.model_path,
                 input_spec=example_inputs)
+
+    def test_load_dygraoh_no_path(self):
+        model_path = "model.test_jit_save_load.no_path"
+        new_layer = LinearNet(784, 1)
+        with self.assertRaises(ValueError):
+            model_dict, _ = fluid.dygraph.load_dygraph(model_path)
+
+    def test_load_dygraph_no_var_info(self):
+        model_path = "model.test_jit_save_load.no_var_info"
+        self.train_and_save_model(model_path=model_path)
+        # remove `__variables.info__`
+        var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
+        os.remove(var_info_path)
+        new_layer = LinearNet(784, 1)
+        with self.assertRaises(RuntimeError):
+            model_dict, _ = fluid.dygraph.load_dygraph(model_path)
+
+    def test_load_dygraph_not_var_file(self):
+        model_path = "model.test_jit_save_load.no_var_file"
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        configs.params_filename = "__params__"
+        self.train_and_save_model(model_path=model_path, configs=configs)
+        new_layer = LinearNet(784, 1)
+        with self.assertRaises(RuntimeError):
+            model_dict, _ = fluid.dygraph.load_dygraph(model_path)
 
 
 class TestJitSaveLoadConfig(unittest.TestCase):

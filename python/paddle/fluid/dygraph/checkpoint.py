@@ -179,7 +179,7 @@ def load_dygraph(model_path, keep_name_table=False):
         # - all persistable vars saved in one file named `__variables__`
         # for other case, we may need to modify the arguments of this API
         var_file_path = os.path.join(model_prefix, VARIABLE_FILENAME)
-        if not os.path.exists(var_info_path):
+        if not os.path.exists(var_file_path):
             raise RuntimeError(
                 "The parameter file to be loaded was not found. "
                 "Now only supports loading from the default save format, "
