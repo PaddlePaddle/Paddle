@@ -1521,20 +1521,14 @@ class Model(object):
 
     def save_inference_model(self,
                              save_dir,
-                             layer=None,
-                             in_var_list=None,
                              model_filename=None,
                              params_filename=None,
                              model_only=False):
         """
-        Save inference model can be in static or dynamic mode.
+        Save inference model must in static mode.
 
         Args:
             save_dir (str): The directory path to save the inference model.
-            layer (dygraph.Layer): the layer object to be traced and saved. In 
-                static mode it can be None.
-            inputs (list(Variable)): the input variables of the layer object.
-                In static mode it can be None.
             model_filename (str|None): The name of file to save the inference
                 model itself. If is set None, a default filename
                 :code:`__model__` will be used.
@@ -1560,51 +1554,27 @@ class Model(object):
 
             model.save_inference_model('inference_model')
         """
-        from paddle.fluid.io import save_inference_model
+        assert not fluid.in_dygraph_mode(
+        ), 'Save inference model must in static mode!'
 
-        if fluid.in_dygraph_mode():
-            assert layer and in_var_list, \
-                "Dyraph mode needs layer and input variable list"
-            from paddle.fluid.dygraph import TracedLayer
-            _, static_layer = TracedLayer.trace(layer, inputs=in_var_list)
-            fluid.disable_dygraph()
-            from paddle.fluid.executor import scope_guard
+        prog = self._adapter._progs.get('test', None)
+        assert prog, \
+            "Model is not ready, please call `model.prepare()` first"
 
-            with scope_guard(static_layer._scope):
-                target_var_names = static_layer._fetch_names
-                feeded_var_names = static_layer._feed_names
-                target_vars = []
-                for name in target_var_names:
-                    target_var = static_layer._program.global_block().vars.get(name, None)
-                    assert target_var is not None, "{} cannot be found".format(name)
-                    target_vars.append(target_var)
+        infer_prog = prog.clone(for_test=True)
 
-                return save_inference_model(
-                    dirname=save_dir,
-                    feeded_var_names=feeded_var_names,
-                    target_vars=target_vars,
-                    executor=static_layer._exe,
-                    main_program=static_layer._program.clone())
-           
-        else:
-            prog = self._adapter._progs.get('test', None)
-            assert prog, \
-                "Model is not ready, please call `model.prepare()` first"
+        input_names = [v.name for v in self._adapter._input_vars['test']]
+        endpoints = self._adapter._endpoints['test']['output']
 
-            infer_prog = prog.clone(for_test=True)
-
-            input_names = [v.name for v in self._adapter._input_vars['test']]
-            endpoints = self._adapter._endpoints['test']['output']
-
-            return save_inference_model(
-                save_dir,
-                input_names,
-                endpoints,
-                self._adapter._executor,
-                main_program=infer_prog,
-                model_filename=model_filename,
-                params_filename=params_filename,
-                program_only=model_only)
+        return fluid.io.save_inference_model(
+            save_dir,
+            input_names,
+            endpoints,
+            self._adapter._executor,
+            main_program=infer_prog,
+            model_filename=model_filename,
+            params_filename=params_filename,
+            program_only=model_only)
 
     def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
         outputs = []
