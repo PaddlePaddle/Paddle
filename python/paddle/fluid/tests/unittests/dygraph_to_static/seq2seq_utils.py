@@ -125,11 +125,13 @@ class Seq2SeqModelHyperParams(object):
     max_grad_norm = 5.0
 
     # model path for model to save
-    model_path = "dy2stat/model/seq2seq"
+
+    base_model_path = "dy2stat/model/base_seq2seq"
+    attn_model_path = "dy2stat/model/attn_seq2seq"
 
     # reload model to inference
     reload_model = "model/epoch_0.pdparams"
 
-    beam_size = 10
+    beam_size = 4
 
     max_seq_len = 3

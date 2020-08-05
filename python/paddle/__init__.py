@@ -98,7 +98,7 @@ from .tensor.logic import not_equal  #DEFINE_ALIAS
 from .tensor.logic import reduce_all  #DEFINE_ALIAS
 from .tensor.logic import reduce_any  #DEFINE_ALIAS
 from .tensor.logic import allclose  #DEFINE_ALIAS
-from .tensor.logic import elementwise_equal  #DEFINE_ALIAS
+from .tensor.logic import equal_all  #DEFINE_ALIAS
 # from .tensor.logic import isnan        #DEFINE_ALIAS
 from .tensor.manipulation import cast  #DEFINE_ALIAS
 from .tensor.manipulation import concat  #DEFINE_ALIAS
@@ -108,7 +108,7 @@ from .tensor.manipulation import flatten  #DEFINE_ALIAS
 from .tensor.manipulation import gather  #DEFINE_ALIAS
 from .tensor.manipulation import gather_nd  #DEFINE_ALIAS
 from .tensor.manipulation import reshape  #DEFINE_ALIAS
-from .tensor.manipulation import reverse  #DEFINE_ALIAS
+from .tensor.manipulation import flip as reverse  #DEFINE_ALIAS
 from .tensor.manipulation import scatter  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd_add  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd  #DEFINE_ALIAS
@@ -132,6 +132,7 @@ from .tensor.math import asin  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import ceil  #DEFINE_ALIAS
 from .tensor.math import cos  #DEFINE_ALIAS
+from .tensor.math import cosh  #DEFINE_ALIAS
 from .tensor.math import cumsum  #DEFINE_ALIAS
 from .tensor.math import elementwise_add  #DEFINE_ALIAS
 from .tensor.math import elementwise_div  #DEFINE_ALIAS
@@ -139,14 +140,12 @@ from .tensor.math import elementwise_floordiv  #DEFINE_ALIAS
 from .tensor.math import elementwise_max  #DEFINE_ALIAS
 from .tensor.math import elementwise_min  #DEFINE_ALIAS
 from .tensor.math import elementwise_mod  #DEFINE_ALIAS
-from .tensor.math import elementwise_mul  #DEFINE_ALIAS
 from .tensor.math import elementwise_pow  #DEFINE_ALIAS
 from .tensor.math import elementwise_sub  #DEFINE_ALIAS
 from .tensor.math import exp  #DEFINE_ALIAS
 from .tensor.math import floor  #DEFINE_ALIAS
 from .tensor.math import increment  #DEFINE_ALIAS
 from .tensor.math import log  #DEFINE_ALIAS
-from .tensor.math import mul  #DEFINE_ALIAS
 from .tensor.math import multiplex  #DEFINE_ALIAS
 from .tensor.math import pow  #DEFINE_ALIAS
 from .tensor.math import reciprocal  #DEFINE_ALIAS
@@ -159,6 +158,7 @@ from .tensor.math import rsqrt  #DEFINE_ALIAS
 from .tensor.math import scale  #DEFINE_ALIAS
 from .tensor.math import sign  #DEFINE_ALIAS
 from .tensor.math import sin  #DEFINE_ALIAS
+from .tensor.math import sinh  #DEFINE_ALIAS
 from .tensor.math import sqrt  #DEFINE_ALIAS
 from .tensor.math import square  #DEFINE_ALIAS
 from .tensor.math import stanh  #DEFINE_ALIAS
@@ -170,6 +170,7 @@ from .tensor.math import max  #DEFINE_ALIAS
 from .tensor.math import min  #DEFINE_ALIAS
 from .tensor.math import mm  #DEFINE_ALIAS
 from .tensor.math import div  #DEFINE_ALIAS
+from .tensor.math import multiply  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import logsumexp  #DEFINE_ALIAS

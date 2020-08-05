@@ -18,7 +18,6 @@ import paddle.fluid as fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 
-from ...model import Model
 from ...download import get_weights_path_from_url
 
 __all__ = ['MobileNetV2', 'mobilenet_v2']
@@ -150,7 +149,7 @@ class InvresiBlocks(fluid.dygraph.Layer):
         return y
 
 
-class MobileNetV2(Model):
+class MobileNetV2(fluid.dygraph.Layer):
     """MobileNetV2 model from
     `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
 
@@ -252,7 +251,8 @@ def _mobilenet(arch, pretrained=False, **kwargs):
                                                 model_urls[arch][1])
         assert weight_path.endswith(
             '.pdparams'), "suffix of weight must be .pdparams"
-        model.load(weight_path)
+        param, _ = fluid.load_dygraph(weight_path)
+        model.load_dict(param)
 
     return model
 

@@ -117,7 +117,6 @@ class TestBase(unittest.TestCase):
                 for _ in six.moves.range(EPOCH_NUM):
                     step = 0
                     for d in py_reader():
-                        print(d)
                         assert len(d) == len(places), "{} != {}".format(
                             len(d), len(places))
                         for i, item in enumerate(d):
@@ -125,8 +124,14 @@ class TestBase(unittest.TestCase):
                             label = item['label']
                             assert image.shape() == [BATCH_SIZE, 784]
                             assert label.shape() == [BATCH_SIZE, 1]
-                            assert image._place()._equals(ps[i])
-                            assert label._place()._equals(ps[i])
+                            if ps[i]._equals(fluid.CPUPlace()):
+                                assert image._place()._equals(fluid.CPUPlace())
+                                assert label._place()._equals(fluid.CPUPlace())
+                            else:
+                                assert image._place()._equals(
+                                    fluid.CUDAPinnedPlace())
+                                assert label._place()._equals(
+                                    fluid.CUDAPinnedPlace())
                         L, = exe.run(program=prog,
                                      feed=d,
                                      fetch_list=[loss],

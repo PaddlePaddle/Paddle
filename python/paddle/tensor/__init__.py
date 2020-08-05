@@ -71,7 +71,7 @@ from .logic import not_equal  #DEFINE_ALIAS
 from .logic import reduce_all  #DEFINE_ALIAS
 from .logic import reduce_any  #DEFINE_ALIAS
 from .logic import allclose  #DEFINE_ALIAS
-from .logic import elementwise_equal  #DEFINE_ALIAS
+from .logic import equal_all  #DEFINE_ALIAS
 # from .logic import isnan        #DEFINE_ALIAS
 from .manipulation import cast  #DEFINE_ALIAS
 from .manipulation import concat  #DEFINE_ALIAS
@@ -81,7 +81,7 @@ from .manipulation import flatten  #DEFINE_ALIAS
 from .manipulation import gather  #DEFINE_ALIAS
 from .manipulation import gather_nd  #DEFINE_ALIAS
 from .manipulation import reshape  #DEFINE_ALIAS
-from .manipulation import reverse  #DEFINE_ALIAS
+from .manipulation import flip as reverse  #DEFINE_ALIAS
 from .manipulation import scatter  #DEFINE_ALIAS
 from .manipulation import scatter_nd_add  #DEFINE_ALIAS
 from .manipulation import scatter_nd  #DEFINE_ALIAS
@@ -105,6 +105,7 @@ from .math import asin  #DEFINE_ALIAS
 from .math import atan  #DEFINE_ALIAS
 from .math import ceil  #DEFINE_ALIAS
 from .math import cos  #DEFINE_ALIAS
+from .math import cosh  #DEFINE_ALIAS
 from .math import cumsum  #DEFINE_ALIAS
 from .math import elementwise_add  #DEFINE_ALIAS
 from .math import elementwise_div  #DEFINE_ALIAS
@@ -112,14 +113,12 @@ from .math import elementwise_floordiv  #DEFINE_ALIAS
 from .math import elementwise_max  #DEFINE_ALIAS
 from .math import elementwise_min  #DEFINE_ALIAS
 from .math import elementwise_mod  #DEFINE_ALIAS
-from .math import elementwise_mul  #DEFINE_ALIAS
 from .math import elementwise_pow  #DEFINE_ALIAS
 from .math import elementwise_sub  #DEFINE_ALIAS
 from .math import exp  #DEFINE_ALIAS
 from .math import floor  #DEFINE_ALIAS
 from .math import increment  #DEFINE_ALIAS
 from .math import log  #DEFINE_ALIAS
-from .math import mul  #DEFINE_ALIAS
 from .math import multiplex  #DEFINE_ALIAS
 from .math import pow  #DEFINE_ALIAS
 from .math import reciprocal  #DEFINE_ALIAS
@@ -132,6 +131,7 @@ from .math import rsqrt  #DEFINE_ALIAS
 from .math import scale  #DEFINE_ALIAS
 from .math import sign  #DEFINE_ALIAS
 from .math import sin  #DEFINE_ALIAS
+from .math import sinh  #DEFINE_ALIAS
 from .math import sqrt  #DEFINE_ALIAS
 from .math import square  #DEFINE_ALIAS
 from .math import stanh  #DEFINE_ALIAS
@@ -143,6 +143,7 @@ from .math import max  #DEFINE_ALIAS
 from .math import min  #DEFINE_ALIAS
 from .math import mm  #DEFINE_ALIAS
 from .math import div  #DEFINE_ALIAS
+from .math import multiply  #DEFINE_ALIAS
 from .math import add  #DEFINE_ALIAS
 from .math import atan  #DEFINE_ALIAS
 from .math import logsumexp  #DEFINE_ALIAS

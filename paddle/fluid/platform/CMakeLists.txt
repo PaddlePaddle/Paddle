@@ -25,7 +25,7 @@ if (WITH_PYTHON)
   endif(NOT WIN32)
 endif()
 
-cc_library(flags SRCS flags.cc DEPS gflags) 
+cc_library(flags SRCS flags.cc DEPS gflags)
 
 cc_library(errors SRCS errors.cc DEPS error_codes_proto)
 cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
@@ -92,13 +92,6 @@ if(WITH_GPU)
     cc_library(cuda_resource_pool SRCS cuda_resource_pool.cc DEPS gpu_info)
     target_link_libraries(device_context cuda_resource_pool)
 endif()
-
-if(WIN32)
-    if(WITH_GPU)
-        get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
-        target_link_libraries(device_context ${cuda_modules})
-    endif(WITH_GPU)
-endif(WIN32)
 
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
