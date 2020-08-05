@@ -18,6 +18,7 @@ import ast
 import astor
 import atexit
 import copy
+import collections
 import gast
 import imp
 import inspect
@@ -40,6 +41,32 @@ dygraph_class_to_static_api = {
 
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
 FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
+
+# FullArgSpec is valid from Python3. Defined a Namedtuple to
+# to make it available in Python2.
+FullArgSpec = collections.namedtuple('FullArgSpec', [
+    'args', 'varargs', 'varkw', 'defaults', 'kwonlyargs', 'kwonlydefaults',
+    'annotations'
+])
+
+
+def getfullargspec(target):
+    if hasattr(inspect, "getfullargspec"):
+        return inspect.getfullargspec(target)
+    else:
+        argspec = inspect.getargspec(target)
+        return FullArgSpec(
+            args=argspec.args,
+            varargs=argspec.varargs,
+            varkw=argspec.keywords,
+            defaults=argspec.defaults,
+            kwonlyargs=[],
+            kwonlydefaults=None,
+            annotations={})
+
+
+def type_name(v):
+    return type(v).__name__
 
 
 def _is_api_in_module_helper(obj, module_prefix):

@@ -16,6 +16,7 @@ from __future__ import print_function
 import gast
 import inspect
 import warnings
+import six
 import textwrap
 import threading
 import collections
@@ -31,6 +32,7 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import type_name, getfullargspec
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.base import param_guard
@@ -120,17 +122,123 @@ def convert_to_static(function):
         return static_func
 
 
+class VariableSpec(object):
+
+    __slots__ = ['_shape', '_dtype', '_name']
+
+    def __init__(self, shape, dtype='float32', name=None):
+        # replace None with -1
+        for i in six.moves.range(len(shape)):
+            if shape[i] is None:
+                shape[i] = -1
+
+        self._shape = tuple(shape)
+        self._dtype = dtype  # TODO: convert it into united representions
+        self._name = name
+
+    @classmethod
+    def from_variable(cls, variable, name=None):
+        if isinstance(variable, (core.Variable, core.VarBase)):
+            return cls(variable.shape, variable.dtype, name or variable.name)
+        else:
+            raise ValueError(
+                "Input `variable` should be a Variable, but received {}.".
+                format(type_name(variable)))
+
+    @classmethod
+    def from_numpy(cls, ndarray, name=None):
+        # TODO: tansform ndarray.type into paddle dataType
+
+        return cls(ndarray.shape, ndarray.dtype, name)
+
+    # TODO: where to use this interface?
+    def _batch(self, batch_size):
+        if isinstance(batch_size, (list, tuple)):
+            if len(batch_size) != 1:
+                raise ValueError(
+                    "Length of  {}: batch_size shall be 1, but received {}.".
+                    format(type_name(variable), len(batch_size)))
+            batch_size = batch_size[1]
+        if not isinstance(batch_size, int):
+            raise TypeError("type(batch_size) shall be int, but received {}.".
+                            format(type_name(batch_size)))
+
+        return VariableSpec([batch_size] + self._shape, self._dtype, self._name)
+        # self._shape = [batch_size] + self._shape
+        # return self
+
+    def _unbatch(self):
+        if len(self._shape) == 0:
+            raise ValueError(
+                "Not support to unbatch a variable when len(shape) == 0.")
+
+        return VariableSpec(self._shape[1:], self._dtype, self.name)
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def name(self):
+        return self._name
+
+    def __repr__(self):
+        return '{}(shape={}, dtype={}, name={})'.format(
+            type_name(self), self._shape, self._dtype, self._name)
+
+    def __hash__(self):
+        return hash((self._shape, self._dtype))
+
+    def __eq__(self, other):
+        return (type(self) is type(other) and all(
+            getattr(self, attr) == getattr(other, attr)
+            for attr in self.__slots__))
+
+    def __ne__(self, other):
+        return not self == other
+
+
 class FunctionSpec(object):
-    def __init__(self, func, args, kwargs):
+    def __init__(self, func, input_signature, args, kwargs):
+        # print(id(func), func.__name__)
         self._dyfunc = func
+        self._input_signature = input_signature
+        self._idx_to_variable_spec = {}
         self._args = args
         self._kwargs = kwargs
+        self._inputs_with_spec = self.parse_variable_spec(args)
+        # TODO: add args_keys parser, modify it into lazy mode
+        self._arg_names = self._parse_arg_names(func)
 
         dyfunc = getattr(func, '__wrapped__', func)
         self._dyfunc_code = inspect.getsource(dyfunc)
 
     def is_method(self):
         return self._args and isinstance(self._args[0], layers.Layer)
+
+    def _parse_arg_names(self, func):
+        fullargspec = getfullargspec(func)
+        # if self.is_method():
+        #     arg_names = fullargspec.args[1:]
+        # else:
+        arg_names = fullargspec.args
+
+        if len(self.args) != len(arg_names):
+            raise ValueError(
+                "Function `{}({})` requires {} arguments, but received {} arguments.".
+                format(self._dyfunc.__name__, ','.join(arg_names),
+                       len(arg_names), len(self.args)))
+
+        return arg_names
+
+    @staticmethod
+    def from_function_and_signature(func, input_signature):
+        # TODO: deal with args
+        return FunctionSpec(func, input_signature, [])
 
     def parameters(self, include_sublayer=True):
         """
@@ -163,6 +271,76 @@ class FunctionSpec(object):
             else:
                 buffers = layer_instance._buffers
         return buffers
+
+    def parse_variable_spec(self, args):
+        # replace variable and numpy array with VariableSpec
+        inputs_with_spec = []
+
+        if self._input_signature is not None:
+            if self._kwargs:
+                raise ValueError(
+                    "Not support kwargs when specific VariableSpec.")
+            # TODO: consider nested structure input arguments
+            flat_signature = flatten(self._input_signature)
+            if self.is_method():
+                args = args[1:]
+
+            if len(args) < len(flat_signature):
+                raise ValueError(
+                    "Mismatch length of arguments and VariableSpec, receive len(args):{} < len(VariableSpec): {}".
+                    format(len(args), len(flat_signature)))
+
+            # TODO: make sure we can handle When the lengths are inconsistent
+            # print(args)
+
+            inputs_with_spec = flat_signature + list(args)[len(flat_signature):]
+            if self.is_method():
+                inputs_with_spec = [self._args[0]] + inputs_with_spec
+
+            self._idx_to_variable_spec = dict(
+                zip(range(len(flat_signature)), flat_signature))
+            # print(inputs_with_spec)
+
+        else:
+            # map index into variable_spec
+            for idx, input_var in enumerate(flatten(args)):
+                if isinstance(input_var, np.ndarray):
+                    input_var = VariableSpec.from_numpy(input_var)
+                elif isinstance(input_var, core.VarBase):
+                    input_var = VariableSpec.from_variable(input_var)
+
+                if isinstance(input_var, VariableSpec):
+                    self._idx_to_variable_spec[idx] = input_var
+
+                inputs_with_spec.append(input_var)
+
+        return inputs_with_spec
+
+    # TODO: Reuse code with to_static_inputs
+    @switch_to_static_graph
+    def to_static_inputs_with_signature(self, main_program):
+        """
+        If users specific signature info, we only signature?
+        """
+        # TODO: lazy mode or cache the functionSpec
+        args = flatten(self.args)
+
+        inputs = []
+        block = main_program.global_block()
+        for i, var_spec in enumerate(self._inputs_with_spec):
+            if isinstance(var_spec, VariableSpec):
+                feed_layer = block.create_var(
+                    # TODO: consider nested structure
+                    name=var_spec.name or "feed_" + self._arg_names[i],
+                    shape=var_spec.shape,
+                    dtype=var_spec.dtype,
+                    is_data=True,
+                    need_check_feed=False)
+            else:
+                feed_layer = args[i]
+            inputs.append(feed_layer)
+
+        return pack_sequence_as(args, inputs)
 
     @switch_to_static_graph
     def to_static_inputs(self, main_program):
@@ -198,21 +376,27 @@ class FunctionSpec(object):
     def args(self):
         return self._args
 
+    # TODO: consider input_signature as key
     def __key(self):
         # Note: if dygraph function is a method of class,
         # consider instance info as hash key.
         if self.is_method():
             # NOTE: we can use Layer's (instance + function code) as hash key.
             # An instance will not hold two identical methods 
-            return self._dyfunc_code, self._args[0]
+            return self._dyfunc_code, self._args[0], tuple(
+                self._inputs_with_spec)
         else:
-            return self._dyfunc
+            return self._dyfunc, tuple(self._inputs_with_spec)
 
     def __hash__(self):
         return hash(self.__key())
 
     def __eq__(self, other):
         return self.__key() == self.__key()
+
+    @property
+    def hash_key(self):
+        return self.__key()
 
 
 # Flag that indicates whether running code under `@declarative`
@@ -274,7 +458,8 @@ class ConcreteProgram(object):
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `fluid.data` layers for input if needed
-                inputs = func_spec.to_static_inputs(main_program)
+                # inputs = func_spec.to_static_inputs(main_program)
+                inputs = func_spec.to_static_inputs_with_signature(main_program)
 
                 # 2. Gets all ParamBases and buffered VarBases in the function
                 all_parameters_and_buffers = list(func_spec.parameters().values(
@@ -335,6 +520,9 @@ class ProgramCache(object):
         key = next(reversed(self._caches.keys()))
         return key, self._caches[key]
 
+    def concrete_programs(self):
+        return [cp for cp, _ in self._caches.iteritems()]
+
 
 def synchronized(func):
     func.__lock__ = threading.Lock()
@@ -344,6 +532,18 @@ def synchronized(func):
             return func(*args, **kwargs)
 
     return lock_func
+
+
+class TLayer(object):
+    def __init__(self, inner_function, input_signature):
+        self._inner_function = inner_function
+        self._input_signature = inner_function
+
+    def __get__(self, instance, owner):
+        return self._inner_function.__get__(instance, onwer)
+
+    def __call__(self, *args, **kwargs):
+        return self._inner_function(*args, **kwargs)
 
 
 class ProgramTranslator(object):
@@ -438,7 +638,8 @@ class ProgramTranslator(object):
                    "ProgramTranslator.enable")
         self.enable_declarative = enable_declarative
 
-    def get_output(self, dygraph_func, *args, **kwargs):
+    # TODO: deal with the place of input_signature
+    def get_output(self, dygraph_func, input_signature, *args, **kwargs):
         """
         Returns the output dygraph VarBase for dygraph function. The dygraph
         function will be translated into static graph function so the under
@@ -483,7 +684,9 @@ class ProgramTranslator(object):
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
 
-        function_spec = FunctionSpec(dygraph_func, args, kwargs)
+        function_spec = FunctionSpec(dygraph_func, input_signature, args,
+                                     kwargs)
+        # print(function_spec.hash_key)
         _, partial_program_layer = self._program_cache[function_spec]
 
         if args and isinstance(args[0], layers.Layer):

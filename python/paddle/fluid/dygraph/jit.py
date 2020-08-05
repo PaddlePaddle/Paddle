@@ -17,20 +17,23 @@ from __future__ import print_function
 import os
 import six
 import pickle
+import decorator
 
 import warnings
 from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec, VariableSpec, TLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Program, Block, Variable, ParamBase, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph.io import TranslatedLayer, VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
 
-__all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
+__all__ = [
+    'TracedLayer', 'declarative', 'dygraph_to_static_func', 'VariableSpec'
+]
 
 
 def create_program_from_desc(program_desc):
@@ -125,7 +128,8 @@ def _dygraph_to_static_func_(dygraph_func):
 dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
-def _declarative_(dygraph_func):
+@decorator.decorator
+def declarative(dygraph_func, input_signature=None, *args, **kwargs):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
     @declarative handles the Program and Executor of static mode and returns
@@ -159,20 +163,23 @@ def _declarative_(dygraph_func):
           print(x_v.numpy()) # [[2. 2.]]
 
     """
+    # def __impl__(*args, **kwargs):
+    # TODO: if specific input_signature, make sure that kwargs should be {}
+    # print("in declarative: ", args)
+    # print("in declarative: ", kwargs)
 
-    def __impl__(*args, **kwargs):
-        program_translator = ProgramTranslator()
-        if not program_translator.enable_declarative:
-            warnings.warn(
-                "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
-                "We will just return dygraph output.")
-            return dygraph_func(*args, **kwargs)
-        return program_translator.get_output(dygraph_func, *args, **kwargs)
-
-    return __impl__
-
-
-declarative = wrap_decorator(_declarative_)
+    program_translator = ProgramTranslator()
+    if not program_translator.enable_declarative:
+        warnings.warn(
+            "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
+            "We will just return dygraph output.")
+        return dygraph_func(*args, **kwargs)
+    # TODO: consider a more elegant mechanism to replace `get_output` to handle `input_signature`
+    # Maybe use a wrapper class ?
+    output = program_translator.get_output(dygraph_func, input_signature, *args,
+                                           **kwargs)
+    # output = program_translator.get_output(dygraph_func, *args, **kwargs)
+    return output
 
 
 class SaveLoadConfig(object):
