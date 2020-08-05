@@ -79,5 +79,6 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
     PADDLE_THROW("unknown var type to copy");
   }
 }
+
 }  // namespace framework
 }  // namespace paddle

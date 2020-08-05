@@ -575,7 +575,8 @@ class DeviceTracerImpl : public DeviceTracer {
         } else if (platform::is_cuda_pinned_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
         } else {
-          PADDLE_THROW("The current place is not supported.");
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "The current place is not supported."));
         }
         event->set_alloc_in(r.alloc_in);
         event->set_free_in(r.free_in);

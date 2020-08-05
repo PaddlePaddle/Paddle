@@ -143,7 +143,7 @@ class Trainer(object):
             return False
 
         if self.endpoint != t.endpoint or \
-                self.rank != t.rank :
+                self.rank != t.rank:
             return False
 
         for a, b in zip(self.gpus, t.gpus):
@@ -381,7 +381,7 @@ def start_local_trainers(cluster,
         tp.rank = t.rank
         tp.local_rank = idx
         tp.log_fn = fn
-        tp.log_offset = 0 if fn else None
+        tp.log_offset = fn.tell() if fn else None
         tp.cmd = cmd
 
         procs.append(tp)

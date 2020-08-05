@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
+import paddle
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import unittest
 from unittest import TestCase
@@ -293,6 +294,54 @@ class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
     def setUp(self):
         self.sort_sum_gradient = True
         self.shape = [5, 10]
+
+
+class TestDygraphDoubleGradVisitedUniq(TestCase):
+    def test_compare(self):
+        value = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+
+        def model_f(input):
+            conv2d = fluid.dygraph.Conv2D(3, 2, 3)
+            for i in range(10):
+                if i == 0:
+                    out = conv2d(input)
+                else:
+                    out = out + conv2d(input)
+            return out
+
+        backward_strategy = fluid.dygraph.BackwardStrategy()
+        backward_strategy.sort_sum_gradient = True
+        with fluid.dygraph.guard():
+            paddle.manual_seed(123)
+            a = fluid.dygraph.to_variable(value)
+            a.stop_gradient = False
+
+            out = model_f(a)
+
+            dx = fluid.dygraph.grad(
+                outputs=[out],
+                inputs=[a],
+                create_graph=True,
+                retain_graph=True,
+                only_inputs=True,
+                allow_unused=False,
+                backward_strategy=backward_strategy)
+
+            grad_1 = dx[0].numpy()
+
+        with fluid.dygraph.guard():
+            paddle.manual_seed(123)
+            a = fluid.dygraph.to_variable(value)
+            a.stop_gradient = False
+
+            out = model_f(a)
+            out.backward(backward_strategy)
+
+            grad_2 = a.gradient()
+
+        self.assertTrue(
+            np.allclose(
+                grad_1, grad_2, rtol=1.e-5, atol=1.e-8, equal_nan=True))
 
 
 if __name__ == '__main__':

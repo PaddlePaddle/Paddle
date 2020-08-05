@@ -404,29 +404,35 @@ def _as_lodtensor(data, place, dtype=None):
             >>>     ...
 
         Args:
-            data(numpy.ndarray): a instance of array
+            data(numpy.ndarray|list|tuple|scalar): a instance of array, scalar, list or tuple
             data(core.Place): the place of created tensor
-            dtype(core.VarDesc.VarType): the expected data type of created tensor
+            dtype(core.VarDesc.VarType|str): the expected data type of created tensor
 
         Returns:
             LoDTensor
         """
-    if isinstance(data, list):
-        raise RuntimeError("Some of your feed data hold LoD information. \
-                They can not be completely cast from a list of Python \
-                ndarray to LoDTensor. Please convert data to LoDTensor \
-                directly before feeding the data.\
-                ")
-
-    #NOTE(zhiqiu): convert python builtin ,like float and int, to numpy array
+    #NOTE(zhiqiu): convert python builtin, like float, int, and list, to numpy ndarray
     if not isinstance(data, np.ndarray):
+        assert dtype is not None, 'The dtype should be given when feed data is not np.ndarray'
+        dtype = convert_dtype(dtype) if isinstance(
+            dtype, core.VarDesc.VarType) else dtype
         if np.isscalar(data):
-            assert dtype is not None, 'dtype should be given when casting python scalar to tensor'
-            dtype = convert_dtype(dtype) if isinstance(
-                dtype, core.VarDesc.VarType) else dtype
             data = np.array([data]).astype(dtype)
+        elif isinstance(data, (list, tuple)):
+            data = np.array(data)
+            if data.dtype == np.object:
+                raise TypeError(
+                    "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                    "this means the input data contains nested lists with different lengths. "
+                    "Please consider using 'fluid.create_lod_tensor' to convert it to a LoD-Tensor."
+                )
+            data = data.astype(dtype)
+        else:
+            raise TypeError(
+                "Convert data of type {} to Tensor is not supported".format(
+                    type(data)))
 
-    # single tensor case
+    # convert numpy.ndarray to tensor
     tensor = core.LoDTensor()
     tensor.set(data, place)
     return tensor
@@ -1073,9 +1079,6 @@ class Executor(object):
                 use_prune=use_prune,
                 return_merged=return_merged)
         except Exception as e:
-            if not isinstance(e, core.EOFException):
-                warnings.warn(
-                    "The following exception is not an EOF exception.")
             six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
@@ -1151,6 +1154,23 @@ class Executor(object):
 
         # For backward compatibility, run directly.
         if not compiled:
+            # In distributed training, the compiled program is saved in Program._graph
+            has_compiled_graph = isinstance(program._graph,
+                                            compiler.CompiledProgram)
+            if has_compiled_graph:
+                program._graph._compile(scope, self.place)
+                # _graph in program does not support inference since the _graph is optimized
+                # through optimizer.minimize function and should not be used as inference graph
+                # assert not program._graph._is_inference
+                return self._run_parallel(
+                    program._graph,
+                    scope=scope,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    fetch_var_name=fetch_var_name,
+                    return_numpy=return_numpy,
+                    return_merged=return_merged)
+
             return self._run_program(
                 program,
                 feed=feed,
@@ -1331,14 +1351,25 @@ class Executor(object):
                           fetch_info=None,
                           print_period=100,
                           fetch_handler=None):
-        if dataset is None:
-            raise RuntimeError("dataset is need and should be initialized")
-
-        if program._pipeline_opt is not None and program._pipeline_opt[
-                "sync_steps"] != -1:
-            # hack for paddlebox: sync_steps(-1) denotes paddlebox
-            thread = self._adjust_pipeline_resource(program._pipeline_opt,
-                                                    dataset, thread)
+        if program._pipeline_opt is not None:
+            import paddle
+            if dataset is not None:
+                raise RuntimeError("dataset should be None for pipeline mode")
+            # The following fake dataset is created to call 
+            # the _prepare_trainer api, and it is meaningless.
+            data_vars = []
+            for var in program.global_block().vars.values():
+                if var.is_data:
+                    data_vars.append(var)
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset')
+            dataset.set_batch_size(1)
+            dataset.set_thread(1)
+            dataset.set_filelist(['None'])
+            dataset.set_use_var(data_vars)
+        else:
+            if dataset is None:
+                raise RuntimeError("dataset is need and should be initialized")
 
         dataset._prepare_to_run()
 
@@ -1429,8 +1460,8 @@ class Executor(object):
 
                 place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
                 exe = fluid.Executor(place)
-                x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
-                y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
+                x = fluid.data(name="x", shape=[None, 10, 10], dtype="int64")
+                y = fluid.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
                 dataset = fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
                 dataset.set_thread(1)
@@ -1495,8 +1526,8 @@ class Executor(object):
 
               place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
               exe = fluid.Executor(place)
-              x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
-              y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
+              x = fluid.data(name="x", shape=[None, 10, 10], dtype="int64")
+              y = fluid.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
               dataset = fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
               dataset.set_thread(1)

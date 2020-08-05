@@ -81,19 +81,19 @@ if(WITH_PYTHON)
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(TARGET op_function_generator
-            PRE_BUILD
+            PRE_LINK
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
           )
     else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
       add_custom_command(TARGET op_function_generator
-            PRE_BUILD
+            PRE_LINK
             COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
           )
     endif()
     if(WITH_MKLDNN)
       add_custom_command(TARGET op_function_generator
-          PRE_BUILD
+          PRE_LINK
           COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
           )
     endif()
@@ -113,14 +113,14 @@ if(WITH_PYTHON)
     )
     if(WITH_MKL)
       add_custom_command(TARGET op_function_generator
-            PRE_BUILD
+            PRE_LINK
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}
             )
     endif(WITH_MKL)
     if(WITH_MKLDNN)
       add_custom_command(TARGET op_function_generator
-          PRE_BUILD
+          PRE_LINK
           COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
           )
     endif(WITH_MKLDNN)

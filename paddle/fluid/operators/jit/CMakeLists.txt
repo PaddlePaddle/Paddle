@@ -12,7 +12,7 @@ file(GLOB jit_kernel_cc_srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.cc")
 list(REMOVE_ITEM jit_kernel_cc_srcs test.cc benchmark.cc)
 cc_library(jit_kernel_base SRCS ${jit_kernel_cc_srcs} DEPS ${JIT_KERNEL_DEPS})
 
-copy_if_different(${jit_file} ${jit_file_final} jit_kernel_base)
+copy_if_different(${jit_file} ${jit_file_final})
 
 # refer must go first
 add_subdirectory(refer)

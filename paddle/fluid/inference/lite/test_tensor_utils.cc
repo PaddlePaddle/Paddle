@@ -30,7 +30,7 @@ TEST(LiteEngineOp, GetNativePlace) {
   platform::Place GetNativePlace(const TargetType& type, int id = 0);
   EXPECT_TRUE(platform::is_cpu_place(GetNativePlace(TargetType::kHost)));
   EXPECT_TRUE(platform::is_gpu_place(GetNativePlace(TargetType::kCUDA)));
-  ASSERT_DEATH(GetNativePlace(TargetType::kUnk), "");
+  EXPECT_ANY_THROW(GetNativePlace(TargetType::kUnk));
 }
 
 TEST(LiteEngineOp, GetLiteTargetType) {
@@ -48,8 +48,8 @@ TEST(LiteEngineOp, GetLitePrecisionType) {
             PrecisionType::kInt8);
   ASSERT_EQ(GetLitePrecisionType(framework::proto::VarType_Type_INT32),
             PrecisionType::kInt32);
-  ASSERT_DEATH(
-      GetLitePrecisionType(framework::proto::VarType_Type_SELECTED_ROWS), "");
+  EXPECT_ANY_THROW(
+      GetLitePrecisionType(framework::proto::VarType_Type_SELECTED_ROWS));
 }
 
 TEST(LiteEngineOp, GetNativePrecisionType) {
@@ -62,7 +62,7 @@ TEST(LiteEngineOp, GetNativePrecisionType) {
             framework::proto::VarType_Type_INT8);
   ASSERT_EQ(GetNativePrecisionType(PrecisionType::kInt32),
             framework::proto::VarType_Type_INT32);
-  ASSERT_DEATH(GetNativePrecisionType(PrecisionType::kUnk), "");
+  EXPECT_ANY_THROW(GetNativePrecisionType(PrecisionType::kUnk));
 }
 
 TEST(LiteEngineOp, GetNativeLayoutType) {
@@ -70,14 +70,14 @@ TEST(LiteEngineOp, GetNativeLayoutType) {
   framework::DataLayout GetNativeLayoutType(const DataLayoutType& type);
   ASSERT_EQ(GetNativeLayoutType(DataLayoutType::kNCHW),
             framework::DataLayout::kNCHW);
-  ASSERT_DEATH(GetNativeLayoutType(DataLayoutType::kNHWC), "");
+  EXPECT_ANY_THROW(GetNativeLayoutType(DataLayoutType::kNHWC));
 }
 
 void test_tensor_copy(const platform::DeviceContext& ctx) {
   // Create LoDTensor.
   std::vector<float> vector({1, 2, 3, 4});
   framework::LoDTensor lod_tensor;
-  framework::TensorFromVector(vector, &lod_tensor);
+  framework::TensorFromVector(vector, ctx, &lod_tensor);
   framework::LoD lod({{0, 2, 4}});
   lod_tensor.Resize({4, 1});
   lod_tensor.set_lod(lod);
@@ -94,7 +94,26 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
   }
 #endif
   std::vector<float> result;
-  TensorToVector(lod_tensor_n, &result);
+  TensorToVector(lod_tensor_n, ctx, &result);
+  ASSERT_EQ(result, vector);
+  ASSERT_EQ(lod_tensor_n.lod(), lod_tensor.lod());
+}
+
+void test_tensor_share(const platform::DeviceContext& ctx) {
+  std::vector<float> vector({1, 2, 3, 4});
+  framework::LoDTensor lod_tensor;
+  framework::TensorFromVector(vector, ctx, &lod_tensor);
+  framework::LoD lod({{0, 2, 4}});
+  lod_tensor.Resize({4, 1});
+  lod_tensor.set_lod(lod);
+  // Create lite::Tensor and share.
+  paddle::lite::Tensor lite_tensor;
+  TensorDataShare(&lite_tensor, &lod_tensor);
+  // Copy to LoDTensor.
+  framework::LoDTensor lod_tensor_n;
+  TensorCopyAsync(&lod_tensor_n, lite_tensor, ctx);
+  std::vector<float> result;
+  TensorToVector(lod_tensor_n, ctx, &result);
   ASSERT_EQ(result, vector);
   ASSERT_EQ(lod_tensor_n.lod(), lod_tensor.lod());
 }
@@ -107,6 +126,17 @@ TEST(LiteEngineOp, TensorCopyAsync) {
   auto* ctx_gpu =
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0));
   test_tensor_copy(*ctx_gpu);
+#endif
+}
+
+TEST(LiteEngineOp, TensorShare) {
+  auto* ctx_cpu =
+      platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
+  test_tensor_share(*ctx_cpu);
+#ifdef PADDLE_WITH_CUDA
+  auto* ctx_gpu =
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0));
+  test_tensor_share(*ctx_gpu);
 #endif
 }
 

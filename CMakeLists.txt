@@ -79,7 +79,6 @@ find_package(Threads REQUIRED)
 include(simd)
 
 ################################ Exposed Configurations #######################################
-option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
@@ -169,6 +168,9 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
+# lite subgraph compilation depends on CUDNN_ROOT,
+# so include(cudnn) needs to be in front of include(third_party/lite)
+include(cudnn)              # set cudnn libraries, must before configure
 include(third_party)        # download, build, install third_party
 
 if(WITH_DISTRIBUTE)
@@ -188,7 +190,6 @@ if(NOT WIN32)
 endif()
 
 include(flags)              # set paddle compile flags
-include(cudnn)              # set cudnn libraries, must before configure
 
 if(WITH_GPU)
     include(cuda)
@@ -217,6 +218,9 @@ endif(WITH_AMD_GPU)
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_ARM=ON" FORCE)
+    set(WITH_MKL OFF CACHE STRING "Disable MKL when compiling WITH_ARM=ON." FORCE)
+    set(WITH_GPU OFF CACHE STRING "Disable GPU when compiling WITH_ARM=ON." FORCE)
     add_definitions(-DPADDLE_WITH_ARM)
 endif()
 
