@@ -313,7 +313,8 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
         backward_strategy = fluid.dygraph.BackwardStrategy()
         backward_strategy.sort_sum_gradient = True
         with fluid.dygraph.guard():
-            paddle.manual_seed(123)
+            fluid.default_startup_program().random_seed = 123
+            fluid.default_main_program().random_seed = 123
             a = fluid.dygraph.to_variable(value)
             a.stop_gradient = False
 
@@ -325,7 +326,8 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
             grad_1 = dx[0].numpy()
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(123)
+            fluid.default_startup_program().random_seed = 123
+            fluid.default_main_program().random_seed = 123
             a = fluid.dygraph.to_variable(value)
             a.stop_gradient = False
 
