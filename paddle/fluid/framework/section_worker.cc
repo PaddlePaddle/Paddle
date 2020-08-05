@@ -323,10 +323,6 @@ void SectionWorker::TrainFilesWithProfiler() {
     struct timeval micro_end;
     while (true) {
       // Start a minibatch.
-      // int batch_size = 0;
-      //cudaEvent_t cu_start, cu_stop;
-      //cudaEventCreate(&cu_start);
-      //cudaEventCreate(&cu_stop);
       batch_timer.Start();
       for (int i = 0; i < num_microbatches_; ++i) {
         try {
@@ -349,18 +345,12 @@ void SectionWorker::TrainFilesWithProfiler() {
               VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                       << " for scope " << i;
               timeline.Start();
-              //cudaEventRecord(cu_start);
               op->Run(*microbatch_scopes_[i], place_);
               if (gc) {
                 DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                     unused_vars_, gc.get());
               }
               cudaDeviceSynchronize();
-              //cudaEventRecord(cu_stop);
-              //cudaEventSynchronize(cu_stop);
-              //float cuda_time;
-              //cudaEventElapsedTime(&cuda_time, cu_start, cu_stop);
-              //VLOG(0) << "op: " << op->Type() << "; time: " << cuda_time;
               timeline.Pause();
               gettimeofday(&end, NULL);
               auto time = timeline.ElapsedUS();
@@ -407,8 +397,6 @@ void SectionWorker::TrainFilesWithProfiler() {
                     << ", mean_time: " << op_total_time[i] / op_count[i];
           }
           VLOG(0) << "================================";
-          //cudaEventDestroy(cu_start);
-          //cudaEventDestroy(cu_stop);
           return;
         }
         if (i == 0) {
@@ -432,18 +420,12 @@ void SectionWorker::TrainFilesWithProfiler() {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
             timeline.Start();
-            //cudaEventRecord(cu_start);
             op->Run(*microbatch_scopes_[i], place_);
             if (gc) {
               DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
             cudaDeviceSynchronize();
-            //cudaEventRecord(cu_stop);
-            //cudaEventSynchronize(cu_stop);
-            //float cuda_time;
-            //cudaEventElapsedTime(&cuda_time, cu_start, cu_stop);
-            //VLOG(0) << "op: " << op->Type() << "; time: " << cuda_time;
             gettimeofday(&end, NULL);
             timeline.Pause();
             auto time = timeline.ElapsedUS();
@@ -488,18 +470,12 @@ void SectionWorker::TrainFilesWithProfiler() {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
           timeline.Start();
-          //cudaEventRecord(cu_start);
           op->Run(*microbatch_scopes_[0], place_);
           if (gc) {
             DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
                                 op.get(), unused_vars_, gc.get());
           }
-          //cudaEventRecord(cu_stop);
-          //cudaEventSynchronize(cu_stop);
           cudaDeviceSynchronize();
-          //float cuda_time;
-          //cudaEventElapsedTime(&cuda_time, cu_start, cu_stop);
-          //VLOG(0) << "op: " << op->Type() << "; time: " << cuda_time;
           gettimeofday(&end, NULL);
           timeline.Pause();
           auto time = timeline.ElapsedUS();
@@ -516,7 +492,6 @@ void SectionWorker::TrainFilesWithProfiler() {
             std::unique_lock<std::mutex> lk(cout_mutex);
 	        std::cout << std::fixed;
             std::cout.precision(0);
-            //std::cout << "::UPD:B[" << batch_id_ << "]:SEC[" << thread_id_
             std::cout << "::UPD:B[" << batch_id_ << "]:SEC[" << thread_id_ << "]:SCOPE[" << num_microbatches_
                     << "]:OP[" << op->Type() << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
                     << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
@@ -574,9 +549,6 @@ void SectionWorker::TrainFilesWithProfiler() {
                     << ", mean_time: " << op_total_time[i] / op_count[i];
           }
           VLOG(0) << "================================";
-          //threads_completed = false;
-          //cudaEventDestroy(cu_start);
-          //cudaEventDestroy(cu_stop);
           return;
         }
         lk.unlock();
@@ -603,18 +575,12 @@ void SectionWorker::TrainFilesWithProfiler() {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
             timeline.Start();
-            //cudaEventRecord(cu_start);
             op->Run(*microbatch_scopes_[i], place_);
             if (gc) {
               DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
-            //cudaEventRecord(cu_stop);
-            //cudaEventSynchronize(cu_stop);
             cudaDeviceSynchronize();
-            //float cuda_time;
-            //cudaEventElapsedTime(&cuda_time, cu_start, cu_stop);
-            //VLOG(0) << "op: " << op->Type() << "; time: " << cuda_time;
             gettimeofday(&end, NULL);
             timeline.Pause();
             auto time = timeline.ElapsedUS();
@@ -662,18 +628,12 @@ void SectionWorker::TrainFilesWithProfiler() {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
             timeline.Start();
-            //cudaEventRecord(cu_start);
             op->Run(*microbatch_scopes_[i], place_);
             if (gc) {
               DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
-            //cudaEventRecord(cu_stop);
-            //cudaEventSynchronize(cu_stop);
             cudaDeviceSynchronize();
-            //float cuda_time;
-            //cudaEventElapsedTime(&cuda_time, cu_start, cu_stop);
-            //VLOG(0) << "op: " << op->Type() << "; time: " << cuda_time;
             gettimeofday(&end, NULL);
             timeline.Pause();
             auto time = timeline.ElapsedUS();
@@ -718,18 +678,12 @@ void SectionWorker::TrainFilesWithProfiler() {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
           timeline.Start();
-          //cudaEventRecord(cu_start);
           op->Run(*microbatch_scopes_[0], place_);
           if (gc) {
             DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
                                 op.get(), unused_vars_, gc.get());
           }
-          //cudaEventRecord(cu_stop);
-          //cudaEventSynchronize(cu_stop);
           cudaDeviceSynchronize();
-          //float cuda_time;
-          //cudaEventElapsedTime(&cuda_time, cu_start, cu_stop);
-          //VLOG(0) << "op: " << op->Type() << "; time: " << cuda_time;
           gettimeofday(&end, NULL);
           timeline.Pause();
           auto time = timeline.ElapsedUS();
@@ -746,7 +700,6 @@ void SectionWorker::TrainFilesWithProfiler() {
             std::unique_lock<std::mutex> lk(cout_mutex);
 	        std::cout << std::fixed;
             std::cout.precision(0);
-            //std::cout << "::UPD:B[" << local_batch_id_ << "]:SEC[" << thread_id_
             std::cout << "::UPD:B[" << batch_id_ << "]:SEC[" << thread_id_ << "]:SCOPE[" << num_microbatches_
                     << "]:OP[" << op->Type() << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
                     << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
