@@ -38,10 +38,8 @@ def deprecated(update_to="", since="", reason=""):
     def _compare_version(v1, v2):
         """compare two versions."""
 
-        _v1 = [int(i) for i in v1.split(".")]
-        _v2 = [int(i) for i in v2.split(".")]
-        _v1 += [0] * (4 - len(v1))
-        _v2 += [0] * (4 - len(v2))
+        _v1 = [int(i) for i in v1.split(".")] + [0] * (4 - len(v1))
+        _v2 = [int(i) for i in v2.split(".")] + [0] * (4 - len(v2))
         for i in range(4):
             if _v1[i] > _v2[i]:
                 return 1
