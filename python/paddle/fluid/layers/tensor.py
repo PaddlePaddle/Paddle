@@ -712,6 +712,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     helper = LayerHelper("fill_constant", **locals())
     inputs = {}
     if isinstance(value, Variable):
+        if convert_dtype(value.dtype) != convert_dtype(dtype):
+            value = cast(value, dtype)
         inputs['ValueTensor'] = value
 
     check_dtype(dtype, 'dtype',
