@@ -196,12 +196,11 @@ def stack(x, axis=0, name=None):
 	:alias_main: paddle.stack
 	:alias: paddle.stack, paddle.tensor.stack, paddle.tensor.manipulation.stack
 
-
     This OP stacks all the input tensors :code:`x` along :code:`axis` dimemsion. 
-    All tensors should to be of the same shape. 
+    All tensors should to be of the same shape and same dtype.
     For example, given N tensors of shape [A, B], if :code:`axis == 0`, the shape of stacked 
     tensor is [N, A, B]; if :code:`axis == 1`, the shape of stacked 
-    tensor is [A, N, B].
+    tensor is [A, N, B]. 
     
 
     .. code-block:: text
@@ -228,7 +227,6 @@ def stack(x, axis=0, name=None):
 
         Case 2:
 
-
           Input:
             x[0].shape = [1, 2]
             x[0].data = [ [1.0 , 2.0 ] ]
@@ -239,7 +237,7 @@ def stack(x, axis=0, name=None):
 
 
           Attrs:
-            axis = 1 or axis = -2
+            axis = 1 or axis = -2  # If axis = -2, axis = axis+ndim(x[0])+1 = -2+2+1 = 1.
 
           Output:
             Out.shape = [1, 3, 2]
@@ -248,21 +246,22 @@ def stack(x, axis=0, name=None):
                           [5.0, 6.0] ] ]
 
     Args:
-        x (Tensor|list(Tensor)): Input :code:`x` can be a single Tensor, a :code:`list` of Tensors.
+        x (Tensor|list(Tensor)): Input :code:`x` can be a single Tensor, or a :code:`list` of Tensors.
                                      If :code:`x` is a :code:`list`, the shapes of all these Tensors
                                      must be the same. Supposing input is N dims
                                      Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
                                      Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
                                      Support data types: float32, float64, int32, int64.
-        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`.
-                              R is the first tensor of inputs. If ``axis`` < 0, :math:`axis = axis+ndim(x[0])+1`.
-                              The default value of axis is 0.
+        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`,
+                              where R is the number of dimensions of the first input tensor :code:`x[0]`. 
+                              If ``axis`` < 0, :math:`axis = axis+R+1`. The default value of axis is 0.
 
     Returns:
-        Tensor: The stacked Tensor with same data type as input Tensors.
+        Tensor: The stacked Tensor with same data type as input.
 
     Example:    
         .. code-block:: python
+
             import paddle
 
             data1 = np.array([[1.0, 2.0]])
