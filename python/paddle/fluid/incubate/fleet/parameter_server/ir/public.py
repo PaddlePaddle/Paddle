@@ -112,13 +112,8 @@ def _is_heter_op(op, current_heter_device, default_device="cpu"):
     heter_devices = list(DEVICE_LIST)
     heter_devices.remove(default_device)
     op_device = op.attr("op_device")
-    op_type = op.type
     if op_device in heter_devices:
         return True
-    # elif op_type in COMMUNICATE_OPS_TYPE and current_heter_device != default_device:
-    #     # for distributed communciate ops: send & recv & barrier
-    #     op._set_attr('op_device', current_heter_device)
-    #     return True
     elif op_device == None or op_device == default_device:
         op._set_attr('op_device', default_device)
         return False
