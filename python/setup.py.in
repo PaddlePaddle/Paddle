@@ -258,6 +258,10 @@ else:
         shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
 
+if '${WITH_LITE}' == 'ON':
+    shutil.copy('${LITE_SHARED_LIB}', libs_path)
+    package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
+
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
     if os.path.exists('${PSLIB_VERSION_PY}'):
