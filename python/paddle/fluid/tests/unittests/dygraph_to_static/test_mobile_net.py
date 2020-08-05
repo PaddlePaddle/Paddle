@@ -19,6 +19,7 @@ from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
 import unittest
 
@@ -433,14 +434,15 @@ class Args(object):
     class_dim = 50
     print_step = 1
     train_step = 10
+    place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
+    ) else fluid.CPUPlace()
+    model_save_path = model + ".inference.model"
+    dy_state_dict_save_path = model + ".dygraph"
 
 
 def train_mobilenet(args, to_static):
     program_translator.enable(to_static)
-
-    place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-    ) else fluid.CPUPlace()
-    with fluid.dygraph.guard(place):
+    with fluid.dygraph.guard(args.place):
 
         np.random.seed(SEED)
         fluid.default_startup_program().random_seed = SEED
@@ -461,7 +463,7 @@ def train_mobilenet(args, to_static):
         # 3. reader
         train_reader = fake_data_reader(args.batch_size, args.class_dim)
         train_data_loader = fluid.io.DataLoader.from_generator(capacity=16)
-        train_data_loader.set_sample_list_generator(train_reader, place)
+        train_data_loader.set_sample_list_generator(train_reader)
 
         # 4. train loop
         loss_data = []
@@ -498,9 +500,54 @@ def train_mobilenet(args, to_static):
                 batch_id += 1
                 t_last = time.time()
                 if batch_id > args.train_step:
+                    if to_static:
+                        fluid.dygraph.jit.save(net, args.model_save_path)
+                    else:
+                        fluid.dygraph.save_dygraph(net.state_dict(),
+                                                   args.dy_state_dict_save_path)
                     break
 
     return np.array(loss_data)
+
+
+def predict_static(args, data):
+    exe = fluid.Executor(args.place)
+    # load inference model
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(
+         args.model_save_path, executor=exe, params_filename=VARIABLE_FILENAME)
+
+    pred_res = exe.run(inference_program,
+                       feed={feed_target_names[0]: data},
+                       fetch_list=fetch_targets)
+    return pred_res[0]
+
+
+def predict_dygraph(args, data):
+    program_translator.enable(False)
+    with fluid.dygraph.guard(args.place):
+        if args.model == "MobileNetV1":
+            model = MobileNetV1(class_dim=args.class_dim, scale=1.0)
+        elif args.model == "MobileNetV2":
+            model = MobileNetV2(class_dim=args.class_dim, scale=1.0)
+        # load dygraph trained parameters
+        model_dict, _ = fluid.load_dygraph(args.dy_state_dict_save_path)
+        model.set_dict(model_dict)
+        model.eval()
+
+        pred_res = model(fluid.dygraph.to_variable(data))
+
+        return pred_res.numpy()
+
+
+def predict_dygraph_jit(args, data):
+    with fluid.dygraph.guard(args.place):
+        model = fluid.dygraph.jit.load(args.model_save_path)
+        model.eval()
+
+        pred_res = model(data)
+
+        return pred_res.numpy()
 
 
 class TestMobileNet(unittest.TestCase):
@@ -509,6 +556,8 @@ class TestMobileNet(unittest.TestCase):
 
     def train(self, model_name, to_static):
         self.args.model = model_name
+        self.args.model_save_path = model_name + ".inference.model"
+        self.args.dy_state_dict_save_path = model_name + ".dygraph"
         out = train_mobilenet(self.args, to_static)
         return out
 
@@ -519,11 +568,35 @@ class TestMobileNet(unittest.TestCase):
             np.allclose(dy_out, st_out),
             msg="dy_out: {}, st_out: {}".format(dy_out, st_out))
 
-    def test_mobileNet(self):
+    def assert_same_predict(self, model_name):
+        self.args.model = model_name
+        self.args.model_save_path = model_name + ".inference.model"
+        self.args.dy_state_dict_save_path = model_name + ".dygraph"
+        local_random = np.random.RandomState(SEED)
+        image = local_random.random_sample([1, 3, 224, 224]).astype('float32')
+        dy_pre = predict_dygraph(self.args, image)
+        st_pre = predict_static(self.args, image)
+        dy_jit_pre = predict_dygraph_jit(self.args, image)
+        self.assertTrue(
+            np.allclose(dy_pre, st_pre),
+            msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
+        self.assertTrue(
+            np.allclose(dy_jit_pre, st_pre),
+            msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre, st_pre))
+
+    def test_mobile_net(self):
         # MobileNet-V1
         self.assert_same_loss("MobileNetV1")
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
+
+        self.verify_predict()
+
+    def verify_predict(self):
+        # MobileNet-V1
+        self.assert_same_predict("MobileNetV1")
+        # MobileNet-V2
+        self.assert_same_predict("MobileNetV2")
 
 
 if __name__ == '__main__':
