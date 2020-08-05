@@ -19,9 +19,11 @@ limitations under the License. */
 #endif               // __GNUC__
 
 #if !defined(_WIN32)
-#include <dlfcn.h>    // dladdr
-#else                 // _WIN32
-#define NOMINMAX      // msvc max/min macro conflict with std::min/max
+#include <dlfcn.h>  // dladdr
+#else               // _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>  // GetModuleFileName
 #endif
 
@@ -230,16 +232,16 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   static constexpr int TRACE_STACK_LIMIT = 100;
   std::ostringstream sout;
 
-  sout << "\n\n--------------------------------------------\n";
-  sout << "C++ Call Stacks (More useful to developers):";
-  sout << "\n--------------------------------------------\n";
+  sout << "\n\n--------------------------------------\n";
+  sout << "C++ Traceback (most recent call last):";
+  sout << "\n--------------------------------------\n";
 #if !defined(_WIN32)
   void* call_stack[TRACE_STACK_LIMIT];
   auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
   auto symbols = backtrace_symbols(call_stack, size);
   Dl_info info;
   int idx = 0;
-  for (int i = 0; i < size; ++i) {
+  for (int i = size - 1; i >= 0; --i) {
     if (dladdr(call_stack[i], &info) && info.dli_sname) {
       auto demangled = demangle(info.dli_sname);
       std::string path(info.dli_fname);

@@ -19,9 +19,12 @@ set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
 set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
   "A path setting fluid inference shared and static libraries")
   
+# TODO(zhaolong)
+# At present, the size of static lib in Windows exceeds the system limit,
+# so the generation of static lib is temporarily turned off.
 if(WIN32)
     #todo: remove the option 
-    option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
+    option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   OFF)
     if(NOT PYTHON_EXECUTABLE)
         FIND_PACKAGE(PythonInterp REQUIRED)
     endif()
@@ -187,21 +190,18 @@ copy(inference_lib_dist
         SRCS  ${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io/crypto/cipher.h
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/crypto/)
 include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
+
 # CAPI inference library for only inference
 set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
 "A path setting CAPI fluid inference shared")
 copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_C_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
-if(WIN32)
-    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.*)
-else(WIN32)
-    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_fluid_c.*)
-endif(WIN32)
+set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_fluid_c.*)
 
 copy(inference_lib_dist
-        SRCS  ${src_dir}/inference/capi/paddle_c_api.h  ${paddle_fluid_c_lib}
-        DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
+      SRCS  ${src_dir}/inference/capi/paddle_c_api.h  ${paddle_fluid_c_lib}
+      DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
 
 # fluid library for both train and inference
 set(fluid_lib_deps inference_lib_dist)

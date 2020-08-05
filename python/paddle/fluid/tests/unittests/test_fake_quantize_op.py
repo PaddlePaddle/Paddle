@@ -146,7 +146,6 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
         out_state[0] = self.attrs['moving_rate'] * state[0] + 1
         out_scale = out_accum / out_state
         self.outputs = {
-            'Out': self.inputs['X'],
             'OutAccum': out_accum,
             'OutState': out_state,
             'OutScale': out_scale,
