@@ -63,10 +63,13 @@ def deprecated(update_to="", since="", reason=""):
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            """check version, and print warning if current version is newer than deprecated version."""
+            """deprecated warning should be fired in 3 circumstances:
+               1. current version is develop version, i.e. "0.0.0", because we assume develop version is always the latest version.
+               2. since version is empty, in this case, API is deprecated in all versions.
+               3. current version is newer than since version.
+            """
             if paddle.__version__ == "0.0.0" or _since == "" or _current_version >= version.parse(
                     _since):
-                # if current version is develop version or newer than _since, print deprecation warning.
                 warnings.simplefilter('always',
                                       DeprecationWarning)  # turn off filter
                 warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
