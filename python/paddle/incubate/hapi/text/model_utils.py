@@ -44,7 +44,16 @@ class PreTrainedModel(Model):
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path, *init_inputs,
                         **kwargs):
-        """Get model from pre-trained model."""
+        """
+        Load model from pre-trained model.
+
+        Args:
+            pretrained_model_name_or_path: A name or a path of pre-trained model.
+            *init_inputs: he additional init inputs.
+            **kwargs: The Additional inputs.
+        Returns:
+            PreTrainedModel
+        """
         pretrained_models = list(cls.pretrained_init_configuration.keys())
         resource_files = {}
         init_configuration = {}
@@ -102,9 +111,9 @@ class PreTrainedModel(Model):
 
     def save_pretrained(self, save_directory):
         """
-        Save pre-trained model to files.
+        Save pre-trained model into files.
         Args:
-            save_directory (str): the directory to save the pre-trained model.
+            save_directory (str): The directory to save the pre-trained model.
         Returns:
             None
         """
