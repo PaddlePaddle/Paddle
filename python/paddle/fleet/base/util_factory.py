@@ -28,7 +28,15 @@ from paddle.fluid.framework import Program
 from paddle.fluid.proto import framework_pb2
 from ..utils.fs import FS, LocalFS, HDFSClient
 
-__all__ = ['UtilBase']
+
+class UtilFactory(object):
+    def _create_util(self, context=None):
+        util = UtilBase()
+        if context is not None and "valid_strategy" in context:
+            util._set_strategy(context["valid_strategy"])
+        if context is not None and "role_maker" in context:
+            util._set_role_maker(context["role_maker"])
+        return util
 
 
 class UtilBase(object):
@@ -428,13 +436,4 @@ class UtilBase(object):
             return results
 
 
-class UtilFactory(object):
-    def _create_util(self, dist_strategy, role_maker, optimize_ops,
-                     params_grads):
-        util = UtilBase()
-        util._set_strategy(dist_strategy)
-        util._set_role_maker(role_maker)
-        return util
-
-
-fleet_util = UtilFactory()._create_util(None, None, [], [])
+fleet_util = UtilFactory()._create_util(None)

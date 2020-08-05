@@ -48,8 +48,10 @@ class TestFleetUtil(unittest.TestCase):
         role_maker = None  # should be fleet.PaddleCloudRoleMaker()
         optimize_ops = []
         params_grads = []
-        util = factory._create_util(strategy, role_maker, optimize_ops,
-                                    params_grads)
+        context = {}
+        context["role_maker"] = role_maker
+        context["valid_strategy"] = strategy
+        util = factory._create_util(context)
         self.assertEqual(util.role_maker, None)
 
     def test_get_util(self):
