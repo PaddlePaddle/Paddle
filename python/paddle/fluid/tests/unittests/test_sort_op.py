@@ -28,6 +28,7 @@ class TestSortOnCPU(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def test_api_0(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
             output = paddle.sort(x=input)
@@ -41,6 +42,7 @@ class TestSortOnCPU(unittest.TestCase):
             self.assertEqual((result == np_result).all(), True)
 
     def test_api_1(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
             output = paddle.sort(x=input, axis=1)
