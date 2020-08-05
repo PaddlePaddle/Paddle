@@ -129,6 +129,45 @@ class Layer(core.Layer):
         for layer in self.sublayers():
             layer.eval()
 
+    def apply(self, fn):
+        """
+        Applies ``fn`` recursively to every sublayer (as returned by ``.sublayers()``)
+        as well as self. Typical use includes initializing the parameters of a model.
+
+        Parameters:
+            fn (function): a function to be applied to each sublayer
+
+        Returns:
+            Layer: self
+
+        Example::
+            .. code-block:: python
+
+              import paddle
+              import paddle.nn as nn
+              
+              paddle.enable_imperative()
+              
+              net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
+
+              def init_weights(layer):
+                  if type(layer) == nn.Linear:
+                      print('before init weight:', layer.weight.numpy())
+                      new_weight = paddle.fill_constant(layer.weight.shape, layer.weight.dtype, value=0.9)
+                      layer.weight.set_value(new_weight)
+                      print('after init weight:', layer.weight.numpy())
+
+              net.apply(init_weights)
+
+              print(net.state_dict())
+        """
+        for layer in self.sublayers():
+            layer.apply(fn)
+
+        fn(self)
+
+        return self
+
     def full_name(self):
         """Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__
 
