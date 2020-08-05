@@ -1600,6 +1600,9 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                "axis1 and axis2 cannot be the same axis." \
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
+    if in_dygraph_mode():
+        return core.ops.trace([x], 'offset', offset, 'axis1', axis1, 'axis2', axis2)
+
     if not in_dygraph_mode():
         __check_input(x, offset, axis1, axis2)
     helper = LayerHelper('trace', **locals())
