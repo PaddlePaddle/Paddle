@@ -51,13 +51,9 @@ def func_error_in_compile_time_2(x):
 @declarative
 def func_error_in_runtime(x, iter_num=3):
     x = fluid.dygraph.to_variable(x)
-    a = []
-    iter_num = fluid.layers.fill_constant(
-        shape=[1], value=iter_num, dtype="int32")
-    for i in range(iter_num):
-        a.append(b)
-    a = fluid.layers.concat(a, axis=0)
-    return a
+    two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
+    x = fluid.layers.reshape(x, shape=[1, two])
+    return x
 
 
 class TestErrorInCompileTime(unittest.TestCase):
@@ -126,10 +122,26 @@ class TestErrorInRuntime(TestErrorInCompileTime):
     def set_exception_type(self):
         self.exception_type = EnforceNotMet
 
-    def test(self):
-        with fluid.dygraph.guard():
-            with self.assertRaises(self.exception_type) as cm:
-                self.func(self.input)
+    def set_message(self):
+        self.expected_message = \
+            [
+                'File "{}", line 55, in func_error_in_runtime'.format(self.filepath),
+                'x = fluid.layers.reshape(x, shape=[1, two])'
+            ]
+
+    def _test_create_message(self, error_data):
+        self.filepath = inspect.getfile(unwrap(self.func))
+        self.set_message()
+
+        with self.assertRaises(ValueError):
+            error_data.create_message()
+
+        error_data.in_runtime = False
+        error_message = error_data.create_message()
+
+        self.assertIn('In user code:', error_message)
+        for m in self.expected_message:
+            self.assertIn(m, error_message)
 
 
 if __name__ == '__main__':
