@@ -13,7 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+import numpy as np
+
 from ..fluid.framework import Variable
+from ..fluid.framework import unique_name
+from ..fluid.framework import _current_expected_place
+from ..fluid.framework import dygraph_only
 from ..fluid.initializer import Constant
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
@@ -21,20 +26,16 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
 from ..fluid.layers import fill_constant
 from paddle.common_ops_import import *
-import paddle
 
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
 from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
-from ..fluid.layers import create_tensor  #DEFINE_ALIAS
 from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
 
 __all__ = [
-    'create_tensor',
-    #       'create_lod_tensor',
-    #       'create_random_int_lodtensor',
+    'to_tensor',
     'crop_tensor',
     'diag',
     'eye',
@@ -53,6 +54,166 @@ __all__ = [
     'tril',
     'meshgrid'
 ]
+
+
+@dygraph_only
+def to_tensor(data, dtype=None, stop_gradient=True, pin_memory=False):
+    """
+    :api_attr: imperative
+
+    :alias_main: paddle.to_tensor
+	:alias: paddle.tensor.to_tensor, paddle.tensor.creation.to_tensor
+    :old_api: paddle.fluid.dygraph.to_variable
+
+    Constructs a ``paddle.Tensor`` or ``paddle.ComplexTensor`` from ``data`` , 
+    which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
+
+    If the ``data`` is already a Tensor, and ``dtype`` does't change, no copy will be performed,
+    otherwise a new Tensor will be returned. Similarly, if the data is an ndarray of 
+    the corresponding dtype and the current place is cpu, no copy will be performed.
+
+    The ``ComplexTensor`` is a unique type of paddle. If x is ``ComplexTensor``, then 
+    ``x.real`` is the real part of ``x`` which is a tensor, and ``x.imag`` is the 
+    imaginary part.
+
+    Args:
+        data(scalar|tuple|list|ndarray|Tensor|ComplexTensor): Initial data for the tensor.
+            Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
+        dtype(str, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' , 
+            'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8'. And
+            'complex64' , 'complex128' only for ComplexTensor.
+            Default: None, infers data type from data.
+        stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
+        pin_memory (bool, optional): If True, returned tensor would be allocated in the pinned memory. Works 
+            only for GPU version Paddle. Default: False.
+
+
+    Returns:
+        Tensor: A Tensor constructed from ``data``.
+
+    Raises:
+        TypeError: The data type of ``data`` must be any of scalar, list, tuple, numpy.ndarray, paddle.Tensor, paddle.ComplexTensor
+        TypeError: ``dtype`` must be any of bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
+        ValueError: If ``data`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]
+        ValueError: ``pin_memory`` must be False for CPU-Version Paddle
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+        import numpy as np
+        paddle.enable_imperative()
+                
+        type(paddle.to_tensor(1))
+        # <class 'paddle.Tensor'>
+
+        paddle.to_tensor(1)
+        # Tensor: generated_tensor_0
+        # - place: CUDAPlace(0)
+        # - shape: [1]
+        # - layout: NCHW
+        # - dtype: int64_t
+        # - data: [1]
+
+        paddle.to_tensor((1.1, 2.2))
+        # Tensor: generated_tensor_1
+        #   - place: CUDAPlace(0)
+        #   - shape: [2]
+        #   - layout: NCHW
+        #   - dtype: double
+        #   - data: [1.1 2.2]
+
+        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], pin_memory=True)
+        # Tensor: generated_tensor_2
+        #   - place: CUDAPinnedPlace
+        #   - shape: [2, 2]
+        #   - layout: NCHW
+        #   - dtype: double
+        #   - data: [0.1 0.2 0.3 0.4]
+
+        paddle.to_tensor(np.array([[1, 2], [3, 4]]), stop_gradient=False, dtype='float32')
+        # Tensor: generated_tensor_3
+        #   - place: CUDAPlace(0)
+        #   - shape: [2, 2]
+        #   - layout: NCHW
+        #   - dtype: float
+        #   - data: [1 2 3 4]
+
+        type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]]), , dtype='complex64')
+        # <class 'paddle.ComplexTensor'>
+
+        paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
+        # ComplexTensor[real]: generated_tensor_0.real
+        #   - place: CUDAPlace(0)
+        #   - shape: [2, 2]
+        #   - layout: NCHW
+        #   - dtype: double
+        #   - data: [1 2 3 4]
+        # ComplexTensor[imag]: generated_tensor_0.imag
+        #   - place: CUDAPlace(0)
+        #   - shape: [2, 2]
+        #   - layout: NCHW
+        #   - dtype: double
+        #   - data: [1 0 2 0]
+    """
+
+    if not core.is_compiled_with_cuda() and pin_memory:
+        raise ValueError(
+            "Cannot allocate Tensor in the CUDA pinned memory for CPU version Paddle, Please recompile or reinstall Paddle with CUDA support."
+        )
+
+    if not isinstance(data, np.ndarray):
+        if np.isscalar(data) and not isinstance(data, str):
+            data = np.array([data])
+        elif isinstance(data, (list, tuple)):
+            data = np.array(data)
+            if data.dtype == np.object:
+                raise ValueError(
+                    "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                    "this means the input data contains nested lists with different lengths. "
+                )
+        elif isinstance(data, paddle.Tensor):
+            if dtype is not None:
+                if convert_dtype(dtype) != convert_dtype(data.dtype):
+                    return data.astype(convert_dtype(dtype))
+            return data
+        elif isinstance(data, paddle.ComplexTensor):
+            return data
+        else:
+            raise TypeError(
+                "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor|paddle.ComplexTensor".
+                format(type(data)))
+
+    if dtype is not None:
+        dtype = convert_dtype(dtype)
+        if dtype != data.dtype:
+            data = data.astype(dtype)
+    if not np.iscomplexobj(data):
+        return paddle.Tensor(
+            value=data,
+            place=_current_expected_place(),
+            persistable=False,
+            zero_copy=True,
+            stop_gradient=stop_gradient,
+            pin_memory=pin_memory)
+    else:
+        name = unique_name.generate('generated_tensor')
+        real_tensor = paddle.Tensor(
+            value=data.real,
+            place=_current_expected_place(),
+            zero_copy=True,
+            name=name + ".real",
+            stop_gradient=stop_gradient,
+            pin_memory=pin_memory)
+        imag_tensor = paddle.Tensor(
+            value=data.imag,
+            place=_current_expected_place(),
+            zero_copy=True,
+            name=name + ".imag",
+            stop_gradient=stop_gradient,
+            pin_memory=pin_memory)
+        return paddle.ComplexTensor(real_tensor, imag_tensor)
 
 
 def full_like(x, fill_value, dtype=None, name=None):

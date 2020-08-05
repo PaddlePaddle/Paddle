@@ -27,10 +27,10 @@ from .random import manual_seed
 from ..fluid.executor import Executor, global_scope, scope_guard
 from ..fluid.backward import append_backward, gradients
 from ..fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
-from ..fluid.framework import default_main_program, default_startup_program, name_scope, Program, program_guard, Variable
+from ..fluid.framework import default_main_program, default_startup_program, name_scope, Program, program_guard, Variable, ComplexVariable
 from ..fluid.layers.control_flow import Print
 from ..fluid.layers.nn import py_func
 from ..fluid.parallel_executor import ParallelExecutor
 from ..fluid.param_attr import ParamAttr, WeightNormParamAttr
 from ..fluid.layers.tensor import create_global_var, create_parameter
-from ..fluid.core import CPUPlace, CUDAPlace, CUDAPinnedPlace
+from ..fluid.core import CPUPlace, CUDAPlace, CUDAPinnedPlace, VarBase

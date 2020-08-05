@@ -15,7 +15,6 @@
 # TODO: define the basic tensor classes 
 
 __all__ = [
-    #       'Tensor',
     #       'LoDTensor',
     #       'LoDTensorArray'
 ]

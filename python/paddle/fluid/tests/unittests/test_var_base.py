@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -27,6 +28,67 @@ class TestVarBase(unittest.TestCase):
         self.shape = [512, 1234]
         self.dtype = np.float32
         self.array = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+
+    def test_to_tensor(self):
+        with fluid.dygraph.guard():
+            pin_memory = True if core.is_compiled_with_cuda() else False
+            x = paddle.to_tensor(
+                1, dtype='float32', stop_gradient=False, pin_memory=pin_memory)
+            self.assertTrue(np.array_equal(x.numpy(), [1.]))
+            self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+            self.assertEqual(x.shape, [1])
+            self.assertEqual(x.stop_gradient, False)
+            self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
+
+            x = paddle.to_tensor(
+                (1, 2),
+                dtype='float32',
+                stop_gradient=False,
+                pin_memory=pin_memory)
+            x = paddle.to_tensor(
+                [1, 2],
+                dtype='float32',
+                stop_gradient=False,
+                pin_memory=pin_memory)
+            self.assertTrue(np.array_equal(x.numpy(), [1., 2.]))
+            self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+            self.assertEqual(x.grad, None)
+            self.assertEqual(x.shape, [2])
+            self.assertEqual(x.stop_gradient, False)
+            self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
+
+            x = paddle.to_tensor(
+                self.array, dtype='float32', stop_gradient=False)
+            self.assertTrue(np.array_equal(x.numpy(), self.array))
+            self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+            self.assertEqual(x.shape, self.shape)
+            self.assertEqual(x.stop_gradient, False)
+            self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
+
+            y = paddle.to_tensor(x)
+            y = paddle.to_tensor(y, dtype='int32')
+            self.assertTrue(np.array_equal(x.numpy(), self.array))
+            self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+            self.assertEqual(x.shape, self.shape)
+            self.assertEqual(x.stop_gradient, False)
+            self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
+
+            x = paddle.to_tensor([1 + 2j, 1 - 2j], dtype='complex64')
+            y = paddle.to_tensor(x)
+            self.assertTrue(np.array_equal(x.numpy(), [1 + 2j, 1 - 2j]))
+            self.assertEqual(x.dtype, 'complex64')
+            self.assertEqual(x.shape, [2])
+            self.assertEqual(x.real.stop_gradient, True)
+            self.assertEqual(x.real.type, core.VarDesc.VarType.LOD_TENSOR)
+
+            with self.assertRaises(TypeError):
+                paddle.to_tensor("test")
+                # test to_variable of LayerObjectHelper(LayerHelperBase)
+            with self.assertRaises(TypeError):
+                paddle.to_tensor([[1], [2, 3]])
+            if not core.is_compiled_with_cuda():
+                with self.assertRaises(AssertionError):
+                    paddle.to_tensor(1, pin_memory=True)
 
     def test_to_variable(self):
         with fluid.dygraph.guard():
@@ -76,7 +138,7 @@ class TestVarBase(unittest.TestCase):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
 
-            self.assertEqual(var.name, 'generated_var_0')
+            self.assertEqual(var.name, 'generated_tensor_0')
             var.name = 'test'
             self.assertEqual(var.name, 'test')
 

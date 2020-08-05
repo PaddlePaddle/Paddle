@@ -506,11 +506,14 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_clear", &Tensor::clear)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
-           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           py::arg("pin_memory") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
-           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           py::arg("pin_memory") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           py::arg("pin_memory") = false,
            R"DOC(
         Set the data of LoDTensor on place with given numpy array.
         
@@ -1069,7 +1072,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("find_var", &Scope::FindVar, py::arg("name"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found.
+           its parent scope. Return None if not found. 
 
            Args:
                name (str): the variable name.
