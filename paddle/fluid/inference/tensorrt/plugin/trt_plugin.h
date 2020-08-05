@@ -175,10 +175,23 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
   void serializeBase(void*& buffer) const;  // NOLINT
 
  private:
-  std::string name_space_{"paddle_trt"};
-  std::string plugin_base_{"plugin_dynamic"};
+  std::string name_space_;
+  std::string plugin_base_;
 };
 #endif
+
+template <typename T>
+class TrtPluginRegistrarV2 {
+ public:
+  TrtPluginRegistrarV2() { getPluginRegistry()->registerCreator(creator, ""); }
+
+ private:
+  T creator;
+};
+
+#define REGISTER_TRT_PLUGIN_V2(name)                                     \
+  static paddle::inference::tensorrt::plugin::TrtPluginRegistrarV2<name> \
+      plugin_registrar_##name {}
 
 }  // namespace plugin
 }  // namespace tensorrt
