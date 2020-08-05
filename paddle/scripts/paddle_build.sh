@@ -291,8 +291,8 @@ function check_style() {
             git diff
             commit_files=off
         fi
-    done 
-    
+    done
+
     if [ $commit_files == 'off' ];then
         echo "code format error"
         exit 1
@@ -491,7 +491,7 @@ function run_mac_test() {
     Running unit tests ...
     ========================================
 EOF
-        #remove proxy here to fix dist ut 'test_fl_listen_and_serv_op' error on mac. 
+        #remove proxy here to fix dist ut 'test_fl_listen_and_serv_op' error on mac.
         #see details: https://github.com/PaddlePaddle/Paddle/issues/24738
         my_proxy=$http_proxy
         export http_proxy=
@@ -533,7 +533,7 @@ EOF
 
 function fetch_upstream_develop_if_not_exist() {
     UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'
-    origin_upstream_url=`git remote -v | awk '{print $1, $2}' | uniq | grep upstream | awk '{print $2}'` 
+    origin_upstream_url=`git remote -v | awk '{print $1, $2}' | uniq | grep upstream | awk '{print $2}'`
     if [ "$origin_upstream_url" == "" ]; then
         git remote add upstream $UPSTREAM_URL.git
     elif [ "$origin_upstream_url" != "$UPSTREAM_URL" ] \
@@ -541,8 +541,8 @@ function fetch_upstream_develop_if_not_exist() {
         git remote remove upstream
         git remote add upstream $UPSTREAM_URL.git
     fi
-    
-    if [ ! -e "$PADDLE_ROOT/.git/refs/remotes/upstream/$BRANCH" ]; then 
+
+    if [ ! -e "$PADDLE_ROOT/.git/refs/remotes/upstream/$BRANCH" ]; then
         git fetch upstream # develop is not fetched
     fi
 }
@@ -590,12 +590,12 @@ function generate_api_spec() {
 
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
-    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
+    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
         sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
-    fi   
-    
+    fi
+
     python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
@@ -755,7 +755,7 @@ function caught_error() {
 function case_count(){
     cat <<EOF
     ============================================
-    Generating TestCases Count ... 
+    Generating TestCases Count ...
     ============================================
 EOF
     testcases=$1
@@ -787,7 +787,7 @@ function collect_failed_tests() {
 function card_test() {
     set -m
     case_count $1 $2
-    ut_startTime_s=`date +%s` 
+    ut_startTime_s=`date +%s`
     # get the CUDA device count
     CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
 
@@ -823,7 +823,7 @@ function card_test() {
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
-            else  
+            else
                 (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
@@ -894,7 +894,7 @@ set +x
                     fi
                 else
                     if [[ "${#single_card_tests}" -gt 3000 ]];then
-                        if [[ "$single_card_tests_1" == "" ]]; then 
+                        if [[ "$single_card_tests_1" == "" ]]; then
                             single_card_tests_1="^$testcase$"
                         else
                             single_card_tests_1="$single_card_tests_1|^$testcase$"
@@ -1009,22 +1009,6 @@ EOF
       esac
 }
 
-function gen_html() {
-    cat <<EOF
-    ========================================
-    Converting C++ source code into HTML ...
-    ========================================
-EOF
-    export WOBOQ_OUT=${PADDLE_ROOT}/build/woboq_out
-    mkdir -p $WOBOQ_OUT
-    cp -rv /woboq/data $WOBOQ_OUT/../data
-    /woboq/generator/codebrowser_generator \
-    	-b ${PADDLE_ROOT}/build \
-    	-a \
-    	-o $WOBOQ_OUT \
-    	-p paddle:${PADDLE_ROOT}
-    /woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
-}
 
 function gen_dockerfile() {
     # Set BASE_IMAGE according to env variables
@@ -1050,7 +1034,7 @@ function gen_dockerfile() {
     Generate ${PADDLE_ROOT}/build/Dockerfile ...
     ========================================
 EOF
-    
+
     ref_CUDA_MAJOR="$(echo $CUDA_VERSION | cut -d '.' -f 1)"
     if [[ ${WITH_GPU} == "ON"  ]]; then
         ref_gpu=gpu-cuda${ref_CUDA_MAJOR}-cudnn${CUDNN_MAJOR}
@@ -1127,7 +1111,7 @@ EOF
         #ref_paddle37_mv1="mv ref_paddle37 paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl &&"
         #ref_paddle37_mv2="&& mv paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl ref_paddle37"
     fi
-    
+
     cat > ${PADDLE_ROOT}/build/Dockerfile <<EOF
     FROM ${BASE_IMAGE}
     MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
@@ -1140,13 +1124,13 @@ EOF
         NCCL_DEPS="true"
     fi
 
-    if [[ ${WITH_GPU} == "ON" && ${CUDA_MAJOR} = "8.0" ]]; then 
+    if [[ ${WITH_GPU} == "ON" && ${CUDA_MAJOR} = "8.0" ]]; then
         NCCL_DEPS="apt-get install -y --allow-downgrades --allow-change-held-packages libnccl2=2.2.13-1+cuda8.0 libnccl-dev=2.2.13-1+cuda8.0"
     fi
 
     PADDLE_VERSION="paddle version"
     CMD='"paddle", "version"'
-    
+
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
@@ -1261,7 +1245,7 @@ EOF
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
     fluid_endTime_s=`date +%s`
-    echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
+    echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
     ./clean.sh
 }
 
@@ -1296,7 +1280,7 @@ function example() {
 }
 
 function main() {
-    local CMD=$1 
+    local CMD=$1
     local parallel_number=$2
     init
     case $CMD in
@@ -1338,9 +1322,6 @@ function main() {
         ;;
       gen_doc_lib)
         gen_doc_lib $2
-        ;;
-      html)
-        gen_html
         ;;
       dockerfile)
         gen_dockerfile ${PYTHON_ABI:-""}
