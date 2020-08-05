@@ -25,8 +25,9 @@ limitations under the License. */
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #endif
 // clang-format off
-#include <dbghelp.h>
 #include <windows.h>  // GetModuleFileName
+#include <dbghelp.h>  // handle symbol, dbghelp.h depends on windows.h
+#include <mutex> //NOLINT
 // clang-format on
 #endif
 
@@ -230,12 +231,6 @@ inline std::string SimplifyDemangleStr(std::string str) {
   return str;
 }
 
-#if defined(_WIN32)
-// CaptureStackBackTrace API usage:
-// https://docs.microsoft.com/en-us/windows/win32/debug/capturestackbacktrace
-int num_frames = CaptureStackBackTrace(0, kMaxStackFrames, trace, NULL);
-#endif
-
 template <typename StrType>
 inline std::string GetTraceBackString(StrType&& what, const char* file,
                                       int line) {
@@ -262,7 +257,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
     }
   }
 #else
-  static constexpr int TRACE_MAX_FUNCTION_NAME_LENGTH = 1024;
+  void* call_stack[TRACE_STACK_LIMIT];
   // https://docs.microsoft.com/en-us/windows/win32/debug/capturestackbacktrace
   int size = CaptureStackBackTrace(0, TRACE_STACK_LIMIT, call_stack, NULL);
 
@@ -285,7 +280,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
     DWORD64 address = reinterpret_cast<DWORD64>(call_stack[i]);
     std::lock_guard<std::mutex> g(mu);
     SymFromAddr(process, address, NULL, symbol);
-    sout << string::Sprintf("%-3d %s\n", idx++, symbol->name);
+    sout << string::Sprintf("%-3d %s\n", idx++, symbol->Name);
   }
 #endif
   sout << "\n----------------------\nError Message "
