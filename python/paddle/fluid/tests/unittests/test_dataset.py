@@ -130,7 +130,7 @@ class TestDataset(unittest.TestCase):
         dataset.set_trainer_num(4)
         dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
         dataset.set_download_cmd("./read_from_afs my_fs_name my_fs_ugi")
-        dataset.enable_pv_merge()
+        dataset.set_enable_pv_merge(False)
 
         thread_num = dataset.get_thread_num()
         self.assertEqual(thread_num, 12)
@@ -965,6 +965,99 @@ class TestDataset2(unittest.TestCase):
                 print("warning: catch expected error")
             fleet._opt_info = None
             fleet._fleet_ptr = None
+            dataset = paddle.fleet.DatasetFactory().create_dataset(
+                "InMemoryDataset")
+            dataset.set_rank_offset("")
+            dataset.set_pv_batch_size(1)
+            dataset.set_hdfs_config("", "")
+            d = paddle.fleet.DatasetBase()
+            try:
+                d._prepare_to_run()
+            except:
+                print("warning: catch expected error")
+            dataset.set_feed_type("MultiSlotInMemoryDataFeed")
+            dataset.thread_num = 0
+            try:
+                dataset._prepare_to_run()
+            except:
+                print("warning: catch expected error")
+            dataset.set_parse_logkey(True)
+            dataset.set_merge_by_sid(True)
+            dataset.set_enable_pv_merge(True)
+            try:
+                dataset.preprocess_instance()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.set_current_phase(1)
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.postprocess_instance()
+            except:
+                print("warning: catch expected error")
+            dataset.set_fleet_send_batch_size(1024)
+            try:
+                dataset.global_shuffle()
+            except:
+                print("warning: catch expected error")
+            dataset.get_pv_data_size()
+            dataset.get_memory_data_size()
+            dataset.get_shuffle_data_size()
+            dataset = paddle.fleet.DatasetFactory().create_dataset(
+                "QueueDataset")
+            try:
+                dataset.local_shuffle()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.global_shuffle()
+            except:
+                print("warning: catch expected error")
+            dataset = paddle.fleet.FileInstantDataset()
+            try:
+                dataset.local_shuffle()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.global_shuffle()
+            except:
+                print("warning: catch expected error")
+            dataset = paddle.fleet.BoxPSDataset()
+            dataset.set_date(20200805)
+            try:
+                dataset.begin_pass()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.end_pass(False)
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.wait_preload_done()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.load_into_memory()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.preload_into_memory()
+            except:
+                print("warning: catch expected error")
+            dataset.is_user_set_queue_num = True
+            try:
+                dataset._dynamic_adjust_before_train(1)
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset._dynamic_adjust_after_train()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.slots_shuffle([])
+            except:
+                print("warning: catch expected error")
 
         os.remove("./test_in_memory_dataset2_run2_a.txt")
         os.remove("./test_in_memory_dataset2_run2_b.txt")
