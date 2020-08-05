@@ -282,7 +282,7 @@ class Fleet(object):
         context = {}
         # cache original feed forward program
         self.origin_main_program = loss.block.program
-        context["origin_main"] = self.origin_main_program
+        context["origin_main_program"] = self.origin_main_program
         context["loss"] = loss
         if startup_program == None:
             self.origin_startup_program = \
@@ -292,7 +292,7 @@ class Fleet(object):
             self.origin_startup_program = \
                 startup_program.clone(for_test=False)
 
-        context["origin_startup"] = startup_program
+        context["origin_startup_program"] = startup_program
         context["role_maker"] = self._role_maker
 
         # compile time
@@ -344,8 +344,8 @@ class Fleet(object):
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set)
 
-        context["prog_optimize_ops"] = optimize_ops
-        context["prog_params_grads"] = params_grads
+        context["program_optimize_ops"] = optimize_ops
+        context["program_params_grads"] = params_grads
 
         if graph_optimizer:
             optimize_ops, params_grads = graph_optimizer.minimize(
