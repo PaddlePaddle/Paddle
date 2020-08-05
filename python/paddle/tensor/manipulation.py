@@ -198,7 +198,8 @@ def stack(x, axis=0, name=None):
 
     This OP stacks all the input tensors ``x`` along ``axis`` dimemsion. 
     All tensors must be of the same shape and same dtype.
-    For example, given N tensors of shape [A, B], if `axis == 0``, the shape of stacked 
+    
+    For example, given N tensors of shape [A, B], if ``axis == 0``, the shape of stacked 
     tensor is [N, A, B]; if ``axis == 1``, the shape of stacked 
     tensor is [A, N, B], etc.
     
@@ -246,15 +247,16 @@ def stack(x, axis=0, name=None):
                           [5.0, 6.0] ] ]
 
     Args:
-        x (Tensor|list(Tensor)): Input ``x`` can be a single Tensor, or a ``list`` of Tensors.
+        x (Tensor|list[Tensor]): Input ``x`` can be a single tensor, or a ``list`` of tensors.
                                      If ``x`` is a ``list``, the Tensors in ``x``
                                      must be of the same shape and dtype. Support data types: float32, float64, int32, int64.
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
                               where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
                               If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
-
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
+        
     Returns:
-        Tensor: The stacked Tensor with same data type as input.
+        Tensor: The stacked tensor with same data type as input.
 
     Example:    
         .. code-block:: python
