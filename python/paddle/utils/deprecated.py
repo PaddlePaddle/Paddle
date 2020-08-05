@@ -18,7 +18,6 @@ decorator to deprecate a function or class
 import warnings
 import functools
 import paddle
-from .version import compare_version
 
 
 def deprecated(update_to="", since="", reason=""):
@@ -35,6 +34,23 @@ def deprecated(update_to="", since="", reason=""):
        Returns:
            decorator: decorated function or class.
     """
+
+    def _compare_version(v1, v2):
+        """compare two versions."""
+
+        _v1 = [int(i) for i in v1.split(".")]
+        _v2 = [int(i) for i in v2.split(".")]
+        max_len = max(len(_v1), len(_v2))
+        _v1.extend([0] * (max_len - len(_v1)))
+        _v2.extend([0] * (max_len - len(_v2)))
+        print("_v1:", _v1)
+        print("_v2:", _v2)
+        for i in range(max_len):
+            if _v1[i] > _v2[i]:
+                return 1
+            elif _v1[i] < _v2[i]:
+                return -1
+            return 0
 
     def decorator(func):
         """construct warning message, and return a decorated function or class."""
@@ -66,7 +82,7 @@ def deprecated(update_to="", since="", reason=""):
                2. since version is empty, in this case, API is deprecated in all versions.
                3. current version is newer than since version.
             """
-            if paddle.__version__ == "0.0.0" or _since == "" or compare_version(
+            if paddle.__version__ == "0.0.0" or _since == "" or _compare_version(
                     paddle.__version__, _since) >= 0:
                 warnings.simplefilter('always',
                                       DeprecationWarning)  # turn off filter
