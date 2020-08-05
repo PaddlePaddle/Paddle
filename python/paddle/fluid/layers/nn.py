@@ -6200,7 +6200,7 @@ def squeeze(input, axes, name=None):
             Out.shape = [1,3,5]
 
     Args:
-        input (Variable): The input Tensor. Support data type: float16, float32, float64, int8, int32, int64.
+        input (Variable): The input Tensor. Support data type: float32, float64, bool, int8, int32, int64.
                           axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
                           Axes range is :math:`[-rank(input), rank(input))`.
                           If axes is negative, :math:`axes=axes+rank(input)`.
@@ -6226,7 +6226,8 @@ def squeeze(input, axes, name=None):
     helper = LayerHelper("squeeze", **locals())
     check_variable_and_dtype(
         input, 'input',
-        ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
+        ['float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64'],
+        'squeeze')
     check_type(axes, 'axis/axes', (list, tuple), 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -6254,7 +6255,7 @@ def unsqueeze(input, axes, name=None):
       then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
 
     Args:
-        input (Variable): The input Tensor to be unsqueezed. Support data type: float16, float32, float64, int8, int32, int64.
+        input (Variable): The input Tensor to be unsqueezed. Support data type: float32, float64, bool, int8, int32, int64.
         axes (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
         name (str|None): Name for this layer.
 
@@ -6274,6 +6275,10 @@ def unsqueeze(input, axes, name=None):
         return out
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
+    check_variable_and_dtype(
+        input, 'input',
+        ['float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64'],
+        'unsqueeze')
     helper = LayerHelper("unsqueeze2", **locals())
     inputs = {"X": input}
     attrs = {}

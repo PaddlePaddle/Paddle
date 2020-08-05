@@ -580,7 +580,7 @@ def squeeze(x, axis=None, name=None):
             out.shape = [1, 3, 5]
 
     Args:
-        input (Tensor): The input Tensor. Support data type: float16, float32, float64, int8, int32, int64.
+        input (Tensor): The input Tensor. Support data type: float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
                           The range of axis is :math:`[-ndim(input), ndim(input))`.
                           If axis is negative, :math:`axis = axis + ndim(input)`.
@@ -592,6 +592,7 @@ def squeeze(x, axis=None, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             paddle.enable_imperative()
@@ -628,7 +629,7 @@ def unsqueeze(x, axis, name=None):
       then unsqueezed tensor with axis=[0, 4] has shape [1, 3, 4, 5, 1].
 
     Args:
-        x (Tensor): The input Tensor to be unsqueezed. Support data type: float16, float32, float64, int8, int32, int64.
+        x (Tensor): The input Tensor to be unsqueezed. Support data type: float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . 
                                     If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. 
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
@@ -639,7 +640,7 @@ def unsqueeze(x, axis, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
+
             import paddle
 
             paddle.enable_imperative()
