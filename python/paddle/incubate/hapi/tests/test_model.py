@@ -280,6 +280,16 @@ class MyModel(fluid.dygraph.Layer):
         return y
 
 
+class MyTestDeployModel(fluid.dygraph.Layer):
+    def __init__(self, classifier_activation='softmax'):
+        super(MyTestDeployModel, self).__init__()
+        self._fc = Linear(10, 10, act=classifier_activation)
+
+    def forward(self, x):
+        y = self._fc(x)
+        return y
+
+
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
         fluid.default_startup_program().random_seed = seed
@@ -436,68 +446,37 @@ class TestModelFunction(unittest.TestCase):
             self.assertTrue(params[0].shape[1] == 10)
             fluid.disable_dygraph() if dynamic else None
 
-    def test_export_deploy_model_static(self):
-        net = LeNet()
-        inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
-        model = Model(net, inputs)
-        model.prepare()
-        save_dir = tempfile.mkdtemp()
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        tensor_img = np.array(
-            np.random.random((1, 1, 28, 28)), dtype=np.float32)
-        ori_results = model.test_batch(tensor_img)
-
-        model.save_inference_model(save_dir)
-
-        place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        [inference_program, feed_target_names, fetch_targets] = (
-            fluid.io.load_inference_model(
-                dirname=save_dir, executor=exe))
-
-        results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
-
-        np.testing.assert_allclose(results, ori_results, rtol=1e-6)
-        shutil.rmtree(save_dir)
-
-    def test_export_deploy_model_dynamic(self):
+    def test_export_deploy_model(self):
         from paddle.fluid.dygraph import to_variable
-        device = hapi.set_device('cpu')
-        save_dir = tempfile.mkdtemp()
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        tensor_img = np.array(
-            np.random.random((1, 1, 28, 28)), dtype=np.float32)
+        for dynamic in [True, False]:
+            fluid.enable_dygraph() if dynamic else None
+            net = MyTestDeployModel()
+            inputs = [Input('testx', [None, 10], 'float32')]
+            model = Model(net, inputs)
+            model.prepare()
+            save_dir = tempfile.mkdtemp()
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+            tensor_img = np.array(np.random.random((1, 10)), dtype=np.float32)
+            ori_results = model.test_batch(tensor_img)
+            if dynamic:
+                in_var_list = [to_variable(tensor_img)]
+                model.save_inference_model(save_dir, net, in_var_list)
+                fluid.disable_dygraph()
+            else:
+                model.save_inference_model(save_dir)
+            place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            [inference_program, feed_target_names, fetch_targets] = (
+                fluid.io.load_inference_model(
+                    dirname=save_dir, executor=exe))
+            results = exe.run(inference_program,
+                              feed={feed_target_names[0]: tensor_img},
+                              fetch_list=fetch_targets)
 
-        # with fluid.dygraph.guard():
-        fluid.enable_dygraph(device)
-        inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
-        net = LeNet()
-        model = Model(net, inputs)
-        model.prepare()
-        ori_results = model.test_batch(tensor_img)
-        in_var_list = [to_variable(tensor_img)]
-        model.save_inference_model(save_dir, net, in_var_list)
-
-        fluid.disable_dygraph()
-        place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        [inference_program, feed_target_names, fetch_targets] = (
-            fluid.io.load_inference_model(
-                dirname=save_dir, executor=exe))
-
-        results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
-
-        np.testing.assert_allclose(results, ori_results, rtol=1e-6)
-        shutil.rmtree(save_dir)
+            np.testing.assert_allclose(results, ori_results, rtol=1e-6)
+            shutil.rmtree(save_dir)
 
 
 if __name__ == '__main__':
