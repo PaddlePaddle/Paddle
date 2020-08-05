@@ -75,7 +75,7 @@ struct ChannelClipAndFakeQuantFunctor {
 template <typename DeviceContext, typename T>
 struct ChannelClipFakeQuantDequantFunctor {
   void operator()(const DeviceContext& ctx, const framework::Tensor& in,
-                  const framework::Tensor& scale, T max_range,
+                  const framework::Tensor& scale, const int bin_cnt,
                   const int channel, framework::Tensor* out);
 };
 
@@ -179,7 +179,7 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
         dev_ctx, in->data<T>(), in->numel(), in->dims()[0], scale_data);
 
     ChannelClipFakeQuantDequantFunctor<DeviceContext, T>()(
-        dev_ctx, *in, *out_scale, bin_cnt, out);
+        dev_ctx, *in, *out_scale, bin_cnt, in->dims()[0], out);
   }
 };
 

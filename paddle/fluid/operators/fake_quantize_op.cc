@@ -122,8 +122,8 @@ template <typename T>
 struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, framework::Tensor* out) {
-    const int channel = in.dims()[0];
+                  const int bin_cnt, const int channel,
+                  framework::Tensor* out) {
     auto* scale_data = scale.data<T>();
     auto* in_data = in.data<T>();
     auto* out_data = out->mutable_data<T>(ctx.GetPlace());
