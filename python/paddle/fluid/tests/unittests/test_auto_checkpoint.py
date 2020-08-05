@@ -91,6 +91,22 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
         logger.info("end _run_normal")
         fs.delete(save_dir)
 
+    def _not_use_train(self):
+        logger.info("begin _not_use_train")
+        exe, main_prog, startup_prog = self._generate()
+
+        compiled, data_loader, optimizer, loss, image, label = \
+            self._init_env(exe, main_prog, startup_prog)
+
+        epochs = []
+        for i in acp.train_epoch_range(3, 0):
+            epochs.append(i)
+            for data in data_loader():
+                fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
+        self.assertEqual(epochs, [0, 1, 2])
+        logger.info("end _not_use_train")
+
     def _run_save_0(self, break_epoch_no=None):
         logger.info("begin _run_save_0")
         fs = LocalFS()
@@ -205,6 +221,10 @@ class AutoCheckpointTest(AutoCheckPointACLBase):
     def test_basic(self):
         logger.info("begin test_basic")
         checker = acp._get_checker()
+        self.assertEqual(checker.run_env, "PADDLE_EDL_AUTO_CHECKPOINT")
+        self.assertEqual(checker.platform, "PADDLE_CLOUD")
+        self.assertEqual(checker.save_checkpoint_inter, 0)
+        print(checker)
 
         fs = HDFSClient(checker.hdfs_home, None)
 
@@ -216,6 +236,16 @@ class AutoCheckpointTest(AutoCheckPointACLBase):
         self._run_load_0()
 
         logger.info("end test_basic")
+
+    def test_not_use(self):
+        logger.info("begin test_not_use")
+
+        self._clear_envs()
+        self._reset_generator()
+        self._not_use_train()
+        self._readd_envs()
+
+        logger.info("end test_not_use")
 
     def test_multiple(self):
         checker = acp._get_checker()
@@ -248,6 +278,7 @@ class AutoCheckpointTest(AutoCheckPointACLBase):
 
             o = acp._get_train_epoch_range()
             self.assertEqual(len(o._exe_status), 2)
+            print(o._exe_status)
             epochs.append(i)
 
         o = acp._get_train_epoch_range()

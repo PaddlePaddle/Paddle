@@ -112,6 +112,35 @@ class FSTest(unittest.TestCase):
         fs.delete(dst_file)
         fs.delete(src_file)
 
+    def _test_try_download(self, fs):
+        src_file = os.path.abspath("./test_try_download.src")
+        dst_file = os.path.abspath("./test_try_download.dst")
+
+        fs.delete(dst_file)
+        fs.delete(src_file)
+
+        try:
+            fs._try_download(src_file, dst_file)
+            self.assertFalse(True)
+        except Exception as e:
+            pass
+
+        fs.delete(dst_file)
+        fs.delete(src_file)
+
+    def _test_try_upload(self, fs):
+        src_file = os.path.abspath("./test_try_upload.src")
+        dst_file = os.path.abspath("./test_try_uolpad.dst")
+
+        try:
+            fs._try_upload(src_file, dst_file)
+            self.assertFalse(True)
+        except Exception as e:
+            pass
+
+        fs.delete(dst_file)
+        fs.delete(src_file)
+
     def _test_download(self, fs):
         src_file = os.path.abspath("./test_download.src")
         dst_file = os.path.abspath("./test_download.dst")
@@ -173,6 +202,8 @@ class FSTest(unittest.TestCase):
         self._test_download(fs)
         self._test_mkdirs(fs)
         self._test_list_dir(fs)
+        self._test_try_upload(fs)
+        self._test_try_download(fs)
 
     def test_local(self):
         fs = LocalFS()
@@ -181,6 +212,8 @@ class FSTest(unittest.TestCase):
         self._test_touch_file(fs)
         self._test_mkdirs(fs)
         self._test_list_dir(fs)
+        self._test_try_upload(fs)
+        self._test_try_download(fs)
 
     def test_timeout(self):
         fs = HDFSClient(

@@ -313,7 +313,6 @@ class TrainEpochRange(SerializableBase):
         _thread_checker()
 
         self._get_last_valid_checkpoint()
-        self._generate_flag()
 
     def _look_for_valid(self, cp_nos):
         cps = []
@@ -504,6 +503,8 @@ class TrainEpochRange(SerializableBase):
             logger.info("save train_epoch_range checkpoint:{}".format(
                 self._serialize()))
 
+            self._generate_flag()
+
     def _generate_flag(self):
         if self._flag_generated:
             return
@@ -624,14 +625,6 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
             yield i
     finally:
         g_train_epoch_range = None
-
-
-def _get_hash(key):
-    k = key
-    if sys.version_info[0] >= 3:
-        k = key.encode('utf-8')
-
-    return hashlib.md5(k).hexdigest()
 
 
 def _get_valid_program(prog):
