@@ -55,8 +55,7 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
       if (i == retry_times_) {
         VLOG(0) << "fs_open_write failed, retry times reaches limit";
         PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-            "fs_open_write failed, retry times reaches"
-            " limit ",
+            "fs_open_write failed, retry times reaches %d limit.",
             retry_times_));
       }
     } else {
