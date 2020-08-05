@@ -59,6 +59,9 @@ from ..fluid.layers import square    #DEFINE_ALIAS
 from ..fluid.layers import stanh    #DEFINE_ALIAS
 from ..fluid.layers import atan    #DEFINE_ALIAS
 from ..fluid.layers import erf    #DEFINE_ALIAS
+from ..fluid.layers import sqrt    #DEFINE_ALIAS
+from ..fluid.layers import sin    #DEFINE_ALIAS
+from ..fluid.layers import tanh    #DEFINE_ALIAS
 
 from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
@@ -183,17 +186,6 @@ def pow(input, exponent, name=None):
     helper.append_op(
         type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
-
-
-__ops__noattr__ = [
-    'atan',
-    'sin',
-    'sqrt',
-    'tanh',
-]
-
-for _OP in set(__ops__noattr__):
-    globals()[_OP] = generate_activation_fn(_OP)
 
 
 @dygraph_only
