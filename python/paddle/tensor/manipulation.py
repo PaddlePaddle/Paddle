@@ -580,11 +580,11 @@ def squeeze(x, axis=None, name=None):
             out.shape = [1, 3, 5]
 
     Args:
-        input (Tensor): The input Tensor. Support data type: float32, float64, bool, int8, int32, int64.
+        x (Tensor): The input Tensor. Support data type: float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
-                          The range of axis is :math:`[-ndim(input), ndim(input))`.
-                          If axis is negative, :math:`axis = axis + ndim(input)`.
-                          If axis is None, all the dimensions of input of size 1 will be removed.
+                          The range of axis is :math:`[-ndim(x), ndim(x))`.
+                          If axis is negative, :math:`axis = axis + ndim(x)`.
+                          If axis is None, all the dimensions of x of size 1 will be removed.
         name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
@@ -621,18 +621,12 @@ def unsqueeze(x, axis, name=None):
     required argument axis, a dimension or list of dimensions that will be inserted.
     Dimension indices in axis are as seen in the output tensor.
 
-    For example:
-
-    .. code-block:: text
-
-      Given a tensor such that tensor with shape [3, 4, 5],
-      then unsqueezed tensor with axis=[0, 4] has shape [1, 3, 4, 5, 1].
-
     Args:
         x (Tensor): The input Tensor to be unsqueezed. Support data type: float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . 
                                     If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. 
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
+                                    If ``axis`` is negative, ``axis = axis + ndim(x) + 1``.
         name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
@@ -645,6 +639,7 @@ def unsqueeze(x, axis, name=None):
 
             paddle.enable_imperative()
             x = paddle.rand([5, 10])
+            print(x.shape)  # [5, 10]
             
             out1 = paddle.unsqueeze(x, axis=0)
             print(out1.shape)  # [1, 5, 10]
