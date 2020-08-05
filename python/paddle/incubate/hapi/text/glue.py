@@ -26,7 +26,8 @@ from paddle.incubate.hapi.download import get_path_from_url
 
 
 class TSVDataset(Dataset):
-    """Common tab separated text dataset that reads text fields based on provided sample splitter
+    """
+    Common tab separated text dataset that reads text fields based on provided sample splitter
     and field separator.
     The returned dataset includes samples, each of which can either be a list of text fields
     if field_separator is specified, or otherwise a single string segment produced by the
@@ -53,9 +54,9 @@ class TSVDataset(Dataset):
 
         .. code-block:: python
 
-            dataset = data.TSVDataset('test.tsv', num_discard_samples=1, field_indices=[0, 2])
-            assert dataset[0] == ['a', 'Jiang']
-            assert dataset[1] == ['b', 'Zha']
+            dataset = TSVDataset('test.tsv', num_discard_samples=1, field_indices=[0, 2])
+            dataset[0] # ['a', 'Jiang']
+            dataset[1] # ['b', 'Zha']
     """
 
     def __init__(self,
@@ -184,14 +185,14 @@ class GlueCoLA(_GlueDataset):
 
     Args:
         segment ('train'|'dev'|'test'): Dataset segment. Default: 'train'.
-        root (str): Path to temp folder for storing data. MXNET_HOME defaults to ‘~/.mxnet’. Default: '$MXNET_HOME/datasets/glue_cola'.
+        root (str): Path to temp folder for storing data.
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Example:
 
         .. code-block:: python
 
-            cola_dev = gluonnlp.data.GlueCoLA('dev', root='./datasets/cola')
+            cola_dev = GlueCoLA('dev', root='./datasets/cola')
             len(cola_dev) # 1043
             len(cola_dev[0]) # 2
             cola_dev[0] # ['The sailors rode the breeze clear of the rocks.', '1']
@@ -229,13 +230,13 @@ class GlueSST2(_GlueDataset):
 
     Args:
         segment ('train'|'dev'|'test'): Dataset segment. Default: 'train'.
-        root (str): Path to temp folder for storing data. MXNET_HOME defaults to ‘~/.mxnet’. Default:'$MXNET_HOME/datasets/glue_sst'.
+        root (str): Path to temp folder for storing data.
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Examples:
         .. code-block:: python
 
-            sst_dev = gluonnlp.data.GlueSST2('dev', root='./datasets/sst')
+            sst_dev = GlueSST2('dev', root='./datasets/sst')
             len(sst_dev) # 872
             len(sst_dev[0]) # 2
             sst_dev[0] # ["it 's a charming and often affecting journey . ", '1']
@@ -274,13 +275,13 @@ class GlueMRPC(_GlueDataset):
     From https://gluebenchmark.com/tasks
 
     Args:
+        root (str): Path to temp folder for storing data.
         segment ('train'|'dev'|'test'): Dataset segment. Default: 'train'.
-        root (str): Path to temp folder for storing data. MXNET_HOME defaults to ‘~/.mxnet’. Default: '$MXNET_HOME/datasets/glue_mrpc'.
 
     Example:
         .. code-block:: python
 
-            mrpc_dev = gluonnlp.data.GlueMRPC('dev', root='./datasets/mrpc')
+            mrpc_dev = GlueMRPC('dev', root='./datasets/mrpc')
             len(mrpc_dev) # 408
             len(mrpc_dev[0]) # 3
             mrpc_dev[0] # ["He said the foodservice pie business doesn 't fit the company 's long-term growth strategy .", 
@@ -389,13 +390,13 @@ class GlueSTSB(_GlueDataset):
 
     Args:
         segment ('train'|'dev'|'test'): Dataset segment. Default: 'train'.
-        root (str): Path to temp folder for storing data. MXNET_HOME defaults to ‘~/.mxnet’. Default: '$MXNET_HOME/datasets/glue_stsb'.
+        root (str): Path to temp folder for storing data.
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Example:
         .. code-block:: python
 
-            stsb_dev = gluonnlp.data.GlueSTSB('dev', root='./datasets/stsb')
+            stsb_dev = GlueSTSB('dev', root='./datasets/stsb')
             len(stsb_dev) # 1500
             len(stsb_dev[0]) # 3
             stsb_dev[0] # ['A man with a hard hat is dancing.', 'A man wearing a hard hat is dancing.', '5.000']
@@ -433,7 +434,7 @@ class GlueQQP(_GlueDataset):
 
     Args:
         segment ({'train', 'dev', 'test'}): Dataset segment. Default: 'train'.
-        root (str): Path to temp folder for storing data. MXNET_HOME defaults to ‘~/.mxnet’. Default: '$MXNET_HOME/datasets/glue_qqp'.
+        root (str): Path to temp folder for storing data.
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Example:
@@ -488,13 +489,13 @@ class GlueMNLI(_GlueDataset):
 
     Args:
         segment ('train'|'dev_matched'|'dev_mismatched'|'test_matched'|'test_mismatched'): Dataset segment. Default: ‘train’.
-        root (str, default '$MXNET_HOME/datasets/glue_mnli'): Path to temp folder for storing data. MXNET_HOME defaults to ‘~/.mxnet’.
+        root (str, default '$MXNET_HOME/datasets/glue_mnli'): Path to temp folder for storing data.
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Example:
         .. code-block:: python
 
-            mnli_dev = gluonnlp.data.GlueMNLI('dev_matched', root='./datasets/mnli')
+            mnli_dev = GlueMNLI('dev_matched', root='./datasets/mnli')
             len(mnli_dev) # 9815
             len(mnli_dev[0]) # 3
             mnli_dev[0] # ['The new rights are nice enough', 'Everyone really likes the newest benefits ', 'neutral']
@@ -540,13 +541,13 @@ class GlueQNLI(_GlueDataset):
 
     Args:
         segment ('train'|'dev'|'test'): Dataset segment. Dataset segment. Default: 'train'.
-        root (str): Path to temp folder for storing data. MXNET_HOME defaults to ‘~/.mxnet’. Default: '$MXNET_HOME/datasets/glue_qnli'.
+        root (str): Path to temp folder for storing data.
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
        
     Example:
         .. code-block:: python
 
-            qnli_dev = gluonnlp.data.GlueQNLI('dev', root='./datasets/qnli')
+            qnli_dev = GlueQNLI('dev', root='./datasets/qnli')
             len(qnli_dev) # 5732
             len(qnli_dev[0]) # 3
             qnli_dev[0] # ['Which NFL team represented the AFC at Super Bowl 50?', 'The American Football Conference (AFC) champion 
@@ -586,13 +587,13 @@ class GlueRTE(_GlueDataset):
     From https://gluebenchmark.com/tasks
     Args:
         segment ('train'|'dev'|'test'): Dataset segment. Default: 'train'.
-        root (str): Path to temp folder for storing data. MXNET_HOME defaults to ‘~/.mxnet’. Default: '$MXNET_HOME/datasets/glue_rte'.
+        root (str): Path to temp folder for storing data.
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Examples:
         .. code-block:: python
 
-            rte_dev = gluonnlp.data.GlueRTE('dev', root='./datasets/rte')
+            rte_dev = GlueRTE('dev', root='./datasets/rte')
             len(rte_dev) # 277
             len(rte_dev[0]) # 3
             rte_dev[0] # ['Dana Reeve, the widow of the actor Christopher Reeve, has died of lung cancer at age 44, 
@@ -632,12 +633,12 @@ class GlueWNLI(_GlueDataset):
 
     Args:
         segment ('train'|'dev'|'test'): Dataset segment. Default: 'train'.
-        root (str): Path to temp folder for storing data. MXNET_HOME defaults to ‘~/.mxnet’. Default: '$MXNET_HOME/datasets/glue_wnli'.
+        root (str): Path to temp folder for storing data.
         return_all_fields (bool): Return all fields available in the dataset. Default: False.
 
     Example:
         .. code-block:: python
-                wnli_dev = gluonnlp.data.GlueWNLI('dev', root='./datasets/wnli')
+                wnli_dev = GlueWNLI('dev', root='./datasets/wnli')
                 len(wnli_dev) # 71
                 len(wnli_dev[0]) # 3
                 wnli_dev[0] # ['The drain is clogged with hair. It has to be cleaned.', 'The hair has to be cleaned.', '0']
