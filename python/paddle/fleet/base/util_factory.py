@@ -125,7 +125,7 @@ class UtilBase(object):
         trainers = self.role_maker.worker_num()
 
         remainder = len(files) % trainers
-        blocksize = len(files) / trainers
+        blocksize = int(len(files) / trainers)
 
         blocks = [blocksize] * trainers
         for i in range(remainder):
