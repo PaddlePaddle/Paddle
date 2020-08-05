@@ -29,6 +29,7 @@
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
+#include "paddle/fluid/operators/distributed/large_scale_kv.h"
 
 namespace paddle {
 namespace operators {
@@ -38,13 +39,13 @@ namespace distributed {
 // to directory specified.
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 
-bool RequestSendHandler::Handle(const std::string& varname,
-                                framework::Scope* scope,
-                                framework::Variable* invar,
-                                framework::Variable** outvar,
+bool RequestSendHandler::Handle(const std::string &varname,
+                                framework::Scope *scope,
+                                framework::Variable *invar,
+                                framework::Variable **outvar,
                                 const int trainer_id,
-                                const std::string& out_var_name,
-                                const std::string& table_name) {
+                                const std::string &out_var_name,
+                                const std::string &table_name) {
   VLOG(4) << "RequestSendHandler:" << varname;
 
   // Sync
@@ -82,16 +83,34 @@ bool RequestSendHandler::Handle(const std::string& varname,
         scope->Rename(varname, run_varname);
       }
 
-      if (distributed_mode_ == DistributedMode::kGeo &&
-          AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(run_varname)) {
-        auto& grad_slr =
-            scope->FindVar(run_varname)->Get<framework::SelectedRows>();
-        AsyncSparseParamUpdateRecorder::GetInstance()->Update(run_varname,
-                                                              grad_slr.rows());
+      auto *var = scope->FindVar(run_varname);
+
+      // for sparse ids
+      if (var->IsType<framework::SelectedRows>()) {
+        if (distributed_mode_ == DistributedMode::kAsync ||
+            distributed_mode_ == DistributedMode::kHalfAsync) {
+          auto *ins = distributed::LargeScaleKV::GetInstance();
+          if (ins->GradInLargeScale(run_varname)) {
+            auto *large_scale_var = ins->GetByGrad(run_varname);
+
+            for (auto name : large_scale_var->CachedVarnames()) {
+              scope->Var(name);
+            }
+          }
+        }
+        if (distributed_mode_ == DistributedMode::kGeo) {
+          if (AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(
+                  run_varname)) {
+            auto &grad_slr =
+                scope->FindVar(run_varname)->Get<framework::SelectedRows>();
+            AsyncSparseParamUpdateRecorder::GetInstance()->Update(
+                run_varname, grad_slr.rows());
+          }
+        }
       }
+
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[run_varname].get(),
                                     scope);
-
       return true;
     } else {  // sync
       rpc_server_->WaitCond(kRequestSend);
@@ -104,13 +123,13 @@ bool RequestSendHandler::Handle(const std::string& varname,
   return true;
 }
 
-bool RequestGetHandler::Handle(const std::string& varname,
-                               framework::Scope* scope,
-                               framework::Variable* invar,
-                               framework::Variable** outvar,
+bool RequestGetHandler::Handle(const std::string &varname,
+                               framework::Scope *scope,
+                               framework::Variable *invar,
+                               framework::Variable **outvar,
                                const int trainer_id,
-                               const std::string& out_var_name,
-                               const std::string& table_name) {
+                               const std::string &out_var_name,
+                               const std::string &table_name) {
   VLOG(3) << "RequestGetHandler:" << varname
           << " out_var_name: " << out_var_name << " trainer_id: " << trainer_id
           << " table_name: " << table_name;
@@ -138,39 +157,38 @@ bool RequestGetHandler::Handle(const std::string& varname,
         VLOG(3) << "copying " << varname << " to " << param_bak_name;
         framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }
-      VLOG(1) << "Table name empty? " << table_name.empty();
-      if (distributed_mode_ == DistributedMode::kGeo) {
-        VLOG(1) << "AsyncSparseParamUpdateRecorder " << varname << " exist "
-                << AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(
-                       varname);
-      }
+
       if (distributed_mode_ == DistributedMode::kGeo &&
           AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
           !table_name.empty()) {
+        VLOG(3) << "AsyncSparseParamUpdateRecorder " << varname << " exist ";
+
         std::vector<int64_t> updated_rows;
         AsyncSparseParamUpdateRecorder::GetInstance()->GetAndClear(
             varname, trainer_id, &updated_rows);
+
         if (VLOG_IS_ON(3)) {
           std::ostringstream sstream;
           sstream << "[";
-          for (auto& row_id : updated_rows) {
+          for (auto &row_id : updated_rows) {
             sstream << row_id << ", ";
           }
           sstream << "]";
           VLOG(3) << "updated_rows size: " << updated_rows.size() << " "
                   << sstream.str();
         }
-        auto& origin_tensor =
+
+        auto &origin_tensor =
             scope_->FindVar(varname)->Get<framework::LoDTensor>();
-        auto* origin_tensor_data = origin_tensor.data<float>();
-        auto& dims = origin_tensor.dims();
+        auto *origin_tensor_data = origin_tensor.data<float>();
+        auto &dims = origin_tensor.dims();
         *outvar = scope->Var();
-        auto* out_slr = (*outvar)->GetMutable<framework::SelectedRows>();
+        auto *out_slr = (*outvar)->GetMutable<framework::SelectedRows>();
         out_slr->set_rows(updated_rows);
         out_slr->set_height(dims[0]);
         auto out_dims = framework::make_ddim(
             {static_cast<int64_t>(updated_rows.size()), dims[1]});
-        auto* data = out_slr->mutable_value()->mutable_data<float>(
+        auto *data = out_slr->mutable_value()->mutable_data<float>(
             out_dims, origin_tensor.place());
         auto width = dims[1];
         for (size_t i = 0; i < updated_rows.size(); ++i) {
@@ -186,13 +204,13 @@ bool RequestGetHandler::Handle(const std::string& varname,
   return true;
 }
 
-bool RequestGetNoBarrierHandler::Handle(const std::string& varname,
-                                        framework::Scope* scope,
-                                        framework::Variable* invar,
-                                        framework::Variable** outvar,
+bool RequestGetNoBarrierHandler::Handle(const std::string &varname,
+                                        framework::Scope *scope,
+                                        framework::Variable *invar,
+                                        framework::Variable **outvar,
                                         const int trainer_id,
-                                        const std::string& out_var_name,
-                                        const std::string& table_name) {
+                                        const std::string &out_var_name,
+                                        const std::string &table_name) {
   VLOG(4) << "RequestGetNoBarrierHandler:" << varname
           << " out_var_name: " << out_var_name;
 
@@ -212,77 +230,96 @@ bool RequestGetNoBarrierHandler::Handle(const std::string& varname,
   return true;
 }
 
-bool RequestPrefetchHandler::Handle(const std::string& varname,
-                                    framework::Scope* scope,
-                                    framework::Variable* invar,
-                                    framework::Variable** outvar,
+bool RequestPrefetchHandler::Handle(const std::string &varname,
+                                    framework::Scope *scope,
+                                    framework::Variable *invar,
+                                    framework::Variable **outvar,
                                     const int trainer_id,
-                                    const std::string& out_var_name,
-                                    const std::string& table_name) {
+                                    const std::string &out_var_name,
+                                    const std::string &table_name) {
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
-  if (table_name.empty()) {
-    auto var_desc = program_->Block(0).FindVar(out_var_name);
-    InitializeVariable(*outvar, var_desc->GetType());
-    executor_->RunPreparedContext(
-        (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
+  (*outvar)->GetMutable<framework::LoDTensor>();
+
+  VLOG(1) << "Prefetch "
+          << "tablename: " << table_name << " ids:" << varname
+          << " out: " << out_var_name;
+  paddle::platform::CPUPlace cpu_place;
+  auto *ins = distributed::LargeScaleKV::GetInstance();
+
+  if (ins->ParamInLargeScale(table_name)) {
+    auto lookup_table_op = PullLargeScaleOp(table_name, varname, out_var_name);
+    lookup_table_op->Run(*scope, cpu_place);
   } else {
-    (*outvar)->GetMutable<framework::LoDTensor>();
     auto lookup_table_op =
         BuildLookupTableOp(table_name, varname, out_var_name);
-    paddle::platform::CPUPlace cpu_place;
     lookup_table_op->Run(*scope, cpu_place);
   }
+
   return true;
 }
 
-bool RequestCheckpointHandler::Handle(const std::string& varname,
-                                      framework::Scope* scope,
-                                      framework::Variable* invar,
-                                      framework::Variable** outvar,
+bool RequestCheckpointHandler::Handle(const std::string &varname,
+                                      framework::Scope *scope,
+                                      framework::Variable *invar,
+                                      framework::Variable **outvar,
                                       const int trainer_id,
-                                      const std::string& out_var_name,
-                                      const std::string& table_name) {
-  PADDLE_ENFORCE(
-      checkpoint_notify_id != -1,
-      "when checkpoint_notify_id = -1, there should be no RPC invoke.");
+                                      const std::string &out_var_name,
+                                      const std::string &table_name) {
+  VLOG(4) << "receive save var " << varname << " with path " << out_var_name;
 
-  // TODO(tangwei12): find out why scope will be error.
-  auto* lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
-  lt_var->clear();
-  lt_var->append(out_var_name);
-  VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
-          << out_var_name;
-  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope_);
+  auto *ins = distributed::LargeScaleKV::GetInstance();
+  ins->Get(varname)->Save(out_var_name);
+  //  auto checkpoint_op = BuildCheckpointOp(varname, out_var_name);
+  //  paddle::platform::CPUPlace cpu_place;
+  //  checkpoint_op->Run(*scope_, cpu_place);
   return true;
 }
 
-bool RequestNotifyHandler::Handle(const std::string& varname,
-                                  framework::Scope* scope,
-                                  framework::Variable* invar,
-                                  framework::Variable** outvar,
+bool RequestNotifyHandler::Handle(const std::string &varname,
+                                  framework::Scope *scope,
+                                  framework::Variable *invar,
+                                  framework::Variable **outvar,
                                   const int trainer_id,
-                                  const std::string& out_var_name,
-                                  const std::string& table_name) {
-  VLOG(4) << "RequestNotifyHandler: " << varname;
-  VLOG(3) << "async process var: " << varname << ", trainer_id: " << trainer_id;
+                                  const std::string &out_var_name,
+                                  const std::string &table_name) {
+  VLOG(3) << "RequestNotifyHandler: " << varname
+          << ", trainer_id: " << trainer_id;
 
-  string::Piece decay_piece(LEARNING_RATE_DECAY_COUNTER);
+  string::Piece decay_piece(STEP_COUNTER);
   string::Piece var_name_piece = string::Piece(varname);
   if (string::Contains(var_name_piece, decay_piece)) {
     VLOG(3) << "LearningRate Decay Counter Update";
-    PADDLE_ENFORCE_NE(
-        lr_decay_block_id, -1,
-        "when lr_decay_block_id = -1, there should be no RPC invoke.");
-    auto* origin_var = scope_->FindVar(varname);
-    auto origin_var_tensor = origin_var->Get<framework::LoDTensor>();
-    auto* send_var = scope->FindVar(varname);
+
+    auto *send_var = scope->FindVar(varname);
     auto send_var_tensor = send_var->Get<framework::LoDTensor>();
-    int64_t* origin_value =
-        origin_var_tensor.mutable_data<int64_t>(origin_var_tensor.place());
-    int64_t* send_value =
+    auto *send_value =
         send_var_tensor.mutable_data<int64_t>(send_var_tensor.place());
-    origin_value[0] += send_value[0];
+
+    auto counter = decay_counters.at(trainer_id);
+    counter += send_value[0];
+    decay_counters.at(trainer_id) = counter;
+
+    auto *global_step_var = this->scope()->FindVar(LEARNING_RATE_DECAY_COUNTER);
+    if (global_step_var == nullptr) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "can not find LEARNING_RATE_DECAY_COUNTER "));
+    }
+
+    auto *tensor = global_step_var->GetMutable<framework::LoDTensor>();
+    auto *value = tensor->mutable_data<int64_t>(platform::CPUPlace());
+
+    auto global_counter = 0;
+    for (auto &trainer_counter : decay_counters) {
+      global_counter += trainer_counter.second;
+    }
+    value[0] = global_counter;
+
+    if (lr_decay_prepared_ctx_.get() == nullptr) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "can not find decay block for executor"));
+    }
+
     executor_->RunPreparedContext(lr_decay_prepared_ctx_.get(), scope_);
   }
   return true;
