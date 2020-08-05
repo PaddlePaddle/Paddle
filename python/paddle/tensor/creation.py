@@ -568,7 +568,7 @@ def tril(x, diagonal=0, name=None):
 
             x = paddle.imperative.to_variable(data)
             
-            tril1 = tensor.tril(x)
+            tril1 = paddle.tensor.tril(x)
             # array([[ 1,  0,  0,  0],
             #        [ 5,  6,  0,  0],
             #        [ 9, 10, 11,  0]])
@@ -645,13 +645,13 @@ def triu(x, diagonal=0, name=None):
             #        [ 0,  0, 11, 12]])
 
             # example 2, positive diagonal value
-            triu2 = tensor.triu(x, diagonal=2)
+            triu2 = paddle.tensor.triu(x, diagonal=2)
             # array([[0, 0, 3, 4],
             #        [0, 0, 0, 8],
             #        [0, 0, 0, 0]])
 
             # example 3, negative diagonal value
-            triu3 = tensor.triu(x, diagonal=-1)
+            triu3 = paddle.tensor.triu(x, diagonal=-1)
             # array([[ 1,  2,  3,  4],
             #        [ 5,  6,  7,  8],
             #        [ 0, 10, 11, 12]])
