@@ -30,6 +30,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 
+
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
 STEP_COUNTER = "@PS_STEP_COUNTER@"
@@ -41,7 +42,8 @@ LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 DEVICE_LIST = ["cpu", "gpu", "xpu"]
 COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
-DEFAULT_DEVICE='cpu'
+DEFAULT_DEVICE = 'cpu'
+
 
 def _get_lr_ops(program):
     lr_ops = []
@@ -94,39 +96,40 @@ def get_sparse_tablenames(program, is_distributed):
     return list(tablenames)
 
 
-def _is_heter_op(op, current_heter_device, default_device="cpu"):
-    heter_devices = list(DEVICE_LIST)
-    heter_devices.remove(default_device)
-    op_device = op.attr("op_device")
-    if op_device in heter_devices:
-        return True
-    elif op_device == None or op_device == default_device:
-        op._set_attr('op_device', default_device)
-        return False
-    return False
-
-
-def _is_same_device(op, pre_device, default_device="cpu"):
-    op_device = op.attr("op_device")
-    if op_device == pre_device:
-        return True
-    if pre_device == default_device:
-        # for cpu-op , xpu-op
-        return True
-    return False
-
-
-def _append_heter_op(op, current_heter_block_ops, heter_ops):
-    op_device = op.attr("op_device")
-    if op_device not in heter_ops:
-        heter_ops[op_device] = {}
-    current_heter_block_ops.append(op)
-
-
 def find_heter_ops(program, default_device="cpu"):
     if default_device not in DEVICE_LIST:
-        raise ValueError("Given device {} is not in default device list {}".format(
+        raise ValueError("Given device {} is not in device list {}".format(
             default_device, DEVICE_LIST))
+
+    def _is_heter_op(op, current_heter_device, default_device="cpu"):
+        heter_devices = list(DEVICE_LIST)
+        heter_devices.remove(default_device)
+        op_device = op.attr("op_device")
+        op_type = op.type
+        if op_device in heter_devices:
+            return True
+        elif op_type in COMMUNICATE_OPS_TYPE and current_heter_device != default_device:
+            # for distributed communciate ops: send & recv & barrier
+            op._set_attr('op_device', current_heter_device)
+            return True
+        elif op_device == None or op_device == default_device:
+            op._set_attr('op_device', default_device)
+            return False
+        return False
+
+    def _is_same_device(op, pre_device, default_device="cpu"):
+        op_device = op.attr("op_device")
+        if op_device == pre_device:
+            return True
+        if pre_device == default_device:
+            return True
+        return False
+
+    def _append_heter_op(op, current_heter_block_ops, heter_ops):
+        op_device = op.attr("op_device")
+        if op_device not in heter_ops:
+            heter_ops[op_device] = {}
+        current_heter_block_ops.append(op)
 
     origin_porgram = program.clone()
     block = program.global_block()
@@ -150,6 +153,8 @@ def find_heter_ops(program, default_device="cpu"):
             if len(current_default_block_ops) > 1:
                 default_ops[default_device][block_index] = current_default_block_ops
                 program_block_ops.append(current_default_block_ops)
+                print("append {} cpu op-block: {}".format(block_index,
+                                                          current_default_block_ops))
                 current_default_block_ops = []
                 block_index += 1
 
@@ -162,6 +167,8 @@ def find_heter_ops(program, default_device="cpu"):
                 op_device = current_heter_block_ops[0].attr("op_device")
                 heter_ops[op_device][block_index] = current_heter_block_ops
                 program_block_ops.append(current_heter_block_ops)
+                print("append {} xpu op-block: {}".format(block_index,
+                                                          current_heter_block_ops))
                 block_index += 1
                 current_heter_block_ops = []
                 current_heter_device = op.attr("op_device")
@@ -172,6 +179,8 @@ def find_heter_ops(program, default_device="cpu"):
             op_device = current_heter_block_ops[0].attr("op_device")
             heter_ops[op_device][block_index] = current_heter_block_ops
             program_block_ops.append(current_heter_block_ops)
+            print("append {} xpu op-block: {}".format(block_index,
+                                                      current_heter_block_ops))
             block_index += 1
             current_heter_block_ops = []
             current_heter_device = default_device
@@ -180,14 +189,20 @@ def find_heter_ops(program, default_device="cpu"):
         else:
             # for cpu-op
             current_default_block_ops.append(op)
-    if current_heter_block_ops != []:
-        op_device = current_heter_block_ops[0].attr("op_device")
-        heter_ops[op_device][block_index] = current_heter_block_ops
-        program_block_ops.append(current_heter_block_ops)
 
     if current_default_block_ops != []:
         default_ops[default_device][block_index] = current_default_block_ops
         program_block_ops.append(current_default_block_ops)
+        print("append {} cpu op-block: {}".format(block_index,
+                                                  current_default_block_ops))
+
+    if current_heter_block_ops != []:
+        op_device = current_heter_block_ops[0].attr("op_device")
+        heter_ops[op_device][block_index] = current_heter_block_ops
+        program_block_ops.append(current_heter_block_ops)
+        print("append {} xpu op-block: {}".format(block_index, current_heter_block_ops))
+
+    #remove_communicate_op(origin_porgram, heter_ops, default_ops, program_block_ops)
 
     if len(heter_ops) == 0:
         warnings.warn(
@@ -195,12 +210,13 @@ def find_heter_ops(program, default_device="cpu"):
             " please using fluid.device_guard() to run OPs on different device.")
 
     total_heter_ops = 0
-    heter_blocks=0 
+    heter_blocks = 0
     for device in heter_ops.keys():
         heter_block_dict = heter_ops[device]
         heter_blocks += len(heter_block_dict)
-        for _,heter_block in heter_block_dict.items():
+        for _, heter_block in heter_block_dict.items():
             total_heter_ops += len(heter_block)
+    print("total op block {}".format(len(program_block_ops)))
     print(
         "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(len(block.ops), total_heter_ops, heter_blocks))
     return origin_porgram, heter_ops, default_ops, program_block_ops
@@ -237,42 +253,72 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
         add_vars_by_var_list(exit_vars, program, heter_program)
 
         comm_info = get_communicate_var_info(
-            program, index, entrance_vars, exit_vars, current_device)
+            program, index, entrance_vars, exit_vars)
+
         grad_to_block_id.append(
-            comm_info["recv_var_listen_recv_name"] + ":" + str(heter_block.idx))
+            comm_info["block_input_var_name"] + ":" + str(heter_block.idx))
+
         # create slice op
         first_op_index = 0
-
-        get_type_var_name = comm_info["recv_var_reshape_name"][0].split("@")[0]
+        get_type_var_name = comm_info["input_var_reshape_name"][0].split(
+            "@")[0]
         get_type_var = heter_program.global_block().vars[get_type_var_name]
+
         insert_recv_slice_op(
             heter_program,
             heter_block,
             first_op_index,
-            comm_info["recv_var_listen_recv_name"],
-            (-1, sum(comm_info["recv_var_slice_dim"])),
+            comm_info["block_input_var_name"],
+            (-1, sum(comm_info["input_var_reshape_dim"])),
             get_type_var.dtype,
             get_type_var.type,
-            comm_info["recv_var_reshape_name"],
-            [(-1, comm_info["recv_var_slice_dim"][i])
-             for i in range(len(comm_info["recv_var_slice_dim"]))]
+            comm_info["input_var_reshape_name"],
+            [(-1, comm_info["input_var_reshape_dim"][i])
+             for i in range(len(comm_info["input_var_reshape_dim"]))]
         )
-        first_op_index += len(comm_info["recv_var_slice_dim"])
+
+        first_op_index += len(comm_info["output_var_reshape_dim"])
 
         # create reshape op
-        for i in range(len(entrance_vars)):
+        for i in range(len(comm_info["input_var_reshape_name"])):
             var_name = entrance_vars[i]
             insert_reshape_op(
                 heter_program,
                 heter_block,
                 first_op_index,
-                comm_info["recv_var_reshape_name"][i],
+                comm_info["input_var_reshape_name"][i],
                 var_name,
             )
             first_op_index += 1
 
-        # add info in listen&serv
+        first_op_index = len(heter_block.ops)
 
+        # create send reshape op
+        # create reshape op
+        for i in range(len(exit_vars)):
+            insert_reshape_op(
+                heter_program,
+                heter_block,
+                first_op_index,
+                exit_vars[i],
+                comm_info["output_var_reshape_name"][i],
+                [-1, comm_info["output_var_reshape_dim"][i]]
+            )
+            first_op_index += 1
+
+        # create concat op
+        insert_send_concat_op(
+            heter_program,
+            heter_block,
+            first_op_index,
+            comm_info["output_var_reshape_name"],
+            comm_info["block_output_var_name"],
+            [-1, sum(comm_info["output_var_reshape_dim"])]
+        )
+
+        # create send concat op
+
+    # add info in listen&serv
     attrs = {
         "grad_to_block_id": grad_to_block_id,
         "sparse_grad_to_param": None,
@@ -300,13 +346,17 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
 
 
 def create_trainer_program(program, config, heter_ops, block_var_detail):
+    print("create_trainer_program begin")
     for device in heter_ops.keys():
         for heter_block_index in sorted(heter_ops[device]):
+            print("heter_block_index: {}".format(heter_block_index))
+
             replace_ops_by_communicate_op(
-                program, config, heter_block_index, heter_ops[device][heter_block_index], block_var_detail[heter_block_index], device)
+                program, config, heter_block_index, heter_ops[device][heter_block_index], block_var_detail)
 
 
-def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, ops_detail, device):
+def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, block_var_detail):
+    print("replace_ops_by_communicate_op begin")
     all_op = program.global_block().ops
     start_op = ops_list[0]
     first_op_idx = -1
@@ -320,22 +370,27 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
     mode = config.get_distributed_mode()
     # Todo: replace by XPU endpoints
     pserver_endpoints = config.get_ps_endpoints()
-    entrance_var = ops_detail["entrance"]
-    private_var = ops_detail["private"]
-    exit_var = ops_detail["exit"]
+    entrance_var = block_var_detail[heter_block_index]["entrance"]
+    exit_var = block_var_detail[heter_block_index]["exit"]
 
+    default_device_comm_info = get_communicate_var_info(
+        program, heter_block_index-1, block_var_detail[heter_block_index-1]["entrance"], block_var_detail[heter_block_index-1]["exit"])
     comm_info = get_communicate_var_info(
-        program, heter_block_index, entrance_var, exit_var, device)
+        program, heter_block_index, entrance_var, exit_var)
+
+    print("block_index {}, comm_info {}".format(
+        heter_block_index-1, default_device_comm_info))
+    print("block_index {}, comm_info {}".format(heter_block_index, comm_info))
 
     # create reshape op
-    for i in range(len(exit_var)):
+    for i in range(len(entrance_var)):
         insert_reshape_op(
             program,
             program.global_block(),
             first_op_idx,
-            exit_var[i],
-            comm_info["send_var_reshape_name"][i],
-            (-1, comm_info["send_var_reshape_dim"][i])
+            entrance_var[i],
+            default_device_comm_info["output_var_reshape_name"][i],
+            [-1, default_device_comm_info["output_var_reshape_dim"][i]]
         )
         first_op_idx += 1
 
@@ -344,20 +399,22 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
         program,
         program.global_block(),
         first_op_idx,
-        comm_info["send_var_reshape_name"],
-        comm_info["send_var_concat_name"],
-        (-1, sum(comm_info["send_var_reshape_dim"]))
+        default_device_comm_info["output_var_reshape_name"],
+        default_device_comm_info["block_output_var_name"],
+        [-1, sum(default_device_comm_info["output_var_reshape_dim"])]
     )
     first_op_idx += 1
 
     # send
     send_input_vars = [
-        program.global_block().vars[comm_info["send_var_concat_name"]]
+        program.global_block(
+        ).vars[default_device_comm_info["block_output_var_name"]]
     ]
     dummy_output = []
     if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
         dummy_output = program.global_block().create_var(
             name=framework.generate_control_dev_var_name())
+
     program.global_block()._insert_op(
         index=first_op_idx,
         type="send",
@@ -375,88 +432,104 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
 
     # recv
     # create slice op
-    # create reashpe op
-    get_type_var_name = comm_info["recv_var_reshape_name"][0].split("@")[0]
+    get_type_var_name = comm_info["output_var_reshape_name"][0].split(
+        "@")[0]
     get_type_var = program.global_block().vars[get_type_var_name]
     insert_recv_slice_op(
         program,
         program.global_block(),
         first_op_idx,
-        comm_info["recv_var_listen_recv_name"],
-        (-1, sum(comm_info["recv_var_slice_dim"])),
+        comm_info["block_output_var_name"],
+        (-1, sum(comm_info["output_var_reshape_dim"])),
         get_type_var.dtype,
         get_type_var.type,
-        comm_info["recv_var_reshape_name"],
-        [(-1, comm_info["recv_var_slice_dim"][i])
-            for i in range(len(comm_info["recv_var_slice_dim"]))]
+        comm_info["output_var_reshape_name"],
+        [(-1, comm_info["output_var_reshape_dim"][i])
+            for i in range(len(comm_info["output_var_reshape_dim"]))]
     )
-    first_op_index += len(comm_info["recv_var_slice_dim"])
+
+    first_op_idx += len(comm_info["output_var_reshape_dim"])
 
     # create reshape op
-    for i in range(len(entrance_vars)):
-        var_name = entrance_vars[i]
+    for i in range(len(comm_info["output_var_reshape_name"])):
+        var_name = comm_info["output_var_reshape_name"][i].split("@")[0]
         insert_reshape_op(
-            heter_program,
-            heter_block,
-            first_op_index,
-            comm_info["recv_var_reshape_name"][i],
+            program,
+            program.global_block(),
+            first_op_idx,
+            comm_info["output_var_reshape_name"][i],
             var_name,
         )
-        first_op_index += 1
+        first_op_idx += 1
 
-    for var in private_var:
-        if program.global_block().has_var(var):
-            program.global_block()._remove_var(var)
+    # for var in private_var:
+    #    if var in entrance_var:
+    #        continue
+    #    if var in exit_var:
+    #        continue
+    #    if program.global_block().has_var(var):
+    #        program.global_block()._remove_var(var)
 
 
-def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_list, device):
-    send_var_reshape_dim = []
-    send_var_reshape_name = []
-    send_var_concat_name = "HETER_BLOCK_{}@HETER_SEND_CONCAT".format(
-        block_index)
-    recv_var_slice_dim = []
-    recv_var_reshape_name = []
-    recv_var_listen_recv_name = "HETER_BLOCK_{}@HETER_SEND_CONCAT".format(
-        block_index - 1)
-    # send
-    # var -> reshape -> var@HETER_SEND_RESHAPE -> concat -> var@HETER_BLOCK_INDEX@HETER_SEND_CONCAT
-    for var_name in entrance_var_list:
-        var = program.global_block().vars[var_name]
-        shape = var.shape
-        if len(shape) < 2 or shape[0] != -1:
-            raise ValueError("Variable {} not support heter training. its shape is {}".format(var_name, shape))
-        send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
-        send_var_reshape_dim.append(send_reshape_dim)
-        send_var_reshape_name.append("{}@HETER_SEND_RESHAPE".format(var_name))
-    # recv
-    # var@HETER_SEND_CONCAT -> slice -> var@HETER_SEND_RESHAPE -> reshape -> var
-    for name in exit_var_list:
+def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_list):
+    input_var_reshape_dim = []
+    input_var_reshape_name = []
+    block_input_var_name = "HETER_BLOCK_{}_TO_{}@JOINT_VAR".format(block_index-1,
+                                                                   block_index)
+    output_var_reshape_dim = []
+    output_var_reshape_name = []
+    block_output_var_name = "HETER_BLOCK_{}_TO_{}@JOINT_VAR".format(block_index,
+                                                                    block_index + 1)
+
+    # input
+    # HETER_BLOCK_index@INPUT_VAR -> slice -> var@HETER_SEND_RESHAPE -> reshape -> var
+    for name in entrance_var_list:
         var = program.global_block().vars[name]
         shape = var.shape
         if len(shape) < 2 or shape[0] != -1:
-            raise ValueError("Variable {} not support heter training. its shape is {}".format(var_name, shape))
+            raise ValueError(
+                "Variable {} not support heter training. its shape is {}".format(name, shape))
         recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
-        recv_var_slice_dim.append(recv_var_dim)
-        recv_var_reshape_name.append("{}@HETER_RECV_RESHAPE".format(name))
+        input_var_reshape_dim.append(recv_var_dim)
+        input_var_reshape_name.append(
+            "{}@HETER_BLOCK@INPUT_RESHAPE_VAR".format(name))
 
-    info = {"send_var_reshape_dim": send_var_reshape_dim,
-            "send_var_reshape_name": send_var_reshape_name,
-            "send_var_concat_name": send_var_concat_name,
-            "recv_var_slice_dim": recv_var_slice_dim,
-            "recv_var_reshape_name": recv_var_reshape_name,
-            "recv_var_listen_recv_name": recv_var_listen_recv_name,
-            "block_index": block_index,
-            "block_device": device}
+    # output
+    # var -> reshape -> var@HETER_SEND_RESHAPE -> concat -> HETER_BLOCK_index@OUTPUT_VAR
+    for var_name in exit_var_list:
+        var = program.global_block().vars[var_name]
+        shape = var.shape
+        if len(shape) < 2 or shape[0] != -1:
+            raise ValueError(
+                "Variable {} not support heter training. its shape is {}".format(var_name, shape))
+        send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
+        output_var_reshape_dim.append(send_reshape_dim)
+        output_var_reshape_name.append(
+            "{}@HETER_BLOCK@OUTPUT_RESHAPE_VAR".format(var_name))
+
+    info = {"input_var_reshape_dim": input_var_reshape_dim,
+            "input_var_reshape_name": input_var_reshape_name,
+            "block_input_var_name": block_input_var_name,
+            "output_var_reshape_dim": output_var_reshape_dim,
+            "output_var_reshape_name": output_var_reshape_name,
+            "block_output_var_name": block_output_var_name}
     return info
 
 
 def find_block_joints(program, program_block_ops_list, heter_ops):
+    print("find_block_joints begin")
     block_var_detail = find_entrance_exit_private(
         program, program_block_ops_list)
+    for i in range(len(block_var_detail)):
+        print("1#_block_var_detail_{} {}".format(i, block_var_detail[i]))
     block_var_detail = entrance_exit_check(
         program, program_block_ops_list, block_var_detail, heter_ops)
+    for i in range(len(block_var_detail)):
+        print("2#_block_var_detail_{} {}".format(i, block_var_detail[i]))
     block_var_detail = delete_block_useless_exit(
         program, program_block_ops_list, block_var_detail)
+    for i in range(len(block_var_detail)):
+        print("3#_block_var_detail_{} {}".format(i, block_var_detail[i]))
     return block_var_detail
 
 
@@ -490,7 +563,8 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail, heter
         exist_vars = list(set(previous_block_exit) &
                           set(current_block_entrance))
         need_add_vars = list(set(current_block_entrance)-set(exist_vars))
-        need_add_vars = find_need_var_from_previous_block(need_add_vars, block_var_detail, index, heter_ops)
+        need_add_vars = find_need_var_from_previous_block(
+            need_add_vars, block_var_detail, index, heter_ops)
 
         previous_block_private = block_var_detail[index - 1]["private"]
         previous_block_entrance = block_var_detail[index - 1]["entrance"]
@@ -500,24 +574,31 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail, heter
             previous_block_exit.append(var)
     return block_var_detail
 
+
 def find_need_var_from_previous_block(need_add_vars, block_var_detail, current_index, heter_ops):
-    # create index_device_map 
+    # create index_device_map
     index_device_map = {}
     for index in range(len(block_var_detail)):
         index_device_map[index] = DEFAULT_DEVICE
     for device in heter_ops:
         for index in heter_ops[device].keys():
             index_device_map[index] = device
+    print("index_device_map {}".format(index_device_map))
 
     pre_index = current_index - 1
     need_ignore_var = []
-    
+
     # if need_add_var in current device, no need comm
+    print("need_add_vars: {}".format(need_add_vars))
     for var in need_add_vars:
         while(pre_index >= 0):
             previous_block_private = block_var_detail[pre_index]["private"]
-            if var in previous_block_private:
-                if index_device_map[current_index] == index_device_map[pre_index]:
+            previous_block_exit = block_var_detail[pre_index]["exit"]
+            previous_block_entrance = block_var_detail[pre_index]["entrance"]
+            total_var = previous_block_private + previous_block_exit + previous_block_entrance
+            print("previous_block_total_var: {}".format(total_var))
+            if var in total_var:
+                if index_device_map[current_index] == index_device_map[pre_index] and index_device_map[current_index] == DEFAULT_DEVICE:
                     need_ignore_var.append(var)
                     break
             pre_index -= 1
@@ -543,47 +624,6 @@ def delete_block_useless_exit(program, program_block_ops_list, block_var_detail)
     return block_var_detail
 
 
-def add_vars_by_op_map(var_map, program):
-    for key, varlist in six.iteritems(var_map):
-        if not isinstance(varlist, list):
-            varlist = [varlist]
-        for i in range(len(varlist)):
-            var = varlist[i]
-            if var.name not in program.global_block().vars:
-                program.global_block()._clone_variable(var)
-
-def add_vars_by_var_list(var_name_list, origin_program, program):
-    for var_name in var_name_list:
-        if var_name not in program.global_block().vars:
-            var = origin_program.global_block().vars[var_name]
-            program.global_block()._clone_variable(var)
-
-
-def get_varlist_from_op_map(var_map):
-    var_list = []
-    for key, varlist in six.iteritems(var_map):
-        if not isinstance(varlist, list):
-            varlist = [varlist]
-        for i in range(len(varlist)):
-            var = varlist[i]
-            var_list.append(var.name)
-    return var_list
-
-def find_ops_list_input_output(program, ops_list):
-    input_var_list = []
-    output_var_list = []
-    for op in ops_list:
-        inputs = _get_input_map_from_op(
-            program.global_block().vars, op)
-        input_var_list += get_varlist_from_op_map(inputs)
-        outputs = _get_output_map_from_op(
-            program.global_block().vars, op)
-        output_var_list += get_varlist_from_op_map(outputs)
-
-    input_var_list = list(set(input_var_list))
-    output_var_list = list(set(output_var_list))
-    return input_var_list, output_var_list
-
 def screen_persistables(program, var_list):
     need_remove = []
     for var_name in var_list:
@@ -592,35 +632,12 @@ def screen_persistables(program, var_list):
             var = program.global_block().vars[origin_var_name]
         else:
             var = program.global_block().vars[var_name]
+
         if fluid.io.is_persistable(var):
             need_remove.append(var_name)
 
     for var_name in need_remove:
         var_list.remove(var_name)
-
-
-def find_op_input_output(program, block, op):
-    input_var_list = []
-    output_var_list = []
-    inputs = _get_input_map_from_op(
-        block.vars, op)
-    input_var_list += get_varlist_from_op_map(inputs)
-    outputs = _get_output_map_from_op(
-        block.vars, op)
-    output_var_list += get_varlist_from_op_map(outputs)
-    return input_var_list, output_var_list
-
-
-def get_vars_name_in_block(block):
-    vars_list = block.vars.keys()
-    vars_name_list = [var_name for var_name in vars_list]
-    return vars_name_list
-
-
-def is_same_op(op1, op2):
-    if str(op1) != str(op2):
-        return False
-    return True
 
 
 def insert_reshape_op(program, block, index, var_name, new_var_name, new_var_shape=None):
@@ -639,7 +656,6 @@ def insert_reshape_op(program, block, index, var_name, new_var_name, new_var_sha
     x_shape = program.global_block().create_var(
         name="{}@XShape".format(var_name),
         dtype=input_var.dtype)
-
     block._insert_op(
         index=index,
         type="reshape2",
@@ -663,7 +679,7 @@ def insert_send_concat_op(program, block, index, var_name_list, new_var_name, ne
     block._insert_op(
         index=index,
         type='concat',
-        inputs={'X':input_var_list},
+        inputs={"X": input_var_list},
         outputs={'Out': [out]},
         attrs={'axis': -1,
                'use_stack': False}
@@ -671,21 +687,25 @@ def insert_send_concat_op(program, block, index, var_name_list, new_var_name, ne
 
 
 def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype, type, new_var_name_list, new_var_shape_list):
-    
+
     input_var = program.global_block().create_var(
         name=var_name,
         shape=var_shape,
         dtype=dtype,
         type=type)
 
-    out_list = [
-        program.global_block().create_var(
-            name=new_var_name_list[i],
-            shape=new_var_shape_list[i],
-            dtype=input_var.dtype,
-            type=input_var.type
-        ) for i in range(len(new_var_name_list))
-    ]
+    out_list = []
+    for i in range(len(new_var_name_list)):
+        if new_var_name_list[i] not in program.global_block().vars:
+            out = program.global_block().create_var(
+                name=new_var_name_list[i],
+                shape=new_var_shape_list[i],
+                dtype=input_var.dtype,
+                type=input_var.type
+            )
+        else:
+            out = program.global_block().vars[new_var_name_list[i]]
+        out_list.append(out)
 
     start_index = 0
     end_index = 0
@@ -702,12 +722,85 @@ def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype, type
         block._insert_op(
             index=index,
             type='slice',
-            inputs={'Input':input_var},
+            inputs={'Input': input_var},
             attrs=attrs,
             outputs={'Out': out_list[i]}
         )
         start_index = end_index
         index += 1
+
+
+def deleter_trainer_useless_var(program):
+    pass
+
+
+def add_vars_by_op_map(var_map, program):
+    for key, varlist in six.iteritems(var_map):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for i in range(len(varlist)):
+            var = varlist[i]
+            if var.name not in program.global_block().vars:
+                program.global_block()._clone_variable(var)
+
+
+def add_vars_by_var_list(var_name_list, origin_program, program):
+    for var_name in var_name_list:
+        if var_name not in program.global_block().vars:
+            var = origin_program.global_block().vars[var_name]
+            program.global_block()._clone_variable(var)
+
+
+def get_varlist_from_op_map(var_map):
+    var_list = []
+    for key, varlist in six.iteritems(var_map):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for i in range(len(varlist)):
+            var = varlist[i]
+            var_list.append(var.name)
+    return var_list
+
+
+def find_ops_list_input_output(program, ops_list):
+    input_var_list = []
+    output_var_list = []
+    for op in ops_list:
+        inputs = _get_input_map_from_op(
+            program.global_block().vars, op)
+        input_var_list += get_varlist_from_op_map(inputs)
+        outputs = _get_output_map_from_op(
+            program.global_block().vars, op)
+        output_var_list += get_varlist_from_op_map(outputs)
+
+    input_var_list = list(set(input_var_list))
+    output_var_list = list(set(output_var_list))
+    return input_var_list, output_var_list
+
+
+def find_op_input_output(program, block, op):
+    input_var_list = []
+    output_var_list = []
+    print("block.vars {}".format(block.vars))
+    inputs = _get_input_map_from_op(
+        block.vars, op)
+    input_var_list += get_varlist_from_op_map(inputs)
+    outputs = _get_output_map_from_op(
+        block.vars, op)
+    output_var_list += get_varlist_from_op_map(outputs)
+    return input_var_list, output_var_list
+
+
+def get_vars_name_in_block(block):
+    vars_list = block.vars.keys()
+    vars_name_list = [var_name for var_name in vars_list]
+    return vars_name_list
+
+
+def is_same_op(op1, op2):
+    if str(op1) != str(op2):
+        return False
+    return True
 
 
 def _get_input_map_from_op(varmap, op):
@@ -753,6 +846,7 @@ def delete_same_ops(block, ops):
         except Exception as e:
             print(e)
 
+
 def delete_same_ops_in_list(op_list, ops):
     for op in ops:
         try:
@@ -762,6 +856,7 @@ def delete_same_ops_in_list(op_list, ops):
                     break
         except Exception as e:
             print(e)
+
 
 def block_append_op(program, origin_program, block, op):
     inputs = _get_input_map_from_op(origin_program.global_block().vars, op)
@@ -796,7 +891,7 @@ def block_append_op(program, origin_program, block, op):
         new_op_desc.copy_from(op_desc)
         new_op_desc._set_attr(op_role_attr_name, backward)
 
-        # set device guard
+        # set device gard
         if op.desc.has_attr(device_attr_name):
             op_device = op_desc.attr(device_attr_name)
             new_op_desc._set_attr(device_attr_name, op_device)

@@ -60,7 +60,7 @@ def split_trainer_ops_pass(program, config):
     default_deveice = "cpu"
     program, heter_ops, _, program_block_ops = find_heter_ops(
         program, default_deveice)
-    block_vars_detail = find_block_joints(program, program_block_ops)
+    block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
     create_trainer_program(program, config, heter_ops, block_vars_detail)
     return program
 
