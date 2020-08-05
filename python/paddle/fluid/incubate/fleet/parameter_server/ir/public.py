@@ -110,6 +110,7 @@ def find_heter_ops(program, default_device="cpu"):
             return True
         elif op_type in COMMUNICATE_OPS_TYPE and current_heter_device != default_device:
             # for distributed communciate ops: send & recv & barrier
+            # Todo: need update this method
             op._set_attr('op_device', current_heter_device)
             return True
         elif op_device == None or op_device == default_device:
@@ -157,11 +158,11 @@ def find_heter_ops(program, default_device="cpu"):
                 block_index += 1
 
             if _is_same_device(op, current_heter_device, default_device):
-                # for gpu-op, gpu-op, gpu-op,...
+                # for gpu-op, gpu-op -> gpu-op,...
                 current_heter_device = op.attr("op_device")
                 _append_heter_op(op, current_heter_block_ops, heter_ops)
             else:
-                # for gpu-op, xpu-op, ...
+                # for gpu-op -> xpu-op, ...
                 op_device = current_heter_block_ops[0].attr("op_device")
                 heter_ops[op_device][block_index] = current_heter_block_ops
                 program_block_ops.append(current_heter_block_ops)
@@ -171,7 +172,7 @@ def find_heter_ops(program, default_device="cpu"):
                 _append_heter_op(op, current_heter_block_ops, heter_ops)
 
         elif is_heter:
-            # for gpu/xpu-op, cpu-op
+            # for gpu/xpu-op -> cpu-op
             op_device = current_heter_block_ops[0].attr("op_device")
             heter_ops[op_device][block_index] = current_heter_block_ops
             program_block_ops.append(current_heter_block_ops)
@@ -282,7 +283,6 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
         first_op_index = len(heter_block.ops)
 
         # create send reshape op
-        # create reshape op
         for i in range(len(exit_vars)):
             insert_reshape_op(
                 heter_program,
@@ -294,7 +294,7 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
             )
             first_op_index += 1
 
-        # create concat op
+        # create send concat op
         insert_send_concat_op(
             heter_program,
             heter_block,
@@ -303,8 +303,6 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
             comm_info["block_output_var_name"],
             [-1, sum(comm_info["output_var_reshape_dim"])]
         )
-
-        # create send concat op
 
     # add info in listen&serv
     attrs = {
@@ -386,7 +384,7 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
     )
     first_op_idx += 1
 
-    # send
+    # create send op
     send_input_vars = [
         program.global_block(
         ).vars[default_device_comm_info["block_output_var_name"]]
@@ -455,7 +453,7 @@ def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_l
                                                                     block_index + 1)
 
     # input
-    # HETER_BLOCK_index@INPUT_VAR -> slice -> var@HETER_SEND_RESHAPE -> reshape -> var
+    # HETER_BLOCK_index@JOINT_VAR -> slice -> var@HETER_BLOCK@INPUT_RESHAPE_VAR -> reshape -> var
     for name in entrance_var_list:
         var = program.global_block().vars[name]
         shape = var.shape
@@ -468,7 +466,7 @@ def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_l
             "{}@HETER_BLOCK@INPUT_RESHAPE_VAR".format(name))
 
     # output
-    # var -> reshape -> var@HETER_SEND_RESHAPE -> concat -> HETER_BLOCK_index@OUTPUT_VAR
+    # var -> reshape -> var@HETER_BLOCK@INPUT_RESHAPE_VAR -> concat -> HETER_BLOCK_index@JOINT_VAR
     for var_name in exit_var_list:
         var = program.global_block().vars[var_name]
         shape = var.shape
@@ -709,6 +707,46 @@ def deleter_trainer_useless_var(program):
     return program_useless_var_list
 
 
+def block_append_op(program, origin_program, block, op):
+    inputs = _get_input_map_from_op(origin_program.global_block().vars, op)
+    for key, varlist in six.iteritems(inputs):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for var in varlist:
+            if var.name not in program.global_block().vars:
+                program.global_block()._clone_variable(var)
+
+    outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
+    for key, varlist in six.iteritems(outputs):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for var in varlist:
+            if var.name not in program.global_block().vars:
+                program.global_block()._clone_variable(var)
+
+    if "_grad" not in op.type:
+        # for forward op
+        return block.append_op(
+            type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
+    else:
+        # for grad op
+        op_desc = op.desc
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+
+        # append grad op
+        new_op_desc = block.desc.append_op()
+        new_op_desc.copy_from(op_desc)
+        new_op_desc._set_attr(op_role_attr_name, backward)
+
+        # set device gard
+        if op.desc.has_attr(device_attr_name):
+            op_device = op_desc.attr(device_attr_name)
+            new_op_desc._set_attr(device_attr_name, op_device)
+        block._sync_with_cpp()
+
+
 def add_vars_by_op_map(var_map, program):
     for key, varlist in six.iteritems(var_map):
         if not isinstance(varlist, list):
@@ -832,46 +870,6 @@ def delete_same_ops_in_list(op_list, ops):
                     break
         except Exception as e:
             print(e)
-
-
-def block_append_op(program, origin_program, block, op):
-    inputs = _get_input_map_from_op(origin_program.global_block().vars, op)
-    for key, varlist in six.iteritems(inputs):
-        if not isinstance(varlist, list):
-            varlist = [varlist]
-        for var in varlist:
-            if var.name not in program.global_block().vars:
-                program.global_block()._clone_variable(var)
-
-    outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
-    for key, varlist in six.iteritems(outputs):
-        if not isinstance(varlist, list):
-            varlist = [varlist]
-        for var in varlist:
-            if var.name not in program.global_block().vars:
-                program.global_block()._clone_variable(var)
-
-    if "_grad" not in op.type:
-        # for forward op
-        return block.append_op(
-            type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
-    else:
-        # for grad op
-        op_desc = op.desc
-        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
-        backward = core.op_proto_and_checker_maker.OpRole.Backward
-        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
-
-        # append grad op
-        new_op_desc = block.desc.append_op()
-        new_op_desc.copy_from(op_desc)
-        new_op_desc._set_attr(op_role_attr_name, backward)
-
-        # set device gard
-        if op.desc.has_attr(device_attr_name):
-            op_device = op_desc.attr(device_attr_name)
-            new_op_desc._set_attr(device_attr_name, op_device)
-        block._sync_with_cpp()
 
 
 class MergedVariable:
