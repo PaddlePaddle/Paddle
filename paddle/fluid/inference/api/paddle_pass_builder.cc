@@ -179,6 +179,9 @@ void CpuPassStrategy::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!use_mkldnn_) {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
+    //  Workaround for oneDNN fusion_gru
+    passes_.insert(passes_.begin(), "fc_gru_fuse_pass");
+    passes_.insert(passes_.begin(), "mul_gru_fuse_pass");
 
     for (auto &pass : std::vector<std::string>({
              "depthwise_conv_mkldnn_pass",    //
@@ -200,7 +203,6 @@ void CpuPassStrategy::EnableMKLDNN() {
              "matmul_transpose_reshape_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
              // "fc_mkldnn_pass",
-             "mkldnn_placement_pass",
              "mkldnn_inplace_pass",  // This pass should be activated after
                                      // fuses
          })) {

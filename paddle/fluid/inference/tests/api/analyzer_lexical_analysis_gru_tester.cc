@@ -22,21 +22,21 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-static constexpr float FP32_PRECISION = 0.89211;
-static constexpr float FP32_RECALL = 0.89442;
-static constexpr float FP32_F1_SCORE = 0.89326;
-
-void SetNativeConfig(AnalysisConfig *cfg) {
+void SetNativeConfig(AnalysisConfig *cfg,
+                     const int &num_threads = FLAGS_cpu_num_threads) {
+  cfg->SwitchIrOptim(false);
+  cfg->DisableGpu();
   cfg->SetModel(FLAGS_infer_model);
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_num_threads);
+  cfg->SetCpuMathLibraryNumThreads(num_threads);
 }
 
-void SetAnalysisConfig(AnalysisConfig *cfg) {
+void SetAnalysisConfig(AnalysisConfig *cfg,
+                       const int &num_threads = FLAGS_cpu_num_threads) {
   cfg->SetModel(FLAGS_infer_model);
   cfg->DisableGpu();
   cfg->SwitchIrOptim(true);
   cfg->SwitchSpecifyInputNames(false);
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
+  cfg->SetCpuMathLibraryNumThreads(num_threads);
   cfg->EnableMKLDNN();
 }
 
@@ -77,6 +77,7 @@ class TensorReader {
     if (file_.fail())
       throw std::runtime_error(name_ + ": failed reading file.");
     file_.read(reinterpret_cast<char *>(tensor.data.data()), numel * sizeof(T));
+    position_ = file_.tellg();
     return tensor;
   }
 
@@ -150,9 +151,9 @@ std::vector<double> Lexical_Test(
     const std::vector<std::vector<PaddleTensor>> &input_slots_all,
     std::vector<std::vector<PaddleTensor>> *outputs, AnalysisConfig *config,
     const bool use_analysis) {
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(config),
-                 input_slots_all, outputs, FLAGS_num_threads,
-                 FLAGS_use_analysis);
+  TestOneThreadPrediction(
+      reinterpret_cast<const PaddlePredictor::Config *>(config),
+      input_slots_all, outputs, FLAGS_use_analysis);
   std::vector<double> acc_res(3);
   if (FLAGS_with_accuracy_layer) {
     EXPECT_GT(outputs->size(), 0UL);
@@ -203,19 +204,18 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
   std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  SetNativeConfig(&native_cfg);
+  SetNativeConfig(&native_cfg, FLAGS_cpu_num_threads);
   std::vector<double> acc_ref(3);
   acc_ref = Lexical_Test(input_slots_all, &outputs, &native_cfg, false);
   if (FLAGS_use_analysis) {
     AnalysisConfig analysis_cfg;
-    SetAnalysisConfig(&analysis_cfg);
+    SetAnalysisConfig(&analysis_cfg, FLAGS_cpu_num_threads);
     std::vector<double> acc_analysis(3);
     acc_analysis = Lexical_Test(input_slots_all, &outputs, &analysis_cfg, true);
     for (size_t i = 0; i < acc_analysis.size(); i++) {
       CHECK_LE(std::abs(acc_ref[i] - acc_analysis[i]),
                FLAGS_quantized_accuracy);
     }
-    LOG(INFO) << "FINISHED!";
   }
 }
 
