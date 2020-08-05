@@ -1575,8 +1575,10 @@ class Model(object):
                 feeded_var_names = static_layer._feed_names
                 target_vars = []
                 for name in target_var_names:
-                    target_var = static_layer._program.global_block().vars.get(name, None)
-                    assert target_var is not None, "{} cannot be found".format(name)
+                    target_var = static_layer._program.global_block().vars.get(
+                        name, None)
+                    assert target_var is not None, "{} cannot be found".format(
+                        name)
                     target_vars.append(target_var)
 
                 return save_inference_model(
@@ -1585,7 +1587,7 @@ class Model(object):
                     target_vars=target_vars,
                     executor=static_layer._exe,
                     main_program=static_layer._program.clone())
-           
+
         else:
             prog = self._adapter._progs.get('test', None)
             assert prog, \
