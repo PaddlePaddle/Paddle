@@ -694,11 +694,11 @@ void BindImperative(py::module *m_ptr) {
       .def("_run_backward",
            [](imperative::VarBase &self,
               const imperative::detail::BackwardStrategy &bckst,
-              const imperative::Tracer &tracer) {
+              const imperative::Tracer &tracer, bool retain_graph) {
              // TODO(jiabin): when we impl more backward execution we can
              // select them
              auto *engine = tracer.GetEngine();
-             engine->Init(&self, bckst);
+             engine->Init(&self, bckst, retain_graph);
              VLOG(3) << "Start backward";
              engine->Execute();
              VLOG(3) << "Finish backward";
