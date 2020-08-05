@@ -13,7 +13,7 @@
 
 from paddle.fluid.optimizer import PipelineOptimizer as PO
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import OpRole, OP_ROLE_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
+from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 
 __all__ = ["PipelineOptimizer"]
 
@@ -60,6 +60,7 @@ class PipelineOptimizer(MetaOptimizerBase):
 
         assert prog_list
         self.main_program_list = prog_list
+        self.main_program = loss.block.program
         nranks = len(endpoints)
         self.nranks = nranks
         self.nrings = len(self.main_program_list)
@@ -73,13 +74,14 @@ class PipelineOptimizer(MetaOptimizerBase):
         collective_helper.update_startup_program(self.startup_program)
 
         self._transpile_main_program()
+        return optimize_ops, params_grads
 
-    def _transpile_main_program():
+    def _transpile_main_program(self):
         self._insert_loss_grad_ops()
         for ring_id in range(self.nrings):
             self._insert_allreduce_ops(ring_id)
 
-    def _insert_loss_grad_ops():
+    def _insert_loss_grad_ops(self):
         """
         In order to keep the learning rate consistent in different numbers of
         training workers, we scale the loss grad by the number of workers
@@ -101,37 +103,41 @@ class PipelineOptimizer(MetaOptimizerBase):
 
     def _insert_allreduce_ops(self, ring_id):
         block = self.main_program_list[ring_id]['program'].global_block()
+        origin_block = self.main_program.global_block()
         grad = None
         for idx, op in reversed(list(enumerate(block.ops))):
-            if self._is_backward_op(op) and \
-                OP_ROLE_KEY in op.attr_names:
-                op_role_var = op.all_attrs()[OP_ROLE_KEY]
+            if is_backward_op(op) and \
+                OP_ROLE_VAR_KEY in op.attr_names:
+                op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
                 if len(op_role_var) == 0:
                     continue
                 assert len(op_role_var) % 2 == 0
-            offset = idx
-            for i in range(0, len(op_role_var), 2):
-                param = block.vars[op_role_var[i]]
-                grad = block.vars[op_role_var[i + 1]]
-                if param.is_distributed:
-                    continue
-                if offset == idx:
-                    offset += 1
+                offset = idx
+                for i in range(0, len(op_role_var), 2):
+                    param = block.vars[op_role_var[i]]
+                    grad = block.vars[op_role_var[i + 1]]
+                    origin_param = origin_block.vars[op_role_var[i]]
+                    if origin_param.is_distributed:
+                        continue
+                    if offset == idx:
+                        offset += 1
+                        block._insert_op(
+                            offset,
+                            type='c_sync_calc_stream',
+                            inputs={'X': grad},
+                            outputs={'Out': grad},
+                            attrs={OP_ROLE_KEY: OpRole.Backward})
+                        offset += 1
+
                     block._insert_op(
                         offset,
                         type='c_sync_calc_stream',
                         inputs={'X': grad},
                         outputs={'Out': grad},
-                        attrs={OP_ROLE_KEY: OpRole.Backward})
-                    offset += 1
-
-                block._insert_op(
-                    offset,
-                    type='c_sync_calc_stream',
-                    inputs={'X': grad},
-                    outputs={'Out': grad},
-                    attrs={'ring_id': ring_id,
-                           OP_ROLE_KEY: OpRole.Backward})
+                        attrs={
+                            'ring_id': ring_id,
+                            OP_ROLE_KEY: OpRole.Backward
+                        })
 
         if grad is None:
             return
