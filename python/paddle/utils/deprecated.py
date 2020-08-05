@@ -43,8 +43,6 @@ def deprecated(update_to="", since="", reason=""):
         max_len = max(len(_v1), len(_v2))
         _v1.extend([0] * (max_len - len(_v1)))
         _v2.extend([0] * (max_len - len(_v2)))
-        print("_v1:", _v1)
-        print("_v2:", _v2)
         for i in range(max_len):
             if _v1[i] > _v2[i]:
                 return 1
