@@ -49,9 +49,9 @@ class CCommInitOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_NCCL)
     ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
+    int rid = Attr<int>("ring_id");
     int nranks = Attr<int>("nranks");
     int rank_id = Attr<int>("rank");
-    int rid = Attr<int>("ring_id");
     int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
