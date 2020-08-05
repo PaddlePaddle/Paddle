@@ -65,10 +65,10 @@ def deprecated(update_to="", since="", reason=""):
                2. since version is empty, in this case, API is deprecated in all versions.
                3. current version is newer than since version.
             """
-            v_current = [int(i) for i in paddle.__version__.split(".")
-                         ] + [0] * (4 - len(paddle.__version__))
-            v_since = [int(i) for i in _since.split(".")] + [0] * (4 -
-                                                                   len(_since))
+            v_current = [int(i) for i in paddle.__version__.split(".")]
+            v_current += [0] * (4 - len(v_current))
+            v_since = [int(i) for i in _since.split(".")]
+            v_since += [0] * (4 - len(v_since))
             if paddle.__version__ == "0.0.0" or _since == "" or v_current >= v_since:
                 warnings.simplefilter('always',
                                       DeprecationWarning)  # turn off filter
