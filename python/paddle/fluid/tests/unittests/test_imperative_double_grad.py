@@ -320,7 +320,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
             out = model_f(a)
 
-            dx=fluid.dygraph.grad(outputs=[out],inputs=[a],create_graph=True,retain_graph=True,  \
+            dx=fluid.dygraph.grad(outputs=[out],inputs=[a],create_graph=False,retain_graph=False,  \
                         only_inputs=True,allow_unused=False, backward_strategy=backward_strategy)
 
             grad_1 = dx[0].numpy()
