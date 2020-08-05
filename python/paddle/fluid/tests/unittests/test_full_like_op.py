@@ -16,7 +16,8 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid.core as core
-from paddle import Program, program_guard
+from paddle import Program
+from paddle.static import program_guard
 import paddle.compat as cpt
 import unittest
 import numpy as np

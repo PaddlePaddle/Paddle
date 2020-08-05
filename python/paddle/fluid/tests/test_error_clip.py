@@ -22,6 +22,8 @@ BATCH_SIZE = 128
 CLIP_MAX = 2e-6
 CLIP_MIN = -1e-6
 
+paddle.enable_static()
+
 prog = fluid.framework.Program()
 
 with fluid.program_guard(main_program=prog):
@@ -77,6 +79,8 @@ for data in train_reader():
     if not ((out1.clip(
             min=CLIP_MIN, max=CLIP_MAX) == out1_clip).all() and
             (out2 == out2_clip).all()):
+        paddle.disable_static()
         exit(1)
 
+paddle.disable_static()
 exit(0)
