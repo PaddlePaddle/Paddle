@@ -179,6 +179,18 @@ class PipelineTrainer : public TrainerBase {
                            const Scope& root_scope);
   void CopyParameters(const Scope& root_scope, int pipeline_id);
   void construct_sync_functor();
+
+  std::vector<std::string> async_param_list_;
+  std::vector<LoDTensor> ps_;
+  std::vector<size_t> async_param_size_;
+  operators::reader::BlockingQueue<std::vector<LoDTensor>*>* ps_buffer_ =
+      nullptr;
+  RWLock ps_lock_;
+
+  std::thread* update_thread_;
+  void AsyncUpdate();
+  float base_lr_ = -1;
+  bool async_mode_ = false;
 };
 #endif
 }  // namespace framework

@@ -235,7 +235,7 @@ class BoxWrapper {
   void InitializeGPUAndLoadModel(
       const char* conf_file, const std::vector<int>& slot_vector,
       const std::vector<std::string>& slot_omit_in_feedpass,
-      const std::string& model_path) {
+      const std::string& model_path, const std::map<std::string, float> &lr_map) {
     if (nullptr != s_instance_) {
       VLOG(3) << "Begin InitializeGPU";
       std::vector<cudaStream_t*> stream_list;
@@ -260,6 +260,15 @@ class BoxWrapper {
       }
       slot_vector_ = slot_vector;
       device_caches_ = new DeviceBoxData[gpu_num];
+
+      VLOG(0) << "lr_map.size(): " << lr_map.size();
+      for (const auto e: lr_map) {
+        VLOG(0) << e.first << "'s lr is " << e.second;
+        if (e.first.find("param") != std::string::npos) {
+          lr_map_[e.first + ".w_0"] = e.second;
+          lr_map_[e.first + ".b_0"] = e.second;
+        }
+      }
     }
   }
 
@@ -680,6 +689,7 @@ class BoxWrapper {
   }
   int Phase() const { return phase_; }
   void FlipPhase() { phase_ = (phase_ + 1) % phase_num_; }
+  const std::map<std::string, float> GetLRMap() const { return lr_map_; }
   std::map<std::string, MetricMsg*>& GetMetricList() { return metric_lists_; }
 
   void InitMetric(const std::string& method, const std::string& name,
@@ -761,6 +771,7 @@ class BoxWrapper {
   std::shared_ptr<boxps::PaddleFileMgr> file_manager_ = nullptr;
   // box device cache
   DeviceBoxData* device_caches_ = nullptr;
+  std::map<std::string, float> lr_map_;
 
  public:
   static std::shared_ptr<boxps::PaddleShuffler> data_shuffle_;

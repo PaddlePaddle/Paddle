@@ -83,6 +83,7 @@ message SectionWorkerParameter {
   optional int64 sync_steps = 3 [ default = 1 ];
   optional int32 start_cpu_core_id = 4 [ default = 1 ];
   repeated string param_need_sync = 5;
+  optional bool async_mode = 6;
 }
 
 message SectionConfig {

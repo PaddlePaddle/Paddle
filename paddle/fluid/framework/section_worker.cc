@@ -155,6 +155,51 @@ void SectionWorker::AutoSetCPUAffinity(bool reuse) {
 #endif
 }
 
+void SectionWorker::PullDense(const Scope& scope) {
+  // while(ps_buffer_->Size() != 0) {//Size have lock, may have perf problem.
+  // And will hang when the lock was removed
+  //   ;
+  // }
+  AutoRDLock ps_lock(ps_lock_);
+  for (size_t i = 0; i < async_param_list_->size(); ++i) {
+    if (i % 3 != 0) {
+      continue;
+    }
+    const std::string& param_name = (*async_param_list_)[i];
+    Variable* var = scope.FindVar(param_name);
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    TensorCopy(*static_cast<const Tensor*>(&(*ps_)[i]), place_,
+               static_cast<Tensor*>(tensor));
+
+    // float *p = (*ps_)[i].mutable_data<float>(platform::CPUPlace());
+    // VLOG(0) << "pull dense for " << (*async_param_list_)[i] << ", and the
+    // first ele is " << p[0];
+  }
+  VLOG(0) << "card[" << pipeline_id_ << "] pull dense done";
+}
+
+void SectionWorker::PushDense(const Scope& scope) {
+  for (size_t i = 0; i < async_param_list_->size(); ++i) {
+    if (i % 3 != 0) {
+      continue;
+    }
+    // VLOG(0) << "push dense for " << (*async_param_list_)[i] << "@GRAD";
+    std::string grad_name = (*async_param_list_)[i] + "@GRAD";
+    Variable* var = scope.FindVar(grad_name);
+    CHECK(var != nullptr) << "var[" << grad_name << "] not found";
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    // For Debug
+    float* g = tensor->mutable_data<float>(place_);
+    float tmp;
+    cudaMemcpy(&tmp, g, 1 * sizeof(float), cudaMemcpyDeviceToHost);
+    // VLOG(0) << "the first element of grad_name is: " << tmp;
+    TensorCopy(*static_cast<const Tensor*>(tensor), platform::CPUPlace(),
+               static_cast<Tensor*>(&grad_[i / 3]));
+  }
+  ps_buffer_->Send(&grad_);
+  VLOG(0) << "card[" << pipeline_id_ << "] push dense done";
+}
+
 void SectionWorker::TrainFiles() {
   SEC_LOG << "begin section_worker TrainFiles";
   AutoSetCPUAffinity(true);
@@ -166,6 +211,15 @@ void SectionWorker::TrainFiles() {
   if (device_reader_ != nullptr) {
     device_reader_->Start();
   }
+  if (async_mode_) {
+    grad_.resize(async_param_size_->size() / 3);
+    for (size_t i = 0; i < async_param_size_->size(); ++i) {
+      if (i % 3 != 0) continue;
+      grad_[i / 3].mutable_data<float>(
+          {static_cast<int64_t>((*async_param_size_)[i]), 1}, place_);
+    }
+  }
+
   while (in_scope_queue_->Receive(&scope)) {
     if (device_reader_ != nullptr) {
       device_reader_->AssignFeedVar(*scope);
@@ -213,8 +267,14 @@ void SectionWorker::TrainFiles() {
 
     SEC_LOG << "begin running ops";
 
+    if (async_mode_) {
+      PullDense(*exe_scope);
+    }
     for (auto& op : ops_) {
       op->Run(*exe_scope, place_);
+    }
+    if (async_mode_) {
+      PushDense(*exe_scope);
     }
     exe_scope->DropKids();
     // Wait for GPU calc finising, as the cudaMemcpy and GPU calc may be in

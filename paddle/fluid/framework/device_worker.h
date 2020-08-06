@@ -378,10 +378,28 @@ class SectionWorker : public DeviceWorker {
   void SetNextSectionPlace(const paddle::platform::Place& place) {
     next_section_place_ = place;
   }
+
   SyncFunctor* sync_func_ = nullptr;
   void SetSyncFunctor(SyncFunctor* sync_func) { sync_func_ = sync_func; }
 
   static std::atomic<int> cpu_id_;
+
+  // Async
+  void SetAsyncParamName(std::vector<std::string>* async_param_list) {
+    async_param_list_ = async_param_list;
+  }
+  void SetAsyncParamSize(std::vector<size_t>* async_param_size) {
+    async_param_size_ = async_param_size;
+  }
+  void SetPsBuffer(
+      operators::reader::BlockingQueue<std::vector<LoDTensor>*>* ps_buffer) {
+    ps_buffer_ = ps_buffer;
+  }
+  void SetPs(std::vector<LoDTensor>* ps, RWLock* ps_lock) {
+    ps_ = ps;
+    ps_lock_ = ps_lock;
+  }
+  void SetAsyncMode(bool async_mode) { async_mode_ = async_mode; }
 
  protected:
   void AutoSetCPUAffinity(bool reuse);
@@ -401,8 +419,19 @@ class SectionWorker : public DeviceWorker {
   paddle::platform::Place next_section_place_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-
   platform::DeviceContext* dev_ctx_ = nullptr;
+
+  // async
+  void PullDense(const Scope& scope);
+  void PushDense(const Scope& scope);
+  std::vector<std::string>* async_param_list_ = nullptr;
+  std::vector<size_t>* async_param_size_ = nullptr;
+  std::vector<LoDTensor> grad_;
+  operators::reader::BlockingQueue<std::vector<LoDTensor>*>* ps_buffer_ =
+      nullptr;
+  RWLock* ps_lock_;
+  std::vector<LoDTensor>* ps_;
+  bool async_mode_ = false;
 };
 #endif
 }  // namespace framework
