@@ -57,7 +57,7 @@ class AsyncGraphExecutionOptimizer(AsyncMetaOptimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        program = fluid.default_main_program()
+        program = loss.block.program
         compiled_program = self._try_to_compile(program, loss)
         program._graph = compiled_program
         # just return self.optimizer_ops and self.param_grads

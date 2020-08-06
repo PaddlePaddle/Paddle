@@ -16,6 +16,7 @@ import unittest
 import paddle
 import os
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import time
 
 
 class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
@@ -71,6 +72,10 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
                 sgds += 1
         self.assertEqual(sends, 1)
         self.assertEqual(sgds, 6)
+
+        fleet.init_worker()
+        time.sleep(8)
+        fleet.stop_worker()
 
     def test_a_sync_optimizer_pserver(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"

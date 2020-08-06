@@ -130,7 +130,7 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
             self._build_trainer_programs(compiled_config) if self.role_maker.is_worker() \
                 else self._build_pserver_programs(compiled_config)
 
-        fluid.framework.switch_main_program(main_program)
+        loss.block.program = main_program
         fluid.framework.switch_startup_program(startup_program)
 
         return None, None

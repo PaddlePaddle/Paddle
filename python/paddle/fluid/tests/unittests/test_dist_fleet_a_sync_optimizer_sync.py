@@ -17,6 +17,7 @@ import paddle
 import os
 import paddle.fleet as fleet
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import time
 
 
 class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
@@ -62,6 +63,10 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
                 sgds += 1
         self.assertEqual(sends, 6)
         self.assertEqual(sgds, 0)
+
+        fleet.init_worker()
+        time.sleep(8)
+        fleet.stop_worker()
 
 
 if __name__ == "__main__":

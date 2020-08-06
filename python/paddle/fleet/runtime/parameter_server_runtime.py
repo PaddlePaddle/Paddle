@@ -150,8 +150,6 @@ class ParameterServerRuntime(RuntimeBase):
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
-        print(trainer_config)
-
         lrs = _get_lr_ops(self.origin_main_program)
 
         if len(lrs) > 0:

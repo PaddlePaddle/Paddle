@@ -174,6 +174,9 @@ class TestPSPassWithBow(unittest.TestCase):
         with self.assertRaises(ValueError):
             fleet.init_server(os.path.join(model_dir, "temp"), "xxxx")
 
+        with self.assertRaises(ValueError):
+            fleet.init_server(os.path.join(model_dir, "temp"))
+
         fleet.init_server()
 
         from paddle.fluid.communicator import LargeScaleKV
