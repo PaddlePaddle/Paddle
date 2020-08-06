@@ -22,6 +22,11 @@ import time
 __all__ = ['RoleMakerBase', 'UserDefinedRoleMaker', 'PaddleCloudRoleMaker']
 
 
+class Role:
+    WORKER = 1
+    SERVER = 2
+
+
 class RoleMakerBase(object):
     """
     RoleMakerBase is a base class for assigning a role to current process
@@ -299,39 +304,15 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     # note that, we usually assign the same port to different ips
                     # if we run parameter server training in local mode
                     # port should be different in environment variables
+
+                    trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
                     training_role = os.environ["TRAINING_ROLE"]
                     #add gloo support for PaddleCloudRoleMaker
                     #eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
                     #training_role = os.environ["TRAINING_ROLE"]
-
-                    # this is for compatible with paddlecloud
-                    if os.environ.get("PADDLE_TRAINER_ENDPOINTS"
-                                      ) is None and os.environ.get(
-                                          "PADDLE_TRAINERS_NUM") is None:
-                        raise ValueError(
-                            "PADDLE_TRAINER_ENDPOINTS or PADDLE_TRAINERS_NUM must be defined in environ"
-                        )
-                    elif (not os.environ.get("PADDLE_TRAINER_ENDPOINTS") is None
-                          ) and os.environ.get("PADDLE_TRAINERS_NUM") is None:
-                        worker_endpoints = os.environ[
-                            "PADDLE_TRAINER_ENDPOINTS"].split(",")
-                        trainers_num = len(worker_endpoints)
-                    elif os.environ.get("PADDLE_TRAINER_ENDPOINTS"
-                                        ) is None and os.environ.get(
-                                            "PADDLE_TRAINERS_NUM") is not None:
-                        trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
-                    elif os.environ.get("PADDLE_TRAINERS_NUM"
-                                        ) is not None and os.environ.get(
-                                            "PADDLE_TRAINERS_NUM") is not None:
-                        worker_endpoints = os.environ[
-                            "PADDLE_TRAINER_ENDPOINTS"].split(",")
-                        if (len(worker_endpoints) ==
-                                int(os.environ["PADDLE_TRAINERS_NUM"])):
-                            trainers_num = len(worker_endpoints)
-                        else:
-                            raise ValueError(
-                                "the length of PADDLE_TRAINER_ENDPOINTS don't match PADDLE_TRAINERS_NUM,please specify the one of them"
-                            )
+                    worker_endpoints = os.environ[
+                        "PADDLE_TRAINER_ENDPOINTS"].split(",")
+                    trainers_num = len(worker_endpoints)
                     self._is_barrier_all = 1
                     if "PADDLE_IS_BARRIER_ALL_ROLE" in os.environ:
                         self._is_barrier_all = int(os.environ[
@@ -509,8 +490,10 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def all_gather(self, input):
         """
         all gather between trainers and pservers
+
         Args:
             input(int|float): input value
+
         Returns:
             return a list of values
         """
@@ -520,6 +503,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         all reduce between trainers if current role is TRAINER,
         only support array of one dim.
+
         Args:
             input(list/numpy.array): array of one dim
             output(list/numpy.array): array of one dim
@@ -670,6 +654,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def _all_reduce(self, input, output, mode="sum"):
         """
         all reduce between all workers
+
         Args:
             input(list|numpy.array): array of one dim
             output(list|numpy.array): array of one dim
