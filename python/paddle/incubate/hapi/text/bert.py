@@ -17,5 +17,9 @@ from paddle.incubate.hapi.model import Model
 from .model_utils import PreTrainedModel
 
 
+class BertModel(PreTrainedModel):
+    pass
+
+
 class BertForSequenceClassification(PreTrainedModel):
     pass
