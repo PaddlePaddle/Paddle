@@ -13,10 +13,10 @@
 
 from paddle import fluid
 from paddle.fluid import compiler
-from .async_optimizer import AsyncOptimizer
+from .async_optimizer import AsyncMetaOptimizer
 
 
-class AsyncGraphExecutionOptimizer(AsyncOptimizer):
+class AsyncGraphExecutionOptimizer(AsyncMetaOptimizer):
     def __init__(self, optimizer):
         super(AsyncGraphExecutionOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer

@@ -19,9 +19,9 @@ from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 
-class AsyncOptimizer(MetaOptimizerBase):
+class AsyncMetaOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(AsyncOptimizer, self).__init__(optimizer)
+        super(AsyncMetaOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []

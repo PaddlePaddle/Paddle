@@ -15,7 +15,7 @@ from .amp_optimizer import AMPOptimizer
 from .recompute_optimizer import RecomputeOptimizer
 from .gradient_merge_optimizer import GradientMergeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
-from .async_optimizer import AsyncOptimizer
+from .async_optimizer import AsyncMetaOptimizer
 from .pipeline_optimizer import PipelineOptimizer
 from .localsgd_optimizer import LocalSGDOptimizer
 from .lars_optimizer import LarsOptimizer
@@ -26,7 +26,7 @@ __all__ = [
     'AMPOptimizer',
     'RecomputeOptimizer',
     'GradientMergeOptimizer',
-    'AsyncOptimizer',
+    'AsyncMetaOptimizer',
     'GraphExecutionOptimizer',
     'PipelineOptimizer',
     'LocalSGDOptimizer',
