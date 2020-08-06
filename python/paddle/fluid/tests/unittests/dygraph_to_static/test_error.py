@@ -114,7 +114,6 @@ class TestErrorInCompileTime2(TestErrorInCompileTime):
              ]
 
 
-# TODO(liym27): Consider the case that op_callstack when error raised from c++ code
 class TestErrorInRuntime(TestErrorInCompileTime):
     def set_func(self):
         self.func = func_error_in_runtime

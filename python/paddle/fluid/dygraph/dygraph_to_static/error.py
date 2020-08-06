@@ -55,8 +55,6 @@ class TraceBackFrame(OriginInfo):
 class ErrorData(object):
     """
     Error data attached to an exception which is raised in un-transformed code.
-
-    TODO(liym27): Consider the case that op_callstack when error raised from c++ code
     """
 
     def __init__(self, error_type, error_value, origin_traceback,
@@ -87,8 +85,7 @@ class ErrorData(object):
         # Simplify error value to improve readability if error is raised in runtime
         if self.in_runtime:
             self._simplify_error_value()
-            message_lines.append(self.error_value)
-
+            message_lines.append(str(self.error_value))
             return '\n'.join(message_lines)
 
         # Step2: Optimizes stack information with source code information of dygraph from user.
@@ -132,4 +129,5 @@ class ErrorData(object):
         start_idx = error_value_lines_strip.index(start_trace)
         error_value_lines = error_value_lines[start_idx + 1:]
 
-        self.error_value = '\n'.join(error_value_lines)
+        error_value_str = '\n'.join(error_value_lines)
+        self.error_value = self.error_type(error_value_str)
