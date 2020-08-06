@@ -135,6 +135,48 @@ class Trainer(object):
         return self.rank
 
 
+class Server(object):
+    def __init__(self):
+        self.endpoint = None
+        self.rank = None
+
+    def __str__(self):
+        return "endpoint:{} rank:{}".format(self.endpoint, self.rank)
+
+    def __eq__(self, t):
+        if self.endpoint != t.endpoint or \
+                self.rank != t.rank:
+            return False
+        return True
+
+    def __ne__(self, t):
+        return not self == t
+
+    def rank(self):
+        return self.rank
+
+
+class Worker(object):
+    def __init__(self):
+        self.endpoint = None
+        self.rank = None
+
+    def __str__(self):
+        return "endpoint:{} rank:{}".format(self.endpoint, self.rank)
+
+    def __eq__(self, t):
+        if self.endpoint != t.endpoint or \
+                self.rank != t.rank:
+            return False
+        return True
+
+    def __ne__(self, t):
+        return not self == t
+
+    def rank(self):
+        return self.rank
+
+
 class Pod(object):
     def __init__(self):
         self.rank = None
@@ -142,12 +184,16 @@ class Pod(object):
         self.addr = None
         self.port = None
         self.trainers = []
+        self.servers = []
+        self.workers = []
         self.gpus = []
 
     def __str__(self):
-        return "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{}".format(
-            self.rank, self.id, self.addr, self.port, self.gpus,
-            [str(t) for t in self.trainers])
+        return "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{} servers:{} \
+            workers:{}".format(self.rank, self.id, self.addr, self.port,
+                               self.gpus, [str(t) for t in self.trainers],
+                               [str(s) for s in self.servers],
+                               [str(w) for w in self.workers])
 
     def __eq__(self, pod):
         if self.rank != pod.rank or \
@@ -166,6 +212,26 @@ class Pod(object):
             if self.trainers[i] != pod.trainers[i]:
                 logger.debug("trainer {} != {}".format(self.trainers[i],
                                                        pod.trainers[i]))
+                return False
+
+        if len(self.servers) != len(pod.servers):
+            logger.debug("servers {} != {}".format(self.servers, pod.servers))
+            return False
+
+        for i in range(len(self.servers)):
+            if self.servers[i] != pod.servers[i]:
+                logger.debug("servers {} != {}".format(self.servers[i],
+                                                       pod.servers[i]))
+                return False
+
+        if len(self.workers) != len(pod.workers):
+            logger.debug("workers {} != {}".format(self.workers, pod.workers))
+            return False
+
+        for i in range(len(self.workers)):
+            if self.workers[i] != pod.workers[i]:
+                logger.debug("workers {} != {}".format(self.workers[i],
+                                                       pod.workers[i]))
                 return False
 
         return True
