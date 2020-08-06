@@ -31,6 +31,9 @@ message AMPConfig {
   optional float incr_ratio = 4 [ default = 2.0 ];
   optional float decr_ratio = 5 [ default = 0.8 ];
   optional bool use_dynamic_loss_scaling = 6 [ default = true ];
+  repeated string custom_white_list = 7;
+  repeated string custom_black_list = 8;
+  repeated string custom_black_varnames = 9;
 }
 
 message LocalSGDConfig { optional int32 k_steps = 1 [ default = 4 ]; }
@@ -38,6 +41,12 @@ message LocalSGDConfig { optional int32 k_steps = 1 [ default = 4 ]; }
 message GradientMergeConfig {
   optional int32 k_steps = 1 [ default = 1 ];
   optional bool avg = 2 [ default = true ];
+}
+
+message DGCConfig {
+  optional int32 rampup_begin_step = 1 [ default = 0 ];
+  optional int32 rampup_step = 2 [ default = 1 ];
+  repeated float sparsity = 3;
 }
 
 message LarsConfig {
@@ -111,6 +120,7 @@ message DistributedStrategy {
   optional AMPConfig amp_configs = 102;
   optional LocalSGDConfig localsgd_configs = 103;
   optional GradientMergeConfig gradient_merge_configs = 104;
+  optional DGCConfig dgc_configs = 105;
   optional PipelineConfig pipeline_configs = 106;
   optional AsyncConfig a_sync_configs = 107;
   optional LarsConfig lars_configs = 108;
