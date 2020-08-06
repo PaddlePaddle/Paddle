@@ -178,7 +178,6 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
   std::string name_space_;
   std::string plugin_base_;
 };
-#endif
 
 template <typename T>
 class TrtPluginRegistrarV2 {
@@ -197,6 +196,8 @@ class TrtPluginRegistrarV2 {
 #define REGISTER_TRT_PLUGIN_V2(name)                                     \
   static paddle::inference::tensorrt::plugin::TrtPluginRegistrarV2<name> \
       plugin_registrar_##name {}
+
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt
