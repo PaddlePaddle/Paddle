@@ -25,15 +25,19 @@ import warnings
 from collections import Iterable
 
 from paddle import fluid
-from paddle.fluid.framework import in_dygraph_mode, Variable
+from paddle.fluid import core
+from paddle.fluid.framework import in_dygraph_mode, Variable, ParamBase, _current_expected_place
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
+from paddle.fluid.executor import scope_guard, Executor
 from paddle.io import DataLoader, Dataset
+from paddle.fluid.dygraph.layers import Layer
 
 from .distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from .metrics import Metric
@@ -1521,8 +1525,6 @@ class Model(object):
 
     def save_inference_model(self,
                              save_dir,
-                             layer=None,
-                             in_var_list=None,
                              model_filename=None,
                              params_filename=None,
                              model_only=False):
@@ -1531,10 +1533,6 @@ class Model(object):
 
         Args:
             save_dir (str): The directory path to save the inference model.
-            layer (dygraph.Layer): the layer object to be traced and saved. In 
-                static mode it can be None.
-            inputs (list(Variable)): the input variables of the layer object.
-                In static mode it can be None.
             model_filename (str|None): The name of file to save the inference
                 model itself. If is set None, a default filename
                 :code:`__model__` will be used.
@@ -1560,33 +1558,91 @@ class Model(object):
 
             model.save_inference_model('inference_model')
         """
-        from paddle.fluid.io import save_inference_model
+
+        def get_inout_spec(all_vars, target_vars=None, return_name=False):
+            result_list = []
+            valid_var_dict = {}
+            valid_vars = [var for var in all_vars if isinstance(var, Variable)]
+            for var in valid_vars:
+                valid_var_dict[var.name] = var
+            if target_vars:
+                for i, var in enumerate(target_vars):
+                    # check target var whether exists
+                    if var.name not in valid_var_dict:
+                        raise RuntimeError(
+                            "The variable to feed/fetch are not exist.")
+                    result_list.append(valid_var_dict[var.name])
+            else:
+                result_list = valid_vars
+            if return_name:
+                result_list = [var.name for var in result_list]
+
+            return result_list
 
         if fluid.in_dygraph_mode():
-            assert layer and in_var_list, \
-                "Dyraph mode needs layer and input variable list"
-            from paddle.fluid.dygraph import TracedLayer
-            _, static_layer = TracedLayer.trace(layer, inputs=in_var_list)
+            layer = self.network
             fluid.disable_dygraph()
-            from paddle.fluid.executor import scope_guard
 
-            with scope_guard(static_layer._scope):
-                target_var_names = static_layer._fetch_names
-                feeded_var_names = static_layer._feed_names
-                target_vars = []
-                for name in target_var_names:
-                    target_var = static_layer._program.global_block().vars.get(
-                        name, None)
-                    assert target_var is not None, "{} cannot be found".format(
-                        name)
-                    target_vars.append(target_var)
+            # 1. input check
+            prog_translator = ProgramTranslator()
+            if not prog_translator.enable:
+                raise RuntimeError(
+                    "The paddle.imperative.jit.save doesn't work when setting ProgramTranslator.enable=False."
+                )
+            if not isinstance(layer, Layer):
+                raise TypeError(
+                    "The input layer of paddle.imperative.jit.save should be 'Layer', but received layer type is %s."
+                    % type(layer))
 
-                return save_inference_model(
+            # 2. get program of declarative Layer.forward
+            prog_cache = prog_translator.get_program_cache()
+            # make dummy args & kwargs, to get excepted FunctionSpec
+            layer_func = FunctionSpec(type(layer).forward, [layer], {})
+            concrete_program, _ = prog_cache.get_program(layer_func)
+
+            # NOTE: we maintain the mapping of variable name to
+            # structured name, the buffer variable (non-persistable)
+            # saved to inference program may not need by dygraph Layer,
+            # we only record the state_dict variable's structured name
+            state_names_dict = dict()
+            for structured_name, var in layer.state_dict().items():
+                state_names_dict[var.name] = structured_name
+
+            # 3. share parameters from Layer to scope & record var info
+            scope = core.Scope()
+            extra_var_info = dict()
+            for param_or_buffer in concrete_program.parameters:
+                # share to scope
+                param_or_buffer_tensor = scope.var(
+                    param_or_buffer.name).get_tensor()
+                src_tensor = param_or_buffer.value().get_tensor()
+                param_or_buffer_tensor._share_data_with(src_tensor)
+                # record var info
+                extra_info_dict = dict()
+                if param_or_buffer.name in state_names_dict:
+                    extra_info_dict['structured_name'] = state_names_dict[
+                        param_or_buffer.name]
+                extra_info_dict['stop_gradient'] = param_or_buffer.stop_gradient
+                if isinstance(param_or_buffer, ParamBase):
+                    extra_info_dict['trainable'] = param_or_buffer.trainable
+                extra_var_info[param_or_buffer.name] = extra_info_dict
+
+            # 4. build input & output spec
+            input_var_names = get_inout_spec(concrete_program.inputs, None,
+                                             True)
+            output_vars = get_inout_spec(concrete_program.outputs)
+
+            # 5. save inference model
+            with scope_guard(scope):
+                fluid.io.save_inference_model(
                     dirname=save_dir,
-                    feeded_var_names=feeded_var_names,
-                    target_vars=target_vars,
-                    executor=static_layer._exe,
-                    main_program=static_layer._program.clone())
+                    feeded_var_names=input_var_names,
+                    target_vars=output_vars,
+                    executor=Executor(_current_expected_place()),
+                    main_program=concrete_program.main_program.clone(),
+                    model_filename=model_filename,
+                    params_filename=params_filename,
+                    program_only=model_only)
 
         else:
             prog = self._adapter._progs.get('test', None)
@@ -1598,7 +1654,7 @@ class Model(object):
             input_names = [v.name for v in self._adapter._input_vars['test']]
             endpoints = self._adapter._endpoints['test']['output']
 
-            return save_inference_model(
+            return fluid.io.save_inference_model(
                 save_dir,
                 input_names,
                 endpoints,

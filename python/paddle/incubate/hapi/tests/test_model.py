@@ -33,6 +33,8 @@ from paddle.incubate.hapi.metrics import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
 from paddle.incubate.hapi.vision.models import LeNet
 from paddle.incubate.hapi.distributed import DistributedBatchSampler, prepare_distributed_context
+from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
@@ -285,6 +287,7 @@ class MyTestDeployModel(fluid.dygraph.Layer):
         super(MyTestDeployModel, self).__init__()
         self._fc = Linear(10, 10, act=classifier_activation)
 
+    @declarative
     def forward(self, x):
         y = self._fc(x)
         return y
@@ -332,7 +335,6 @@ class TestModelFunction(unittest.TestCase):
             model.prepare(
                 optim2, loss_function=CrossEntropyLoss(reduction="sum"))
             loss, = model.train_batch([data], [label])
-
             np.testing.assert_allclose(loss.flatten(), ref.flatten())
             fluid.disable_dygraph() if dynamic else None
 
@@ -447,11 +449,12 @@ class TestModelFunction(unittest.TestCase):
             fluid.disable_dygraph() if dynamic else None
 
     def test_export_deploy_model(self):
-        from paddle.fluid.dygraph import to_variable
         for dynamic in [True, False]:
             fluid.enable_dygraph() if dynamic else None
+            prog_translator = ProgramTranslator()
+            prog_translator.enable(False) if not dynamic else None
             net = MyTestDeployModel()
-            inputs = [Input('testx', [None, 10], 'float32')]
+            inputs = [Input('X', [None, 10], 'float32')]
             model = Model(net, inputs)
             model.prepare()
             save_dir = tempfile.mkdtemp()
@@ -459,12 +462,9 @@ class TestModelFunction(unittest.TestCase):
                 os.makedirs(save_dir)
             tensor_img = np.array(np.random.random((1, 10)), dtype=np.float32)
             ori_results = model.test_batch(tensor_img)
-            if dynamic:
-                in_var_list = [to_variable(tensor_img)]
-                model.save_inference_model(save_dir, net, in_var_list)
-                fluid.disable_dygraph()
-            else:
-                model.save_inference_model(save_dir)
+            model.save_inference_model(save_dir)
+            fluid.disable_dygraph() if dynamic else None
+
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
