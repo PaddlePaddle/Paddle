@@ -19,11 +19,17 @@ __all__ = [
     'name_scope', 'ParallelExecutor', 'program_guard', 'WeightNormParamAttr'
 ]
 
-from ..fluid.executor import Executor, global_scope, scope_guard
-from ..fluid.backward import append_backward, gradients
-from ..fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
-from ..fluid.framework import name_scope, program_guard
-from ..fluid.layers.control_flow import Print
-from ..fluid.layers.nn import py_func
-from ..fluid.parallel_executor import ParallelExecutor
-from ..fluid.param_attr import WeightNormParamAttr
+from ..fluid.executor import Executor  #DEFINE_ALIAS
+from ..fluid.executor import global_scope  #DEFINE_ALIAS
+from ..fluid.executor import scope_guard  #DEFINE_ALIAS
+from ..fluid.backward import append_backward  #DEFINE_ALIAS
+from ..fluid.backward import gradients  #DEFINE_ALIAS
+from ..fluid.compiler import BuildStrategy  #DEFINE_ALIAS
+from ..fluid.compiler import CompiledProgram  #DEFINE_ALIAS
+from ..fluid.compiler import ExecutionStrategy  #DEFINE_ALIAS
+from ..fluid.framework import name_scope  #DEFINE_ALIAS
+from ..fluid.framework import program_guard  #DEFINE_ALIAS
+from ..fluid.layers.control_flow import Print  #DEFINE_ALIAS
+from ..fluid.layers.nn import py_func  #DEFINE_ALIAS
+from ..fluid.parallel_executor import ParallelExecutor  #DEFINE_ALIAS
+from ..fluid.param_attr import WeightNormParamAttr  #DEFINE_ALIAS

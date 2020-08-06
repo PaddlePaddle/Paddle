@@ -200,29 +200,13 @@ from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
 from .framework.random import manual_seed  #DEFINE_ALIAS
-"""
-from .framework import append_backward  #DEFINE_ALIAS
-from .framework import gradients  #DEFINE_ALIAS
-from .framework import Executor  #DEFINE_ALIAS
-from .framework import global_scope  #DEFINE_ALIAS
-from .framework import scope_guard  #DEFINE_ALIAS
-from .framework import BuildStrategy  #DEFINE_ALIAS
-from .framework import CompiledProgram  #DEFINE_ALIAS
-from .framework import create_parameter  #DEFINE_ALIAS
-from .framework import Print  #DEFINE_ALIAS
-from .framework import py_func  #DEFINE_ALIAS
-from .framework import ExecutionStrategy  #DEFINE_ALIAS
-from .framework import name_scope  #DEFINE_ALIAS
-from .framework import ParallelExecutor  #DEFINE_ALIAS
-from .framework import ParamAttr  #DEFINE_ALIAS
-from .framework import program_guard  #DEFINE_ALIAS
-from .framework import WeightNormParamAttr  #DEFINE_ALIAS
-"""
 from .framework import default_main_program  #DEFINE_ALIAS
 from .framework import default_startup_program  #DEFINE_ALIAS
 from .framework import Program  #DEFINE_ALIAS
 from .framework import Variable  #DEFINE_ALIAS
+from .framework import ParamAttr  #DEFINE_ALIAS
 from .framework import create_global_var  #DEFINE_ALIAS
+from .framework import create_parameter  #DEFINE_ALIAS
 from .framework import CPUPlace  #DEFINE_ALIAS
 from .framework import CUDAPlace  #DEFINE_ALIAS
 from .framework import CUDAPinnedPlace  #DEFINE_ALIAS

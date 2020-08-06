@@ -54,7 +54,6 @@ def run_check():
     paddle 2.0 directory migration
     Need to modify dygraph method.
     '''
-    paddle.enable_static()
 
     device_list = []
     if core.is_compiled_with_cuda():
@@ -149,5 +148,3 @@ def run_check():
         print(
             "Your Paddle Fluid is installed successfully ONLY for SINGLE GPU or CPU! "
             "\n Let's start deep Learning with Paddle Fluid now")
-
-    paddle.disable_static()

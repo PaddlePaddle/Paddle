@@ -31,20 +31,35 @@ __all__ += [
 
 from . import random
 from .random import manual_seed
-from ..fluid.framework import default_main_program, default_startup_program, Program, Variable
-from ..fluid.param_attr import ParamAttr
-from ..fluid.layers.tensor import create_global_var, create_parameter
-from ..fluid.core import CPUPlace, CUDAPlace, CUDAPinnedPlace
+from ..fluid.framework import default_main_program  #DEFINE_ALIAS
+from ..fluid.framework import default_startup_program  #DEFINE_ALIAS
+from ..fluid.framework import Program  #DEFINE_ALIAS
+from ..fluid.framework import Variable  #DEFINE_ALIAS
+from ..fluid.param_attr import ParamAttr  #DEFINE_ALIAS
+from ..fluid.layers.tensor import create_global_var  #DEFINE_ALIAS
+from ..fluid.layers.tensor import create_parameter  #DEFINE_ALIAS
+from ..fluid.core import CPUPlace  #DEFINE_ALIAS
+from ..fluid.core import CUDAPlace  #DEFINE_ALIAS
+from ..fluid.core import CUDAPinnedPlace  #DEFINE_ALIAS
 
-from paddle.fluid import core
-from ..fluid.dygraph.base import no_grad, to_variable, grad
-from ..fluid.dygraph.checkpoint import load_dygraph as load
-from ..fluid.dygraph.checkpoint import save_dygraph as save
-from ..fluid.dygraph.parallel import prepare_context, ParallelEnv, DataParallel
+from paddle.fluid import core  #DEFINE_ALIAS
+from ..fluid.dygraph.base import no_grad  #DEFINE_ALIAS
+from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
+from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
+from ..fluid.dygraph.checkpoint import load_dygraph as load  #DEFINE_ALIAS
+from ..fluid.dygraph.checkpoint import save_dygraph as save  #DEFINE_ALIAS
+from ..fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
+from ..fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
+from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS
 
 from . import jit
 
-from ..fluid.dygraph.learning_rate_scheduler import NoamDecay, PiecewiseDecay, NaturalExpDecay, ExponentialDecay, \
-        InverseTimeDecay, PolynomialDecay, CosineDecay
+from ..fluid.dygraph.learning_rate_scheduler import NoamDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import PiecewiseDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import NaturalExpDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import ExponentialDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import InverseTimeDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import PolynomialDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import CosineDecay  #DEFINE_ALIAS
 
 BackwardStrategy = core.BackwardStrategy
