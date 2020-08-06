@@ -17,23 +17,33 @@ import sys
 import time
 
 
-def train():
-    selected_gpus = os.getenv("FLAGS_selected_gpus")
-    trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
-    worker_endpoints_env = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-    current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
+def train(prefix):
+    selected_gpus = os.environ.get("FLAGS_selected_gpus")
+    trainer_id = int(os.environ.get("PADDLE_TRAINER_ID"))
+    worker_endpoints_env = os.environ.get("PADDLE_TRAINER_ENDPOINTS")
+    print("worker_endpoints_env: ", worker_endpoints_env)
+    current_endpoint = os.environ.get("PADDLE_CURRENT_ENDPOINT")
     worker_endpoints = worker_endpoints_env
+    print("worker_endpoints: ", worker_endpoints)
     trainers_num = len(worker_endpoints.split(','))
+
+    # selected_gpus = os.getenv("FLAGS_selected_gpus")
+    # trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+    # worker_endpoints_env = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+    # current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
+    # worker_endpoints = worker_endpoints_env
+    # trainers_num = len(worker_endpoints.split(','))
 
     name = "selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
         .format(selected_gpus, worker_endpoints, trainers_num, current_endpoint,trainer_id)
 
     print(name)
-    with open("multi_process.check_{}.log".format(trainer_id), "w") as f:
+    with open("multi_process_{}.check_{}.log".format(prefix, trainer_id),
+              "w") as f:
         f.write(name)
 
 
-def train_abort():
+def train_abort(prefix):
     selected_gpus = os.getenv("FLAGS_selected_gpus")
     trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
     worker_endpoints_env = os.getenv("PADDLE_TRAINER_ENDPOINTS")
@@ -49,8 +59,9 @@ def train_abort():
             name = "abort>>> selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
                 .format(selected_gpus, worker_endpoints, trainers_num, current_endpoint,trainer_id)
             print(name)
-            with open("multi_process.check_{}.log".format(trainer_id),
-                      "w") as f:
+            with open(
+                    "multi_process_{}.check_{}.log".format(prefix, trainer_id),
+                    "w") as f:
                 f.write(name)
             raise
     else:
@@ -60,12 +71,15 @@ def train_abort():
             .format(selected_gpus, worker_endpoints, trainers_num, current_endpoint,trainer_id)
 
         print(name)
-        with open("multi_process.check_{}.log".format(trainer_id), "w") as f:
+        with open("multi_process_{}.check_{}.log".format(prefix, trainer_id),
+                  "w") as f:
             f.write(name)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 2 and sys.argv[1] == "abort":
-        train_abort()
+    if len(sys.argv) == 3 and sys.argv[2] == "abort":
+        prefix = sys.argv[1]
+        train_abort(prefix)
     else:
-        train()
+        prefix = sys.argv[1]
+        train(prefix)

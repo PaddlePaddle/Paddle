@@ -135,46 +135,25 @@ class Trainer(object):
         return self.rank
 
 
-class Server(object):
-    def __init__(self):
-        self.endpoint = None
-        self.rank = None
+# class Worker(object):
+#     def __init__(self):
+#         self.endpoint = None
+#         self.rank = None
 
-    def __str__(self):
-        return "endpoint:{} rank:{}".format(self.endpoint, self.rank)
+#     def __str__(self):
+#         return "endpoint:{} rank:{}".format(self.endpoint, self.rank)
 
-    def __eq__(self, t):
-        if self.endpoint != t.endpoint or \
-                self.rank != t.rank:
-            return False
-        return True
+#     def __eq__(self, t):
+#         if self.endpoint != t.endpoint or \
+#                 self.rank != t.rank:
+#             return False
+#         return True
 
-    def __ne__(self, t):
-        return not self == t
+#     def __ne__(self, t):
+#         return not self == t
 
-    def rank(self):
-        return self.rank
-
-
-class Worker(object):
-    def __init__(self):
-        self.endpoint = None
-        self.rank = None
-
-    def __str__(self):
-        return "endpoint:{} rank:{}".format(self.endpoint, self.rank)
-
-    def __eq__(self, t):
-        if self.endpoint != t.endpoint or \
-                self.rank != t.rank:
-            return False
-        return True
-
-    def __ne__(self, t):
-        return not self == t
-
-    def rank(self):
-        return self.rank
+#     def rank(self):
+#         return self.rank
 
 
 class Pod(object):
@@ -367,6 +346,17 @@ def find_free_ports(num):
             return None
 
     return None
+
+
+def get_ports(num, offset):
+    if os.environ.get('FLAGS_START_PORT') is None:
+        ports = find_free_ports(num)
+        if ports is not None:
+            ports = list(ports)
+    else:
+        start_port = os.environ.get('FLAGS_START_PORT')
+        ports = range(start_port + offset, start_port + offset + num, 1)
+    return ports
 
 
 class TrainerProc(object):

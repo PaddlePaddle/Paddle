@@ -213,51 +213,38 @@ def launch_collective(args):
 
 
 def launch_ps(args):
-    start_port = 6170
-    server_endpoints = ""
     ports = None
     if args.server_num:
         server_num = args.server_num
-        if os.environ.get('FLAGS_START_PORT') is None:
-            ports = find_free_ports(server_num)
-            if ports is not None:
-                ports = list(ports)
-        else:
-            start_port = os.environ.get('FLAGS_START_PORT')
-            ports = range(start_port, start_port + server_num, 1)
+        ports = get_ports(server_num, 0)
         server_endpoints = ",".join(["127.0.0.1:" + str(x) for x in ports])
     else:
         assert args.servers != "", "The setting of CPU mode must be either server_num or servers."
         server_endpoints = args.servers
     server_endpoints_ips = [
-        x.split(":")[0] for x in server_endpoints.split(",")
+        x.strip().split(":")[0] for x in server_endpoints.split(",")
     ]
     server_endpoints_port = [
-        x.split(":")[1] for x in server_endpoints.split(",")
+        x.strip().split(":")[1] for x in server_endpoints.split(",")
     ]
     server_num = len(server_endpoints_ips)
+
     if args.worker_num:
         worker_num = args.worker_num
-        if os.environ.get('FLAGS_START_PORT') is None:
-            ports = find_free_ports(worker_num)
-            if ports is not None:
-                ports = list(ports)
-        else:
-            start_port = os.environ.get('FLAGS_START_PORT')
-            ports = range(start_port + server_num,
-                          start_port + server_num + worker_num, 1)
+        ports = get_ports(worker_num, server_num)
         worker_endpoints = ",".join(["127.0.0.1:" + str(x) for x in ports])
     else:
         assert args.workers != "", "The setting of CPU mode must be either worker_num or workers."
         worker_endpoints = args.workers
     worker_endpoints_ips = [
-        x.split(":")[0] for x in worker_endpoints.split(",")
+        x.strip().split(":")[0] for x in worker_endpoints.split(",")
     ]
     worker_endpoints_port = [
-        x.split(":")[1] for x in worker_endpoints.split(",")
+        x.strip().split(":")[1] for x in worker_endpoints.split(",")
     ]
     worker_num = len(worker_endpoints_ips)
     node_ips = list(set(server_endpoints_ips + worker_endpoints_ips))
+
     # local train
     if len(set(node_ips)) == 1:
         current_node_ip = node_ips[0]
@@ -268,8 +255,8 @@ def launch_ps(args):
                 % (current_node_ip, node_ips)
     node_rank = node_ips.index(current_node_ip)
     logger.debug(
-        "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".format(
-            node_ips, current_node_ip, node_rank))
+        "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}, server_ports:{}".
+        format(node_ips, current_node_ip, node_rank, server_endpoints_port))
 
     cluster = Cluster(hdfs=None)
     server_rank = 0
@@ -280,14 +267,14 @@ def launch_ps(args):
         pod.addr = ip
         for i in range(len(server_endpoints_ips)):
             if ip == server_endpoints_ips[i]:
-                server = Server()
+                server = Trainer()
                 server.endpoint = "%s:%s" % (ip, server_endpoints_port[i])
                 server.rank = server_rank
                 server_rank += 1
                 pod.servers.append(server)
         for j in range(len(worker_endpoints_ips)):
             if ip == worker_endpoints_ips[j]:
-                worker = Worker()
+                worker = Trainer()
                 worker.endpoint = "%s:%s" % (ip, worker_endpoints_port[i])
                 worker.rank = worker_rank
                 worker_rank += 1
@@ -364,7 +351,7 @@ def launch_ps(args):
 
 def launch():
     args = _parse_args()
-    logger = get_logger(10)
+    logger = get_logger()
     _print_arguments(args)
     ps_args = ['--worker_num', '--server_num', '--servers', '--workers']
     collective_args = ['--ips', '--gpus']
