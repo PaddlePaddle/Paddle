@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/log_softmax_op.h"
+#include <string>
+#include <unordered_map>
 
 namespace paddle {
 namespace operators {
@@ -72,7 +74,17 @@ LogSoftmax Operator.
   }
 };
 
-class LogSoftmaxOpGrad : public framework::OperatorWithKernel {
+class LogSoftmaxOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
+      const override {
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
+    return m;
+  }
+};
+
+class LogSoftmaxGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -100,7 +112,7 @@ class LogSoftmaxOpGrad : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class LogSoftmaxOpGradMaker : public framework::SingleGradOpMaker<T> {
+class LogSoftmaxGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -109,15 +121,10 @@ class LogSoftmaxOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("log_softmax_grad");
     op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
   }
 };
-
-DECLARE_INPLACE_OP_INFERER(SoftmaxInplaceInferer, {"X", "Out"});
-
-// NOTE(zjl): AVX implementation of SoftmaxGrad does not support in-place
-DECLARE_CUDA_ONLY_INPLACE_OP_INFERER(SoftmaxGradInplaceInferer,
-                                     {"Out", framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
@@ -126,11 +133,9 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(log_softmax, ops::LogSoftmaxOp, ops::LogSoftmaxOpMaker,
                   ops::LogSoftmaxOpInferVarType,
-                  ops::LogSoftmaxOpGradMaker<paddle::framework::OpDesc>,
-                  ops::LogSoftmaxOpGradMaker<paddle::imperative::OpBase>,
-                  ops::LogSoftmaxInplaceInferer);
-REGISTER_OPERATOR(log_softmax_grad, ops::LogSoftmaxOpGrad,
-                  ops::SoftmaxGradInplaceInferer);
+                  ops::LogSoftmaxGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LogSoftmaxGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(log_softmax_grad, ops::LogSoftmaxGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     log_softmax,

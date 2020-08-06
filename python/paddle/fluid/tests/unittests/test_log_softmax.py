@@ -14,93 +14,133 @@
 
 import unittest
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.nn as nn
-import paddle.nn.functional as functional
+from op_test import OpTest
+import paddle
+import paddle.nn.functional as F
+
+np.random.seed(10)
 
 
-def stable_softmax(x):
+def ref_log_softmax(x):
     shiftx = (x - np.max(x))
-    exps = np.exp(shiftx)
-    return exps / np.sum(exps)
+    out = shiftx - np.log(np.exp(shiftx).sum())
+    return out
 
 
-def ref_log_softmax(x, axis=None, dtype=None):
-    x_t = x.copy()
-    if dtype is not None:
-        x_t = x_t.astype(dtype)
-    if axis is None:
-        axis = -1
-    out = np.apply_along_axis(stable_softmax, axis, x_t)
-    return np.log(out)
+def ref_log_softmax_grad(x, axis):
+    if axis < 0:
+        axis += len(x.shape)
+    out = np.apply_along_axis(ref_log_softmax, axis, x)
+    axis_dim = x.shape[axis]
+    dout = np.full(x.shape, fill_value=1 / x.size, dtype='float64')
+    dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
+        axis_dim, axis=axis)
+    return dx
+
+
+class TestLogSoftmaxOp(OpTest):
+    def get_x_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return -1
+
+    def setUp(self):
+        self.op_type = 'log_softmax'
+        self.dtype = 'float64'
+        self.shape = self.get_x_shape()
+        self.axis = self.get_axis()
+
+        x = np.random.uniform(0.1, 1., self.shape).astype('float64')
+        out = np.apply_along_axis(ref_log_softmax, self.axis, x)
+        self.x_grad = ref_log_softmax_grad(x, self.axis)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'axis': self.axis}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
+
+
+class TestLogSoftmaxShape(TestLogSoftmaxOp):
+    def get_x_shape(self):
+        return [12, 10]
+
+
+class TestLogSoftmaxAxis(TestLogSoftmaxOp):
+    def get_x_axis(self):
+        return 1
 
 
 class TestNNLogSoftmaxAPI(unittest.TestCase):
     def setUp(self):
-        self.init_data()
-
-    def init_data(self):
         self.x_shape = [2, 3, 4, 5]
-        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.x = np.random.uniform(-1., 1., self.x_shape).astype(np.float32)
+        self.place = paddle.CUDAPlace(0) \
+            if paddle.fluid.core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
 
-    def check_api(self, place=fluid.CPUPlace(), axis=None):
-        ref_out = ref_log_softmax(self.x, axis)
+    def check_api(self, axis=-1):
+        ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
 
-        main_program = fluid.Program()
-        mylogsoftmax = nn.LogSoftmax(axis)
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            y = mylogsoftmax(x)
-        exe = fluid.Executor(place)
+        main_program = paddle.Program()
+        logsoftmax = paddle.nn.LogSoftmax(axis)
+        with paddle.program_guard(main_program):
+            x = paddle.data(name='x', shape=self.x_shape)
+            y = logsoftmax(x)
+        exe = paddle.Executor(self.place)
         out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
         self.assertTrue(np.allclose(out[0], ref_out))
 
-        with fluid.dygraph.guard(place):
-            x = fluid.dygraph.to_variable(self.x)
-            y = mylogsoftmax(x)
+        with paddle.imperative.guard(self.place):
+            x = paddle.imperative.to_variable(self.x)
+            y = logsoftmax(x)
         self.assertTrue(np.allclose(y.numpy(), ref_out))
 
     def test_check_api(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for place in places:
-            for axis in [None, 2]:
-                self.check_api(place, axis)
+        for axis in [-1, 1]:
+            self.check_api(axis)
 
 
 class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
     def setUp(self):
-        self.init_data()
-
-    def init_data(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.place = paddle.CUDAPlace(0) \
+            if paddle.fluid.core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
 
-    def check_api(self, place=fluid.CPUPlace(), axis=None, dtype=None):
-        ref_out = ref_log_softmax(self.x, axis, dtype)
-        main_program = fluid.Program()
-        mylogsoftmax = nn.LogSoftmax(axis)
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            y = functional.log_softmax(x, axis, dtype)
-        exe = fluid.Executor(place)
+    def check_api(self, axis=-1, dtype=None):
+        ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
+        main_program = paddle.Program()
+        with paddle.program_guard(main_program):
+            x = paddle.data(name='x', shape=self.x_shape)
+            y = F.log_softmax(x, axis, dtype)
+        exe = paddle.Executor(self.place)
         out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
         self.assertTrue(np.allclose(out[0], ref_out))
 
-        with fluid.dygraph.guard(place):
-            x = fluid.dygraph.to_variable(self.x)
-            y = functional.log_softmax(x, axis, dtype)
+        with paddle.imperative.guard(self.place):
+            x = paddle.imperative.to_variable(self.x)
+            y = F.log_softmax(x, axis, dtype)
         self.assertTrue(np.allclose(y.numpy(), ref_out))
 
     def test_check_api(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for place in places:
-            self.check_api(place, None, None)
-            self.check_api(place, None, np.float64)
+        for axis in [-1, 1]:
+            self.check_api(axis)
+        self.check_api(-1, 'float64')
+
+    def test_errors(self):
+        with paddle.program_guard(paddle.Program(), paddle.Program()):
+            x = paddle.data(name='X1', shape=[100], dtype='int32')
+            self.assertRaises(TypeError, F.log_softmax, x)
+
+            x = paddle.data(name='X2', shape=[100], dtype='float32')
+            self.assertRaises(TypeError, F.log_softmax, x, dtype='int32')
 
 
 if __name__ == "__main__":

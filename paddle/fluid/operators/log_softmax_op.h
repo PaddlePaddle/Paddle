@@ -14,25 +14,60 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/softmax_op.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using DDim = framework::DDim;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
+static inline int CanonicalAxis(const int axis, const int rank) {
+  if (axis < 0) {
+    return axis + rank;
+  }
+  return axis;
+}
+
+static inline int SizeToAxis(const int axis, const framework::DDim dims) {
+  int size = 1;
+  for (int i = 0; i < axis; i++) {
+    size *= dims[i];
+  }
+  return size;
+}
+
+static inline int SizeFromAxis(const int axis, const framework::DDim dims) {
+  int size = 1;
+  for (int i = axis; i < dims.size(); i++) {
+    size *= dims[i];
+  }
+  return size;
+}
+
+template <typename T>
+struct ValueClip {
+  HOSTDEVICE T operator()(const T& x) const {
+    const T kThreshold = static_cast<T>(-64.);
+    return x < kThreshold ? kThreshold : x;
+  }
+};
 
 template <typename DeviceContext, typename T>
-class LogSoftmaxEigen {
- public:
-  void operator()(const DeviceContext& context, const int axis_dim,
-                  const framework::Tensor* X, framework::Tensor* Y) {
+struct LogSoftmaxFunctor {
+  void operator()(const DeviceContext& context, const framework::Tensor* X,
+                  framework::Tensor* Y, const int axis) {
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
     constexpr int kAxisDim = 1;
 
-    auto logits = EigenMatrix<T>::From(*X);
-    auto log_softmax = EigenMatrix<T>::From(*Y);
+    int axis_dim = X->dims()[axis];
+    const int n = SizeToAxis(axis, X->dims());
+    const int d = SizeFromAxis(axis, X->dims());
+    framework::DDim dim_2d{n, d};
+
+    auto logits = EigenMatrix<T>::From(*X, dim_2d);
+    auto log_softmax = EigenMatrix<T>::From(*Y, dim_2d);
 
     const int batch_size = logits.dimension(kBatchDim);
     const int num_classes = logits.dimension(kClassDim);
@@ -73,14 +108,14 @@ class LogSoftmaxEigen {
               .unaryExpr(ValueClip<T>());
     }
 
-    softmax.device(*context.eigen_device()) = softmax.exp();
-    softmax.device(*context.eigen_device()) =
-        (softmax *
-         softmax.reshape(batch_axis_remain)
-             .sum(along_axis)
-             .inverse()
-             .eval()
-             .broadcast(one_axis));
+    log_softmax.device(*context.eigen_device()) =
+        log_softmax -
+        log_softmax.exp()
+            .eval()
+            .reshape(batch_axis_remain)
+            .sum(along_axis)
+            .log()
+            .broadcast(one_axis);
   }
 };
 
@@ -88,25 +123,68 @@ template <typename DeviceContext, typename T>
 class LogSoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<Tensor>("X");
-    auto* Out = context.Output<Tensor>("Out");
-    auto x_dims = X->dims();
-    const int rank = x_dims.size();
+    auto* X = context.Input<framework::Tensor>("X");
+    auto* Out = context.Output<framework::Tensor>("Out");
+    const int rank = X->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
-    int axis_dim = x_dims[axis];
 
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
 
-    const int n = SizeToAxis(axis, X->dims());
-    const int d = SizeFromAxis(axis, X->dims());
-    Tensor X_2d, Out_2d;
-    X_2d.ShareDataWith(*X).Resize({n, d});
-    Out_2d.ShareDataWith(*Out).Resize({n, d});
+    LogSoftmaxFunctor<DeviceContext, T>()(
+        context.template device_context<DeviceContext>(), X, Out, axis);
+  }
+};
 
-    math::SoftmaxFunctor<DeviceContext, T, false>()(
-        context.template device_context<DeviceContext>(), axis_dim, &X_2d,
-        &Out_2d);
+template <typename DeviceContext, typename T>
+struct LogSoftmaxGradFunctor {
+  void operator()(const DeviceContext& context, const framework::Tensor* Y,
+                  const framework::Tensor* dY, framework::Tensor* dX,
+                  const int axis) {
+    constexpr int kBatchDim = 0;
+    constexpr int kClassDim = 1;
+
+    const int n = SizeToAxis(axis, Y->dims());
+    const int d = SizeFromAxis(axis, Y->dims());
+    framework::DDim dim_2d{n, d};
+
+    auto y = EigenMatrix<T>::From(*Y, dim_2d);
+    auto dy = EigenMatrix<T>::From(*dY, dim_2d);
+    auto dx = EigenMatrix<T>::From(*dX, dim_2d);
+
+    const int axis_dim = Y->dims()[axis];
+    const int batch_size = y.dimension(kBatchDim);
+    const int num_classes = y.dimension(kClassDim);
+    const int num_remain = num_classes / axis_dim;
+
+    Eigen::DSizes<int, 1> along_class(kClassDim);
+    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+    Eigen::DSizes<int, 2> one_axis(1, axis_dim);
+
+    dx.device(*context.eigen_device()) =
+        dy -
+        (y.exp()) * (dy.reshape(batch_axis_remain)
+                         .sum(along_class)
+                         .broadcast(one_axis));
+  }
+};
+
+template <typename DeviceContext, typename T>
+class LogSoftmaxGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* Out = context.Input<framework::Tensor>("Out");
+    auto* dOut =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    const int rank = Out->dims().size();
+    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+
+    // allocate memory on device.
+    dX->mutable_data<T>(context.GetPlace());
+
+    LogSoftmaxGradFunctor<DeviceContext, T>()(
+        context.template device_context<DeviceContext>(), Out, dOut, dX, axis);
   }
 };
 

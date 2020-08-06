@@ -66,7 +66,7 @@ import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
-from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 
 
@@ -306,7 +306,7 @@ def sigmoid(input, inplace=False, name=None):
     return outputs
 
 
-def log_softmax(x, axis=None, dtype=None, name=None):
+def log_softmax(x, axis=-1, dtype=None, name=None):
     """
     This operator implements the log_softmax layer. The calculation process is
     as follows:
@@ -317,28 +317,29 @@ def log_softmax(x, axis=None, dtype=None, name=None):
                   = log(\\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
 
     Parameters:
-        x (Tensor): The input multi-dimension Tensor with data type float32,
-            float64.
-        axis (int, optional): The index of dimension to perform softmax
-            calculations. It should be in range :math:`[-1, rank-1]`, while
-            :math:`rank` is the rank of input variable. Default is None. None
-            and -1 means the last dimension.
-        dtype (np.dtype|core.VarDesc.VarType|str): The desired data type of
-            the output tensor. If dtype is specified, the input tensor is casted
-            to dtype before the operation is performed. This is useful for 
+        x (Tensor): The input Tensor with data type float32, float64.
+        axis (int, optional): The axis along which to perform log_softmax
+            calculations. It should be in range [-D, D), where D is the
+            dimensions of ``x`` . If ``axis`` < 0, it works the same way as
+            :math:`axis + D` . Default is -1.
+        dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
+            type of the output tensor. If dtype is specified, ``x`` is casted
+            to ``dtype`` before the operation is performed. This is useful for 
             preventing data type overflows. Supported dtype: float32, float64.
-            If dtype is None, the output Tensor has the same dtype as x. Default
-            is None.
+            If ``dtype`` is None, the output Tensor has the same dtype as x.
+            Default is None.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
  
     Returns:
-        A Tensor with the same data type and shape as x.
+        A Tensor with the same shape and data type (use ``dtype`` if it is
+        specified) as x.
 
     Examples:
         .. code-block:: python
 
         import paddle
+        import paddle.nn.functional as F
         import numpy as np
 
         paddle.enable_imperative()
@@ -350,8 +351,8 @@ def log_softmax(x, axis=None, dtype=None, name=None):
                         [-5.0, 6.0, 7.0, -8.0],
                         [6.0, 7.0, 8.0, 9.0]]]).astype('float32')
         x = paddle.imperative.to_variable(x)
-        out1 = paddle.nn.functional.log_softmax(x)
-        out2 = paddle.nn.functional.log_softmax(x, dtype='float64')
+        out1 = F.log_softmax(x)
+        out2 = F.log_softmax(x, dtype='float64')
         # out1's data type is float32; out2's data type is float64
         # out1 and out2's value is as follows:
         # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
@@ -369,35 +370,32 @@ def log_softmax(x, axis=None, dtype=None, name=None):
 
     if in_dygraph_mode():
         if dtype is not None:
-            out = ore.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
-        out = core.ops.softmax(out, 'axis', axis, 'use_cudnn', False)
-        return core.ops.log(out)
+            x = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return core.ops.log_softmax(x, 'axis', axis)
 
     if dtype is None:
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'log_softmax')
+    else:
+        check_dtype(dtype, 'dtype', ['float32', 'float64'], 'log_softmax',
+                    'If dtype is not None, it only support float32 or float64.')
 
     helper = LayerHelper("log_softmax", **locals())
-    outs_cast = x
+    out_cast = x
     if dtype is not None:
-        outs_cast = helper.create_variable_for_type_inference(dtype)
+        out_cast = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type='cast',
             inputs={'X': x},
-            outputs={'Out': outs_cast},
+            outputs={'Out': out_cast},
             attrs={'in_dtype': x.dtype,
                    'out_dtype': dtype})
 
-    outs_softmax = helper.create_variable_for_type_inference(outs_cast.dtype)
+    out = helper.create_variable_for_type_inference(out_cast.dtype)
     helper.append_op(
-        type='softmax',
-        inputs={'X': outs_cast},
-        outputs={'Out': outs_softmax},
-        attrs={'axis': axis,
-               'use_cudnn': False})
+        type='log_softmax',
+        inputs={'X': out_cast},
+        outputs={'Out': out},
+        attrs={'axis': axis})
 
-    outs_log = helper.create_variable_for_type_inference(outs_softmax.dtype)
-    helper.append_op(
-        type='log', inputs={'X': outs_softmax}, outputs={'Out': outs_log})
-
-    return outs_log
+    return out

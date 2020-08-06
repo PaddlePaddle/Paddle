@@ -13,3 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/log_softmax_op.h"
+
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+REGISTER_OP_CUDA_KERNEL(
+    log_softmax, ops::LogSoftmaxKernel<plat::CUDADeviceContext, float>,
+    ops::LogSoftmaxKernel<plat::CUDADeviceContext, double>,
+    ops::LogSoftmaxKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    log_softmax_grad, ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, float>,
+    ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, double>,
+    ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, plat::float16>);
