@@ -262,21 +262,23 @@ def stack(x, axis=0, name=None):
         .. code-block:: python
 
             import paddle
+            import numpy as np
 
             data1 = np.array([[1.0, 2.0]])
             data2 = np.array([[3.0, 4.0]])
             data3 = np.array([[5.0, 6.0]])
 
             paddle.enable_imperative()
-            x1 = fluid.dygraph.to_variable(data1)
-            x2 = fluid.dygraph.to_variable(data2)
-            x3 = fluid.dygraph.to_variable(data3)
+            x1 = paddle.imperative.to_variable(data1)
+            x2 = paddle.imperative.to_variable(data2)
+            x3 = paddle.imperative.to_variable(data3)
 
-            result = paddle.stack([x1, x2, x3], axis=0)
-            # result shape: [3, 1, 2]
-            # result value: [[[1.0, 2.0]],
-            #                [[3.0, 4.0]],
-            #                [[5.0, 6.0]]]
+            out = paddle.stack([x1, x2, x3], axis=0)
+            print(out.shape)  # [3, 1, 2]
+            print(out.numpy())
+            # [[[1., 2.]],
+            #  [[3., 4.]],
+            #  [[5., 6.]]]
     """
     return layers.stack(x, axis, name)
 
