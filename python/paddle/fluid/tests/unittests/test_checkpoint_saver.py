@@ -51,3 +51,7 @@ class CheckpointerSaverTest(unittest.TestCase):
         s.clean_redundant_checkpoints(dir_path)
 
         fs.delete(dir_path)
+
+
+if __name__ == '__main__':
+    unittest.main()
