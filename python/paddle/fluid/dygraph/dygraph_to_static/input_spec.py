@@ -30,9 +30,9 @@ class TensorSpec(object):
     __slots__ = ['_shape', '_dtype', '_name']
 
     def __init__(self, shape, dtype='float32', name=None):
-        # replace `None` in shape  with -1
+        # 1. replace `None` in shape  with -1
         self._shape = self._verify(shape)
-        # convert dtype into united represention
+        # 2. convert dtype into united represention
         if dtype is not None:
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
@@ -51,10 +51,8 @@ class TensorSpec(object):
 
     @classmethod
     def from_numpy(cls, ndarray, name=None):
-        # TODO: tansform ndarray.type into paddle dataType
         return cls(ndarray.shape, ndarray.dtype, name)
 
-    # TODO: where to use this interface?
     def batch(self, batch_size):
         """
         Insert `batch_size` in front of the `shape`.
@@ -192,9 +190,6 @@ class FunctionSpec(object):
         # parse full argument names list.
         self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
 
-        self._idx_to_variable_spec = {}
-        # self._inputs_with_spec = self.args_to_variable_spec(args, kwargs)
-
     def unified_args_and_kwargs(self, args, kwargs):
         # TODO: move kwargs default value into args
         if len(self._arg_names) < len(args):
@@ -239,10 +234,6 @@ class FunctionSpec(object):
 
             inputs_with_spec = flat_signature + list(flat_args)[len(
                 flat_signature):]
-
-            self._idx_to_variable_spec = dict(
-                zip(range(len(flat_signature)), flat_signature))
-            # print(inputs_with_spec)
         else:
             # map index into variable_spec
             for idx, input_var in enumerate(flat_args):
@@ -250,9 +241,6 @@ class FunctionSpec(object):
                     input_var = TensorSpec.from_numpy(input_var)
                 elif isinstance(input_var, core.VarBase):
                     input_var = TensorSpec.from_variable(input_var)
-
-                if isinstance(input_var, TensorSpec):
-                    self._idx_to_variable_spec[idx] = input_var
 
                 inputs_with_spec.append(input_var)
 
@@ -322,7 +310,7 @@ class FunctionSpec(object):
         return self._is_method
         # return self._args and isinstance(self._args[0], layers.Layer)
 
-    # TODO: consider input_signature as key
+    # TODO: remove __key
 
     def __key(self):
         # Note: if dygraph function is a method of class,
@@ -334,9 +322,6 @@ class FunctionSpec(object):
                 self._inputs_with_spec)
         else:
             return self._dyfunc, tuple(self._inputs_with_spec)
-
-    # def __hash__(self):
-    #     return hash(self.__key())
 
     @property
     def hash_keys(self):
