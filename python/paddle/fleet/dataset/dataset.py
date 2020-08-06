@@ -18,7 +18,6 @@ import paddle.fluid as fluid
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 import paddle.fluid.core as core
-__all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
 
 
 class DatasetFactory(object):

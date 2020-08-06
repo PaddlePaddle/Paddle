@@ -896,9 +896,6 @@ class TestDataset2(unittest.TestCase):
         """
         Testcase for InMemoryDataset from create to run.
         """
-
-        self.skipTest("parameter server will add pslib UT later")
-
         with open("test_in_memory_dataset2_run2_a.txt", "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
@@ -914,7 +911,7 @@ class TestDataset2(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
         with fluid.program_guard(train_program, startup_program):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
@@ -972,10 +969,9 @@ class TestDataset2(unittest.TestCase):
             dataset.set_hdfs_config("", "")
             d = paddle.fleet.DatasetBase()
             try:
-                d._prepare_to_run()
+                dataset.set_feed_type("MultiSlotInMemoryDataFeed")
             except:
                 print("warning: catch expected error")
-            dataset.set_feed_type("MultiSlotInMemoryDataFeed")
             dataset.thread_num = 0
             try:
                 dataset._prepare_to_run()
@@ -1021,41 +1017,6 @@ class TestDataset2(unittest.TestCase):
                 print("warning: catch expected error")
             try:
                 dataset.global_shuffle()
-            except:
-                print("warning: catch expected error")
-            dataset = paddle.fleet.BoxPSDataset()
-            dataset.set_date(20200805)
-            try:
-                dataset.begin_pass()
-            except:
-                print("warning: catch expected error")
-            try:
-                dataset.end_pass(False)
-            except:
-                print("warning: catch expected error")
-            try:
-                dataset.wait_preload_done()
-            except:
-                print("warning: catch expected error")
-            try:
-                dataset.load_into_memory()
-            except:
-                print("warning: catch expected error")
-            try:
-                dataset.preload_into_memory()
-            except:
-                print("warning: catch expected error")
-            dataset.is_user_set_queue_num = True
-            try:
-                dataset._dynamic_adjust_before_train(1)
-            except:
-                print("warning: catch expected error")
-            try:
-                dataset._dynamic_adjust_after_train()
-            except:
-                print("warning: catch expected error")
-            try:
-                dataset.slots_shuffle([])
             except:
                 print("warning: catch expected error")
 
