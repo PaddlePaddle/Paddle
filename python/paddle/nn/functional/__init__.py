@@ -130,6 +130,7 @@ from .loss import kldiv_loss  #DEFINE_ALIAS
 from .loss import log_loss  #DEFINE_ALIAS
 from .loss import margin_rank_loss  #DEFINE_ALIAS
 from .loss import mse_loss  #DEFINE_ALIAS
+from .loss import nll_loss  #DEFINE_ALIAS
 # from .loss import nce        #DEFINE_ALIAS
 from .loss import npair_loss  #DEFINE_ALIAS
 from .loss import rank_loss  #DEFINE_ALIAS
