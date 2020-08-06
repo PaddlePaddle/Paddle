@@ -300,6 +300,30 @@ class TestFillConstantAPI(unittest.TestCase):
         assert np.array_equal(res_8, np.full([1, 2], 1.1, dtype="float32"))
 
 
+class TestFillConstantImperative(unittest.TestCase):
+    def test_api(self):
+        with fluid.dygraph.guard():
+            data1 = np.array([1, 2]).astype('int32')
+            data2 = np.array([1.1]).astype('float32')
+            shape = fluid.dygraph.to_variable(data1)
+            val = fluid.dygraph.to_variable(data2)
+            res1 = fluid.layers.fill_constant(
+                shape=[1, 2], dtype='float32', value=1.1)
+            res2 = fluid.layers.fill_constant(
+                shape=shape, dtype='float32', value=1.1)
+            res3 = fluid.layers.fill_constant(
+                shape=shape, dtype='float32', value=val)
+            assert np.array_equal(
+                res1.numpy(), np.full(
+                    [1, 2], 1.1, dtype="float32"))
+            assert np.array_equal(
+                res2.numpy(), np.full(
+                    [1, 2], 1.1, dtype="float32"))
+            assert np.array_equal(
+                res3.numpy(), np.full(
+                    [1, 2], 1.1, dtype="float32"))
+
+
 class TestFillConstantOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
