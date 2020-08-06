@@ -175,6 +175,21 @@ class FSTest(unittest.TestCase):
         fs.mkdirs(dir_name)
         fs.mkdirs(dir_name)
 
+    def _test_rm(self, fs):
+        dir_name = "./test_rm_no_exist.flag"
+        fs.delete(dir_name)
+        try:
+            fs._rmr(dir_name)
+            self.assertFalse(True)
+        except Exception as e:
+            pass
+
+        try:
+            fs._rm(dir_name)
+            self.assertFalse(True)
+        except Exception as e:
+            pass
+
     def test_exists(self):
         fs = HDFSClient(
             "/usr/local/hadoop-2.7.7/",
@@ -195,6 +210,7 @@ class FSTest(unittest.TestCase):
             None,
             time_out=15 * 1000,
             sleep_inter=100)
+        self._test_rm(fs)
         self._test_touch(fs)
         self._test_dirs(fs)
         self._test_upload(fs)
@@ -207,6 +223,7 @@ class FSTest(unittest.TestCase):
 
     def test_local(self):
         fs = LocalFS()
+        self._test_rm(fs)
         self._test_touch(fs)
         self._test_dirs(fs)
         self._test_touch_file(fs)
@@ -286,6 +303,12 @@ java.io.IOException: Input/output error
         fs.touch(path, exist_ok=True)
         try:
             fs.touch("./touch.flag", exist_ok=False)
+            self.assertFalse(0, "can't reach here")
+        except FSFileExistsError as e:
+            pass
+
+        try:
+            fs._touchz("./touch.flag")
             self.assertFalse(0, "can't reach here")
         except FSFileExistsError as e:
             pass
