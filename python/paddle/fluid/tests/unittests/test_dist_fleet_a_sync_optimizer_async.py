@@ -60,7 +60,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
                 sends += 1
             if op.type == "sgd":
                 sgds += 1
-        self.assertEqual(sends, 6)
+        self.assertEqual(sends, 7)
         self.assertEqual(sgds, 0)
 
 
