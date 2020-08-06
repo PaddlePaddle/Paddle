@@ -343,6 +343,15 @@ class AutoCheckpointTest(AutoCheckPointACLBase):
 
         logger.info("end test_distributed_basic")
 
+    def test_checker(self):
+        os.environ.pop("PADDLE_JOB_ID", None)
+        try:
+            checker = AutoCheckpointChecker()
+            self.assertFalse(True)
+        except Exception as e:
+            pass
+        os.environ["PADDLE_JOB_ID"] = "test_job_auto_1"
+
 
 if __name__ == '__main__':
     unittest.main()
