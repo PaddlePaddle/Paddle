@@ -30,8 +30,8 @@ def attach_error_data(error):
     Returns:
         An error attached data about original source code information and traceback.
     """
-    e_type, e_value, tb = sys.exc_info()
-    tb = traceback.extract_tb(tb)[1:]
+    e_type, e_value, e_traceback = sys.exc_info()
+    tb = traceback.extract_tb(e_traceback)[1:]
 
     error_data = ErrorData(e_type, e_value, tb, global_origin_info_map)
     setattr(error, ERROR_DATA, error_data)
@@ -57,10 +57,11 @@ class ErrorData(object):
     TODO(liym27): Consider the case that op_callstack when error raised from c++ code
     """
 
-    def __init__(self, error_type, error_value, origin_tb, origin_info_map):
+    def __init__(self, error_type, error_value, origin_traceback,
+                 origin_info_map):
         self.error_type = error_type
         self.error_value = error_value
-        self.origin_tb = origin_tb
+        self.origin_traceback = origin_traceback
         self.origin_info_map = origin_info_map
 
     def create_exception(self):
@@ -81,7 +82,7 @@ class ErrorData(object):
         message_lines.append("")
 
         # Step2: Optimizes stack information with source code information of dygraph from user.
-        for filepath, lineno, funcname, code in self.origin_tb:
+        for filepath, lineno, funcname, code in self.origin_traceback:
             loc = Location(filepath, lineno)
 
             dygraph_func_info = self.origin_info_map.get(loc.line_location,

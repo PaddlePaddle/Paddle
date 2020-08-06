@@ -28,7 +28,9 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import FunctionSp
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
-from paddle.fluid.framework import Block, ParamBase, Program, Variable, _current_expected_place, _dygraph_guard, _dygraph_tracer, dygraph_only, in_dygraph_mode
+from paddle.fluid.framework import Block, ParamBase, Program, Variable
+from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dygraph_tracer
+from paddle.fluid.framework import dygraph_only, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']

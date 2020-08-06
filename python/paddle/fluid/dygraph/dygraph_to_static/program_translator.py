@@ -36,7 +36,7 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info, create_and_update_origin_info_map, ORIGI_INFO_MAP
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info, create_and_update_origin_info_map
 from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data, ERROR_DATA
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
@@ -93,7 +93,7 @@ class FunctionCache(object):
 
         # TODO(liym27):
         #  Consider this case: source_code in self._code_to_ast_caches,
-        #  but actually they are method in different class.
+        #  but actually they are methods in different classes.
         #  Maybe use (__class__, source_code) as key
         if source_code in self._code_to_ast_caches:
             root_wrapper = self._code_to_ast_caches[source_code]
@@ -296,7 +296,7 @@ class ConcreteProgram(object):
                     try:
                         outputs = static_func(*inputs)
                     except BaseException as e:
-                        # NOTE: If e raised in compile time, e should be attached ERROR_DATA here.
+                        # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
                         attach_error_data(e)
                         raise
 
@@ -512,10 +512,10 @@ class ProgramTranslator(object):
 
         except BaseException as e:
             # NOTE:
-            # 1. If e raised in compile time, e should have been attached ERROR_DATA before;
-            # 2. If e raised in run time, e should be attached ERROR_DATA here.
+            # 1. If e is raised in compile time, e should have been attached to ERROR_DATA before;
+            # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
             if not hasattr(e, ERROR_DATA):
-                # run time error
+                # runtime error
                 attach_error_data(e)
             raise
 
