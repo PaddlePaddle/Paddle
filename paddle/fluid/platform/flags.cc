@@ -501,9 +501,10 @@ DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
 DEFINE_int32(
     call_stack_level, 2,
     "Determine the call stack to print when error or exeception happens."
-    "If FLAGS_call_stack_level == 0, only the error message summary will be "
-    "shown. "
-    "If FLAGS_call_stack_level == 1, the python stack and  error message "
+    // TODO(zhiqiu): implement logic of FLAGS_call_stack_level==0
+    // "If FLAGS_call_stack_level == 0, only the error message summary will be "
+    // "shown. "
+    "If FLAGS_call_stack_level == 1, the python stack and error message "
     "summary will be shown."
     "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
     "error message summary will be shown.");
