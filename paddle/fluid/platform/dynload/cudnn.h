@@ -54,7 +54,6 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnSetTensorNdDescriptor);                    \
   __macro(cudnnGetTensorNdDescriptor);                    \
   __macro(cudnnGetConvolutionNdForwardOutputDim);         \
-  __macro(cudnnGetConvolutionForwardAlgorithm);           \
   __macro(cudnnCreateTensorDescriptor);                   \
   __macro(cudnnDestroyTensorDescriptor);                  \
   __macro(cudnnCreateFilterDescriptor);                   \
@@ -102,7 +101,6 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnDropoutGetStatesSize);                     \
   __macro(cudnnSetDropoutDescriptor);                     \
   __macro(cudnnCreateRNNDescriptor);                      \
-  __macro(cudnnSetRNNDescriptor);                         \
   __macro(cudnnGetRNNParamsSize);                         \
   __macro(cudnnGetRNNWorkspaceSize);                      \
   __macro(cudnnGetRNNTrainingReserveSize);                \
@@ -126,10 +124,17 @@ CUDNN_DNN_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #if CUDNN_VERSION >= 3000
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_R3(__macro)           \
   __macro(cudnnGetConvolutionBackwardFilterWorkspaceSize); \
-  __macro(cudnnGetConvolutionBackwardDataAlgorithm);       \
-  __macro(cudnnGetConvolutionBackwardFilterAlgorithm);     \
   __macro(cudnnGetConvolutionBackwardDataWorkspaceSize);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R3(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
+// APIs available after R3:
+#if CUDNN_VERSION >= 3000 && CUDNN_VERSION < 8000
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(__macro) \
+  __macro(cudnnGetConvolutionBackwardFilterAlgorithm);   \
+  __macro(cudnnGetConvolutionForwardAlgorithm);          \
+  __macro(cudnnSetRNNDescriptor);
+CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 // APIs available after R4:
@@ -183,6 +188,12 @@ CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
+
+#if CUDNN_VERSION >= 8000
+#define CUDNN_DNN_ROUTINE_EACH_R8(__macro) __macro(cudnnSetRNNDescriptor_v8);
+CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

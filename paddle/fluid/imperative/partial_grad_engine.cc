@@ -885,12 +885,14 @@ void PartialGradTask::RunEachOp(OpBase *op) {
   if (create_graph_) {
     auto double_grad_node = CreateGradOpNode(op->InnerOp(), tmp_ins, tmp_outs,
                                              op->Attrs(), op->place());
-    if (double_grad_node) {
-      VLOG(10) << "Create " << double_grad_node->size()
-               << " double grad op(s) for " << op->Type()
-               << ", pending ops: " << GradPendingOpTypes(*double_grad_node);
-      double_grad_nodes_.emplace_back(std::move(double_grad_node));
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        double_grad_node,
+        platform::errors::NotFound("The Op %s doesn't have any grad op.",
+                                   op->Type()));
+    VLOG(10) << "Create " << double_grad_node->size()
+             << " double grad op(s) for " << op->Type()
+             << ", pending ops: " << GradPendingOpTypes(*double_grad_node);
+    double_grad_nodes_.emplace_back(std::move(double_grad_node));
   }
 
   VLOG(10) << "There are " << grads_to_accumulate_.size() << " to sum gradient";

@@ -47,9 +47,8 @@ __all__ = [
     'AdamOptimizer', 'AdamaxOptimizer', 'DpsgdOptimizer',
     'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
     'AdadeltaOptimizer', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer',
-    'RecomputeOptimizer'
+    'LarsMomentumOptimizer', 'LambOptimizer', 'ExponentialMovingAverage',
+    'PipelineOptimizer', 'LookaheadOptimizer', 'RecomputeOptimizer'
 ]
 
 
