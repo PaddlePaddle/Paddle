@@ -176,6 +176,17 @@ class RequestNotifyHandler final : public RequestHandler {
   std::unordered_map<int, int64_t> decay_counters;
 };
 
+class SendAndRecvHandler final : public RequestHandler {
+ public:
+  explicit SendAndRecvHandler(int distributed_mode, int trainers)
+      : RequestHandler(distributed_mode) {}
+  virtual ~SendAndRecvHandler() {}
+  bool Handle(const std::string& varname, framework::Scope* Scope,
+              framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override;
+};
+
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
