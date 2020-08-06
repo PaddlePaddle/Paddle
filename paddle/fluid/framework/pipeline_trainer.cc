@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #if defined(PADDLE_WITH_NCCL)
+#include <map>
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -44,7 +45,6 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                         "must be 1 now, but the value you give is %d.",
                         num_readers));
   auto* reader = readers[0];
-  feed_var_names_ = reader->GetUseSlotAlias();
 
   workers_.resize(section_num_);
   for (int i = 0; i < section_num_; ++i) {
@@ -123,27 +123,38 @@ void PipelineTrainer::CopyParameters(int section_id, int microbatch_id,
                                      const ProgramDesc& program,
                                      const platform::Place& place) {
   auto& global_block = program.Block(0);
+  std::map<std::string, int> param_map;
   for (auto& var : global_block.AllVars()) {
-    int is_feed_var =
-        std::count(feed_var_names_.begin(), feed_var_names_.end(), var->Name());
-    VLOG(3) << "Var name: " << var->Name();
-    if ((var->Persistable() || is_feed_var) && microbatch_id == 0) {
-      if (is_feed_var) {
-        auto* new_ptr = minibatch_scopes_[section_id]->Var(var->Name());
-        VLOG(3) << "data name: " << var->Name() << ", ptr: " << new_ptr;
-        InitializeVariable(new_ptr, var->GetType());
-      } else {
-        auto* ptr = root_scope_->FindVar(var->Name());
-        auto* new_ptr = minibatch_scopes_[section_id]->Var(var->Name());
-        VLOG(3) << "Create persistable var " << var->Name() << " for minibatch "
-                << section_id << ", which pointer is " << new_ptr;
-        InitializeVariable(new_ptr, var->GetType());
-        const LoDTensor& root_tensor = ptr->Get<LoDTensor>();
-        LoDTensor* minibatch_tensor = new_ptr->GetMutable<LoDTensor>();
-        TensorCopy(*static_cast<const Tensor*>(&root_tensor), place,
-                   static_cast<Tensor*>(minibatch_tensor));
+    if (var->Persistable()) {
+      param_map[var->Name()] = 1;
+    }
+  }
+  for (auto& var : global_block.AllVars()) {
+    bool is_grad = false;
+    bool is_param_grad = false;
+    size_t pos = 0;
+    if ((pos = var->Name().find(kGradVarSuffix)) != std::string::npos) {
+      is_grad = true;
+      auto prefix_name = var->Name().substr(0, pos);
+      if (param_map.find(prefix_name) != param_map.end()) {
+        is_param_grad = true;
       }
-    } else if (!var->Persistable() && !is_feed_var) {
+    }
+    VLOG(3) << "Var name: " << var->Name();
+    if ((var->Persistable() || is_grad) && microbatch_id == 0) {
+      auto* ptr = root_scope_->FindVar(var->Name());
+      auto* new_ptr = minibatch_scopes_[section_id]->Var(var->Name());
+      VLOG(3) << "Create persistable var " << var->Name() << " for minibatch "
+              << section_id << ", which pointer is " << new_ptr;
+      InitializeVariable(new_ptr, var->GetType());
+      if (!var->Persistable() && !is_param_grad) {
+        continue;
+      }
+      const LoDTensor& root_tensor = ptr->Get<LoDTensor>();
+      LoDTensor* minibatch_tensor = new_ptr->GetMutable<LoDTensor>();
+      TensorCopy(*static_cast<const Tensor*>(&root_tensor), place,
+                 static_cast<Tensor*>(minibatch_tensor));
+    } else if (!var->Persistable() && !is_grad) {
       auto* ptr =
           microbatch_scopes_[section_id][microbatch_id]->Var(var->Name());
       VLOG(3) << "Create variable " << var->Name() << " for section "

@@ -109,6 +109,8 @@ void SectionWorker::TrainFiles() {
   if (thread_id_ == 0) {
     while (true) {
       // Start a minibatch.
+      // real number of microbatches run
+      int real_microbatch_num = 0;
       batch_timer.Start();
       for (int i = 0; i < num_microbatches_; ++i) {
         try {
@@ -141,18 +143,20 @@ void SectionWorker::TrainFiles() {
           VLOG(3) << "called notify all";
           thread_condition.notify_all();
           VLOG(0) << "EOF encountered";
-          return;
+          break;
         }
-        if (i == 0) {
+        {
+          real_microbatch_num += 1;
+          batch_id_ += 1;
           VLOG(3) << "called notify all";
           std::unique_lock<std::mutex> lk(thread_mutex);
-          batch_id_ += 1;
           thread_condition.notify_all();
         }
       }
       dev_ctx_->Wait();
+      VLOG(0) << "real_microbatch_num for thread 0 " << real_microbatch_num;
       // backward pass
-      for (int i = 0; i < num_microbatches_; ++i) {
+      for (int i = 0; i < real_microbatch_num; ++i) {
         for (auto& op : ops_) {
           int op_role = op->Attr<int>(std::string("op_role"));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
@@ -169,6 +173,11 @@ void SectionWorker::TrainFiles() {
         }
       }
       dev_ctx_->Wait();
+      if (real_microbatch_num == 0) {
+        batch_timer.Pause();
+        VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
+        return;
+      }
       // update pass
       for (auto& op : ops_) {
         int op_role = op->Attr<int>(std::string("op_role"));
@@ -188,30 +197,32 @@ void SectionWorker::TrainFiles() {
     }
   } else {
     while (true) {
-      {
-        PADDLE_ENFORCE_LE(
-            local_batch_id_, batch_id_,
-            platform::errors::InvalidArgument(
-                "local_batch_id_ (%d) must be less than or equal to "
-                "batch_id_ (%d)",
-                local_batch_id_, batch_id_));
-        std::unique_lock<std::mutex> lk(thread_mutex);
-        if (local_batch_id_ == batch_id_ && !threads_completed) {
-          thread_condition.wait(lk);
-        }
-        VLOG(3) << "thread " << thread_id_ << " local_batch_id_ "
-                << local_batch_id_ << " batch_id_ " << batch_id_;
-        if (threads_completed) {
-          VLOG(3) << "thread " << thread_id_ << " completed.";
-          lk.unlock();
-          threads_completed = false;
-          return;
-        }
-        lk.unlock();
-        local_batch_id_ += 1;
-      }
       // forward pass:
+      int real_microbatch_num = 0;
       for (int i = 0; i < num_microbatches_; ++i) {
+        {
+          PADDLE_ENFORCE_LE(
+              local_batch_id_, batch_id_,
+              platform::errors::InvalidArgument(
+                  "local_batch_id_ (%d) must be less than or equal to "
+                  "batch_id_ (%d)",
+                  local_batch_id_, batch_id_));
+          std::unique_lock<std::mutex> lk(thread_mutex);
+          if (local_batch_id_ == batch_id_ && !threads_completed) {
+            thread_condition.wait(lk);
+          }
+          VLOG(3) << "thread " << thread_id_ << " local_batch_id_ "
+                  << local_batch_id_ << " batch_id_ " << batch_id_;
+          if (threads_completed) {
+            VLOG(3) << "thread " << thread_id_ << " completed.";
+            lk.unlock();
+            threads_completed = false;
+            break;
+          }
+          lk.unlock();
+          local_batch_id_ += 1;
+          real_microbatch_num += 1;
+        }
         for (auto& op : ops_) {
           int op_role = op->Attr<int>(std::string("op_role"));
           // We run op with op_role = kLRSched only for the first microbatch
@@ -237,7 +248,7 @@ void SectionWorker::TrainFiles() {
       }
       dev_ctx_->Wait();
       // backward pass
-      for (int i = 0; i < num_microbatches_; ++i) {
+      for (int i = 0; i < real_microbatch_num; ++i) {
         for (auto& op : ops_) {
           int op_role = op->Attr<int>(std::string("op_role"));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
@@ -255,6 +266,9 @@ void SectionWorker::TrainFiles() {
       }
       dev_ctx_->Wait();
       // update pass
+      if (real_microbatch_num == 0) {
+        return;
+      }
       for (auto& op : ops_) {
         int op_role = op->Attr<int>(std::string("op_role"));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
@@ -324,6 +338,7 @@ void SectionWorker::TrainFilesWithProfiler() {
     while (true) {
       // Start a minibatch.
       batch_timer.Start();
+      int real_microbatch_num = 0;
       for (int i = 0; i < num_microbatches_; ++i) {
         try {
           int op_idx = 0;
@@ -397,18 +412,19 @@ void SectionWorker::TrainFilesWithProfiler() {
                     << ", mean_time: " << op_total_time[i] / op_count[i];
           }
           VLOG(0) << "================================";
-          return;
+          break;
         }
-        if (i == 0) {
+        {
           VLOG(3) << "called notify all";
           std::unique_lock<std::mutex> lk(thread_mutex);
+          real_microbatch_num += 1;
           batch_id_ += 1;
           thread_condition.notify_all();
         }
       }
       dev_ctx_->Wait();
       // backward pass
-      for (int i = 0; i < num_microbatches_; ++i) {
+      for (int i = 0; i < real_microbatch_num; ++i) {
         int op_idx = 0;
         gettimeofday(&micro_start, NULL);
         for (auto& op : ops_) {
@@ -460,6 +476,10 @@ void SectionWorker::TrainFilesWithProfiler() {
         }
       }
       dev_ctx_->Wait();
+      if (real_microbatch_num == 0) {
+        batch_timer.Pause();
+        VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
+      }
       // update pass
       int op_idx = 0;
       gettimeofday(&micro_start, NULL);
@@ -526,36 +546,38 @@ void SectionWorker::TrainFilesWithProfiler() {
     cudaEventCreate(&cu_start);
     cudaEventCreate(&cu_stop);
     while (true) {
-      {
-        PADDLE_ENFORCE_LE(
-            local_batch_id_, batch_id_,
-            platform::errors::InvalidArgument(
-                "local_batch_id_ (%d) must be less than or equal to "
-                "batch_id_ (%d)",
-                local_batch_id_, batch_id_));
-        std::unique_lock<std::mutex> lk(thread_mutex);
-        if (local_batch_id_ == batch_id_ && !threads_completed) {
-          thread_condition.wait(lk);
-        }
-        VLOG(3) << "thread " << thread_id_ << " local_batch_id_ "
-                << local_batch_id_ << " batch_id_ " << batch_id_;
-        if (threads_completed) {
-          VLOG(3) << "thread " << thread_id_ << " completed.";
-          lk.unlock();
-          VLOG(0) << "============timeline============";
-          for (size_t i = 0; i < ops_.size(); ++i) {
-            VLOG(0) << "op: " << op_name[i] << ", max_time: " << op_max_time[i]
-                    << ", min_time: " << op_min_time[i]
-                    << ", mean_time: " << op_total_time[i] / op_count[i];
-          }
-          VLOG(0) << "================================";
-          return;
-        }
-        lk.unlock();
-        local_batch_id_ += 1;
-      }
       // forward pass:
+      int real_microbatch_num = 0;
       for (int i = 0; i < num_microbatches_; ++i) {
+        {
+          PADDLE_ENFORCE_LE(
+              local_batch_id_, batch_id_,
+              platform::errors::InvalidArgument(
+                  "local_batch_id_ (%d) must be less than or equal to "
+                  "batch_id_ (%d)",
+                  local_batch_id_, batch_id_));
+          std::unique_lock<std::mutex> lk(thread_mutex);
+          if (local_batch_id_ == batch_id_ && !threads_completed) {
+            thread_condition.wait(lk);
+          }
+          VLOG(3) << "thread " << thread_id_ << " local_batch_id_ "
+                  << local_batch_id_ << " batch_id_ " << batch_id_;
+          if (threads_completed) {
+            VLOG(3) << "thread " << thread_id_ << " completed.";
+            lk.unlock();
+            VLOG(0) << "============timeline============";
+            for (size_t i = 0; i < ops_.size(); ++i) {
+              VLOG(0) << "op: " << op_name[i] << ", max_time: " << op_max_time[i]
+                      << ", min_time: " << op_min_time[i]
+                      << ", mean_time: " << op_total_time[i] / op_count[i];
+            }
+            VLOG(0) << "================================";
+            break;
+          }
+          lk.unlock();
+          real_microbatch_num += 1;
+          local_batch_id_ += 1;
+        }
         int op_idx = 0;
         gettimeofday(&micro_start, NULL);
         for (auto& op : ops_) {
@@ -616,7 +638,7 @@ void SectionWorker::TrainFilesWithProfiler() {
       }
       dev_ctx_->Wait();
       // backward pass
-      for (int i = 0; i < num_microbatches_; ++i) {
+      for (int i = 0; i < real_microbatch_num; ++i) {
         int op_idx = 0;
         gettimeofday(&micro_start, NULL);
         for (auto& op : ops_) {
@@ -668,6 +690,9 @@ void SectionWorker::TrainFilesWithProfiler() {
         }
       }
       dev_ctx_->Wait();
+      if (real_microbatch_num == 0) {
+        return;
+      }
       // update pass
       int op_idx = 0;
       gettimeofday(&micro_start, NULL);

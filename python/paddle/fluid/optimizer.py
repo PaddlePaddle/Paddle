@@ -3676,15 +3676,9 @@ class PipelineOptimizer(object):
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             batch_size = 1
-            filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-            dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
-            dataset.set_use_var([x,y])
-            dataset.set_batch_size(batch_size)
-            dataset.set_filelist(filelist)
             data_loader.start()
             exe.train_from_dataset(
-                    fluid.default_main_program(),
-                    dataset)
+                    fluid.default_main_program())
             data_loader.reset()
     """
 
@@ -3701,7 +3695,7 @@ class PipelineOptimizer(object):
             "num_microbatches must be a positive value.")
         self._num_microbatches = num_microbatches
         assert start_cpu_core_id >= 0, (
-            "start_cpu_core_id must be greater than or equal to 0.")
+            "start_cpu_core_id must be a non negative integer.")
         self._start_cpu_core_id = start_cpu_core_id
         self._place_list = None
         op_maker = core.op_proto_and_checker_maker
@@ -3800,8 +3794,6 @@ class PipelineOptimizer(object):
                 if in_var_name == var_name:
                     post_op.append(op)
         if post_op:
-            if not len(post_op) == 1:
-                raise ValueError("Each op can only have one post op.")
             return post_op[0]
         return None
 
@@ -3856,60 +3848,26 @@ class PipelineOptimizer(object):
     def _get_data_var_info(self, block):
         """
         Get all vars whose is_data attribute are true and then rename them.
-
-        For PipelineTrainer, all data vars are binded to
-        minibatch scope, so we have to feed them to the microbatch
-        to avoid conflicts. The vars feeded to microbatch have to
-        be renamed.
         """
-        # A map from var name to the renamed name.
-        raw_name_new_name_map = dict()
-        # Because we will create vars in block, it is more safe
-        # to get all var_names before iteration.
-        var_names = list(block.vars.keys())
-        for var_name in var_names:
-            var = block.var(var_name)
-            if not var.is_data:
-                continue
-            assert var_name not in raw_name_new_name_map, (
-                "{} has already been processed.".format(var_name))
-            new_name = unique_name.generate(var_name)
-            raw_name_new_name_map[var_name] = new_name
-            new_var = self._create_var(block, var, new_name)
-            new_var.is_data = False
-
-        # map of data to devices that that data on
+        # map of data vars to devices that that data on
         data_devices_map = dict()
         for op in block.ops:
             dev_spec = op.attr(self._op_device_key)
             for var_name in op.input_arg_names:
-                if var_name not in raw_name_new_name_map:
+                if "blocking_queue" in var_name: continue
+                var = block.var(var_name)
+                if not var.is_data:
                     continue
                 if not var_name in data_devices_map:
                     data_devices_map[var_name] = []
                 if not dev_spec in data_devices_map[var_name]:
                     data_devices_map[var_name].append(dev_spec)
-                new_name = raw_name_new_name_map[var_name]
-                #self._rename_arg(op, var_name, new_name)
-        return data_devices_map, raw_name_new_name_map
-
-    def _rename_var_in_block(self, block, raw_name_new_name_map):
-        """
-        Rename vars whose names in raw_name_new_name_map to the corresponding
-        new names.
-        """
-        for op in block.ops:
-            if op.type == "enqueue" or op.type == "dequeue":
-                continue
-            for var_name in op.input_arg_names:
-                if var_name in raw_name_new_name_map:
-                    new_name = raw_name_new_name_map[var_name]
-                    self._rename_arg(op, var_name, new_name)
+        return data_devices_map
 
     def _insert_enq_deq_for_data_var(self, main_block, programs, startup,
                                      devices):
         """
-        Insert enqueue and dequeue ops for data var
+        Insert enqueue and dequeue ops for data var that on other devices.
 
         Args:
             main_block (Block): Global block for main program
@@ -3918,22 +3876,19 @@ class PipelineOptimizer(object):
             devices (list): List of devices in the format (dev:dev_index)
         """
         main_program = main_block.program
-        data_devices_map, raw_name_new_name_map = self._get_data_var_info(
-            main_block)
+        data_devices_map = self._get_data_var_info(main_block)
 
         first_prog = programs[0]['program']
         first_block = first_prog.block(0)
         enqueue_index = 0
-        if first_block.ops[0].type == "create_py_reader" or (
-                first_block.ops[1].type == "create_py_reader"):
-            for op in first_block.ops:
-                if op.type == "read":
-                    enqueue_index += 1
-                    break
-                enqueue_index += 1
+        for op in first_block.ops:
+            enqueue_index += 1
+            if op.type == "read":
+                break
         first_dev_spec = devices[0]
         for var_name in data_devices_map.keys():
             for device in data_devices_map[var_name]:
+                if device == first_dev_spec: continue
                 # step1: generate queue for each pair of data var and device
                 # that that data on
                 queue_name = var_name + "_blocking_queue"
@@ -3967,13 +3922,10 @@ class PipelineOptimizer(object):
                 prog = programs[prog_index]['program']
                 block = prog.block(0)
                 index = 0
-                if device == first_dev_spec:
-                    index = enqueue_index + 1
-                new_name = raw_name_new_name_map[var_name]
                 source_var = main_program.block(0).var(var_name)
-                new_var = self._create_var(block, source_var, new_name)
+                new_var = self._create_var(block, source_var, var_name)
                 block._insert_op(
-                    index=index,
+                    index=0,
                     type='dequeue',
                     outputs={'Out': [new_var]},
                     attrs={
@@ -3981,7 +3933,6 @@ class PipelineOptimizer(object):
                         self._op_role_key: self._op_role.Forward,
                         'queue_name': queue_name,
                     })
-                self._rename_var_in_block(block, raw_name_new_name_map)
 
     def _strip_grad_suffix(self, name):
         """
@@ -4162,82 +4113,57 @@ class PipelineOptimizer(object):
                         })
                     extra_index += 1
 
-    def _add_dequeue_ops_for_optimize(self, block, startup_program):
-        startup_block = startup_program.global_block()
-        grad_queue_map = dict()
-        grad_device_map = dict()
-        optimize_index = None
-        grad_names_to_dequeue = []
+    def _initialize_gradients(self, startup_block, main_block):
+        """
+        Initialize gradients before run.
+        """
+        for param_name in self._param_device_map:
+            grad_name = self._append_grad_suffix(param_name)
+            param_var = startup_block.vars[param_name]
+            grad_var = self._create_var(startup_block, param_var, grad_name)
+            main_grad_var = self._create_var(main_block, param_var, grad_name)
+            grad_var.persistable = True
+            main_grad_var.persistable = True
+            startup_block.append_op(
+                type='fill_constant',
+                inputs={},
+                outputs={'Out':[grad_var]},
+                attrs={
+                    'shape': grad_var.shape,
+                    'dtype': grad_var.dtype,
+                    'value': float(0)
+                })
 
+    def _clear_gradients(self, block):
+        """
+        Clear gradients after update.
+        """
         for index, op in reversed(list(enumerate(block.ops))):
             device = op.attr(self._op_device_key)
-            # Optimizer pass
-            if not self._is_optimize_op(op):
-                optimize_index = index + 1
-                break
             if not self._is_update_op(op): continue
             assert self._op_role_var_key in op.attr_names
             op_role_var = op.all_attrs()[self._op_role_var_key]
             assert len(op_role_var) == 2
             grad_name = op_role_var[1]
-            assert grad_name not in grad_device_map
-            assert grad_name not in grad_names_to_dequeue
-            grad_device_map[grad_name] = device
-            grad_names_to_dequeue.append(grad_name)
+            grad_var = block.var(grad_name)
 
-        for grad_name in grad_names_to_dequeue:
-            device = grad_device_map[grad_name]
-            grad_names = []
-            grads = []
-            queue_name = grad_name + "_blocking_queue"
-            queue_name = unique_name.generate(queue_name)
-            grad_queue_map[grad_name] = queue_name
-            ref_var = block.vars[grad_name]
-            queue_var = startup_block.create_var(
-                name=queue_name,
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            startup_block.append_op(
-                type='queue_generator',
+            block.append_op(
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [grad_var]},
                 attrs={
-                    'names': [queue_name],
-                    'capacity': self._num_microbatches
-                })
-            orig_var_name = self._strip_grad_suffix(grad_name)
-            for _ in range(self._num_microbatches):
-                u_name = unique_name.generate(orig_var_name)
-                u_grad_name = self._append_grad_suffix(u_name)
-                grad_var = self._create_var(block, ref_var, u_grad_name)
-                grad_names.append(u_grad_name)
-                grads.append(grad_var)
-            block._insert_op(
-                index=optimize_index,
-                type='dequeue',
-                outputs={'Out': grads},
-                attrs={
-                    self._op_device_key: device,
-                    'queue_name': queue_name,
-                    self._op_role_key: self._op_role.Optimize
-                })
-            block._insert_op(
-                index=optimize_index + 1,
-                type='sum',
-                inputs={'X': grad_names},
-                outputs={'Out': ref_var},
-                attrs={
+                    'shape': grad_var.shape,
+                    'dtype': grad_var.dtype,
+                    'value': float(0),
+                    'force_cpu': False,
                     self._op_device_key: device,
                     self._op_role_key: self._op_role.Optimize
                 })
-        return grad_queue_map
 
-    def _insert_enq_deq_ops_for_update(self, block, startup_program):
+    def _accumulate_gradients(self, block):
         """
-        Insert enqueue and dequeue ops for gradients of parameters.
+        Accumulate the graident generated in microbatch to the one in mini-batch.
         """
-        startup_block = startup_program.global_block()
-        grad_queue_map = self._add_dequeue_ops_for_optimize(block,
-                                                            startup_program)
-
         for index, op in reversed(list(enumerate(block.ops))):
             offset = index
             device = op.attr(self._op_device_key)
@@ -4264,19 +4190,25 @@ class PipelineOptimizer(object):
                 if len(op_role_var) == 0:
                     continue
                 assert len(op_role_var) % 2 == 0
+                offset = index
                 for i in range(0, len(op_role_var), 2):
                     grad_name = op_role_var[i + 1]
                     grad_var = block.vars[grad_name]
-                    assert grad_name in grad_queue_map
-                    queue_name = grad_queue_map[grad_name]
+                    param_name = op_role_var[i]
+                    param_var = block.vars[param_name]
+                    new_var_name = unique_name.generate(param_name)
+                    new_var_name = self._append_grad_suffix(new_var_name)
+                    new_var = self._create_var(block, grad_var, new_var_name)
+                    self._rename_arg(op, grad_name, new_var_name)
                     block._insert_op(
                         index=offset + 1,
-                        type='enqueue',
-                        inputs={'X': block.vars[grad_name]},
+                        type='sum',
+                        inputs={'X': [grad_var, new_var]},
+                        outputs={'Out': grad_var},
                         attrs={
-                            'queue_name': queue_name,
                             self._op_device_key: device,
-                            self._op_role_key: self._op_role.Backward
+                            self._op_role_key: self._op_role.Backward,
+                            self._op_role_var_key: op_role_var
                         })
                     offset += 1
 
@@ -4299,6 +4231,7 @@ class PipelineOptimizer(object):
 
     def _get_device_info(self, block):
         for op in block.ops:
+
             if not op._has_kernel(op.type): continue
             op_device = op.attr(self._op_device_key)
             return op_device
@@ -4420,8 +4353,11 @@ class PipelineOptimizer(object):
         self._insert_enq_deq_ops_for_boundaries(main_block, origin_main_block,
                                                 startup_program)
 
-        # Step4: add a pair of enqueue and dequeueN for parameter gradients
-        self._insert_enq_deq_ops_for_update(main_block, startup_program)
+        # Step4: accumulate gradients during backward
+        # and clear them after update
+        self._initialize_gradients(startup_program.global_block(), main_block)
+        self._accumulate_gradients(main_block)
+        self._clear_gradients(main_block)
 
         main_program = main_block.program
 

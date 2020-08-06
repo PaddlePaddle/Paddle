@@ -143,7 +143,6 @@ class PipelineTrainer : public TrainerBase {
   int section_num_;
   int num_microbatches_;
   int start_cpu_core_id_;
-  std::vector<std::string> feed_var_names_;
   std::vector<platform::Place> places_;
   std::vector<std::vector<std::string>> skip_vars_;
   TrainerDesc trainer_desc_;
