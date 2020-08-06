@@ -475,6 +475,11 @@ with redirect_stdout():
         cmdclass={
             'install_headers': InstallHeaders,
             'install': InstallCommand,
+        },
+        entry_points={
+            'console_scripts': [
+                'fleetrun = paddle.fleet.launch:launch'
+            ]
         }
     )
 
