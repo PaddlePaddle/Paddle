@@ -25,8 +25,7 @@ from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
 
 __all__ = [
-    'deprecated', 'generate_layer_fn', 'generate_activation_fn', 'autodoc',
-    'templatedoc'
+    'generate_layer_fn', 'generate_activation_fn', 'autodoc', 'templatedoc'
 ]
 
 
@@ -280,44 +279,7 @@ def generate_activation_fn(op_type):
         additional_args_lines=[
             "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
         ])
-    func.__doc__ = func.__doc__ + """
-
-Examples:
-    .. code-block:: python
-
-        import paddle
-        paddle.enable_imperative()
-        import numpy as np
-
-        x_data = np.array([1, 2, 3, 4]).astype(np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        res = paddle.%s(x)
-        print(res.numpy())
-
-""" % op_type
     return func
-
-
-def deprecated(func):
-    """
-    Deprecated warning decorator. It will result a warning message.
-    Should be used before class or function, member function
-    """
-
-    @functools.wraps(func)
-    def func_wrapper(*args, **kwargs):
-        """
-        Wrap func with deprecated warning
-        """
-        warnings.simplefilter('always', DeprecationWarning)  # turn off filter
-        warnings.warn(
-            "Call to deprecated function {}.".format(func.__name__),
-            category=DeprecationWarning,
-            stacklevel=2)
-        warnings.simplefilter('default', DeprecationWarning)  # reset filter
-        return func(*args, **kwargs)
-
-    return func_wrapper
 
 
 def autodoc(comment=""):
@@ -385,3 +347,14 @@ def templatedoc(op_type=None):
         return func
 
     return __impl__
+
+
+def add_sample_code(func, sample_code):
+    """
+    Append sample code for dynamically generated functions. 
+
+    Args:
+       func: The function of the function to be append sample code to.
+       sample_code: sample code session in rst format.
+    """
+    func.__doc__ = func.__doc__ + sample_code
