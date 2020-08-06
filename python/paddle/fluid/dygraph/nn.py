@@ -3212,7 +3212,7 @@ class Flatten(layers.Layer):
 
           inp_np = np.ones([5, 2, 3, 4]).astype('float32')
           
-          paddle.enable_imperative()
+          paddle.disable_static()
           
           inp_np = to_variable(inp_np)
           flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)

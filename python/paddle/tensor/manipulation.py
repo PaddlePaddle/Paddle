@@ -247,13 +247,13 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             image_shape=(2, 3, 4, 4)
             x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3]).reshape(image_shape) / 100.
             x = x.astype('float32')
             
-            img = paddle.imperative.to_variable(x)
+            img = paddle.to_variable(x)
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
     """
