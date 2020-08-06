@@ -26,8 +26,7 @@ import paddle
 import paddle.fluid as fluid
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.fleet as fleet
 
 
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
@@ -70,27 +69,35 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         fleet.init_worker()
-        exe.run(fleet.startup_program)
+        exe.run(fluid.default_startup_program())
 
         train_reader = paddle.batch(self.fake_reader(), batch_size=24)
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
 
         for batch_id, data in enumerate(train_reader()):
-            exe.run(fleet.main_program, feed=feeder.feed(data), fetch_list=[])
+            exe.run(fluid.default_main_program(),
+                    feed=feeder.feed(data),
+                    fetch_list=[])
 
         fleet.stop_worker()
 
     def run_ut(self):
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
 
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=0,
-            role=role_maker.Role.WORKER
-            if training_role == "TRAINER" else role_maker.Role.SERVER,
-            worker_num=1,
-            server_endpoints=["127.0.0.1:18099"])
+        os.environ["PADDLE_PSERVER_NUMS"] = "1"
+        os.environ["PADDLE_TRAINERS_NUM"] = "1"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+        os.environ["PADDLE_TRAINERS_NUM"] = "1"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
+            "127.0.0.1:36001"
 
-        strategy = StrategyFactory.create_geo_strategy(10)
+        role = role_maker.PaddleCloudRoleMaker()
+
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"k_steps": 100}
 
         if training_role == "TRAINER":
             self.run_trainer(role, strategy)
@@ -116,8 +123,7 @@ import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.fleet as fleet
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End
 

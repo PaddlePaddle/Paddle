@@ -73,10 +73,6 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         self.assertEqual(sends, 1)
         self.assertEqual(sgds, 6)
 
-        fleet.init_worker()
-        time.sleep(8)
-        fleet.stop_worker()
-
     def test_a_sync_optimizer_pserver(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"
         import paddle.fleet as fleet
