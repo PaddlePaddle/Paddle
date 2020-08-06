@@ -397,6 +397,7 @@ def softmax(x, axis=-1, name=None):
         .. code-block:: python
 
         import paddle
+        import paddle.nn.functional as F
         import numpy as np
 
         paddle.enable_imperative()
@@ -408,7 +409,7 @@ def softmax(x, axis=-1, name=None):
                        [5.0, 6.0, 7.0, 8.0],
                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
         x = paddle.imperative.to_variable(x)
-        out = paddle.nn.functional.softmax(x)
+        out = F.softmax(x)
         # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
