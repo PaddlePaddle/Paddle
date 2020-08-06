@@ -215,6 +215,8 @@ from .framework import BackwardStrategy  #DEFINE_ALIAS
 from .framework import to_variable  #DEFINE_ALIAS
 from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
+from .framework import save_dygraph  #DEFINE_ALIAS
+from .framework import load_dygraph  #DEFINE_ALIAS
 from .framework import save  #DEFINE_ALIAS
 from .framework import load  #DEFINE_ALIAS
 from .framework import prepare_context  #DEFINE_ALIAS
@@ -242,6 +244,8 @@ from .fluid.data import data
 
 from . import incubate
 from .incubate import hapi
+from .fluid.dygraph.base import enable_dygraph  #DEFINE_ALIAS
+from .fluid.dygraph.base import disable_dygraph  #DEFINE_ALIAS
 from .fluid.dygraph.base import enable_dygraph as disable_static  #DEFINE_ALIAS
 from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
