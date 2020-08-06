@@ -1227,7 +1227,7 @@ def max(x, axis=None, keepdim=False, name=None):
     Computes the maximum of tensor elements over the given axis.
 
     Args:
-        x(Variable): The input variable which is a Tensor, the data type is float32,
+        x(Tensor): A tensor, the data type is float32,
             float64, int32, int64.
         axis(list|int, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
@@ -1242,7 +1242,7 @@ def max(x, axis=None, keepdim=False, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: Tensor, results of maximum on the specified axis of input tensor,
+        Tensor, results of maximum on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
 
     Examples:
@@ -1319,8 +1319,7 @@ def min(x, axis=None, keepdim=False, name=None):
     Computes the minimum of tensor elements over the given axis
 
     Args:
-        x(Variable): The input variable which is a Tensor, the data type is float32,
-            float64, int32, int64.
+        x(Tensor): A tensor, the data type is float32, float64, int32, int64.
         axis(list|int, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
@@ -1334,7 +1333,7 @@ def min(x, axis=None, keepdim=False, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: Tensor, results of minimum on the specified axis of input tensor,
+        Tensor, results of minimum on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
 
     Examples:
