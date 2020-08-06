@@ -52,8 +52,7 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
     if (ctx->HasOutputs("MultiRoisNum")) {
       std::vector<framework::DDim> outs_num_dims;
       for (size_t i = 0; i < num_out_rois; ++i) {
-        framework::DDim out_num_dim = {-1};
-        outs_num_dims.push_back(out_num_dim);
+        outs_num_dims.push_back({-1});
       }
       ctx->SetOutputsDim("MultiRoisNum", outs_num_dims);
     }
@@ -86,7 +85,8 @@ class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) An array of positive number which is "
               "used to restore the order of FpnRois");
     AddOutput("MultiRoisNum",
-              "(Tensor) Multiple number of RoIs from each level in shape (B),"
+              "(List of Tensor) The RoIs' number of each image on multiple "
+              "levels. The number on each level has the shape of (B),"
               "B is the number of images.")
         .AsDuplicable()
         .AsDispensable();

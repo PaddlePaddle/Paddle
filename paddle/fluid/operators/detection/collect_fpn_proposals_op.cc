@@ -104,8 +104,9 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddInput(
         "MultiLevelNums",
-        "(Tensor) Multiple RoIs number of each image from each level in shape"
-        "(N), N is the number of images.")
+        "(List of Tensor) The RoIs' number of each image on multiple levels."
+        "The number on each level has the shape of (N), N is the number of "
+        "images.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("FpnRois", "(LoDTensor) All selected RoIs with highest scores");

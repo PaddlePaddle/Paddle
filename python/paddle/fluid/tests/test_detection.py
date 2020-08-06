@@ -654,7 +654,7 @@ class TestCollectFpnPropsals(unittest.TestCase):
         with program_guard(program):
             multi_bboxes = []
             multi_scores = []
-            multi_rois_num = []
+            rois_num_per_level = []
             for i in range(4):
                 bboxes = fluid.data(
                     name='rois' + str(i),
@@ -674,21 +674,18 @@ class TestCollectFpnPropsals(unittest.TestCase):
 
                 multi_bboxes.append(bboxes)
                 multi_scores.append(scores)
-                multi_rois_num.append(rois_num)
-            fpn_rois = layers.collect_fpn_proposals(
-                multi_bboxes, multi_scores, 2, 5, 10, return_rois_num=False)
-            fpn_rois_r, rois_num = layers.collect_fpn_proposals(
-                multi_bboxes, multi_scores, 2, 5, 10, return_rois_num=True)
-            fpn_rois_m = layers.collect_fpn_proposals(
+                rois_num_per_level.append(rois_num)
+            fpn_rois = layers.collect_fpn_proposals(multi_bboxes, multi_scores,
+                                                    2, 5, 10)
+            fpn_rois_m, rois_num = layers.collect_fpn_proposals(
                 multi_bboxes,
                 multi_scores,
                 2,
                 5,
                 10,
-                multi_rois_num=multi_rois_num)
+                rois_num_per_level=rois_num_per_level)
 
             self.assertIsNotNone(fpn_rois)
-            self.assertIsNotNone(fpn_rois_r)
             self.assertIsNotNone(rois_num)
             self.assertIsNotNone(fpn_rois_m)
 
@@ -749,14 +746,13 @@ class TestDistributeFpnProposals(unittest.TestCase):
                 max_level=5,
                 refer_level=4,
                 refer_scale=224)
-            multi_rois, restore_ind, multi_rois_num = layers.distribute_fpn_proposals(
+            multi_rois, restore_ind, rois_num_per_level = layers.distribute_fpn_proposals(
                 fpn_rois=fpn_rois,
                 min_level=2,
                 max_level=5,
                 refer_level=4,
                 refer_scale=224,
-                rois_num=rois_num,
-                return_rois_num=True)
+                rois_num=rois_num)
 
             self.assertIsNotNone(multi_rois)
             self.assertIsNotNone(restore_ind)

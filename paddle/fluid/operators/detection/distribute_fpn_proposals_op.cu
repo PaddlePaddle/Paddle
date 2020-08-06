@@ -90,7 +90,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     std::vector<size_t> fpn_rois_lod;
     if (ctx.HasInput("RoisNum")) {
       auto* rois_num = ctx.Input<Tensor>("RoisNum");
-      fpn_rois_lod = get_lod_from_rois_num(rois_num);
+      fpn_rois_lod = GetLodFromRoisNum(rois_num);
     } else {
       fpn_rois_lod = fpn_rois->lod().back();
     }

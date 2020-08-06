@@ -28,7 +28,7 @@ namespace operators {
 
 const int kBoxDim = 4;
 
-inline std::vector<size_t> get_lod_from_rois_num(const Tensor* rois_num) {
+inline std::vector<size_t> GetLodFromRoisNum(const Tensor* rois_num) {
   std::vector<size_t> rois_lod;
   auto* rois_num_data = rois_num->data<int>();
   Tensor cpu_tensor;
@@ -91,7 +91,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     int fpn_rois_num;
     if (context.HasInput("RoisNum")) {
       auto* rois_num = context.Input<Tensor>("RoisNum");
-      fpn_rois_lod = get_lod_from_rois_num(rois_num);
+      fpn_rois_lod = GetLodFromRoisNum(rois_num);
     } else {
       fpn_rois_lod = fpn_rois->lod().back();
     }

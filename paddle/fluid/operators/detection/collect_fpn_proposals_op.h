@@ -17,6 +17,7 @@ limitations under the License.*/
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <numeric>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -96,9 +97,8 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         all_rois = cur_rois_lod[cur_rois_lod.size() - 1];
       } else {
         const int* cur_rois_num = multi_rois_num[i]->data<int>();
-        for (int k = 0; k < multi_rois_num[i]->numel(); k++) {
-          all_rois += cur_rois_num[k];
-        }
+        all_rois = std::accumulate(
+            cur_rois_num, cur_rois_num + multi_rois_num[i]->numel(), 0);
       }
       integral_of_all_rois[i + 1] = integral_of_all_rois[i] + all_rois;
     }

@@ -110,7 +110,7 @@ class TestCollectFPNProposalstOpWithRoisNum(TestCollectFPNProposalstOp):
         self.rois, self.lod = self.calc_rois_collect()
         inputs_x = [('x%d' % i, (self.roi_inputs[i][:, 1:], self.rois_lod[i]))
                     for i in range(self.num_level)]
-        multi_rois_num = [
+        rois_num_per_level = [
             ('rois%d' % i, np.array(self.rois_lod[i][0]).astype('int32'))
             for i in range(self.num_level)
         ]
@@ -118,7 +118,7 @@ class TestCollectFPNProposalstOpWithRoisNum(TestCollectFPNProposalstOp):
         self.inputs = {
             'MultiLevelRois': inputs_x,
             "MultiLevelScores": self.scores_input,
-            'MultiLevelNums': multi_rois_num
+            'MultiLevelNums': rois_num_per_level
         }
         self.attrs = {'post_nms_topN': self.post_nms_top_n, }
         self.outputs = {

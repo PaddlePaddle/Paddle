@@ -3529,8 +3529,7 @@ def distribute_fpn_proposals(fpn_rois,
                              refer_level,
                              refer_scale,
                              name=None,
-                             rois_num=None,
-                             return_rois_num=False):
+                             rois_num=None):
     """
 	:alias_main: paddle.nn.functional.distribute_fpn_proposals
 	:alias: paddle.nn.functional.distribute_fpn_proposals,paddle.nn.functional.vision.distribute_fpn_proposals
@@ -3564,12 +3563,11 @@ def distribute_fpn_proposals(fpn_rois,
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default. 
-        rois_num(Variable): 1-D Tensor with shape [B] and data type is int32.
-            B is the number os images. The number of RoIs in each image.
-        return_rois_num(bool): When setting True, it will return a list 
-            contaning 1-D Tensor with shape [B] that includes RoIs' number of 
-            each image from each level. The length of list is the number of 
-            levels and B is the number of images. 'False' by default.
+        rois_num(Variable): 1-D Tensor contains the number of RoIs in each image. 
+            The shape is [B] and data type is int32. B is the number of images.
+            If it is not None then return a list of 1-D Tensor. Each element 
+            is the output RoIs' number of each image on the corresponding level
+            and the shape is [B]. None by default.
 
     Returns:
         Tuple:
@@ -3582,9 +3580,9 @@ def distribute_fpn_proposals(fpn_rois,
         the number of total rois. The data type is int32. It is
         used to restore the order of fpn_rois.
 
-        multi_rois_num(List): A list of 1-D Tensor with shape [B]
-        and data type of int32. B is the number of images. The number of RoIs 
-        in each image from each level.
+        rois_num_per_level(List): A list of 1-D Tensor and each Tensor is 
+        the RoIs' number in each image on the corresponding level. The shape 
+        is [B] and data type of int32. B is the number of images
         
 
     Examples:
@@ -3608,7 +3606,7 @@ def distribute_fpn_proposals(fpn_rois,
     multi_rois = [
         helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
     ]
-    multi_rois_num = [
+    rois_num_per_level = [
         helper.create_variable_for_type_inference(dtype='int32')
         for i in range(num_lvl)
     ]
@@ -3621,7 +3619,7 @@ def distribute_fpn_proposals(fpn_rois,
         outputs={
             'MultiFpnRois': multi_rois,
             'RestoreIndex': restore_ind,
-            'MultiRoisNum': multi_rois_num
+            'MultiRoisNum': rois_num_per_level
         },
         attrs={
             'min_level': min_level,
@@ -3629,8 +3627,8 @@ def distribute_fpn_proposals(fpn_rois,
             'refer_level': refer_level,
             'refer_scale': refer_scale
         })
-    if return_rois_num:
-        return multi_rois, restore_ind, multi_rois_num
+    if rois_num is not None:
+        return multi_rois, restore_ind, rois_num_per_level
     return multi_rois, restore_ind
 
 
@@ -3716,8 +3714,7 @@ def collect_fpn_proposals(multi_rois,
                           max_level,
                           post_nms_top_n,
                           name=None,
-                          multi_rois_num=None,
-                          return_rois_num=False):
+                          rois_num_per_level=None):
     """
 	:alias_main: paddle.nn.functional.collect_fpn_proposals
 	:alias: paddle.nn.functional.collect_fpn_proposals,paddle.nn.functional.vision.collect_fpn_proposals
@@ -3746,9 +3743,12 @@ def collect_fpn_proposals(multi_rois,
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default.
-        multi_rois_num(list, optional): List of the number of RoIs in each image from each level. Element in list is 1-D Tensor with shape [B] and data type is int32, B is the number of images. Default: None
-        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [B] that includes Rois' 
-            number of each image. B is the number of images. 'False' by default.         
+        rois_num_per_level(list, optional): The List of RoIs' numbers. 
+            Each element is 1-D Tensor which contains the RoIs' number of each 
+            image on each level and the shape is [B] and data type is 
+            int32, B is the number of images. If it is not None then return 
+            a 1-D Tensor contains the output RoIs' number of each image and 
+            the shape is [B]. Default: None
 
     Returns:
         Variable:
@@ -3756,8 +3756,9 @@ def collect_fpn_proposals(multi_rois,
         fpn_rois(Variable): 2-D LoDTensor with shape [N, 4] and data type is 
         float32 or float64. Selected RoIs. 
 
-        rois_num(Variable): 1-D Tensor with shape [B] and data type is int32.
-        B is the number of images. The number of RoIs in each image.
+        rois_num(Variable): 1-D Tensor contains the RoIs's number of each 
+        image. The shape is [B] and data type is int32. B is the number of 
+        images. 
 
     Examples:
         .. code-block:: python
@@ -3797,11 +3798,11 @@ def collect_fpn_proposals(multi_rois,
         inputs={
             'MultiLevelRois': input_rois,
             'MultiLevelScores': input_scores,
-            'MultiLevelNums': multi_rois_num
+            'MultiLevelNums': rois_num_per_level
         },
         outputs={'FpnRois': output_rois,
                  'RoisNum': rois_num},
         attrs={'post_nms_topN': post_nms_top_n})
-    if return_rois_num:
+    if rois_num_per_level is not None:
         return output_rois, rois_num
     return output_rois

@@ -135,7 +135,7 @@ class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
         }
         output = [('out%d' % i, self.rois_fpn[i])
                   for i in range(len(self.rois_fpn))]
-        multi_rois_num = [
+        rois_num_per_level = [
             ('rois_num%d' % i, np.array(self.rois_fpn[i][1][0]).astype('int32'))
             for i in range(len(self.rois_fpn))
         ]
@@ -143,7 +143,7 @@ class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
         self.outputs = {
             'MultiFpnRois': output,
             'RestoreIndex': self.rois_idx_restore.reshape(-1, 1),
-            'MultiRoisNum': multi_rois_num
+            'MultiRoisNum': rois_num_per_level
         }
 
 
