@@ -384,22 +384,6 @@ Examples:
 
 """)
 
-add_sample_code(globals()["square"], r"""
-Examples:
-    .. code-block:: python
-
-        import numpy as np
-        import paddle
-        paddle.enable_imperative()
-
-        x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
-        out = paddle.square(x)
-        print(out.numpy())
-        # [0.16 0.04 0.01 0.09]
-
-""")
-
 add_sample_code(globals()["softplus"], r"""
 Examples:
     .. code-block:: python
