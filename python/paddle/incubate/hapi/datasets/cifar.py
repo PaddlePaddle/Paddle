@@ -36,12 +36,13 @@ MODE_FLAG_MAP = {'train10': 'data_batch', 'test10': 'test_batch', 'train100': 't
 
 class Cifar(Dataset):
     """
-    Implement of Cifar dataset
+    Implement of cifar dataset
 
     Args:
         data_file(str): path to data file, can be set None if
             :attr:`download` is True. Default None
         mode(str): 'train100', 'test100', 'train10' or 'test10' mode. Default 'train100'.
+        transform(callable): transform to perform on image, None for on transform.
         download(bool): whether auto download cifar dataset if
             :attr:`data_file` unset. Default
             True

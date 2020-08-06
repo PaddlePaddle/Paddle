@@ -51,6 +51,7 @@ class Flowers(Dataset):
         setid_file(str): path to subset index file, can be set
             None if :attr:`download` is True. Default None
         mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
+        transform(callable): transform to perform on image, None for on transform.
         download(bool): whether auto download flower dataset if
             :attr:`data_file`/:attr:`label_file`/:attr:`setid_file` unset. Default
             True
