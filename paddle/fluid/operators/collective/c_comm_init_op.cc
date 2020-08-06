@@ -78,7 +78,9 @@ Initialize collective communicatoin context within this trainer
     AddAttr<int>("device_id",
                  "(int) The deivce_id on which to initialize the communicator."
                  "Now, you only have to set this attr manually for pipeline "
-                 "training. Make it as default otherwise.")
+                 "training. Otherwise, you should not set the value for this "
+                 "attribute manually and make it as default which is the "
+                 "device id of the context.")
         .SetDefault(-1);
     AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
