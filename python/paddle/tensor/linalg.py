@@ -30,7 +30,8 @@ __all__ = [
     'cross',
     'cholesky',
     #       'tensordot',
-    'bmm'
+    'bmm',
+    'histogram'
 ]
 
 
@@ -582,28 +583,32 @@ def t(input, name=None):
     return out
 
 
-def cross(input, other, dim=None):
+def cross(x, y, axis=None, name=None):
     """
 	:alias_main: paddle.cross
 	:alias: paddle.cross,paddle.tensor.cross,paddle.tensor.linalg.cross
 
-    Returns the cross product of vectors in dimension `dim` of the `input` and `other` tensor. 
-    Inputs must have the same shape, and the size of their dim-th dimension should be equla to 3. 
-    If `dim` is not given, it defaults to the first dimension found with the size 3.
+    Computes the cross product between two tensors along an axis.
+    Inputs must have the same shape, and the length of their axes should be equal to 3.
+    If `axis` is not given, it defaults to the first axis found with the length 3.
     
     Args:
-        input (Variable): The first input tensor variable.
-        other (Variable): The second input tensor variable.
-        dim (int): The dimension to take the cross-product in.
+        x (Variable): The first input tensor variable.
+        y (Variable): The second input tensor variable.
+        axis (int, optional): The axis along which to compute the cross product. It defaults to the first axis found with the length 3.
+        name (str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: A Tensor with same data type as `input`.
+        Variable: A Tensor with same data type as `x`.
         
     Examples:
         .. code-block:: python
             import paddle
-            import paddle.fluid as fluid
+            from paddle.imperative import to_variable
             import numpy as np
+
+            paddle.enable_imperative()
 
             data_x = np.array([[1.0, 1.0, 1.0],
                                [2.0, 2.0, 2.0],
@@ -611,37 +616,36 @@ def cross(input, other, dim=None):
             data_y = np.array([[1.0, 1.0, 1.0],
                                [1.0, 1.0, 1.0],
                                [1.0, 1.0, 1.0]])
+            x = to_variable(data_x)
+            y = to_variable(data_y)
 
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(data_x)
-                y = fluid.dygraph.to_variable(data_y)
-                out_z1 = paddle.cross(x, y)
-                print(out_z1.numpy())
-                #[[-1. -1. -1.]
-                # [ 2.  2.  2.]
-                # [-1. -1. -1.]]
-                out_z2 = paddle.cross(x, y, dim=1)
-                print(out_z2.numpy())
-                #[[0. 0. 0.]
-                # [0. 0. 0.]
-                # [0. 0. 0.]]
+            z1 = paddle.cross(x, y)
+            print(z1.numpy())
+            # [[-1. -1. -1.]
+            #  [ 2.  2.  2.]
+            #  [-1. -1. -1.]]
+
+            z2 = paddle.cross(x, y, axis=1)
+            print(z2.numpy())
+            # [[0. 0. 0.]
+            #  [0. 0. 0.]
+            #  [0. 0. 0.]]
     """
-    helper = LayerHelper("cross", **locals())
     if in_dygraph_mode():
-        if dim:
-            return core.ops.cross(input, other, 'dim', dim)
+        if axis is not None:
+            return core.ops.cross(x, y, 'dim', axis)
         else:
-            return core.ops.cross(input, other)
+            return core.ops.cross(x, y)
 
-    out = helper.create_variable_for_type_inference(input.dtype)
+    helper = LayerHelper("cross", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
     attrs = dict()
-    if dim:
-        attrs['dim'] = dim
+    attrs['dim'] = axis
 
     helper.append_op(
         type='cross',
-        inputs={'X': input,
-                'Y': other},
+        inputs={'X': x,
+                'Y': y},
         outputs={'Out': out},
         attrs=attrs)
     return out
@@ -750,4 +754,64 @@ def bmm(x, y, name=None):
         return core.ops.bmm(x, y)
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
+    return out
+
+
+def histogram(input, bins=100, min=0, max=0):
+    """
+    Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max. 
+    If min and max are both zero, the minimum and maximum values of the data are used.
+
+    Args:
+        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+            should be float32, float64, int32, int64.
+        bins (int): number of histogram bins
+        min (int): lower end of the range (inclusive)
+        max (int): upper end of the range (inclusive)
+
+    Returns:
+        Variable: Tensor or LoDTensor calculated by histogram layer. The data type is int64.
+
+    Code Example 1:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            startup_program = paddle.Program()
+            train_program = paddle.Program()
+            with paddle.program_guard(train_program, startup_program):
+                inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
+                output = paddle.histogram(inputs, bins=5, min=1, max=5)
+                place = paddle.CPUPlace()
+                exe = paddle.Executor(place)
+                exe.run(startup_program)
+                img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
+                res = exe.run(train_program,
+                              feed={'input': img},
+                              fetch_list=[output])
+                print(np.array(res[0])) # [0,3,0,2,1]
+
+    Code Example 2:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            with paddle.imperative.guard(paddle.CPUPlace()):
+                inputs_np = np.array([1, 2, 1]).astype(np.float)
+                inputs = paddle.imperative.to_variable(inputs_np)
+                result = paddle.histogram(inputs, bins=4, min=0, max=3)
+                print(result) # [0, 2, 1, 0]
+    """
+    if in_dygraph_mode():
+        return core.ops.histogram(input, "bins", bins, "min", min, "max", max)
+
+    helper = LayerHelper('histogram', **locals())
+    check_variable_and_dtype(
+        input, 'X', ['int32', 'int64', 'float32', 'float64'], 'histogram')
+    out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
+    helper.append_op(
+        type='histogram',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'bins': bins,
+               'min': min,
+               'max': max})
     return out

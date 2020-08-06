@@ -156,6 +156,7 @@ def test_list_pop_in_while_loop(x, iter_num):
         shape=[1], value=iter_num, dtype="int32")
     a = []
     i = 0
+
     while i < iter_num:
         a.append(x + i)
         i += 1

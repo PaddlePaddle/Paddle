@@ -470,7 +470,7 @@ def get_filenames():
             except AttributeError:
                 whl_error.append(api)
                 continue
-            if len(module.split('.')) > 2:
+            if len(module.split('.')) > 1:
                 filename = '../python/'
                 module_py = '%s.py' % module.split('.')[-1]
                 for i in range(0, len(module.split('.')) - 1):
@@ -481,7 +481,12 @@ def get_filenames():
                 print("\nWARNING:----Exception in get api filename----\n")
                 print("\n" + api + ' module is ' + module + "\n")
             if filename != '':
-                if filename not in filenames:
+                # rm contrib file
+                if filename.startswith(
+                        '../python/paddle/fluid/contrib'
+                ) or filename == '../python/paddle/verison.py':
+                    pass
+                elif filename not in filenames:
                     filenames.append(filename)
             # get all methods
             method = ''

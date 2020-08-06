@@ -15,7 +15,7 @@
 from __future__ import print_function
 import gast
 import inspect
-import logging
+import warnings
 import textwrap
 import threading
 import collections
@@ -28,16 +28,16 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 
-__all__ = ['ProgramTranslator', 'convert_function_with_cache']
-
-logger = logging.getLogger("fluid")
+__all__ = ['ProgramTranslator', 'convert_to_static']
 
 
 class FunctionCache(object):
@@ -46,43 +46,76 @@ class FunctionCache(object):
     """
 
     def __init__(self):
-        self._dycode_to_static_func = dict()
-        self._static_func_to_transformer = dict()
+        # Caches the converted static functions. {dygraph_func: static_func}
+        self._converted_static_func_caches = dict()
+        # Caches the converted ast node for same source code. {source_code: ast_root}
+        self._code_to_ast_caches = dict()
+        self._dygraph_to_static = DygraphToStaticAst()
 
-    def get_or_cache_func(self, func):
-        # code = self._get_dedent_code_string(func)
-        static_func = self._dycode_to_static_func.get(func, None)
+    def convert_with_cache(self, func):
+        """
+        Returns the cached static function or converts it when first encounters the function.
+        """
+        # If hit cache, return it directly.
+        static_func = self._converted_static_func_caches.get(func, None)
 
         if static_func is None:
-            static_func, dygraph_to_static_transformer = convert_to_static(func)
-            self._dycode_to_static_func[func] = static_func
-            self._static_func_to_transformer[
-                func] = dygraph_to_static_transformer
+            static_func = self._convert(func)
+            self._converted_static_func_caches[func] = static_func
 
         return static_func
 
-    def get_transformer(self, func):
-        return self._static_func_to_transformer.get(func, None)
+    def _convert(self, func):
+        """
+        Converts dygraph function into static function. For two functions with same dedent code,
+        the second function will reuse the transformed ast node of previous one.
 
-    def _get_dedent_code_string(self, func):
-        raw_code = inspect.getsource(func)
-        dedent_code = textwrap.dedent(raw_code)
-        return dedent_code
+        For example:
+            # A.py
+            def foo(x, y):
+                z = x + y
+                return z
+
+            # B.py
+            def foo(x, y):
+                z = x + y
+                return z
+
+        If the conversion of A.foo happens after B.foo, it will reuse the transformed ast node of B.foo
+        to speed up the conversion.
+        """
+        # Note: In Python2, it will raise OSError when inspect function
+        # with decorator directly and function.__wrapped__ holds the actual function.
+        func = getattr(func, '__wrapped__', func)
+        source_code = func_to_source_code(func)
+        if source_code in self._code_to_ast_caches:
+            root_wrapper = self._code_to_ast_caches[source_code]
+        else:
+            root = gast.parse(source_code)
+            root_wrapper = self._dygraph_to_static.get_static_ast(root)
+            self._code_to_ast_caches[source_code] = root_wrapper
+
+        # Get static function from AST
+        static_func, file_name = ast_to_func(root_wrapper.node, func)
+        return static_func
 
     def exist(self, func):
-        return self._dycode_to_static_func.get(func, None) is not None
+        return func in self._converted_static_func_caches
 
 
 _CACHE_LOCK = threading.Lock()
 _FUNCTION_CACHE = FunctionCache()
 
 
-def convert_function_with_cache(dygraph_func):
+def convert_to_static(function):
     """
     Transforms function of dygraph into static function using the cache mechanism.
+
+    Args:
+        function(callable): The function with dygraph layers that will be converted into static layers.
     """
     with _CACHE_LOCK:
-        static_func = _FUNCTION_CACHE.get_or_cache_func(dygraph_func)
+        static_func = _FUNCTION_CACHE.convert_with_cache(function)
         return static_func
 
 
@@ -92,19 +125,43 @@ class FunctionSpec(object):
         self._args = args
         self._kwargs = kwargs
 
+        dyfunc = getattr(func, '__wrapped__', func)
+        self._dyfunc_code = inspect.getsource(dyfunc)
+
     def is_method(self):
         return self._args and isinstance(self._args[0], layers.Layer)
 
     def parameters(self, include_sublayer=True):
+        """
+        Returns parameters of decorated layers. If set `include_sublayer` True,
+        the parameters created in sub layers will be added.
+        """
         params = collections.OrderedDict()
         if self.is_method():
+            layer_instance = self._args[0]
             if include_sublayer:
-                params = self._args[0].parameters()
+                params = layer_instance.parameters()
                 names = [p.name for p in params]
                 params = collections.OrderedDict(zip(names, params))
             else:
-                params = self._args[0]._parameters
+                params = layer_instance._parameters
         return params
+
+    def buffers(self, include_sublayer=True):
+        """
+        Returns Variable buffers of decorated layers. If set `include_sublayer` True,
+        the Variable buffers created in sub layers will be added.
+        """
+        buffers = collections.OrderedDict()
+        if self.is_method():
+            layer_instance = self._args[0]
+            if include_sublayer:
+                buffers = layer_instance.buffers()
+                names = [buffer.name for buffer in buffers]
+                buffers = collections.OrderedDict(zip(names, buffers))
+            else:
+                buffers = layer_instance._buffers
+        return buffers
 
     @switch_to_static_graph
     def to_static_inputs(self, main_program):
@@ -144,7 +201,9 @@ class FunctionSpec(object):
         # Note: if dygraph function is a method of class,
         # consider instance info as hash key.
         if self.is_method():
-            return self._dyfunc, self._args[0]
+            # NOTE: we can use Layer's (instance + function code) as hash key.
+            # An instance will not hold two identical methods 
+            return self._dyfunc_code, self._args[0]
         else:
             return self._dyfunc
 
@@ -153,6 +212,28 @@ class FunctionSpec(object):
 
     def __eq__(self, other):
         return self.__key() == self.__key()
+
+
+# Flag that indicates whether running code under `@declarative`
+_in_declarative_mode_ = False
+
+
+def in_declarative_mode():
+    """
+    Return a bool value that indicates whether running code under `@declarative`
+
+    """
+    return _in_declarative_mode_
+
+
+@signature_safe_contextmanager
+def _switch_declarative_mode_guard_(is_declarative=True):
+
+    global _in_declarative_mode_
+    original_val = _in_declarative_mode_
+    _in_declarative_mode_ = is_declarative
+    yield
+    _in_declarative_mode_ = original_val
 
 
 class ConcreteProgram(object):
@@ -179,7 +260,7 @@ class ConcreteProgram(object):
         """
         # Transforms dygraph function into static function and caches it.
         dygraph_function = func_spec.dyfunc
-        static_func = convert_function_with_cache(dygraph_function)
+        static_func = convert_to_static(dygraph_function)
 
         main_program, startup_program = framework.Program(), framework.Program()
         # Note: The random seed should be synchronized into cached program
@@ -190,22 +271,26 @@ class ConcreteProgram(object):
         ).random_seed
 
         with framework.program_guard(main_program, startup_program):
-            # 1. Adds `fluid.data` layers for input if needed
-            inputs = func_spec.to_static_inputs(main_program)
+            with _switch_declarative_mode_guard_(is_declarative=True):
+                # 1. Adds `fluid.data` layers for input if needed
+                inputs = func_spec.to_static_inputs(main_program)
 
-            # 2. Gets all ParamBases in the function
-            all_parameters = list(func_spec.parameters().values())
+                # 2. Gets all ParamBases and buffered VarBases in the function
+                all_parameters_and_buffers = list(func_spec.parameters().values(
+                )) + list(func_spec.buffers().values())
 
-            # 3. Builds program only once and returns the output Variables.
-            with param_guard(func_spec.parameters(False)):
-                outputs = static_func(*inputs)
-            if not isinstance(outputs, (tuple, list)):
-                outputs = [outputs] if outputs else []
+                # 3. Builds program only once and returns the output Variables.
+                with param_guard(func_spec.parameters(False)), param_guard(
+                        func_spec.buffers(False)):
+                    outputs = static_func(*inputs)
+                if not isinstance(outputs,
+                                  (tuple, list)) and outputs is not None:
+                    outputs = [outputs]
 
         return ConcreteProgram(
             inputs=inputs,
             outputs=outputs,
-            parameters=all_parameters,
+            parameters=all_parameters_and_buffers,
             func=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)
@@ -230,6 +315,17 @@ class ProgramCache(object):
                 type(item))
         if item not in self._caches:
             self._caches[item] = self._build_once(item)
+        return self._caches[item]
+
+    def get_program(self, item):
+        if not isinstance(item, FunctionSpec):
+            raise ValueError(
+                "Input item's type should be FunctionSpec, but received %s" %
+                type(item))
+        if item not in self._caches:
+            raise RuntimeError(
+                "Failed to find program for input item, please decorate input function by `@declarative`."
+            )
         return self._caches[item]
 
     def last(self):
@@ -381,7 +477,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable = False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
@@ -390,6 +486,8 @@ class ProgramTranslator(object):
         _, partial_program_layer = self._program_cache[function_spec]
 
         if args and isinstance(args[0], layers.Layer):
+            # Synchronize self.training attribute.
+            partial_program_layer.training = args[0].training
             args = args[1:]
 
         return partial_program_layer(args)
@@ -432,12 +530,12 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable=False. We will "
                 "just return dygraph output.")
             return dygraph_func
 
-        static_func = convert_function_with_cache(dygraph_func)
+        static_func = convert_to_static(dygraph_func)
         return static_func
 
     def get_program(self, dygraph_func, *args, **kwargs):
@@ -485,7 +583,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable=False."
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
@@ -552,98 +650,6 @@ class ProgramTranslator(object):
         # Get source_code
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
-
-    @switch_to_static_graph
-    def save_inference_model(self, dirname, feed=None, fetch=None):
-        """
-        Saves current model as the inference model. It will prune the main_program
-        to build a new program especially for inference, and then save it and all
-        related parameters to given `dirname` . The saved inference model can be
-        loaded by `:ref:`api_fluid_io_load_inference_model` or `C++ inference APIs.
-
-        Args:
-            dirname (str): the directory to save the inference model.
-            feed (list[int], optional): the indices of the input variables of the
-                dygraph functions which will be saved as input variables in
-                inference model. If None, all input variables of the dygraph function
-                would be the inputs of the saved inference model. Default None.
-            fetch (list[int], optional): the indices of the returned variable of the
-                dygraph functions which will be saved as output variables in
-                inference model. If None, all output variables of the dygraph function
-                would be the outputs of the saved inference model. Default None.
-        Returns:
-            None
-        Examples:
-            .. code-block:: python
-                import numpy as np
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph import Linear
-                from paddle.fluid.dygraph import declarative
-                from paddle.fluid.dygraph import ProgramTranslator
-
-                class SimpleNet(fluid.dygraph.Layer):
-                    def __init__(self, in_size, out_size):
-                        super(SimpleNet, self).__init__()
-                        self._linear = Linear(in_size, out_size)
-
-                    @declarative
-                    def forward(self, x):
-                        y = self._linear(x)
-                        z = self._linear(y)
-                        loss = fluid.layers.mean(z)
-                        return z, loss
-
-                with fluid.dygraph.guard(fluid.CPUPlace()):
-                    net = SimpleNet(8, 8)
-                    adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
-                    x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
-                    for i in range(10):
-                        loss, out = net(x)
-                        loss.backward()
-                        adam.minimize(loss)
-                        net.clear_gradients()
-                # Save inference model.
-                # Note that fetch=[0] means we set 'z' as the inference output.
-                prog_trans = ProgramTranslator()
-                prog_trans.save_inference_model("./dy2stat_infer_model", fetch=[0])
-
-                # In this example, the inference model will be pruned based on output (z).
-                # The pruned inference program is going to be saved in the folder
-                # "./dy2stat_infer_model" and parameters are going to be saved in separate
-                # files in the folder.
-        """
-
-        def get_feed_fetch(var_list, partial_vars, return_name=False):
-            vars = [
-                var for var in var_list if isinstance(var, framework.Variable)
-            ]
-            if partial_vars:
-                vars = [vars[idx] for idx in partial_vars]
-            if return_name:
-                vars = [var.name for var in vars]
-
-            return vars
-
-        func_spec, (concrete_program,
-                    partial_layer) = self._program_cache.last()
-        # share paramBase data with parameter
-        scope = core.Scope()
-        for param_base in concrete_program.parameters:
-            param_tensor = scope.var(param_base.name).get_tensor()
-            src_tensor = param_base.value().get_tensor()
-            param_tensor._share_data_with(src_tensor)
-
-        feed_var_names = get_feed_fetch(concrete_program.inputs, feed, True)
-        fetch_vars = get_feed_fetch(concrete_program.outputs, fetch)
-
-        from paddle.fluid.io import save_inference_model
-        with scope_guard(scope):
-            save_inference_model(
-                dirname=dirname,
-                feeded_var_names=feed_var_names,
-                target_vars=fetch_vars,
-                executor=executor.Executor(framework._current_expected_place()),
-                main_program=concrete_program.main_program.clone())
 
     def get_program_cache(self):
         """

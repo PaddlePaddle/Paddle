@@ -466,6 +466,12 @@ class TestCondBackward(unittest.TestCase):
                                lambda: batchnorm_fc_with_inputs(img, label, class_num=10))
 
         for use_parallel_exe in [False, True]:
+            if use_parallel_exe and os.name == "nt":
+                print(
+                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
+                )
+                continue
+
             self.backward_value_helper(cond_func,
                                        core.is_compiled_with_cuda(),
                                        use_parallel_exe)
@@ -487,6 +493,12 @@ class TestCondBackward(unittest.TestCase):
                                lambda: branch(i, img, label))
 
         for use_parallel_exe in [False, True]:
+            if use_parallel_exe and os.name == "nt":
+                print(
+                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
+                )
+                continue
+
             self.backward_value_helper(cond_func_simple_net_at_true,
                                        core.is_compiled_with_cuda(),
                                        use_parallel_exe)
@@ -514,6 +526,11 @@ class TestCondBackward(unittest.TestCase):
                                lambda: branch(i, img, label, False))
 
         for use_parallel_exe in [False, True]:
+            if use_parallel_exe and os.name == "nt":
+                print(
+                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
+                )
+                continue
             self.backward_value_helper(cond_func,
                                        core.is_compiled_with_cuda(),
                                        use_parallel_exe)

@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/string/split.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -33,6 +34,7 @@ DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
+USE_GPU_MEM_STAT;
 namespace paddle {
 namespace platform {
 
@@ -241,7 +243,9 @@ size_t GpuMaxAllocSize() {
 
 static size_t GpuAllocSize(bool realloc) {
   size_t available_to_alloc = GpuAvailableMemToAlloc();
-  PADDLE_ENFORCE_GT(available_to_alloc, 0, "No enough available GPU memory");
+  PADDLE_ENFORCE_GT(
+      available_to_alloc, 0,
+      platform::errors::ResourceExhausted("Not enough available GPU memory."));
   // If FLAGS_initial_gpu_memory_in_mb is 0, then initial memory will be
   // allocated by fraction
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
@@ -249,8 +253,9 @@ static size_t GpuAllocSize(bool realloc) {
   size_t alloc_bytes =
       (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
                                            FLAGS_fraction_of_gpu_memory_to_use);
-  PADDLE_ENFORCE_GE(available_to_alloc, alloc_bytes,
-                    "No enough available GPU memory");
+  PADDLE_ENFORCE_GE(
+      available_to_alloc, alloc_bytes,
+      platform::errors::ResourceExhausted("Not enough available GPU memory."));
   VLOG(10) << "Alloc size is " << (alloc_bytes >> 20)
            << " MiB, is it Re-alloc: " << realloc;
   return alloc_bytes;
@@ -339,10 +344,10 @@ class RecordedCudaMallocHelper {
     PADDLE_ENFORCE_GE(
         dev_id, 0,
         platform::errors::OutOfRange(
-            "Device id must be not less than 0, but got %d", dev_id));
+            "Device id must be not less than 0, but got %d.", dev_id));
     PADDLE_ENFORCE_LT(
         dev_id, instances_.size(),
-        platform::errors::OutOfRange("Device id %d exceeds gpu card number %d",
+        platform::errors::OutOfRange("Device id %d exceeds gpu card number %d.",
                                      dev_id, instances_.size()));
     return instances_[dev_id].get();
   }
@@ -364,6 +369,7 @@ class RecordedCudaMallocHelper {
       if (NeedRecord()) {
         cur_size_ += size;
       }
+      STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       return cudaSuccess;
     } else {
       RaiseNonOutOfMemoryError(&result);
@@ -392,6 +398,7 @@ class RecordedCudaMallocHelper {
         std::lock_guard<std::mutex> guard(*mtx_);
         cur_size_ -= size;
       }
+      STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
       cudaGetLastError();  // clear the error flag when cudaErrorCudartUnloading
     }

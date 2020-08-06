@@ -308,7 +308,6 @@ class OpTest(unittest.TestCase):
                 else:
                     tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
-
         return feed_map
 
     def _append_ops(self, block):
@@ -630,24 +629,23 @@ class OpTest(unittest.TestCase):
             # computational consistency.
             # When inplace_atol is not None, the inplace check uses numpy.allclose
             # to check inplace result instead of numpy.array_equal.
+            expect_out = np.array(expect_outs[i])
+            actual_out = np.array(actual_outs[i])
             if inplace_atol is not None:
                 self.assertTrue(
                     np.allclose(
-                        np.array(expect_outs[i]),
-                        np.array(actual_outs[i]),
-                        atol=inplace_atol),
+                        expect_out, actual_out, atol=inplace_atol),
                     "Output (" + name + ") has diff at " + str(place) +
                     " when using and not using inplace" + "\nExpect " +
-                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
-                    + " in class " + self.__class__.__name__)
+                    str(expect_out) + "\n" + "But Got" + str(actual_out) +
+                    " in class " + self.__class__.__name__)
             else:
                 self.assertTrue(
-                    np.array_equal(
-                        np.array(expect_outs[i]), np.array(actual_outs[i])),
+                    np.array_equal(expect_out, actual_out),
                     "Output (" + name + ") has diff at " + str(place) +
                     " when using and not using inplace" + "\nExpect " +
-                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
-                    + " in class " + self.__class__.__name__ + '\n')
+                    str(expect_out) + "\n" + "But Got" + str(actual_out) +
+                    " in class " + self.__class__.__name__ + '\n')
 
     def _construct_grad_program_from_forward(self, fwd_program, grad_op_desc,
                                              op_grad_to_var):

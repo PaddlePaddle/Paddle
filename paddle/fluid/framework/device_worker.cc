@@ -25,7 +25,7 @@ void DeviceWorker::SetDataFeed(DataFeed* data_feed) {
 }
 
 template <typename T>
-std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
+std::string PrintLodTensorType(Tensor* tensor, int64_t start, int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -38,8 +38,7 @@ std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
   return os.str();
 }
 
-std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
-                                  int64_t end) {
+std::string PrintLodTensorIntType(Tensor* tensor, int64_t start, int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -52,7 +51,7 @@ std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
   return os.str();
 }
 
-std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
+std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end) {
   std::string out_val;
   if (tensor->type() == proto::VarType::FP32) {
     out_val = PrintLodTensorType<float>(tensor, start, end);
@@ -112,6 +111,7 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
     writer_ << os.str();
   }
 }
+
 void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
   bool enable_random_dump = desc.enable_random_dump();
   if (!enable_random_dump) {
@@ -164,26 +164,35 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
   for (auto& field : *dump_fields_) {
     Variable* var = scope.FindVar(field);
     if (var == nullptr) {
+      VLOG(0) << "Note: field[" << field
+              << "] cannot be find in scope, so it was skipped.";
       continue;
     }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    if (!tensor->IsInitialized()) {
+      VLOG(0) << "Note: field[" << field
+              << "] is not initialized, so it was skipped.";
+      continue;
+    }
     framework::LoDTensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+      cpu_tensor.set_lod(tensor->lod());
       tensor = &cpu_tensor;
     }
     if (!CheckValidOutput(tensor, batch_size)) {
+      VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
+                                            "skipped. Maybe the dimension is "
+                                            "wrong ";
       continue;
     }
     for (size_t i = 0; i < batch_size; ++i) {
       if (!hit[i]) {
         continue;
       }
-      auto output_dim = tensor->dims()[1];
-      std::string output_dimstr = boost::lexical_cast<std::string>(output_dim);
-      ars[i] = ars[i] + "\t" + field + ":" + output_dimstr;
       auto bound = GetTensorBound(tensor, i);
-
+      ars[i] = ars[i] + "\t" + field + ":" +
+               std::to_string(bound.second - bound.first);
       ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
     }
   }

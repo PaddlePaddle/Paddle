@@ -24,8 +24,6 @@ namespace operators {
 
 void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "InstanceNorm");
-  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "InstanceNorm");
-  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "InstanceNorm");
   OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "InstanceNorm");
   OP_INOUT_CHECK(ctx->HasOutput("SavedMean"), "Output", "SavedMean",
                  "InstanceNorm");
@@ -51,37 +49,45 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
   auto C = x_dims[1];
   auto NxC = N * C;
 
-  auto scale_dim = ctx->GetInputDim("Scale");
-  auto bias_dim = ctx->GetInputDim("Bias");
+  if (ctx->HasInput("Scale")) {
+    auto scale_dim = ctx->GetInputDim("Scale");
 
-  PADDLE_ENFORCE_EQ(
-      scale_dim.size(), 1UL,
-      platform::errors::InvalidArgument(
-          "ShapeError: the dimension of scale must equal to 1."
-          "But received: the shape of scale is [%s], the dimension "
-          "of scale is [%d]",
-          scale_dim, scale_dim.size()));
-  PADDLE_ENFORCE_EQ(bias_dim.size(), 1UL,
-                    platform::errors::InvalidArgument(
-                        "ShapeError: the dimension of bias must equal to 1."
-                        "But received: the shape of bias is [%s],the dimension "
-                        "of bias is [%d]",
-                        bias_dim, bias_dim.size()));
+    PADDLE_ENFORCE_EQ(
+        scale_dim.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "ShapeError: the dimension of scale must equal to 1."
+            "But received: the shape of scale is [%s], the dimension "
+            "of scale is [%d]",
+            scale_dim, scale_dim.size()));
 
-  bool check = !((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
-                                         framework::product(bias_dim) <= 0));
+    bool check = !((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0));
 
-  if (check) {
-    PADDLE_ENFORCE_EQ(scale_dim[0], C,
-                      platform::errors::InvalidArgument(
-                          "ShapeError: the shape of scale must equal to [%d]"
-                          "But received: the shape of scale is [%d]",
-                          C, scale_dim[0]));
-    PADDLE_ENFORCE_EQ(bias_dim[0], C,
-                      platform::errors::InvalidArgument(
-                          "ShapeError: the shape of bias must equal to [%d]"
-                          "But received: the shape of bias is [%d]",
-                          C, bias_dim[0]));
+    if (check) {
+      PADDLE_ENFORCE_EQ(scale_dim[0], C,
+                        platform::errors::InvalidArgument(
+                            "ShapeError: the shape of scale must equal to [%d]"
+                            "But received: the shape of scale is [%d]",
+                            C, scale_dim[0]));
+    }
+  }
+  if (ctx->HasInput("Bias")) {
+    auto bias_dim = ctx->GetInputDim("Bias");
+    PADDLE_ENFORCE_EQ(
+        bias_dim.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "ShapeError: the dimension of bias must equal to 1."
+            "But received: the shape of bias is [%s],the dimension "
+            "of bias is [%d]",
+            bias_dim, bias_dim.size()));
+
+    bool check = !((!ctx->IsRuntime()) && (framework::product(bias_dim) <= 0));
+    if (check) {
+      PADDLE_ENFORCE_EQ(bias_dim[0], C,
+                        platform::errors::InvalidArgument(
+                            "ShapeError: the shape of bias must equal to [%d]"
+                            "But received: the shape of bias is [%d]",
+                            C, bias_dim[0]));
+    }
   }
 
   ctx->SetOutputDim("Y", x_dims);
@@ -100,12 +106,16 @@ framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP64) {
     in_param_type = framework::proto::VarType::FP64;
   }
-  PADDLE_ENFORCE_EQ(
-      in_param_type, ctx.Input<Tensor>("Scale")->type(),
-      platform::errors::InvalidArgument("Scale input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      in_param_type, ctx.Input<Tensor>("Bias")->type(),
-      platform::errors::InvalidArgument("Bias input should be of float type"));
+  if (ctx.HasInput("Scale")) {
+    PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Scale")->type(),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+  }
+  if (ctx.HasInput("Bias")) {
+    PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Bias")->type(),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
+  }
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
@@ -121,10 +131,12 @@ void InstanceNormOpMaker::Make() {
   AddInput("X", "The input tensor");
   AddInput("Scale",
            "Scale is a 1-dimensional tensor of size C "
-           "that is applied to the output");
+           "that is applied to the output")
+      .AsDispensable();
   AddInput("Bias",
            "Bias is a 1-dimensional tensor of size C "
-           "that is applied to the output");
+           "that is applied to the output")
+      .AsDispensable();
   AddOutput("Y", "result after normalization");
   AddOutput("SavedMean",
             "Mean of the current mini batch, "
@@ -199,9 +211,26 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
-    auto scale_e = framework::EigenVector<T>::Flatten(*scale);
+
+    Tensor scale_data;
+    Tensor bias_data;
+    if (!scale) {
+      scale_data.mutable_data<T>({C}, ctx.GetPlace());
+      set_constant(dev_ctx, &scale_data, static_cast<T>(1));
+    }
+
+    if (!bias) {
+      bias_data.mutable_data<T>({C}, ctx.GetPlace());
+      set_constant(dev_ctx, &bias_data, static_cast<T>(0));
+    }
+    auto scale_e = scale
+                       ? framework::EigenVector<T>::Flatten(*scale)
+                       : framework::EigenVector<T>::Flatten(
+                             const_cast<const framework::Tensor &>(scale_data));
     auto scale_arr = scale_e.reshape(C_shape);
-    auto bias_e = framework::EigenVector<T>::Flatten(*bias);
+    auto bias_e = bias ? framework::EigenVector<T>::Flatten(*bias)
+                       : framework::EigenVector<T>::Flatten(
+                             const_cast<const framework::Tensor &>(bias_data));
     auto bias_arr = bias_e.reshape(C_shape);
 
     y->mutable_data<T>(ctx.GetPlace());
@@ -219,7 +248,6 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
 
 void InstanceNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "InstanceNormGrad");
-  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "InstanceNormGrad");
   OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
                  framework::GradVarName("Y"), "InstanceNormGrad");
   OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",
@@ -230,15 +258,13 @@ void InstanceNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // check output
   OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
                  framework::GradVarName("X"), "InstanceNormGrad");
-  if (ctx->HasOutput(framework::GradVarName("Scale"))) {
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Bias")), "Output",
-                   framework::GradVarName("Bias"), "InstanceNormGrad");
-  }
   const auto x_dims = ctx->GetInputDim("X");
   const int C = x_dims[1];
   ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   if (ctx->HasOutput(framework::GradVarName("Scale"))) {
     ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
+  }
+  if (ctx->HasOutput(framework::GradVarName("Bias"))) {
     ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
   }
 }
@@ -299,7 +325,18 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
     Eigen::DSizes<int, 2> param_shape(N, C);
     Eigen::DSizes<int, 2> shape(NxC, sample_size);
 
-    auto scale_e = framework::EigenVector<T>::Flatten(*scale);
+    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
+
+    Tensor scale_data;
+    if (!scale) {
+      scale_data.mutable_data<T>({C}, ctx.GetPlace());
+      set_constant(dev_ctx, &scale_data, static_cast<T>(1));
+    }
+
+    auto scale_e = scale
+                       ? framework::EigenVector<T>::Flatten(*scale)
+                       : framework::EigenVector<T>::Flatten(
+                             const_cast<const framework::Tensor &>(scale_data));
     auto mean_e = framework::EigenVector<T>::Flatten(*saved_mean);
     auto inv_var_e = framework::EigenVector<T>::Flatten(*saved_inv_variance);
     auto dy_e = framework::EigenVector<T>::Flatten(*d_y);
@@ -311,10 +348,9 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
     auto dy_arr = dy_e.reshape(shape);
     auto x_arr = x_e.reshape(shape);
 
-    auto tmp =
-        (x_arr - mean_arr.broadcast(bcast)) * inv_var_arr.broadcast(bcast);
+    auto tmp = (x_arr - mean_arr.eval().broadcast(bcast)) *
+               inv_var_arr.eval().broadcast(bcast);
 
-    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
     // math: d_bias = np.sum(d_y, axis=(n,h,w))
     // math: d_scale = np.sum((X-mean) / inv_std * dy, axis=(n, h,w))
     if (d_scale && d_bias) {
@@ -324,8 +360,8 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
       set_constant(dev_ctx, d_bias, static_cast<T>(0));
 
       auto d_scale_e = framework::EigenVector<T>::Flatten(*d_scale);
-      auto d_bias_e = framework::EigenVector<T>::Flatten(*d_bias);
       auto d_scale_data = d_scale_e.reshape(C_shape);
+      auto d_bias_e = framework::EigenVector<T>::Flatten(*d_bias);
       auto d_bias_data = d_bias_e.reshape(C_shape);
       d_bias_data.device(*place) =
           dy_arr.sum(mean_rdims).reshape(param_shape).sum(rdims);
@@ -333,7 +369,8 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
           (tmp * dy_arr).sum(mean_rdims).reshape(param_shape).sum(rdims);
     }
 
-    auto dy_mean = dy_arr.mean(mean_rdims).reshape(NxC_shape).broadcast(bcast);
+    auto dy_mean =
+        dy_arr.mean(mean_rdims).reshape(NxC_shape).eval().broadcast(bcast);
 
     Eigen::DSizes<int, 2> bcast_param(N, sample_size);
     set_constant(dev_ctx, d_x, static_cast<T>(0));
@@ -351,6 +388,7 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
                                  (dy_arr * tmp)
                                      .mean(mean_rdims)
                                      .reshape(NxC_shape)
+                                     .eval()
                                      .broadcast(bcast));
   }
 };
@@ -358,8 +396,6 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
 void InstanceNormDoubleGradOp::InferShape(
     framework::InferShapeContext *ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "InstanceNormDoubleGrad");
-  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale",
-                 "InstanceNormDoubleGrad");
   OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",
                  "InstanceNormDoubleGrad");
   OP_INOUT_CHECK(ctx->HasInput("SavedVariance"), "Input", "SavedVariance",
@@ -424,6 +460,9 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     auto *dScale = ctx.Output<Tensor>("DScale");
     auto *ddY = ctx.Output<Tensor>("DDY");
 
+    auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
+
     const auto &x_dims = X->dims();
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
@@ -453,7 +492,13 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     mean_tile_data = mean_arr.transpose().replicate(sample_size, 1);
     inv_var_tile_data = inv_var_arr.transpose().replicate(sample_size, 1);
 
-    ConstEigenVectorArrayMap<T> scale_arr(Scale->data<T>(), C);
+    Tensor Scale_data;
+    if (!Scale) {
+      Scale_data.mutable_data<T>({C}, ctx.GetPlace());
+      set_constant(dev_ctx, &Scale_data, static_cast<T>(1));
+    }
+    ConstEigenVectorArrayMap<T> scale_arr(
+        Scale ? Scale->data<T>() : Scale_data.data<T>(), C);
 
     Tensor scale_tile;
     scale_tile.Resize({sample_size, NxC});
@@ -480,9 +525,6 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     //          np.mean(dy, axis=(h,w)) -
     //          inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean),
     //          axis=(h,w))))
-
-    auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
     Tensor x_sub_mean_mul_invstd;
     x_sub_mean_mul_invstd.Resize({sample_size, NxC});

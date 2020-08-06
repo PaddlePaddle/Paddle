@@ -365,6 +365,10 @@ const std::vector<std::string> &OpDesc::Output(const std::string &name) const {
   return it->second;
 }
 
+bool OpDesc::HasOutput(const std::string &name) const {
+  return outputs_.find(name) != outputs_.end();
+}
+
 std::vector<std::string> OpDesc::OutputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->outputs_) {
@@ -696,7 +700,7 @@ void OpDesc::InferShape(const BlockDesc &block) const {
     }
     infer_shape(&ctx);
   } catch (platform::EnforceNotMet &exception) {
-    framework::InsertCallStackInfo(Type(), attrs_, &exception);
+    framework::AppendErrorOpHint(Type(), &exception);
     throw std::move(exception);
   } catch (...) {
     std::rethrow_exception(std::current_exception());

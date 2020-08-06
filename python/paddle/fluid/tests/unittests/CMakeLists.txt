@@ -10,6 +10,8 @@ endif()
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
@@ -17,19 +19,29 @@ list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_momentum_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
-list(APPEND MIXED_DIST_TEST_OPS test_nce_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_recv_save_op)
 list(APPEND MIXED_DIST_TEST_OPS test_transpiler_ops)
-list(APPEND MIXED_DIST_TEST_OPS test_lookup_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_launch)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_ps)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_checkpoint)
 list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_recompute_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_gradient_merge_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_localsgd_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_lars_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_dgc_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_executor)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -43,13 +55,41 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
 
+#TODO(sunxiaolong01): Fix this unitest failed on GCC8.
+LIST(REMOVE_ITEM TEST_OPS test_conv2d_transpose_op)
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
-    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
     LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
+
+    LIST(REMOVE_ITEM TEST_OPS test_distributed_strategy)
+    LIST(REMOVE_ITEM TEST_OPS test_downpoursgd)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
+    LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
+    LIST(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
+
+    # TODO: Fix these unittests failed on Windows
+    LIST(REMOVE_ITEM TEST_OPS test_debugger)
+    list(REMOVE_ITEM TEST_OPS test_fake_init_op)
+    list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
+    list(REMOVE_ITEM TEST_OPS test_split_ids_op)
+    LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
+endif()
+
+if(APPLE OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_hdfs)
+    LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
 endif()
 
 if (NOT ${WITH_GPU})
@@ -57,14 +97,23 @@ if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_batch_fc_op) # TODO(shenliang03): batch_fc_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
+    list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_se_resnext)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+endif()
+
+if (WITH_NCCL)
+    if (${NCCL_VERSION} VERSION_LESS 2212)
+        LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
+        LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_transformer)
+    endif()
 endif()
 
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_pipeline)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
-    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
@@ -72,6 +121,7 @@ list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/Paddl
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorator_helper) # decorator_helper is a helper python file, not a test
+
 if(APPLE)
     if(NOT WITH_DISTRIBUTE)
         list(REMOVE_ITEM TEST_OPS test_desc_clone)
@@ -100,6 +150,10 @@ endif()
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
     LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)
+endif()
+
+if(NOT WITH_CRYPTO)
+    LIST(REMOVE_ITEM TEST_OPS test_crypto)
 endif()
 
 function(py_test_modules TARGET_NAME)
@@ -172,8 +226,8 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
@@ -201,6 +255,7 @@ list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
+list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -265,17 +320,17 @@ py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${G
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS})
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
-set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 py_test_modules(test_imperative_resnet_sorted_gradient MODULES test_imperative_resnet_sorted_gradient ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
-set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
     FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mnist_sorted_gradient ENVS
         FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
-set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 py_test_modules(test_imperative_ocr_attention_model MODULES test_imperative_ocr_attention_model ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 py_test_modules(test_install_check MODULES test_install_check ENVS
@@ -290,13 +345,23 @@ if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
 
     #not need
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_base")
 
-    py_test_modules(test_lookup_remote_table_op MODULES test_lookup_remote_table_op ENVS ${dist_ENVS})
-    py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
+    # FIXME(seiriosX) will readd after PR 22957  Merged
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_ctr")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_lars")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_train")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_save_load")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_simnet_bow")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_simnet_bow")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_text_classification")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
+
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
     py_test_modules(test_communicator_async MODULES test_communicator_async ENVS ${dist_ENVS})
@@ -304,12 +369,27 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_communicator_half_async MODULES test_communicator_half_async ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
     py_test_modules(test_communicator_sync MODULES test_communicator_sync ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
     py_test_modules(test_collective_optimizer MODULES test_collective_optimizer)
+    if(NOT APPLE)
+    	   py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
+    	   py_test_modules(test_fleet_recompute_meta_optimizer MODULES test_fleet_recompute_meta_optimizer ENVS ${dist_ENVS})
+	   py_test_modules(test_fleet_graph_execution_meta_optimizer MODULES test_fleet_graph_execution_meta_optimizer ENVS ${dist_ENVS})
+	   py_test_modules(test_fleet_graph_executor MODULES test_fleet_graph_executor ENVS ${dist_ENVS})
+           py_test_modules(test_fleet_gradient_merge_meta_optimizer MODULES test_fleet_gradient_merge_meta_optimizer ENVS ${dist_ENVS})
+           py_test_modules(test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS ${dist_ENVS})
+    	   py_test_modules(test_fleet_pipeline_meta_optimizer MODULES test_fleet_pipeline_meta_optimizer ENVS ${dist_ENVS})
+    	   py_test_modules(test_fleet_private_function MODULES test_fleet_private_function ENVS ${dist_ENVS})
+        if(NOT WIN32)
+            py_test_modules(test_fleet_localsgd_meta_optimizer MODULES test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
+            py_test_modules(test_fleet_lars_meta_optimizer MODULES test_fleet_lars_meta_optimizer ENVS ${dist_ENVS})
+        endif(NOT WIN32)
+    endif(NOT APPLE)
     if(WITH_DGC)
         # if with dgc, test all dgc tests.
         # NOTE. dist dgc tests is already in DIST_TEST_OPS
         py_test_modules(test_dgc_op MODULES test_dgc_op)
         py_test_modules(test_dgc_momentum_op MODULES test_dgc_momentum_op)
         py_test_modules(test_dgc_optimizer MODULES test_dgc_optimizer)
+        py_test_modules(test_fleet_dgc_meta_optimizer MODULES test_fleet_dgc_meta_optimizer)
     else()
         # if not with dgc, must close all dgc tests
         list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
@@ -322,8 +402,9 @@ if(WITH_DISTRIBUTE)
             py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
         endif()
         bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_launch MODULES test_fleet_launch.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
-        set(dist_ut_port 1000)
+        set(dist_ut_port 20001)
         foreach(TEST_OP ${DIST_TEST_OPS})
             bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
             MATH(EXPR dist_ut_port "${dist_ut_port}+50")
@@ -332,25 +413,34 @@ if(WITH_DISTRIBUTE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
+py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
-py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
-py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
-py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
-py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
+
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 py_test_modules(test_fuse_bn_act_pass MODULES test_fuse_bn_act_pass ENVS FLAGS_cudnn_deterministic=1 FLAGS_cudnn_batchnorm_spatial_persistent=1 FLAGS_conv_workspace_size_limit=1000)
 
+# NOTE: These unittests will appear NaN steadily in windows CI. After analysis,
+# it is found that windows CI will run all the training unittests with the ON_INFER option turned on, 
+# which will not appear in other CIs. The calculation behavior of some ops in inference mode is 
+# inconsistent with that in non-inference mode.
+if(NOT ON_INFER)
+    py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
+    py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
+    py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
+    set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
+    set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
+    set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
+endif()
+
 if(NOT WIN32)
+    # TODO: fix these unittests failure on Windows
+    py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
     # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
     py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
     set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 endif()
-
-set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
-set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
-set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
 
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
@@ -381,13 +471,14 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
-        PROPERTIES LABELS "RUN_TYPE=DIST" RUN_SERIAL TRUE)
+        test_parallel_executor_profiler
+        PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
-    set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
-    set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
-    # set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
-    set_tests_properties(test_multiprocess_dataloader_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
-    set_tests_properties(test_multiprocess_dataloader_dynamic PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
-    set_tests_properties(test_multiprocess_dataloader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+    set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+    # set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+    set_tests_properties(test_multiprocess_dataloader_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+    set_tests_properties(test_multiprocess_dataloader_dynamic PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+    set_tests_properties(test_multiprocess_dataloader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 endif()

@@ -32,6 +32,8 @@ class NaiveExecutor {
  public:
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
 
+  ~NaiveExecutor();
+
   // Create child scope.
   // Create variables.
   // @with_feed_fetch_ops: whether to work with the feed and fetch operators.
