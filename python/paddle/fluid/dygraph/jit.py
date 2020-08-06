@@ -24,16 +24,14 @@ from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec, VariableSpec, TLayer
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec, TensorSpec, PartialProgram
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Program, Block, Variable, ParamBase, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph.io import TranslatedLayer, VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
 
-__all__ = [
-    'TracedLayer', 'declarative', 'dygraph_to_static_func', 'VariableSpec'
-]
+__all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func', 'TensorSpec']
 
 
 def create_program_from_desc(program_desc):
@@ -128,58 +126,32 @@ def _dygraph_to_static_func_(dygraph_func):
 dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
-@decorator.decorator
-def declarative(dygraph_func, input_signature=None, *args, **kwargs):
-    """
-    Converts imperative dygraph APIs into declarative function APIs. Decorator
-    @declarative handles the Program and Executor of static mode and returns
-    the result as a dygraph VarBase.
+def make_decorate(original_func, wrapper_func):
+    decorator_name = "declarative"
 
-    Args:
-        dygraph_func (callable): callable imperative function.
+    wrapper_func.__name__ = original_func.__name__
+    wrapper_func._decorator_name = decorator_name
+    wrapper_func.__wrapped__ = original_func
+    wrapper_func.__doc__ = original_func.__doc__
+    if hasattr(original_func, "__module__"):
+        wrapper_func.__module__ = original_func.__module__
 
-    Returns:
-        VarBase: containing the numerical result.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import numpy as np
-          from paddle.fluid.dygraph.jit import declarative
+    return wrapper_func
 
 
-          @declarative
-          def func(x):
-              x = fluid.dygraph.to_variable(x)
-              if fluid.layers.mean(x) < 0:
-                  x_v = x - 1
-              else:
-                  x_v = x + 1
-              return x_v
+def declarative(function=None, input_signature=None):
+    def _decorator_(python_func):
+        return make_decorate(
+            original_func=python_func,
+            wrapper_func=PartialProgram(
+                dygraph_func=python_func, input_signature=input_signature))
 
-          x = np.ones([1, 2])
-          x_v = func(x)
-          print(x_v.numpy()) # [[2. 2.]]
+    # for `declarative2(foo, ...)`
+    if function is not None:
+        return _decorator_(function)
 
-    """
-    # def __impl__(*args, **kwargs):
-    # TODO: if specific input_signature, make sure that kwargs should be {}
-    # print("in declarative: ", args)
-    # print("in declarative: ", kwargs)
-
-    program_translator = ProgramTranslator()
-    if not program_translator.enable_declarative:
-        warnings.warn(
-            "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
-            "We will just return dygraph output.")
-        return dygraph_func(*args, **kwargs)
-    # TODO: consider a more elegant mechanism to replace `get_output` to handle `input_signature`
-    # Maybe use a wrapper class ?
-    output = program_translator.get_output(dygraph_func, input_signature, *args,
-                                           **kwargs)
-    # output = program_translator.get_output(dygraph_func, *args, **kwargs)
-    return output
+    # for `@declarative2`
+    return _decorator_
 
 
 class SaveLoadConfig(object):

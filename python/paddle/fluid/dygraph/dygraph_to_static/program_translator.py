@@ -16,24 +16,22 @@ from __future__ import print_function
 import gast
 import inspect
 import warnings
-import six
 import textwrap
 import threading
 import collections
-import numpy as np
-from paddle.fluid import core, scope_guard
+from paddle.fluid import scope_guard
 from paddle.fluid import framework
 from paddle.fluid import executor
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import type_name, getfullargspec
+from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.fluid.dygraph.dygraph_to_static.input_spec import TensorSpec, FunctionSpec
+from paddle.fluid.dygraph.dygraph_to_static.input_spec import get_buffers, get_parameters
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
@@ -122,281 +120,98 @@ def convert_to_static(function):
         return static_func
 
 
-class VariableSpec(object):
-
-    __slots__ = ['_shape', '_dtype', '_name']
-
-    def __init__(self, shape, dtype='float32', name=None):
-        # replace None with -1
-        for i in six.moves.range(len(shape)):
-            if shape[i] is None:
-                shape[i] = -1
-
-        self._shape = tuple(shape)
-        self._dtype = dtype  # TODO: convert it into united representions
-        self._name = name
-
-    @classmethod
-    def from_variable(cls, variable, name=None):
-        if isinstance(variable, (core.Variable, core.VarBase)):
-            return cls(variable.shape, variable.dtype, name or variable.name)
-        else:
-            raise ValueError(
-                "Input `variable` should be a Variable, but received {}.".
-                format(type_name(variable)))
-
-    @classmethod
-    def from_numpy(cls, ndarray, name=None):
-        # TODO: tansform ndarray.type into paddle dataType
-
-        return cls(ndarray.shape, ndarray.dtype, name)
-
-    # TODO: where to use this interface?
-    def _batch(self, batch_size):
-        if isinstance(batch_size, (list, tuple)):
-            if len(batch_size) != 1:
-                raise ValueError(
-                    "Length of  {}: batch_size shall be 1, but received {}.".
-                    format(type_name(variable), len(batch_size)))
-            batch_size = batch_size[1]
-        if not isinstance(batch_size, int):
-            raise TypeError("type(batch_size) shall be int, but received {}.".
-                            format(type_name(batch_size)))
-
-        return VariableSpec([batch_size] + self._shape, self._dtype, self._name)
-        # self._shape = [batch_size] + self._shape
-        # return self
-
-    def _unbatch(self):
-        if len(self._shape) == 0:
-            raise ValueError(
-                "Not support to unbatch a variable when len(shape) == 0.")
-
-        return VariableSpec(self._shape[1:], self._dtype, self.name)
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def name(self):
-        return self._name
-
-    def __repr__(self):
-        return '{}(shape={}, dtype={}, name={})'.format(
-            type_name(self), self._shape, self._dtype, self._name)
+class CacheKey(object):
+    def __init__(self, function_spec, inputs_with_spec, class_instance):
+        self.function_spec = function_spec
+        # TODO: make sure it can hash 
+        self.inputs_with_spec = inputs_with_spec
+        # TODO: make sure it can hash
+        self.class_instance = class_instance
 
     def __hash__(self):
-        return hash((self._shape, self._dtype))
+        return hash((id(self.function_spec), tuple(self.inputs_with_spec),
+                     self.class_instance))
 
     def __eq__(self, other):
-        return (type(self) is type(other) and all(
-            getattr(self, attr) == getattr(other, attr)
-            for attr in self.__slots__))
+        return (type(self) is type(other)) and hash(self) == hash(other)
 
-    def __ne__(self, other):
+    def __neq__(self, other):
         return not self == other
 
+    def __repr__(self):
+        return "id(function_spec): {}, inputs_with_spec: {}, class_instance: {}".format(
+            id(self.function_spec), self.inputs_with_spec, self.class_instance)
 
-class FunctionSpec(object):
-    def __init__(self, func, input_signature, args, kwargs):
-        # print(id(func), func.__name__)
-        self._dyfunc = func
+
+class PartialProgram(object):
+    def __init__(self, dygraph_func, input_signature=None):
+        self._dygraph_func = dygraph_func
         self._input_signature = input_signature
-        self._idx_to_variable_spec = {}
-        self._args = args
-        self._kwargs = kwargs
-        self._inputs_with_spec = self.parse_variable_spec(args)
-        # TODO: add args_keys parser, modify it into lazy mode
-        self._arg_names = self._parse_arg_names(func)
+        self._function_spec = FunctionSpec(dygraph_func, input_signature)
+        # cache the transformed programs
+        self._program_cache = ProgramCache()
+        # save the instance `self` while decorating a method of class.
+        self._class_instance = None
 
-        dyfunc = getattr(func, '__wrapped__', func)
-        self._dyfunc_code = inspect.getsource(dyfunc)
+    def __get__(self, instance, owner):
+        self._class_instance = instance
+        return self
 
-    def is_method(self):
-        return self._args and isinstance(self._args[0], layers.Layer)
+    def __call__(self, *args, **kwargs):
+        # 1. call dygraph function if not enable `declarative`
+        if not program_trans.enable_declarative:
+            return self._call_dygraph_func(*args, **kwargs)
 
-    def _parse_arg_names(self, func):
-        fullargspec = getfullargspec(func)
-        # if self.is_method():
-        #     arg_names = fullargspec.args[1:]
-        # else:
-        arg_names = fullargspec.args
+        # 2. convert tensor and numpy array into TensorSpec 
+        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        inputs_with_spec = self._function_spec.args_to_variable_spec(args,
+                                                                     kwargs)
+        # TODO: whether we need this class or just a functionSpec
+        # 3. check whether hit the cache or build a new program for the input arguments
+        cache_key = CacheKey(self._function_spec, inputs_with_spec,
+                             self._class_instance)
+        # print(inputs_with_spec, hash(cache_key))
+        _, partial_program_layer = self._program_cache[cache_key]
 
-        if len(self.args) != len(arg_names):
-            raise ValueError(
-                "Function `{}({})` requires {} arguments, but received {} arguments.".
-                format(self._dyfunc.__name__, ','.join(arg_names),
-                       len(arg_names), len(self.args)))
+        # 4. # Synchronize self.training attribute.
+        if isinstance(self._class_instance, layers.Layer):
+            partial_program_layer.training = self._class_instance.training
 
-        return arg_names
+        return partial_program_layer(args)
 
-    @staticmethod
-    def from_function_and_signature(func, input_signature):
-        # TODO: deal with args
-        return FunctionSpec(func, input_signature, [])
-
-    def parameters(self, include_sublayer=True):
-        """
-        Returns parameters of decorated layers. If set `include_sublayer` True,
-        the parameters created in sub layers will be added.
-        """
-        params = collections.OrderedDict()
-        if self.is_method():
-            layer_instance = self._args[0]
-            if include_sublayer:
-                params = layer_instance.parameters()
-                names = [p.name for p in params]
-                params = collections.OrderedDict(zip(names, params))
-            else:
-                params = layer_instance._parameters
-        return params
-
-    def buffers(self, include_sublayer=True):
-        """
-        Returns Variable buffers of decorated layers. If set `include_sublayer` True,
-        the Variable buffers created in sub layers will be added.
-        """
-        buffers = collections.OrderedDict()
-        if self.is_method():
-            layer_instance = self._args[0]
-            if include_sublayer:
-                buffers = layer_instance.buffers()
-                names = [buffer.name for buffer in buffers]
-                buffers = collections.OrderedDict(zip(names, buffers))
-            else:
-                buffers = layer_instance._buffers
-        return buffers
-
-    def parse_variable_spec(self, args):
-        # replace variable and numpy array with VariableSpec
-        inputs_with_spec = []
-
-        if self._input_signature is not None:
-            if self._kwargs:
-                raise ValueError(
-                    "Not support kwargs when specific VariableSpec.")
-            # TODO: consider nested structure input arguments
-            flat_signature = flatten(self._input_signature)
-            if self.is_method():
-                args = args[1:]
-
-            if len(args) < len(flat_signature):
-                raise ValueError(
-                    "Mismatch length of arguments and VariableSpec, receive len(args):{} < len(VariableSpec): {}".
-                    format(len(args), len(flat_signature)))
-
-            # TODO: make sure we can handle When the lengths are inconsistent
-            # print(args)
-
-            inputs_with_spec = flat_signature + list(args)[len(flat_signature):]
-            if self.is_method():
-                inputs_with_spec = [self._args[0]] + inputs_with_spec
-
-            self._idx_to_variable_spec = dict(
-                zip(range(len(flat_signature)), flat_signature))
-            # print(inputs_with_spec)
-
+    def _call_dygraph_func(self, *args, **kwargs):
+        if self._class_instance is not None:
+            dygraph_func = self._dygraph_func.__get__(self._class_instance)
         else:
-            # map index into variable_spec
-            for idx, input_var in enumerate(flatten(args)):
-                if isinstance(input_var, np.ndarray):
-                    input_var = VariableSpec.from_numpy(input_var)
-                elif isinstance(input_var, core.VarBase):
-                    input_var = VariableSpec.from_variable(input_var)
+            dygraph_func = self._dygraph_func
 
-                if isinstance(input_var, VariableSpec):
-                    self._idx_to_variable_spec[idx] = input_var
+        return dygraph_func(*args, **kwargs)
 
-                inputs_with_spec.append(input_var)
-
-        return inputs_with_spec
-
-    # TODO: Reuse code with to_static_inputs
-    @switch_to_static_graph
-    def to_static_inputs_with_signature(self, main_program):
-        """
-        If users specific signature info, we only signature?
-        """
-        # TODO: lazy mode or cache the functionSpec
-        args = flatten(self.args)
-
-        inputs = []
-        block = main_program.global_block()
-        for i, var_spec in enumerate(self._inputs_with_spec):
-            if isinstance(var_spec, VariableSpec):
-                feed_layer = block.create_var(
-                    # TODO: consider nested structure
-                    name=var_spec.name or "feed_" + self._arg_names[i],
-                    shape=var_spec.shape,
-                    dtype=var_spec.dtype,
-                    is_data=True,
-                    need_check_feed=False)
-            else:
-                feed_layer = args[i]
-            inputs.append(feed_layer)
-
-        return pack_sequence_as(args, inputs)
-
-    @switch_to_static_graph
-    def to_static_inputs(self, main_program):
-        inputs = []
-        block = main_program.global_block()
-        for input_var in flatten(self.args):
-            if isinstance(input_var, np.ndarray):
-                feed_layer = block.create_var(
-                    name=unique_name.generate('feed'),
-                    shape=list(input_var.shape),
-                    dtype=input_var.dtype,
-                    is_data=True,
-                    need_check_feed=False)
-            elif isinstance(input_var, core.VarBase):
-                feed_layer = block.create_var(
-                    name=input_var.name,
-                    shape=list(input_var.shape),
-                    dtype=input_var.dtype,
-                    stop_gradient=input_var.stop_gradient,
-                    need_check_feed=False)
-            else:
-                feed_layer = input_var
-
-            inputs.append(feed_layer)
-        # Restores the nested structure as self.args
-        return pack_sequence_as(self.args, inputs)
+    def get_trace_count(self):
+        return len(self._program_cache)
 
     @property
-    def dyfunc(self):
-        return self._dyfunc
+    def to_code(self):
+        # TODO
+        return None
 
     @property
-    def args(self):
-        return self._args
-
-    # TODO: consider input_signature as key
-    def __key(self):
-        # Note: if dygraph function is a method of class,
-        # consider instance info as hash key.
-        if self.is_method():
-            # NOTE: we can use Layer's (instance + function code) as hash key.
-            # An instance will not hold two identical methods 
-            return self._dyfunc_code, self._args[0], tuple(
-                self._inputs_with_spec)
+    def program(self, is_test=False):
+        # if specific the input_signature, the length of program_cache will always 1,
+        # else, return the last one.
+        if len(self._program_cache) > 0:
+            cache_key, (concrete_program,
+                        partial_layer) = self._program_cache.last()
+            if is_test:
+                return partial_layer._infer_program
+            else:
+                return partial_layer._train_program
         else:
-            return self._dyfunc, tuple(self._inputs_with_spec)
-
-    def __hash__(self):
-        return hash(self.__key())
-
-    def __eq__(self, other):
-        return self.__key() == self.__key()
+            raise ValueError("No valid transformed program.")
 
     @property
-    def hash_key(self):
-        return self.__key()
+    def program_cache(self):
+        return self._program_cache
 
 
 # Flag that indicates whether running code under `@declarative`
@@ -438,7 +253,7 @@ class ConcreteProgram(object):
 
     @staticmethod
     @switch_to_static_graph
-    def from_func_spec(func_spec):
+    def from_func_spec(func_spec, inputs_spec, class_instance):
         """
         Builds the main_program with specialized inputs and returns outputs
         of program as fetch_list.
@@ -459,15 +274,23 @@ class ConcreteProgram(object):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `fluid.data` layers for input if needed
                 # inputs = func_spec.to_static_inputs(main_program)
-                inputs = func_spec.to_static_inputs_with_signature(main_program)
+                # TODO: modify it into plain function if don't rely on function.spec
+                inputs = func_spec.to_static_inputs_with_signature(inputs_spec,
+                                                                   main_program)
+                if class_instance:
+                    inputs = [class_instance] + inputs
 
                 # 2. Gets all ParamBases and buffered VarBases in the function
-                all_parameters_and_buffers = list(func_spec.parameters().values(
-                )) + list(func_spec.buffers().values())
+                all_parameters_and_buffers = list(
+                    get_parameters(class_instance).values()) + list(
+                        get_buffers(class_instance).values())
 
                 # 3. Builds program only once and returns the output Variables.
-                with param_guard(func_spec.parameters(False)), param_guard(
-                        func_spec.buffers(False)):
+                with param_guard(get_parameters(
+                        class_instance, False)), param_guard(
+                            get_buffers(class_instance, False)):
+                    print(static_func)
+                    print(inputs)
                     outputs = static_func(*inputs)
                 if not isinstance(outputs,
                                   (tuple, list)) and outputs is not None:
@@ -490,24 +313,29 @@ class ProgramCache(object):
     def __init__(self):
         self._caches = collections.OrderedDict()
 
-    def _build_once(self, func_spec):
-        concrete_program = ConcreteProgram.from_func_spec(func_spec)
+    def _build_once(self, cache_key):
+        print("build program for : ", cache_key)
+        concrete_program = ConcreteProgram.from_func_spec(
+            func_spec=cache_key.function_spec,
+            inputs_spec=cache_key.inputs_with_spec,
+            class_instance=cache_key.class_instance)
         return concrete_program, partial_program_from(concrete_program)
 
     def __getitem__(self, item):
-        if not isinstance(item, FunctionSpec):
-            raise ValueError(
-                'type(item) should be FunctionSpec, but received %s' %
-                type(item))
+        if not isinstance(item, CacheKey):
+            raise ValueError('type(item) should be CacheKey, but received %s' %
+                             type_name(item))
+        # print("hash {} in self._caches: {}".format(hash(item), item in self._caches))
         if item not in self._caches:
             self._caches[item] = self._build_once(item)
+        # print("cache_keys: ", self._caches.keys())
         return self._caches[item]
 
     def get_program(self, item):
-        if not isinstance(item, FunctionSpec):
+        if not isinstance(item, CacheKey):
             raise ValueError(
                 "Input item's type should be FunctionSpec, but received %s" %
-                type(item))
+                type_name(item))
         if item not in self._caches:
             raise RuntimeError(
                 "Failed to find program for input item, please decorate input function by `@declarative`."
@@ -520,8 +348,11 @@ class ProgramCache(object):
         key = next(reversed(self._caches.keys()))
         return key, self._caches[key]
 
+    def __len__(self):
+        return len(self._caches)
+
     def concrete_programs(self):
-        return [cp for cp, _ in self._caches.iteritems()]
+        return [cp for key, (cp, _) in self._caches.iteritems()]
 
 
 def synchronized(func):
@@ -532,18 +363,6 @@ def synchronized(func):
             return func(*args, **kwargs)
 
     return lock_func
-
-
-class TLayer(object):
-    def __init__(self, inner_function, input_signature):
-        self._inner_function = inner_function
-        self._input_signature = inner_function
-
-    def __get__(self, instance, owner):
-        return self._inner_function.__get__(instance, onwer)
-
-    def __call__(self, *args, **kwargs):
-        return self._inner_function(*args, **kwargs)
 
 
 class ProgramTranslator(object):
@@ -874,3 +693,6 @@ class ProgramTranslator(object):
 
         """
         return self._program_cache
+
+
+program_trans = ProgramTranslator()

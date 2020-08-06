@@ -28,6 +28,7 @@ import numpy
 import six
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import PartialProgram
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 
@@ -97,6 +98,10 @@ def convert_call(func):
     """
     func_self = None
     converted_call = None
+
+    if isinstance(func, PartialProgram):
+        instance = func._class_instance
+        func = func._dygraph_func.__get__(instance)
 
     if is_builtin_len(func):
         return convert_len
