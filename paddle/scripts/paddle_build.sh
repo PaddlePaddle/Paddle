@@ -958,6 +958,7 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
     if [ "$WITH_GPU" == "ON" ];then
         parallel_test_base_gpu
     else

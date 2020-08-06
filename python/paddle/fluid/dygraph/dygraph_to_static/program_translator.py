@@ -36,7 +36,6 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
-from paddle.fluid.annotations import deprecated
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
 
@@ -487,6 +486,8 @@ class ProgramTranslator(object):
         _, partial_program_layer = self._program_cache[function_spec]
 
         if args and isinstance(args[0], layers.Layer):
+            # Synchronize self.training attribute.
+            partial_program_layer.training = args[0].training
             args = args[1:]
 
         return partial_program_layer(args)

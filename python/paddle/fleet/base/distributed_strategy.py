@@ -201,7 +201,7 @@ class DistributedStrategy(object):
                         f.name).extend(getattr(strategy, f.name))
 
     @property
-    def async_update(self):
+    def a_sync(self):
         """
         Indicating whether we are using asynchronous stocastic gradient descent updates
         for training. This property is valid when we are using parameter server training, 
@@ -216,29 +216,29 @@ class DistributedStrategy(object):
             fleet.init(role_maker)
 
             strategy = fleet.DistributedStrategy()
-            strategy.async_update = True  # by default this is True
+            strategy.a_sync = True  # by default this is True
             
             # code block for defining loss and local optimizer
             # sgd = fleet.distributed_optimizer(optimizer, strategy)
         """
-        return self.strategy.async
+        return self.strategy.a_sync
 
-    @async_update.setter
-    def async_update(self, flag):
+    @a_sync.setter
+    def a_sync(self, flag):
         if isinstance(flag, bool):
-            self.strategy.async = flag
+            self.strategy.a_sync = flag
         else:
-            print("WARNING: async_update should have value of bool type")
+            print("WARNING: a_sync should have value of bool type")
 
     @property
-    def async_update_configs(self):
+    def a_sync_configs(self):
         """
-        Set async update configurations. In general, asynchronous parameter server
+        Set a_sync update configurations. In general, asynchronous parameter server
         training has serveral configurable settings that can be configured through
         a dict.
 
         **Notes**:
-            **Detailed arguments for async_update_configs**
+            **Detailed arguments for a_sync_configs**
             **k_step**: number of local optimization updates before communication
             **max_merge_var_num**: maximum number of merged gradients before communication
             **send_queue_size**: a buffer size of worker communication
@@ -255,19 +255,20 @@ class DistributedStrategy(object):
             fleet.init(role_maker)
 
             strategy = fleet.DistributedStrategy()
-            strategy.async_update = True  # by default this is True
+            strategy.a_sync = True  # by default this is True
             configs = {"k_step": 10000, "send_queue_size": 32}
-            strategy.async_update_configs = configs
+            strategy.a_sync_configs = configs
 
             # code block for defining loss and local optimizer
             # sgd = fleet.distributed_optimizer(optimizer, strategy)
         """
-        return get_msg_dict(self.strategy.async_configs)
+        return get_msg_dict(self.strategy.a_sync_configs)
 
-    @async_update_configs.setter
-    def async_update_configs(self, configs):
-        check_configs_key(self.strategy.async_configs, configs, "async_configs")
-        assign_configs_value(self.strategy.async_configs, configs)
+    @a_sync_configs.setter
+    def a_sync_configs(self, configs):
+        check_configs_key(self.strategy.a_sync_configs, configs,
+                          "a_sync_configs")
+        assign_configs_value(self.strategy.a_sync_configs, configs)
 
     @property
     def amp(self):
@@ -376,6 +377,30 @@ class DistributedStrategy(object):
             self.strategy.fuse_all_reduce_ops = flag
         else:
             print("WARNING: fuse_all_reduce_ops should have value of bool type")
+
+    @property
+    def fuse_grad_size_in_MB(self):
+        return self.strategy.fuse_grad_size_in_MB
+
+    @fuse_grad_size_in_MB.setter
+    def fuse_grad_size_in_MB(self, value):
+        if isinstance(value, int):
+            self.strategy.fuse_grad_size_in_MB = value
+        else:
+            print("WARNING: fuse_grad_size_in_MB should have value of int type")
+
+    @property
+    def _fuse_grad_size_in_TFLOPS(self):
+        return self.strategy.fuse_grad_size_in_TFLOPS
+
+    @_fuse_grad_size_in_TFLOPS.setter
+    def _fuse_grad_size_in_TFLOPS(self, value):
+        if isinstance(value, float):
+            self.strategy.fuse_grad_size_in_TFLOPS = value
+        else:
+            print(
+                "WARNING: fuse_grad_size_in_TFLOPS should have value of float type"
+            )
 
     @property
     def nccl_comm_num(self):
@@ -520,6 +545,23 @@ class DistributedStrategy(object):
 
     @property
     def gradient_merge(self):
+        """
+        Gradient Merge, also called as Gradient Accumulation,
+        is a strategy for large batch training. With this strategy,
+        model parameter will not be updated until user-defined steps.
+        For each step, the forward network and the backward network
+        will run to calculate the gradient of model parameters.
+        For every k step, the optimization network will run,
+        applying a specific optimization method (such as SGD, Adam)
+        to model parameters.
+
+        Examples:
+        .. code-block:: python
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.gradient_merge = True
+            strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
+        """
         return self.strategy.gradient_merge
 
     @gradient_merge.setter
@@ -531,6 +573,18 @@ class DistributedStrategy(object):
 
     @property
     def gradient_merge_configs(self):
+        """
+        the key-value configs of distribute_strategy
+        Keys: 
+            k_steps (int): the update period of the parameters
+            avg (bool): whether to average the gradients of each mini-batch,
+                the default value is `True`
+        Example:
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.gradient_merge = True
+            strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
+        """
         return get_msg_dict(self.strategy.gradient_merge_configs)
 
     @gradient_merge_configs.setter
@@ -549,6 +603,15 @@ class DistributedStrategy(object):
             self.strategy.lars = flag
         else:
             print("WARNING: lars should have value of bool type")
+
+    @property
+    def lars_configs(self):
+        return get_msg_dict(self.strategy.lars_configs)
+
+    @lars_configs.setter
+    def lars_configs(self, configs):
+        check_configs_key(self.strategy.lars_configs, configs, "lars_configs")
+        assign_configs_value(self.strategy.lars_configs, configs)
 
     @property
     def lamb(self):
@@ -584,4 +647,7 @@ class DistributedStrategy(object):
             print("WARNING: auto should have value of bool type")
 
     def __repr__(self):
+        fields = self.strategy.DESCRIPTOR.fields
+        for f in fields:
+            print("{}: {}".format(f.name, f.default_value))
         return str(self.strategy)

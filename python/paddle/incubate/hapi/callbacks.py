@@ -291,6 +291,7 @@ class ProgBarLogger(Callback):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
@@ -299,11 +300,12 @@ class ProgBarLogger(Callback):
 
             train_dataset = hapi.datasets.MNIST(mode='train')
 
-            model = hapi.Model(hapi.vision.LeNet(), inputs, labels)
+            model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
+                inputs, labels)
 
             optim = fluid.optimizer.Adam(0.001)
             model.prepare(optimizer=optim,
-                        loss_function=hapi.loss.CrossEntropy(),
+                        loss_function=paddle.nn.CrossEntropyLoss(),
                         metrics=hapi.metrics.Accuracy())
 
             callback = hapi.callbacks.ProgBarLogger(log_freq=10)
@@ -425,6 +427,7 @@ class ModelCheckpoint(Callback):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
@@ -433,11 +436,12 @@ class ModelCheckpoint(Callback):
 
             train_dataset = hapi.datasets.MNIST(mode='train')
 
-            model = hapi.Model(hapi.vision.LeNet(), inputs, labels)
+            model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
+                inputs, labels)
 
             optim = fluid.optimizer.Adam(0.001)
             model.prepare(optimizer=optim,
-                        loss_function=hapi.loss.CrossEntropy(),
+                        loss_function=paddle.nn.CrossEntropyLoss(),
                         metrics=hapi.metrics.Accuracy())
 
             callback = hapi.callbacks.ModelCheckpoint(save_dir='./temp')
