@@ -37,7 +37,7 @@ class TestSortOnCPU(unittest.TestCase):
                 [[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
                  [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]]],
                 dtype='float32')
-            result, = exe.run(feed={'input': data}, fetch_list=[output[0]])
+            result, = exe.run(feed={'input': data}, fetch_list=[output])
             np_result = np.sort(result)
             self.assertEqual((result == np_result).all(), True)
 
@@ -50,7 +50,7 @@ class TestSortOnCPU(unittest.TestCase):
                 [[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
                  [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]]],
                 dtype='float32')
-            result, = exe.run(feed={'input': data}, fetch_list=[output[0]])
+            result, = exe.run(feed={'input': data}, fetch_list=[output])
             np_result = np.sort(result, axis=1)
             self.assertEqual((result == np_result).all(), True)
 
@@ -75,7 +75,7 @@ class TestSortDygraph(unittest.TestCase):
         with imperative.guard(self.place):
             var_x = imperative.to_variable(self.input_data)
             out = paddle.sort(var_x)
-            self.assertEqual((np.sort(self.input_data) == out[0].numpy()).all(),
+            self.assertEqual((np.sort(self.input_data) == out.numpy()).all(),
                              True)
 
     def test_api_1(self):
@@ -84,5 +84,4 @@ class TestSortDygraph(unittest.TestCase):
             out = paddle.sort(var_x, axis=-1)
             self.assertEqual(
                 (np.sort(
-                    self.input_data, axis=-1) == out[0].numpy()).all(),
-                True)
+                    self.input_data, axis=-1) == out.numpy()).all(), True)

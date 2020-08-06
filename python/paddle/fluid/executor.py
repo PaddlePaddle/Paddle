@@ -1300,6 +1300,12 @@ class Executor(object):
                          fetch_list=None,
                          fetch_info=None,
                          print_period=100):
+        is_heter = 0
+        if not program._fleet_opt is None:
+            if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
+                is_heter = 1
+            if program._fleet_opt("trainer", "") == "HeterXpuTrainer":
+                is_heter = 1
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -1308,6 +1314,11 @@ class Executor(object):
             fetch_info = []
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
+        if is_heter:
+            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+            from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+            fu = FleetUtil()
+            ret = fu.split_program_by_device(program)
         if not compiled:
             # TODO: Need a better way to distinguish and specify different execution mode
             if program._pipeline_opt:
@@ -1317,6 +1328,8 @@ class Executor(object):
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
                 trainer._set_thread_barrier(program._is_distributed)
             trainer._set_program(program)
+            if is_heter:
+                trainer._set_heter_info(ret)
         else:
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(
@@ -1475,6 +1488,60 @@ class Executor(object):
         return self._run_from_dataset(program, dataset, scope, thread, True,
                                       debug, fetch_list, fetch_info,
                                       print_period, fetch_handler)
+
+    def start_heter_trainer(self,
+                            program=None,
+                            scope=None,
+                            debug=False,
+                            fetch_list=None,
+                            fetch_info=None,
+                            print_period=100,
+                            fetch_handler=None):
+        return self._start_heter_trainer(program, scope, False, debug,
+                                         fetch_list, fetch_info, print_period,
+                                         fetch_handler)
+
+    def _start_heter_trainer(self,
+                             program=None,
+                             scope=None,
+                             is_infer=False,
+                             debug=False,
+                             fetch_list=None,
+                             fetch_info=None,
+                             print_period=100,
+                             fetch_handler=None):
+
+        scope, trainer = self._prepare_trainer(
+            program=program,
+            dataset=None,
+            scope=scope,
+            thread=1,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
+
+        trainer._set_infer(is_infer)
+        trainer._gen_trainer_desc()
+
+        self._dump_debug_info(program=program, trainer=trainer)
+
+        trainer_instance = self._default_executor.init_for_dataset(
+            program.desc, trainer._desc(), scope, None)
+
+        #if fetch_handler is not None:
+        #    scope0 = trainer_instance.get_worker_scope(0)
+        #    fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
+        #    fetch_monitor.start()
+        #    self._default_executor.run_from_dataset(trainer_instance)
+        #    fetch_monitor.stop()
+        #    self._default_executor.release_trainer(trainer_instance)
+        #else:
+
+        self._default_executor.run_from_dataset(trainer_instance)
+        #self._default_executor.release_trainer(trainer_instance)
+
+        return trainer_instance
 
     def train_from_dataset(self,
                            program=None,
