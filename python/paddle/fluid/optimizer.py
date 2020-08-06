@@ -3772,30 +3772,31 @@ class PipelineOptimizer(object):
 
         return programs
 
-    #def _find_post_op(self, ops, cur_op, var_name):
-    #    """
-    #    Find the real post op that has variable named var_name as input.
+    def _find_post_op(self, ops, cur_op, var_name):
+        """
+        Find the real post op that has variable named var_name as input.
 
-    #    Args:
-    #        ops (list): A list of ops.
-    #        cur_op (Operator): Current operator which has variable named
-    #                           var_name as output.
-    #        var_name (string): Variable name.
-    #    """
-    #    post_op = []
-    #    before = True
-    #    for op in ops:
-    #        if op == cur_op:
-    #            before = False
-    #            continue
-    #        if before:
-    #            continue
-    #        for in_var_name in op.input_arg_names:
-    #            if in_var_name == var_name:
-    #                post_op.append(op)
-    #    if post_op:
-    #        return post_op[0]
-    #    return None
+        Args:
+            ops (list): A list of ops.
+            cur_op (Operator): Current operator which has variable named
+                               var_name as output.
+            var_name (string): Variable name.
+        """
+        post_op = []
+        before = True
+        for op in ops:
+            if op == cur_op:
+                before = False
+                continue
+            if before:
+                continue
+            for in_var_name in op.input_arg_names:
+                if in_var_name == var_name:
+                    post_op.append(op)
+                    break
+        if post_op:
+            return post_op[0]
+        return None
 
     def _find_real_prev_op(self, ops, cur_op, var_name):
         """
@@ -4009,12 +4010,8 @@ class PipelineOptimizer(object):
                         assert '@RENAME@' in name
                     assert len(op.desc.output_arg_names()) == 1
                     out_name = op.desc.output_arg_names()[0]
-                    assert core.grad_var_suffix() in out_name
-                    param_name = self._strip_grad_suffix(out_name)
-                    assert param_name in self._param_device_map
-                    device = self._param_device_map[param_name]
-                    #post_op = self._find_post_op(block.ops, op, out_name)
-                    #device = post_op.attr(self._op_device_key)
+                    post_op = self._find_post_op(block.ops, op, out_name)
+                    device = post_op.attr(self._op_device_key)
                     assert device
                     op._set_attr(self._op_device_key, device)
                     continue

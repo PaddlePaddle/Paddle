@@ -194,10 +194,17 @@ void SectionWorker::TrainFiles() {
       dev_ctx_->Wait();
       batch_timer.Pause();
       VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
+      {
+        std::unique_lock<std::mutex> lk(thread_mutex);
+        if (threads_completed) {
+          return;
+        }
+      }
     }
   } else {
     while (true) {
       // forward pass:
+      bool local_completed = false;
       int real_microbatch_num = 0;
       for (int i = 0; i < num_microbatches_; ++i) {
         {
@@ -217,6 +224,7 @@ void SectionWorker::TrainFiles() {
             VLOG(3) << "thread " << thread_id_ << " completed.";
             lk.unlock();
             threads_completed = false;
+            local_completed = true;
             break;
           }
           lk.unlock();
@@ -282,6 +290,9 @@ void SectionWorker::TrainFiles() {
         }
       }
       dev_ctx_->Wait();
+      if (local_completed) {
+        return;
+      }
     }
   }
 }
@@ -479,6 +490,7 @@ void SectionWorker::TrainFilesWithProfiler() {
       if (real_microbatch_num == 0) {
         batch_timer.Pause();
         VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
+        return;
       }
       // update pass
       int op_idx = 0;
@@ -528,14 +540,15 @@ void SectionWorker::TrainFilesWithProfiler() {
                   << "]:START[" << micro_start.tv_sec * 1e6 + micro_start.tv_usec
                   << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
       }
-      struct timeval wait_start;
-      struct timeval wait_end;
-      gettimeofday(&wait_start, NULL);
       dev_ctx_->Wait();
-      gettimeofday(&wait_end, NULL);
-      VLOG(0) << "device wait: " << wait_end.tv_sec * 1e6 + wait_end.tv_usec - wait_start.tv_sec * 1e6 - wait_start.tv_usec;
       batch_timer.Pause();
       VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
+      {
+        std::unique_lock<std::mutex> lk(thread_mutex);
+        if (threads_completed) {
+          return;
+        }
+      }
     }
   } else {
     struct timeval start;
@@ -545,6 +558,7 @@ void SectionWorker::TrainFilesWithProfiler() {
     cudaEvent_t cu_start, cu_stop;
     cudaEventCreate(&cu_start);
     cudaEventCreate(&cu_stop);
+    bool local_completed = false;
     while (true) {
       // forward pass:
       int real_microbatch_num = 0;
@@ -563,6 +577,7 @@ void SectionWorker::TrainFilesWithProfiler() {
           VLOG(3) << "thread " << thread_id_ << " local_batch_id_ "
                   << local_batch_id_ << " batch_id_ " << batch_id_;
           if (threads_completed) {
+            local_completed = true;
             VLOG(3) << "thread " << thread_id_ << " completed.";
             lk.unlock();
             VLOG(0) << "============timeline============";
@@ -742,6 +757,9 @@ void SectionWorker::TrainFilesWithProfiler() {
                   << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
       }
       dev_ctx_->Wait();
+      if (local_completed) {
+        return;
+      }
     }
   }
 }
