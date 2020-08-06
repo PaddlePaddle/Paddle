@@ -172,8 +172,7 @@ def load_dygraph(model_path, keep_name_table=False):
                 "the result saved by `imperative.save` and `imperative.jit.save`."
             )
         with open(var_info_path, 'rb') as f:
-            extra_var_info = pickle.load(f) if six.PY2 else pickle.load(
-                f, encoding='latin1')
+            extra_var_info = pickle.load(f)
         # 3. load `__variables__`
         # TODO(chenweihang): now only supports loading from default save format:
         # - all persistable vars saved in one file named `__variables__`
