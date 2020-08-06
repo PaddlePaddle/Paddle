@@ -39,10 +39,10 @@ class ParameterServerRuntime(RuntimeBase):
         self.role_maker = context["role_maker"]
         self.origin_main_program = context["origin_main_program"]
         self.origin_startup_program = context["origin_startup_program"]
-        self.async_strategy = self.get_distributed_strategy()
+        self.async_strategy = self._get_distributed_strategy()
         self.compiled_strategy = self.build_compiled_startegy()
 
-    def get_distributed_strategy(self):
+    def _get_distributed_strategy(self):
         strategy = None
 
         dist_strategy = self.context["valid_strategy"]
@@ -185,11 +185,6 @@ class ParameterServerRuntime(RuntimeBase):
             self._communicator.start()
         else:
             warnings.warn("communicator has been initialized, skip")
-
-    def _run_worker(self):
-        logging.warn(
-            "You should not call 'run_worker' method for parameter server mode.")
-        pass
 
     def _init_server(self, *args, **kwargs):
         if len(args) > 1:
