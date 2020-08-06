@@ -20,6 +20,18 @@ import unittest
 
 
 class TestClampAPI(unittest.TestCase):
+    def test_dygraph_clamp(self):
+        in1 = np.array([[1.2, 3.5], [4.5, 6.4]]).astype('float32')
+        with fluid.dygraph.guard():
+            x1 = fluid.dygraph.to_variable(in1)
+            out1 = tensor.clamp(x1, min=3.5, max=5.0)
+            out2 = tensor.clamp(x1, min=2.5)
+            self.assertTrue(
+                np.allclose(
+                    out1.numpy(), in1.clip(
+                        min=3.5, max=5.0)))
+            self.assertTrue(np.allclose(out2.numpy(), in1.clip(min=2.5)))
+
     def test_clamp(self):
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')

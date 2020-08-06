@@ -1958,7 +1958,7 @@ class Operator(object):
                         in_proto.name)
                     if found:
                         in_args = inputs[in_proto.name]
-                        if not isinstance(in_args, list):
+                        if not isinstance(in_args, (list, tuple)):
                             in_args = [in_args]
                         if not in_proto.duplicable and len(in_args) > 1:
                             raise ValueError(
