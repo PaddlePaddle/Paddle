@@ -37,7 +37,7 @@ class AsyncGraphExecutionOptimizer(AsyncMetaOptimizer):
         return True
 
     def _try_to_compile(self, main_program, loss):
-        dist_strategy = self.get_distributed_strategy()
+        dist_strategy = self._get_distributed_strategy()
 
         build_strategy = dist_strategy.get_build_strategy()
         exec_strategy = dist_strategy.get_execute_strategy()
