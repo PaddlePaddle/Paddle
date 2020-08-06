@@ -35,7 +35,7 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         return True if k_steps >= 0 else False
 
-    def get_distributed_strategy(self):
+    def _get_distributed_strategy(self):
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         strategy = None
 
@@ -117,7 +117,7 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         self.inner_opt.minimize(loss, startup_program, parameter_list,
                                 no_grad_set)
-        strategy = self.get_distributed_strategy()
+        strategy = self._get_distributed_strategy()
 
         _origin_main_program = loss.block.program
         _origin_startup_program = startup_program
