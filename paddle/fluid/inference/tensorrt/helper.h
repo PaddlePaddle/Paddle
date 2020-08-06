@@ -57,7 +57,7 @@ static nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger* logger) {
       dy::createInferRuntime_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
 #if IS_TRT_VERSION_GE(6000)
-static nvinfer1::IPluginRegistry* getPluginRegistry() {
+static nvinfer1::IPluginRegistry* GetPluginRegistry() {
   return static_cast<nvinfer1::IPluginRegistry*>(dy::getPluginRegistry());
 }
 #endif
