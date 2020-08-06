@@ -32,19 +32,32 @@ import paddle.fleet as fleet
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
     def net(self):
         x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        x1 = fluid.layers.data(name='x1', shape=[1], dtype='int64', lod_level=1)
+
+        emb = fluid.layers.embedding(
+            input=x1,
+            size=[10000, 10],
+            param_attr=fluid.ParamAttr(
+                name="embedding",
+                initializer=fluid.initializer.Constant(value=0.01)),
+            is_sparse=True)
+
+        pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
+        z = fluid.layers.concat(input=[x, pool], axis=1)
+        y_predict = fluid.layers.fc(input=z, size=1, act=None)
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
-        return avg_cost, x, y
+        return avg_cost, x, x1, y
 
     def fake_reader(self):
         def reader():
             for i in range(10000):
                 x = numpy.random.random((1, 13)).astype('float32')
+                z = numpy.random.randint(0, 9999, (1, 1)).astype('int64')
                 y = numpy.random.randint(0, 2, (1, 1)).astype('int64')
-                yield x, y
+                yield x, z, y
 
         return reader
 
@@ -63,7 +76,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         exe = fluid.Executor(place)
 
         fleet.init(role)
-        avg_cost, x, y = self.net()
+        avg_cost, x, z, y = self.net()
         optimizer = fluid.optimizer.SGD(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
@@ -72,7 +85,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         train_reader = paddle.batch(self.fake_reader(), batch_size=24)
-        feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+        feeder = fluid.DataFeeder(place=place, feed_list=[x, z, y])
 
         for batch_id, data in enumerate(train_reader()):
             exe.run(fluid.default_main_program(),
