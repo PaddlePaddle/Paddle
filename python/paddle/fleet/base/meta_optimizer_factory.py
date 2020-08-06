@@ -20,6 +20,7 @@ from ..meta_optimizers import PipelineOptimizer
 from ..meta_optimizers import LocalSGDOptimizer
 from ..meta_optimizers import LarsOptimizer
 from ..meta_optimizers import DGCOptimizer
+from ..meta_optimizers import LambOptimizer
 
 __all__ = ["MetaOptimizerFactory"]
 
@@ -32,6 +33,7 @@ meta_optimizer_names = [
     "LocalSGDOptimizer",
     "LarsOptimizer",
     "DGCOptimizer",
+    "LambOptimizer",
 ]
 
 

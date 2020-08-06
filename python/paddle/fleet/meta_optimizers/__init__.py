@@ -19,6 +19,7 @@ from .pipeline_optimizer import PipelineOptimizer
 from .localsgd_optimizer import LocalSGDOptimizer
 from .lars_optimizer import LarsOptimizer
 from .dgc_optimizer import DGCOptimizer
+from .lars_optimizer import LambOptimizer
 
 __all__ = [
     'AMPOptimizer',
@@ -28,4 +29,5 @@ __all__ = [
     'LocalSGDOptimizer',
     'LarsOptimizer',
     'DGCOptimizer',
+    'LambOptimizer',
 ]
