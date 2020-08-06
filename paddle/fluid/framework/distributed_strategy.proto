@@ -43,6 +43,12 @@ message GradientMergeConfig {
   optional bool avg = 2 [ default = true ];
 }
 
+message DGCConfig {
+  optional int32 rampup_begin_step = 1 [ default = 0 ];
+  optional int32 rampup_step = 2 [ default = 1 ];
+  repeated float sparsity = 3;
+}
+
 message LarsConfig {
   optional float lars_coeff = 1 [ default = 0.001 ];
   optional float lars_weight_decay = 2 [ default = 0.0005 ];
@@ -114,6 +120,7 @@ message DistributedStrategy {
   optional AMPConfig amp_configs = 102;
   optional LocalSGDConfig localsgd_configs = 103;
   optional GradientMergeConfig gradient_merge_configs = 104;
+  optional DGCConfig dgc_configs = 105;
   optional PipelineConfig pipeline_configs = 106;
   optional AsyncConfig a_sync_configs = 107;
   optional LarsConfig lars_configs = 108;
