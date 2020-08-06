@@ -320,7 +320,7 @@ def softmax(x, axis=-1, name=None):
     vector of real values in the range [0, 1] that add up to 1.
 
     3. After the softmax operation is completed, the inverse operations of steps 1 and 2
-    are performed to restore the two-dimensional matrix to the same dimension as the x.
+    are performed to restore the two-dimensional matrix to the same dimension as the ``x`` .
 
     It computes the exponential of the given dimension and the sum of exponential
     values of all the other dimensions in the K-dimensional vector input.
