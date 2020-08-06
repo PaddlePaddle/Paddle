@@ -64,3 +64,14 @@ class ApiMaximumTest(unittest.TestCase):
             np_z = z.numpy()
             z_expected = np.array(np.maximum(self.input_x, self.input_y))
             self.assertEqual((np_z == z_expected).all(), True)
+
+    def test_broadcast_axis(self):
+        with paddle.imperative.guard(self.place):
+            np_x = np.random.rand(5, 4, 3, 2).astype("float64")
+            np_y = np.random.rand(4, 3).astype("float64")
+
+            x = paddle.imperative.to_variable(self.input_x)
+            y = paddle.imperative.to_variable(self.input_y)
+            result_1 = paddle.maximum(x, y, axis=1)
+            result_2 = paddle.maximum(x, y, axis=-2)
+            self.assertEqual((result_1.numpy() == result_2.numpy()).all(), True)

@@ -607,6 +607,21 @@ Examples:
         #[[[1. 2. 3.]
         #  [2. 2. 3.]]]
 
+        x_data = np.array([2, 3, 5], dtype=np.float32)
+        y_data = np.array([1, 4, np.nan], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.maximum(x, y)
+        print(res.numpy())
+        #[ 2.  4. nan]
+
+        x_data = np.array([5, 3, np.inf], dtype=np.float32)
+        y_data = np.array([1, 4, 5], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.maximum(x, y)
+        print(res.numpy())
+        #[ 5.  4. inf]
     """
     op_type = 'elementwise_max'
     act = None
@@ -644,6 +659,21 @@ Examples:
         #[[[1. 1. 1.]
         #  [2. 2. 2.]]]
 
+        x_data = np.array([2, 3, 5], dtype=np.float32)
+        y_data = np.array([1, 4, np.nan], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.minimum(x, y)
+        print(res.numpy())
+        #[ 1.  3. nan]
+
+        x_data = np.array([5, 3, np.inf], dtype=np.float32)
+        y_data = np.array([1, 4, 5], dtype=np.float32)
+        x = paddle.imperative.to_variable(x_data)
+        y = paddle.imperative.to_variable(y_data)
+        res = paddle.minimum(x, y)
+        print(res.numpy())
+        #[1. 3. 5.]
     """
     op_type = 'elementwise_min'
     act = None
@@ -1202,8 +1232,8 @@ def max(x, axis=None, keepdim=False, name=None):
         axis(list|int, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
-            otherwise must be in the range :math:`[-rank(x), rank(x))`.
-            If :math:`axis[i] < 0`, the axis to reduce is :math:`rank + axis[i]`.
+            otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
+            If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
@@ -1294,8 +1324,8 @@ def min(x, axis=None, keepdim=False, name=None):
         axis(list|int, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
-            otherwise must be in the range :math:`[-rank(x), rank(x))`.
-            If :math:`axis[i] < 0`, the axis to reduce is :math:`rank + axis[i]`.
+            otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
+            If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
