@@ -309,8 +309,8 @@ java.io.IOException: Input/output error
 
         try:
             fs._touchz("./touch.flag")
-            self.assertFalse(0, "can't reach here")
-        except FSFileExistsError as e:
+            self.assertFalse(True, "can't reach here")
+        except Exception as e:
             pass
 
         self.assertFalse(fs.is_dir(path))
