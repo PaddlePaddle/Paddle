@@ -382,8 +382,7 @@ function(cc_test_run TARGET_NAME)
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-	    COMMAND ${cc_test_COMMAND}
-	    ARGS ${cc_test_ARGS}
+	    COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
