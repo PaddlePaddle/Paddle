@@ -50,10 +50,6 @@ def run_check():
     This func should not be called only if you need to verify installation
     '''
     print("Running Verify Fluid Program ... ")
-    '''
-    paddle 2.0 directory migration
-    Need to modify dygraph method.
-    '''
 
     device_list = []
     if core.is_compiled_with_cuda():
