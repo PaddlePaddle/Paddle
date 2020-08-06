@@ -263,5 +263,3 @@ from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
 
 from . import static
-
-disable_static()

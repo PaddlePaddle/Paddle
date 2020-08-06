@@ -19,7 +19,8 @@ import numpy as np
 from op_test import OpTest
 import paddle
 from paddle.fluid import core
-from paddle import Program, program_guard
+from paddle import Program
+from paddle.static import program_guard
 
 
 def output_hist(out):
@@ -132,7 +133,7 @@ class TestRandintAPI(unittest.TestCase):
 
             place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             outs = exe.run(
                 feed={'var_shape': np.array([100, 100]).astype('int64')},
                 fetch_list=[out1, out2, out3, out4, out5])
@@ -141,13 +142,14 @@ class TestRandintAPI(unittest.TestCase):
 class TestRandintImperative(unittest.TestCase):
     def test_api(self):
         n = 10
-        with paddle.imperative.guard():
-            x1 = paddle.randint(n, shape=[10], dtype="int32")
-            x2 = paddle.tensor.randint(n)
-            x3 = paddle.tensor.random.randint(n)
-            for i in [x1, x2, x3]:
-                for j in i.numpy().tolist():
-                    self.assertTrue((j >= 0 and j < n))
+        paddle.disable_static()
+        x1 = paddle.randint(n, shape=[10], dtype="int32")
+        x2 = paddle.tensor.randint(n)
+        x3 = paddle.tensor.random.randint(n)
+        for i in [x1, x2, x3]:
+            for j in i.numpy().tolist():
+                self.assertTrue((j >= 0 and j < n))
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
