@@ -121,6 +121,7 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distribu
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End
 
+paddle.enable_static()
 
 class RunServer(TestCommunicatorGeoEnd2End):
     def runTest(self):

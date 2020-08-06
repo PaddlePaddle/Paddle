@@ -66,11 +66,13 @@ class TestSortOnGPU(TestSortOnCPU):
 
 class TestSortDygraph(unittest.TestCase):
     def setUp(self):
+        paddle.disable_static()
         self.input_data = np.random.rand(10, 10)
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
         else:
             self.place = core.CPUPlace()
+        paddle.enable_static()
 
     def test_api_0(self):
         paddle.disable_static(self.place)
