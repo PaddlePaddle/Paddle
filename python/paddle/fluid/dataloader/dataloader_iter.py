@@ -115,7 +115,7 @@ _worker_info = None
 def get_worker_info():
     """
     Get DataLoader worker process information function, this function is
-    used to splitd data copy in worker process for IterableDataset
+    used to split data copy in worker process for IterableDataset
     (see :code:`paddle.io.IterableDataset`), worker informations contains
     following fields:
 
@@ -526,7 +526,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
     def _get_data(self):
         while not self._thread_done_event.is_set():
-            # For IterableDataset, batch indices is generate infinitely
+            # For IterableDataset, batch indices is generated infinitely
             # for each worker to raise StopIteration, but a StopIteration
             # raising process will discard a batch indices which is count
             # in _send_idx but will not increase _rcvd_idx, so we check 

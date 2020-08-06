@@ -288,7 +288,7 @@ class DataLoader(object):
 
             # -------------------------------------------------------
 
-    Note:
+    .. note::
         For reading iterable dataset with multiprocess Dataloader,
         please see :code:`paddle.io.IterableDataset`
 
@@ -353,7 +353,7 @@ class DataLoader(object):
                     format(shuffle))
             if batch_sampler is not None:
                 raise ValueError(
-                    "IterableDataset expect unspecified batch_sample")
+                    "IterableDataset expect unspecified batch_sampler")
         else:
             self.dataset_kind = _DatasetKind.MAP
 

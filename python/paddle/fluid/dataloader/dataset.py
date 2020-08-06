@@ -21,7 +21,7 @@ __all__ = ["Dataset", "IterableDataset"]
 
 class Dataset(object):
     """
-    An abstract class to encapsulates methods and behaviors of datasets.
+    An abstract class to encapsulate methods and behaviors of datasets.
 
     All datasets in map-style(dataset samples can be get by a given key)
     should be a subclass of `paddle.io.Dataset`. All subclasses should
@@ -75,15 +75,16 @@ class Dataset(object):
 
 class IterableDataset(Dataset):
     """
-    An abstract class to encapsulates methods and behaviors of iterable datasets.
+    An abstract class to encapsulate methods and behaviors of iterable datasets.
 
-    All datasets in iterable-style(can only get sample one by one sequentially, like
-    a python iterater) should be a subclass of `paddle.io.IterableDataset`. All subclasses should
+    All datasets in iterable-style (can only get sample one by one sequentially, like
+    a Python iterator) should be a subclass of `paddle.io.IterableDataset`. All subclasses should
     implement following methods:
 
     :code:`__iter__`: yield sample sequentially. This method is required by reading dataset sample in :code:`paddle.io.DataLoader`.
 
-    NOTE: do not implement :code:`__getitem__` and :code:`__len__` in IterableDataset, should not be called either.
+    .. note::
+        do not implement :code:`__getitem__` and :code:`__len__` in IterableDataset, should not be called either.
 
     see :code:`paddle.io.DataLoader`.
 
@@ -110,7 +111,7 @@ class IterableDataset(Dataset):
                 print(img, lbl)
 
     When :attr:`num_workers > 0`, each worker has a different copy of the dataset object and
-    will yield whole dataset samples, which means samples in dataset will be repeat in
+    will yield whole dataset samples, which means samples in dataset will be repeated in
     :attr:`num_workers` times. If it is require that each sample to be yield only once, there
     are two methods to configure different copy in each worker process to avoid duplicate data
     among workers as follows. In both the two methods, worker information that can be get in
