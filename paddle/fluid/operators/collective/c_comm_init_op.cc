@@ -47,8 +47,6 @@ class CCommInitOp : public framework::OperatorBase {
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(var);
 #if defined(PADDLE_WITH_NCCL)
-    ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
-
     int rid = Attr<int>("ring_id");
     int rank_id = Attr<int>("rank");
     int nranks = Attr<int>("nranks");
@@ -56,6 +54,7 @@ class CCommInitOp : public framework::OperatorBase {
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
+    ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
     platform::NCCLCommContext::Instance().CreateNCCLComm(
         nccl_id, nranks, rank_id, device_id, rid);
 #else
