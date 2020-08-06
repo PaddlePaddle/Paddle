@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <queue>
+
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
 
 namespace paddle {
@@ -160,7 +161,9 @@ class VarHandleForest {
   template <typename Callback>
   bool BreadthFirstVisit(VarHandle *var, Callback &&callback) const {
     auto *root = Root(var);
-    PADDLE_ENFORCE_NOT_NULL(root, "Root cannot be nullptr, this may be a bug");
+    PADDLE_ENFORCE_NOT_NULL(root,
+                            platform::errors::InvalidArgument(
+                                "Root cannot be nullptr, this may be a bug"));
     std::queue<VarHandle *> q;
     q.push(root);
     while (!q.empty()) {
