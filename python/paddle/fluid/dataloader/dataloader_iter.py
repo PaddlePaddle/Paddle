@@ -127,6 +127,53 @@ def get_worker_info():
 
     Returns:
         WorkerInfo: an instance of WorkerInfo which contains fields above.
+
+    .. note::
+        For mode usage and exampls, please see :code:`paddle.io.IterableDataset`
+
+    Example:
+
+        .. code-block:: python
+
+            import math
+            import numpy as np
+            import paddle.fluid as fluid
+            from paddle.io import IterableDataset, DataLoader, get_worker_info
+
+            class SplitedIterableDataset(IterableDataset):
+                def __init__(self, start, end):
+                    self.start = start
+                    self.end = end
+
+                def __iter__(self):
+                    worker_info = get_worker_info()
+                    if worker_info is None:
+                        iter_start = self.start
+                        iter_end = self.end
+                    else:
+                        per_worker = int(
+                            math.ceil((self.end - self.start) / float(
+                                worker_info.num_workers)))
+                        worker_id = worker_info.id
+                        iter_start = self.start + worker_id * per_worker
+                        iter_end = min(iter_start + per_worker, self.end)
+
+                    for i in range(iter_start, iter_end):
+                        yield np.array([i])
+
+            place = fluid.CPUPlace()
+            with fluid.dygraph.guard(place):
+                dataset = SplitedIterableDataset(start=2, end=9)
+                dataloader = DataLoader(
+                    dataset,
+                    places=place,
+                    num_workers=2,
+                    batch_size=1,
+                    drop_last=True)
+
+                print(list(dataloader))
+                # outputs: [2, 5, 3, 6, 4, 7]
+
     """
     return _worker_info
 
