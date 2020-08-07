@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import numpy as np
 import six
@@ -96,7 +97,8 @@ class DatasetLoaderTestBase(unittest.TestCase):
 
     def check_batch_number(self, place, randomize_batch_num=False):
         main_prog, startup_prog, feeds = self.build_network()
-        dataset = fluid.DatasetFactory().create_dataset(self.dataset_name)
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            self.dataset_name)
         dataset.set_batch_size(BATCH_SIZE)
 
         if isinstance(place, fluid.CPUPlace):
