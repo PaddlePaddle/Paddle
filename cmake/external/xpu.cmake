@@ -27,7 +27,7 @@ INCLUDE_DIRECTORIES(${XPU_RUNTIME_INC_DIR})
 FILE(WRITE ${XPU_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(XPU)\n"
   "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ../xpu/api ../xpu/runtime ../xpu/lib \n"
+  "install(DIRECTORY xpu/api xpu/runtime xpu/lib \n"
   "        DESTINATION ${XPU_INSTALL_DIR})\n")
 
 ExternalProject_Add(
