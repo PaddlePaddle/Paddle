@@ -915,7 +915,7 @@ def mm(input, mat2, name=None):
     return out
 
 
-def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
+def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
 	:alias_main: paddle.addmm
 	:alias: paddle.addmm,paddle.tensor.addmm,paddle.tensor.math.addmm
@@ -935,8 +935,8 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
         input (Variable): The input Tensor/LoDTensor to be added to the final result.
         x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
         y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
-        alpha (float): Coefficient of $x*y$.
         beta (float): Coefficient of $input$.
+        alpha (float): Coefficient of $x*y$.
         name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -947,25 +947,43 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
-
-            input = fluid.data(name='input', shape=[2, 2], dtype='float32')
-            x = fluid.data(name='x', shape=[2, 2], dtype='float32')
-            y = fluid.data(name='y', shape=[2, 2], dtype='float32')
-            out = paddle.addmm( input=input, x=x, y=y, alpha=5.0, beta=0.5 )
 
             data_x = np.ones((2, 2)).astype(np.float32)
             data_y = np.ones((2, 2)).astype(np.float32)
             data_input = np.ones((2, 2)).astype(np.float32)
 
-            place =  fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            results = exe.run(fluid.default_main_program(),
-                              fetch_list=[out], feed={"input": data_input, 'x': data_x, "y": data_y})
-            print( np.array(results[0]) )
+            paddle.enable_imperative()
+
+            x = paddle.imperative.to_variable(data_x)
+            y = paddle.imperative.to_variable(data_y)
+            input = paddle.imperative.to_variable(data_input)
+
+            out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
+
+            print( out.numpy() )
             # [[10.5 10.5]
             # [10.5 10.5]]
     """
+    input_shape = input.shape
+    x_shape = x.shape
+    y_shape = y.shape
+    if not len(input_shape) == len(x_shape) == len(y_shape) == 2:
+        raise ValueError("The dimention of input, x, y should be 2 but receive input's shape: {}, x's shape: {}, y's shape: {}".format(input_shape, x_shape, y_shape))
+    if input_shape[0] != x_shape[0]:
+        if input_shape[0] != 1:
+            raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+        if input_shape[1] != y_shape[1] and input_shape[1] != 1:
+            raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+    if input_shape[1] != y_shape[1]:
+        if input_shape[1] != 1:
+            raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+        if input_shape[0] != x_shape[0] and input_shape[0] != 1:
+            raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+    if x_shape[1] != y_shape[0]:
+        raise ValueError("The input Variable x's width must be equal with Variable y' height. But received x's shape = {}, y's shape = {}.".format(x_shape, y_shape))
+
+
+
     if in_dygraph_mode():
         out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
         return out
@@ -974,7 +992,7 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
     attrs = {'Alpha': alpha, 'Beta': beta}
 
     helper = LayerHelper("addmm", **locals())
-    check_variable_and_dtype(x, 'Input', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(input, 'Input', ['float32', 'float64'], 'addmm')
     check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
     check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
