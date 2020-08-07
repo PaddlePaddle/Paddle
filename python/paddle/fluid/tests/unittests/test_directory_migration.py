@@ -75,7 +75,7 @@ class TestDirectory(unittest.TestCase):
         with open(import_file, "w") as wb:
             for module in new_directory:
                 run_cmd = self.get_import_command(module)
-                wb.write(run_cmd)
+                wb.write(run_cmd + '\n')
 
         _python = sys.executable
 
@@ -137,7 +137,7 @@ class TestDirectory(unittest.TestCase):
         with open(import_file, "w") as wb:
             for module in old_directory:
                 run_cmd = self.get_import_command(module)
-                wb.write(run_cmd)
+                wb.write(run_cmd + '\n')
 
         _python = sys.executable
 
