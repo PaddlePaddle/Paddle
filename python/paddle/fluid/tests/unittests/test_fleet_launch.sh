@@ -4,7 +4,6 @@ set -e
 
 function test_launch_ps(){
     fleetrun --server_num=2 --worker_num=2 fleet_ps_training.py 2> ut.elog
-
     if grep -q "server are killed" ut.elog; then
         echo "test pserver launch succeed"
     else
@@ -20,7 +19,7 @@ fi
 
 test_launch_ps
 # use default values
-fleetrun multi_process.py
+fleetrun multi_process.py fleetrun
 
 # use paddlecloud
 echo "begin test use paddlecloud"
@@ -30,16 +29,16 @@ export POD_IP=127.0.0.1
 export PADDLE_TRAINERS=127.0.0.1,127.0.0.2
 export PADDLE_TRAINER_ID=0
 
-export PADDLE_PORT=35019
+export PADDLE_PORT=35789
 export TRAINER_PORTS_NUM=2
 
 distributed_args="--ips=${cluster_node_ips} --gpus=0,1 --log_dir=testlog"
-CUDA_VISIBLE_DEVICES=0,1 fleetrun ${distributed_args} multi_process.py
+CUDA_VISIBLE_DEVICES=0,1 fleetrun ${distributed_args} multi_process.py fleetrun
 
-str1="selected_gpus:0 worker_endpoints:127.0.0.1:35019,127.0.0.1:35020,127.0.0.2:35019,127.0.0.2:35020 trainers_num:4 current_endpoint:127.0.0.1:35019 trainer_id:0"
-str2="selected_gpus:1 worker_endpoints:127.0.0.1:35019,127.0.0.1:35020,127.0.0.2:35019,127.0.0.2:35020 trainers_num:4 current_endpoint:127.0.0.1:35020 trainer_id:1"
-file_0="multi_process.check_0.log"
-file_1="multi_process.check_1.log"
+str1="selected_gpus:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790,127.0.0.2:35789,127.0.0.2:35790 trainers_num:4 current_endpoint:127.0.0.1:35789 trainer_id:0"
+str2="selected_gpus:1 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790,127.0.0.2:35789,127.0.0.2:35790 trainers_num:4 current_endpoint:127.0.0.1:35790 trainer_id:1"
+file_0="multi_process_fleetrun.check_0.log"
+file_1="multi_process_fleetrun.check_1.log"
 
 echo "paddlecloud params test"
 if grep -q "$str1" "$file_0"; then
@@ -70,7 +69,7 @@ unset TRAINER_PORTS_NUM
 
 echo ""
 echo "paddle.distributed.launch async poll process test"
-if ! CUDA_VISIBLE_DEVICES=0,1 fleetrun ${distributed_args} multi_process.py abort; then
+if ! CUDA_VISIBLE_DEVICES=0,1 fleetrun ${distributed_args} multi_process.py fleetrun abort; then
     echo "train abort as planned"
 fi
 
