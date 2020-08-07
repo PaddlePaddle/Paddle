@@ -605,6 +605,15 @@ class DistributedStrategy(object):
             print("WARNING: lars should have value of bool type")
 
     @property
+    def lars_configs(self):
+        return get_msg_dict(self.strategy.lars_configs)
+
+    @lars_configs.setter
+    def lars_configs(self, configs):
+        check_configs_key(self.strategy.lars_configs, configs, "lars_configs")
+        assign_configs_value(self.strategy.lars_configs, configs)
+
+    @property
     def lamb(self):
         return self.strategy.lamb
 
