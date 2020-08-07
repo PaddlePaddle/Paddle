@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <NvInfer.h>
+#include <NvInferPlugin.h>
 #if !defined(_WIN32)
 #include <dlfcn.h>
 #endif
@@ -28,9 +29,13 @@ namespace platform {
 namespace dynload {
 
 void* GetTensorRtHandle();
+void* GetTensorRtPluginHandle();
 
 extern std::once_flag tensorrt_dso_flag;
 extern void* tensorrt_dso_handle;
+
+extern std::once_flag tensorrt_plugin_dso_flag;
+extern void* tensorrt_plugin_dso_handle;
 
 #define DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP(__name)                            \
   struct DynLoad__##__name {                                                  \
@@ -52,12 +57,38 @@ extern void* tensorrt_dso_handle;
   };                                                                          \
   extern DynLoad__##__name __name
 
+#define DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP(__name)                      \
+  struct DynLoad__##__name {                                                   \
+    template <typename... Args>                                                \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {           \
+      using tensorrt_plugin_func = decltype(&::__name);                        \
+      std::call_once(tensorrt_plugin_dso_flag, []() {                          \
+        tensorrt_plugin_dso_handle =                                           \
+            paddle::platform::dynload::GetTensorRtPluginHandle();              \
+        PADDLE_ENFORCE_NOT_NULL(                                               \
+            tensorrt_plugin_dso_handle,                                        \
+            platform::errors::Unavailable("Load tensorrt plugin %s failed",    \
+                                          #__name));                           \
+      });                                                                      \
+      static void* p_##__name = dlsym(tensorrt_plugin_dso_handle, #__name);    \
+      PADDLE_ENFORCE_NOT_NULL(p_##__name,                                      \
+                              platform::errors::Unavailable(                   \
+                                  "Load tensorrt plugin %s failed", #__name)); \
+      return reinterpret_cast<tensorrt_plugin_func>(p_##__name)(args...);      \
+    }                                                                          \
+  };                                                                           \
+  extern DynLoad__##__name __name
+
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
   __macro(createInferBuilder_INTERNAL);     \
   __macro(createInferRuntime_INTERNAL);     \
   __macro(getPluginRegistry);
 
+#define TENSORRT_PLUGIN_RAND_ROUTINE_EACH(__macro) \
+  __macro(initLibNvInferPlugins);
+
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
+TENSORRT_PLUGIN_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP)
 
 }  // namespace dynload
 }  // namespace platform
