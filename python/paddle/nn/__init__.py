@@ -85,6 +85,7 @@ from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer.loss import NLLLoss  #DEFINE_ALIAS
 from .layer.loss import BCELoss  #DEFINE_ALIAS
 from .layer.norm import BatchNorm  #DEFINE_ALIAS
+from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
 from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
 from .layer.norm import SpectralNorm  #DEFINE_ALIAS
