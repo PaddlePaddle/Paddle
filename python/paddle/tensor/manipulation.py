@@ -25,7 +25,6 @@ import numpy as np
 from ..fluid.layers import cast  #DEFINE_ALIAS
 from ..fluid.layers import expand  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
-from ..fluid.layers import flatten  #DEFINE_ALIAS
 from ..fluid.layers import reshape  #DEFINE_ALIAS
 from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
@@ -169,6 +168,114 @@ def flip(x, axis, name=None):
 reverse = flip  #DEFINE_ALIAS
 
 
+def flatten(x, start_axis=0, stop_axis=-1, name=None):
+    """
+    **Flatten op**
+
+    Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
+
+    For Example:
+
+    .. code-block:: text
+
+        Case 1:
+
+          Given
+            X.shape = (3, 100, 100, 4)
+
+          and
+            start_axis = 1
+            end_axis = 2
+
+          We get:
+            Out.shape = (3, 1000 * 100, 2)
+
+        Case 2:
+
+          Given
+            X.shape = (3, 100, 100, 4)
+
+          and
+            start_axis = 0
+            stop_axis = -1
+
+          We get:
+            Out.shape = (3 * 100 * 100 * 4)
+
+    Args:
+        x (Variable): A tensor of number of dimentions >= axis. A tensor with data type float32,
+                      float64, int8, int32, int64.
+        start_axis (int): the start axis to flatten
+        stop_axis (int): the stop axis to flatten
+        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
+
+    Returns:
+        Variable: A tensor with the contents of the input tensor, with input \
+                  axes flattened by indicated start axis and end axis. \
+                  A Tensor with data type same as input x.
+
+    Raises:
+        ValueError: If x is not a Variable.
+        ValueError: If start_axis or stop_axis is illegal.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.enable_imperative()
+
+            image_shape=(2, 3, 4, 4)
+            x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3]).reshape(image_shape) / 100.
+            x = x.astype('float32')
+            
+            img = paddle.imperative.to_variable(x)
+            out = paddle.flatten(img, start_axis=1, stop_axis=2)
+            # out shape is [2, 12, 4]
+    """
+    if not (isinstance(x, Variable)):
+        raise ValueError("The input x should be a Variable")
+
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
+    helper = LayerHelper('flatten', **locals())
+
+    x_dim = len(x.shape)
+    if not (isinstance(start_axis, int)) or (
+            start_axis > x_dim - 1) or start_axis < -x_dim:
+        raise ValueError(
+            "The start_axis should be a int, and in range [-rank(x), rank(x))")
+    if not (isinstance(stop_axis, int)) or (
+            stop_axis > x_dim - 1) or stop_axis < -x_dim:
+        raise ValueError(
+            "The stop_axis should be a int, and in range [-rank(x), rank(x))")
+    if start_axis < 0:
+        start_axis = start_axis + x_dim
+    if stop_axis < 0:
+        stop_axis = stop_axis + x_dim
+    if start_axis > stop_axis:
+        raise ValueError("The stop_axis should be larger than stat_axis")
+
+    if in_dygraph_mode():
+        dy_out, _ = core.ops.flatten_contiguous_range(
+            x, 'start_axis', start_axis, 'stop_axis', stop_axis)
+        return dy_out
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    x_shape = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='flatten_contiguous_range',
+        inputs={"X": x},
+        outputs={'Out': out,
+                 'XShape': x_shape},
+        attrs={"start_axis": start_axis,
+               "stop_axis": stop_axis})
+    return out
+
+
 def roll(x, shifts, axis=None, name=None):
     """
 	:alias_main: paddle.roll
@@ -252,13 +359,18 @@ def roll(x, shifts, axis=None, name=None):
     return out
 
 
-def stack(x, axis=0, out=None, name=None):
+def stack(x, axis=0, name=None):
     """
 	:alias_main: paddle.stack
-	:alias: paddle.stack,paddle.tensor.stack,paddle.tensor.manipulation.stack
+	:alias: paddle.stack, paddle.tensor.stack, paddle.tensor.manipulation.stack
 
-
-    This OP stacks all the inputs :code:`x` along axis.
+    This OP stacks all the input tensors ``x`` along ``axis`` dimemsion. 
+    All tensors must be of the same shape and same dtype.
+    
+    For example, given N tensors of shape [A, B], if ``axis == 0``, the shape of stacked 
+    tensor is [N, A, B]; if ``axis == 1``, the shape of stacked 
+    tensor is [A, N, B], etc.
+    
 
     .. code-block:: text
 
@@ -284,7 +396,6 @@ def stack(x, axis=0, out=None, name=None):
 
         Case 2:
 
-
           Input:
             x[0].shape = [1, 2]
             x[0].data = [ [1.0 , 2.0 ] ]
@@ -295,7 +406,7 @@ def stack(x, axis=0, out=None, name=None):
 
 
           Attrs:
-            axis = 1 or axis = -2
+            axis = 1 or axis = -2  # If axis = -2, axis = axis+ndim(x[0])+1 = -2+2+1 = 1.
 
           Output:
             Out.shape = [1, 3, 2]
@@ -304,65 +415,40 @@ def stack(x, axis=0, out=None, name=None):
                           [5.0, 6.0] ] ]
 
     Args:
-        x (Variable|list(Variable)): Input :code:`x` can be a single Tensor, a :code:`list` of Tensors.
-                                     If :code:`x` is a :code:`list`, the shapes of all these Tensors
-                                     must be the same. Supposing input is N dims
-                                     Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
-                                     Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
-                                     Support data types: float32, float64, int32, int64.
-        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`.
-                              R is the first tensor of inputs. If ``axis`` < 0, :math:`axis=axis+rank(x[0])+1`.
-                              The default value of axis is 0.
-
+        x (Tensor|list[Tensor]): Input ``x`` can be a single tensor, or a ``list`` of tensors.
+                                     If ``x`` is a ``list``, the Tensors in ``x``
+                                     must be of the same shape and dtype. Support data types: float32, float64, int32, int64.
+        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
+                              where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
+                              If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
+        
     Returns:
-        Variable: The stacked Tensor, has same data type with input Tensors. Output dim is :math:`rank(x[0])+1`.
+        Tensor: The stacked tensor with same data type as input.
 
     Example:    
         .. code-block:: python
-            import numpy as np
+
             import paddle
-            import paddle.fluid as fluid
+            import numpy as np
 
             data1 = np.array([[1.0, 2.0]])
             data2 = np.array([[3.0, 4.0]])
             data3 = np.array([[5.0, 6.0]])
-            with fluid.dygraph.guard():
-                x1 = fluid.dygraph.to_variable(data1)
-                x2 = fluid.dygraph.to_variable(data2)
-                x3 = fluid.dygraph.to_variable(data3)
-                result = paddle.stack([x1, x2, x3], axis=0)
-                # result shape: [3, 1, 2]
-                # result value: [[[1.0, 2.0]],
-                #                [[3.0, 4.0]],
-                #                [[5.0, 6.0]]]
+
+            paddle.enable_imperative()
+            x1 = paddle.imperative.to_variable(data1)
+            x2 = paddle.imperative.to_variable(data2)
+            x3 = paddle.imperative.to_variable(data3)
+
+            out = paddle.stack([x1, x2, x3], axis=0)
+            print(out.shape)  # [3, 1, 2]
+            print(out.numpy())
+            # [[[1., 2.]],
+            #  [[3., 4.]],
+            #  [[5., 6.]]]
     """
-
-    helper = LayerHelper('stack', **locals())
-    axis = 0 if axis is None else axis
-
-    if not isinstance(x, list) and not isinstance(x, tuple):
-        x = [x]
-    out = helper.create_variable_for_type_inference(x[0].dtype)
-    if not in_dygraph_mode() and \
-            x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-        assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
-                            "number of the elements must be 1, but received %s." % len(x)
-        out_index = helper.create_variable_for_type_inference(dtype="int32")
-        helper.append_op(
-            type='tensor_array_to_tensor',
-            inputs={'X': x[0]},
-            outputs={'Out': [out],
-                     'OutIndex': [out_index]},
-            attrs={'axis': axis,
-                   'use_stack': True})
-    else:
-        helper.append_op(
-            type='stack',
-            inputs={'X': x},
-            outputs={'Y': out},
-            attrs={'axis': axis})
-
-    return out
+    return layers.stack(x, axis, name)
 
 
 def split(x, num_or_sections, axis=0, name=None):
