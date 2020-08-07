@@ -50,7 +50,7 @@ class GeluOpConverter : public OpConverter {
 
 #ifdef USE_NVINFER_PLUGIN
       auto creator =
-          getPluginRegistry()->getPluginCreator("CustomGeluPluginDynamic", "1");
+          GetPluginRegistry()->getPluginCreator("CustomGeluPluginDynamic", "1");
       assert(creator != nullptr);
       int type = static_cast<int>((engine_->WithFp16() == 1)
                                       ? nvinfer1::DataType::kHALF
