@@ -9911,7 +9911,7 @@ def flatten(x, axis=1, name=None):
     return out
 
 
-def stack(x, axis=0):
+def stack(x, axis=0, name=None):
     """
 
     This OP stacks all the inputs :code:`x` along axis.
@@ -9991,15 +9991,16 @@ def stack(x, axis=0):
             data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
-
-    helper = LayerHelper('stack', **locals())
     axis = 0 if axis is None else axis
-
     if not isinstance(x, list) and not isinstance(x, tuple):
         x = [x]
+
+    if in_dygraph_mode():
+        return core.ops.stack(x, 'axis', axis)
+
+    helper = LayerHelper('stack', **locals())
     out = helper.create_variable_for_type_inference(x[0].dtype)
-    if not in_dygraph_mode() and \
-            x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
                             "number of the elements must be 1, but received %s." % len(x)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
