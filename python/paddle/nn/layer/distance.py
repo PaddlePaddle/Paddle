@@ -1,0 +1,98 @@
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__all__ = ['PairwiseDistance']
+
+import numpy as np
+
+import paddle
+from ...fluid.dygraph import layers
+from ...fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
+from ...fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+
+
+class PairwiseDistance(layers.Layer):
+    """
+	:alias_main: paddle.nn.PairwiseDistance
+	:alias: paddle.nn.PairwiseDistance,paddle.nn.layer.PairwiseDistance,paddle.nn.layer.distance.PairwiseDistance
+
+    This operator computes the pairwise distance between two vectors. The
+    distance is calculated by p-oreder norm:
+
+    .. math::
+
+        \Vert x \Vert _p = \left( \sum_{i=1}^n \vert x_i \vert ^ p \right) ^ {1/p}.
+
+    Parameters:
+        p (float): The order of norm. The default value is 2.
+        eps (float, optional): Add small value to avoid division by zero,
+            default value is 1e-6.
+        keepdim (bool, optional): Whether to reserve the reduced dimension
+            in the output Tensor. The result tensor is one dimension less than
+            the result of ``'x-y'`` unless :attr:`keepdim` is true, default
+            value is False.
+
+    Shape:
+        x: :math:`(N, D)` where `D` is the dimension of vector, available dtype
+            is float32, float64.
+        y: :math:`(N, D)`, y have the same shape as x.
+        out: :math:`(N)`. If :attr:`keepdim` is ``True``, the out shape is :math:`(N, 1)`.
+            The same dtype as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            paddle.enable_imperative()
+            x_np = np.random.random([100, 100]).astype(np.float64)
+            y_np = np.random.random([100, 100]).astype(np.float64)
+            x = paddle.imperative.to_variable(x_np)
+            y = paddle.imperative.to_variable(y_np)
+            dist = paddle.nn.layer.distance.PairwiseDistance()
+            distance = dist(x, y)
+            print(distance.numpy())
+
+    """
+
+    def __init__(self, p=2., eps=1e-6, keepdim=False):
+        super(PairwiseDistance, self).__init__()
+        self.p = p
+        self.eps = eps
+        self.keepdim = keepdim
+        check_type(self.p, 'porder', (float, int), 'p_norm')
+        check_type(self.eps, 'epsilon', (float), 'p_norm')
+        check_type(self.keepdim, 'keepdim', (bool), 'p_norm')
+
+    def forward(self, x, y):
+        if in_dygraph_mode():
+            sub = core.ops.elementwise_sub(x, y)
+            return core.ops.p_norm(sub, 'axis', 1, 'porder', self.p, 'keepdim',
+                                   self.keepdim, 'epsilon', self.eps)
+
+        sub = paddle.elementwise_sub(x, y)
+        check_variable_and_dtype(sub, 'input', ['float32', 'float64'], 'p_norm')
+
+        attrs = {
+            'axis': 1,
+            'porder': self.p,
+            'keepdim': self.keepdim,
+            'epsilon': self.eps,
+        }
+        out = self._helper.create_variable_for_type_inference(
+            dtype=self._helper.input_dtype(sub))
+        self._helper.append_op(
+            type='p_norm', inputs={'X': sub}, outputs={'Out': out}, attrs=attrs)
+
+        return out
