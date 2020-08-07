@@ -21,7 +21,8 @@ import unittest
 import subprocess
 import time
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+#import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 from test_dist_fleet_base import TestFleetBase
@@ -47,7 +48,9 @@ class TestDistGloo_2x2(TestFleetBase):
         ps0_pipe = open(tempfile.gettempdir() + "/ps0_err.log", "wb+")
         ps1_pipe = open(tempfile.gettempdir() + "/ps1_err.log", "wb+")
 
+        required_envs["POD_IP"] = "127.0.0.1"
         required_envs["PADDLE_PSERVER_ID"] = "0"
+        required_envs["PADDLE_PORT"] = "36011"
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
@@ -56,6 +59,7 @@ class TestDistGloo_2x2(TestFleetBase):
         print("PADDLE_PSERVER_ID=0:")
         print(required_envs)
         required_envs["PADDLE_PSERVER_ID"] = "1"
+        required_envs["PADDLE_PORT"] = "36012"
         ps1_proc = subprocess.Popen(
             ps1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,

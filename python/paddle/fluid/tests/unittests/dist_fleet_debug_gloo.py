@@ -20,7 +20,7 @@ import logging
 import paddle
 import paddle.fluid as fluid
 #import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
@@ -51,11 +51,11 @@ a = [5]
 b = [2]
 res = [0]
 if fleet.worker_index() == 0:
-    role._all_reduce(a, res)
+    role._all_reduce(role._node_type_comm, a)
 elif fleet.worker_index() == 1:
-    role._all_reduce(b, res)
+    role._all_reduce(role._node_type_comm, b)
 
 #logger.info(res)
-print("res ", res)
+#print("res ", res)
 
 #role._barrier_all()
