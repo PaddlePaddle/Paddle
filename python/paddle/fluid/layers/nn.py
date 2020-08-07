@@ -6200,7 +6200,7 @@ def squeeze(input, axes, name=None):
             Out.shape = [1,3,5]
 
     Args:
-        input (Variable): The input Tensor. Support data type: float32, float64, bool, int8, int32, int64.
+        input (Variable): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
                           axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
                           Axes range is :math:`[-rank(input), rank(input))`.
                           If axes is negative, :math:`axes=axes+rank(input)`.
@@ -6255,7 +6255,7 @@ def unsqueeze(input, axes, name=None):
       then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
 
     Args:
-        input (Variable): The input Tensor to be unsqueezed. Support data type: float32, float64, bool, int8, int32, int64.
+        input (Variable): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
         axes (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
         name (str|None): Name for this layer.
 
@@ -9972,7 +9972,7 @@ def stack(x, axis=0, name=None):
                                      must be the same. Supposing input is N dims
                                      Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
                                      Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
-                                     Support data types: float32, float64, int32, int64.
+                                     Supported data types: float32, float64, int32, int64.
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`.
                               R is the first tensor of inputs. If ``axis`` < 0, :math:`axis=axis+rank(x[0])+1`.
                               The default value of axis is 0.

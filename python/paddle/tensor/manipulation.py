@@ -580,7 +580,7 @@ def squeeze(x, axis=None, name=None):
             out.shape = [1, 3, 5]
 
     Args:
-        x (Tensor): The input Tensor. Support data type: float32, float64, bool, int8, int32, int64.
+        x (Tensor): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
                           The range of axis is :math:`[-ndim(x), ndim(x))`.
                           If axis is negative, :math:`axis = axis + ndim(x)`.
@@ -622,7 +622,7 @@ def unsqueeze(x, axis, name=None):
     Dimension indices in axis are as seen in the output tensor.
 
     Args:
-        x (Tensor): The input Tensor to be unsqueezed. Support data type: float32, float64, bool, int8, int32, int64.
+        x (Tensor): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . 
                                     If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. 
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
