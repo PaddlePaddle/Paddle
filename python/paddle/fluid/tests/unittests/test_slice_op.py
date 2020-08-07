@@ -663,6 +663,8 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
         self.assertRaises(Exception, test_float_in_index)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestImperativeCUDAPinnedInput(unittest.TestCase):
     def test_input_cuda_pinned_var(self):
         with fluid.dygraph.guard():
