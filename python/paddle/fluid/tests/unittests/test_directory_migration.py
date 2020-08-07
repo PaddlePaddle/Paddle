@@ -29,8 +29,6 @@ class TestDirectory(unittest.TestCase):
         if len(paths) <= 1:
             return module
         package = '.'.join(paths[:-1])
-        if package == 'paddle.jit':
-            package = 'paddle.framework.jit'
         func = paths[-1]
         cmd = 'from ' + package + ' import ' + func
         return cmd
@@ -52,11 +50,12 @@ class TestDirectory(unittest.TestCase):
             'paddle.static.global_scope', 'paddle.static.scope_guard',
             'paddle.static.append_backward', 'paddle.static.gradients',
             'paddle.static.BuildStrategy', 'paddle.static.CompiledProgram',
-            'paddle.static.ExecutionStrategy', 'paddle.static.default_main_program',
+            'paddle.static.ExecutionStrategy',
+            'paddle.static.default_main_program',
             'paddle.static.default_startup_program', 'paddle.static.Program',
-            'paddle.static.name_scope',
-            'paddle.static.program_guard', 'paddle.static.Print',
-            'paddle.static.py_func', 'paddle.static.ParallelExecutor',
+            'paddle.static.name_scope', 'paddle.static.program_guard',
+            'paddle.static.Print', 'paddle.static.py_func',
+            'paddle.static.ParallelExecutor',
             'paddle.static.WeightNormParamAttr', 'paddle.static.nn.fc',
             'paddle.static.nn.batch_norm',
             'paddle.static.nn.bilinear_tensor_product',
@@ -121,8 +120,8 @@ class TestDirectory(unittest.TestCase):
             'paddle.program_guard', 'paddle.Print', 'paddle.py_func',
             'paddle.ParallelExecutor', 'paddle.default_main_program',
             'paddle.default_startup_program', 'paddle.Program',
-            'paddle.WeightNormParamAttr',
-            'paddle.declarative.fc', 'paddle.declarative.batch_norm',
+            'paddle.WeightNormParamAttr', 'paddle.declarative.fc',
+            'paddle.declarative.batch_norm',
             'paddle.declarative.bilinear_tensor_product',
             'paddle.declarative.conv2d', 'paddle.declarative.conv2d_transpose',
             'paddle.declarative.conv3d', 'paddle.declarative.conv3d_transpose',
@@ -136,12 +135,22 @@ class TestDirectory(unittest.TestCase):
             'paddle.declarative.spectral_norm', 'paddle.declarative.embedding'
         ]
 
-        import_file = 'run_import_modules.py'
+        import_file = 'run_old_import_modules.py'
 
         with open(import_file, "w") as wb:
+            wb.write('count = 0\n')
+            wb.write('err_module = ""\n')
             for module in old_directory:
                 run_cmd = self.get_import_command(module)
-                wb.write(run_cmd + '\n')
+                wb.write('try:\n')
+                wb.write('    ' + run_cmd + '\n')
+                wb.write('except:\n')
+                wb.write('    count += 1\n')
+                wb.write('else:\n')
+                wb.write('    err_module = "' + module + '"\n')
+            wb.write('if count != ' + str(len(old_directory)) + ':\n')
+            wb.write('    print("Error: Module " + err_module +' \
+                '" should not be imported")')
 
         _python = sys.executable
 
@@ -152,8 +161,7 @@ class TestDirectory(unittest.TestCase):
             stderr=subprocess.PIPE)
         stdout, stderr = ps_proc.communicate()
 
-        assert "Error" in str(stderr), "Error: Module " \
-                + module + " shouldn't be imported"
+        assert "Error" not in str(stdout), str(stdout)
 
 
 if __name__ == '__main__':
