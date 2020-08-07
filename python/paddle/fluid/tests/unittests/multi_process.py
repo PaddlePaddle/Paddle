@@ -18,21 +18,13 @@ import time
 
 
 def train(prefix):
-    selected_gpus = os.environ.get("FLAGS_selected_gpus")
-    trainer_id = int(os.environ.get("PADDLE_TRAINER_ID"))
-    worker_endpoints_env = os.environ.get("PADDLE_TRAINER_ENDPOINTS")
-    print("worker_endpoints_env: ", worker_endpoints_env)
-    current_endpoint = os.environ.get("PADDLE_CURRENT_ENDPOINT")
+    selected_gpus = os.getenv("FLAGS_selected_gpus")
+    trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+    worker_endpoints_env = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+    current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
     worker_endpoints = worker_endpoints_env
     print("worker_endpoints: ", worker_endpoints)
     trainers_num = len(worker_endpoints.split(','))
-
-    # selected_gpus = os.getenv("FLAGS_selected_gpus")
-    # trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
-    # worker_endpoints_env = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-    # current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
-    # worker_endpoints = worker_endpoints_env
-    # trainers_num = len(worker_endpoints.split(','))
 
     name = "selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
         .format(selected_gpus, worker_endpoints, trainers_num, current_endpoint,trainer_id)

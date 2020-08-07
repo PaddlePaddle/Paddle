@@ -39,6 +39,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_gradient_merge_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_localsgd_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_lars_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_dgc_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_executor)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
@@ -344,7 +345,6 @@ if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
 
     #not need
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
@@ -388,6 +388,7 @@ if(WITH_DISTRIBUTE)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
         py_test_modules(test_dgc_momentum_op MODULES test_dgc_momentum_op)
         py_test_modules(test_dgc_optimizer MODULES test_dgc_optimizer)
+        py_test_modules(test_fleet_dgc_meta_optimizer MODULES test_fleet_dgc_meta_optimizer)
     else()
         # if not with dgc, must close all dgc tests
         list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
