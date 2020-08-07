@@ -1661,6 +1661,31 @@ All parameter, weight, gradient are variables in Paddle.
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
            )DOC")
+      .def("pop",
+           [](LoDTensorArray &self) -> LoDTensor * {
+             LoDTensor back_tensor = self.back();
+             self.pop_back();
+             return &back_tensor;
+           },
+           py::return_value_policy::move, R"DOC(
+             Removes the last element from the LoDTensorArray and returns the
+             last LoDTensor
+              
+             Returns:
+                   LoDTensor.
+
+             Examples:
+                 .. code-block:: python
+
+                   import paddle.fluid as fluid
+                   import numpy as np
+
+                   arr = fluid.LoDTensorArray()
+                   t0 = fluid.LoDTensor()
+                   t0.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                   arr.append(t0)
+                   t1 = arr.pop()
+           )DOC")
       .def("_move_to_list",
            [](LoDTensorArray &self) -> py::list {
              py::list res(self.size());

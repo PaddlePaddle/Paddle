@@ -634,7 +634,7 @@ class AttentionModel(fluid.dygraph.Layer):
 
         src_emb = self.src_embeder(self._transpose_batch_time(src))
 
-        # NOTE: modify model code about `enc_hidden` and `enc_cell` to transforme dygraph code successfully.
+        # NOTE: modify model code about `enc_hidden` and `enc_cell` to transform dygraph code successfully.
         # Because nested list can't be transformed now.
         enc_hidden_0 = to_variable(
             np.zeros(

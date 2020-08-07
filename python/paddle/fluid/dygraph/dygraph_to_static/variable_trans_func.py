@@ -18,7 +18,9 @@ import six
 import gast
 
 from paddle.fluid import core
+from paddle.fluid.framework import Variable
 from paddle.fluid.layers import fill_constant
+from paddle.fluid.layers.control_flow import array_write, array_read
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = [
@@ -121,3 +123,117 @@ def to_static_variable(x):
         return fill_constant(shape=[1], dtype='int64', value=x)
 
     return x
+
+
+class DynamicList(object):
+    '''
+    A class casts python list to LoDTensorArray dynamically at run time.
+    '''
+
+    def __init__(self, iterable):
+        self.private_type = self._get_same_type(iterable)
+        # self.private_array is LoDTensorArray if all types are LoDTensor
+        # else python list
+        if self.private_type == Varaible:
+            self.private_array = core.LoDTensorArray()
+            count = 0
+            for i in iterable:
+                array_i = fill_constant(shape=[1], dtype='int64', value=i)
+                array_write(args[i], array_i, self.private_array)
+        else:
+            self.private_type = list(iterable)
+
+    def __len__(self):
+        return len(self.private_array)
+
+    def __getitem__(self, i):
+        return self.private_array[i]
+
+    def __setitem__(self, i, elem):
+        if self.private_type == Variable and not isinstance(elem, Variable):
+            # Transfer from LoDTensorArray to python list
+            self.private_array = self.private_array._move_to_list()
+            self.private_type = self._get_same_type(args)
+        self.private_array[i] = elem
+
+    def append(self, elem):
+        if self.private_type == Variable and not isinstance(elem, Variable):
+            # Transfer from LoDTensorArray to python list
+            self.private_array = self.private_array._move_to_list()
+            self.private_array.append(elem)
+            self.private_type = self._get_same_type(args)
+            return
+        self.private_array.append(elem)
+
+    def pop(self):
+        ret = self.private_array.pop()
+        if len(self.private_array) == 0:
+            self.private_type = Variable
+            self.private_array = core.LoDTensorArray()
+        return ret
+
+    def extend(self, iterable):
+        if self.private_type == Variable:
+            for i in iterable:
+                self.private_array.append(i)
+            return
+        self.private_array.extend(iterable)
+
+    def insert(self, i, x):
+        if self.private_type == Variable:
+            raise NotImplementedError(
+                "LoDTensorArray hasn't implemented 'insert' method.")
+        self.private_array.insert(x)
+
+    def remove(self, x):
+        if self.private_type == Variable:
+            raise NotImplementedError(
+                "LoDTensorArray hasn't implemented 'remove' method.")
+        self.private_array.remove(x)
+
+    def clear(self):
+        self.private_type = Variable
+        self.private_array = core.LoDTensorArray()
+
+    def index(self, x, start=None, end=None):
+        if self.private_type == Variable:
+            raise NotImplementedError(
+                "LoDTensorArray hasn't implemented 'index' method.")
+        return self.private_array.index(x, start, end)
+
+    def count(self, x):
+        if self.private_type == Variable:
+            raise NotImplementedError(
+                "LoDTensorArray hasn't implemented 'count' method.")
+        return self.private_array.count(x)
+
+    def sort(self, key=None, reverse=None):
+        if self.private_type == Variable:
+            raise NotImplementedError(
+                "LoDTensorArray hasn't implemented 'sort' method.")
+        return self.private_array.sort(key, reverse)
+
+    def reverse(self):
+        if self.private_type == Variable:
+            raise NotImplementedError(
+                "LoDTensorArray hasn't implemented 'reverse' method.")
+        return self.private_array.reverse()
+
+    def copy(self):
+        return self.private_array[:]
+
+    def _get_same_type(self, iterable):
+        """
+        Returns the type if all iterable have same type. Returns Variable if
+        iterable is empty. Returns None if iterable contains different types.
+        """
+        len_args = len(iterable)
+        if len_args == 0:
+            return Variable
+        ret = "Undefined"
+        for i in iterable:
+            if ret == "Undefined":
+                ret = type(i)
+            elif not isinstance(i, ret):
+                return None
+        return ret

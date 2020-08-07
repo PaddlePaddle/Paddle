@@ -92,6 +92,12 @@ class ListTransformer(gast.NodeTransformer):
     This class transforms python list used in control flow into Static Graph Ast.
     """
 
+
+class ListTransformerComp(gast.NodeTransformer):
+    """
+    This class transforms python list used in control flow into Static Graph Ast.
+    """
+
     def __init__(self, wrapper_root):
         assert isinstance(
             wrapper_root, AstNodeWrapper
