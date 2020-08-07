@@ -13,10 +13,6 @@
 
 from paddle import fluid
 from .meta_optimizer_base import MetaOptimizerBase
-from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
-from paddle.fluid.incubate.fleet.parameter_server.ir import pserver_pass as server
-from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 
 class AsyncMetaOptimizer(MetaOptimizerBase):
@@ -36,6 +32,8 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
         return True if k_steps >= 0 else False
 
     def _get_distributed_strategy(self):
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         strategy = None
 
@@ -54,6 +52,8 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
         return strategy
 
     def _build_trainer_programs(self, compiled_config):
+        from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
+
         _main = compiled_config.origin_main_program.clone()
         _startup = compiled_config.origin_startup_program.clone()
 
@@ -75,6 +75,8 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
+        from paddle.fluid.incubate.fleet.parameter_server.ir import pserver_pass as server
+
         _main = fluid.Program()
         _startup = fluid.Program()
 
@@ -121,6 +123,7 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
 
         _origin_main_program = loss.block.program
         _origin_startup_program = startup_program
+        from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
 
         compiled_config = public.CompileTimeStrategy(_origin_main_program,
                                                      _origin_startup_program,
