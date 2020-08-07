@@ -276,9 +276,8 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   auto optimize_prepared = executor->Prepare(*program, block_list);
   // execute global block if needed, block id 1 in the program is global
   // block if it's not bind to a grad var for it's update.
-  if (block_list[0] == 1 &&
-      grad_to_block_id.find_value(static_cast<int32_t>(1)) ==
-          grad_to_block_id.end()) {
+  if (block_list[0] == 1 && grad_to_block_id.find_value(static_cast<int32_t>(
+                                1)) == grad_to_block_id.end()) {
     executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
   }
   std::unordered_map<std::string,
@@ -394,6 +393,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestGetNoBarrierHandler());
   request_notify_handler_.reset(
       new distributed::RequestNotifyHandler(distributed_mode, fan_in));
+  request_send_and_recv_handler_.reset(
+      new distributed::RequestSendAndRecvHandler(distributed_mode));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(), rpc_send_thread_num);
@@ -408,6 +409,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             request_get_no_barrier_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestNotify,
                             request_notify_handler_.get(), rpc_send_thread_num);
+  rpc_service_->RegisterRPC(distributed::kRequestSendAndRecv,
+                            request_send_and_recv_handler_.get());
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -488,6 +491,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_checkpoint_handler_.get());
   f(request_get_no_barrier_handler_.get());
   f(request_notify_handler_.get());
+  f(request_send_and_recv_.get());
 
   // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
   signal(SIGINT, SignalHandler::StopAndExit);

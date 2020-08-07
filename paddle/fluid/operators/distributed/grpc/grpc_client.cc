@@ -482,6 +482,73 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   return h;
 }
 
+VarHandlePtr SendAndRecv(const std::string& ep,
+                         const platform::DeviceContext& ctx,
+                         const framework::Scope& scope,
+                         const std::string& send_var_name,
+                         const std::string& recv_var_name,
+                         const std::string& table_name = "",
+                         int64_t time_out = time_out) {
+  const platform::DeviceContext* p_ctx = &ctx;
+  const std::string ep_val = ep;
+  const std::string send_var_name_val = send_var_name;
+  const std::string recv_var_name_val = recv_var_name;
+  const framework::Scope* p_scope = &scope;
+  const auto ch = GetChannel(ep_val);
+  const std::string method = kSendAndRecv;
+
+  int retry_times_ = 0;
+
+  while (true) {
+    SendAndRecvProcessor* s = new SendAndRecvProcessor(ch);
+    VarHandlePtr h(
+        new VarHandle(ep, method, send_var_name_val, p_ctx, p_scope));
+    s->Prepare(h, time_out);
+
+    framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
+      sendrecv::VariableMessage req;
+      req.set_varname(send_var_name_val);
+      req.set_out_varname(recv_var_name_val);
+      req.set_trainer_id(trainer_id_);
+      req.set_table_name(table_name_val);
+
+      ::grpc::ByteBuffer buf;
+      RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
+
+      VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
+
+      // stub context
+      s->response_call_back_ = ProcGetResponse;
+
+      platform::RecordRPCEvent record_event(method);
+
+      auto call = s->stub_g_.PrepareUnaryCall(
+          s->context_.get(), "/sendrecv.SendRecvService/SendAndRecvVariable",
+          buf, &cq_);
+      call->StartCall();
+      call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+
+      if (UNLIKELY(platform::IsProfileEnabled())) {
+        h->Wait();
+      }
+    });
+    req_count_++;
+
+    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
+      h->Wait();
+      if (h->should_retry) {
+        VLOG(3) << "rpc call failed, retry times " << retry_times_;
+        retry_times_++;
+        std::random_device rd;
+        std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
+        continue;
+      }
+    }
+
+    return h;
+  }
+}
+
 bool GRPCClient::Wait() {
   std::unique_lock<std::mutex> lk(sync_mutex_);
   sync_cond_.wait(lk, [this] { return (req_count_ == 0 || ok_ == false); });

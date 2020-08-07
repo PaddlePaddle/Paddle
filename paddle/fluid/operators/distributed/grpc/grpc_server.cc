@@ -433,6 +433,51 @@ class RequestNotify final : public RequestBase {
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 };
 
+class RequestSendAndRecv final : public RequestBase {
+ public:
+  explicit RequestSendAndRecv(GrpcService::AsyncService* service,
+                              ::grpc::ServerCompletionQueue* cq,
+                              RequestHandler* request_handler, int req_id)
+      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    auto method_id =
+        static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, &request_, &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+
+  virtual ~RequestSendAndRecv() {}
+  std::string GetReqName() override { return request_.varname(); }
+
+  void Process() override {
+    std::string varname = GetReqName();
+
+    auto scope = request_.GetMutableLocalScope();
+    auto invar = request_.GetVar();
+    int trainer_id = request_.GetTrainerId();
+    std::string out_varname = request_.out_varname();
+    std::string table_name = request_.table_name();
+    framework::Variable* invar = nullptr;
+    framework::Variable* outvar = nullptr;
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
+                             out_varname, table_name);
+
+    VLOG(1) << "before SerializeToByteBuffer";
+    if (outvar) {
+      SerializeToByteBuffer(out_varname, outvar, *request_handler_->dev_ctx(),
+                            &reply_);
+    }
+    VLOG(1) << "after SerializeToByteBuffer";
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  sendrecv::VariableMessage request_;
+  ::grpc::ByteBuffer reply_;
+  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+
+}
+
 void AsyncGRPCServer::WaitServerReady() {
   VLOG(4) << "AsyncGRPCServer is waiting server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);

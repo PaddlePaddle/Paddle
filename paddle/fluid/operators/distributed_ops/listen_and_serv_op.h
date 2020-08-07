@@ -99,6 +99,8 @@ class ListenAndServOp : public framework::OperatorBase {
   mutable std::shared_ptr<distributed::RequestHandler>
       request_checkpoint_handler_;
   mutable std::shared_ptr<distributed::RequestHandler> request_notify_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler>
+      request_send_and_recv_handler_;
 
   mutable std::shared_ptr<std::thread> server_thread_;
   mutable std::vector<std::string> sparse_vars_;
