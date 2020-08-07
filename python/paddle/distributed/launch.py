@@ -190,7 +190,7 @@ def get_gpus(selected_gpus):
     return selected_gpus
 
 
-def launch(args):
+def get_cluster_and_pod(args):
     # parse arguments, used for cloud-single-machine and local
     selected_gpus = get_gpus(args.selected_gpus)
     trainers_num = cloud_utils.get_trainers_num()
@@ -208,6 +208,12 @@ def launch(args):
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)
         logger.info("get cluster from args:{}".format(cluster))
+
+    return cluster, pod
+
+
+def launch(args):
+    cluster, pod = get_cluster_and_pod(args)
 
     procs = start_local_trainers(
         cluster,
