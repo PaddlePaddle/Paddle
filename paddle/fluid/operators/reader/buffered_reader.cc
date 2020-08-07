@@ -43,6 +43,20 @@ BufferedReader::BufferedReader(
       buffer_size_(buffer_size),
       pin_memory_(pin_memory) {
   VLOG(1) << "BufferedReader";
+#ifdef PADDLE_WITH_CUDA
+  if (platform::is_gpu_place(place_) && !pin_memory) {
+    int dev_idx = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+    compute_stream_ =
+        ((platform::CUDADeviceContext *)(platform::DeviceContextPool::Instance()
+                                             .Get(place_)))
+            ->stream();
+    events_.resize(buffer_size);
+    for (auto &event : events_) {
+      event = platform::CudaEventResourcePool::Instance().New(dev_idx);
+    }
+    stream_ = platform::CudaStreamResourcePool::Instance().New(dev_idx);
+  }
+#endif
   is_same_place_ = false;
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);

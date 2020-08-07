@@ -447,7 +447,7 @@ void BindReader(py::module *module) {
            const std::vector<framework::proto::VarType::Type> &dtypes,
            const std::vector<bool> &need_check_feed,
            const std::vector<platform::Place> &dst_places,
-           bool use_double_buffer, bool drop_last, bool pin_memory = false) {
+           bool use_double_buffer, bool drop_last, bool pin_memory) {
           return new MultiDeviceFeedReader<reader::LoDTensorBlockingQueue>(
               queue, names, shapes, dtypes, need_check_feed, dst_places,
               use_double_buffer, drop_last, pin_memory);
@@ -463,7 +463,7 @@ void BindReader(py::module *module) {
          const std::vector<framework::proto::VarType::Type> &dtypes,
          const std::vector<bool> &need_check_feed,
          const std::vector<platform::Place> &dst_places, bool use_double_buffer,
-         bool drop_last, bool pin_memory = false) {
+         bool drop_last, bool pin_memory) {
         queue->SetDeviceCount(dst_places.size());
         return new MultiDeviceFeedReader<
             reader::OrderedMultiDeviceLoDTensorBlockingQueue>(
