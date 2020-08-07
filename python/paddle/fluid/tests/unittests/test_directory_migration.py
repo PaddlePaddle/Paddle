@@ -72,22 +72,22 @@ class TestDirectory(unittest.TestCase):
 
         import_file = 'run_import_modules.py'
 
-        for module in new_directory:
-            with open(import_file, "w") as wb:
+        with open(import_file, "w") as wb:
+            for module in new_directory:
                 run_cmd = self.get_import_command(module)
                 wb.write(run_cmd)
 
-            _python = sys.executable
+        _python = sys.executable
 
-            ps_cmd = "{} {}".format(_python, import_file)
-            ps_proc = subprocess.Popen(
-                ps_cmd.strip().split(" "),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
-            stdout, stderr = ps_proc.communicate()
+        ps_cmd = "{} {}".format(_python, import_file)
+        ps_proc = subprocess.Popen(
+            ps_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        stdout, stderr = ps_proc.communicate()
 
-            assert "Error" not in str(stderr), "Error: Can't" \
-                + " import Module " + module
+        assert "Error" not in str(stderr), "Error: Can't" \
+            + " import Module " + module
 
     def test_old_directory(self):
         old_directory = [
@@ -134,22 +134,22 @@ class TestDirectory(unittest.TestCase):
 
         import_file = 'run_import_modules.py'
 
-        for module in old_directory:
-            with open(import_file, "w") as wb:
+        with open(import_file, "w") as wb:
+            for module in old_directory:
                 run_cmd = self.get_import_command(module)
                 wb.write(run_cmd)
 
-            _python = sys.executable
+        _python = sys.executable
 
-            ps_cmd = "{} {}".format(_python, import_file)
-            ps_proc = subprocess.Popen(
-                ps_cmd.strip().split(" "),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
-            stdout, stderr = ps_proc.communicate()
+        ps_cmd = "{} {}".format(_python, import_file)
+        ps_proc = subprocess.Popen(
+            ps_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        stdout, stderr = ps_proc.communicate()
 
-            assert "Error" in str(stderr), "Error: Module " \
-                 + module + " shouldn't be imported"
+        assert "Error" in str(stderr), "Error: Module " \
+                + module + " shouldn't be imported"
 
 
 if __name__ == '__main__':
