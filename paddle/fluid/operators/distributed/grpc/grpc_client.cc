@@ -482,17 +482,18 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   return h;
 }
 
-VarHandlePtr SendAndRecv(const std::string& ep,
-                         const platform::DeviceContext& ctx,
-                         const framework::Scope& scope,
-                         const std::string& send_var_name,
-                         const std::string& recv_var_name,
-                         const std::string& table_name = "",
-                         int64_t time_out = time_out) {
+VarHandlePtr GRPCClient::SendAndRecv(const std::string& ep,
+                                     const platform::DeviceContext& ctx,
+                                     const framework::Scope& scope,
+                                     const std::string& send_var_name,
+                                     const std::string& recv_var_name,
+                                     const std::string& table_name,
+                                     int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string send_var_name_val = send_var_name;
   const std::string recv_var_name_val = recv_var_name;
+  const std::string table_name_val = table_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   const std::string method = kSendAndRecv;
@@ -505,11 +506,11 @@ VarHandlePtr SendAndRecv(const std::string& ep,
         new VarHandle(ep, method, send_var_name_val, p_ctx, p_scope));
     s->Prepare(h, time_out);
 
-    framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
+    framework::AsyncIO([send_var_name_val, recv_var_name_val, table_name_val,
+                        p_scope, p_ctx, s, method, h, this] {
       sendrecv::VariableMessage req;
       req.set_varname(send_var_name_val);
       req.set_out_varname(recv_var_name_val);
-      req.set_trainer_id(trainer_id_);
       req.set_table_name(table_name_val);
 
       ::grpc::ByteBuffer buf;

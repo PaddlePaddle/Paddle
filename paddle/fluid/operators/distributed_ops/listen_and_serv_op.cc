@@ -394,7 +394,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   request_notify_handler_.reset(
       new distributed::RequestNotifyHandler(distributed_mode, fan_in));
   request_send_and_recv_handler_.reset(
-      new distributed::RequestSendAndRecvHandler(distributed_mode));
+      new distributed::SendAndRecvHandler(distributed_mode));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(), rpc_send_thread_num);
@@ -491,7 +491,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_checkpoint_handler_.get());
   f(request_get_no_barrier_handler_.get());
   f(request_notify_handler_.get());
-  f(request_send_and_recv_.get());
+  f(request_send_and_recv_handler_.get());
 
   // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
   signal(SIGINT, SignalHandler::StopAndExit);

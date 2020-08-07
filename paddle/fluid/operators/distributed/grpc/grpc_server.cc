@@ -439,25 +439,27 @@ class RequestSendAndRecv final : public RequestBase {
                               ::grpc::ServerCompletionQueue* cq,
                               RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    auto method_id =
+    request_.reset(new GRPCVariableResponse(
+        request_handler->scope(), request_handler->dev_ctx(),
+        request_handler->distributed_mode()));
+    int method_id =
         static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
     service_->RequestAsyncUnary(
-        method_id, &ctx_, &request_, &responder_, cq_, cq_,
+        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
   }
 
   virtual ~RequestSendAndRecv() {}
-  std::string GetReqName() override { return request_.varname(); }
+  std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
     std::string varname = GetReqName();
 
-    auto scope = request_.GetMutableLocalScope();
-    auto invar = request_.GetVar();
-    int trainer_id = request_.GetTrainerId();
-    std::string out_varname = request_.out_varname();
-    std::string table_name = request_.table_name();
-    framework::Variable* invar = nullptr;
+    auto scope = request_->GetMutableLocalScope();
+    auto invar = request_->GetVar();
+    int trainer_id = request_->GetTrainerId();
+    std::string out_varname = request_->OutVarname();
+    std::string table_name = request_->TableName();
     framework::Variable* outvar = nullptr;
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
                              out_varname, table_name);
@@ -472,11 +474,10 @@ class RequestSendAndRecv final : public RequestBase {
   }
 
  protected:
-  sendrecv::VariableMessage request_;
+  std::shared_ptr<GRPCVariableResponse> request_;
   ::grpc::ByteBuffer reply_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
-
-}
+};
 
 void AsyncGRPCServer::WaitServerReady() {
   VLOG(4) << "AsyncGRPCServer is waiting server ready";

@@ -330,8 +330,8 @@ bool SendAndRecvHandler::Handle(const std::string &varname,
                                 framework::Variable *var,
                                 framework::Variable **outvar,
                                 const int trainer_id,
-                                const std::string &out_var_name = "",
-                                const std::string &table_name = "") {
+                                const std::string &out_var_name,
+                                const std::string &table_name) {
   VLOG(3) << "SendAndRecvHandle: " << varname
           << " out_var_name: " << out_var_name
           << " , trainer_id: " << trainer_id;

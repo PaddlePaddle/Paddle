@@ -46,6 +46,7 @@ constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
 constexpr char kRequestGetNoBarrier[] = "GetVariableNoBarrier";
 constexpr char kRequestNotify[] = "RequestNotify";
+constexpr char kRequestSendAndRecv[] = "RequestSendAndRecv";
 
 constexpr char kSendRPC[] = "SendRPC";
 constexpr char kGetRPC[] = "GetRPC";

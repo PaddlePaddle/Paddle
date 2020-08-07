@@ -178,7 +178,7 @@ class RequestNotifyHandler final : public RequestHandler {
 
 class SendAndRecvHandler final : public RequestHandler {
  public:
-  explicit SendAndRecvHandler(int distributed_mode, int trainers)
+  explicit SendAndRecvHandler(int distributed_mode)
       : RequestHandler(distributed_mode) {}
   virtual ~SendAndRecvHandler() {}
   bool Handle(const std::string& varname, framework::Scope* Scope,
