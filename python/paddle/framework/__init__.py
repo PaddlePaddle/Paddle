@@ -20,7 +20,7 @@ __all__ = [
 
 __all__ += [
     'BackwardStrategy', 'grad', 'LayerList', 'load', 'save', 'prepare_context',
-    'to_variable', 'no_grad', 'ParallelEnv', 'DataParallel', 'jit'
+    'to_variable', 'no_grad', 'ParallelEnv', 'DataParallel'
 ]
 
 __all__ += [
@@ -50,8 +50,6 @@ from ..fluid.dygraph.checkpoint import save_dygraph as save  #DEFINE_ALIAS
 from ..fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
 from ..fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
 from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS
-
-from . import jit
 
 from ..fluid.dygraph.learning_rate_scheduler import NoamDecay  #DEFINE_ALIAS
 from ..fluid.dygraph.learning_rate_scheduler import PiecewiseDecay  #DEFINE_ALIAS

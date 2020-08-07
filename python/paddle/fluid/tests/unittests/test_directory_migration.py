@@ -29,8 +29,6 @@ class TestDirectory(unittest.TestCase):
         if len(paths) <= 1:
             return module
         package = '.'.join(paths[:-1])
-        if package == 'paddle.jit':
-            package = 'paddle.framework.jit'
         func = paths[-1]
         cmd = 'from ' + package + ' import ' + func
         return cmd

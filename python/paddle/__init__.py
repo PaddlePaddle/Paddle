@@ -219,7 +219,6 @@ from .framework import load  #DEFINE_ALIAS
 from .framework import prepare_context  #DEFINE_ALIAS
 from .framework import ParallelEnv  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS
-from .framework import jit  #DEFINE_ALIAS
 
 from .framework import NoamDecay  #DEFINE_ALIAS
 from .framework import PiecewiseDecay  #DEFINE_ALIAS
@@ -247,4 +246,5 @@ from .fluid.dygraph.base import enable_dygraph as disable_static  #DEFINE_ALIAS
 from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
 
+from . import jit
 from . import static

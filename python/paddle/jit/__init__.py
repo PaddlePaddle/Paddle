@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.dygraph.jit import save  #DEFINE_ALIAS
-from ...fluid.dygraph.jit import load  #DEFINE_ALIAS
-from ...fluid.dygraph.jit import SaveLoadConfig  #DEFINE_ALIAS
-from ...fluid.dygraph.jit import TracedLayer  #DEFINE_ALIAS
-from ...fluid.dygraph.jit import declarative as __impl__  #DEFINE_ALIAS
-from ...fluid.dygraph.jit import declarative as to_static  #DEFINE_ALIAS
-from ...fluid.dygraph import ProgramTranslator  #DEFINE_ALIAS
-from ...fluid.dygraph.io import TranslatedLayer  #DEFINE_ALIAS
+from ..fluid.dygraph.jit import save  #DEFINE_ALIAS
+from ..fluid.dygraph.jit import load  #DEFINE_ALIAS
+from ..fluid.dygraph.jit import SaveLoadConfig  #DEFINE_ALIAS
+from ..fluid.dygraph.jit import TracedLayer  #DEFINE_ALIAS
+from ..fluid.dygraph.jit import declarative as __impl__  #DEFINE_ALIAS
+from ..fluid.dygraph.jit import declarative as to_static  #DEFINE_ALIAS
+from ..fluid.dygraph import ProgramTranslator  #DEFINE_ALIAS
+from ..fluid.dygraph.io import TranslatedLayer  #DEFINE_ALIAS
 
 __all__ = [
     'save', 'load', 'SaveLoadConfig', 'TracedLayer', 'to_static',
