@@ -16,9 +16,6 @@
 #include "paddle/fluid/framework/io/crypto/aes_cipher.h"
 #include "paddle/fluid/framework/io/crypto/cipher_utils.h"
 #include "paddle/fluid/platform/enforce.h"
-#ifdef PADDLE_ON_INFERENCE
-#include "paddle/fluid/inference/api/paddle_api.h"
-#endif
 namespace paddle {
 namespace framework {
 
