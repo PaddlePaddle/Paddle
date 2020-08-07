@@ -19,6 +19,7 @@ from ..meta_optimizers import GraphExecutionOptimizer
 from ..meta_optimizers import PipelineOptimizer
 from ..meta_optimizers import LocalSGDOptimizer
 from ..meta_optimizers import LarsOptimizer
+from ..meta_optimizers import DGCOptimizer
 
 __all__ = ["MetaOptimizerFactory"]
 
@@ -30,6 +31,7 @@ meta_optimizer_names = [
     "PipelineOptimizer",
     "LocalSGDOptimizer",
     "LarsOptimizer",
+    "DGCOptimizer",
 ]
 
 
