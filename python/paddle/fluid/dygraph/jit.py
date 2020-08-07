@@ -24,7 +24,7 @@ from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec, TensorSpec, PartialProgram
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec, TensorSpec, PartialProgram, unwrap
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Program, Block, Variable, ParamBase, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
@@ -139,12 +139,47 @@ def make_decorate(original_func, wrapper_func):
     return wrapper_func
 
 
-def declarative(function=None, input_signature=None):
+def declarative(function=None, input_spec=None):
+    """
+    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    @declarative handles the Program and Executor of static mode and returns
+    the result as a dygraph VarBase.
+
+    Args:
+        dygraph_func (callable): callable imperative function.
+
+    Returns:
+        VarBase: containing the numerical result.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+          from paddle.fluid.dygraph.jit import declarative
+
+
+          @declarative
+          def func(x):
+              x = fluid.dygraph.to_variable(x)
+              if fluid.layers.mean(x) < 0:
+                  x_v = x - 1
+              else:
+                  x_v = x + 1
+              return x_v
+
+          x = np.ones([1, 2])
+          x_v = func(x)
+          print(x_v.numpy()) # [[2. 2.]]
+
+    """
+
     def _decorator_(python_func):
+        _, python_func = unwrap(python_func)
         return make_decorate(
             original_func=python_func,
             wrapper_func=PartialProgram(
-                dygraph_func=python_func, input_signature=input_signature))
+                dygraph_func=python_func, input_spec=input_spec))
 
     # for `declarative2(foo, ...)`
     if function is not None:
@@ -681,10 +716,8 @@ def save(layer, model_path, input_spec=None, configs=None):
                     % type(var))
 
     # 2. get program of declarative Layer.forward
-    prog_cache = prog_translator.get_program_cache()
-    # make dummy args & kwargs, to get excepted FunctionSpec
-    layer_func = FunctionSpec(type(layer).forward, [layer], {})
-    concrete_program, _ = prog_cache.get_program(layer_func)
+
+    concrete_program = layer.forward.concrete_program
 
     # NOTE: we maintain the mapping of variable name to
     # structured name, the buffer variable (non-persistable)

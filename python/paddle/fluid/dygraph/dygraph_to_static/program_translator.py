@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import gast
+import logging
 import inspect
 import warnings
 import textwrap
@@ -24,6 +25,7 @@ from paddle.fluid import framework
 from paddle.fluid import executor
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
+from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
@@ -39,6 +41,8 @@ from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_progr
 from paddle.fluid.annotations import deprecated
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
+
+MAX_TRACED_PROGRAM_COUNT = 5
 
 
 class FunctionCache(object):
@@ -125,12 +129,28 @@ class CacheKey(object):
         self.function_spec = function_spec
         # TODO: make sure it can hash 
         self.inputs_with_spec = inputs_with_spec
-        # TODO: make sure it can hash
         self.class_instance = class_instance
 
+    @classmethod
+    def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
+        if args and isinstance(args[0], layers.Layer):
+            args = args[1:]
+        # 2. convert tensor and numpy array into TensorSpec 
+        _args, _kwargs = function_spec.unified_args_and_kwargs(args, kwargs)
+        inputs_with_spec = function_spec.args_to_variable_spec(_args, _kwargs)
+
+        # 3. check whether hit the cache or build a new program for the input arguments
+        return CacheKey(function_spec, inputs_with_spec, class_instance)
+
     def __hash__(self):
-        return hash((id(self.function_spec), tuple(self.inputs_with_spec),
-                     self.class_instance))
+        # TODO(Aurelius84): list, dict is not hashable. Currently just consider tensorSpec as hash key.
+        tensor_specs = [
+            input for input in flatten(self.inputs_with_spec)
+            if isinstance(input, TensorSpec)
+        ]
+
+        return hash(
+            (id(self.function_spec), tuple(tensor_specs), self.class_instance))
 
     def __eq__(self, other):
         return (type(self) is type(other)) and hash(self) == hash(other)
@@ -143,12 +163,26 @@ class CacheKey(object):
             id(self.function_spec), self.inputs_with_spec, self.class_instance)
 
 
+def unwrap(func):
+    """
+    Unwraps a decorated function and returns the decorator list and inner target.
+    """
+    decorators = []
+    cur = func
+    while True:
+        if isinstance(cur, PartialProgram):
+            decorators.append(cur)
+            cur = cur.dygraph_function
+        else:  # TODO: deal with other decorators
+            break
+    return decorators, cur
+
+
 class PartialProgram(object):
-    def __init__(self, dygraph_func, input_signature=None):
+    def __init__(self, dygraph_func, input_spec=None):
         self._dygraph_func = dygraph_func
-        self._input_signature = input_signature
-        self._function_spec = FunctionSpec(dygraph_func, input_signature)
-        # cache the transformed programs
+        self._input_spec = input_spec
+        self._function_spec = FunctionSpec(dygraph_func, input_spec)
         self._program_cache = ProgramCache()
         # save the instance `self` while decorating a method of class.
         self._class_instance = None
@@ -166,6 +200,7 @@ class PartialProgram(object):
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
         inputs_with_spec = self._function_spec.args_to_variable_spec(args,
                                                                      kwargs)
+
         # TODO: whether we need this class or just a functionSpec
         # 3. check whether hit the cache or build a new program for the input arguments
         cache_key = CacheKey(self._function_spec, inputs_with_spec,
@@ -180,6 +215,9 @@ class PartialProgram(object):
         return partial_program_layer(args)
 
     def _call_dygraph_func(self, *args, **kwargs):
+        """
+        Calls dygraph function directly and returns the outputs.
+        """
         if self._class_instance is not None:
             dygraph_func = self._dygraph_func.__get__(self._class_instance)
         else:
@@ -196,18 +234,20 @@ class PartialProgram(object):
         return None
 
     @property
-    def program(self, is_test=False):
-        # if specific the input_signature, the length of program_cache will always 1,
+    def dygraph_function(self):
+        return self._dygraph_func
+
+    @property
+    def concrete_program(self):
+        # if specific the `input_spec`, the length of program_cache will always 1,
         # else, return the last one.
         if len(self._program_cache) > 0:
             cache_key, (concrete_program,
                         partial_layer) = self._program_cache.last()
-            if is_test:
-                return partial_layer._infer_program
-            else:
-                return partial_layer._train_program
+            return concrete_program
         else:
-            raise ValueError("No valid transformed program.")
+            raise ValueError("No valid transformed program for function: {}".
+                             fromat(self._dygraph_func.__name__))
 
     @property
     def program_cache(self):
@@ -278,7 +318,7 @@ class ConcreteProgram(object):
                 inputs = func_spec.to_static_inputs_with_signature(inputs_spec,
                                                                    main_program)
                 if class_instance:
-                    inputs = [class_instance] + inputs
+                    inputs = tuple([class_instance] + list(inputs))
 
                 # 2. Gets all ParamBases and buffered VarBases in the function
                 all_parameters_and_buffers = list(
@@ -289,7 +329,6 @@ class ConcreteProgram(object):
                 with param_guard(get_parameters(
                         class_instance, False)), param_guard(
                             get_buffers(class_instance, False)):
-                    print(static_func)
                     print(inputs)
                     outputs = static_func(*inputs)
                 if not isinstance(outputs,
@@ -325,10 +364,19 @@ class ProgramCache(object):
         if not isinstance(item, CacheKey):
             raise ValueError('type(item) should be CacheKey, but received %s' %
                              type_name(item))
-        # print("hash {} in self._caches: {}".format(hash(item), item in self._caches))
+
+        print("hash {} in self._caches: {}".format(
+            hash(item), item in self._caches))
+
         if item not in self._caches:
             self._caches[item] = self._build_once(item)
-        # print("cache_keys: ", self._caches.keys())
+            # raise warnings if number of traced program is out of `max_tracing_count`
+            current_tracing_count = len(self._caches)
+            if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
+                logging.warning(
+                    "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".
+                    format(current_tracing_count, MAX_TRACED_PROGRAM_COUNT))
+
         return self._caches[item]
 
     def get_program(self, item):
@@ -457,8 +505,7 @@ class ProgramTranslator(object):
                    "ProgramTranslator.enable")
         self.enable_declarative = enable_declarative
 
-    # TODO: deal with the place of input_signature
-    def get_output(self, dygraph_func, input_signature, *args, **kwargs):
+    def get_output(self, dygraph_func, *args, **kwargs):
         """
         Returns the output dygraph VarBase for dygraph function. The dygraph
         function will be translated into static graph function so the under
@@ -503,10 +550,11 @@ class ProgramTranslator(object):
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
 
-        function_spec = FunctionSpec(dygraph_func, input_signature, args,
-                                     kwargs)
-        # print(function_spec.hash_key)
-        _, partial_program_layer = self._program_cache[function_spec]
+        function_spec = FunctionSpec(dygraph_func)
+        cache_key = CacheKey.from_func_and_args(function_spec, args, kwargs,
+                                                getattr(dygraph_func,
+                                                        '__self__', None))
+        _, partial_program_layer = self._program_cache[cache_key]
 
         if args and isinstance(args[0], layers.Layer):
             # Synchronize self.training attribute.
@@ -611,8 +659,12 @@ class ProgramTranslator(object):
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
 
-        func_spec = FunctionSpec(dygraph_func, args, kwargs)
-        concrete_program, _ = self._program_cache[func_spec]
+        function_spec = FunctionSpec(dygraph_func)
+        cache_key = CacheKey.from_func_and_args(function_spec, args, kwargs,
+                                                getattr(dygraph_func,
+                                                        '__self__', None))
+        concrete_program, partial_program_layer = self._program_cache[cache_key]
+
         # Note: concrete_program hold all input/output infos include non-Variable
         input_vars = [
             var for var in concrete_program.inputs

@@ -27,21 +27,57 @@ class SimpleNet(Layer):
         super(SimpleNet, self).__init__()
         self.linear = fluid.dygraph.Linear(10, 3)
 
-    @declarative(
-        input_signature=[TensorSpec(
-            shape=[None, 10], dtype='float32')])
+    @declarative(input_spec=[TensorSpec(shape=[None, 10], dtype='float32')])
     def forward(self, x, a=1, b=2):
         y = self.inner_function(x)
         return y
 
+    # `declarative` is not essential, add it to test for robustness.
     @declarative
     def inner_function(self, x):
         y = self.linear(x)
         return y
 
     @declarative
-    def ff(self, x, y):
+    def add_func(self, x, y):
         z = x + y
+        return z
+
+    @declarative(input_spec=[[TensorSpec([None, 10]), TensorSpec([None, 10])]])
+    def func_with_list(self, l):
+        x, y, int_val = l
+        z = x + y
+        z = z + int_val
+        return z
+
+    @declarative(input_spec=[{
+        'x': TensorSpec([None, 10]),
+        'y': TensorSpec([None, 10])
+    }])
+    def func_with_dict(self, d):
+        x = d['x']
+        y = d['y']
+        int_val = d['int_val']
+
+        z = x + y
+        z = z + int_val
+
+        return z
+
+    @declarative(input_spec=[[
+        TensorSpec([None]), {
+            'x': TensorSpec([None, 10]),
+            'y': TensorSpec([None, 10])
+        }
+    ]])
+    def func_with_list_dict(self, dl):
+        bias = dl[0]
+        x = dl[1]['x']
+        y = dl[1]['y']
+
+        z = x + y
+        z = z + bias
+
         return z
 
 
@@ -49,24 +85,42 @@ class TestInputSpec(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_input_spec(self):
+    def test_with_input_spec(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
+            y = to_variable(np.ones([4, 10]).astype('float32') * 2)
+            int_val = 4.
 
             net = SimpleNet()
-            y = net(x, a=1)
 
-            # TODO: add check for input with input_spec
+            # 1. each method holds independent program cache
+            out = net(x)
+            self.assertTrue(len(net.forward.program_cache) == 1)
+
+            # 2. test save load
+            jit.save(net, './simple_net')
+            infer_net = fluid.dygraph.jit.load('./simple_net')
+            pred = infer_net(x)
+            self.assertTrue(np.allclose(out.numpy(), pred.numpy()))
+
+            # 3. we can decorate any method
             x_2 = to_variable(np.ones([4, 20]).astype('float32'))
-            z = net.ff(x_2, np.ones([20]).astype('float32'))
+            out = net.add_func(x_2, np.ones([20]).astype('float32'))
+            self.assertTrue(len(net.add_func.program_cache) == 1)
 
-            # kwargs and input_signature should not be specificed in same time
+            # 4. kwargs and input_spec should not be specificed in same time
             with self.assertRaises(ValueError):
                 net(x, a=1, other_kwarg=2)
 
-            # if specific input_signature, we will check whether the input argument is legal.
-            # with self.assertRaises(ValueError):
-            #     y = net(x_2)
+            # 5. test input with list
+            out = net.func_with_list([x, y, int_val])
+
+            # 6. test input with dict
+            out = net.func_with_dict({'x': x, 'y': y, 'int_val': int_val})
+
+            # 7. test input with lits contains dict
+            int_np = np.ones([1]).astype('float32')
+            out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
 
 
 @declarative
@@ -102,7 +156,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             out_4 = foo(to_variable(x_data), z_data, 3)
             self.assertTrue(np.allclose(x_data + z_data, out_4.numpy()))
             # create a new program
-            self.assertTrue(len(foo.program_cache) == 2)
+            self.assertTrue(len(foo.program_cache) == 1)
 
 
 if __name__ == '__main__':
