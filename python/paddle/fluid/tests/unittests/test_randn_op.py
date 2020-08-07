@@ -18,8 +18,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from paddle import Program
-from paddle.static import program_guard
+from paddle.static import program_guard, Program
 
 
 class TestRandnOp(unittest.TestCase):

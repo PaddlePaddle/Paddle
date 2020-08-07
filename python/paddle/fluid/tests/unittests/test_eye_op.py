@@ -74,7 +74,7 @@ class TestEyeOp2(OpTest):
 
 class API_TestTensorEye(unittest.TestCase):
     def test_out(self):
-        with paddle.static.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10)
             place = fluid.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -82,7 +82,7 @@ class API_TestTensorEye(unittest.TestCase):
             expected_result = np.eye(10, dtype="float32")
         self.assertEqual((result == expected_result).all(), True)
 
-        with paddle.static.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10, num_columns=7, dtype="float64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -90,7 +90,7 @@ class API_TestTensorEye(unittest.TestCase):
             expected_result = np.eye(10, 7, dtype="float64")
         self.assertEqual((result == expected_result).all(), True)
 
-        with paddle.static.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10, dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -137,7 +137,7 @@ class API_TestTensorEye(unittest.TestCase):
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
     def test_errors(self):
-        with paddle.static.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
 
             def test_num_rows_type_check():
                 paddle.eye(-1, dtype="int64")

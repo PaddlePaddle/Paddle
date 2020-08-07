@@ -782,8 +782,8 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            startup_program = paddle.Program()
-            train_program = paddle.Program()
+            startup_program = paddle.static.Program()
+            train_program = paddle.static.Program()
             with paddle.static.program_guard(train_program, startup_program):
                 inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
                 output = paddle.histogram(inputs, bins=5, min=1, max=5)

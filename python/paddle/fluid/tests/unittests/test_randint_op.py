@@ -19,8 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 from paddle.fluid import core
-from paddle import Program
-from paddle.static import program_guard
+from paddle.static import program_guard, Program
 
 
 def output_hist(out):

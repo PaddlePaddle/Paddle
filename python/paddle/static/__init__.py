@@ -16,7 +16,8 @@
 __all__ = [
     'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
     'BuildStrategy', 'CompiledProgram', 'Print', 'py_func', 'ExecutionStrategy',
-    'name_scope', 'ParallelExecutor', 'program_guard', 'WeightNormParamAttr'
+    'name_scope', 'ParallelExecutor', 'program_guard', 'WeightNormParamAttr',
+    'default_main_program', 'default_startup_program', 'Program'
 ]
 
 from ..fluid.executor import Executor  #DEFINE_ALIAS
@@ -27,6 +28,9 @@ from ..fluid.backward import gradients  #DEFINE_ALIAS
 from ..fluid.compiler import BuildStrategy  #DEFINE_ALIAS
 from ..fluid.compiler import CompiledProgram  #DEFINE_ALIAS
 from ..fluid.compiler import ExecutionStrategy  #DEFINE_ALIAS
+from ..fluid.framework import default_main_program  #DEFINE_ALIAS
+from ..fluid.framework import default_startup_program  #DEFINE_ALIAS
+from ..fluid.framework import Program  #DEFINE_ALIAS
 from ..fluid.framework import name_scope  #DEFINE_ALIAS
 from ..fluid.framework import program_guard  #DEFINE_ALIAS
 from ..fluid.layers.control_flow import Print  #DEFINE_ALIAS

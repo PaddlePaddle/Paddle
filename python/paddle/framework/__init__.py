@@ -14,9 +14,8 @@
 
 # TODO: import framework api under this directory 
 __all__ = [
-    'default_main_program', 'default_startup_program', 'create_global_var',
-    'create_parameter', 'ParamAttr', 'Program', 'Variable', 'CPUPlace',
-    'CUDAPlace', 'CUDAPinnedPlace'
+    'create_global_var', 'create_parameter', 'ParamAttr', 'Variable',
+     'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace'
 ]
 
 __all__ += [
@@ -31,9 +30,7 @@ __all__ += [
 
 from . import random
 from .random import manual_seed
-from ..fluid.framework import default_main_program  #DEFINE_ALIAS
-from ..fluid.framework import default_startup_program  #DEFINE_ALIAS
-from ..fluid.framework import Program  #DEFINE_ALIAS
+
 from ..fluid.framework import Variable  #DEFINE_ALIAS
 from ..fluid.param_attr import ParamAttr  #DEFINE_ALIAS
 from ..fluid.layers.tensor import create_global_var  #DEFINE_ALIAS

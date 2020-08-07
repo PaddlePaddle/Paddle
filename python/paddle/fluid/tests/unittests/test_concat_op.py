@@ -270,7 +270,7 @@ class TestConcatAPI(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
         [res_1, res_2, res_3, res_4] = exe.run(
-            paddle.default_main_program(),
+            paddle.static.default_main_program(),
             feed={"x_1": input_2,
                   "x_2": input_2,
                   "x_3": input_3},
