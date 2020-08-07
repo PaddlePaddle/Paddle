@@ -135,27 +135,6 @@ class Trainer(object):
         return self.rank
 
 
-# class Worker(object):
-#     def __init__(self):
-#         self.endpoint = None
-#         self.rank = None
-
-#     def __str__(self):
-#         return "endpoint:{} rank:{}".format(self.endpoint, self.rank)
-
-#     def __eq__(self, t):
-#         if self.endpoint != t.endpoint or \
-#                 self.rank != t.rank:
-#             return False
-#         return True
-
-#     def __ne__(self, t):
-#         return not self == t
-
-#     def rank(self):
-#         return self.rank
-
-
 class Pod(object):
     def __init__(self):
         self.rank = None

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-paddle.distributed.launch is a module that spawns multiple distributed 
+paddle.distributed.launch is a module that spawns multiple distributed
 process on each training node for gpu training and cpu training.
 Usage:
-    In both of single node training or multiple node training, this module 
+    In both of single node training or multiple node training, this module
 launch a process on each of the given gpu card or cpu machine.
     GPU training:
     1. for single node training with all visible gpu cards:
@@ -102,6 +102,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     parser.add_argument(
         "--log_dir",
         type=str,
+        default="log",
         help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
     #positional
@@ -312,7 +313,16 @@ def launch_ps(args):
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)
-        procs.append(proc)
+
+        tp = TrainerProc()
+        tp.proc = proc
+        tp.rank = cur_server.rank
+        tp.local_rank = idx
+        tp.log_fn = fn
+        tp.log_offset = 0 if fn else None
+        tp.cmd = cmd
+
+        procs.append(tp)
 
     for idx, cur_worker in enumerate(pod.workers):
         current_env.update({
@@ -331,13 +341,22 @@ def launch_ps(args):
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)
-        procs.append(proc)
+
+        tp = TrainerProc()
+        tp.proc = proc
+        tp.rank = cur_worker.rank
+        tp.local_rank = idx
+        tp.log_fn = fn
+        tp.log_offset = 0 if fn else None
+        tp.cmd = cmd
+
+        procs.append(tp)
 
     # only wait worker to finish here
     for i, proc in enumerate(procs):
         if i < len(pod.servers):
             continue
-        procs[i].wait()
+        procs[i].proc.wait()
         if len(log_fns) > 0:
             log_fns[i].close()
 
@@ -345,7 +364,7 @@ def launch_ps(args):
     for i in range(len(pod.servers)):
         if len(log_fns) > 0:
             log_fns[i].close()
-        procs[i].terminate()
+        procs[i].proc.terminate()
     print("all parameter server are killed", file=sys.stderr)
 
 
@@ -362,11 +381,15 @@ def launch():
         co_arg for co_arg in collective_args
         if co_arg in " ".join(sys.argv[1:-1])
     ]
-    if len(has_ps_args) > 0 or fluid.core.get_cuda_device_count() == 0:
-        logger.info("Run parameter-sever cpu mode.")
+    cuda_device_num = fluid.core.get_cuda_device_count()
+    if len(has_ps_args) > 0 or cuda_device_num == 0:
+        logger.info(
+            "Run parameter-sever cpu mode. pserver args:{}, cuda count:{}".
+            format(has_ps_args, cuda_device_num))
         launch_ps(args)
     elif len(has_collective_args) > 0:
-        logger.info("Run collective gpu mode.")
+        logger.info("Run collective gpu mode. gpu args:{}, cuda count:{}".
+                    format(has_collective_args, cuda_device_num))
         launch_collective(args)
     else:
         logger.warning(
