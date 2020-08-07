@@ -39,32 +39,21 @@ GENERATE_VARIABLE_PREFIX = 'generate_variable'
 
 
 def create_while_node(condition_name, body_name, loop_var_names):
-    while_args = []
-    while_args.append(
-        gast.Name(
-            id=condition_name,
-            ctx=gast.Param(),
-            annotation=None,
-            type_comment=None))
-    while_args.append(
-        gast.Name(
-            id=body_name, ctx=gast.Param(), annotation=None, type_comment=None))
-    assign_targets = [
-        gast.Name(
-            id=var_name, ctx=gast.Param(), annotation=None, type_comment=None)
-        for var_name in loop_var_names
-    ]
-    while_args.append(gast.List(elts=assign_targets, ctx=gast.Param()))
+    # NOTE(liym27):
+    # It's better to parse the source code into an AST node than to customize an AST node
+    # including child nodes, because it is easy to mistake the ast node type when customizing the node.
+    #
+    # For example: loop_var_names = [a, b, foo.x], the type of `a` or `b` is gast.Name,
+    # but the type of `foo.x` gast.Attribute.
 
-    while_func_id = gast.parse(
-        'fluid.dygraph.dygraph_to_static.convert_operators.convert_while_loop'
-    ).body[0].value
-    while_node = gast.Call(func=while_func_id, args=while_args, keywords=[])
-    assign_node = gast.Assign(
-        targets=[gast.Tuple(
-            elts=assign_targets, ctx=gast.Store())],
-        value=while_node)
-    return assign_node
+    while_func_name = "fluid.dygraph.dygraph_to_static.convert_operators.convert_while_loop"
+    while_node_str = "[{}] = {}({}, {}, [{}])".format(
+        ",".join(loop_var_names), while_func_name, condition_name, body_name,
+        ",".join(loop_var_names))
+
+    while_node = gast.parse(while_node_str).body[0]
+
+    return while_node
 
 
 class NameVisitor(gast.NodeVisitor):
