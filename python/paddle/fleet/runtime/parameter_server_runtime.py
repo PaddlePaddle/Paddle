@@ -18,13 +18,6 @@ import warnings
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import CompileTimeStrategy
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import \
-    TrainerRuntimeConfig, DistributedStrategy, \
-    SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
 
 from .runtime_base import RuntimeBase
 
@@ -45,6 +38,8 @@ class ParameterServerRuntime(RuntimeBase):
     def _get_distributed_strategy(self):
         strategy = None
 
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+
         dist_strategy = self.context["valid_strategy"]
         k_steps = dist_strategy.a_sync_configs["k_steps"]
 
@@ -63,6 +58,8 @@ class ParameterServerRuntime(RuntimeBase):
         return strategy
 
     def build_compiled_startegy(self):
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import CompileTimeStrategy
+
         compiled_config = CompileTimeStrategy(
             self.origin_main_program, self.origin_main_program,
             self.async_strategy, self.role_maker)
@@ -70,6 +67,8 @@ class ParameterServerRuntime(RuntimeBase):
 
     def _load_sparse_params(self, dirname, varnames):
         from paddle.fluid.communicator import LargeScaleKV
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
+
         scale_kv = LargeScaleKV()
         for varname in varnames:
             origin_varname, _, _ = _get_varname_parts(varname)
@@ -81,6 +80,8 @@ class ParameterServerRuntime(RuntimeBase):
         def is_valid(var):
             if var.name in exclude_var_names:
                 return False
+
+            from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
 
             origin_varname, _, _ = _get_varname_parts(var.name)
             if origin_varname.endswith("@GRAD"):
@@ -106,6 +107,8 @@ class ParameterServerRuntime(RuntimeBase):
             return kwargs
 
         def geo_strategy_envs():
+            from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
+
             def get_sparse_attrs():
                 opt_init_map = {}
                 opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
@@ -148,8 +151,12 @@ class ParameterServerRuntime(RuntimeBase):
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
-        trainer_config = self.async_strategy.get_trainer_runtime_config()
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
 
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import \
+            SyncStrategy, GeoStrategy
+
+        trainer_config = self.async_strategy.get_trainer_runtime_config()
         lrs = _get_lr_ops(self.origin_main_program)
 
         if len(lrs) > 0:
