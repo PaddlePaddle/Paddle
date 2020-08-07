@@ -88,7 +88,6 @@ class CollectiveHelper(object):
                 'other_endpoints': other_endpoints,
                 OP_ROLE_KEY: OpRole.Forward
             })
-
         block.append_op(
             type='c_comm_init',
             inputs={'X': nccl_id_var},
