@@ -47,15 +47,10 @@ def is_optimizer_op(op):
 
 
 class CollectiveHelper(object):
-    def __init__(self,
-                 role_maker,
-                 nrings=1,
-                 wait_port='6174',
-                 use_pipeline=False):
+    def __init__(self, role_maker, nrings=1, wait_port='6174'):
         self.nrings = nrings
         self.wait_port = wait_port
         self.role_maker = role_maker
-        self.use_pipeline = use_pipeline
 
     def update_startup_program(self, startup_program=None):
         self.startup_program = startup_program
@@ -94,32 +89,25 @@ class CollectiveHelper(object):
                 OP_ROLE_KEY: OpRole.Forward
             })
 
-        comm_init_attrs = {
-            'nranks': nranks,
-            'rank': rank,
-            'ring_id': ring_id,
-            OP_ROLE_KEY: OpRole.Forward
-        }
-        if self.use_pipeline:
-            comm_init_attrs['device_id'] = ring_id
         block.append_op(
             type='c_comm_init',
             inputs={'X': nccl_id_var},
             outputs={},
-            attrs=comm_init_attrs)
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': ring_id,
+                OP_ROLE_KEY: OpRole.Forward
+            })
 
     def _broadcast_params(self):
         block = self.startup_program.global_block()
-        if self.use_pipeline:
-            ring_id = 0
-        else:
-            ring_id = -1
+        ring_id = -1
         for param in block.iter_parameters():
             if param.is_distributed:
                 continue
 
-            if not self.use_pipeline:
-                ring_id = (ring_id + 1) % self.nrings
+            ring_id = (ring_id + 1) % self.nrings
             block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},

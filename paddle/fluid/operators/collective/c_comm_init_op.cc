@@ -47,14 +47,15 @@ class CCommInitOp : public framework::OperatorBase {
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(var);
 #if defined(PADDLE_WITH_NCCL)
-    int rid = Attr<int>("ring_id");
-    int rank_id = Attr<int>("rank");
+    ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
+
     int nranks = Attr<int>("nranks");
+    int rank_id = Attr<int>("rank");
+    int rid = Attr<int>("ring_id");
     int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
-    ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
     platform::NCCLCommContext::Instance().CreateNCCLComm(
         nccl_id, nranks, rank_id, device_id, rid);
 #else
@@ -78,9 +79,7 @@ Initialize collective communicatoin context within this trainer
     AddAttr<int>("device_id",
                  "(int) The deivce_id on which to initialize the communicator."
                  "Now, you only have to set this attr manually for pipeline "
-                 "training. Otherwise, you should not set the value for this "
-                 "attribute manually and make it as default which is the "
-                 "device id of the context.")
+                 "training. Otherwise, make it as default.")
         .SetDefault(-1);
     AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
