@@ -38,7 +38,9 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
-from paddle.fluid.annotations import deprecated
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info, create_and_update_origin_info_map
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import update_op_callstack_with_origin_info
+from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data, ERROR_DATA
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
 
@@ -93,15 +95,23 @@ class FunctionCache(object):
         # with decorator directly and function.__wrapped__ holds the actual function.
         func = getattr(func, '__wrapped__', func)
         source_code = func_to_source_code(func)
+
+        # TODO(liym27):
+        #  Consider this case: source_code in self._code_to_ast_caches,
+        #  but actually they are methods in different classes.
+        #  Maybe use (__class__, source_code) as key
         if source_code in self._code_to_ast_caches:
             root_wrapper = self._code_to_ast_caches[source_code]
         else:
             root = gast.parse(source_code)
+            root = attach_origin_info(root, func)
             root_wrapper = self._dygraph_to_static.get_static_ast(root)
             self._code_to_ast_caches[source_code] = root_wrapper
 
         # Get static function from AST
         static_func, file_name = ast_to_func(root_wrapper.node, func)
+
+        create_and_update_origin_info_map(root_wrapper.node, static_func)
         return static_func
 
     def exist(self, func):
@@ -138,6 +148,9 @@ class CacheKey(object):
         # 2. convert tensor and numpy array into TensorSpec 
         _args, _kwargs = function_spec.unified_args_and_kwargs(args, kwargs)
         inputs_with_spec = function_spec.args_to_variable_spec(_args, _kwargs)
+        # # TODO(liym27): func has multi layer decorator
+        # dyfunc = getattr(func, '__wrapped__', func)
+        # self._dyfunc_code = inspect.getsource(dyfunc)
 
         # 3. check whether hit the cache or build a new program for the input arguments
         return CacheKey(function_spec, inputs_with_spec, class_instance)
@@ -208,11 +221,29 @@ class PartialProgram(object):
         # print(inputs_with_spec, hash(cache_key))
         _, partial_program_layer = self._program_cache[cache_key]
 
-        # 4. # Synchronize self.training attribute.
+        # 4. Synchronize self.training attribute.
         if isinstance(self._class_instance, layers.Layer):
             partial_program_layer.training = self._class_instance.training
 
-        return partial_program_layer(args)
+        try:
+            return partial_program_layer(args)
+        except Exception as e:
+            error_data = getattr(e, ERROR_DATA, None)
+            if error_data:
+                new_exception = error_data.create_exception()
+                if six.PY3:
+                    # NOTE(liym27):
+                    # 1. Why `raise new_exception from None`?
+                    #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
+                    #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
+                    #   caught exception.
+                    # 2. Use exec to bypass syntax error checking in Python 2.
+
+                    six.exec_("raise new_exception from None")
+                else:
+                    raise new_exception
+            else:
+                raise
 
     def _call_dygraph_func(self, *args, **kwargs):
         """
@@ -329,11 +360,18 @@ class ConcreteProgram(object):
                 with param_guard(get_parameters(
                         class_instance, False)), param_guard(
                             get_buffers(class_instance, False)):
-                    print(inputs)
-                    outputs = static_func(*inputs)
+                    try:
+                        outputs = static_func(*inputs)
+                    except BaseException as e:
+                        # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
+                        attach_error_data(e)
+                        raise
+
                 if not isinstance(outputs,
                                   (tuple, list)) and outputs is not None:
                     outputs = [outputs]
+
+        main_program = update_op_callstack_with_origin_info(main_program)
 
         return ConcreteProgram(
             inputs=inputs,
@@ -560,8 +598,17 @@ class ProgramTranslator(object):
             # Synchronize self.training attribute.
             partial_program_layer.training = args[0].training
             args = args[1:]
+        try:
+            return partial_program_layer(args)
 
-        return partial_program_layer(args)
+        except BaseException as e:
+            # NOTE:
+            # 1. If e is raised in compile time, e should have been attached to ERROR_DATA before;
+            # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
+            if not hasattr(e, ERROR_DATA):
+                # runtime error
+                attach_error_data(e, in_runtime=True)
+            raise
 
     def get_func(self, dygraph_func):
         """

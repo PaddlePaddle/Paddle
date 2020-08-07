@@ -19,11 +19,8 @@ class RuntimeBase(object):
     def __init__(self):
         pass
 
-    def _set_basic_info(self, loss, role_maker, optimizer, strategy):
-        self.loss = loss
-        self.role_maker = role_maker
-        self.optimizer = optimizer
-        self.strategy = strategy
+    def _set_basic_info(self, context):
+        self.context = context
 
     def _run_worker(self):
         pass

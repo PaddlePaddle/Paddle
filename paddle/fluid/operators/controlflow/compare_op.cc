@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/compare_op.h"
+#include <algorithm>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
@@ -85,14 +88,22 @@ class CompareOp : public framework::OperatorWithKernel {
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
 
-    PADDLE_ENFORCE_GE(dim_x.size(), dim_y.size(),
-                      platform::errors::InvalidArgument(
-                          "The size of dim_y should not be greater than "
-                          "dim_x's, but received dim_y: %d > dim_x: %d.\n",
-                          dim_y.size(), dim_x.size()));
-
-    context->SetOutputDim("Out", context->GetInputDim("X"));
-    context->ShareLoD("X", "Out");
+    if (context->GetInputDim("X") == context->GetInputDim("Y")) {
+      context->ShareDim("X", /*->*/ "Out");
+      context->ShareLoD("X", /*->*/ "Out");
+    } else {
+      int max_dim = std::max(dim_x.size(), dim_y.size());
+      int axis = std::abs(dim_x.size() - dim_y.size());
+      std::vector<int> x_dims_array(max_dim);
+      std::vector<int> y_dims_array(max_dim);
+      std::vector<int> out_dims_array(max_dim);
+      GetBroadcastDimsArrays(dim_x, dim_y, x_dims_array.data(),
+                             y_dims_array.data(), out_dims_array.data(),
+                             max_dim, axis);
+      context->SetOutputDim("Out", framework::make_ddim(out_dims_array));
+      // to do
+      context->ShareLoD("X", /*->*/ "Out");
+    }
   }
 
   framework::OpKernelType GetExpectedKernelType(

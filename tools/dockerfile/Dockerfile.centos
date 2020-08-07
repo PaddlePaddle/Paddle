@@ -13,7 +13,7 @@ ENV PATH /opt/rh/devtoolset-2/root/usr/bin:$PATH
 ENV LD_LIBRARY_PATH /opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
-RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel
+RUN yum install -y gettext-devel sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel
 COPY build_scripts /build_scripts
 RUN bash build_scripts/build.sh
 RUN bash build_scripts/install_nccl2.sh && \
@@ -21,6 +21,13 @@ RUN bash build_scripts/install_nccl2.sh && \
 RUN rm -rf build_scripts
 
 ENV SSL_CERT_FILE=/opt/_internal/certs.pem
+
+# git 2.17.1
+RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
+  tar -xvf git-2.17.1.tar.gz && \
+  cd git-2.17.1 && \
+  ./configure --prefix=/usr/local && \
+  make -j8 && make install 
 
 # for paddle
 RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \

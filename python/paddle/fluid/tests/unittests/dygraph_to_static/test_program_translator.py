@@ -281,3 +281,7 @@ class TestEnableDeclarative(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+    # suit = unittest.TestSuite()
+    # suit.addTest(TestEnableDeclarative('test_enable_disable_get_output'))
+    # runner = unittest.TextTestRunner()
+    # runner.run(suit)
