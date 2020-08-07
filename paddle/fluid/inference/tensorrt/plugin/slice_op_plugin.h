@@ -36,6 +36,8 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
     return new SlicePluginDynamic(starts_, ends_, axes_, ban_fp16_);
   }
 
+  SlicePluginDynamic(void const* serialData, size_t serialLength);
+
   const char* getPluginType() const override { return "slice_plugin"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
@@ -82,6 +84,44 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
   cudaEvent_t copy_event_;
   cudaStream_t copy_stream_;
 };
+
+class SlicePluginV2Creator : public nvinfer1::IPluginCreator {
+ public:
+  SlicePluginV2Creator() {}
+  const char* getPluginName() const override { return "slice_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override {
+    return &mFieldCollection;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
+    return nullptr;
+  }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serialData,
+                                         size_t serialLength) override {
+    auto plugin = new SlicePluginDynamic(serialData, serialLength);
+    return plugin;
+  }
+
+  void setPluginNamespace(const char* libNamespace) override {
+    mNamespace = libNamespace;
+  }
+
+  const char* getPluginNamespace() const override { return mNamespace.c_str(); }
+
+ private:
+  std::string mNamespace;
+  std::string mPluginName;
+  nvinfer1::PluginFieldCollection mFieldCollection;
+  std::vector<nvinfer1::PluginField> mPluginAttributes;
+};
+REGISTER_TENSORRT_PLUGIN(SlicePluginV2Creator);
+
 #endif
 
 }  // namespace plugin

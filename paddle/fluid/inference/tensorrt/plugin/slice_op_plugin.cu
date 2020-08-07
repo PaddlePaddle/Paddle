@@ -64,6 +64,16 @@ SlicePluginDynamic::SlicePluginDynamic(std::vector<int> starts,
   cudaStreamCreate(&copy_stream_);
 }
 
+SlicePluginDynamic::SlicePluginDynamic(void const *serialData,
+                                       size_t serialLength) {
+  DeserializeValue(&serialData, &serialLength, &starts_);
+  DeserializeValue(&serialData, &serialLength, &ends_);
+  DeserializeValue(&serialData, &serialLength, &axes_);
+  DeserializeValue(&serialData, &serialLength, &ban_fp16_);
+  cudaEventCreate(&copy_event_);
+  cudaStreamCreate(&copy_stream_);
+}
+
 void SlicePluginDynamic::destroy() {
   cudaStreamDestroy(copy_stream_);
   cudaEventDestroy(copy_event_);
@@ -73,9 +83,19 @@ void SlicePluginDynamic::destroy() {
 
 int SlicePluginDynamic::initialize() { return 0; }
 
-size_t SlicePluginDynamic::getSerializationSize() const { return 0; }
+size_t SlicePluginDynamic::getSerializationSize() const {
+  size_t size = SerializedSize(starts_) + SerializedSize(ends_) +
+                SerializedSize(axes_) + SerializedSize(ban_fp16_);
 
-void SlicePluginDynamic::serialize(void *buffer) const {}
+  return size;
+}
+
+void SlicePluginDynamic::serialize(void *buffer) const {
+  SerializeValue(&buffer, starts_);
+  SerializeValue(&buffer, ends_);
+  SerializeValue(&buffer, axes_);
+  SerializeValue(&buffer, ban_fp16_);
+}
 
 nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
