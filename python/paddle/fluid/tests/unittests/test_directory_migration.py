@@ -30,7 +30,7 @@ class TestDirectory(unittest.TestCase):
             return module
         package = '.'.join(paths[:-1])
         func = paths[-1]
-        cmd = 'from ' + package + ' import ' + func
+        cmd = 'from {} import {}'.format(package, func)
         return cmd
 
     def test_new_directory(self):
@@ -76,7 +76,7 @@ class TestDirectory(unittest.TestCase):
         with open(import_file, "w") as wb:
             for module in new_directory:
                 run_cmd = self.get_import_command(module)
-                wb.write(run_cmd + '\n')
+                wb.write("{}\n".format(run_cmd))
 
         _python = sys.executable
 
@@ -88,7 +88,7 @@ class TestDirectory(unittest.TestCase):
         stdout, stderr = ps_proc.communicate()
 
         assert "Error" not in str(stderr), "Error: Can't" \
-            + " import Module " + module
+            " import Module {}".format(module)
 
     def test_old_directory(self):
         old_directory = [
@@ -138,19 +138,31 @@ class TestDirectory(unittest.TestCase):
         import_file = 'run_old_import_modules.py'
 
         with open(import_file, "w") as wb:
-            wb.write('count = 0\n')
-            wb.write('err_module = ""\n')
+            cmd_context_count = """
+count = 0
+err_module = ""
+"""
+            wb.write(cmd_context_count)
             for module in old_directory:
                 run_cmd = self.get_import_command(module)
-                wb.write('try:\n')
-                wb.write('    ' + run_cmd + '\n')
-                wb.write('except:\n')
-                wb.write('    count += 1\n')
-                wb.write('else:\n')
-                wb.write('    err_module = "' + module + '"\n')
-            wb.write('if count != ' + str(len(old_directory)) + ':\n')
-            wb.write('    print("Error: Module " + err_module +' \
-                '" should not be imported")')
+                cmd_context_loop_template = """
+try:
+    {run_cmd}
+except:
+    count += 1
+else:
+    err_module = "{module}"
+"""
+                cmd_context_loop = cmd_context_loop_template.format(
+                    run_cmd=run_cmd, module=module)
+                wb.write(cmd_context_loop)
+            cmd_context_print_template = """
+if count != {len_old_directory}:
+    print("Error: Module " + err_module + " should not be imported")
+"""
+            cmd_context_print = cmd_context_print_template.format(
+                len_old_directory=str(len(old_directory)))
+            wb.write(cmd_context_print)
 
         _python = sys.executable
 
