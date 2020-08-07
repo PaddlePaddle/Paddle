@@ -685,8 +685,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     """
 
     attrs = {'force_cpu': force_cpu}
+    dtype = convert_dtype(dtype)
     if not isinstance(value, Variable):
-        if convert_dtype(dtype) in ['int64', 'int32']:
+        if dtype in ['int64', 'int32']:
             attrs['str_value'] = str(int(value))
         else:
             attrs['str_value'] = str(float(value))
@@ -697,7 +698,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             out = _varbase_creator(dtype=dtype)
 
         if isinstance(value, Variable):
-            if convert_dtype(dtype) in ['int64', 'int32']:
+            if dtype in ['int64', 'int32']:
                 attrs['str_value'] = str(int(value.numpy()))
             else:
                 attrs['str_value'] = str(float(value.numpy()))
@@ -712,6 +713,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     helper = LayerHelper("fill_constant", **locals())
     inputs = {}
     if isinstance(value, Variable):
+        if convert_dtype(value.dtype) != dtype:
+            value = cast(value, dtype)
         inputs['ValueTensor'] = value
 
     check_dtype(dtype, 'dtype',

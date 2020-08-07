@@ -59,7 +59,7 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         ops = [op.type for op in avg_cost.block.ops]
         self.assertIn('lamb', ops)
 
-    def test_lars_not_apply_with_momentum(self):
+    def test_lamb_not_apply_with_momentum(self):
         avg_cost, strategy = self.net()
         optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)

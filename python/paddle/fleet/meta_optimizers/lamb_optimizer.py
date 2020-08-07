@@ -66,8 +66,8 @@ class LambOptimizer(MetaOptimizerBase):
         if self.user_defined_strategy.lamb:
             if not isinstance(self.inner_opt, AdamOptimizer):
                 logging.warn(
-                    "lamb need the inner optimizer to be AdamOptimizer optimizer."
-                )
+                    "lamb need the inner optimizer to be AdamOptimizer optimizer but got {}.".
+                    format(inner_opt.type))
                 return False
             return True
         return False
