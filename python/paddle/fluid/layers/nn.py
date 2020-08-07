@@ -9369,7 +9369,8 @@ def relu6(x, threshold=6.0, name=None):
         type='relu6',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold})
+        attrs={'threshold': threshold,
+               'use_mkldnn': core.globals()["FLAGS_use_mkldnn"]})
     return out
 
 
