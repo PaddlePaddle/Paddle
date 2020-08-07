@@ -35,7 +35,7 @@ class Fleet(object):
         .. code-block:: python
 
             import paddle.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+            import paddle.fleet.role_maker as role_maker
             role = role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             strategy = fleet.DistributedStrategy()
@@ -219,7 +219,7 @@ class Fleet(object):
         Examples:
             .. code-block:: python
             import paddle.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+            import paddle.fleet.role_maker as role_maker
             role = role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             strategy = fleet.DistributedStrategy()
@@ -261,7 +261,7 @@ class Fleet(object):
         Examples:
             import paddle
             import paddle.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+            import paddle.fleet.role_maker as role_maker
 
             fc_1 = paddle.layers.fc(input=input_x, size=hid_dim, act='tanh')
             fc_2 = paddlen.layers.fc(input=fc_1, size=hid_dim, act='tanh')
