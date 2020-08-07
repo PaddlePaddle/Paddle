@@ -26,8 +26,7 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-#from paddle.nn import Conv2D, Pool2D, Linear, SyncBatchNorm
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear, SyncBatchNorm
+from paddle.nn import Conv2D, Pool2D, Linear, SyncBatchNorm
 from paddle.fluid.dygraph.base import to_variable
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase

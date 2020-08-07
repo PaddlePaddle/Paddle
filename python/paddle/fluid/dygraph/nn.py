@@ -35,7 +35,7 @@ __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
     'GRUUnit', 'InstanceNorm', 'LayerNorm', 'NCE', 'PRelu',
     'BilinearTensorProduct', 'Conv2DTranspose', 'Conv3DTranspose', 'GroupNorm',
-    'SpectralNorm', 'TreeConv', 'SyncBatchNorm'
+    'SpectralNorm', 'TreeConv', 'Flatten', 'SyncBatchNorm'
 ]
 
 
@@ -3227,10 +3227,10 @@ class SyncBatchNorm(layers.Layer):
     ..  math::
 
         \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        \\sigma_{\\beta}^{2} + \\eps}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
-    - :math:`\\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\\eps` : add a smaller value to the variance to prevent division by zero
     - :math:`\\gamma` : trainable proportional parameter
     - :math:`\\beta` : trainable deviation parameter
 
@@ -3259,8 +3259,9 @@ class SyncBatchNorm(layers.Layer):
     Examples:
         .. code-block:: python
 
-          from paddle.fluid.dygraph import to_variable
           import paddle.nn as nn
+          import paddle.fluid as fluid
+          from paddle.fluid.dygraph import to_variable
           import numpy as np
 
           x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
@@ -3325,7 +3326,7 @@ class SyncBatchNorm(layers.Layer):
 
         self._data_layout = 'NCHW'
         self._momentum = momentum
-        self._epsilon = epsilon
+        self._eps = eps
         self._track_running_stats = track_running_stats
 
     def forward(self, input):
@@ -3344,7 +3345,7 @@ class SyncBatchNorm(layers.Layer):
             trainable_statistics = False
 
         if in_dygraph_mode():
-            attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
+            attrs = ("momentum", self._momentum, "epsilon", self._eps,
                      "is_test", not self.training, "data_layout",
                      self._data_layout, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", use_global_stats,
@@ -3360,7 +3361,7 @@ class SyncBatchNorm(layers.Layer):
 
         attrs = {
             "momentum": self._momentum,
-            "epsilon": self._epsilon,
+            "epsilon": self._eps,
             "is_test": not self.training,
             "data_layout": self._data_layout,
             "use_mkldnn": False,
@@ -3395,3 +3396,58 @@ class SyncBatchNorm(layers.Layer):
         self._helper.append_op(
             type="sync_batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
         return sync_batch_norm_out
+
+
+class Flatten(layers.Layer):
+    """
+    :alias_main: paddle.nn.Flatten
+    :alias: paddle.nn.Flatten,paddle.nn.layer.Flatten,paddle.nn.layer.common.Flatten
+    This interface is used to construct a callable object of the ``FLatten`` class.
+    For more details, refer to code examples.
+    It implements flatten a contiguous range of dims into a tensor.
+
+    Equation:
+
+    Parameters:
+        start_axis(int): first dim to flatten (default = 1)
+        stop_axis(int): last dim to flatten (default = -1).
+    
+
+        .. code-block:: python
+
+          import paddle
+          from paddle.imperative import to_variable
+          import numpy as np
+
+          inp_np = np.ones([5, 2, 3, 4]).astype('float32')
+          
+          paddle.enable_imperative()
+          
+          inp_np = to_variable(inp_np)
+          flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
+          flatten_res = flatten(inp_np)
+
+    """
+
+    def __init__(self, start_axis=1, stop_axis=-1):
+        super(Flatten, self).__init__()
+        self.start_axis = start_axis
+        self.stop_axis = stop_axis
+
+    def forward(self, input):
+        out = self._helper.create_variable_for_type_inference(input.dtype)
+        x_shape = self._helper.create_variable_for_type_inference(input.dtype)
+
+        if in_dygraph_mode():
+            dy_out, _ = core.ops.flatten_contiguous_range(
+                input, 'start_axis', self.start_axis, 'stop_axis',
+                self.stop_axis)
+            return dy_out
+        self._helper.append_op(
+            type="flatten_contiguous_range",
+            inputs={"X": input},
+            outputs={"Out": out,
+                     "XShape": x_shape},
+            attrs={"start_axis": self.start_axis,
+                   "stop_axis": self.stop_axis})
+        return out
