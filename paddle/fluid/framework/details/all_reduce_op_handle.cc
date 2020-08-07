@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
+
 #include <algorithm>
+
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
@@ -34,14 +36,24 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLCommunicator *ctxs)
     : NCCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+                    platform::errors::InvalidArgument(
+                        "The number of places and local scopes "
+                        "should be equal, but got number of places is %d and "
+                        "number of local scopes is %d.",
+                        places_.size(), local_scopes_.size()));
 }
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places)
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+                    platform::errors::InvalidArgument(
+                        "The number of places and local scopes "
+                        "should be equal, but got number of places is %d and "
+                        "number of local scopes is %d.",
+                        places_.size(), local_scopes_.size()));
 }
 #endif
 
@@ -62,10 +74,16 @@ void AllReduceOpHandle::AllReduceImpl(
   size_t num_places = places_.size();
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), num_places,
-      "The NoDummyInputSize should be equal to the number of places.");
-  PADDLE_ENFORCE_EQ(
-      in_var_handles.size(), out_var_handles.size(),
-      "The NoDummyInputSize and NoDummyOutputSize should be equal.");
+      platform::errors::InvalidArgument(
+          "The NoDummyInputSize should be equal "
+          "to the number of places, but got NoDummyInputSize is %d and ",
+          in_var_handles.size(), num_places));
+  PADDLE_ENFORCE_EQ(in_var_handles.size(), out_var_handles.size(),
+                    "the number of xx",
+                    "thh number of yy" platform::errors::InvalidArgument(
+                        "The NoDummyInputSize and NoDummyOutputSize should be "
+                        "equal, but got .",
+                        in_var_handles.size(), out_var_handles.size()));
   PADDLE_ENFORCE_EQ(local_exec_scopes_.size(), num_places);
 
   std::vector<const void *> lod_tensor_data;
