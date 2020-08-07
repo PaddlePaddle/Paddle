@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+from __future__ import print_function
+
+import paddle.fluid as fluid
+from paddle.fluid import core, unique_name
+from ..base.private_helper_function import wait_server_ready
 from paddle.fluid.optimizer import PipelineOptimizer as PO
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
@@ -19,11 +24,7 @@ __all__ = ["PipelineOptimizer"]
 
 
 class PipelineHelper(CollectiveHelper):
-    def __init__(self,
-                 role_maker,
-                 nrings=1,
-                 wait_port='6174',
-                 use_pipeline=False):
+    def __init__(self, role_maker, nrings=1, wait_port='6174'):
         super(PipelineHelper, self).__init__(role_maker, nrings, wait_port)
 
     def _init_communicator(self, program, current_endpoint, endpoints, rank,
@@ -139,9 +140,8 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.endpoints = endpoints
         self.current_endpoint = current_endpoint
 
-        collective_helper = CollectiveHelper(
-            self.role_maker, nrings=self.nrings, use_pipeline=True)
-        collective_helper.update_startup_program(self.startup_program)
+        pipeline_helper = PipelineHelper(self.role_maker, nrings=self.nrings)
+        pipeline_helper.update_startup_program(self.startup_program)
 
         self._transpile_main_program()
         return optimize_ops, params_grads
