@@ -3191,17 +3191,17 @@ class SyncBatchNorm(layers.Layer):
 	:old_api: paddle.fluid.dygraph.SyncBatchNorm
 
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
-    For more details, refer to code examples.
-    It implements the function of the Batch Normalization Layer and can be used 
-    as a normalizer function for conv2d and fully connected operations.
-    The data is normalized by the mean and variance of the channel based on all mini-batches
-    of the same process groups.
+    It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
+    be used as a normalizer function for other operations, such as conv2d and fully connected 
+    operations.
+    The data is normalized by the mean and variance of the channel based on whole mini-batch
+    , which including data in all gpus.
     Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
     When model in train mode, the :math:`\\mu_{\\beta}` 
-    and :math:`\\sigma_{\\beta}^{2}` are the statistics of all mini-batches in the same process groups.
+    and :math:`\\sigma_{\\beta}^{2}` are the statistics of whole mini-batch data in all gpus.
     Calculated as follows:
 
     ..  math::
@@ -3267,8 +3267,11 @@ class SyncBatchNorm(layers.Layer):
           x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
           with fluid.dygraph.guard():
               x = to_variable(x)
-              sync_batch_norm = nn.SyncBatchNorm(10)
-              hidden1 = sync_batch_norm(x)
+              if paddle.fluid.is_compiled_with_cuda():
+                  sync_batch_norm = nn.SyncBatchNorm(10)
+                  hidden1 = sync_batch_norm(x)
+              else:
+                  raise NotImplemented("SyncBatchNorm only support GPU")
     """
 
     def __init__(self,

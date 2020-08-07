@@ -100,6 +100,8 @@ if (NOT ${WITH_GPU})
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_se_resnext)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sync_batch_norm)
+
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
