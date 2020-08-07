@@ -47,6 +47,8 @@ class GeluOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
+
+#ifdef USE_NVINFER_PLUGIN
       auto creator =
           getPluginRegistry()->getPluginCreator("CustomGeluPluginDynamic", "1");
       assert(creator != nullptr);
@@ -68,6 +70,11 @@ class GeluOpConverter : public OpConverter {
           creator->createPlugin("CustomGeluPluginDynamic", pluginPtr);
       layer = engine_->network()->addPluginV2(&input, input_num, *pluginObj);
       assert(layer != nullptr);
+#else
+      plugin::GeluPluginDynamic* plugin = new plugin::GeluPluginDynamic();
+      layer = engine_->AddPluginV2(&input, input_num, plugin);
+#endif
+
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the TRT Dynamic Shape mode, need to confirm that "

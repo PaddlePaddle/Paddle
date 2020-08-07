@@ -157,8 +157,9 @@ class TensorRTEngine {
                       "version should be at least 6.";
 #endif
     }
-
+#ifdef USE_NVINFER_PLUGIN
     dy::initLibNvInferPlugins(&logger, "");
+#endif
   }
 
   ~TensorRTEngine() {}
