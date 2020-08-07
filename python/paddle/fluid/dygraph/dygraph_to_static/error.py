@@ -20,13 +20,13 @@ from paddle.fluid.dygraph.dygraph_to_static.origin_info import Location, OriginI
 ERROR_DATA = "Error data about original source code information and traceback."
 
 
-def attach_error_data(error):
+def attach_error_data(error, in_runtime=False):
     """
     Attachs error data about original source code information and traceback to an error.
 
     Args:
         error(Exception): An native error.
-
+        in_runtime(bool): `error` is raised in runtime if in_runtime is True, otherwise in compile time
     Returns:
         An error attached data about original source code information and traceback.
     """
@@ -34,6 +34,8 @@ def attach_error_data(error):
     tb = traceback.extract_tb(e_traceback)[1:]
 
     error_data = ErrorData(e_type, e_value, tb, global_origin_info_map)
+    error_data.in_runtime = in_runtime
+
     setattr(error, ERROR_DATA, error_data)
 
     return error
@@ -53,8 +55,6 @@ class TraceBackFrame(OriginInfo):
 class ErrorData(object):
     """
     Error data attached to an exception which is raised in un-transformed code.
-
-    TODO(liym27): Consider the case that op_callstack when error raised from c++ code
     """
 
     def __init__(self, error_type, error_value, origin_traceback,
@@ -63,6 +63,7 @@ class ErrorData(object):
         self.error_value = error_value
         self.origin_traceback = origin_traceback
         self.origin_info_map = origin_info_map
+        self.in_runtime = False
 
     def create_exception(self):
         message = self.create_message()
@@ -80,6 +81,12 @@ class ErrorData(object):
         header_message = "In user code:"
         message_lines.append(header_message)
         message_lines.append("")
+
+        # Simplify error value to improve readability if error is raised in runtime
+        if self.in_runtime:
+            self._simplify_error_value()
+            message_lines.append(str(self.error_value))
+            return '\n'.join(message_lines)
 
         # Step2: Optimizes stack information with source code information of dygraph from user.
         for filepath, lineno, funcname, code in self.origin_traceback:
@@ -102,3 +109,25 @@ class ErrorData(object):
         message_lines.append(error_message)
 
         return '\n'.join(message_lines)
+
+    def _simplify_error_value(self):
+        """
+        Simplifies error value to improve readability if error is raised in runtime.
+
+        NOTE(liym27): The op callstack information about transformed static code has been replaced with original dygraph code.
+
+        TODO(liym27):
+            1. Need a more robust way because the code of start_trace may change.
+            2. Set the switch to determine whether to simplify error_value
+        """
+        assert self.in_runtime is True
+
+        error_value_lines = str(self.error_value).split("\n")
+        error_value_lines_strip = [mes.lstrip(" ") for mes in error_value_lines]
+
+        start_trace = "outputs = static_func(*inputs)"
+        start_idx = error_value_lines_strip.index(start_trace)
+        error_value_lines = error_value_lines[start_idx + 1:]
+
+        error_value_str = '\n'.join(error_value_lines)
+        self.error_value = self.error_type(error_value_str)
