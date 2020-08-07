@@ -15,7 +15,7 @@
 # TODO: import framework api under this directory 
 __all__ = [
     'create_global_var', 'create_parameter', 'ParamAttr', 'Variable',
-     'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace'
+    'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace'
 ]
 
 __all__ += [
