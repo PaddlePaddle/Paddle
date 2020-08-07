@@ -84,11 +84,12 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss()) {
         int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
-        PADDLE_ENFORCE_EQ(output_fp16, 1,
+        PADDLE_ENFORCE_EQ(
+            output_fp16, 1,
             platform::errors::InvalidArgument(
-              "Only Precision::KHalf(fp16) is supported when infering "
-              "ernie(bert) model with config.EnableTensorRtOSS(). "
-              "But Precision::KFloat32 is setted."));
+                "Only Precision::KHalf(fp16) is supported when infering "
+                "ernie(bert) model with config.EnableTensorRtOSS(). "
+                "But Precision::KFloat32 is setted."));
         const std::vector<nvinfer1::PluginField> fields{
             {"bert_embeddings_layernorm_beta", bias,
              nvinfer1::PluginFieldType::kFLOAT32,
@@ -126,21 +127,23 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         plugin_inputs.emplace_back(engine_->GetITensor(
             engine_->network()->getInput(2)->getName()));  // cu_seqlens,
                                                            // eval_placeholder_2
-        auto max_seqlen_tensor = engine_->GetITensor(
-            engine_->network()->getInput(3)->getName());
+        auto max_seqlen_tensor =
+            engine_->GetITensor(engine_->network()->getInput(3)->getName());
         auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Shuffle, *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
+            engine_, Shuffle,
+            *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
         nvinfer1::Dims shape_dim;
         shape_dim.nbDims = 1;
         shape_dim.d[0] = -1;
         shuffle_layer->setReshapeDimensions(shape_dim);
-        plugin_inputs.emplace_back(shuffle_layer->getOutput(0));     // max_seqlen, eval_placeholder_3
+        plugin_inputs.emplace_back(
+            shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
 
         auto creator = GetPluginRegistry()->getPluginCreator(
             "CustomEmbLayerNormPluginDynamic", "2");
 
-        auto plugin_obj =
-            creator->createPlugin("CustomEmbLayerNormPluginDynamic", plugin_ptr);
+        auto plugin_obj = creator->createPlugin(
+            "CustomEmbLayerNormPluginDynamic", plugin_ptr);
         auto plugin_layer = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
         layer = plugin_layer;
@@ -151,7 +154,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                                  test_mode);
       } else {
         bool use_fp16 = engine_->WithFp16();
-        float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+        float eps = boost::get<float>(op_desc.GetAttr("epsilon"));
         plugin::DynamicPluginTensorRT* plugin = nullptr;
         plugin = new plugin::EmbEltwiseLayernormPluginDynamic(
             input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,

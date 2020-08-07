@@ -76,15 +76,15 @@ class SkipLayerNormOpConverter : public OpConverter {
         pluginPtr->nbFields = static_cast<int>(fields.size());
         pluginPtr->fields = fields.data();
 
-        auto pluginObj =
-            creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+        auto pluginObj = creator->createPlugin(
+            "CustomSkipLayerNormPluginDynamic", pluginPtr);
         auto plugin_layer = engine_->network()->addPluginV2(
             inputs.data(), inputs.size(), *pluginObj);
 
         assert(plugin_layer != nullptr);
         layer = plugin_layer;
       } else {
-        float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+        float eps = boost::get<float>(op_desc.GetAttr("epsilon"));
         bool ban_fp16 = engine_->disable_trt_plugin_fp16();
         plugin::SkipLayerNormPluginDynamic* plugin =
             new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
