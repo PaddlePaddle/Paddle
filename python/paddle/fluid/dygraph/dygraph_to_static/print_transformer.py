@@ -47,8 +47,7 @@ class PrintTransformer(gast.NodeTransformer):
     # NOTE: deal with print in PY3
     def visit_Call(self, node):
         if isinstance(node.func, gast.Name) and node.func.id == 'print':
-            convert_print_node = self._create_print_node(node.args)
-            return gast.Expr(value=convert_print_node)
+            node = self._create_print_node(node.args)
         return node
 
     # NOTE: deal with print in PY2

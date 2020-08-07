@@ -21,6 +21,7 @@ import gast
 
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
 ORIGI_INFO = "Original information of source code for ast node."
+ORIGI_INFO_MAP = "Original information map of source code."
 
 
 class Location(object):
@@ -63,6 +64,11 @@ class OriginInfo(object):
     def __str__(self):
         return "{} \nsource_code: {}  in function {}\n  ".format(
             self.location, self.source_code, self.function_name)
+
+    def formated_message(self):
+        return '    File "{}", line {}, in {}\n\t{}'.format(
+            self.location.filepath, self.location.lineno, self.function_name,
+            self.source_code.lstrip())
 
 
 class OriginInfoAttacher(gast.NodeTransformer):
@@ -119,7 +125,12 @@ class OriginInfoAttacher(gast.NodeTransformer):
         return self.col_offset + node.col_offset
 
 
-def create_origin_info_map(transformed_node, static_func):
+global_origin_info_map = {}
+
+
+def create_and_update_origin_info_map(transformed_node,
+                                      static_func,
+                                      is_global=True):
     """
     Creates a original information map between transformed static function and original dygraph function.
 
@@ -155,6 +166,10 @@ def create_origin_info_map(transformed_node, static_func):
                 continue
 
         origin_info_map[static_loc] = dygraph_info
+
+    global_origin_info_map.update(origin_info_map)
+    if is_global:
+        return global_origin_info_map
 
     return origin_info_map
 
