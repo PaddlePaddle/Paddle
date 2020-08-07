@@ -321,7 +321,7 @@ def is_compiled_with_xpu():
         .. code-block:: python
 
             import paddle.fluid as fluid
-            support_gpu = fluid.is_compiled_with_xpu()
+            support_xpu = fluid.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
 
