@@ -1559,21 +1559,13 @@ class Model(object):
             model.save_inference_model('inference_model')
         """
 
-        def get_inout_spec(all_vars, target_vars=None, return_name=False):
+        def get_inout_spec(all_vars, return_name=False):
             result_list = []
             valid_var_dict = {}
             valid_vars = [var for var in all_vars if isinstance(var, Variable)]
             for var in valid_vars:
                 valid_var_dict[var.name] = var
-            if target_vars:
-                for i, var in enumerate(target_vars):
-                    # check target var whether exists
-                    if var.name not in valid_var_dict:
-                        raise RuntimeError(
-                            "The variable to feed/fetch are not exist.")
-                    result_list.append(valid_var_dict[var.name])
-            else:
-                result_list = valid_vars
+            result_list = valid_vars
             if return_name:
                 result_list = [var.name for var in result_list]
 
@@ -1628,8 +1620,7 @@ class Model(object):
                 extra_var_info[param_or_buffer.name] = extra_info_dict
 
             # 4. build input & output spec
-            input_var_names = get_inout_spec(concrete_program.inputs, None,
-                                             True)
+            input_var_names = get_inout_spec(concrete_program.inputs, True)
             output_vars = get_inout_spec(concrete_program.outputs)
 
             # 5. save inference model
