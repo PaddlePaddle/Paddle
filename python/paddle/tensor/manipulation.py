@@ -438,7 +438,7 @@ def stack(x, axis=0, name=None):
     Args:
         x (Tensor|list[Tensor]): Input ``x`` can be a single tensor, or a ``list`` of tensors.
                                      If ``x`` is a ``list``, the Tensors in ``x``
-                                     must be of the same shape and dtype. Support data types: float32, float64, int32, int64.
+                                     must be of the same shape and dtype. Supported data types: float32, float64, int32, int64.
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
                               where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
                               If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
