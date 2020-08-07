@@ -121,10 +121,6 @@ def enabled():
 
 def enable_dygraph(place=None):
     """
-    :alias_main: paddle.disable_static
-	:alias: paddle.disable_static, paddle.enable_dygraph
-	:old_api: paddle.fluid.dygraph.base.enable_dygraph
-
     This function enables dynamic graph mode.
 
     Parameters:
@@ -155,10 +151,6 @@ def enable_dygraph(place=None):
 
 def disable_dygraph():
     """
-    :alias_main: paddle.enable_static
-	:alias: paddle.enable_static, paddle.disable_dygraph
-	:old_api: paddle.fluid.dygraph.base.disable_dygraph
-
     This function disables dynamic graph mode.
 
     return:
