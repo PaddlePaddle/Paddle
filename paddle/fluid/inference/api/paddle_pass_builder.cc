@@ -179,9 +179,6 @@ void CpuPassStrategy::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!use_mkldnn_) {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
-    //  Workaround for oneDNN fusion_gru
-    passes_.insert(passes_.begin(), "fc_gru_fuse_pass");
-    passes_.insert(passes_.begin(), "mul_gru_fuse_pass");
 
     for (auto &pass : std::vector<std::string>({
              "depthwise_conv_mkldnn_pass",    //

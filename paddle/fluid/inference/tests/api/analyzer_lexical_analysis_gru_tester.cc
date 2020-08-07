@@ -210,6 +210,7 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
   if (FLAGS_use_analysis) {
     AnalysisConfig analysis_cfg;
     SetAnalysisConfig(&analysis_cfg, FLAGS_cpu_num_threads);
+    analysis_cfg.pass_builder()->AppendPass("mkldnn_placement_pass");
     std::vector<double> acc_analysis(3);
     acc_analysis = Lexical_Test(input_slots_all, &outputs, &analysis_cfg, true);
     for (size_t i = 0; i < acc_analysis.size(); i++) {
