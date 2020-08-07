@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle.fluid.optimizer import AdamOptimizer, LambMomentumOptimizer
+from paddle.fluid.optimizer import AdamOptimizer
+from paddle.fluid.optimizer import LambOptimizer as LAMB
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
@@ -49,7 +50,7 @@ class LambOptimizer(MetaOptimizerBase):
 
             _exclude_from_weight_decay_fn = exclude_fn
 
-        self.lamb_opt = LambMomentumOptimizer(
+        self.lamb_opt = LAMB(
             learning_rate=opt._learning_rate,
             lamb_weight_decay=configs['lamb_weight_decay'],
             beta1=opt._beta1,
