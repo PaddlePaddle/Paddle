@@ -15,6 +15,9 @@
 #pragma once
 
 #include <NvInfer.h>
+#ifdef USE_NVINFER_PLUGIN
+#include <NvInferPlugin.h>
+#endif
 #if !defined(_WIN32)
 #include <dlfcn.h>
 #endif
@@ -56,22 +59,22 @@ extern void* tensorrt_plugin_dso_handle;
   };                                                                          \
   extern DynLoad__##__name __name
 
-#define DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP(__name)                   \
-  struct DynLoad__##__name {                                                \
-    template <typename... Args>                                             \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {        \
-      std::call_once(tensorrt_plugin_dso_flag, []() {                       \
-        tensorrt_dso_plugin_handle =                                        \
-            paddle::platform::dynload::GetTensorRtPluginHandle();           \
-      });                                                                   \
-      static void* p_##__name = dlsym(tensorrt_plugin_dso_handle, #__name); \
-      if (p_##__name == nullptr) {                                          \
-        return nullptr;                                                     \
-      }                                                                     \
-      using tensorrt_plugin_func = decltype(&::__name);                     \
-      return reinterpret_cast<tensorrt_plugin_func>(p_##__name)(args...);   \
-    }                                                                       \
-  };                                                                        \
+#define DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP(__name)                      \
+  struct DynLoad__##__name {                                                   \
+    template <typename... Args>                                                \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {           \
+      std::call_once(tensorrt_plugin_dso_flag, []() {                          \
+        tensorrt_plugin_dso_handle =                                           \
+            paddle::platform::dynload::GetTensorRtPluginHandle();              \
+      });                                                                      \
+      static void* p_##__name = dlsym(tensorrt_plugin_dso_handle, #__name);    \
+      PADDLE_ENFORCE_NOT_NULL(p_##__name,                                      \
+                              platform::errors::Unavailable(                   \
+                                  "Load tensorrt plugin %s failed", #__name)); \
+      using tensorrt_plugin_func = decltype(&::__name);                        \
+      return reinterpret_cast<tensorrt_plugin_func>(p_##__name)(args...);      \
+    }                                                                          \
+  };                                                                           \
   extern DynLoad__##__name __name
 
 #if (NV_TENSORRT_MAJOR >= 6)
