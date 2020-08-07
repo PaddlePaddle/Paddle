@@ -64,15 +64,15 @@ def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
             "input `backend` type error, expected type is str, but received type is %s."
             % type(trainer_id))
 
-    if trainer_id > 0:
+    if trainer_id < 0:
         raise ValueError(
             "input `trainer_id` should be greater than 0, but received %d." %
             trainer_id)
-    if trainer_num > 0:
+    if trainer_num < 0:
         raise ValueError(
             "input `trainer_num` should be greater than 0, but received %d." %
             trainer_num)
-    if trainer_id < trainer_num:
+    if trainer_id >= trainer_num:
         raise ValueError(
             "input `trainer_id` should be less than or equal to `trainer_num`, but `trainer_id` is %d, `trainer_num` is %d."
             % (trainer_id, trainer_num))
@@ -94,32 +94,32 @@ def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
     args.node_ip = kwargs.get('node_ip', "127.0.0.1")
     args.use_paddlecloud = kwargs.get('use_paddlecloud', "False")
     args.started_port = kwargs.get('started_port', None)
-    args.selected_gpus = kwargs.get('selected_gpus', None)
+    args.selected_gpus = ",".join(
+        [str(g) for g in [x for x in range(0, trainer_num)]])
 
     # reuse code of launch.py
     cluster, pod = get_cluster_and_pod(args)
 
     # copy env & remove useless env vars
-    current_env = copy.copy(os.environ.copy())
-    current_env.pop("http_proxy", None)
-    current_env.pop("https_proxy", None)
+    os.environ.pop("http_proxy", None)
+    os.environ.pop("https_proxy", None)
 
     # prepare env var
 
     assert trainer_num == cluster.trainers_nranks(
     ), "trainer number parse error."
     for trainer in pod.trainers:
-        if trainer.id == trainer_id:
+        if trainer.rank == trainer_id:
             proc_env = {
                 "FLAGS_selected_gpus":
-                "%s" % ",".join([str(g) for g in selected_gpus]),
-                "PADDLE_TRAINER_ID": "%d" % trainer.id,
+                "%s" % ",".join([str(g) for g in trainer.gpus]),
+                "PADDLE_TRAINER_ID": "%d" % trainer.rank,
                 "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
                 "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
                 "PADDLE_TRAINER_ENDPOINTS":
                 ",".join(cluster.trainers_endpoints())
             }
-            current_env.update(proc_env)
+            os.environ.update(proc_env)
             break
 
 

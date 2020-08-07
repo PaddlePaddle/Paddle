@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import run
 from .run import init_parallel_env, run
 
 __all__ = [

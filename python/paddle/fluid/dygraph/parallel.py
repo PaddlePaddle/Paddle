@@ -118,28 +118,14 @@ class ParallelEnv(object):
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
+        self.__aliases__ = {
+            'local_rank': 'trainer_id',
+            'nranks': 'trainer_num',
+            'dev_id': 'devices'
+        }
 
     @property
-    def nranks(self):
-        """
-        The number of trainers, generally refers to the number of GPU cards used in training.
-
-        Its value is equal to the value of the environment variable PADDLE_TRAINERS_NUM. The default value is 1.
-
-        Examples:
-          .. code-block:: python
-
-            # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
-            import paddle.fluid as fluid
-            
-            env = fluid.dygraph.ParallelEnv()
-            print("The nranks is %d" % env.nranks)
-            # The nranks is 4
-        """
-        return self._nranks
-
-    @property
-    def local_rank(self):
+    def trainer_id(self):
         """
         The current trainer number.
 
@@ -152,13 +138,32 @@ class ParallelEnv(object):
             import paddle.fluid as fluid
             
             env = fluid.dygraph.ParallelEnv()
-            print("The local rank is %d" % env.local_rank)
-            # The local rank is 0
+            print("The trainer id is %d" % env.trainer_id)
+            # The trainer id is 0
         """
         return self._local_rank
 
     @property
-    def dev_id(self):
+    def trainer_num(self):
+        """
+        The number of trainers, generally refers to the number of GPU cards used in training.
+
+        Its value is equal to the value of the environment variable PADDLE_TRAINERS_NUM. The default value is 1.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
+            import paddle.fluid as fluid
+            
+            env = fluid.dygraph.ParallelEnv()
+            print("The trainer num is %d" % env.trainer_num)
+            # The trainer num is 4
+        """
+        return self._nranks
+
+    @property
+    def devices(self):
         """
         The ID of selected GPU card for parallel training.
 
@@ -171,7 +176,7 @@ class ParallelEnv(object):
             import paddle.fluid as fluid
             
             env = fluid.dygraph.ParallelEnv()
-            print("The device id are %d" % env.dev_id)
+            print("The device id are %d" % env.devices)
             # The device id are 1
         """
         return self._dev_id
@@ -214,6 +219,12 @@ class ParallelEnv(object):
             # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
         """
         return self._trainer_endpoints
+
+    def __getattr__(self, name):
+        if name == "__aliases__":
+            raise AttributeError("Attribue `__aliases__` can not be accessed.")
+        name = self.__aliases__.get(name, name)
+        return object.__getattribute__(self, name)
 
 
 # NOTE: [ Compatible ] Originally this class name is `Env`. The semantics of the old class names

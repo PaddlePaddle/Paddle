@@ -48,7 +48,7 @@ import paddle
 import paddle.fluid as fluid
 
 from paddle.distributed.utils import *
-import paddle.distributed.cloud_utils as cloud_utils
+from paddle.distributed import cloud_utils
 
 
 def _print_arguments(args):
