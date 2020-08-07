@@ -204,11 +204,17 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     auto x_dims = framework::vectorize(transformed_input.dims());
     auto f_dims = framework::vectorize(filter->dims());
     if (!exhaustive_search) {
+      int perf_count;
+      int best_algo_idx = 0;
+      size_t tmp_size = 0;
+      std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
+          new cudnnConvolutionFwdAlgoPerf_t[kNUM_CUDNN_FWD_ALGS]);
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+          platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
               handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-              cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-              workspace_size_limit, &algo));
+              cudnn_output_desc, kNUM_CUDNN_FWD_ALGS, &perf_count,
+              perf_results.get()));
+      algo = (perf_results.get())[best_algo_idx].algo;
       VLOG(3) << "cuDNN forward algo " << algo;
     } else {
       std::function<cudnnConvolutionFwdAlgo_t()> search_func =

@@ -35,7 +35,7 @@ __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
     'GRUUnit', 'InstanceNorm', 'LayerNorm', 'NCE', 'PRelu',
     'BilinearTensorProduct', 'Conv2DTranspose', 'Conv3DTranspose', 'GroupNorm',
-    'SpectralNorm', 'TreeConv'
+    'SpectralNorm', 'TreeConv', 'Flatten'
 ]
 
 
@@ -3182,3 +3182,62 @@ class TreeConv(layers.Layer):
         else:
             pre_activation = out
         return self._helper.append_activation(pre_activation, act=self._act)
+
+
+class Flatten(layers.Layer):
+    """
+    :alias_main: paddle.nn.Flatten
+    :alias: paddle.nn.Flatten,paddle.nn.layer.Flatten,paddle.nn.layer.common.Flatten
+    This interface is used to construct a callable object of the ``FLatten`` class.
+    For more details, refer to code examples.
+    It implements flatten a contiguous range of dims into a tensor.
+
+    Equation:
+
+    Parameters:
+        start_axis(int): first dim to flatten (default = 1)
+        stop_axis(int): last dim to flatten (default = -1).
+    
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          from paddle.imperative import to_variable
+          import numpy as np
+
+          inp_np = np.ones([5, 2, 3, 4]).astype('float32')
+          
+          paddle.enable_imperative()
+          
+          inp_np = to_variable(inp_np)
+          flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
+          flatten_res = flatten(inp_np)
+
+    """
+
+    def __init__(self, start_axis=1, stop_axis=-1):
+        super(Flatten, self).__init__()
+        self.start_axis = start_axis
+        self.stop_axis = stop_axis
+
+    def forward(self, input):
+        out = self._helper.create_variable_for_type_inference(input.dtype)
+        x_shape = self._helper.create_variable_for_type_inference(input.dtype)
+
+        if in_dygraph_mode():
+            dy_out, _ = core.ops.flatten_contiguous_range(
+                input, 'start_axis', self.start_axis, 'stop_axis',
+                self.stop_axis)
+            return dy_out
+        self._helper.append_op(
+            type="flatten_contiguous_range",
+            inputs={"X": input},
+            outputs={"Out": out,
+                     "XShape": x_shape},
+            attrs={"start_axis": self.start_axis,
+                   "stop_axis": self.stop_axis})
+        return out
