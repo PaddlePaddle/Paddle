@@ -21,7 +21,7 @@ from ..fluid import layers
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from ..fluid.layers.layer_function_generator import _generate_doc_string_
+from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn
 import sys
 
 # TODO: define math functions
@@ -59,6 +59,9 @@ from ..fluid.layers import square    #DEFINE_ALIAS
 from ..fluid.layers import stanh    #DEFINE_ALIAS
 from ..fluid.layers import atan    #DEFINE_ALIAS
 from ..fluid.layers import erf    #DEFINE_ALIAS
+from ..fluid.layers import sqrt    #DEFINE_ALIAS
+from ..fluid.layers import sin    #DEFINE_ALIAS
+from ..fluid.layers import tanh    #DEFINE_ALIAS
 
 from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
@@ -123,67 +126,7 @@ __all__ = [
         'trace',
         'kron'
 ]
-
-
 # yapf: enable.
-
-
-def generate_op_noattr(op_type):
-    """Register the Python layer for an Operator without Attribute..
-
-    Args:
-       op_type: The name of the operator to be created.
-
-    This function takes in the operator type (sin, tanh etc) and
-    creates the operator functionality.
-
-    """
-    op_proto = OpProtoHolder.instance().get_op_proto(op_type)
-
-    def func(x, name=None):
-        if in_dygraph_mode():
-            op = getattr(core.ops, op_type)
-            return op(x)
-
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
-        helper = LayerHelper(op_type, **locals())
-
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": out})
-        return out
-
-    func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(
-        op_proto,
-        additional_args_lines=[
-            "name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.\n    "
-            "out(Variable, optional): The default value is None. Optional output can be any created Variable that meets the requirements to store the result of operation. if out is None, a new Varibale will be create to store the result."
-        ])
-    func.__doc__ = func.__doc__ + """
-
-Return type
-  Variable
-Examples:
-    .. code-block:: python
-
-        import numpy as np
-
-        import paddle
-        import paddle.fluid as fluid
-
-        inputs = fluid.data(name="x", shape = [None, 4], dtype='float32')
-        output = paddle.%s(inputs)
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
-
-        #input.shape=1X4, batch_size=1
-        img = np.array([[1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
-        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-        print(res)
-""" % op_type
-    return func
 
 @templatedoc()
 def pow(input, exponent, name=None):
@@ -243,17 +186,6 @@ def pow(input, exponent, name=None):
     helper.append_op(
         type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
-
-
-__ops__noattr__ = [
-    'atan',
-    'sin',
-    'sqrt',
-    'tanh',
-]
-
-for _OP in set(__ops__noattr__):
-    globals()[_OP] = generate_op_noattr(_OP)
 
 
 @dygraph_only
