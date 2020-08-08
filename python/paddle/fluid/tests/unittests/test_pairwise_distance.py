@@ -20,8 +20,42 @@ import numpy as np
 import unittest
 
 
-def pairwise_distance(x, y, ord=2.0, eps=1e-6, keepdim=False):
-    return np.linalg.norm(x - y, ord=ord, axis=1, keepdims=keepdim)
+def pairwise_distance(x, y, p=2.0, eps=1e-6, keepdim=False):
+    return np.linalg.norm(x - y, ord=p, axis=1, keepdims=keepdim)
+
+
+def test_static(x_np, y_np, p=2.0, eps=1e-6, keepdim=False):
+    prog = paddle.Program()
+    startup_prog = paddle.Program()
+
+    place = paddle.CUDAPlace(0) if paddle.fluid.core.is_compiled_with_cuda(
+    ) else fluid.CPUPlace()
+
+    with paddle.program_guard(prog, startup_prog):
+        x = paddle.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+        y = paddle.data(name='y', shape=y_np.shape, dtype=x_np.dtype)
+        dist = paddle.nn.layer.distance.PairwiseDistance(
+            p=p, eps=eps, keepdim=keepdim)
+        distance = dist(x, y)
+        exe = fluid.Executor(place)
+        static_ret = exe.run(prog,
+                             feed={'x': x_np,
+                                   'y': y_np},
+                             fetch_list=[distance])
+        static_ret = static_ret[0]
+    return static_ret
+
+
+def test_dygraph(x_np, y_np, p=2.0, eps=1e-6, keepdim=False):
+    paddle.enable_imperative()
+    x = paddle.imperative.to_variable(x_np)
+    y = paddle.imperative.to_variable(y_np)
+    dist = paddle.nn.layer.distance.PairwiseDistance(
+        p=p, eps=eps, keepdim=keepdim)
+    distance = dist(x, y)
+    dygraph_ret = distance.numpy()
+    paddle.disable_imperative()
+    return dygraph_ret
 
 
 class TestPairwiseDistance(unittest.TestCase):
@@ -35,42 +69,40 @@ class TestPairwiseDistance(unittest.TestCase):
                     x_np = np.random.random(shape).astype(dtype)
                     y_np = np.random.random(shape).astype(dtype)
 
-                    prog = paddle.Program()
-                    startup_prog = paddle.Program()
-
-                    place = paddle.CUDAPlace(
-                        0) if paddle.fluid.core.is_compiled_with_cuda(
-                        ) else fluid.CPUPlace()
-
-                    with paddle.program_guard(prog, startup_prog):
-                        x = paddle.data(name='x', shape=shape, dtype=dtype)
-                        y = paddle.data(name='y', shape=shape, dtype=dtype)
-                        dist = paddle.nn.layer.distance.PairwiseDistance(
-                            keepdim=keepdim)
-                        distance = dist(x, y)
-                        exe = fluid.Executor(place)
-                        static_ret = exe.run(prog,
-                                             feed={'x': x_np,
-                                                   'y': y_np},
-                                             fetch_list=[distance])
-                        self.assertIsNotNone(static_ret)
-                        static_ret = static_ret[0]
-
-                    paddle.enable_imperative()
-                    x = paddle.imperative.to_variable(x_np)
-                    y = paddle.imperative.to_variable(y_np)
-                    dist = paddle.nn.layer.distance.PairwiseDistance(
-                        keepdim=keepdim)
-                    distance = dist(x, y)
-                    dygraph_ret = distance.numpy()
-                    paddle.disable_imperative()
-
+                    static_ret = test_static(x_np, y_np, keepdim=keepdim)
+                    dygraph_ret = test_dygraph(x_np, y_np, keepdim=keepdim)
                     excepted_value = pairwise_distance(
                         x_np, y_np, keepdim=keepdim)
 
                     self.assertTrue(np.allclose(static_ret, dygraph_ret))
                     self.assertTrue(np.allclose(static_ret, excepted_value))
                     self.assertTrue(np.allclose(dygraph_ret, excepted_value))
+
+    def test_pairwise_distance_broadcast(self):
+        shape_x = [100, 100]
+        shape_y = [100, 1]
+        keepdim = False
+        x_np = np.random.random(shape_x).astype('float32')
+        y_np = np.random.random(shape_y).astype('float32')
+        static_ret = test_static(x_np, y_np, keepdim=keepdim)
+        dygraph_ret = test_dygraph(x_np, y_np, keepdim=keepdim)
+        excepted_value = pairwise_distance(x_np, y_np, keepdim=keepdim)
+        self.assertTrue(np.allclose(static_ret, dygraph_ret))
+        self.assertTrue(np.allclose(static_ret, excepted_value))
+        self.assertTrue(np.allclose(dygraph_ret, excepted_value))
+
+    def test_pairwise_distance_different_p(self):
+        shape = [100, 100]
+        keepdim = False
+        p = 3.0
+        x_np = np.random.random(shape).astype('float32')
+        y_np = np.random.random(shape).astype('float32')
+        static_ret = test_static(x_np, y_np, p=p, keepdim=keepdim)
+        dygraph_ret = test_dygraph(x_np, y_np, p=p, keepdim=keepdim)
+        excepted_value = pairwise_distance(x_np, y_np, p=p, keepdim=keepdim)
+        self.assertTrue(np.allclose(static_ret, dygraph_ret))
+        self.assertTrue(np.allclose(static_ret, excepted_value))
+        self.assertTrue(np.allclose(dygraph_ret, excepted_value))
 
 
 if __name__ == "__main__":

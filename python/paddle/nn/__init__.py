@@ -92,6 +92,7 @@ from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
+from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
 
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS

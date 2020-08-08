@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 from ...fluid.dygraph import layers
-from ...fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
-from ...fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from ...fluid.framework import core, in_dygraph_mode
+from ...fluid.data_feeder import check_variable_and_dtype, check_type
 
 
 class PairwiseDistance(layers.Layer):
@@ -40,13 +40,13 @@ class PairwiseDistance(layers.Layer):
             default value is 1e-6.
         keepdim (bool, optional): Whether to reserve the reduced dimension
             in the output Tensor. The result tensor is one dimension less than
-            the result of ``'x-y'`` unless :attr:`keepdim` is true, default
+            the result of ``'x-y'`` unless :attr:`keepdim` is True, default
             value is False.
 
     Shape:
         x: :math:`(N, D)` where `D` is the dimension of vector, available dtype
             is float32, float64.
-        y: :math:`(N, D)`, y have the same shape as x.
+        y: :math:`(N, D)`, y have the same shape and dtype as x.
         out: :math:`(N)`. If :attr:`keepdim` is ``True``, the out shape is :math:`(N, 1)`.
             The same dtype as input tensor.
 
@@ -56,13 +56,13 @@ class PairwiseDistance(layers.Layer):
             import paddle
             import numpy as np
             paddle.enable_imperative()
-            x_np = np.random.random([100, 100]).astype(np.float64)
-            y_np = np.random.random([100, 100]).astype(np.float64)
+            x_np = np.array([[1., 3.], [3., 5.]]).astype(np.float64)
+            y_np = np.array([[5., 6.], [7., 8.]]).astype(np.float64)
             x = paddle.imperative.to_variable(x_np)
             y = paddle.imperative.to_variable(y_np)
-            dist = paddle.nn.layer.distance.PairwiseDistance()
+            dist = paddle.nn.PairwiseDistance()
             distance = dist(x, y)
-            print(distance.numpy())
+            print(distance.numpy()) # [5. 5.]
 
     """
 
@@ -71,9 +71,9 @@ class PairwiseDistance(layers.Layer):
         self.p = p
         self.eps = eps
         self.keepdim = keepdim
-        check_type(self.p, 'porder', (float, int), 'p_norm')
-        check_type(self.eps, 'epsilon', (float), 'p_norm')
-        check_type(self.keepdim, 'keepdim', (bool), 'p_norm')
+        check_type(self.p, 'porder', (float, int), 'PairwiseDistance')
+        check_type(self.eps, 'epsilon', (float), 'PairwiseDistance')
+        check_type(self.keepdim, 'keepdim', (bool), 'PairwiseDistance')
 
     def forward(self, x, y):
         if in_dygraph_mode():
@@ -81,8 +81,11 @@ class PairwiseDistance(layers.Layer):
             return core.ops.p_norm(sub, 'axis', 1, 'porder', self.p, 'keepdim',
                                    self.keepdim, 'epsilon', self.eps)
 
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'PairwiseDistance')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'],
+                                 'PairwiseDistance')
         sub = paddle.elementwise_sub(x, y)
-        check_variable_and_dtype(sub, 'input', ['float32', 'float64'], 'p_norm')
 
         attrs = {
             'axis': 1,
@@ -91,7 +94,7 @@ class PairwiseDistance(layers.Layer):
             'epsilon': self.eps,
         }
         out = self._helper.create_variable_for_type_inference(
-            dtype=self._helper.input_dtype(sub))
+            dtype=self._helper.input_dtype(x))
         self._helper.append_op(
             type='p_norm', inputs={'X': sub}, outputs={'Out': out}, attrs=attrs)
 
