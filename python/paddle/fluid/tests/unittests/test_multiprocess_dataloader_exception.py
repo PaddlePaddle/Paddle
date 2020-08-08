@@ -24,7 +24,7 @@ import numpy as np
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.io import Dataset, BatchSampler, DataLoader
+from paddle.io import Dataset, IterableDataset, BatchSampler, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
@@ -106,6 +106,48 @@ class TestDataLoaderAssert(unittest.TestCase):
                 self.assertTrue(True)
             except AssertionError:
                 self.assertTrue(False)
+
+
+class TestDatasetRuntimeError(unittest.TestCase):
+    def test_main(self):
+        dataset = Dataset()
+
+        # __getitem__ not implement
+        try:
+            d = dataset[0]
+            self.assertTrue(False)
+        except NotImplementedError:
+            pass
+
+        # __len__ not implement
+        try:
+            l = len(dataset)
+            self.assertTrue(False)
+        except NotImplementedError:
+            pass
+
+        dataset = IterableDataset()
+
+        # __iter__ not implement
+        try:
+            d = iter(dataset)
+            self.assertTrue(False)
+        except NotImplementedError:
+            pass
+
+        # __getitem__ runtime error
+        try:
+            d = dataset[0]
+            self.assertTrue(False)
+        except RuntimeError:
+            pass
+
+        # __len__ runtime error
+        try:
+            l = len(dataset)
+            self.assertTrue(False)
+        except RuntimeError:
+            pass
 
 
 # CI Converage cannot record stub in subprocess,

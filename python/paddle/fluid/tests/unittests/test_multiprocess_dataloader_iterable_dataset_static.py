@@ -25,10 +25,10 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.io import IterableDataset, BatchSampler, DataLoader, get_worker_info
 
-EPOCH_NUM = 3
+EPOCH_NUM = 2
 BATCH_SIZE = 8
 IMAGE_SIZE = 32
-SAMPLE_NUM = 100
+SAMPLE_NUM = 80
 CLASS_NUM = 10
 
 
