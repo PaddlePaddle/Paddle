@@ -24,7 +24,7 @@ from threading import Thread, current_thread
 from contextlib import contextmanager
 
 from paddle.fluid import unique_name, compiler
-from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.utils.hdfs import HDFSClient
 from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel
 from paddle.fluid.framework import in_dygraph_mode, Program
 
