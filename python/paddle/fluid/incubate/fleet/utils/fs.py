@@ -109,7 +109,18 @@ class FS(object):
 
 class LocalFS(FS):
     def ls_dir(self, fs_path):
-        return [f for f in os.listdir(fs_path)]
+        if not self.is_exist(fs_path):
+            return [], []
+
+        dirs = []
+        files = []
+        for f in os.listdir(fs_path):
+            if os.path.isdir(fs_path + "/" + f):
+                dirs.append(f)
+            else:
+                files.append(f)
+
+        return dirs, files
 
     def mkdirs(self, fs_path):
         assert not os.path.isfile(fs_path), "{} is already a file".format(

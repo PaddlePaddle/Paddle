@@ -55,9 +55,7 @@ class UtilBase(object):
         self.role_maker = role_maker
 
     def set_file_system(self, fs_client):
-        assert isinstance(
-            fs_client,
-            FS), "fs_client must be the instance of paddle.fleet.utils.FS"
+        assert isinstance(fs_client, FS), "fs_client must be the instance of FS"
         self.fs_client = fs_client
 
     def __check_comm_world(self, comm_world="worker"):

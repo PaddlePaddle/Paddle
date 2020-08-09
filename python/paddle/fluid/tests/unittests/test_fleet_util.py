@@ -81,9 +81,10 @@ class TestFleetUtil(unittest.TestCase):
         self.assertEqual(user_id, 10)
 
     def test_fs(self):
-        from paddle.fleet.utils import LocalFS
+        from paddle.fluid.incubate.fleet.utils.fs import LocalFS
         fs = LocalFS()
-        dirs, files = fs.ls_dir("test_tmp")
+        # FIXME(gongwb): why ls_dir?
+        #dirs, files = fs.ls_dir("test_tmp")
         dirs, files = fs.ls_dir("./")
         self.assertFalse(fs.need_upload_download())
         fleet_util.set_file_system(fs)
