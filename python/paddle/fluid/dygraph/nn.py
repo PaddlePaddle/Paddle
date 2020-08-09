@@ -3267,11 +3267,9 @@ class SyncBatchNorm(layers.Layer):
           x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
           with fluid.dygraph.guard():
               x = to_variable(x)
-              if paddle.fluid.is_compiled_with_cuda():
+              if fluid.is_compiled_with_cuda():
                   sync_batch_norm = nn.SyncBatchNorm(10)
                   hidden1 = sync_batch_norm(x)
-              else:
-                  raise NotImplemented("SyncBatchNorm only support GPU")
     """
 
     def __init__(self,
@@ -3340,19 +3338,12 @@ class SyncBatchNorm(layers.Layer):
         variance_out = self._variance
 
         ### train mode: use mini-batch stats, eval mode: use global stats
-        if self.training:
-            use_global_stats = False
-            trainable_statistics = False
-        else:
-            use_global_stats = True
-            trainable_statistics = False
-
         if in_dygraph_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._eps,
                      "is_test", not self.training, "data_layout",
                      self._data_layout, "use_mkldnn", False, "fuse_with_relu",
-                     False, "use_global_stats", use_global_stats,
-                     'trainable_statistics', trainable_statistics)
+                     False, "use_global_stats", not self.training,
+                     'trainable_statistics', False)
             sync_batch_norm_out, _, _, _, _, _ = core.ops.sync_batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
                 mean_out, variance_out, *attrs)
@@ -3369,8 +3360,8 @@ class SyncBatchNorm(layers.Layer):
             "data_layout": self._data_layout,
             "use_mkldnn": False,
             "fuse_with_relu": False,
-            "use_global_stats": use_global_stats,
-            "trainable_statistics": trainable_statistics,
+            "use_global_stats": not self.training,
+            "trainable_statistics": False,
         }
 
         inputs = {
@@ -3385,7 +3376,7 @@ class SyncBatchNorm(layers.Layer):
             dtype=self._dtype, stop_gradient=True)
         saved_variance = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
-        sync_batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
+        sync_batch_norm_out = self._helper.create_variable_for_type_inference(
             self._dtype)
 
         outputs = {
@@ -3415,6 +3406,10 @@ class Flatten(layers.Layer):
         start_axis(int): first dim to flatten (default = 1)
         stop_axis(int): last dim to flatten (default = -1).
     
+    Returns:
+        None
+
+    Examples:
 
         .. code-block:: python
 
