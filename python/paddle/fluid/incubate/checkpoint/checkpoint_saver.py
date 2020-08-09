@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fleet.utils.fs import FS, LocalFS
-from ..fleet.utils.hdfs import HDFSClient
 from ...compiler import CompiledProgram
 
 
@@ -62,6 +60,7 @@ class CheckpointSaver(object):
                         slists,
                         trainer_id=None,
                         local_cache_path=".cache"):
+        from paddle.fleet.utils.fs import FS, LocalFS
         """
         Serialize objects in slists to path
         Return really saved path and checkpoint_no
