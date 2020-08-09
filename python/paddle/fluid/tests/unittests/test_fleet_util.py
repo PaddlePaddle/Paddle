@@ -83,8 +83,7 @@ class TestFleetUtil(unittest.TestCase):
     def test_fs(self):
         from paddle.fluid.incubate.fleet.utils.fs import LocalFS
         fs = LocalFS()
-        # FIXME(gongwb): why ls_dir?
-        #dirs, files = fs.ls_dir("test_tmp")
+        dirs, files = fs.ls_dir("test_tmp")
         dirs, files = fs.ls_dir("./")
         self.assertFalse(fs.need_upload_download())
         fleet_util.set_file_system(fs)
