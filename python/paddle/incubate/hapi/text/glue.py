@@ -202,7 +202,7 @@ class GlueCoLA(_GlueDataset):
             cola_test[0] # ['Bill whistled past the house.']
 
     """
-    URL = 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FCoLA.zip?alt=media&token=46d5e637-3411-4188-bc44-5809b5bfb5f4'
+    URL = "https://dataset.bj.bcebos.com/glue/CoLA.zip"
     MD5 = 'b178a7c2f397b0433c39c7caf50a3543'
     SEGMENTS = {
         'train': _GlueDataset.SEGMENT_INFO(
@@ -247,7 +247,7 @@ class GlueSST2(_GlueDataset):
 
     """
 
-    URL = 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FSST-2.zip?alt=media&token=aabc5f6b-e466-44a2-b9b4-cf6337f84ac8'
+    URL = 'https://dataset.bj.bcebos.com/glue/SST.zip'
     MD5 = '9f81648d4199384278b86e315dac217c'
 
     SEGMENTS = {
@@ -294,11 +294,11 @@ class GlueMRPC(_GlueDataset):
                 # Alex Arena will report to So .']
     """
 
-    DEV_ID_URL = 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2Fmrpc_dev_ids.tsv?alt=media&token=ec5c0836-31d5-48f4-b431-7480817f1adc'
+    DEV_ID_URL = 'https://dataset.bj.bcebos.com/glue/mrpc/dev_ids.tsv'
     DEV_ID_MD5 = '7ab59a1b04bd7cb773f98a0717106c9b'
-    TRAIN_DATA_URL = 'https://dl.fbaipublicfiles.com/senteval/senteval_data/msr_paraphrase_train.txt'
+    TRAIN_DATA_URL = 'https://dataset.bj.bcebos.com/glue/mrpc/msr_paraphrase_train.txt'
     TRAIN_DATA_MD5 = '793daf7b6224281e75fe61c1f80afe35'
-    TEST_DATA_URL = 'https://dl.fbaipublicfiles.com/senteval/senteval_data/msr_paraphrase_test.txt'
+    TEST_DATA_URL = 'https://dataset.bj.bcebos.com/glue/mrpc/msr_paraphrase_test.txt'
     TEST_DATA_MD5 = 'e437fdddb92535b820fe8852e2df8a49'
 
     SEGMENTS = {
@@ -405,7 +405,7 @@ class GlueSTSB(_GlueDataset):
             len(stsb_test[0]) # 2
             stsb_test[0] # ['A girl is styling her hair.', 'A girl is brushing her hair.']
     """
-    URL = 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FSTS-B.zip?alt=media&token=bddb94a7-8706-4e0d-a694-1109e12273b5'
+    URL = 'https://dataset.bj.bcebos.com/glue/STS.zip'
     MD5 = 'd573676be38f1a075a5702b90ceab3de'
 
     SEGMENTS = {
@@ -454,18 +454,18 @@ class GlueQQP(_GlueDataset):
             len(qqp_test[3]) # 2
             qqp_test[3] # ['Is it safe to invest in social trade biz?', 'Is social trade geniune?']
     """
-    URL = 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FQQP.zip?alt=media&token=700c6acf-160d-4d89-81d1-de4191d02cb5'
-    MD5 = 'f642d8eb365a5f69bd826e0d195b2660'
+    URL = 'https://dataset.bj.bcebos.com/glue/QQP.zip'
+    MD5 = '884bf26e39c783d757acc510a2a516ef'
 
     SEGMENTS = {
         'train': _GlueDataset.SEGMENT_INFO(
             os.path.join('QQP', 'train.tsv'),
-            '72edcb18d89b332beb7f1d9f80f6d4c2', (3, 4, 5), 1),
+            'e003db73d277d38bbd83a2ef15beb442', (3, 4, 5), 1),
         'dev': _GlueDataset.SEGMENT_INFO(
-            os.path.join('QQP', 'dev.tsv'), '7e930999f2b5b5316084d17d0ca70ce9',
+            os.path.join('QQP', 'dev.tsv'), 'cff6a448d1580132367c22fc449ec214',
             (3, 4, 5), 1),
         'test': _GlueDataset.SEGMENT_INFO(
-            os.path.join('QQP', 'test.tsv'), '79bbb6adb26f67bc4b6e9fc480bc4044',
+            os.path.join('QQP', 'test.tsv'), '73de726db186b1b08f071364b2bb96d0',
             (1, 2), 1)
     }
 
@@ -506,7 +506,7 @@ class GlueMNLI(_GlueDataset):
                 # 'Hierbas is a name worth looking out for.']
 
     """
-    URL = 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FMNLI.zip?alt=media&token=50329ea1-e339-40e2-809c-10c40afff3ce'
+    URL = 'https://dataset.bj.bcebos.com/glue/MNLI.zip'
     MD5 = 'e343b4bdf53f927436d0792203b9b9ff'
 
     SEGMENTS = {
@@ -559,9 +559,8 @@ class GlueQNLI(_GlueDataset):
             qnli_test[0] # ['What seldom used term of a unit of force equal to 1000 pound s of force?', 
                 # 'Other arcane units of force include the sthène, which is equivalent to 1000 N, and the kip, which is equivalent to 1000 lbf.']
     """
-    URL = 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FQNLIv2.zip?alt=media&token=6fdcf570-0fc5-4631-8456-9505272d1601'
+    URL = 'https://dataset.bj.bcebos.com/glue/QNLI.zip'
     MD5 = 'b4efd6554440de1712e9b54e14760e82'
-
     SEGMENTS = {
         'train': _GlueDataset.SEGMENT_INFO(
             os.path.join('QNLI', 'train.tsv'),
@@ -604,7 +603,7 @@ class GlueRTE(_GlueDataset):
             rte_test[16] # ['United failed to progress beyond the group stages of the Champions League 
                 # and trail in the Premiership title race, sparking rumours over its future.', 'United won the Champions League.']
     """
-    URL = 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FRTE.zip?alt=media&token=5efa7e85-a0bb-4f19-8ea2-9e1840f077fb'
+    URL = 'https://dataset.bj.bcebos.com/glue/RTE.zip'
     MD5 = 'bef554d0cafd4ab6743488101c638539'
 
     SEGMENTS = {
@@ -650,7 +649,7 @@ class GlueWNLI(_GlueDataset):
                     # clear whistles could be heard from far away. Horses ran away when they came in sight.', 
                     # 'Horses ran away when Maude and Dora came in sight.']
     """
-    URL = 'https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FWNLI.zip?alt=media&token=068ad0a0-ded7-4bd7-99a5-5e00222e0faf'
+    URL = 'https://dataset.bj.bcebos.com/glue/WNLI.zip'
     MD5 = 'a1b4bd2861017d302d29e42139657a42'
 
     SEGMENTS = {
