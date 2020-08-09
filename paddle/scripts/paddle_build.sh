@@ -919,6 +919,69 @@ set +x
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
         collect_failed_tests
+        rm -f $tmp_dir/*
+        exec_times=0
+        retry_unittests_record=''
+        if [ -n "$failed_test_lists" ];then
+            while ( [ exec_times -lt 3 ] && [ -n "${failed_test_lists}" ] )
+                do
+                    retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(Failed\)" |sed 's/(Failed)//' | sed 's/- //' )
+                    while read -r line;
+                        do
+                            if [[ "$line" == "" ]]; then
+                                continue
+                            fi
+
+                            one_card_tests=$single_card_tests'|'$single_card_tests_1
+
+                            read tmp_one_tmp <<< echo $one_card_tests | grep -oEi $line
+                            read tmp_mul_tmp <<< echo $multiple_card_tests | grep -oEi $line
+                            read exclusive_tmp <<< echo $exclusive_tests | grep -oEi $line
+
+                            if [[ "$tmp_one_tmp" != ""  ]];then
+                                if [[ "$one_card_tests" == "" ]]; then
+                                    one_card_retry="^$line$"
+                                else
+                                    one_card_retry="$one_card_retry|^$line$"
+                                fi
+                            elif [[ "$tmp_mul_tmp" != "" ]]; then
+                                if [[ "$multiple_card_retry" == "" ]]; then
+                                    multiple_card_retry="^$line$"
+                                else
+                                    multiple_card_retry="$multiple_card_retry|^$line$"
+                                fi
+                            else
+                                if [[ "$exclusive_tmp" == "" ]];then
+                                    exclusive_retry="^$line$"
+                                else
+                                    exclusive_retry="$exclusive_retry|^$line$"
+                                fi
+                            fi
+
+                    done <<< "$retry_unittests";
+                    if [[ "$one_card_retry" != "" ]]; then
+                        card_test "$one_card_retry" 1
+                    fi
+
+                    if [[ "$multiple_card_retry" != "" ]]; then
+                        card_test "$multiple_card_retry" 2
+                    fi
+
+                    if [[ "$exclusive_retry" != "" ]]; then
+                        card_test "$exclusive_retry"
+                    fi
+                    collect_failed_tests
+                    exec_times=$[$exec_times+1]
+                    failed_test_lists=''
+                    rm -f $tmp_dir/*
+                    one_card_retry=''
+                    multiple_card_retry=''
+                    exclusive_retry=''
+                    retry_unittests=''
+                done
+        fi
+
         if [ -n "${failed_test_lists}" ];then
             failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
             echo "========================================"
@@ -927,7 +990,7 @@ set +x
             echo "The following tests FAILED: "
             echo "${failed_test_lists_ult}"
         fi
-        rm -f $tmp_dir/*
+        #rm -f $tmp_dir/*
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
