@@ -40,6 +40,7 @@
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/operators/distributed/rocksdb_store.h"
 
 namespace paddle {
 namespace operators {
