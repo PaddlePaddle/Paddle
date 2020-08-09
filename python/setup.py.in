@@ -1,11 +1,13 @@
 import subprocess
 import os
 import os.path
+import errno
 import re
 import shutil
 import sys
 import fnmatch
 import errno
+import platform
 
 from contextlib import contextmanager
 from setuptools import Command
@@ -133,6 +135,7 @@ def is_transpiler():
 
 write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/fluid/incubate/fleet/parameter_server/version.py')
 
+
 packages=['paddle',
           'paddle.libs',
           'paddle.utils',
@@ -142,6 +145,14 @@ packages=['paddle',
           'paddle.incubate',
           'paddle.incubate.complex',
           'paddle.incubate.complex.tensor',
+          'paddle.fleet',
+          'paddle.fleet.base',
+          'paddle.fleet.meta_optimizers',
+          'paddle.fleet.runtime',
+          'paddle.fleet.dataset',
+          'paddle.fleet.metrics',
+          'paddle.fleet.proto',
+          'paddle.fleet.utils',
           'paddle.framework',
           'paddle.fluid',
           'paddle.fluid.dygraph',
@@ -156,13 +167,8 @@ packages=['paddle',
           'paddle.fluid.contrib.quantize',
           'paddle.fluid.contrib.reader',
           'paddle.fluid.contrib.slim',
-          'paddle.fluid.contrib.slim.core',
-          'paddle.fluid.contrib.slim.graph',
-          'paddle.fluid.contrib.slim.prune',
           'paddle.fluid.contrib.slim.quantization',
-          'paddle.fluid.contrib.slim.distillation',
-          'paddle.fluid.contrib.slim.nas',
-          'paddle.fluid.contrib.slim.searcher',
+          'paddle.fluid.contrib.slim.quantization.imperative',
           'paddle.fluid.contrib.utils',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.contrib.mixed_precision',
@@ -172,10 +178,12 @@ packages=['paddle',
           'paddle.fluid.incubate',
           'paddle.fluid.incubate.data_generator',
           'paddle.fluid.incubate.fleet',
+          'paddle.fluid.incubate.checkpoint',
           'paddle.fluid.incubate.fleet.base',
           'paddle.fluid.incubate.fleet.parameter_server',
           'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
           'paddle.fluid.incubate.fleet.parameter_server.pslib',
+          'paddle.fluid.incubate.fleet.parameter_server.ir',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
           'paddle.incubate.hapi',
@@ -193,6 +201,7 @@ packages=['paddle',
           'paddle.nn.initializer',
           'paddle.metric',
           'paddle.imperative',
+          'paddle.imperative.jit',
           'paddle.tensor',
           ]
 
@@ -252,11 +261,6 @@ package_data['paddle.libs']= []
 package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
-if '${TENSORRT_FOUND}' == 'ON' and os.name == 'nt':
-    shutil.copy(os.path.join('${TENSORRT_LIBRARY_DIR}', '${TR_INFER_RT}'), libs_path)
-    shutil.copy(os.path.join('${TENSORRT_LIBRARY_DIR}', '${TR_INFER_PLUGIN_RT}'), libs_path)
-    package_data['paddle.libs'] += ['${TR_INFER_RT}', '${TR_INFER_PLUGIN_RT}']
-
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
     shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
@@ -266,6 +270,10 @@ else:
         # copy the openblas.dll
         shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
+
+if '${WITH_LITE}' == 'ON':
+    shutil.copy('${LITE_SHARED_LIB}', libs_path)
+    package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
@@ -315,8 +323,11 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
         else:
             command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
-        if os.system(command) != 0:
-            raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
+        # The dynamic library compiled under aarch64 is greater than 64M,
+        # and an oversize error will be reported when using patchelf.
+        if platform.machine() != 'aarch64':
+          if os.system(command) != 0:
+              raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 
 ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':
@@ -466,6 +477,11 @@ with redirect_stdout():
         cmdclass={
             'install_headers': InstallHeaders,
             'install': InstallCommand,
+        },
+        entry_points={
+            'console_scripts': [
+                'fleetrun = paddle.fleet.launch:launch'
+            ]
         }
     )
 

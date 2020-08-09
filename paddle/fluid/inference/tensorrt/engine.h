@@ -200,9 +200,23 @@ class TensorRTEngine {
   void Deserialize(const std::string& engine_serialized_data) {
     freshDeviceId();
     infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-    infer_engine_.reset(runtime->deserializeCudaEngine(
-        engine_serialized_data.c_str(), engine_serialized_data.size(),
-        &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+    if (with_dynamic_shape_) {
+#if IS_TRT_VERSION_GE(6000)
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size(),
+          nullptr));
+#else
+
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "To enable dynamic shape support, the TensorRT version should be "
+          "greater than 6.0.0"));
+
+#endif
+    } else {
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size(),
+          &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+    }
     PADDLE_ENFORCE(infer_engine_ != nullptr,
                    "build cuda engine failed when deserialize engine info.!");
   }
@@ -340,7 +354,7 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::INetworkDefinition> infer_networkv2_;
 #if IS_TRT_VERSION_GE(6000)
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-  std::unique_ptr<nvinfer1::IOptimizationProfile> optim_profile_;
+  nvinfer1::IOptimizationProfile* optim_profile_;
   std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;

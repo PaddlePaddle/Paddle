@@ -199,7 +199,7 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
-.. math:: out=\sqrt x=x^{1/2}
+.. math:: out=\\sqrt{x}=x^{1/2}
 
 **Note**:
   input value must be greater than or equal to zero.
@@ -211,7 +211,7 @@ Rsqrt Activation Operator.
 
 Please make sure input is legal in case of numeric errors.
 
-$$out = \frac{1}{\sqrt{x}}$$
+$$out = \\frac{1}{\\sqrt{x}}$$
 
 )DOC";
 
@@ -225,14 +225,14 @@ $$out = |x|$$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$$out = \left \lceil x \right \rceil$$
+$$out = \\left \\lceil x \\right \\rceil$$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
-Floor Activation Operator.
+Floor Activation Operator. Computes floor of x element-wise.
 
-$$out = \left \lfloor x \right \rfloor$$
+$$out = \\left \\lfloor x \\right \\rfloor$$
 
 )DOC";
 
@@ -247,6 +247,20 @@ UNUSED constexpr char SinDoc[] = R"DOC(
 Sine Activation Operator.
 
 $$out = sin(x)$$
+
+)DOC";
+
+UNUSED constexpr char SinhDoc[] = R"DOC(
+Sinh Activation Operator.
+
+$$out = sinh(x)$$
+
+)DOC";
+
+UNUSED constexpr char CoshDoc[] = R"DOC(
+Cosh Activation Operator.
+
+$$out = cosh(x)$$
 
 )DOC";
 
@@ -642,6 +656,8 @@ REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cos, CosDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
+REGISTER_ACTIVATION_OP_MAKER(Sinh, SinhDoc);
+REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);

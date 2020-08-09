@@ -46,7 +46,8 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
     pt.data.Reset(t->data<void>(), t->numel() * sizeof(int32_t));
     pt.dtype = PaddleDType::INT32;
   } else {
-    LOG(FATAL) << "unsupported type.";
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported tensor date type. Now only supports INT64, FP32, INT32."));
   }
   pt.shape = framework::vectorize<int>(t->dims());
   return pt;

@@ -25,6 +25,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/data_loader.h"
@@ -720,11 +721,11 @@ void BindImperative(py::module *m_ptr) {
       .def("_run_backward",
            [](imperative::VarBase &self,
               const imperative::detail::BackwardStrategy &bckst,
-              const imperative::Tracer &tracer) {
+              const imperative::Tracer &tracer, bool retain_graph) {
              // TODO(jiabin): when we impl more backward execution we can
              // select them
              auto *engine = tracer.GetEngine();
-             engine->Init(&self, bckst);
+             engine->Init(&self, bckst, retain_graph);
              VLOG(3) << "Start backward";
              engine->Execute();
              VLOG(3) << "Finish backward";
@@ -758,6 +759,36 @@ void BindImperative(py::module *m_ptr) {
              return std::shared_ptr<imperative::VarBase>(nullptr);
            },
            py::return_value_policy::copy)
+      .def("_is_sparse",
+           [](imperative::VarBase &self) {
+             return self.Var().IsType<framework::SelectedRows>();
+           })
+      .def("_allreduce",
+           [](imperative::VarBase &self,
+              const imperative::ParallelStrategy &strategy) {
+             if (strategy.nranks_ > 1) {
+#ifdef PADDLE_WITH_NCCL
+#if NCCL_VERSION_CODE >= 2212
+               imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
+#else
+               if (!self.Var().IsType<framework::SelectedRows>()) {
+                 imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
+               } else {
+                 PADDLE_THROW(platform::errors::Unimplemented(
+                     "Imperative SelectedRows allreduce is not supported when "
+                     "paddle is compiled with NCCL verison lower than v2.2.12. "
+                     "You can set is_sparse=False for the Layer containing "
+                     "this argument, such as Embedding(is_sparse=False)."));
+               }
+#endif  // NCCL_VERSION_CODE
+#else
+               PADDLE_THROW(platform::errors::Unimplemented(
+                   "Imperative allreduce is not supported when paddle is "
+                   "not compiled with NCCL."));
+#endif  // PADDLE_WITH_NCCL
+             }
+           },
+           py::call_guard<py::gil_scoped_release>())
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },
@@ -842,7 +873,7 @@ void BindImperative(py::module *m_ptr) {
            &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
-           py::arg("key") = "tmp")
+           py::arg("key") = "eager_tmp")
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,

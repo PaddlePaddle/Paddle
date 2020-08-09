@@ -17,10 +17,13 @@ no_check_set_white_list = [
     'fake_quantize_range_abs_max',
     'coalesce_tensor',
     'flatten2',
+    'flatten_contiguous_range',
+    'lrn',
     'squeeze2',
     'reshape2',
     'transpose2',
     'unsqueeze2',
     'cross_entropy2',
     'seed',
+    'amp_check_finite_and_scale',
 ]

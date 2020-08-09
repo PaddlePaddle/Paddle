@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/stream_callback_manager.h"
+#include <utility>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -43,14 +44,16 @@ void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
     });
   });
 #if CUDA_VERSION >= 10000
-  PADDLE_ENFORCE(cudaLaunchHostFunc(stream_, StreamCallbackFunc, func));
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaLaunchHostFunc(stream_, StreamCallbackFunc, func));
 #else
-  PADDLE_ENFORCE(cudaStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
 #endif
 }
 
 void StreamCallbackManager::Wait() const {
-  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
   {
     std::lock_guard<std::mutex> lock(mtx_);
     if (last_future_.valid()) {

@@ -23,11 +23,11 @@ from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
 from .dataloader import BatchSampler, Dataset
-from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess
+from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess, default_collate_fn
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
-from .dataset import DatasetBase, InMemoryDataset
+import warnings
 
 ### Dygraph DataLoader configs ###
 import os
@@ -43,7 +43,7 @@ else:
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
 
-__all__ = ['PyReader', 'DataLoader']
+__all__ = ['PyReader', 'DataLoader', 'default_collate_fn']
 
 data_loader_unique_name_generator = UniqueNameGenerator()
 
@@ -95,6 +95,18 @@ class DataLoaderBase(object):
 
     def __next__(self):
         raise NotImplementedError()
+
+    @classmethod
+    def _check_input_array(cls, item):
+        arr = np.asarray(item)
+        if arr.dtype == np.object:
+            raise TypeError(
+                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                "this means the input data contains nested lists with different lengths. "
+                "\n\t* Check the reader function passed to 'decorate_batch_generator'"
+                " to locate the data causes this issue.\n\t* Please consider using "
+                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor.")
+        return arr
 
 
 class DataLoader(object):
@@ -313,9 +325,9 @@ class DataLoader(object):
         assert num_workers >= 0, "num_workers should be a non-negative value"
         if num_workers > 0 and (sys.platform == 'darwin' or
                                 sys.platform == 'win32'):
-            logging.warning(
-                "multi-process mode not support MacOs and Windows currently." \
-                " use signle-process with num_workers = 0 instead")
+            warnings.warn(
+                "DataLoader with multi-process mode is not supported on MacOs and Windows currently." \
+                " Please use signle-process mode with num_workers = 0 instead")
             num_workers = 0
         self.num_workers = num_workers
 
@@ -670,13 +682,13 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._use_double_buffer = use_double_buffer
 
         if not iterable:
-            logging.warning(
-                "Please NOTE: imperative mode can support iterable mode only. Change to iterable mode."
+            warnings.warn(
+                "Please NOTE: DygraphGeneratorLoader supports iterable mode only. Change to iterable mode."
             )
         self._iterable = True
         if not return_list:
-            logging.warning(
-                "Please NOTE: imperative mode can support return as list only. Change to return as list."
+            warnings.warn(
+                "Please NOTE: DygraphGeneratorLoader supports returning as list only. Change to return as list."
             )
         self._return_list = True
 
@@ -684,8 +696,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._use_multiprocess = use_multiprocess
         if self._use_multiprocess and (sys.platform == 'darwin' or
                                        sys.platform == 'win32'):
-            logging.warning(
-                "NOTE: The multiprocess mode does not currently support MacOs and Windows."
+            warnings.warn(
+                "NOTE: DygraphGeneratorLoader with multiprocess mode is not currently supported on MacOs and Windows."
             )
             self._use_multiprocess = False
 
@@ -806,17 +818,6 @@ class DygraphGeneratorLoader(DataLoaderBase):
             self._reset()
             six.reraise(*sys.exc_info())
 
-    @classmethod
-    def _check_input_array(cls, item):
-        arr = np.array(item)
-        if arr.dtype == np.object:
-            raise TypeError(
-                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
-                "this means the input data contains nested lists with different lengths. "
-                "\n\t* Check the reader function passed to 'decorate_batch_generator'"
-                " to locate the data causes this issue.\n\t* Please consider using "
-                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor.")
-
     def _exit_thread_expectedly(self):
         self._thread_done_event.set()
         self._blocking_queue.close()
@@ -893,7 +894,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 array = core.LoDTensorArray()
                 for item in sample:
                     if not isinstance(item, core.LoDTensor):
-                        self._check_input_array(item)
+                        item = self._check_input_array(item)
                         tmp = core.LoDTensor()
                         tmp.set(item, core.CPUPlace())
                         item = tmp
@@ -1113,19 +1114,6 @@ class GeneratorLoader(DataLoaderBase):
     def reset(self):
         assert not self._iterable, "reset() cannot be called when DataLoader is iterable"
         self._reset()
-
-    @classmethod
-    def _check_input_array(cls, item):
-        arr = np.array(item)
-        if arr.dtype == np.object:
-            raise TypeError((
-                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
-                "this means the input data contains nested lists with different lengths. "
-                "\n\t* Check the reader function passed to 'decorate_batch_generator'"
-                " to locate the data causes this issue.\n\t* Please consider using "
-                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
-
-        return arr
 
     def _start(self):
         def __thread_main__():
@@ -1681,7 +1669,7 @@ class PyReader(DataLoaderBase):
 
 class DatasetLoader(DataLoaderBase):
     def __init__(self, dataset, places, drop_last):
-        assert isinstance(dataset,
+        assert isinstance(dataset, paddle.fleet.dataset.
                           DatasetBase), "dataset must be type of DatasetBase"
         assert not in_dygraph_mode(
         ), "DatasetLoader is not supported in dygraph mode yet"
@@ -1697,7 +1685,7 @@ class DatasetLoader(DataLoaderBase):
 
         dataset.set_thread(thread_num)
 
-        if isinstance(dataset,
+        if isinstance(dataset, paddle.fleet.dataset.
                       InMemoryDataset) and dataset.queue_num > thread_num:
             logging.warn("queue_num {} which is set in Dataset is ignored".
                          format(dataset.queue_num))

@@ -29,7 +29,7 @@ import six
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.layers import Layer
-from paddle.fluid.dygraph.dygraph_to_static.convert_builtins_func import convert_len
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 
 DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
 program_translator = ProgramTranslator()

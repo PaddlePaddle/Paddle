@@ -78,24 +78,28 @@ class NCCLCommContext {
 
   // retrieve a communicator by the ring id in multiprocessing mode
   NCCLComm* Get(int ring_id) const {
-    PADDLE_ENFORCE_GT(comm_map_.count(ring_id), 0,
-                      "comunicator in ring id %d has not been initialized",
-                      ring_id);
+    PADDLE_ENFORCE_GT(
+        comm_map_.count(ring_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator in ring id %d has not been initialized.", ring_id));
     PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
-                      "you should specify a device id to retrieve from "
-                      "multiple communicators");
+                      platform::errors::InvalidArgument(
+                          "One device id should be specified to retrieve from "
+                          "multiple communicators."));
     return comm_map_.at(ring_id).begin()->second.get();
   }
 
   // retrieve a communicator by the ring id and the device id
   NCCLComm* Get(int ring_id, int dev_id) const {
-    PADDLE_ENFORCE_GT(comm_map_.count(ring_id), 0,
-                      "comunicator of ring id %d has not been initialized",
-                      ring_id);
+    PADDLE_ENFORCE_GT(
+        comm_map_.count(ring_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator of ring id %d has not been initialized.", ring_id));
     PADDLE_ENFORCE_GT(
         comm_map_.at(ring_id).count(dev_id), 0,
-        "comunicator at device id %d has not been initialized in ring %d",
-        dev_id, ring_id);
+        platform::errors::InvalidArgument(
+            "Communicator at device id %d has not been initialized in ring %d.",
+            dev_id, ring_id));
     return comm_map_.at(ring_id).at(dev_id).get();
   }
 

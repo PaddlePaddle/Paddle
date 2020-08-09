@@ -17,11 +17,15 @@ limitations under the License. */
 
 #ifdef _WIN32
 #include <malloc.h>
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>  // VirtualLock/VirtualUnlock
 #else
 #include <sys/mman.h>  // for mlock and munlock
 #endif
-#include <stdlib.h>   // for malloc and free
+#include <stdlib.h>  // for malloc and free
+
 #include <algorithm>  // for std::max
 #include <string>
 #include <utility>
@@ -55,10 +59,14 @@ void* AlignedMalloc(size_t size) {
 #ifdef _WIN32
   p = _aligned_malloc(size, alignment);
 #else
-  PADDLE_ENFORCE_EQ(posix_memalign(&p, alignment, size), 0, "Alloc %ld error!",
-                    size);
+  int error = posix_memalign(&p, alignment, size);
+  PADDLE_ENFORCE_EQ(
+      error, 0,
+      platform::errors::ResourceExhausted(
+          "Fail to alloc memory of %ld size, error code is %d.", size, error));
 #endif
-  PADDLE_ENFORCE_NOT_NULL(p, "Fail to allocate CPU memory: size = %d .", size);
+  PADDLE_ENFORCE_NOT_NULL(p, platform::errors::ResourceExhausted(
+                                 "Fail to alloc memory of %ld size.", size));
   return p;
 }
 
@@ -152,8 +160,13 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
-  PADDLE_ENFORCE_EQ(index, 0);
-  PADDLE_ENFORCE_GE(gpu_alloc_size_, size);
+  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
+                                  "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_GE(gpu_alloc_size_, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated gpu memory (%d)",
+                        size, gpu_alloc_size_));
   gpu_alloc_size_ -= size;
 
   platform::RecordedCudaFree(p, size, gpu_id_);
@@ -197,9 +210,14 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
 void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   cudaError_t err;
-  PADDLE_ENFORCE_EQ(index, 1);
+  PADDLE_ENFORCE_EQ(index, 1, platform::errors::InvalidArgument(
+                                  "The index should be 1, but got %d", index));
 
-  PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size);
+  PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated cuda pinned memory (%d)",
+                        size, cuda_pinnd_alloc_size_));
   cuda_pinnd_alloc_size_ -= size;
   err = cudaFreeHost(p);
 
@@ -209,7 +227,11 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   // process is terminating, in which case we don't care if
   // cudaFreeHost succeeds.
   if (err != cudaErrorCudartUnloading) {
-    PADDLE_ENFORCE(err, "cudaFreeHost failed in GPUPinnedAllocator::Free.");
+    PADDLE_ENFORCE_EQ(
+        err, 0,
+        platform::errors::Fatal(
+            "cudaFreeHost failed in GPUPinnedAllocator, error code is %d",
+            err));
   }
 }
 

@@ -21,9 +21,12 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
+#include <ctime>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/fleet/heter_wrapper.h"
+#include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/reader.h"
@@ -62,6 +65,7 @@ class TrainerBase {
   Scope* root_scope_;
   bool debug_;
   Dataset* dataset_ptr_;
+  TrainerDesc trainer_desc_;
 
   // For dump param or field
   bool need_dump_field_ = false;
@@ -118,10 +122,86 @@ class DistMultiTrainer : public MultiTrainer {
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
   virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
+  virtual void RegisterHeterCallback();
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
 };
+
+#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
+class HeterServiceContext {
+ public:
+  HeterServiceContext() {}
+  virtual ~HeterServiceContext() {
+    for (OperatorBase* op : ops_) {
+      delete op;
+    }
+    std::vector<OperatorBase*>().swap(ops_);
+  }
+  void Reset() { push_dense_status_.clear(); }
+  int place_num_;
+  Scope* scope_{nullptr};
+  cudaEvent_t event_;
+  std::vector<OperatorBase*> ops_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+};
+
+class HeterXpuTrainer : public TrainerBase {
+ public:
+  HeterXpuTrainer() {}
+  virtual ~HeterXpuTrainer() {
+    for (OperatorBase* op : ops_) {
+      delete op;
+    }
+    std::vector<OperatorBase*>().swap(ops_);
+  }
+  virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
+  virtual void InitTrainerEnv(const ProgramDesc& main_program,
+                              const platform::Place& place);
+  virtual void InitOtherEnv(const ProgramDesc& main_program);
+  virtual void Run();
+  virtual void Finalize();
+  virtual void DumpWork(int tid);
+  virtual void RegisterServiceHandler();
+  virtual int RunTask(const HeterRequest* request, HeterResponse* response);
+  virtual Scope* GetWorkerScope(int thread_id);
+  virtual void CacheProgram(const ProgramDesc& main_program) {
+    new (&program_) ProgramDesc(main_program);
+  }
+  template <typename T>
+  void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
+                   const paddle::platform::Place& thread_place,
+                   cudaStream_t stream);
+  void CreateThreadParam(const ProgramDesc& program, int num);
+  template <typename T>
+  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  int EndPass(const HeterRequest* request, HeterResponse* response);
+  int StopService(const HeterRequest* request, HeterResponse* response);
+
+ protected:
+  DownpourWorkerParameter param_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  std::vector<std::string> need_merge_var_names_;
+  float scale_datanorm_;
+  int xpu_begin_op_index_;
+  int xpu_end_op_index_;
+  bool running_;
+  paddle::platform::Place place_;
+  std::mutex mutex_;
+  ProgramDesc program_;
+  std::condition_variable cond_;
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::framework::HeterWrapper> heter_ptr_;
+  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::vector<OperatorBase*> ops_;
+  std::vector<std::string> op_names_;
+  std::vector<Scope*> place_scopes_;
+  BtObjectPool<HeterServiceContext> object_pool_;
+  std::vector<cudaStream_t> copy_streams_;
+  std::vector<platform::Place> places_;
+  std::vector<cudaEvent_t> events_;
+};
+#endif
 
 #if defined(PADDLE_WITH_NCCL)
 class PipelineTrainer : public TrainerBase {
@@ -137,49 +217,31 @@ class PipelineTrainer : public TrainerBase {
   virtual Scope* GetWorkerScope(int thread_id);
   void InitDumpEnv() override;
   virtual std::string GetDumpPath(int tid);
+  void GetSkipVars(int section_id, const ProgramDesc& main_program);
 
  protected:
   int section_num_;
-  int pipeline_num_;
-  int scope_queue_size_;
-  int sync_steps_;
+  int num_microbatches_;
+  int start_cpu_core_id_;
+  std::vector<std::string> feed_var_names_;
+  std::vector<platform::Place> places_;
+  std::vector<std::vector<std::string>> skip_vars_;
+  TrainerDesc trainer_desc_;
 
-  SectionWorkerParameter pipeline_config_;
-
-  // The in/output var names for each section
-  std::vector<std::unique_ptr<std::vector<std::string>>> in_var_names_;
-  std::vector<std::unique_ptr<std::vector<std::string>>> out_var_names_;
-
-  // Counter for the running thread
-  std::vector<std::vector<int*>> worker_count_;
-  std::vector<std::vector<std::unique_ptr<std::mutex>>> worker_count_mutex_;
-
-  // worker: [section_id][pipeline_id][thread_id]
-  std::vector<std::vector<
-      std::vector<std::shared_ptr<paddle::framework::DeviceWorker>>>>
-      workers_;
   std::vector<std::thread> section_threads_;
+  // worker: [section_id]
+  std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
+  // minibatch_scopes_: [section_id]
+  std::vector<Scope*> minibatch_scopes_;
+  // microbatch_scopes_: [section_id][microbatch_id]
+  std::vector<std::vector<Scope*>> microbatch_scopes_;
 
-  // We use scope to maintain context info, and scopes
-  // will be deliverd between different sections.
-  std::vector<std::vector<std::unique_ptr<ScopeQueue>>> scope_queues_;
-  std::vector<Scope*> pipeline_scopes_;
-
-  // The parameters that should be syncronized between different cards using
-  // nccl all-reduce
-  std::shared_ptr<std::vector<std::string>> param_need_sync_;
-  std::vector<std::string> persistable_vars_;
-  std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;
-  std::shared_ptr<platform::NCCLContextMap> nccl_ctx_map_;
-
-  std::vector<DataFeed*> readers_;
-
-  void InitFirstScopeQueue(ScopeQueue* scope_queue, int pipeline_id,
-                           const ProgramDesc& main_program,
-                           const Scope& root_scope);
-  void CopyParameters(const Scope& root_scope, int pipeline_id);
-  void construct_sync_functor();
+  void CopyParameters(int section_id, int microbatch_id,
+                      const ProgramDesc& program, const platform::Place& place);
+  bool isPersistableVarGrad(std::string name);
+  bool isPersistable(VarDesc* var);
 };
 #endif
+
 }  // namespace framework
 }  // namespace paddle

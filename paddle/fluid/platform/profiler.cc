@@ -71,8 +71,8 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
   role_ = role;
   is_enabled_ = true;
   // lock is not needed, the code below is thread-safe
-  Event *e = PushEvent(name, role);
   // Maybe need the same push/pop behavior.
+  Event *e = PushEvent(name, role);
   SetCurAnnotation(e);
   name_ = e->name();
 }
@@ -94,10 +94,9 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
   if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
-  PADDLE_ENFORCE_EQ(
-      events.count(ptr), 0,
-      platform::errors::InvalidArgument(
-          "The Place can't  exist in the stage of PushMemRecord"));
+  PADDLE_ENFORCE_EQ(events.count(ptr), 0,
+                    platform::errors::InvalidArgument(
+                        "The Place can't exist in the stage of PushMemRecord"));
   events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
                           new MemEvenRecorder::RecordMemEvent(place, size)));
 }

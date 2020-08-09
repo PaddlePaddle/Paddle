@@ -110,11 +110,14 @@ class DataFeed {
   DataFeed() {
     mutex_for_pick_file_ = nullptr;
     file_idx_ = nullptr;
+    mutex_for_fea_num_ = nullptr;
+    total_fea_num_ = nullptr;
   }
   virtual ~DataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
   virtual bool CheckFile(const char* filename) {
-    PADDLE_THROW("This function(CheckFile) is not implemented.");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(CheckFile) is not implemented."));
   }
   // Set filelist for DataFeed.
   // Pay attention that it must init all readers before call this function.
@@ -166,7 +169,9 @@ class DataFeed {
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
+  virtual void SetFeaNumMutex(std::mutex* mutex) { mutex_for_fea_num_ = mutex; }
   virtual void SetFileListIndex(size_t* file_index) { file_idx_ = file_index; }
+  virtual void SetFeaNum(uint64_t* fea_num) { total_fea_num_ = fea_num; }
   virtual const std::vector<std::string>& GetInsIdVec() const {
     return ins_id_vec_;
   }
@@ -175,7 +180,8 @@ class DataFeed {
   }
   virtual int GetCurBatchSize() { return batch_size_; }
   virtual void LoadIntoMemory() {
-    PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(LoadIntoMemory) is not implemented."));
   }
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
@@ -199,6 +205,9 @@ class DataFeed {
   std::vector<std::string> filelist_;
   size_t* file_idx_;
   std::mutex* mutex_for_pick_file_;
+  std::mutex* mutex_for_fea_num_ = nullptr;
+  uint64_t* total_fea_num_ = nullptr;
+  uint64_t fea_num_ = 0;
 
   // the alias of used slots, and its order is determined by
   // data_feed_desc(proto object)
@@ -431,14 +440,23 @@ class MultiSlotType {
 
  private:
   void CheckType(const std::string& type) const {
-    PADDLE_ENFORCE((type == "uint64") || (type == "float"),
-                   "There is no this type<%s>.", type);
+    PADDLE_ENFORCE_EQ((type == "uint64" || type == "float"), true,
+                      platform::errors::InvalidArgument(
+                          "MultiSlotType error, expect type is uint64 or "
+                          "float, but received type is %s.",
+                          type));
   }
   void CheckFloat() const {
-    PADDLE_ENFORCE(type_[0] == 'f', "Add %s value to float slot.", type_);
+    PADDLE_ENFORCE_EQ(
+        type_[0], 'f',
+        platform::errors::InvalidArgument(
+            "MultiSlotType error, add %s value to float slot.", type_));
   }
   void CheckUint64() const {
-    PADDLE_ENFORCE(type_[0] == 'u', "Add %s value to uint64 slot.", type_);
+    PADDLE_ENFORCE_EQ(
+        type_[0], 'u',
+        platform::errors::InvalidArgument(
+            "MultiSlotType error, add %s value to uint64 slot.", type_));
   }
   std::vector<float> float_feasign_;
   std::vector<uint64_t> uint64_feasign_;

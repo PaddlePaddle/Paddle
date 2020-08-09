@@ -100,15 +100,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    auto CanMKLDNNElementwiseAddBeUsed = [&]() {
-      int axis = ctx.Attr<int>("axis");
-      int rankdiff = ctx.Input<Tensor>("X")->dims().size() -
-                     ctx.Input<Tensor>("Y")->dims().size();
-      return (rankdiff == 0) || (axis == -1) || (axis == rankdiff);
-    };
-
-    if (platform::CanMKLDNNBeUsed(ctx) &&
-        (ctx.Type() != "elementwise_add" || CanMKLDNNElementwiseAddBeUsed())) {
+    if (platform::CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -148,6 +140,26 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("");
     AddAttr<std::string>("y_data_format", "This parameter is no longer used.")
         .SetDefault("");
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
+    /* int8 parameters */
+    AddAttr<float>("Scale_x",
+                   "(float, default 1.0f), The quantize scale of X tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_y",
+                   "(float, default 1.0f), The quantize scale of Y tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_out",
+                   "(float, default 1.0f), The quantize scale of output data")
+        .SetDefault(1.0f);
     AddOpComment();
   }
 
