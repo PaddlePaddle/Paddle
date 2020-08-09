@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fleet.utils.fs import FS, LocalFS
-from ..fleet.utils.hdfs import HDFSClient
+from paddle.fluid.incubate.fleet.utils.fs import FS, LocalFS
+from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 from ...compiler import CompiledProgram
 
 
