@@ -19,6 +19,18 @@ import numpy as np
 from op_test import OpTest
 
 
+def pixel_shuffle_np(x, up_factor):
+    n, c, h, w = x.shape
+    new_shape = (n, c // (up_factor * up_factor), up_factor, up_factor, h, w)
+    # reshape to (num,output_channel,upscale_factor,upscale_factor,h,w)
+    npresult = np.reshape(x, new_shape)
+    # transpose to (num,output_channel,h,upscale_factor,w,upscale_factor)
+    npresult = npresult.transpose(0, 1, 4, 2, 5, 3)
+    oshape = [n, c // (up_factor * up_factor), h * up_factor, w * up_factor]
+    npresult = np.reshape(npresult, oshape)
+    return npresult
+
+
 class TestPixelShuffle(OpTest):
     def setUp(self):
         self.op_type = "pixel_shuffle"
@@ -26,14 +38,7 @@ class TestPixelShuffle(OpTest):
         up_factor = 3
         shape = [n, c, h, w]
         x = np.random.random(shape).astype("float64")
-        new_shape = (n, c // (up_factor * up_factor), up_factor, up_factor, h,
-                     w)
-        # reshape to (num,output_channel,upscale_factor,upscale_factor,h,w)
-        npresult = np.reshape(x, new_shape)
-        # transpose to (num,output_channel,h,upscale_factor,w,upscale_factor)
-        npresult = npresult.transpose(0, 1, 4, 2, 5, 3)
-        oshape = [n, c // (up_factor * up_factor), h * up_factor, w * up_factor]
-        npresult = np.reshape(npresult, oshape)
+        npresult = pixel_shuffle_np(x, up_factor)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
@@ -44,6 +49,21 @@ class TestPixelShuffle(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestPixelShuffleDygraph(unittest.TestCase):
+    def run_pixel_shuffle(self, up_factor):
+        x = np.random.rand(2, 9, 4, 4).astype(np.float32)
+
+        npresult = pixel_shuffle_np(x, np_factor)
+        with paddle.imperative.guard():
+            pixel_shuffle = paddle.nn.PixelShuffle(up_factor)
+            result = pixel_shuffle(paddle.imperative.to_variable(x))
+
+        self.assertTrue(np.allclose(result.numpy(), npresult))
+
+    def test_pixel_shuffle(self):
+        self.run_pixel_shuffle(3)
 
 
 if __name__ == '__main__':
