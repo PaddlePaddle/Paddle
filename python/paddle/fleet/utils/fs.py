@@ -26,6 +26,7 @@ import logging
 import six
 import abc
 import paddle.fluid as fluid
+from paddle.fluid import core
 import functools
 
 from pathlib import PurePosixPath, Path

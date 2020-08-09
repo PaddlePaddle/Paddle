@@ -305,7 +305,7 @@ class TrainEpochRange(SerializableBase):
         if self._checker.ce_test:
             config = None
 
-        from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+        from paddle.fleet.utils.fs import HDFSClient
         self._hdfs = HDFSClient(self._checker.hdfs_home, config)
 
         self._cper = CheckpointSaver(self._hdfs)
