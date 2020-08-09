@@ -19,7 +19,8 @@ from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
 import sys
 
-from paddle.fleet.incubate.fleet.utils.fs import LocalFS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
+from paddle.fluid.incubate.fleet.utils.fs import LocalFS, FSTimeOut, FSFileExistsError, FSFileNotExistsError
+from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 
 java_home = os.environ["JAVA_HOME"]
 
