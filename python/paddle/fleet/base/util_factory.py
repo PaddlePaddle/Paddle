@@ -29,8 +29,8 @@ from google.protobuf import text_format
 from paddle.fluid import debugger
 from paddle.fluid.framework import Program
 from paddle.fluid.proto import framework_pb2
-from paddle.fluid.incubate.fleet.utils.fs import FS, LocalFS
-from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.utils.fs import FS, LocalFS
+from paddle.utils.hdfs import HDFSClient
 
 
 class UtilFactory(object):

@@ -81,7 +81,7 @@ class TestFleetUtil(unittest.TestCase):
         self.assertEqual(user_id, 10)
 
     def test_fs(self):
-        from paddle.fluid.incubate.fleet.utils.fs import LocalFS
+        from paddle.utils.fs import LocalFS
         fs = LocalFS()
         dirs, files = fs.ls_dir("test_tmp")
         dirs, files = fs.ls_dir("./")
