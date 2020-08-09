@@ -26,7 +26,6 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 from paddle.fluid import compiler
-from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel, CheckpointSaver
 
 import os
@@ -144,12 +143,15 @@ class Collective(Fleet):
                         trainer_id,
                         train_status,
                         main_program=None,
-                        fs=LocalFS(),
+                        fs=None,
                         local_cache_path=".cache",
                         remain_all_checkpoint=True):
         """
         This function save persistables and current epoch num to path.
         """
+        if fs is None:
+            from paddle.fluid.incubate.fleet.utils.fs import LocalFS
+            fs = LocalFS()
 
         if main_program == None:
             main_program = self._transpiled_program
@@ -174,12 +176,15 @@ class Collective(Fleet):
                         trainer_id,
                         train_status,
                         main_program=None,
-                        fs=LocalFS(),
+                        fs=None,
                         local_cache_path=".cache",
                         ignore_empty=True):
         """
         This function load persistables and current epoch num from path.
         """
+        if fs is None:
+            from paddle.fluid.incubate.fleet.utils.fs import LocalFS
+            fs = LocalFS()
 
         if main_program == None:
             main_program = self._transpiled_program
