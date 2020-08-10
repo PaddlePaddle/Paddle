@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -351,3 +352,231 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<NativeConfig>(
 }
 
 }  // namespace paddle
+
+namespace paddle_infer {
+
+Config::Config(const std::string &model_dir) {
+  Init();
+  config_.SetModel(model_dir);
+}
+
+Config::Config(const std::string &prog_file, const std::string &params_file) {
+  Init();
+  config_.SetModel(prog_file, params_file);
+}
+
+void Config::SetModel(const std::string &model_dir) {
+  Init();
+  config_.SetModel(model_dir);
+}
+
+void Config::SetModel(const std::string &prog_file,
+                      const std::string &params_file) {
+  Init();
+  config_.SetModel(prog_file, params_file);
+}
+
+void Config::SetModelBuffer(const char *prog_buffer, size_t prog_buffer_size,
+                            const char *params_buffer,
+                            size_t params_buffer_size) {
+  Init();
+  config_.SetModelBuffer(prog_buffer, prog_buffer_size, params_buffer,
+                         params_buffer_size);
+}
+
+void Config::EnableMemoryOptim() { config_.EnableMemoryOptim(); }
+
+void Config::EnableMKLDNN() { config_.EnableMKLDNN(); }
+
+void Config::SetMkldnnCacheCapacity(int capacity) {
+  config_.SetMkldnnCacheCapacity(capacity);
+}
+
+void Config::SetCpuMathLibraryNumThreads(int cpu_math_library_num_threads) {
+  config_.SetCpuMathLibraryNumThreads(cpu_math_library_num_threads);
+}
+
+void Config::EnableMkldnnQuantizer() { config_.EnableMkldnnQuantizer(); }
+
+paddle::MkldnnQuantizerConfig *Config::mkldnn_quantizer_config() const {
+  return config_.mkldnn_quantizer_config();
+}
+
+void Config::EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id) {
+  config_.EnableUseGpu(memory_pool_init_size_mb, device_id);
+}
+
+void Config::EnableTensorRtEngine(int workspace_size, int max_batch_size,
+                                  int min_subgraph_size, Precision precision,
+                                  bool use_static, bool use_calib_mode) {
+  config_.EnableTensorRtEngine(workspace_size, max_batch_size,
+                               min_subgraph_size, PrecisionTrait(precision),
+                               use_static, use_calib_mode);
+}
+
+void Config::SetTRTDynamicShapeInfo(
+    std::map<std::string, std::vector<int>> min_input_shape,
+    std::map<std::string, std::vector<int>> max_input_shape,
+    std::map<std::string, std::vector<int>> optim_input_shape,
+    bool disable_trt_plugin_fp16) {
+  config_.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
+                                 optim_input_shape, disable_trt_plugin_fp16);
+}
+
+void Config::EnableGpuMultiStream() { config_.EnableGpuMultiStream(); }
+
+void Config::EnableLiteEngine(Precision precision, bool zero_copy,
+                              const std::vector<std::string> &passes_filter,
+                              const std::vector<std::string> &ops_filter) {
+  config_.EnableLiteEngine(PrecisionTrait(precision), zero_copy, passes_filter,
+                           ops_filter);
+}
+
+void Config::EnableXpu(int l3_workspace_size) {
+  config_.EnableXpu(l3_workspace_size);
+}
+
+void Config::SwitchIrOptim(int x) { config_.SwitchIrOptim(x); }
+
+void Config::EnableProfile() { config_.EnableProfile(); }
+
+void Config::DisableGlogInfo() { config_.DisableGlogInfo(); }
+
+paddle::PassStrategy *Config::pass_builder() const {
+  return config_.pass_builder();
+}
+
+void Tensor::Reshape(const std::vector<int> &shape) { tensor_->Reshape(shape); }
+
+template <typename T>
+void Tensor::CopyFromCpu(const T *data) {
+  tensor_->copy_from_cpu<T>(data);
+}
+template PD_INFER_DECL void Tensor::CopyFromCpu<float>(const float *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<int64_t>(const int64_t *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
+
+template <typename T>
+T *Tensor::mutable_data(PaddlePlace place) {
+  return tensor_->mutable_data<T>(static_cast<paddle::PaddlePlace>(place));
+}
+
+template PD_INFER_DECL float *Tensor::mutable_data<float>(PaddlePlace);
+template PD_INFER_DECL int64_t *Tensor::mutable_data<int64_t>(PaddlePlace);
+template PD_INFER_DECL int32_t *Tensor::mutable_data<int32_t>(PaddlePlace);
+template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PaddlePlace);
+
+template <typename T>
+void Tensor::CopyToCpu(T *data) {
+  return tensor_->copy_to_cpu<T>(data);
+}
+
+template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data);
+template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data);
+template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data);
+template PD_INFER_DECL void Tensor::CopyToCpu<uint8_t>(uint8_t *data);
+
+template <typename T>
+T *Tensor::data(PaddlePlace *place, int *size) const {
+  paddle::PaddlePlace tmp;
+  auto *data = tensor_->data<T>(&tmp, size);
+  *place = static_cast<PaddlePlace>(tmp);
+  return data;
+}
+
+template PD_INFER_DECL float *Tensor::data<float>(PaddlePlace *place,
+                                                  int *size) const;
+template PD_INFER_DECL int64_t *Tensor::data<int64_t>(PaddlePlace *place,
+                                                      int *size) const;
+template PD_INFER_DECL int32_t *Tensor::data<int32_t>(PaddlePlace *place,
+                                                      int *size) const;
+template PD_INFER_DECL uint8_t *Tensor::data<uint8_t>(PaddlePlace *place,
+                                                      int *size) const;
+
+std::vector<int> Tensor::shape() const { return tensor_->shape(); }
+
+void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
+  return tensor_->SetLoD(x);
+}
+
+std::vector<std::vector<size_t>> Tensor::lod() const { return tensor_->lod(); }
+
+const std::string &Tensor::name() const { return tensor_->name(); }
+
+void Tensor::SetPlace(PaddlePlace place, int device) {
+  tensor_->SetPlace(static_cast<paddle::PaddlePlace>(place), device);
+}
+
+PaddleDType Tensor::type() const {
+  return static_cast<PaddleDType>(tensor_->type());
+}
+
+std::vector<std::string> Predictor::GetInputNames() {
+  return predictor_->GetInputNames();
+}
+
+std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
+  auto zero_copy_tensor = predictor_->GetInputTensor(name);
+  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
+  return tensor;
+}
+
+std::vector<std::string> Predictor::GetOutputNames() {
+  return predictor_->GetOutputNames();
+}
+
+std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
+  auto zero_copy_tensor = predictor_->GetOutputTensor(name);
+  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
+  return tensor;
+}
+
+bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
+
+std::shared_ptr<Predictor> Predictor::Clone() {
+  auto analysis_pred = predictor_->Clone();
+  std::shared_ptr<Predictor> pred(new Predictor(std::move(analysis_pred)));
+  return pred;
+}
+
+void Predictor::ClearIntermediateTensor() {
+  predictor_->ClearIntermediateTensor();
+}
+
+int PaddleDtypeSize(PaddleDType dtype) {
+  switch (dtype) {
+    case PaddleDType::FLOAT32:
+      return sizeof(float);
+    case PaddleDType::INT64:
+      return sizeof(int64_t);
+    case PaddleDType::INT32:
+      return sizeof(int32_t);
+    case PaddleDType::UINT8:
+      return sizeof(uint8_t);
+    default:
+      assert(false);
+      return -1;
+  }
+}
+
+std::string GetPaddleVersion() { return paddle::get_version(); }
+
+std::string UpdateDllFlag(const char *name, const char *value) {
+  return paddle::UpdateDllFlag(name, value);
+}
+
+std::shared_ptr<paddle::framework::Cipher> MakeCipher(
+    const std::string &config_file) {
+  return paddle::framework::CipherFactory::CreateCipher(config_file);
+}
+
+}  // namespace paddle_infer
+
+namespace paddle_infer {
+std::shared_ptr<Predictor> CreatePredictor(Config &config) {  // NOLINT
+  std::shared_ptr<Predictor> predictor(new Predictor(config));
+  return predictor;
+}
+
+}  // namespace paddle_infer
