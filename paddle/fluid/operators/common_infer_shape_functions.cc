@@ -104,12 +104,12 @@ void UnaryOpUnchangedInferShapeCheckAxis(framework::InferShapeContext *ctx) {
 
 // broadcast input(0) and input(1) -> output(0)
 void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
-  // OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BinaryOp");
-  // OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "BinaryOp");
-  // OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ElementwiseOp");
   auto x_name = ctx->GetInputNameByIdx(0);
   auto y_name = ctx->GetInputNameByIdx(1);
   auto out_name = ctx->GetOutputNameByIdx(0);
+  OP_INOUT_CHECK(ctx->HasInput(x_name), "Input", x_name, "ElementwiseOp");
+  OP_INOUT_CHECK(ctx->HasInput(y_name), "Input", y_name, "ElementwiseOp");
+  OP_INOUT_CHECK(ctx->HasOutput(out_name), "Output", out_name, "ElementwiseOp");
   auto x_dims = ctx->GetInputDim(x_name);
   auto y_dims = ctx->GetInputDim(y_name);
   PADDLE_ENFORCE_EQ(
