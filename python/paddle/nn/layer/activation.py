@@ -234,9 +234,9 @@ class LeakyReLU(layers.Layer):
 
         paddle.enable_imperative()
 
-        lrelu = nn.LeakyReLU()
-        x = paddle.imperative.to_variable(np.array([-2, 0, 1]))
-        res = lrelu(x)  # [-0.02, 0, 1]
+        lrelu = paddle.nn.LeakyReLU()
+        x = paddle.imperative.to_variable(np.array([-2, 0, 1], 'float32'))
+        out = lrelu(x)  # [-0.02, 0, 1]
     """
 
     def __init__(self, alpha=1e-2, name=None):
