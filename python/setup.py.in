@@ -152,6 +152,7 @@ packages=['paddle',
           'paddle.fleet.dataset',
           'paddle.fleet.metrics',
           'paddle.fleet.proto',
+          'paddle.fleet.utils',
           'paddle.framework',
           'paddle.fluid',
           'paddle.fluid.dygraph',
@@ -476,6 +477,11 @@ with redirect_stdout():
         cmdclass={
             'install_headers': InstallHeaders,
             'install': InstallCommand,
+        },
+        entry_points={
+            'console_scripts': [
+                'fleetrun = paddle.fleet.launch:launch'
+            ]
         }
     )
 

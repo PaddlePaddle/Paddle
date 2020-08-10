@@ -19,9 +19,7 @@ from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
 import sys
 
-from paddle.fluid.incubate.fleet.utils.fs import LocalFS
-from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
-from paddle.fluid.incubate.fleet.utils.hdfs import FSTimeOut, FSFileExistsError, FSFileNotExistsError
+from paddle.fleet.utils import LocalFS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
 
 java_home = os.environ["JAVA_HOME"]
 
@@ -112,6 +110,35 @@ class FSTest(unittest.TestCase):
         fs.delete(dst_file)
         fs.delete(src_file)
 
+    def _test_try_download(self, fs):
+        src_file = os.path.abspath("./test_try_download.src")
+        dst_file = os.path.abspath("./test_try_download.dst")
+
+        fs.delete(dst_file)
+        fs.delete(src_file)
+
+        try:
+            fs._try_download(src_file, dst_file)
+            self.assertFalse(True)
+        except Exception as e:
+            pass
+
+        fs.delete(dst_file)
+        fs.delete(src_file)
+
+    def _test_try_upload(self, fs):
+        src_file = os.path.abspath("./test_try_upload.src")
+        dst_file = os.path.abspath("./test_try_uolpad.dst")
+
+        try:
+            fs._try_upload(src_file, dst_file)
+            self.assertFalse(True)
+        except Exception as e:
+            pass
+
+        fs.delete(dst_file)
+        fs.delete(src_file)
+
     def _test_download(self, fs):
         src_file = os.path.abspath("./test_download.src")
         dst_file = os.path.abspath("./test_download.dst")
@@ -146,6 +173,21 @@ class FSTest(unittest.TestCase):
         fs.mkdirs(dir_name)
         fs.mkdirs(dir_name)
 
+    def _test_rm(self, fs):
+        dir_name = "./test_rm_no_exist.flag"
+        fs.delete(dir_name)
+        try:
+            fs._rmr(dir_name)
+            self.assertFalse(True)
+        except Exception as e:
+            pass
+
+        try:
+            fs._rm(dir_name)
+            self.assertFalse(True)
+        except Exception as e:
+            pass
+
     def test_exists(self):
         fs = HDFSClient(
             "/usr/local/hadoop-2.7.7/",
@@ -166,6 +208,7 @@ class FSTest(unittest.TestCase):
             None,
             time_out=15 * 1000,
             sleep_inter=100)
+        self._test_rm(fs)
         self._test_touch(fs)
         self._test_dirs(fs)
         self._test_upload(fs)
@@ -173,14 +216,19 @@ class FSTest(unittest.TestCase):
         self._test_download(fs)
         self._test_mkdirs(fs)
         self._test_list_dir(fs)
+        self._test_try_upload(fs)
+        self._test_try_download(fs)
 
     def test_local(self):
         fs = LocalFS()
+        self._test_rm(fs)
         self._test_touch(fs)
         self._test_dirs(fs)
         self._test_touch_file(fs)
         self._test_mkdirs(fs)
         self._test_list_dir(fs)
+        self._test_try_upload(fs)
+        self._test_try_download(fs)
 
     def test_timeout(self):
         fs = HDFSClient(
@@ -255,6 +303,12 @@ java.io.IOException: Input/output error
             fs.touch("./touch.flag", exist_ok=False)
             self.assertFalse(0, "can't reach here")
         except FSFileExistsError as e:
+            pass
+
+        try:
+            fs._touchz("./touch.flag")
+            self.assertFalse(True, "can't reach here")
+        except Exception as e:
             pass
 
         self.assertFalse(fs.is_dir(path))

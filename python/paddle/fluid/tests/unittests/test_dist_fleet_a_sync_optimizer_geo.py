@@ -15,21 +15,32 @@
 import unittest
 import paddle
 import os
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import time
 
 
-class TestFleetMetaOptimizer(unittest.TestCase):
+class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
     def setUp(self):
+        os.environ["PADDLE_PSERVER_NUMS"] = "2"
+        os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ["POD_IP"] = "127.0.0.1"
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-                       "127.0.0.1:36001,127.0.0.2:36001"
+            "127.0.0.1:36001,127.0.0.2:36001"
 
-    def test_graph_execution_optimizer_not_apply(self):
+    def test_a_sync_optimizer_trainer(self):
+        os.environ["TRAINING_ROLE"] = "TRAINER"
         import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-        role = role_maker.PaddleCloudRoleMaker()
-        fleet.init(role)
+
+        main_program = paddle.fluid.Program()
+        startup_program = paddle.fluid.Program()
+
+        paddle.fluid.framework.switch_main_program(main_program)
+        paddle.fluid.framework.switch_startup_program(startup_program)
+
+        fleet.init(role_maker.PaddleCloudRoleMaker())
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
@@ -42,15 +53,37 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         avg_cost = paddle.fluid.layers.mean(x=cost)
 
         strategy = paddle.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"k_steps": 100}
         optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
-    def test_graph_execution_optimizer(self):
+        prog = paddle.fluid.default_main_program()
+        self.assertEqual(prog.global_block().ops[-1].type, "send")
+
+        sends = 0
+        sgds = 0
+
+        for op in prog.global_block().ops:
+            if op.type == "send":
+                sends += 1
+            if op.type == "sgd":
+                sgds += 1
+        self.assertEqual(sends, 1)
+        self.assertEqual(sgds, 6)
+
+    def test_a_sync_optimizer_pserver(self):
+        os.environ["TRAINING_ROLE"] = "PSERVER"
         import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-        fleet.init(role)
+
+        main_program = paddle.fluid.Program()
+        startup_program = paddle.fluid.Program()
+
+        paddle.fluid.framework.switch_main_program(main_program)
+        paddle.fluid.framework.switch_startup_program(startup_program)
+
+        fleet.init(role_maker.PaddleCloudRoleMaker())
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
@@ -63,34 +96,14 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         avg_cost = paddle.fluid.layers.mean(x=cost)
 
         strategy = paddle.fleet.DistributedStrategy()
-        strategy.nccl_comm_num = 2
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"k_steps": 100}
         optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
-    def test_recompute_optimizer(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-        fleet.init(role)
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32')
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
-
-        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
-
-        strategy = paddle.fleet.DistributedStrategy()
-        strategy.recompute = True
-        strategy.recompute_configs = {"checkpoints": ["fc2"]}
-
-        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-        optimizer.minimize(avg_cost)
+        prog = paddle.fluid.default_main_program()
+        self.assertEqual(prog.global_block().ops[0].type, "listen_and_serv")
 
 
 if __name__ == "__main__":

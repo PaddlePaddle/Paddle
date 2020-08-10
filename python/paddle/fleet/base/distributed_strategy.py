@@ -227,8 +227,11 @@ class DistributedStrategy(object):
     def a_sync(self, flag):
         if isinstance(flag, bool):
             self.strategy.a_sync = flag
+            self.a_sync_configs = {"k_steps": 0}
         else:
-            print("WARNING: a_sync should have value of bool type")
+            raise ValueError(
+                "The type of `flag` is invalid, expected type is bool, but received %s".
+                format(type(flag)))
 
     @property
     def a_sync_configs(self):
@@ -377,6 +380,30 @@ class DistributedStrategy(object):
             self.strategy.fuse_all_reduce_ops = flag
         else:
             print("WARNING: fuse_all_reduce_ops should have value of bool type")
+
+    @property
+    def fuse_grad_size_in_MB(self):
+        return self.strategy.fuse_grad_size_in_MB
+
+    @fuse_grad_size_in_MB.setter
+    def fuse_grad_size_in_MB(self, value):
+        if isinstance(value, int):
+            self.strategy.fuse_grad_size_in_MB = value
+        else:
+            print("WARNING: fuse_grad_size_in_MB should have value of int type")
+
+    @property
+    def _fuse_grad_size_in_TFLOPS(self):
+        return self.strategy.fuse_grad_size_in_TFLOPS
+
+    @_fuse_grad_size_in_TFLOPS.setter
+    def _fuse_grad_size_in_TFLOPS(self, value):
+        if isinstance(value, float):
+            self.strategy.fuse_grad_size_in_TFLOPS = value
+        else:
+            print(
+                "WARNING: fuse_grad_size_in_TFLOPS should have value of float type"
+            )
 
     @property
     def nccl_comm_num(self):
@@ -579,6 +606,15 @@ class DistributedStrategy(object):
             self.strategy.lars = flag
         else:
             print("WARNING: lars should have value of bool type")
+
+    @property
+    def lars_configs(self):
+        return get_msg_dict(self.strategy.lars_configs)
+
+    @lars_configs.setter
+    def lars_configs(self, configs):
+        check_configs_key(self.strategy.lars_configs, configs, "lars_configs")
+        assign_configs_value(self.strategy.lars_configs, configs)
 
     @property
     def lamb(self):

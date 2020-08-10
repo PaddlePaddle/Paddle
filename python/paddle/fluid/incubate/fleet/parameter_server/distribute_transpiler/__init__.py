@@ -352,7 +352,7 @@ class FleetTranspiler(Fleet):
                     # for half_async compatibility
                     strategy.half_async = True
                     strategy.runtime_split_send_recv = True
-            self._strategy.set_program_config(strategy)
+            _strategy.set_program_config(strategy)
         elif isinstance(strategy, dict):
             if self._inner_mode != PSMode.PSLIB:
                 raise TypeError("Dict strategy can only be used at PSLIB Mode")
@@ -579,7 +579,7 @@ class FleetTranspiler(Fleet):
                 block.append_op(
                     type='recv_save',
                     attrs={
-                        "trainer_id": self._role_maker.worker_id(),
+                        "trainer_id": self._role_maker.worker_index(),
                         "shape": var.shape,
                         "slice_shapes":
                         [",".join([str(i) for i in var.shape])],

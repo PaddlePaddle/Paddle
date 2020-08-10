@@ -20,8 +20,7 @@ from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
 import sys
 
-from paddle.fluid.incubate.fleet.utils.fs import LocalFS
-from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.fluid.incubate.fleet.utils.fs import LocalFS, HDFSClient
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
 from paddle.fluid.framework import program_guard
@@ -35,7 +34,7 @@ from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBas
 logger = get_logger()
 
 
-class AutoCheckpointTest(AutoCheckpointBase):
+class AutoCheckPointACLBase(AutoCheckpointBase):
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -90,6 +89,22 @@ class AutoCheckpointTest(AutoCheckpointBase):
 
         logger.info("end _run_normal")
         fs.delete(save_dir)
+
+    def _not_use_train(self):
+        logger.info("begin _not_use_train")
+        exe, main_prog, startup_prog = self._generate()
+
+        compiled, data_loader, optimizer, loss, image, label = \
+            self._init_env(exe, main_prog, startup_prog)
+
+        epochs = []
+        for i in acp.train_epoch_range(3, 0):
+            epochs.append(i)
+            for data in data_loader():
+                fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
+        self.assertEqual(epochs, [0, 1, 2])
+        logger.info("end _not_use_train")
 
     def _run_save_0(self, break_epoch_no=None):
         logger.info("begin _run_save_0")
@@ -167,6 +182,28 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(save_dir)
         logger.info("begin _run_load_0")
 
+
+class AutoCheckpointTest(AutoCheckPointACLBase):
+    def setUp(self):
+        get_logger()
+        logger.info("enter tests")
+
+        self._old_environ = dict(os.environ)
+        proc_env = {
+            "PADDLE_RUNNING_ENV": "PADDLE_EDL_AUTO_CHECKPOINT",
+            "PADDLE_TRAINER_ID": "0",
+            "PADDLE_RUNNING_PLATFORM": "PADDLE_CLOUD",
+            "PADDLE_JOB_ID": "test_job_auto_1",
+            "PADDLE_EDL_HDFS_HOME": "/usr/local/hadoop-2.7.7",
+            "PADDLE_EDL_HDFS_NAME": "",
+            "PADDLE_EDL_HDFS_UGI": "",
+            "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_1",
+            "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
+            "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_1",
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+        }
+        os.environ.update(proc_env)
+
     def test_normal(self):
         logger.info("begin test_normal")
         checker = acp._get_checker()
@@ -183,6 +220,10 @@ class AutoCheckpointTest(AutoCheckpointBase):
     def test_basic(self):
         logger.info("begin test_basic")
         checker = acp._get_checker()
+        self.assertEqual(checker.run_env, "PADDLE_EDL_AUTO_CHECKPOINT")
+        self.assertEqual(checker.platform, "PADDLE_CLOUD")
+        self.assertEqual(checker.save_checkpoint_inter, 0)
+        print(checker)
 
         fs = HDFSClient(checker.hdfs_home, None)
 
@@ -209,6 +250,16 @@ class AutoCheckpointTest(AutoCheckpointBase):
 
         fs.delete(checker.hdfs_checkpoint_path)
         logger.info("end test_corener_epoch_no")
+
+    def test_not_use(self):
+        logger.info("begin test_not_use")
+
+        self._clear_envs()
+        self._reset_generator()
+        self._not_use_train()
+        self._readd_envs()
+
+        logger.info("end test_not_use")
 
     def test_multiple(self):
         checker = acp._get_checker()
@@ -241,6 +292,7 @@ class AutoCheckpointTest(AutoCheckpointBase):
 
             o = acp._get_train_epoch_range()
             self.assertEqual(len(o._exe_status), 2)
+            print(o._exe_status)
             epochs.append(i)
 
         o = acp._get_train_epoch_range()
@@ -304,6 +356,15 @@ class AutoCheckpointTest(AutoCheckpointBase):
         fs.delete(save_dir)
 
         logger.info("end test_distributed_basic")
+
+    def test_checker(self):
+        os.environ.pop("PADDLE_JOB_ID", None)
+        try:
+            checker = AutoCheckpointChecker()
+            self.assertFalse(True)
+        except Exception as e:
+            pass
+        os.environ["PADDLE_JOB_ID"] = "test_job_auto_1"
 
 
 if __name__ == '__main__':

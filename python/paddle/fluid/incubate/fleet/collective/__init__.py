@@ -143,14 +143,13 @@ class Collective(Fleet):
                         path,
                         trainer_id,
                         train_status,
+                        fs,
                         main_program=None,
-                        fs=LocalFS(),
                         local_cache_path=".cache",
                         remain_all_checkpoint=True):
         """
         This function save persistables and current epoch num to path.
         """
-
         if main_program == None:
             main_program = self._transpiled_program
 
@@ -173,8 +172,8 @@ class Collective(Fleet):
                         path,
                         trainer_id,
                         train_status,
+                        fs,
                         main_program=None,
-                        fs=LocalFS(),
                         local_cache_path=".cache",
                         ignore_empty=True):
         """

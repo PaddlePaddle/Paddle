@@ -24,7 +24,6 @@ from threading import Thread, current_thread
 from contextlib import contextmanager
 
 from paddle.fluid import unique_name, compiler
-from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel
 from paddle.fluid.framework import in_dygraph_mode, Program
 
@@ -274,6 +273,7 @@ class TrainEpochRange(SerializableBase):
         self._name = name
         self._restored_from = None
         self._exe_status = {}
+        self._flag_generated = False
 
         self._checker = g_checker
         if checkpoint_inter is not None:
@@ -305,6 +305,7 @@ class TrainEpochRange(SerializableBase):
         if self._checker.ce_test:
             config = None
 
+        from paddle.fleet.utils.fs import HDFSClient
         self._hdfs = HDFSClient(self._checker.hdfs_home, config)
 
         self._cper = CheckpointSaver(self._hdfs)
@@ -503,11 +504,19 @@ class TrainEpochRange(SerializableBase):
             logger.info("save train_epoch_range checkpoint:{}".format(
                 self._serialize()))
 
+            self._generate_flag()
+
     def _generate_flag(self):
+        if self._flag_generated:
+            return
+
         name = "can_be_auto_checkpoint.flag"
         path = self._checker.get_job_path() + "/" + name
         logger.info("this job can_be_auto_checkpoint")
+        self._hdfs.mkdirs(self._checker.get_job_path())
         self._hdfs.touch(path, exist_ok=True)
+
+        self._flag_generated = True
 
 
 def _get_train_epoch_range():
@@ -617,14 +626,6 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
             yield i
     finally:
         g_train_epoch_range = None
-
-
-def _get_hash(key):
-    k = key
-    if sys.version_info[0] >= 3:
-        k = key.encode('utf-8')
-
-    return hashlib.md5(k).hexdigest()
 
 
 def _get_valid_program(prog):

@@ -45,14 +45,35 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
 // get CommContext and remote send and recv op
 void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  // init communicator here
-  auto *instance = operators::distributed::Communicator::GetInstance();
-  auto initialized = instance ? true : false;
-  PADDLE_ENFORCE_EQ(initialized, true,
-                    platform::errors::InvalidArgument(
-                        "Communicator is not Initialized, you may use "
-                        "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
-                        "develop/markdown_doc/transpiler)"));
+
+  bool need_communicator = false;
+
+  for (auto &node : graphs[0]->Nodes()) {
+    VLOG(3) << "node name " << node->Name();
+    if (node && node->IsOp()) {
+      if (node->Name() == "send") {
+        auto send_varnames =
+            BOOST_GET_CONST(std::vector<std::string>,
+                            node->Op()->GetNullableAttr("send_varnames"));
+
+        if (send_varnames.size() > 0) {
+          need_communicator = true;
+          break;
+        }
+      }
+    }
+  }
+
+  if (need_communicator) {
+    // init communicator here
+    auto *instance = operators::distributed::Communicator::GetInstance();
+    auto initialized = instance ? true : false;
+    PADDLE_ENFORCE_EQ(initialized, true,
+                      platform::errors::InvalidArgument(
+                          "Communicator is not Initialized, you may use "
+                          "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
+                          "develop/markdown_doc/transpiler)"));
+  }
 
 #endif
 }

@@ -37,6 +37,7 @@ from functools import reduce
 from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
+from paddle.utils import deprecated
 
 __all__ = [
     'fc',
@@ -6199,7 +6200,7 @@ def squeeze(input, axes, name=None):
             Out.shape = [1,3,5]
 
     Args:
-        input (Variable): The input Tensor. Support data type: float16, float32, float64, int8, int32, int64.
+        input (Variable): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
                           axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
                           Axes range is :math:`[-rank(input), rank(input))`.
                           If axes is negative, :math:`axes=axes+rank(input)`.
@@ -6225,8 +6226,9 @@ def squeeze(input, axes, name=None):
     helper = LayerHelper("squeeze", **locals())
     check_variable_and_dtype(
         input, 'input',
-        ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
-    check_type(axes, 'axes', (list, tuple), 'squeeze')
+        ['float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64'],
+        'squeeze')
+    check_type(axes, 'axis/axes', (list, tuple), 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -6253,12 +6255,12 @@ def unsqueeze(input, axes, name=None):
       then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
 
     Args:
-        input (Variable): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
+        input (Variable): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
         axes (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
         name (str|None): Name for this layer.
 
     Returns:
-        Variable: Output unsqueezed Tensor, with data type being float32, float64, int32, int64.
+        Variable: Unsqueezed Tensor, with the same data type as input.
 
     Examples:
         .. code-block:: python
@@ -6268,10 +6270,15 @@ def unsqueeze(input, axes, name=None):
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
-    if not isinstance(axes, (int, list, tuple, Variable)):
-        raise TypeError(
-            "The type of 'axes' in unsqueeze must be int, list, tuple or Variable, but "
-            "received %s." % (type(axes)))
+    if in_dygraph_mode():
+        out, _ = core.ops.unsqueeze2(input, 'axes', axes)
+        return out
+
+    check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
+    check_variable_and_dtype(
+        input, 'input',
+        ['float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64'],
+        'unsqueeze')
     helper = LayerHelper("unsqueeze2", **locals())
     inputs = {"X": input}
     attrs = {}
@@ -9910,7 +9917,7 @@ def flatten(x, axis=1, name=None):
     return out
 
 
-def stack(x, axis=0):
+def stack(x, axis=0, name=None):
     """
 
     This OP stacks all the inputs :code:`x` along axis.
@@ -9965,7 +9972,7 @@ def stack(x, axis=0):
                                      must be the same. Supposing input is N dims
                                      Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
                                      Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
-                                     Support data types: float32, float64, int32, int64.
+                                     Supported data types: float32, float64, int32, int64.
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`.
                               R is the first tensor of inputs. If ``axis`` < 0, :math:`axis=axis+rank(x[0])+1`.
                               The default value of axis is 0.
@@ -9990,15 +9997,16 @@ def stack(x, axis=0):
             data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
-
-    helper = LayerHelper('stack', **locals())
     axis = 0 if axis is None else axis
-
     if not isinstance(x, list) and not isinstance(x, tuple):
         x = [x]
+
+    if in_dygraph_mode():
+        return core.ops.stack(x, 'axis', axis)
+
+    helper = LayerHelper('stack', **locals())
     out = helper.create_variable_for_type_inference(x[0].dtype)
-    if not in_dygraph_mode() and \
-            x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
                             "number of the elements must be 1, but received %s." % len(x)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
@@ -11614,6 +11622,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.multiply")
 def elementwise_mul(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_mul
@@ -11960,7 +11969,7 @@ for func in [
         ],
         skip_attrs_set={
             "x_data_format", "y_data_format", "axis", "use_quantizer",
-            "Scale_x", "Scale_y", "Scale_out"
+            "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
 
 for func in []:
