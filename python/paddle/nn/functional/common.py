@@ -14,16 +14,17 @@
 
 import warnings
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.tensor import Variable, fill_constant
+from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 
 # TODO: define the common functions to build a neural network  
 from ...fluid.layers import dropout  #DEFINE_ALIAS
 from ...fluid.layers import label_smooth  #DEFINE_ALIAS
 from ...fluid import one_hot  #DEFINE_ALIAS
-from ...fluid.layers import pad  #DEFINE_ALIAS
 from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
 from ...fluid.layers import assign  #DEFINE_ALIAS
+from ...fluid.layers import squeeze
+from ...fluid.layers import unsqueeze
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
 from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
@@ -445,4 +446,194 @@ def interpolate(input,
         inputs=inputs,
         outputs={"Out": out},
         attrs=attrs)
+    return out
+
+
+def pad(input,
+        pad=[0, 0, 0, 0],
+        mode='constant',
+        value=0,
+        data_format="NCHW",
+        name=None):
+    """
+    :alias_main: paddle.nn.functional.pad
+	:alias: paddle.nn.functional.pad,paddle.nn.functional.common.pad
+	:old_api: paddle.fluid.layers.pad2d
+
+    Pad tensor according to 'pad' and 'mode'.
+    If mode is 'reflect', pad[0] and pad[1] must be no greater
+    than width-1. The height and depth dimension has the same condition.
+
+    Parameters:
+        input (Variable): The input tensor with data type float32/double/int32/int64_t.
+        pad (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+            of input will be padded. 1. If input dimension is 3, then the pad has the form (pad_left,
+            pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
+            pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
+            (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back). Default is [0, 0, 0, 0].
+            
+        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+        	When in 'constant' mode, this op uses a constant value to pad the input tensor.
+        	When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+        	When in 'replicate' mode, uses input boundaries to pad the input tensor.
+            When in 'circular' mode, uses circular input to pad the input tensor.
+        	Default is 'constant'
+        value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
+        data_format (str): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
+                           the input data.
+                           Default is  "NCHW"
+        name (str, optional) : The default value is None.  Normally there is no need for
+                    user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+                    
+    Returns: a Tensor padded according to pad and mode and data type is same as input.
+    Return Type: Variable
+
+    Examples:
+        .. code-block:: text
+
+            Input = [[[[1., 2., 3.],
+                       [4., 5., 6.]]]]
+
+            Case 0:
+                pad = [2, 2, 1, 1, 0, 0],
+                mode = 'constant'
+                pad_value = 0
+                Out = [[[[[0. 0. 0. 0. 0. 0. 0.]
+                          [0. 0. 1. 2. 3. 0. 0.]
+                          [0. 0. 4. 5. 6. 0. 0.]
+                          [0. 0. 0. 0. 0. 0. 0.]]]]]
+
+            Case 1:
+                pad = [2, 2, 1, 1, 0, 0],
+                mode = 'reflect'
+                Out = [[[[[6. 5. 4. 5. 6. 5. 4.]
+                          [3. 2. 1. 2. 3. 2. 1.]
+                          [6. 5. 4. 5. 6. 5. 4.]
+                          [3. 2. 1. 2. 3. 2. 1.]]]]]
+
+            Case 2:
+                pad = [2, 2, 1, 1, 0, 0],
+                mode = 'replicate'
+                Out = [[[[[1. 1. 1. 2. 3. 3. 3.]
+                          [1. 1. 1. 2. 3. 3. 3.]
+                          [4. 4. 4. 5. 6. 6. 6.]
+                          [4. 4. 4. 5. 6. 6. 6.]]]]]
+
+            Case 3:
+                pad = [2, 2, 1, 1, 0, 0],
+                mode = 'circular'
+                Out = [[[[[5. 6. 4. 5. 6. 4. 5.]
+                          [2. 3. 1. 2. 3. 1. 2.]
+                          [5. 6. 4. 5. 6. 4. 5.]
+                          [2. 3. 1. 2. 3. 1. 2.]]]]]
+
+    Code Examples:
+        .. code-block:: python
+            # declarative mode
+            import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+
+            input_shape = (1, 1, 3)
+            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
+            x = paddle.data(name="x", shape=input_shape)
+            y = F.pad(x, pad=[5, 6], value=1, mode='constant')
+            place = paddle.CPUPlace()
+            exe = paddle.Executor(place)
+            outputs = exe.run(feed={'x': data}, fetch_list=[y.name])
+            print(outputs[0])
+            # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
+            
+            # imperative mode
+            import paddle.fluid.dygraph as dg
+            input_shape = (1, 1, 2, 3)
+            pad = [1, 2, 1, 1]
+            input_data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
+            with dg.guard(place) as g:
+                input = dg.to_variable(input_data)
+                output = paddle.nn.functional.pad(input=input, pad=pad, mode="circular")
+                print(output.numpy())
+                # [[[[6. 4. 5. 6. 4. 5.]
+                #    [3. 1. 2. 3. 1. 2.]
+                #    [6. 4. 5. 6. 4. 5.]
+                #    [3. 1. 2. 3. 1. 2.]]]]
+    
+    """
+    data_format = data_format.upper()
+
+    input_dim = len(input.shape)
+
+    original_data_format = data_format
+    unsqueezed_dim = []
+
+    if isinstance(pad, Variable):
+        if data_format in ["NCL", "NCHW", "NCDHW"]:
+            data_format = "NCDHW"
+            if input_dim == 3:
+                pad = concat([zeros((4, ), dtype="int32"), pad], axis=0)
+                unsqueezed_dim = [3, 4]
+                input = unsqueeze(input, axes=unsqueezed_dim)
+            elif input_dim == 4:
+                pad = concat([pad, zeros((2, ), dtype="int32")], axis=0)
+                unsqueezed_dim = [2]
+                input = unsqueeze(input, axes=unsqueezed_dim)
+        elif data_format in ["NLC", "NHWC", "NDHWC"]:
+            data_format = "NDHWC"
+            if input_dim == 3:
+                pad = concat([zeros((4, ), dtype="int32"), pad], axis=0)
+                unsqueezed_dim = [2, 3]
+                input = unsqueeze(input, axes=unsqueezed_dim)
+            elif input_dim == 4:
+                pad = concat([pad, zeros((2, ), dtype="int32")], axis=0)
+                unsqueezed_dim = [1]
+                input = unsqueeze(input, axes=unsqueezed_dim)
+    else:
+        if data_format in ["NCL", "NCHW", "NCDHW"]:
+            data_format = "NCDHW"
+            if input_dim == 3:
+                pad = [0, 0, 0, 0] + pad
+                unsqueezed_dim = [3, 4]
+                input = unsqueeze(input, axes=unsqueezed_dim)
+            elif input_dim == 4:
+                pad = pad + [0, 0]
+                unsqueezed_dim = [2]
+                input = unsqueeze(input, axes=unsqueezed_dim)
+        elif data_format in ["NLC", "NHWC", "NDHWC"]:
+            data_format = "NDHWC"
+            if input_dim == 3:
+                pad = [0, 0, 0, 0] + pad
+                unsqueezed_dim = [2, 3]
+                input = unsqueeze(input, axes=unsqueezed_dim)
+            elif input_dim == 4:
+                pad = pad + [0, 0]
+                unsqueezed_dim = [1]
+                input = unsqueeze(input, axes=unsqueezed_dim)
+        else:
+            raise ValueError, "data_format should be in one of "
+            "[NCL, NCHW, NCDHW, NLC, NHWC, NDHWC] but got {}".format(
+                data_format)
+
+    attrs = {'mode': mode, 'value': value, 'data_format': data_format}
+
+    inputs = {'X': [input]}
+    if isinstance(pad, Variable):
+        inputs['Paddings'] = [pad]
+        attrs['paddings'] = []
+    else:
+        attrs['paddings'] = pad
+
+    helper = LayerHelper('pad3d', **locals())
+
+    assert mode in ['reflect', 'replicate', 'constant', 'circular'], \
+        "mode should be one of constant, reflect, replicate, circular, but got {}.".format(mode)
+
+    dtype = helper.input_dtype(input_param_name='input')
+    out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
+
+    if len(unsqueezed_dim) != 0:
+        out = squeeze(out, axes=unsqueezed_dim)
+
     return out
