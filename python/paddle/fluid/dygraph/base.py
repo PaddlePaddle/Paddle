@@ -647,6 +647,25 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
 
 
 def set_device(device):
+    """
+    This function can determine whether the program is running on the CPU
+    or GPU place.
+    Parameters:
+        device(str): This parameter determines the specific running device.
+            It can be ``cpu`` or ``gpu:0``. When ``device`` is ``cpu``, the
+            program is running on the cpu. When ``device`` is ``gpu``, the
+            program is running ont the gpu.
+    Examples:
+
+     .. code-block:: python
+            
+        import paddle
+        paddle.enable_imperative()
+        paddle.fluid.dygraph.set_device("gpu:0")
+        x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
+        x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
+        data = paddle.stack([x1,x2], axis=1)
+    """
     lower_device = device.lower()
     if lower_device == 'cpu':
         place = core.CPUPlace()
@@ -667,6 +686,18 @@ def set_device(device):
 
 
 def get_device():
+    """
+    This funciton can get the device which is the programming is running.
+
+    Examples:
+
+     .. code-block:: python
+            
+        import paddle
+        paddle.enable_imperative()
+        device = paddle.fluid.dygraph.get_device()
+
+    """
     device = ''
     place = framework._current_expected_place()
     print(place)
