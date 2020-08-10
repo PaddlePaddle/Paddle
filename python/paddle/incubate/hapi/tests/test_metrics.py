@@ -35,7 +35,7 @@ def accuracy(pred, label, topk=(1, )):
     res = []
     for k in topk:
         correct_k = correct[:, :k].sum()
-        res.append(correct_k / batch_size)
+        res.append(float(correct_k) / batch_size)
     return res
 
 
@@ -71,7 +71,7 @@ class TestAccuracyDynamic(unittest.TestCase):
                 label_var = to_variable(label)
                 pred_var = to_variable(pred)
                 state = to_list(acc.add_metric_op(pred_var, label_var))
-                acc.update(* [s.numpy() for s in state])
+                acc.update(*[s.numpy() for s in state])
                 res_m = acc.accumulate()
                 res_f = accuracy(pred, label, self.topk)
                 assert np.all(np.isclose(np.array(res_m, dtype='float64'), np.array(res_f, dtype='float64'), rtol=1e-3)), \
