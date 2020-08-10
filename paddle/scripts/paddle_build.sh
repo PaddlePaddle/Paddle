@@ -926,18 +926,15 @@ set +x
             while ( [ $exec_times -lt 3 ] && [ -n "${failed_test_lists}" ] )
                 do
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(Failed\)" |sed 's/(Failed)//' | sed 's/- //' )
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //'
                     echo "========================================="
                     echo "This is $[$exec_times+1] re-run"
                     echo "========================================="
                     echo "The following unittest will be re-run:"
-                    echo $retry_unittests
+                    echo $failed_test_lists
 
-                    while read -r line;
+                    for line in ${retry_unittests[@]};
                         do
-                            if [[ "$line" == "" ]]; then
-                                continue
-                            fi
 
                             one_card_tests=$single_card_tests'|'$single_card_tests_1
 
@@ -965,7 +962,7 @@ set +x
                                 fi
                             fi
 
-                    done <<< "$retry_unittests";
+                    done
 
                     if [[ "$one_card_retry" != "" ]]; then
                         card_test "$one_card_retry" 1
