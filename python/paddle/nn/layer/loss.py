@@ -637,13 +637,13 @@ class MarginRankingLoss(fluid.dygraph.Layer):
 
     Parameters:
         margin (float, optional): The margin value to add, default value is 0;
-        reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
+        reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape: 
-        x: the shape is [N, *], Nis batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
-        y: y have the same shape and dtype as `x`.
-        label: label have the same shape and dtype as `x`.
+        x: N-D Tensor, the shape is [N, *], Nis batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
+        y: N-D Tensor, y have the same shape and dtype as `x`.
+        label: N-D Tensor, label have the same shape and dtype as `x`.
         out: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as input `x` .The same dtype as input tensor.
 
     Returns:
