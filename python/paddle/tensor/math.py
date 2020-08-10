@@ -1221,8 +1221,6 @@ def inverse(input, name=None):
 
 def max(x, axis=None, keepdim=False, name=None):
     """
-	:alias_main: paddle.max
-	:alias: paddle.max,paddle.tensor.max,paddle.tensor.math.max
 
     Computes the maximum of tensor elements over the given axis.
 
@@ -1313,8 +1311,6 @@ def max(x, axis=None, keepdim=False, name=None):
 
 def min(x, axis=None, keepdim=False, name=None):
     """
-	:alias_main: paddle.min
-	:alias: paddle.min,paddle.tensor.min,paddle.tensor.math.min
 
     Computes the minimum of tensor elements over the given axis
 
