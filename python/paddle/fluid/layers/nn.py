@@ -938,9 +938,6 @@ def dropout(x,
             name=None,
             dropout_implementation="downgrade_in_infer"):
     """
-    :alias_main: paddle.nn.functional.dropout
-	:alias: paddle.nn.functional.dropout,paddle.nn.functional.common.dropout
-	:old_api: paddle.fluid.layers.dropout
 
     Computes dropout.
 
@@ -949,6 +946,8 @@ def dropout(x,
     training. The dropout operator randomly sets (according to the given dropout
     probability) the outputs of some units to zero, while others are remain
     unchanged.
+
+    ***Warning*** This API is deprecated since 2.0, we recommend to use `paddle.nn.functional.dropout` to achieve the same function.
 
     dropout op can be removed from the program to make the program more efficient.
 
