@@ -3207,7 +3207,7 @@ class Flatten(layers.Layer):
         .. code-block:: python
 
           import paddle
-          from paddle.imperative import to_variable
+          from paddle import to_variable
           import numpy as np
 
           inp_np = np.ones([5, 2, 3, 4]).astype('float32')
