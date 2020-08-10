@@ -218,11 +218,6 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
 endif()
 
-if (APPLE OR WIN32)
-  LIST(REMOVE_ITEM TEST_OPS test_hdfs)
-  LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
-endif()
-
 if(NOT WITH_GPU OR WIN32 OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
@@ -255,6 +250,11 @@ set(TEST_OPS_WITH_GC
   test_slice_op
   test_space_to_depth_op
   test_squared_l2_distance_op)
+
+if (APPLE OR WIN32)
+  LIST(REMOVE_ITEM TEST_OPS test_hdfs)
+  LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
+endif()
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
