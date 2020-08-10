@@ -274,8 +274,10 @@ if(WITH_BOX_PS)
 endif(WITH_BOX_PS)
 
 if(WITH_DISTRIBUTE)
-    list(APPEND third_party_deps extern_gloo)
-
+    if(NOT WIN32 AND NOT APPLE)
+        include(external/gloo)
+        list(APPEND third_party_deps extern_gloo)
+    endif()
     if(WITH_GRPC)
         list(APPEND third_party_deps extern_grpc)
     else()

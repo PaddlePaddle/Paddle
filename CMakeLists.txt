@@ -173,9 +173,9 @@ endif()
 include(cudnn)              # set cudnn libraries, must before configure
 include(third_party)        # download, build, install third_party
 
-if(WITH_DISTRIBUTE)
-    include(external/gloo)
-endif()
+#if(WITH_DISTRIBUTE)
+#    include(external/gloo)
+#endif()
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
