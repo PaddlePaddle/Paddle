@@ -15,7 +15,10 @@
 
 import sys
 import os
-__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
+__all__ = [
+    'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
+    'HeterXpuTrainer'
+]
 
 
 class TrainerDesc(object):
@@ -47,6 +50,43 @@ class TrainerDesc(object):
         self._device_worker = None
         self._program = None
         self._infer = False
+
+    def _set_heter_info(self, ret):
+        #ret = = fu.split_program_by_device(program)
+        #start_list, end_list, send_list, recv_list, program_list = fu.split_program_by_device(program)
+        #if len(start_list) != 3:
+        #    print("start_list len=", len(start_list), " will not set heter info")
+        #    return
+        #for i in start_list[0]:
+        #    self.proto_desc.op_run_start_idx.append(i)
+        #for i in end_list[0]:
+        #    self.proto_desc.op_run_end_idx.append(i)
+        #for i in send_list[0]:
+        #    self.proto_desc.op_run_send_list.append(i)
+        #for i in recv_list[0]:
+        #    self.proto_desc.op_run_recv_list.append(i)
+        if ret is None:
+            return
+        #for i in ret[0]: # start_list[1]:
+        #    self.proto_desc.xpu_start_idx.append(i)
+        self.proto_desc.xpu_start_idx = ret[0]
+
+        #for i in ret[1]:  #end_list[1]:
+        #    self.proto_desc.o_end_idx.append(i)
+        self.proto_desc.xpu_end_idx = ret[1]
+        for i in ret[2]:  # send_list[1]:
+            self.proto_desc.xpu_send_list.append(i)
+        for i in ret[3]:  # recv_list[1]:
+            self.proto_desc.xpu_recv_list.append(i)
+
+        #for i in start_list[2]:
+        #    self.proto_desc.op_run_end_start_idx.append(i)
+        #for i in end_list[2]:
+        #    self.proto_desc.op_run_end_idx.append(i)
+        #for i in send_list[2]:
+        #    self.proto_desc.op_run_end_send_list.append(i)
+        #for i in recv_list[2]:
+        #    self.proto_desc.op_run_end_recv_list.append(i)
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         # convert fetch_info to list
@@ -121,6 +161,10 @@ class TrainerDesc(object):
     def _set_dump_param(self, dump_param):
         for param in dump_param:
             self.proto_desc.dump_param.append(param)
+
+    def _set_worker_places(self, worker_places):
+        for place in worker_places:
+            self.proto_desc.worker_places.append(place)
 
     def _set_thread_barrier(self, thread_barrier):
         self.proto_desc.thread_barrier = thread_barrier
@@ -265,6 +309,30 @@ class DistMultiTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super(DistMultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
+
+
+class HeterXpuTrainer(TrainerDesc):
+    """
+    Implement of HeterXpuTrainer.
+    It's for Distributed training.
+    """
+
+    def __init__(self):
+        super(HeterXpuTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(HeterXpuTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(HeterXpuTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "HeterXpuTrainer"
         if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)

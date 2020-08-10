@@ -19,8 +19,12 @@ import inspect
 
 import gast
 
+from paddle.fluid import core
+from paddle.fluid.framework import Program
+
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
 ORIGI_INFO = "Original information of source code for ast node."
+ORIGI_INFO_MAP = "Original information map of source code."
 
 
 class Location(object):
@@ -63,6 +67,15 @@ class OriginInfo(object):
     def __str__(self):
         return "{} \nsource_code: {}  in function {}\n  ".format(
             self.location, self.source_code, self.function_name)
+
+    def formated_message(self):
+        return '    File "{}", line {}, in {}\n\t{}'.format(
+            self.location.filepath, self.location.lineno, self.function_name,
+            self.source_code.lstrip())
+
+    def as_frame(self):
+        return (self.location.filepath, self.location.lineno,
+                self.function_name, self.source_code.lstrip())
 
 
 class OriginInfoAttacher(gast.NodeTransformer):
@@ -119,7 +132,12 @@ class OriginInfoAttacher(gast.NodeTransformer):
         return self.col_offset + node.col_offset
 
 
-def create_origin_info_map(transformed_node, static_func):
+global_origin_info_map = {}
+
+
+def create_and_update_origin_info_map(transformed_node,
+                                      static_func,
+                                      is_global=True):
     """
     Creates a original information map between transformed static function and original dygraph function.
 
@@ -155,6 +173,10 @@ def create_origin_info_map(transformed_node, static_func):
                 continue
 
         origin_info_map[static_loc] = dygraph_info
+
+    global_origin_info_map.update(origin_info_map)
+    if is_global:
+        return global_origin_info_map
 
     return origin_info_map
 
@@ -234,3 +256,63 @@ def ast_walk(transformed_node, static_node):
                     if isinstance(d_item, gast.AST):
                         transformed_node_list.append(d_item)
                         static_node_list.append(s_item)
+
+
+def update_op_callstack_with_origin_info(program):
+    """
+    Replaces op callstack information about transformed static code with original dygraph code.
+    """
+
+    assert isinstance(program, Program)
+
+    def get_new_op_callstack(callstack):
+        """
+        An example of callstack:
+
+            File "path1/to/file.py", line 10, in func_1
+                y = fluid.layers.fill_constant(x, shape=[1], dtype="int32")
+            File "path2/to/file.py", line 740, in fill_constant
+                stop_gradient=True)
+            File "path3/to/file.py", line 43, in append_op
+              return self.main_program.current_block().append_op(*args, **kwargs)
+            File "path4/to/file.py", line 2811, in append_op
+              attrs=kwargs.get("attrs", None))
+            File "path5/to/file.py", line 1919, in __init__
+              for frame in traceback.extract_stack():
+        """
+
+        assert len(callstack) % 2 == 0
+        for i in range(0, len(callstack), 2):
+
+            file_line = callstack[i].lstrip(" ").split(",")
+
+            filepath = file_line[0][6:-1]
+            lineno = int(file_line[1][6:])
+            funcname = file_line[2][4:]
+            code = callstack[i + 1].lstrip(" ")
+
+            loc = Location(filepath, lineno)
+            dygraph_func_info = global_origin_info_map.get(loc.line_location)
+            if dygraph_func_info:
+                filepath, lineno, funcname, code = \
+                    dygraph_func_info.as_frame()
+
+            callstack[i] = '  File "{}", line {}, in {}'.format(
+                filepath, lineno, funcname)
+            callstack[i + 1] = '    {}'.format(code)
+
+        return callstack
+
+    op_maker = core.op_proto_and_checker_maker
+    callstack_var_name = op_maker.kOpCreationCallstackAttrName()
+
+    for block in program.blocks:
+        for i, op in enumerate(block.ops):
+            if op.has_attr(callstack_var_name):
+                callstack = op.attr(callstack_var_name)
+
+                callstack = get_new_op_callstack(callstack)
+
+                op._set_attr(callstack_var_name, callstack)
+
+    return program

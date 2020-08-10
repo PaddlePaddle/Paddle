@@ -199,7 +199,7 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
-.. math:: out=\sqrt x=x^{1/2}
+.. math:: out=\\sqrt{x}=x^{1/2}
 
 **Note**:
   input value must be greater than or equal to zero.
@@ -211,7 +211,7 @@ Rsqrt Activation Operator.
 
 Please make sure input is legal in case of numeric errors.
 
-$$out = \frac{1}{\sqrt{x}}$$
+$$out = \\frac{1}{\\sqrt{x}}$$
 
 )DOC";
 

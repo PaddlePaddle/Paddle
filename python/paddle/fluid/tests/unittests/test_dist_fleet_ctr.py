@@ -22,7 +22,7 @@ from test_dist_fleet_base import TestFleetBase
 
 class TestDistMnistSync2x2(TestFleetBase):
     def _setup_config(self):
-        self._mode = "sync"
+        self._mode = "async"
         self._reader = "pyreader"
 
     def check_with_place(self,
@@ -84,6 +84,7 @@ class TestDistMnistAsync2x2(TestFleetBase):
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
 
 
+@unittest.skip(reason="Skip unstable ut, reader need to be rewrite")
 class TestDistMnistAsyncDataset2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "async"

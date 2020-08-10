@@ -379,6 +379,30 @@ class DistributedStrategy(object):
             print("WARNING: fuse_all_reduce_ops should have value of bool type")
 
     @property
+    def fuse_grad_size_in_MB(self):
+        return self.strategy.fuse_grad_size_in_MB
+
+    @fuse_grad_size_in_MB.setter
+    def fuse_grad_size_in_MB(self, value):
+        if isinstance(value, int):
+            self.strategy.fuse_grad_size_in_MB = value
+        else:
+            print("WARNING: fuse_grad_size_in_MB should have value of int type")
+
+    @property
+    def _fuse_grad_size_in_TFLOPS(self):
+        return self.strategy.fuse_grad_size_in_TFLOPS
+
+    @_fuse_grad_size_in_TFLOPS.setter
+    def _fuse_grad_size_in_TFLOPS(self, value):
+        if isinstance(value, float):
+            self.strategy.fuse_grad_size_in_TFLOPS = value
+        else:
+            print(
+                "WARNING: fuse_grad_size_in_TFLOPS should have value of float type"
+            )
+
+    @property
     def nccl_comm_num(self):
         return self.strategy.nccl_comm_num
 
@@ -521,6 +545,23 @@ class DistributedStrategy(object):
 
     @property
     def gradient_merge(self):
+        """
+        Gradient Merge, also called as Gradient Accumulation,
+        is a strategy for large batch training. With this strategy,
+        model parameter will not be updated until user-defined steps.
+        For each step, the forward network and the backward network
+        will run to calculate the gradient of model parameters.
+        For every k step, the optimization network will run,
+        applying a specific optimization method (such as SGD, Adam)
+        to model parameters.
+
+        Examples:
+        .. code-block:: python
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.gradient_merge = True
+            strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
+        """
         return self.strategy.gradient_merge
 
     @gradient_merge.setter
@@ -532,6 +573,18 @@ class DistributedStrategy(object):
 
     @property
     def gradient_merge_configs(self):
+        """
+        the key-value configs of distribute_strategy
+        Keys: 
+            k_steps (int): the update period of the parameters
+            avg (bool): whether to average the gradients of each mini-batch,
+                the default value is `True`
+        Example:
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.gradient_merge = True
+            strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
+        """
         return get_msg_dict(self.strategy.gradient_merge_configs)
 
     @gradient_merge_configs.setter
@@ -550,6 +603,15 @@ class DistributedStrategy(object):
             self.strategy.lars = flag
         else:
             print("WARNING: lars should have value of bool type")
+
+    @property
+    def lars_configs(self):
+        return get_msg_dict(self.strategy.lars_configs)
+
+    @lars_configs.setter
+    def lars_configs(self, configs):
+        check_configs_key(self.strategy.lars_configs, configs, "lars_configs")
+        assign_configs_value(self.strategy.lars_configs, configs)
 
     @property
     def lamb(self):

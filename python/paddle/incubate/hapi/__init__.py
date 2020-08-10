@@ -25,6 +25,7 @@ from . import datasets
 from . import distributed
 from . import vision
 from . import text
+from . import utils
 
 from . import device
 from .device import *
@@ -41,6 +42,7 @@ __all__ = [
     'metrics',
     'vision',
     'text',
+    'utils',
 ] + model.__all__ + device.__all__
 
 monkey_patch_layer()

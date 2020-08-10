@@ -17,7 +17,7 @@ import paddle.fluid as fluid
 import math
 import numpy as np
 from paddle.fluid.framework import Variable
-from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 
 
 def sum(input, scope=None):

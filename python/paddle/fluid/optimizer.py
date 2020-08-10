@@ -47,9 +47,8 @@ __all__ = [
     'AdamOptimizer', 'AdamaxOptimizer', 'DpsgdOptimizer',
     'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
     'AdadeltaOptimizer', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer',
-    'RecomputeOptimizer'
+    'LarsMomentumOptimizer', 'LambOptimizer', 'ExponentialMovingAverage',
+    'PipelineOptimizer', 'LookaheadOptimizer', 'RecomputeOptimizer'
 ]
 
 
@@ -784,9 +783,6 @@ class Optimizer(object):
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
-        params_grads, table_param_and_grad, table_optimize_op = \
-            self._process_distribute_lookuptable(params_grads)
-
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
@@ -794,14 +790,10 @@ class Optimizer(object):
             params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
-        params_grads = append_regularization_ops(
-            params_grads, self.regularization, self._param_device_map)
+        params_grads = append_regularization_ops(params_grads,
+                                                 self.regularization)
 
         optimize_ops = self._create_optimization_pass(params_grads)
-        if table_optimize_op is not None:
-            optimize_ops.append(table_optimize_op)
-            params_grads.append(table_param_and_grad)
-
         return optimize_ops
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -5022,6 +5014,12 @@ class GradientMergeOptimizer(object):
         self.inner_optimizer = inner_optimizer
         self.k_steps = k_steps
         self.type = "gradient_merge"
+        self.avg = avg
+
+    def _set_k_steps(self, k_steps):
+        self.k_steps = k_steps
+
+    def _set_avg(self, avg):
         self.avg = avg
 
     def minimize(self,
