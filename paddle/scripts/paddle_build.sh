@@ -926,7 +926,7 @@ set +x
             while ( [ $exec_times -lt 3 ] && [ -n "${failed_test_lists}" ] )
                 do
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //'
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' ）
                     echo "========================================="
                     echo "This is $[$exec_times+1] re-run"
                     echo "========================================="
