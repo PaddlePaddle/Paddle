@@ -246,18 +246,20 @@ def _dygraph_tracer():
     return _dygraph_tracer_
 
 
-def _set_dygraph_tracer_place(place):
-    global _dygraph_current_expected_place_
-    _dygraph_tracer_._expected_place_ = place
-
-
 def _current_expected_place():
     return _dygraph_current_expected_place_
 
 
+def _set_dygraph_tracer_expected_place(place):
+    global _dygraph_tracer_
+    if _dygraph_tracer_ is not None:
+        _dygraph_tracer_._expected_place = place
+
+
 def _set_expected_place(place):
     global _dygraph_current_expected_place_
-    _dygraph_current_expected_place_ = place
+    if _dygraph_current_expected_place_ is not None:
+        _dygraph_current_expected_place_ = place
 
 
 # TODO(zhiqiu): remove this function.

@@ -24,11 +24,10 @@ from .tracer import Tracer
 import logging
 import objgraph
 from ..data_feeder import convert_dtype
-import re
 
 __all__ = [
     'no_grad', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph', 'enabled',
-    'to_variable', 'get_device', 'set_device'
+    'to_variable'
 ]
 
 
@@ -644,67 +643,3 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
                 zero_copy=zero_copy,
                 name=name if name else '')
             return py_var
-
-
-def set_device(device):
-    """
-    This function can determine whether the program is running on the CPU
-    or GPU place.
-    Parameters:
-        device(str): This parameter determines the specific running device.
-            It can be ``cpu`` or ``gpu:0``. When ``device`` is ``cpu``, the
-            program is running on the cpu. When ``device`` is ``gpu``, the
-            program is running ont the gpu.
-    Examples:
-
-     .. code-block:: python
-            
-        import paddle
-        paddle.enable_imperative()
-        paddle.fluid.dygraph.set_device("gpu:0")
-        x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
-        x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
-        data = paddle.stack([x1,x2], axis=1)
-    """
-    lower_device = device.lower()
-    if lower_device == 'cpu':
-        place = core.CPUPlace()
-        framework._set_expected_place(place)
-        framework._set_dygraph_tracer_place(place)
-    else:
-        avaliable_device = ((lower_device == 'cpu') or
-                            re.match(r'gpu:\d+', lower_device))
-        if not avaliable_device:
-            raise ValueError(
-                "The device must be a string which is like 'cpu' or 'gpu:0'")
-        device_info_list = device.split(':', 1)
-        device_id = device_info_list[1]
-        device_id = int(device_id)
-        place = core.CUDAPlace(device_id)
-        framework._set_expected_place(place)
-        framework._set_dygraph_tracer_place(place)
-
-
-def get_device():
-    """
-    This funciton can get the device which is the programming is running.
-
-    Examples:
-
-     .. code-block:: python
-            
-        import paddle
-        paddle.enable_imperative()
-        device = paddle.fluid.dygraph.get_device()
-
-    """
-    device = ''
-    place = framework._current_expected_place()
-    print(place)
-    if isinstance(place, core.CPUPlace):
-        device = 'cpu'
-    else:
-        device_id = place.get_device_id()
-        device = 'gpu:' + str(device_id)
-
-    return device
