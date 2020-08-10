@@ -108,6 +108,7 @@ class _DataLoaderIterBase(object):
         self._use_shared_memory = loader.use_shared_memory
         self._timeout = loader.timeout if loader.timeout > 0 else MP_INDICES_CHECK_INTERVAL
         self._worker_init_fn = loader.worker_init_fn
+        self._pin_memory = loader.pin_memory
 
         # LoDTensorBlockingQueue instance for create_py_reader and a thread
         # to put mini-batch data to self._blocking_queue, mini-batch data
@@ -154,7 +155,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             len(self._places) > 1)
         self._reader = core.create_py_reader(
             self._blocking_queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_buffer_reader, True)
+            self._need_check_feed, self._places, self._use_buffer_reader, True,
+            self._pin_memory)
 
         self._thread = threading.Thread(target=self._thread_loop)
         self._thread.daemon = True
@@ -307,7 +309,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             core.Variable(), self._outstanding_capacity, len(self._places) > 1)
         self._reader = core.create_py_reader(
             self._blocking_queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_buffer_reader, True)
+            self._need_check_feed, self._places, self._use_buffer_reader, True,
+            self._pin_memory)
 
         self._thread_done_event = threading.Event()
         self._thread = threading.Thread(target=self._thread_loop)
