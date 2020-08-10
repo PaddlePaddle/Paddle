@@ -21,7 +21,7 @@ from ..fluid import layers
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from ..fluid.layers.layer_function_generator import _generate_doc_string_
+from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn
 import sys
 
 # TODO: define math functions
@@ -59,6 +59,9 @@ from ..fluid.layers import square    #DEFINE_ALIAS
 from ..fluid.layers import stanh    #DEFINE_ALIAS
 from ..fluid.layers import atan    #DEFINE_ALIAS
 from ..fluid.layers import erf    #DEFINE_ALIAS
+from ..fluid.layers import sqrt    #DEFINE_ALIAS
+from ..fluid.layers import sin    #DEFINE_ALIAS
+from ..fluid.layers import tanh    #DEFINE_ALIAS
 
 from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
@@ -123,67 +126,7 @@ __all__ = [
         'trace',
         'kron'
 ]
-
-
 # yapf: enable.
-
-
-def generate_op_noattr(op_type):
-    """Register the Python layer for an Operator without Attribute..
-
-    Args:
-       op_type: The name of the operator to be created.
-
-    This function takes in the operator type (sin, tanh etc) and
-    creates the operator functionality.
-
-    """
-    op_proto = OpProtoHolder.instance().get_op_proto(op_type)
-
-    def func(x, name=None):
-        if in_dygraph_mode():
-            op = getattr(core.ops, op_type)
-            return op(x)
-
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
-        helper = LayerHelper(op_type, **locals())
-
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": out})
-        return out
-
-    func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(
-        op_proto,
-        additional_args_lines=[
-            "name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.\n    "
-            "out(Variable, optional): The default value is None. Optional output can be any created Variable that meets the requirements to store the result of operation. if out is None, a new Varibale will be create to store the result."
-        ])
-    func.__doc__ = func.__doc__ + """
-
-Return type
-  Variable
-Examples:
-    .. code-block:: python
-
-        import numpy as np
-
-        import paddle
-        import paddle.fluid as fluid
-
-        inputs = fluid.data(name="x", shape = [None, 4], dtype='float32')
-        output = paddle.%s(inputs)
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
-
-        #input.shape=1X4, batch_size=1
-        img = np.array([[1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
-        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-        print(res)
-""" % op_type
-    return func
 
 @templatedoc()
 def pow(input, exponent, name=None):
@@ -243,17 +186,6 @@ def pow(input, exponent, name=None):
     helper.append_op(
         type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
-
-
-__ops__noattr__ = [
-    'atan',
-    'sin',
-    'sqrt',
-    'tanh',
-]
-
-for _OP in set(__ops__noattr__):
-    globals()[_OP] = generate_op_noattr(_OP)
 
 
 @dygraph_only
@@ -609,7 +541,7 @@ for func in [
         op_proto,
         additional_args_lines=additional_args_lines,
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
-            "use_quantizer", "Scale_x", "Scale_y", "Scale_out"
+            "use_quantizer", "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
 
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
@@ -915,7 +847,7 @@ def mm(input, mat2, name=None):
     return out
 
 
-def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
+def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
 	:alias_main: paddle.addmm
 	:alias: paddle.addmm,paddle.tensor.addmm,paddle.tensor.math.addmm
@@ -935,8 +867,8 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
         input (Variable): The input Tensor/LoDTensor to be added to the final result.
         x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
         y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
-        alpha (float): Coefficient of $x*y$.
         beta (float): Coefficient of $input$.
+        alpha (float): Coefficient of $x*y$.
         name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -947,25 +879,43 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
-
-            input = fluid.data(name='input', shape=[2, 2], dtype='float32')
-            x = fluid.data(name='x', shape=[2, 2], dtype='float32')
-            y = fluid.data(name='y', shape=[2, 2], dtype='float32')
-            out = paddle.addmm( input=input, x=x, y=y, alpha=5.0, beta=0.5 )
 
             data_x = np.ones((2, 2)).astype(np.float32)
             data_y = np.ones((2, 2)).astype(np.float32)
             data_input = np.ones((2, 2)).astype(np.float32)
 
-            place =  fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            results = exe.run(fluid.default_main_program(),
-                              fetch_list=[out], feed={"input": data_input, 'x': data_x, "y": data_y})
-            print( np.array(results[0]) )
+            paddle.enable_imperative()
+
+            x = paddle.imperative.to_variable(data_x)
+            y = paddle.imperative.to_variable(data_y)
+            input = paddle.imperative.to_variable(data_input)
+
+            out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
+
+            print( out.numpy() )
             # [[10.5 10.5]
             # [10.5 10.5]]
     """
+    input_shape = input.shape
+    x_shape = x.shape
+    y_shape = y.shape
+    if not len(input_shape) == len(x_shape) == len(y_shape) == 2:
+        raise ValueError("The dimention of input, x, y should be 2 but receive input's shape: {}, x's shape: {}, y's shape: {}".format(input_shape, x_shape, y_shape))
+    if input_shape[0] != x_shape[0]:
+        if input_shape[0] != 1:
+            raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+        if input_shape[1] != y_shape[1] and input_shape[1] != 1:
+            raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+    if input_shape[1] != y_shape[1]:
+        if input_shape[1] != 1:
+            raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+        if input_shape[0] != x_shape[0] and input_shape[0] != 1:
+            raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+    if x_shape[1] != y_shape[0]:
+        raise ValueError("The input Variable x's width must be equal with Variable y' height. But received x's shape = {}, y's shape = {}.".format(x_shape, y_shape))
+
+
+
     if in_dygraph_mode():
         out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
         return out
@@ -974,7 +924,7 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
     attrs = {'Alpha': alpha, 'Beta': beta}
 
     helper = LayerHelper("addmm", **locals())
-    check_variable_and_dtype(x, 'Input', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(input, 'Input', ['float32', 'float64'], 'addmm')
     check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
     check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
