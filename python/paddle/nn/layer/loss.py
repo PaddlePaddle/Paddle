@@ -615,11 +615,9 @@ class NLLLoss(fluid.dygraph.Layer):
 
 class MarginRankingLoss(fluid.dygraph.Layer):
     """
-	:alias_main: paddle.nn.MarginRankingLoss
-	:alias: paddle.nn.MarginRankingLoss,paddle.nn.layer.MarginRankingLoss,paddle.nn.layer.loss.MarginRankingLoss
 
     This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
-    The MarginRankingLoss layer calculates the margin rank Loss between the input x, y  and target 
+    The MarginRankingLoss layer calculates the margin rank loss between the input x, y and target 
     labels, use the math function as follows.
     .. math:: 
         margin_rank_loss = max(0, -label * (left - right) + margin)
@@ -646,10 +644,10 @@ class MarginRankingLoss(fluid.dygraph.Layer):
             Default is ``'mean'``.
 
     Shape: 
-        x: :math:`(N, D)` where `D` is the dimension of vector, available dtypeis float32, float64.
-        y: :math:`(N, D)`, y have the same shape and dtype as `x`.
-        label: :math:`(N, D)`, label have the same shape and dtype as `x`.
-        out: :math:`(N)`. If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`(1)`,
+        x: :math:`(N, *)` where N is batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
+        y: :math:`(N, *)`, y have the same shape and dtype as `x`.
+        label: :math:`(N, *)`, label have the same shape and dtype as `x`.
+        out: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`(1)`,
             otherwise the shape is the same as input `x` .The same dtype as input tensor.
 
     Returns:
