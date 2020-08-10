@@ -445,7 +445,6 @@ class TestNLLLoss(unittest.TestCase):
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
-        #place = fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
                 name='input', shape=[5, 3, 5, 5], dtype='float64')
@@ -478,6 +477,18 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_result, expected))
         self.assertTrue(np.allclose(static_result, dy_result))
         self.assertTrue(np.allclose(dy_result, expected))
+
+    def test_NLLLoss_name(self):
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(name='input', shape=[10, 10], dtype='float64')
+            label = fluid.data(name='label', shape=[10], dtype='int64')
+            nll_loss = paddle.nn.loss.NLLLoss(name='nll_loss')
+            res = nll_loss(input, label)
+            self.assertTrue(res.name.startswith('nll_loss'))
 
     def test_NLLLoss_in_dims_not_2or4_mean(self):
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
