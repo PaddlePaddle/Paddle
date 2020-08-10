@@ -68,6 +68,19 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         ops = [op.type for op in avg_cost.block.ops]
         self.assertNotIn('lamb', ops)
 
+    def test_lamb_exclude_fn(self):
+        avg_cost, strategy = self.net()
+        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
+        strategy.lamb_configs['exclude_from_weight_decay'] = ['.b_0']
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize(avg_cost)
+
+        for op in avg_cost.block.ops:
+            print(op.type)
+            print(op)
+        # ops = [op.type for op in avg_cost.block.ops]
+        # self.assertIn('lamb', ops)
+
 
 if __name__ == "__main__":
     unittest.main()
