@@ -63,18 +63,104 @@ class TestAddMMOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of addmm_op must be Variable.
+
             input = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
+                np.array([[-1, -1], [-1, -1]]), [[2]], fluid.CPUPlace())
             x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
+                np.array([[-1, -1], [-1, -1]]), [[2]], fluid.CPUPlace())
             x2 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
+                np.array([[-1, -1], [-1, -1]]), [[2]], fluid.CPUPlace())
             self.assertRaises(TypeError, paddle.addmm, input, x1, x2)
+
             # The input dtype of mul_op must be float32 or float64.
-            input = fluid.layers.data(name='input', shape=[4], dtype="int32")
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="int32")
-            x4 = fluid.layers.data(name='x4', shape=[4], dtype="int32")
+            input = fluid.layers.data(
+                name='input',
+                shape=[4, 4],
+                dtype="int32",
+                append_batch_size=False)
+            x3 = fluid.layers.data(
+                name='x3', shape=[4, 4], dtype="int32", append_batch_size=False)
+            x4 = fluid.layers.data(
+                name='x4', shape=[4, 4], dtype="int32", append_batch_size=False)
             self.assertRaises(TypeError, paddle.addmm, input, x3, x4)
+            # x and y dimension mismatch
+            x5 = fluid.layers.data(
+                name='x5',
+                shape=[4, 5],
+                dtype="float32",
+                append_batch_size=False)
+            x6 = fluid.layers.data(
+                name='x6',
+                shape=[4, 4],
+                dtype="float32",
+                append_batch_size=False)
+            self.assertRaises(ValueError, paddle.addmm, input, x5, x6)
+            # input and x are not broadcastable
+            x7 = fluid.layers.data(
+                name='x7',
+                shape=[4, 4],
+                dtype="float32",
+                append_batch_size=False)
+            x8 = fluid.layers.data(
+                name='x8',
+                shape=[4, 4],
+                dtype="float32",
+                append_batch_size=False)
+            input1 = fluid.layers.data(
+                name='input1',
+                shape=[2, 4],
+                dtype="float32",
+                append_batch_size=False)
+            self.assertRaises(ValueError, paddle.addmm, input1, x7, x8)
+            # input and x are not broadcastable
+            x9 = fluid.layers.data(
+                name='x9',
+                shape=[4, 4],
+                dtype="float32",
+                append_batch_size=False)
+            x10 = fluid.layers.data(
+                name='x10',
+                shape=[4, 4],
+                dtype="float32",
+                append_batch_size=False)
+            input2 = fluid.layers.data(
+                name='input2',
+                shape=[1, 2],
+                dtype="float32",
+                append_batch_size=False)
+            self.assertRaises(ValueError, paddle.addmm, input2, x9, x10)
+            x11 = fluid.layers.data(
+                name='x11',
+                shape=[4, 4],
+                dtype="float32",
+                append_batch_size=False)
+            x12 = fluid.layers.data(
+                name='x12',
+                shape=[4, 4],
+                dtype="float32",
+                append_batch_size=False)
+            input3 = fluid.layers.data(
+                name='input3',
+                shape=[4, 2],
+                dtype="float32",
+                append_batch_size=False)
+            self.assertRaises(ValueError, paddle.addmm, input3, x11, x12)
+            x13 = fluid.layers.data(
+                name='x13',
+                shape=[4, 4],
+                dtype="float32",
+                append_batch_size=False)
+            x14 = fluid.layers.data(
+                name='x14',
+                shape=[4, 4],
+                dtype="float32",
+                append_batch_size=False)
+            input4 = fluid.layers.data(
+                name='input4',
+                shape=[3, 1],
+                dtype="float32",
+                append_batch_size=False)
+            self.assertRaises(ValueError, paddle.addmm, input4, x13, x14)
 
 
 class TestAddMMOp2(TestAddMMOp):
@@ -146,6 +232,24 @@ class TestAddMMOp4(unittest.TestCase):
             out = paddle.tensor.addmm(input, x, y)
             assert np.allclose(np_input + np.dot(np_x, np_y), out.numpy())
 
+
+'''
+class TestAddMMAPI(unittest.TestCase):
+    def test_api_error(self):
+        data_x = np.ones((2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2)).astype(np.float32)
+
+        paddle.enable_imperative()
+
+        def test_error1():
+            data_x_wrong = np.ones((2, 3)).astype(np.float32)
+            x = paddle.imperative.to_variable(data_x_wrong)
+            y = paddle.imperative.to_variable(data_y)
+            input = paddle.imperative.to_variable(data_input)
+            out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
+        self.assertRaises(ValueError, test_error1)
+'''
 
 if __name__ == "__main__":
     unittest.main()

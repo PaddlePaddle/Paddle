@@ -16,6 +16,7 @@ TestCases for Monitor
 """
 
 from __future__ import print_function
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
@@ -51,7 +52,8 @@ class TestDatasetWithStat(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
         dataset.set_filelist([

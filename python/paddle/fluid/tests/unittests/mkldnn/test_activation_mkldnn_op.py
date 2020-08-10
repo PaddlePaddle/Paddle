@@ -30,16 +30,8 @@ class TestMKLDNNReluDim2(TestRelu):
 
         self.attrs = {"use_mkldnn": True}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
@@ -48,16 +40,8 @@ class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
 
         self.attrs = {"use_mkldnn": True}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNGeluDim2(TestActivation):
@@ -92,16 +76,8 @@ class TestMKLDNNTanhDim2(TestTanh):
 
         self.attrs = {"use_mkldnn": True}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNSqrtDim2(TestSqrt):
@@ -110,16 +86,8 @@ class TestMKLDNNSqrtDim2(TestSqrt):
 
         self.attrs = {"use_mkldnn": True}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNAbsDim2(TestAbs):
@@ -127,16 +95,8 @@ class TestMKLDNNAbsDim2(TestAbs):
         super(TestMKLDNNAbsDim2, self).setUp()
         self.attrs = {"use_mkldnn": True}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNSwishDim2(TestSwish):
@@ -151,15 +111,8 @@ class TestMKLDNNSwishDim2(TestSwish):
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "beta": beta}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output()
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(['X'], 'Out')
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNSigmoidDim2(TestSigmoid):
@@ -181,16 +134,8 @@ class TestMKLDNNReluDim4(TestRelu):
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
@@ -206,16 +151,8 @@ class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNGeluDim4(TestActivation):
@@ -254,17 +191,6 @@ class TestMKLDNNTanhDim4(TestTanh):
         self.outputs = {'Out': np.tanh(self.inputs['X'])}
         self.attrs = {"use_mkldnn": True}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
-
 
 class TestMKLDNNSqrtDim4(TestSqrt):
     def setUp(self):
@@ -275,17 +201,6 @@ class TestMKLDNNSqrtDim4(TestSqrt):
         }
         self.outputs = {'Out': np.sqrt(self.inputs['X'])}
         self.attrs = {"use_mkldnn": True}
-
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 class TestMKLDNNAbsDim4(TestAbs):
@@ -299,23 +214,15 @@ class TestMKLDNNAbsDim4(TestAbs):
         self.outputs = {'Out': np.abs(self.inputs['X'])}
         self.attrs = {"use_mkldnn": True}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNSwishDim4(TestSwish):
     def setUp(self):
         super(TestMKLDNNSwishDim4, self).setUp()
 
-        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         beta = 2.3
         out = x * expit(beta * x)
 
@@ -323,15 +230,8 @@ class TestMKLDNNSwishDim4(TestSwish):
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "beta": beta}
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output()
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(['X'], 'Out')
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNSigmoidDim4(TestSigmoid):

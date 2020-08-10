@@ -54,7 +54,6 @@ class TestStrategyConfig(unittest.TestCase):
         configs = {"checkpoints": ["x", "y"]}
         strategy.recompute_configs = configs
         self.assertEqual(len(strategy.recompute_configs["checkpoints"]), 2)
-        print(strategy.recompute_configs)
 
     def test_pipeline(self):
         strategy = paddle.fleet.DistributedStrategy()
@@ -144,6 +143,20 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.fuse_all_reduce_ops, False)
         strategy.fuse_all_reduce_ops = "True"
         self.assertEqual(strategy.fuse_all_reduce_ops, False)
+
+    def test_fuse_grad_size_in_MB(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.fuse_grad_size_in_MB = 50
+        self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
+        strategy.fuse_grad_size_in_MB = "40"
+        self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
+
+    def test_fuse_grad_size_in_TFLOPS(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy._fuse_grad_size_in_TFLOPS = 0.1
+        self.assertGreater(strategy._fuse_grad_size_in_TFLOPS, 0.09)
+        strategy._fuse_grad_size_in_TFLOPS = "0.3"
+        self.assertGreater(strategy._fuse_grad_size_in_TFLOPS, 0.09)
 
     def test_gradient_merge(self):
         strategy = paddle.fleet.DistributedStrategy()

@@ -40,7 +40,8 @@ class MetaOptimizerBase(object):
             return True
 
     def _disable_strategy(self, dist_strategy):
-        raise NotImplementedError("you should implement disable strategy")
+        raise NotImplementedError("you should implement disable strategy in {}".
+                                  format(type(self).__name__))
 
     def minimize_impl(self,
                       loss,
