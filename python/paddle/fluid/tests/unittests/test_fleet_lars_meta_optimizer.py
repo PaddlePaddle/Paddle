@@ -15,7 +15,7 @@
 import unittest
 import paddle
 import os
-import paddle.fleet as fleet
+import paddle.distributed.fleet as fleet
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
@@ -41,7 +41,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
             input=prediction, label=input_y)
         avg_cost = paddle.fluid.layers.mean(x=cost)
 
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.lars = True
         strategy.lars_configs = {
             "lars_coeff": 0.001,
