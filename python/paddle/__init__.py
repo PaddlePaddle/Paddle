@@ -197,6 +197,7 @@ from .tensor.search import has_nan  #DEFINE_ALIAS
 # from .tensor.search import masked_select        #DEFINE_ALIAS
 from .tensor.search import topk  #DEFINE_ALIAS
 from .tensor.search import where  #DEFINE_ALIAS
+from .tensor.search import where_zkl  #DEFINE_ALIAS
 from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS

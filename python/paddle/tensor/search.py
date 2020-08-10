@@ -32,6 +32,7 @@ __all__ = [
     #       'masked_select',
     'topk',
     'where',
+    'where_zkl',
     'index_select',
     'nonzero',
     'sort',
@@ -529,6 +530,77 @@ def where(condition, x, y, name=None):
         out2 = layers.elementwise_mul(y, cond_not_int)
         out = layers.elementwise_add(out1, out2)
         return out
+
+
+def where_zkl(condition, x, y, name=None):
+    """
+	:alias_main: paddle.where
+	:alias: paddle.where,paddle.tensor.where,paddle.tensor.search.where
+
+    Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
+
+    .. math::
+
+      out_i =
+      \\begin{cases}
+      x_i, \quad  \\text{if}  \\ condition_i \\  is \\ True \\\\
+      y_i, \quad  \\text{if}  \\ condition_i \\  is \\ False \\\\
+      \\end{cases}
+
+
+    Args:
+        condition(Variable): The condition to choose x or y.
+        x(Variable): x is a Tensor Variable with data type float32, float64, int32, int64.
+        y(Variable): y is a Tensor Variable with data type float32, float64, int32, int64.
+
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: A Tensor with the same data dype as x. 
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+          import paddle.fluid as fluid
+
+          x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
+          y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
+
+          with fluid.dygraph.guard():
+              x = fluid.dygraph.to_variable(x_i)
+              y = fluid.dygraph.to_variable(y_i)
+              out = paddle.where(x>1, x, y)
+
+          print(out.numpy())
+          #out: [1.0, 1.0, 3.2, 1.2]
+    """
+    if not in_dygraph_mode():
+        check_variable_and_dtype(condition, 'condition', ['bool'], 'where_zkl')
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'where_zkl')
+        check_variable_and_dtype(
+            y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where_zkl')
+
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if x_shape == y_shape:
+        if in_dygraph_mode():
+            return core.ops.where_zkl(condition, x, y)
+        else:
+            helper = LayerHelper("where_zkl", **locals())
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+            helper.append_op(
+                type='where_zkl',
+                inputs={'Condition': condition,
+                        'X': x,
+                        'Y': y},
+                outputs={'Out': [out]})
+            return out
 
 
 def index_sample(x, index):
