@@ -22,6 +22,8 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 import paddle
 
+np.random.seed(10)
+
 
 def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
@@ -225,10 +227,7 @@ class TestNnFunctionalSoftmaxApi(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
-        self.x_np = np.array([[[2.0, 3.0, 4.0, 5.0], [3.0, 4.0, 5.0, 6.0],
-                               [7.0, 8.0, 8.0, 9.0]],
-                              [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
-                               [6.0, 7.0, 8.0, 9.0]]], 'float32')
+        self.x_np = np.random.uniform(-1., 1., [2, 3, 4, 5]).astype('float32')
         self.out_ref = np.apply_along_axis(stable_softmax, -1, self.x_np)
 
     def test_api_static(self):

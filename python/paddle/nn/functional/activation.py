@@ -384,8 +384,9 @@ def softmax(x, axis=-1, name=None):
     Args:
         x (Tensor): The input multi-dimension Tensor with data type float32, float64.
         axis (int, optional): The axis along which to perform softmax calculations.
-            It should be in range [-R, R), where R is Rank(x). When ``axis`` < 0,
-            it works the same way as :math:`axis + R` . Default is -1.
+            It should be in range [-D, D), where D is the dimensions of ``x`` .
+            When ``axis`` < 0, it works the same way as :math:`axis + D` .
+            Default is -1.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
