@@ -121,6 +121,7 @@ class AutoCheckpointBase(unittest.TestCase):
         unique_name.generator = fluid.unique_name.UniqueNameGenerator()
         acp.generator = fluid.unique_name.UniqueNameGenerator()
         acp.g_acp_type = None
+        dacp.g_ranges = {}
         acp.g_checker = acp.AutoCheckpointChecker()
         acp.g_program_attr = {}
 
