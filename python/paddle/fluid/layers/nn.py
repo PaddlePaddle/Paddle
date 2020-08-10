@@ -79,6 +79,7 @@ __all__ = [
     'group_norm',
     'spectral_norm',
     'smooth_l1',
+    'smooth_l1_v2',
     'one_hot',
     'autoincreased_step_counter',
     'reshape',
@@ -5818,6 +5819,82 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     loss = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='smooth_l1_loss',
+        inputs={
+            'X': x,
+            'Y': y,
+            'InsideWeight': inside_weight,
+            'OutsideWeight': outside_weight
+        },
+        outputs={'Diff': diff,
+                 'Out': loss},
+        attrs={'sigma': sigma if sigma is not None else 1.0})
+    return loss
+
+
+def smooth_l1_v2(x, y, inside_weight=None, outside_weight=None, sigma=None):
+    """
+    :alias_main: paddle.nn.functional.smooth_l1_v2
+	:alias: paddle.nn.functional.smooth_l1_v2,paddle.nn.functional.loss.smooth_l1_v2
+	:old_api: paddle.fluid.layers.smooth_l1_v2
+
+    This layer computes the smooth L1 loss for Variable :attr:`x` and :attr:`y`.
+    It takes the first dimension of :attr:`x` and :attr:`y` as batch size.
+    For each instance, it computes the smooth L1 loss element by element first
+    and then sums all the losses. So the shape of output Variable is
+    [batch_size, 1].
+
+    Args:
+        x (Variable): A tensor with rank at least 2. The input value of smooth
+            L1 loss op with shape [batch_size, dim1, ..., dimN].
+            A LoDTensor or Tensor with type float32.
+        y (Variable): A tensor with rank at least 2. The target value of smooth
+            L1 loss op with same shape as :attr:`x`.
+            A LoDTensor or Tensor with type float32.
+        inside_weight (Variable|None):  A tensor with rank at least 2. This
+            input is optional and should have same shape with :attr:`x`. If
+            provided, the result of (:attr:`x` - :attr:`y`) will be multiplied
+            by this tensor element by element.
+            A Tensor with type float32.
+        outside_weight (Variable|None): A tensor with rank at least 2. This
+            input is optional and should have same shape with :attr:`x`. If
+            provided, the out smooth L1 loss will be multiplied by this tensor
+            element by element.
+            A Tensor with type float32.
+        sigma (float|None): Hyper parameter of smooth L1 loss layer. A float
+           scalar with default value 1.0.
+
+    Returns:
+        Variable: The output smooth L1 loss shape is the same as the shape of x(input).  A Tensor with type float32.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            data = fluid.data(name="x", shape=[-1, 3], dtype="float32")
+            label = fluid.data(name="y", shape=[-1, 3], dtype="float32")
+            result = fluid.layers.smooth_l1_v2(data,label)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3,3).astype("float32")
+            y = np.random.rand(3,3).astype("float32")
+            output= exe.run(feed={"x":x, "y":y},
+                             fetch_list=[result])
+            print(output)
+
+    """
+    check_variable_and_dtype(x, 'X', ['float32', 'float64'],
+                             'smooth_l1_loss_v2')
+    check_variable_and_dtype(y, 'Y', ['float32', 'float64'],
+                             'smooth_l1_loss_v2')
+
+    helper = LayerHelper('smooth_l1_loss_v2', **locals())
+
+    diff = helper.create_variable_for_type_inference(dtype=x.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='smooth_l1_loss_v2',
         inputs={
             'X': x,
             'Y': y,

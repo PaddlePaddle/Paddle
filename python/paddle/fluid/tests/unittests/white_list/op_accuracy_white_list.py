@@ -65,6 +65,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'shuffle_channel', \
     'sigmoid', \
     'smooth_l1_loss', \
+    'smooth_l1_loss_v2', \
     'softmax', \
     'spectral_norm', \
     'squared_l2_distance', \
