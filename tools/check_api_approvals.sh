@@ -312,8 +312,8 @@ DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_gr
 PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_PR.spec
 ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC} ${PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC}` 
 if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
-  echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n" 
-  check_approval 1 32832641 6836917
+  echo_line="You must have one RD (zhiqiu (Recommend) or luotao1) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n" 
+  check_approval 1 6888866 6836917
 fi
 
 # Get the list of PR authors with unresolved unit test issues
