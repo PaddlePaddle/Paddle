@@ -38,6 +38,7 @@ class TestDirectory(unittest.TestCase):
             'paddle.enable_static', 'paddle.disable_static',
             'paddle.in_dynamic_mode', 'paddle.to_variable', 'paddle.grad',
             'paddle.no_grad', 'paddle.save', 'paddle.load',
+            'paddle.static.save', 'paddle.static.load',
             'paddle.BackwardStrategy', 'paddle.ParallelEnv',
             'paddle.prepare_context', 'paddle.DataParallel', 'paddle.jit',
             'paddle.jit.TracedLayer', 'paddle.jit.to_static',
