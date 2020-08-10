@@ -213,6 +213,12 @@ class Pod(object):
         r = r[:-1]
         return r
 
+    def get_trainer(self, trainer_id):
+        for trainer in self.trainers:
+            if trainer.rank == trainer_id:
+                return trainer
+        return None
+
 
 def get_logger(log_level, name="root"):
     logger = logging.getLogger(name)

@@ -22,7 +22,7 @@ import six
 import sys
 
 import paddle.fluid as fluid
-from paddle.distributed.launch import get_cluster_and_pod
+from paddle.distributed.launch import get_cluster_and_pod, _print_arguments
 
 
 def _py_version_check():
@@ -40,6 +40,7 @@ class ParallelEnvArgs(object):
         self.node_ip = None
         self.use_paddlecloud = None
         self.started_port = None
+        self.print_config = True
         self.selected_gpus = None
 
 
@@ -94,33 +95,39 @@ def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
     args.node_ip = kwargs.get('node_ip', "127.0.0.1")
     args.use_paddlecloud = kwargs.get('use_paddlecloud', "False")
     args.started_port = kwargs.get('started_port', None)
+    args.print_config = kwargs.get('print_config', True)
     args.selected_gpus = ",".join(
         [str(g) for g in [x for x in range(0, trainer_num)]])
 
     # reuse code of launch.py
     cluster, pod = get_cluster_and_pod(args)
 
-    # copy env & remove useless env vars
+    # remove useless env vars
     os.environ.pop("http_proxy", None)
     os.environ.pop("https_proxy", None)
 
-    # prepare env var
+    # update env vars
+    if trainer_num != cluster.trainers_nranks():
+        raise RuntimeError(
+            "The number of trainers does not meet expectations, expected number is %d, but actual number is %d."
+            % (trainer_num, cluster.trainers_nranks()))
+    trainer = pod.get_trainer(trainer_id)
+    if trainer is None:
+        raise RuntimeError(
+            "The expected trainer is not exists, its trainer id is %d" %
+            trainer_id)
+    proc_env = {
+        "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in trainer.gpus]),
+        "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+        "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+        "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+        "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+    }
+    os.environ.update(proc_env)
 
-    assert trainer_num == cluster.trainers_nranks(
-    ), "trainer number parse error."
-    for trainer in pod.trainers:
-        if trainer.rank == trainer_id:
-            proc_env = {
-                "FLAGS_selected_gpus":
-                "%s" % ",".join([str(g) for g in trainer.gpus]),
-                "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-                "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
-                "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-                "PADDLE_TRAINER_ENDPOINTS":
-                ",".join(cluster.trainers_endpoints())
-            }
-            os.environ.update(proc_env)
-            break
+    # print config
+    if args.print_config and trainer_id == 0:
+        _print_arguments(args)
 
 
 def _func_wrapper(func, i, args, error_queue):
