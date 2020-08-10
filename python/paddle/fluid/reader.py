@@ -48,6 +48,7 @@ __all__ = ['PyReader', 'DataLoader', 'default_collate_fn']
 data_loader_unique_name_generator = UniqueNameGenerator()
 
 KEEP_DATA_LOADER_ORDER = True
+USE_PINNED_MEMORY = None
 
 
 def keep_data_loader_order(*args):
@@ -57,6 +58,15 @@ def keep_data_loader_order(*args):
     else:
         assert len(args) == 1 and isinstance(args[0], bool)
         KEEP_DATA_LOADER_ORDER = args[0]
+
+
+def use_pinned_memory(*args):
+    global USE_PINNED_MEMORY
+    if len(args) == 0:
+        return USE_PINNED_MEMORY
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        USE_PINNED_MEMORY = args[0]
 
 
 def _convert_places(places):
@@ -355,6 +365,11 @@ class DataLoader(object):
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last)
+
+        self.pin_memory = False
+        if in_dygraph_mode():
+            self.pin_memory = True if use_pinned_memory(
+            ) is None else use_pinned_memory()
 
     def __len__(self):
         return len(self.batch_sampler)
@@ -714,6 +729,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
         # mode, this thread is used to get next batch data from self._batch_reader, then 
         # push it into self._blocking_queue
         self._thread = None
+        self._pin_memory = True if use_pinned_memory(
+        ) is None else use_pinned_memory()
 
     @property
     def queue(self):
@@ -759,7 +776,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._reader = None
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_double_buffer, True)
+            self._need_check_feed, self._places, self._use_double_buffer, True,
+            self._pin_memory)
 
     def _start(self):
         if self._use_multiprocess:
@@ -999,7 +1017,7 @@ class GeneratorLoader(DataLoaderBase):
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_double_buffer,
-            self._drop_last)
+            self._drop_last, True)
 
     def _init_non_iterable(self):
         lod_levels = []
