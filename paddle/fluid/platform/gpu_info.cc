@@ -206,7 +206,6 @@ std::vector<int> GetSelectedDevices() {
 
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
-  VLOG(0) << "settting: " << id;
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(),
                     platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
