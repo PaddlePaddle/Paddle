@@ -33,6 +33,7 @@ limitations under the License. */
 #include <curand.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
+
 #include "paddle/fluid/platform/cuda_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
@@ -68,6 +69,8 @@ limitations under the License. */
 // Note: these headers for simplify demangle type string
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
+
+DECLARE_int32(call_stack_level);
 
 namespace paddle {
 namespace platform {
@@ -226,9 +229,7 @@ inline std::string SimplifyDemangleStr(std::string str) {
   return str;
 }
 
-template <typename StrType>
-inline std::string GetTraceBackString(StrType&& what, const char* file,
-                                      int line) {
+inline std::string GetCurrentTraceBackString() {
   static constexpr int TRACE_STACK_LIMIT = 100;
   std::ostringstream sout;
 
@@ -256,12 +257,30 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 #else
   sout << "Windows not support stack backtrace yet.\n";
 #endif
+  return sout.str();
+}
+
+template <typename StrType>
+inline std::string GetErrorSumaryString(StrType&& what, const char* file,
+                                        int line) {
+  std::ostringstream sout;
   sout << "\n----------------------\nError Message "
           "Summary:\n----------------------\n";
   sout << string::Sprintf("%s at (%s:%d)", std::forward<StrType>(what), file,
                           line)
        << std::endl;
   return sout.str();
+}
+
+template <typename StrType>
+inline std::string GetTraceBackString(StrType&& what, const char* file,
+                                      int line) {
+  if (FLAGS_call_stack_level > 1) {
+    // FLAGS_call_stack_level>1 means showing c++ call stack
+    return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
+  } else {
+    return GetErrorSumaryString(what, file, line);
+  }
 }
 
 inline bool is_error(bool stat) { return !stat; }
@@ -427,7 +446,7 @@ struct EnforceNotMet : public std::exception {
  *
  * Examples:
  *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
-*/
+ */
 #define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                   \
   (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {          \
     auto* __ptr = (__PTR);                                                  \
@@ -463,7 +482,7 @@ struct EnforceNotMet : public std::exception {
  *
  * Examples:
  *    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
-*/
+ */
 #define OP_INOUT_CHECK(__EXPR, __ROLE, __NAME, __OP_TYPE)                   \
   do {                                                                      \
     PADDLE_ENFORCE_EQ(__EXPR, true, paddle::platform::errors::NotFound(     \
@@ -491,7 +510,7 @@ struct EnforceNotMet : public std::exception {
  * Note: GCC 4.8 cannot select right overloaded function here, so need
  *    to define different functions and macros here, after we upgreade
  *    CI gcc version, we can only define one BOOST_GET macro.
-*/
+ */
 namespace details {
 
 #define DEFINE_SAFE_BOOST_GET(__InputType, __OutputType, __OutputTypePtr,      \

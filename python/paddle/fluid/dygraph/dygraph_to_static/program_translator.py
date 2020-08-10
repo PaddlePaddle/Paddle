@@ -37,6 +37,7 @@ from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info, create_and_update_origin_info_map
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import update_op_callstack_with_origin_info
 from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data, ERROR_DATA
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
@@ -304,6 +305,8 @@ class ConcreteProgram(object):
                                   (tuple, list)) and outputs is not None:
                     outputs = [outputs]
 
+        main_program = update_op_callstack_with_origin_info(main_program)
+
         return ConcreteProgram(
             inputs=inputs,
             outputs=outputs,
@@ -516,7 +519,7 @@ class ProgramTranslator(object):
             # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
             if not hasattr(e, ERROR_DATA):
                 # runtime error
-                attach_error_data(e)
+                attach_error_data(e, in_runtime=True)
             raise
 
     def get_func(self, dygraph_func):

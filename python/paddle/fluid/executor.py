@@ -25,11 +25,13 @@ import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
 from . import core
+from . import unique_name
 from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
+from .incubate.checkpoint import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -558,6 +560,9 @@ class Executor(object):
         self._default_executor = core.Executor(p)
         self._closed = False
         self.pruned_program_scope_caches = dict()
+
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_executor__")
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -1151,6 +1156,8 @@ class Executor(object):
             program = pruned_program
 
         compiled = isinstance(program, compiler.CompiledProgram)
+
+        acp._auto_checkpoint(self, program)
 
         # For backward compatibility, run directly.
         if not compiled:
