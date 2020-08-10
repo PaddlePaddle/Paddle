@@ -116,7 +116,7 @@ def get_worker_info():
     """
     Get DataLoader worker process information function, this function is
     used to split data copy in worker process for IterableDataset
-    (see :code:`paddle.io.IterableDataset`), worker informations contains
+    (see :code:`paddle.io.IterableDataset`), worker information contains
     following fields:
 
     :attr:`num_workers`: total worker process number, see `paddle.io.DataLoader`

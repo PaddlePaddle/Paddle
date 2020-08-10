@@ -159,7 +159,7 @@ class _InfiniteIterableSampler(object):
     def __init__(self, dataset, batch_size=1):
         assert isinstance(
             dataset, IterableDataset
-        ), "dataset should be an instnace of paddle.io.IterableDataset"
+        ), "dataset should be an instance of paddle.io.IterableDataset"
         self.dataset = dataset
         self.batch_size = batch_size
 

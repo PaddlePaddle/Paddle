@@ -139,7 +139,7 @@ class DataLoader(object):
         dataset(Dataset): the dataset to load data from, should be an
             instance of subclass of :code:`paddle.io.Dataset` or
             :code:`paddle.io.IterableDataset`.
-        feed_list (list(Variable)|tuple(Variable)): feed variable list.
+        feed_list (list(Tensor)|tuple(Tensor)): feed variable list.
             The variables should be created by :code:`fluid.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is
             False. Default None.
