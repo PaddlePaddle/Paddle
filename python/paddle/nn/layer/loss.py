@@ -619,41 +619,37 @@ class MarginRankingLoss(fluid.dygraph.Layer):
     This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
     The MarginRankingLoss layer calculates the margin rank loss between the input x, y and target 
     labels, use the math function as follows.
+
     .. math:: 
-        margin_rank_loss = max(0, -label * (left - right) + margin)
+        margin\_rank\_loss = max(0, -label * (left - right) + margin)
 
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
 
     .. math::
-        Out = MEAN(margin_rank_loss)
+        Out = MEAN(margin\_rank\_loss)
 
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
 
     .. math::
-        Out = SUM(margin_rank_loss)
+        Out = SUM(margin\_rank\_loss)
 
     If :attr:`reduction` set to ``'none'``, just return the origin ``margin_rank_loss``.
 
     Parameters:
         margin (float, optional): The margin value to add, default value is 0;
-        reduction (str, optional): Indicate the reduction to apply to the loss, 
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'none'``, the unreduced loss is returned; 
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. 
-            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. 
-            Default is ``'mean'``.
+        reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
 
     Shape: 
-        x: :math:`(N, *)` where N is batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
-        y: :math:`(N, *)`, y have the same shape and dtype as `x`.
-        label: :math:`(N, *)`, label have the same shape and dtype as `x`.
-        out: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`(1)`,
-            otherwise the shape is the same as input `x` .The same dtype as input tensor.
+        x: the shape is [N, *], Nis batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
+        y: y have the same shape and dtype as `x`.
+        label: label have the same shape and dtype as `x`.
+        out: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as input `x` .The same dtype as input tensor.
 
     Returns:
         A callable object of MarginRankingLoss.
 
     Examples:
+
         .. code-block:: python
             import numpy as np 
             import paddle 
