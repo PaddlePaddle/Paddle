@@ -79,6 +79,29 @@ void UnaryOpUnchangedInferShape(framework::InferShapeContext *ctx) {
   ctx->ShareLoD(ctx->GetInputNameByIdx(0), /*->*/ ctx->GetOutputNameByIdx(0));
 }
 
+// shape input(0) -> output(0) without change, check if axis in range [-Rank(x),
+// Rank(x)-1]
+void UnaryOpUnchangedInferShapeCheckAxis(framework::InferShapeContext *ctx) {
+  auto x_name = ctx->GetInputNameByIdx(0);
+  auto x_dim = ctx->GetInputDim(x_name);
+  auto x_rank = x_dim.size();
+  auto axis = ctx->Attrs().Get<int>("axis");
+  PADDLE_ENFORCE_GE(
+      axis, -x_rank,
+      platform::errors::InvalidArgument(
+          "Attr(axis) value should be in range [-R, R-1], "
+          "R is the rank of Input(X). But received axis: %d, R: %d.",
+          axis, x_rank));
+  PADDLE_ENFORCE_LT(
+      axis, x_rank,
+      platform::errors::InvalidArgument(
+          "Attr(axis) value should be in range [-R, R-1], "
+          "R is the rank of Input(X). But received axis: %d, R: %d.",
+          axis, x_rank));
+  ctx->ShareDim(ctx->GetInputNameByIdx(0), /*->*/ ctx->GetOutputNameByIdx(0));
+  ctx->ShareLoD(ctx->GetInputNameByIdx(0), /*->*/ ctx->GetOutputNameByIdx(0));
+}
+
 // broadcast input(0) and input(1) -> output(0)
 void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
   // OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BinaryOp");

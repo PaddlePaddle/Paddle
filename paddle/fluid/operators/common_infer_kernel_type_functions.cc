@@ -19,6 +19,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 // This file almostly contains all the infershape functions that are used in
 // operators.
