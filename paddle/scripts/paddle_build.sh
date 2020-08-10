@@ -923,10 +923,16 @@ set +x
         exec_times=0
         retry_unittests_record=''
         if [ -n "$failed_test_lists" ];then
-            while ( [ exec_times -lt 3 ] && [ -n "${failed_test_lists}" ] )
+            while ( [ $exec_times -lt 3 ] && [ -n "${failed_test_lists}" ] )
                 do
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
                     read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(Failed\)" |sed 's/(Failed)//' | sed 's/- //' )
+                    echo "========================================="
+                    echo "This is $[$exec_times+1] re-run"
+                    echo "========================================="
+                    echo "The following unittest will be re-run:"
+                    echo $retry_unittests
+
                     while read -r line;
                         do
                             if [[ "$line" == "" ]]; then
@@ -984,14 +990,7 @@ set +x
                 done
         fi
 
-        if [ -n "${failed_test_lists}" ];then
-            failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-            echo "========================================"
-            echo "Summary Failed Tests... "
-            echo "========================================"
-            echo "The following tests FAILED: "
-            echo "${failed_test_lists_ult}"
-        fi
+
         #rm -f $tmp_dir/*
         if [[ "$EXIT_CODE" != "0" ]]; then
             if [[ "$failed_test_lists" == "" ]]; then
@@ -1001,6 +1000,12 @@ set +x
                 echo "The following tests was re-run:"
                 echo "${retry_unittests_record}"
             else
+                failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                echo "========================================"
+                echo "Summary Failed Tests... "
+                echo "========================================"
+                echo "The following tests FAILED: "
+                echo "${failed_test_lists_ult}"
                 exit 8;
             fi
         fi
