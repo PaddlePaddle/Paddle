@@ -925,15 +925,16 @@ set +x
         if [ -n "$failed_test_lists" ];then
             while ( [ $exec_times -lt 3 ] && [ -n "${failed_test_lists}" ] )
                 do
+                    
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' ）
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' )
                     echo "========================================="
                     echo "This is $[$exec_times+1] re-run"
                     echo "========================================="
                     echo "The following unittest will be re-run:"
-                    echo $failed_test_lists
-
-                    for line in ${retry_unittests[@]};
+                    echo ${failed_test_lists}
+                        
+                    for line in ${retry_unittests[@]} ;
                         do
 
                             one_card_tests=$single_card_tests'|'$single_card_tests_1
@@ -942,7 +943,7 @@ set +x
                             read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
                             read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
 
-                            if [[ "$tmp_one_tmp" != ""  ]];then
+                            if [[ "$tmp_one_tmp" != ""  ]]; then
                                 if [[ "$one_card_tests" == "" ]]; then
                                     one_card_retry="^$line$"
                                 else
@@ -962,7 +963,7 @@ set +x
                                 fi
                             fi
 
-                    done
+                        done
 
                     if [[ "$one_card_retry" != "" ]]; then
                         card_test "$one_card_retry" 1
@@ -988,7 +989,7 @@ set +x
         fi
 
 
-        #rm -f $tmp_dir/*
+       
         if [[ "$EXIT_CODE" != "0" ]]; then
             if [[ "$failed_test_lists" == "" ]]; then
                 echo "========================================"
