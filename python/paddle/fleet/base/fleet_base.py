@@ -338,7 +338,7 @@ class Fleet(object):
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set)
 
-            default_program = paddle.default_main_program()
+            default_program = paddle.static.default_main_program()
 
             if id(default_program) != id(loss.block.program):
                 paddle.fluid.framework.switch_main_program(loss.block.program)
