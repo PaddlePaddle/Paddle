@@ -14,7 +14,7 @@
 
 import os
 import paddle
-from paddle.fleet.launch_utils import get_cluster, logger
+from paddle.distributed.fleet.launch_utils import get_cluster, logger
 
 
 def get_cloud_cluster(args_node_ips, selected_gpus, args_port=6170):
