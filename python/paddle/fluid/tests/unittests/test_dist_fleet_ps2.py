@@ -19,10 +19,10 @@ import unittest
 import tempfile
 import shutil
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.fleet as fleet
 
 # For Net
 base_lr = 0.2
@@ -149,40 +149,41 @@ class TestPSPassWithBow(unittest.TestCase):
         return [avg_cost, acc, cos_q_pt]
 
     def test(self):
-        endpoints = ["127.0.0.1:36004"]
+        os.environ["PADDLE_PSERVER_NUMS"] = "2"
+        os.environ["PADDLE_TRAINERS_NUM"] = "2"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+        os.environ["PADDLE_TRAINERS_NUM"] = "2"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
+            "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ["TRAINING_ROLE"] = "PSERVER"
 
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=0,
-            role=role_maker.Role.SERVER,
-            worker_num=2,
-            server_endpoints=endpoints)
-
+        role = role_maker.PaddleCloudRoleMaker()
         fleet.init(role)
         loss, acc, _ = self.net()
-        optimizer = fluid.optimizer.SGD(base_lr)
-        strategy = StrategyFactory.create_async_strategy()
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
-
-        fleet.startup_program_bak = fleet.startup_program
-        fleet.startup_program = None
-
-        with self.assertRaises(ValueError):
-            fleet.init_server()
 
         model_dir = tempfile.mkdtemp()
 
         with self.assertRaises(ValueError):
+            fleet.init_server(os.path.join(model_dir, "temp"), "xxxx")
+
+        with self.assertRaises(ValueError):
             fleet.init_server(os.path.join(model_dir, "temp"))
 
-        fleet.startup_program = fleet.startup_program_bak
         fleet.init_server()
 
         from paddle.fluid.communicator import LargeScaleKV
         kv = LargeScaleKV()
-        kv.save("__emb__", os.path.join(model_dir, "__emb__", "__emb__"))
-
-        fleet.main_program = fluid.Program()
+        kv.save("__emb__.block0",
+                os.path.join(model_dir, "__emb__", "__emb__.block0"))
+        fluid.framework.switch_main_program(fluid.Program())
         fleet.init_server(model_dir)
         shutil.rmtree(model_dir)
 

@@ -197,8 +197,9 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.a_sync, True)
         strategy.a_sync = False
         self.assertEqual(strategy.a_sync, False)
-        strategy.a_sync = "True"
-        self.assertEqual(strategy.a_sync, False)
+
+        with self.assertRaises(ValueError):
+            strategy.a_sync = "True"
 
     def test_a_sync_configs(self):
         strategy = paddle.fleet.DistributedStrategy()
