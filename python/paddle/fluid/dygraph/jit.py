@@ -718,7 +718,9 @@ def save(layer, model_path, input_spec=None, configs=None):
                     % type(var))
 
     # 2. get program of declarative Layer.forward
-
+    if not isinstance(layer.forward, PartialProgram):
+        raise RuntimeError(
+            "layer.forward need to be decorated by `@declarative`.")
     concrete_program = layer.forward.concrete_program
 
     # NOTE: we maintain the mapping of variable name to

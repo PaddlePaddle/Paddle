@@ -201,7 +201,9 @@ class ImperativeQuantAware(object):
                     dtype) if append_batch_size else raw_data.astype(dtype)
                 input_var = dygraph.to_variable(input_data)
                 input_vars.append(input_var)
-            outputs = prog_trans.get_output(model.forward, model, *input_vars)
+            # use `declarative` to convert dygraph into static program
+            model.forward = dygraph.jit.declarative(model.forward)
+            outputs = model(*input_vars)
         input_spec = [input_vars[i] for i in feed]
         configs = dygraph.jit.SaveLoadConfig()
         configs.separate_params = True

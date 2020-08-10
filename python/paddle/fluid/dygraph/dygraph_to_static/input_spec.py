@@ -23,7 +23,7 @@ from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, Variable
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
-from paddle.fluid.dygraph.dygraph_to_static.utils import type_name, getfullargspec
+from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 
 
 class TensorSpec(object):
@@ -51,10 +51,8 @@ class TensorSpec(object):
 
     @classmethod
     def from_numpy(cls, ndarray, name=None):
-        # TODO: tansform ndarray.type into paddle dataType
         return cls(ndarray.shape, ndarray.dtype, name)
 
-    # TODO: where to use this interface?
     def batch(self, batch_size):
         """
         Insert `batch_size` in front of the `shape`.
@@ -72,7 +70,6 @@ class TensorSpec(object):
 
         new_shape = [batch_size] + list(self._shape)
         return TensorSpec(new_shape, self._dtype, self._name)
-        # TODO: or whether consider to return self?
 
     def unbatch(self):
         if len(self._shape) == 0:
@@ -236,9 +233,6 @@ class FunctionSpec(object):
         # parse full argument names list.
         self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
 
-        self._idx_to_variable_spec = {}
-        # self._inputs_with_spec = self.args_to_variable_spec(args, kwargs)
-
     def unified_args_and_kwargs(self, args, kwargs):
         """
         Move kwarg with default value into arguments list.
@@ -307,12 +301,8 @@ class FunctionSpec(object):
 
         return inputs_with_spec
 
-    # TODO: Reuse code with to_static_inputs
     @switch_to_static_graph
-    def to_static_inputs_with_signature(self, inputs_with_spec, main_program):
-        """
-        If users specific signature info, we only signature?
-        """
+    def to_static_inputs_with_spec(self, inputs_with_spec, main_program):
         flat_inputs_spec = flatten(inputs_with_spec)
 
         inputs = []
@@ -332,32 +322,6 @@ class FunctionSpec(object):
 
         return pack_sequence_as(inputs_with_spec, inputs)
 
-    @switch_to_static_graph
-    def to_static_inputs(self, main_program):
-        inputs = []
-        block = main_program.global_block()
-        for input_var in flatten(self.args):
-            if isinstance(input_var, np.ndarray):
-                feed_layer = block.create_var(
-                    name=unique_name.generate('feed'),
-                    shape=list(input_var.shape),
-                    dtype=input_var.dtype,
-                    is_data=True,
-                    need_check_feed=False)
-            elif isinstance(input_var, core.VarBase):
-                feed_layer = block.create_var(
-                    name=input_var.name,
-                    shape=list(input_var.shape),
-                    dtype=input_var.dtype,
-                    stop_gradient=input_var.stop_gradient,
-                    need_check_feed=False)
-            else:
-                feed_layer = input_var
-
-            inputs.append(feed_layer)
-        # Restores the nested structure as self.args
-        return pack_sequence_as(self.args, inputs)
-
     @property
     def dyfunc(self):
         return self._dyfunc
@@ -369,24 +333,6 @@ class FunctionSpec(object):
     @property
     def is_method(self):
         return self._is_method
-        # return self._args and isinstance(self._args[0], layers.Layer)
-
-    # TODO: consider input_spec as key
-
-    def __key(self):
-        # Note: if dygraph function is a method of class,
-        # consider instance info as hash key.
-        if self.is_method():
-            # NOTE: we can use Layer's (instance + function code) as hash key.
-            # An instance will not hold two identical methods 
-            return self._dyfunc_code, self._args[0], tuple(
-                self._inputs_with_spec)
-        else:
-            return self._dyfunc, tuple(self._inputs_with_spec)
-
-    @property
-    def hash_keys(self):
-        return self.__key()
 
     @property
     def code(self):

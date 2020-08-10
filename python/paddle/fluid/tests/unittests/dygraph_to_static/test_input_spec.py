@@ -38,7 +38,6 @@ class SimpleNet(Layer):
         y = self.linear(x)
         return y
 
-    @declarative
     def add_func(self, x, y):
         z = x + y
         return z
@@ -105,6 +104,8 @@ class TestInputSpec(unittest.TestCase):
 
             # 3. we can decorate any method
             x_2 = to_variable(np.ones([4, 20]).astype('float32'))
+            # uses `declarative(func)` instead of `@declarative`
+            net.add_func = declarative(net.add_func)
             out = net.add_func(x_2, np.ones([20]).astype('float32'))
             self.assertTrue(len(net.add_func.program_cache) == 1)
 

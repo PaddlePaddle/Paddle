@@ -148,9 +148,6 @@ class CacheKey(object):
         # 2. convert tensor and numpy array into TensorSpec 
         _args, _kwargs = function_spec.unified_args_and_kwargs(args, kwargs)
         inputs_with_spec = function_spec.args_to_variable_spec(_args, _kwargs)
-        # # TODO(liym27): func has multi layer decorator
-        # dyfunc = getattr(func, '__wrapped__', func)
-        # self._dyfunc_code = inspect.getsource(dyfunc)
 
         # 3. check whether hit the cache or build a new program for the input arguments
         return CacheKey(function_spec, inputs_with_spec, class_instance)
@@ -186,7 +183,7 @@ def unwrap(func):
         if isinstance(cur, PartialProgram):
             decorators.append(cur)
             cur = cur.dygraph_function
-        else:  # TODO: deal with other decorators
+        else:
             break
     return decorators, cur
 
@@ -214,7 +211,6 @@ class PartialProgram(object):
         inputs_with_spec = self._function_spec.args_to_variable_spec(args,
                                                                      kwargs)
 
-        # TODO: whether we need this class or just a functionSpec
         # 3. check whether hit the cache or build a new program for the input arguments
         cache_key = CacheKey(self._function_spec, inputs_with_spec,
                              self._class_instance)
@@ -261,7 +257,7 @@ class PartialProgram(object):
 
     @property
     def to_code(self):
-        # TODO
+        # TODO: provide a interface to get the transformed static code.
         return None
 
     @property
@@ -344,10 +340,8 @@ class ConcreteProgram(object):
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `fluid.data` layers for input if needed
-                # inputs = func_spec.to_static_inputs(main_program)
-                # TODO: modify it into plain function if don't rely on function.spec
-                inputs = func_spec.to_static_inputs_with_signature(inputs_spec,
-                                                                   main_program)
+                inputs = func_spec.to_static_inputs_with_spec(inputs_spec,
+                                                              main_program)
                 if class_instance:
                     inputs = tuple([class_instance] + list(inputs))
 
