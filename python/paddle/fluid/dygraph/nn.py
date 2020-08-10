@@ -3222,7 +3222,7 @@ class SyncBatchNorm(layers.Layer):
         moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global mean \\
         moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global variance \\
 
-    The normalization function formula is as follows:
+    The formula of normalization is as follows:
  
     ..  math::
 
@@ -3235,8 +3235,8 @@ class SyncBatchNorm(layers.Layer):
     - :math:`\\beta` : trainable deviation parameter
 
     **Note**:
-        moving mean and moving variance will be calculate whether `track_running_stats` is set to `True`
-        or `False`, we will fix it in the next time.
+        moving mean and moving variance will be calculated whether `track_running_stats` is set to `True`
+        or `False`, we will fix it in the next version.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
