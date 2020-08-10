@@ -142,17 +142,13 @@ class Collective(Fleet):
                         path,
                         trainer_id,
                         train_status,
+                        fs,
                         main_program=None,
-                        fs=None,
                         local_cache_path=".cache",
                         remain_all_checkpoint=True):
         """
         This function save persistables and current epoch num to path.
         """
-        if fs is None:
-            from paddle.fluid.incubate.fleet.utils.fs import LocalFS
-            fs = LocalFS()
-
         if main_program == None:
             main_program = self._transpiled_program
 
@@ -175,16 +171,13 @@ class Collective(Fleet):
                         path,
                         trainer_id,
                         train_status,
+                        fs,
                         main_program=None,
-                        fs=None,
                         local_cache_path=".cache",
                         ignore_empty=True):
         """
         This function load persistables and current epoch num from path.
         """
-        if fs is None:
-            from paddle.fluid.incubate.fleet.utils.fs import LocalFS
-            fs = LocalFS()
 
         if main_program == None:
             main_program = self._transpiled_program
