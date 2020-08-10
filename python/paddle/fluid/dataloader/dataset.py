@@ -114,7 +114,7 @@ class IterableDataset(Dataset):
     will yield whole dataset samples, which means samples in dataset will be repeated in
     :attr:`num_workers` times. If it is required for each sample to yield only once, there
     are two methods to configure different copy in each worker process to avoid duplicate data
-    among workers as follows. In both the two methods, worker information that can be get in
+    among workers as follows. In both the methods, worker information that can be getted in
     a worker process by `paddle.io.get_worker_info` will be needed.
 
     Example 1: splitting data copy in each worker in :code:`__iter__`
