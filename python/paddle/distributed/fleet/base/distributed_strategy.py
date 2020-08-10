@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fleet.proto import distributed_strategy_pb2
+from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.fluid.framework import Variable
 import google.protobuf.text_format
 
@@ -103,7 +103,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
         
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.dgc = True
             strategy.recompute = True
@@ -120,7 +120,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
 
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.load_from_prototxt("dist_strategy.protoxt")
         """
@@ -141,7 +141,7 @@ class DistributedStrategy(object):
             exe_strategy.num_iteration_per_drop_scope = 10
             exe_strategy.num_iteration_per_run = 10
 
-            strategy = paddle.fleet.DistributedStrategy()
+            strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.execution_strategy = exe_strategy
         """
         execution_strategy = paddle.fluid.ExecutionStrategy()
@@ -178,7 +178,7 @@ class DistributedStrategy(object):
             build_strategy.fuse_all_optimizer_ops = True
             build_strategy.enable_inplace = True
             
-            strategy = paddle.fleet.DistributedStrategy()
+            strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.build_strategy = build_strategy
         """
 
@@ -211,7 +211,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
 
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             role_maker = fleet.PaddleCloudRoleMaker()
             fleet.init(role_maker)
 
@@ -253,7 +253,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
 
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             role_maker = fleet.PaddleCloudRoleMaker()
             fleet.init(role_maker)
 
@@ -282,7 +282,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
 
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.amp = True # by default this is false
 
@@ -314,7 +314,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
 
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.recompute = True
             # suppose x and y are names of checkpoint tensors for recomputation
@@ -432,7 +432,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
         
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.recompute = True
             strategy.recompute_configs = {"checkpionts": ["x", "y"]}
@@ -457,7 +457,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
         
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.pipeline = True
 
@@ -490,7 +490,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
         
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.pipeline = True
             strategy.pipeline_configs = {"micro_batch": 12}
@@ -560,7 +560,7 @@ class DistributedStrategy(object):
 
         Examples:
         .. code-block:: python
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.gradient_merge = True
             strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
@@ -583,7 +583,7 @@ class DistributedStrategy(object):
             avg (bool): whether to average the gradients of each mini-batch,
                 the default value is `True`
         Example:
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.gradient_merge = True
             strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
