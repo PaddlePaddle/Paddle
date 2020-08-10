@@ -28,7 +28,7 @@ from paddle.fluid.framework import program_guard
 from paddle.fluid import unique_name
 
 import numpy as np
-from paddle.io import Dataset, BatchSampler, DataLoader
+from paddle.fluid.io import DataLoader
 
 BATCH_NUM = 20
 BATCH_SIZE = 16

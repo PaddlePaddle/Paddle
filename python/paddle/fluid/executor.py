@@ -31,6 +31,7 @@ from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
 from .incubate.checkpoint import auto_checkpoint as acp
+from . import unique_name
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
