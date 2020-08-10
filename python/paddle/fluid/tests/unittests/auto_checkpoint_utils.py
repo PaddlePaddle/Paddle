@@ -20,8 +20,7 @@ from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
 import sys
 
-from paddle.fluid.incubate.fleet.utils.fs import LocalFS
-from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.fleet.utils.fs import LocalFS, HDFSClient
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
 import paddle.fluid.incubate.checkpoint.dataloader_auto_checkpoint as dacp
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
