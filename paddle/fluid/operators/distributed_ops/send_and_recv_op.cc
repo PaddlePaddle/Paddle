@@ -29,17 +29,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class SendOp : public framework::OperatorBase {
+class SendAndRecvOp : public framework::OperatorBase {
  public:
-  SendOp(const std::string& type, const framework::VariableNameMap& inputs,
-         const framework::VariableNameMap& outputs,
-         const framework::AttributeMap& attrs)
+  SendAndRecvOp(const std::string& type,
+                const framework::VariableNameMap& inputs,
+                const framework::VariableNameMap& outputs,
+                const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    auto send_varname = Inputs("X");
-    auto recv_varname = Outputs("Out");
+    auto send_var = Inputs("X");
+    auto recv_var = Outputs("Out");
     auto epmap = Attr<std::string>("endpoint");
     auto trainer_id = Attr<int>("trainer_id");
 
@@ -50,12 +51,26 @@ class SendOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
     std::vector<distributed::VarHandlePtr> rets =
-        rpc_client->SendAndRecv(epmap, ctx, scope, send_varname, recv_varname);
+        rpc_client->SendAndRecv(epmap, ctx, scope, send_var, recv_var);
     rets->Wait();
   }
 }
 
-class SendOpMaker : public framework::OpProtoAndCheckerMaker {
+class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("X", "Tensor Input variable to be sent");
+    AddOutput("Out", "Tensor Output varibale to be recv");
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<std::string>("endpoint", "Server endpoint")
+        .SetDefault({"127.0.0.1:6164"});
+    AddComment(R"DOC(
+    SendAndRecv operator
+
+    This operator will send variables to listen_and_serve op at the parameter server.
+    And recv variable from parameter server of send variable's scope.
+    )DOC");
+  }
 }
 
 class SendAndRecvOpShapeInference : public framework::InferShapeBase {
