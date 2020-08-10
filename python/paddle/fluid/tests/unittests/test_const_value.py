@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid.framework as framework
-
+import random
 
 class ConstantTest(unittest.TestCase):
     def test_const_value(self):
@@ -24,6 +24,9 @@ class ConstantTest(unittest.TestCase):
         self.assertEqual(framework.TEMP_VAR_NAME, "@TEMP@")
         self.assertEqual(framework.GRAD_VAR_SUFFIX, "@GRAD")
         self.assertEqual(framework.ZERO_VAR_SUFFIX, "@ZERO")
+        num_rand=random.randint(0,9)
+        if num_rand < 7:
+            self.assertEqual(3,6)
 
 
 if __name__ == '__main__':
