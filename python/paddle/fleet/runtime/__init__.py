@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .collective_runtime import CollectiveRuntime
+from .parameter_server_runtime import ParameterServerRuntime
 
-__all__ = ["CollectiveRuntime"]
+__all__ = ["CollectiveRuntime," "ParameterServerRuntime", ]

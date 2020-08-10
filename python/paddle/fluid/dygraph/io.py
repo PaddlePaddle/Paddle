@@ -425,8 +425,7 @@ def _load_persistable_vars(model_path,
                            params_filename=None):
     # 1. load extra var info
     with open(var_info_path, 'rb') as f:
-        extra_var_info = pickle.load(f) if six.PY2 else pickle.load(
-            f, encoding='latin1')
+        extra_var_info = pickle.load(f)
 
     # 2. construct var dict
     load_var_dict = dict()
