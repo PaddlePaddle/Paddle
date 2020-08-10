@@ -25,7 +25,7 @@ from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = [
     'to_static_variable_gast_node', 'create_static_variable_gast_node',
-    'data_layer_not_check'
+    'data_layer_not_check', 'DynamicList'
 ]
 
 
@@ -141,7 +141,7 @@ class DynamicList(object):
                 array_i = fill_constant(shape=[1], dtype='int64', value=i)
                 array_write(args[i], array_i, self.private_array)
         else:
-            self.private_type = list(iterable)
+            self.private_array = list(iterable)
 
     def __len__(self):
         return len(self.private_array)

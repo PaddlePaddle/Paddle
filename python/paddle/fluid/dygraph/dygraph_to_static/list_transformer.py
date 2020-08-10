@@ -92,6 +92,37 @@ class ListTransformer(gast.NodeTransformer):
     This class transforms python list used in control flow into Static Graph Ast.
     """
 
+    def __init__(self, wrapper_root):
+        assert isinstance(
+            wrapper_root, AstNodeWrapper
+        ), "Input non-AstNodeWrapper node for the initialization of ListTransformer."
+        self.wrapper_root = wrapper_root
+        self.root = wrapper_root.node
+
+    def transform(self):
+        SplitAssignTransformer(self.root).transform()
+        self.visit(self.root)
+
+    def visit_Call(self, node):
+        if isinstance(node.func, gast.Name) and node.func.id == 'list':
+            dynamic_list_node = gast.Parse(
+                "fluid.dygraph.dygraph_to_static.variable_trans_func.DynamicList"
+            )
+            node.func = dynamic_list_node
+        return node
+
+    def visit_List(self, node):
+        dynamic_list_node = gast.Parse(
+            "fluid.dygraph.dygraph_to_static.variable_trans_func.DynamicList({})"
+            .format(ast_to_source_code(node)))
+        return dynamic_list_node
+
+    def visit_ListComp(self, node):
+        dynamic_list_node = gast.Parse(
+            "fluid.dygraph.dygraph_to_static.variable_trans_func.DynamicList({})"
+            .format(ast_to_source_code(node)))
+        return dynamic_list_node
+
 
 class ListTransformerComp(gast.NodeTransformer):
     """
