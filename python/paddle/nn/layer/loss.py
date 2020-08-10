@@ -506,8 +506,6 @@ class NLLLoss(fluid.dygraph.Layer):
         \\end{cases}
 
     Parameters:
-        x (Tensor): Input tensor, the data type is float32, float64. 
-        label (Tensor): Label tensor, the data type is int64_t.
         weight (Tensor, optional): Weight tensor, a manual rescaling weight given
             to each class. If given, it has to be a Tensor of size `C`. Otherwise,
             it treated as if having all ones. the data type is 
@@ -516,27 +514,34 @@ class NLLLoss(fluid.dygraph.Layer):
             and does not contribute to the input gradient.
         reduction (str, optional): Indicate how to average the loss, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+               :attr:`reduction` is ``'sum'``, the reduced sum loss is returned;
+               :attr:`reduction` is ``'none'``, no reduction will be apllied.
             Default is ``'mean'``.
+         name (str, optional): Name for the operation (optional, default is None).
+             For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        x (Tensor): Input tensor, the data type is float32, float64.
+        label (Tensor): Label tensor, the data type is int64.
 
     Returns:
-        The callable object which calculates negative log likelihood loss when 
-        get the input `x` and `label`.
+        The callable object which calculates negative log likelihood loss.
 
     Examples:
-
         .. code-block:: python
+
                 import paddle
                 import numpy as np
-                
+
                 nll_loss = paddle.nn.layer.NLLLoss()
                 log_softmax = paddle.nn.LogSoftmax(axis=1)
-                
+
                 x_np = np.random.random(size=(10, 10)).astype(np.float32)
                 label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
-                
+
                 place = paddle.CPUPlace()
-                
+
                 # imperative mode
                 paddle.enable_imperative(place)
                 x = paddle.imperative.to_variable(x_np)
@@ -564,11 +569,20 @@ class NLLLoss(fluid.dygraph.Layer):
                 print(declaritive_result)
     """
 
-    def __init__(self, weight=None, ignore_index=-100, reduction='mean'):
+    def __init__(self,
+                 weight=None,
+                 ignore_index=-100,
+                 reduction='mean',
+                 name=None):
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in nll_loss should be 'sum', 'mean' or "
+                "'none', but received %s, which is not allowed." % reduction)
         super(NLLLoss, self).__init__()
         self.weight = weight
         self.ignore_index = ignore_index
         self.reduction = reduction
+        self.name = name
 
     def forward(self, x, label):
         return F.nll_loss(
@@ -576,4 +590,5 @@ class NLLLoss(fluid.dygraph.Layer):
             label,
             weight=self.weight,
             ignore_index=self.ignore_index,
-            reduction=self.reduction)
+            reduction=self.reduction,
+            name=self.name)

@@ -68,14 +68,19 @@ __all__ = [
 ]
 
 
-def nll_loss(x, label, weight=None, ignore_index=-100, reduction='mean'):
+def nll_loss(x,
+             label,
+             weight=None,
+             ignore_index=-100,
+             reduction='mean',
+             name=None):
     """
     This api returns negative log likelihood.
-    See more detail in `paddle.nn.loss.NLLLoss`.
-  
+    See more detail in :ref:`api_nn_loss_NLLLoss` .
+
     Parameters:
          x (Tensor): Input tensor, the data type is float32, float64.
-         label (Tensor): Label tensor, the data type is int64_t.
+         label (Tensor): Label tensor, the data type is int64.
          weight (Tensor, optional): Weight tensor, a manual rescaling weight given
              to each class. If given, it has to be a Tensor of size `C`. Otherwise,
              it treated as if having all ones. the data type is
@@ -85,48 +90,35 @@ def nll_loss(x, label, weight=None, ignore_index=-100, reduction='mean'):
          reduction (str, optional): Indicate how to average the loss,
              the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
              If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                :attr:`reduction` is ``'sum'``, the reduced sum loss is returned;
+                :attr:`reduction` is ``'none'``, no reduction will be apllied.
              Default is ``'mean'``.
-  
+         name (str, optional): Name for the operation (optional, default is None).
+             For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
          The tensor variable storing the nll_loss.
-    
-    Examples:
-         import paddle
-         import numpy as np
-         from paddle.nn.functional import nll_loss
-         log_softmax = paddle.nn.LogSoftmax(axis=1)
-         
-         x_np = np.random.random(size=(10, 10)).astype(np.float32)
-         label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
-         
-         place = paddle.CPUPlace()
-         
-         # imperative mode
-         paddle.enable_imperative(place)
-         x = paddle.imperative.to_variable(x_np)
-         log_out = log_softmax(x)
-         label = paddle.imperative.to_variable(label_np)
-         imperative_result = nll_loss(log_out, label)
-         print(imperative_result.numpy())
-         
-         # declarative mode
-         paddle.disable_imperative()
-         prog = paddle.Program()
-         startup_prog = paddle.Program()
-         with paddle.program_guard(prog, startup_prog):
-             x = paddle.nn.data(name='x', shape=[10, 10], dtype='float32')
-             label = paddle.nn.data(name='label', shape=[10], dtype='int64')
-             log_out = log_softmax(x)
-             res = nll_loss(log_out, label)
-         
-             exe = paddle.Executor(place)
-             declaritive_result = exe.run(
-                 prog,
-                 feed={"x": x_np,
-                       "label": label_np},
-                 fetch_list=[res])
-         print(declaritive_result)
 
+    Examples:
+        .. code-block:: python
+
+                import paddle
+                import numpy as np
+                from paddle.nn.functional import nll_loss
+                log_softmax = paddle.nn.LogSoftmax(axis=1)
+
+                x_np = np.random.random(size=(10, 10)).astype(np.float32)
+                label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
+
+                place = paddle.CPUPlace()
+
+                # imperative mode
+                paddle.enable_imperative(place)
+                x = paddle.imperative.to_variable(x_np)
+                log_out = log_softmax(x)
+                label = paddle.imperative.to_variable(label_np)
+                imperative_result = nll_loss(log_out, label)
+                print(imperative_result.numpy())
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -152,6 +144,7 @@ def nll_loss(x, label, weight=None, ignore_index=-100, reduction='mean'):
             out, _ = core.ops.reshape2(out, 'shape', out_shape)
         return out
 
+    helper = LayerHelper('nll_loss', **locals())
     x_shape = list(x.shape)
     x_dims = len(x_shape)
     if x_dims < 2:
@@ -165,7 +158,6 @@ def nll_loss(x, label, weight=None, ignore_index=-100, reduction='mean'):
         label = paddle.reshape(label, shape=[n, 1, -1])
         out_shape = [n] + x_shape[2:]
 
-    helper = LayerHelper('nll_loss', **locals())
     fluid.data_feeder.check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                                'nll_loss')
     fluid.data_feeder.check_variable_and_dtype(label, 'label', ['int64'],
