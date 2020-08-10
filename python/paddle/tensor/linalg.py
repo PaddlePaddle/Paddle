@@ -696,10 +696,10 @@ def cholesky(x, upper=False, name=None):
             #  [1.25450498 0.05600871 0.06400121]]
 
     """
+    if in_dygraph_mode():
+        return core.ops.cholesky(x, "upper", upper)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
-    if in_dygraph_mode():
-        return core.ops.cholesky(x, upper)
     helper = LayerHelper('cholesky', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
