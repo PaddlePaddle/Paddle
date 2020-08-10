@@ -1,0 +1,20 @@
+{ // block 0
+    persist trainable param fc_0.w_0 : fluid.VarType.LOD_TENSOR.shape(32L, 64L).astype(VarType.FP32)
+    persist trainable param fc_0.b_0 : fluid.VarType.LOD_TENSOR.shape(64L,).astype(VarType.FP32)
+    persist trainable param fc_1.w_0 : fluid.VarType.LOD_TENSOR.shape(64L, 64L).astype(VarType.FP32)
+    persist trainable param fc_1.b_0 : fluid.VarType.LOD_TENSOR.shape(64L,).astype(VarType.FP32)
+    persist trainable param fc_2.w_0 : fluid.VarType.LOD_TENSOR.shape(64L, 2L).astype(VarType.FP32)
+    persist trainable param fc_2.b_0 : fluid.VarType.LOD_TENSOR.shape(2L,).astype(VarType.FP32)
+    persist var learning_rate_0 : fluid.VarType.LOD_TENSOR.shape(1L,).astype(VarType.FP32)
+    persist var NCCLID : fluid.VarType.RAW)
+    persist var NCCLID_1 : fluid.VarType.RAW)
+
+    {Out=[u'learning_rate_0']} = fill_constant(inputs={}, dtype = 5, force_cpu = False, op_device = , op_namescope = /, op_role = 0, op_role_var = [], shape = [1L], str_value = , value = 0.00999999977648)
+    {Out=[u'fc_2.b_0']} = fill_constant(inputs={}, dtype = 5, force_cpu = False, op_device = , op_namescope = /, op_role = 0, op_role_var = [], shape = [2L], str_value = , value = 0.0)
+    {Out=[u'fc_2.w_0']} = uniform_random(inputs={ShapeTensor=[], ShapeTensorList=[]}, diag_num = 0, diag_step = 0, diag_val = 1.0, dtype = 5, max = 0.301511347294, min = -0.301511347294, op_device = , op_namescope = /, op_role = 0, op_role_var = [], seed = 0, shape = [64L, 2L])
+    {Out=[u'fc_1.b_0']} = fill_constant(inputs={}, dtype = 5, force_cpu = False, op_device = , op_namescope = /, op_role = 0, op_role_var = [], shape = [64L], str_value = , value = 0.0)
+    {Out=[u'fc_1.w_0']} = uniform_random(inputs={ShapeTensor=[], ShapeTensorList=[]}, diag_num = 0, diag_step = 0, diag_val = 1.0, dtype = 5, max = 0.21650634706, min = -0.21650634706, op_device = , op_namescope = /, op_role = 0, op_role_var = [], seed = 0, shape = [64L, 64L])
+    {Out=[u'fc_0.b_0']} = fill_constant(inputs={}, dtype = 5, force_cpu = False, op_device = , op_namescope = /, op_role = 0, op_role_var = [], shape = [64L], str_value = , value = 0.0)
+    {Out=[u'fc_0.w_0']} = uniform_random(inputs={ShapeTensor=[], ShapeTensorList=[]}, diag_num = 0, diag_step = 0, diag_val = 1.0, dtype = 5, max = 0.25, min = -0.25, op_device = , op_namescope = /, op_role = 0, op_role_var = [], seed = 0, shape = [32L, 64L])
+    {NCCLID=[u'NCCLID']} = gen_nccl_id(inputs={}, hierarchical_allreduce_inter_nranks = -1, nccl_comm_num = 2, op_device = , op_namescope = /, op_role = 0, op_role_var = [], trainer_id = 0, trainers = [u'127.0.0.1:36001', u'127.0.0.1:36002'], use_hierarchical_allreduce = False)
+}
