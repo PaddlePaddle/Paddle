@@ -638,6 +638,7 @@ class MarginRankingLoss(fluid.dygraph.Layer):
     Parameters:
         margin (float, optional): The margin value to add, default value is 0;
         reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape: 
         x: the shape is [N, *], Nis batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
