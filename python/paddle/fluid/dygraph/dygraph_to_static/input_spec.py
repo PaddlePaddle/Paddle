@@ -63,10 +63,9 @@ class TensorSpec(object):
                     "Length of  {}: batch_size shall be 1, but received {}.".
                     format(type_name(variable), len(batch_size)))
             batch_size = batch_size[1]
-        elif not isinstance(batch_size, (int, long)):
-            raise TypeError(
-                "type(batch_size) shall be int or long, but received {}.".
-                format(type_name(batch_size)))
+        elif not isinstance(batch_size, six.integer_types):
+            raise TypeError("type(batch_size) shall be `int`, but received {}.".
+                            format(type_name(batch_size)))
 
         new_shape = [batch_size] + list(self._shape)
         return TensorSpec(new_shape, self._dtype, self._name)
@@ -90,9 +89,9 @@ class TensorSpec(object):
 
         for i, ele in enumerate(shape):
             if ele is not None:
-                if not isinstance(ele, (int, long)):
+                if not isinstance(ele, six.integer_types):
                     raise ValueError(
-                        "shape[{}] should be a int, but received `{}`:{}.".
+                        "shape[{}] should be an `int`, but received `{}`:{}.".
                         format(i, type_name(ele), ele))
             if ele is None or ele < -1:
                 shape[i] = -1

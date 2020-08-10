@@ -78,7 +78,7 @@ def parse_arg_and_kwargs(function):
     default_kwargs = {}
     default_values = fullargspec.defaults
     if default_values:
-        assert len(default_values) <= arg_names
+        assert len(default_values) <= len(arg_names)
         default_kwarg_names = arg_names[-len(default_values):]
         default_kwargs = dict(zip(default_kwarg_names, default_values))
 
