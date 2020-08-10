@@ -935,9 +935,9 @@ set +x
 
                             one_card_tests=$single_card_tests'|'$single_card_tests_1
 
-                            read tmp_one_tmp <<< echo $one_card_tests | grep -oEi $line
-                            read tmp_mul_tmp <<< echo $multiple_card_tests | grep -oEi $line
-                            read exclusive_tmp <<< echo $exclusive_tests | grep -oEi $line
+                            read tmp_one_tmp <<< "$( echo $one_card_tests | grep -oEi $line )"
+                            read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
+                            read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
 
                             if [[ "$tmp_one_tmp" != ""  ]];then
                                 if [[ "$one_card_tests" == "" ]]; then
@@ -960,6 +960,7 @@ set +x
                             fi
 
                     done <<< "$retry_unittests";
+
                     if [[ "$one_card_retry" != "" ]]; then
                         card_test "$one_card_retry" 1
                     fi
@@ -971,9 +972,10 @@ set +x
                     if [[ "$exclusive_retry" != "" ]]; then
                         card_test "$exclusive_retry"
                     fi
-                    collect_failed_tests
+                    
                     exec_times=$[$exec_times+1]
                     failed_test_lists=''
+                    collect_failed_tests
                     rm -f $tmp_dir/*
                     one_card_retry=''
                     multiple_card_retry=''
@@ -992,7 +994,15 @@ set +x
         fi
         #rm -f $tmp_dir/*
         if [[ "$EXIT_CODE" != "0" ]]; then
-            exit 8;
+            if [[ "$failed_test_lists" == "" ]]; then
+                echo "========================================"
+                echo "Run failure sample exists,and it re-run is successful"
+                echo "========================================"
+                echo "The following tests was re-run:"
+                echo "${retry_unittests_record}"
+            else
+                exit 8;
+            fi
         fi
 set -ex
     fi
