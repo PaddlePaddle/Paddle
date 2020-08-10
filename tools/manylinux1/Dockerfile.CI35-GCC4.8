@@ -2,6 +2,7 @@
 # order to satisfy the build of capnproto library (a nupic.core dependency),
 # which requires some headers and symbols not present on CentOS-5 (e.g.,
 # signalfd.h, pipe2, O_NONBLOCK, SOCK_NONBLOCK, etc.). See
+# 123
 # https://github.com/sandstorm-io/capnproto/issues/350.
 FROM nvidia/cuda:9.0-cudnn7-devel-centos6
 MAINTAINER Numenta, based on the ManyLinux project
