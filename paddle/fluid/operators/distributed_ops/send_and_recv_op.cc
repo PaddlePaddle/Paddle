@@ -39,8 +39,8 @@ class SendAndRecvOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    auto send_var = Inputs("X");
-    auto recv_var = Outputs("Out");
+    auto send_var_name = Attr<std::string>("send_var_name");
+    auto recv_var_name = Attr<std::string>("recv_var_name");
     auto epmap = Attr<std::string>("endpoint");
     auto trainer_id = Attr<int>("trainer_id");
 
@@ -50,17 +50,21 @@ class SendAndRecvOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
-    std::vector<distributed::VarHandlePtr> rets =
-        rpc_client->SendAndRecv(epmap, ctx, scope, send_var, recv_var);
+    distributed::VarHandlePtr rets = rpc_client->SendAndRecv(
+        epmap, ctx, scope, send_var_name, recv_var_name);
     rets->Wait();
   }
-}
+};
 
 class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "Tensor Input variable to be sent");
-    AddOutput("Out", "Tensor Output varibale to be recv");
+    AddInput("X", "Tensor Input variable to be sent").AsDuplicable();
+    AddOutput("Out", "Tensor Output varibale to be recv").AsDuplicable();
+    AddAttr<std::string>("send_var_name", "Send Tensor's name")
+        .SetDefault(std::string(""));
+    AddAttr<std::string>("recv_var_name", "Recv Tensor's name")
+        .SetDefault(std::string(""));
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::string>("endpoint", "Server endpoint")
         .SetDefault({"127.0.0.1:6164"});
@@ -71,7 +75,7 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     And recv variable from parameter server of send variable's scope.
     )DOC");
   }
-}
+};
 
 class SendAndRecvOpShapeInference : public framework::InferShapeBase {
  public:
