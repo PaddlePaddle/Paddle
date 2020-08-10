@@ -236,21 +236,6 @@ class AutoCheckpointTest(AutoCheckPointACLBase):
 
         logger.info("end test_basic")
 
-    def test_corner_epoch_no(self):
-        logger.info("begin test_corener_epoch_no")
-        checker = acp._get_checker()
-        fs = HDFSClient(checker.hdfs_home, None)
-
-        for i in range(3):
-            fs.delete(checker.hdfs_checkpoint_path)
-            self._reset_generator()
-            self._run_save_0(break_epoch_no=i)
-            self._reset_generator()
-            self._run_load_0(break_epoch_no=i)
-
-        fs.delete(checker.hdfs_checkpoint_path)
-        logger.info("end test_corener_epoch_no")
-
     def test_not_use(self):
         logger.info("begin test_not_use")
 

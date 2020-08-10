@@ -28,9 +28,7 @@ from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_bu
 from .unique_name import UniqueNameGenerator
 import logging
 import warnings
-from .dataset import DatasetBase, InMemoryDataset
 from .incubate.checkpoint import dataloader_auto_checkpoint as dacp
-from .incubate.checkpoint import auto_checkpoint as acp
 from . import unique_name
 
 ### Dygraph DataLoader configs ###
