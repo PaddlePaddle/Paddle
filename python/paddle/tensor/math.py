@@ -1546,9 +1546,6 @@ ${comment}
 
 def cumsum(x, axis=None, dtype=None, name=None):
     """
-	:alias_main: paddle.cumsum
-	:alias: paddle.cumsum,paddle.tensor.cumsum,paddle.tensor.math.cumsum
-
     The cumulative sum of the elements along a given axis. The first element of the result is the same of the first element of the input. 
 
     Args:
