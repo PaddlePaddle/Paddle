@@ -910,14 +910,21 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
 template <typename T>
 std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
   auto inspect = tensor.data<T>();
-  auto element_num = tensor.numel();
-
+  auto tensor_numel = tensor.numel();
+  auto data_limit = std::numeric_limits<int64_t>::max();
+  if (const char* value = std::getenv("DUMP_LIMIT")) {
+    data_limit = atoi(const_cast<char*>(value));
+  }
+  auto element_num = tensor_numel < data_limit ? tensor_numel : data_limit;
   os << "  - data: [";
   if (element_num > 0) {
     os << inspect[0];
     for (int j = 1; j < element_num; ++j) {
       os << " " << inspect[j];
     }
+  }
+  if (element_num < tensor_numel) {
+    os << " ...";
   }
   os << "]";
   return os;

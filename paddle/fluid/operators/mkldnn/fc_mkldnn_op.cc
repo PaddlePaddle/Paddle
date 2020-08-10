@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -542,7 +543,8 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
 
     output->set_layout(DataLayout::kMKLDNN);
 
-    output->dump("fc_mkldnn_fwd");
+    platform::DumpComposit::execute("fc_mkldnn_fwd", ctx.OutputName("Out"),
+                                    *output);
   }
 };
 }  // namespace operators

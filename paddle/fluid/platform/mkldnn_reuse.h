@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 #include "boost/optional.hpp"
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/pool_op.h"
@@ -32,6 +34,147 @@ using framework::DataLayout;
 using framework::Tensor;
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = mkldnn::memory;
+
+namespace colors {
+
+constexpr const char* RESET() { return "\033[0m"; }
+
+constexpr const char* RED() { return "\033[0;31m"; }
+
+constexpr const char* GREEN() { return "\033[1;32m"; }
+
+constexpr const char* CYAN() { return "\033[0;36m"; }
+
+#define msg_color(c, x) \
+  std::cout << c << "[tensor-dump]: " << x << colors::RESET() << std::endl;
+#define msg_green(x) msg_color(colors::GREEN(), x)
+}  // namespace colors
+
+struct OperatorDetails {
+ public:
+  const std::string name;
+  DataLayout layout;
+  OperatorDetails(const std::string& _name,
+                  DataLayout _layout = DataLayout::kAnyLayout)
+      : name{_name}, layout{_layout} {}
+};
+
+class SeqInFile {
+ public:
+  static bool Access(std::string name) {
+    static std::map<std::string, int> s_map;
+    return s_map[name]++;
+  }
+
+ private:
+  static std::map<std::string, int> s_map;
+};
+
+class TensorDumpConfig {
+ protected:
+  std::vector<std::string> split(const std::string& s, char delimiter) {
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream tokenStream(s);
+    while (std::getline(tokenStream, token, delimiter)) {
+      tokens.push_back(token);
+    }
+    return tokens;
+  }
+  std::string dirname_;
+  bool synchronized_;
+
+ public:
+  std::vector<OperatorDetails> ops;
+  TensorDumpConfig() : dirname_("out/"), synchronized_(false) {
+    // Read global required operators
+    if (const char* env_ops = std::getenv("TENSOR_DUMP_OPERATORS")) {
+      auto tmp_ops = split(env_ops, ',');
+      auto it = std::back_inserter(ops);
+      for (auto& _op : tmp_ops) {
+        auto key_value = split(_op, '=');
+        auto size = key_value.size();
+        if (!size || size > 2) {
+          throw std::runtime_error("incorrect key=env_ops");
+        }
+        if (size == 1) {
+          *it++ = {key_value[0]};
+          continue;
+        }
+        *it++ = {key_value[0], framework::StringToDataLayout(key_value[1])};
+      }
+      for (auto& item : ops) {
+        msg_green("config for operator " << item.name << ","
+                                         << DataLayoutToString(item.layout));
+      }
+    }
+    // Read global required folder
+    if (const char* foler_name = std::getenv("TENSOR_DUMP_FOLDER")) {
+      dirname_ = foler_name;
+      MkDir(dirname_.c_str());
+      msg_green("output folder " << dirname_);
+    }
+    // Read global set if it is required
+    if (const char* sync_ = std::getenv("TENSOR_DUMP_SYNCHRONIZE")) {
+      synchronized_ = true;
+      msg_green("Is synchronized " << sync_);
+    }
+  }
+  bool is_disabled() const { return !ops.size(); }
+  auto fetchOperator(const std::string& name) -> decltype(ops.begin()) {
+    return std::find_if(
+        ops.begin(), ops.end(),
+        [name](const OperatorDetails& item) { return item.name == name; });
+  }
+  auto fetchOperatorEnd() -> decltype(ops.end()) { return ops.end(); }
+
+  DataLayout getLayoutForOperator(const char* name) {
+    auto it = std::find_if(
+        ops.begin(), ops.end(),
+        [name](const OperatorDetails& item) { return item.name == name; });
+    if (it != ops.end()) {
+      return it->layout;
+    }
+    return DataLayout::kAnyLayout;
+  }
+  bool is_synchronized() const { return synchronized_; }
+  const std::string& getFoldername() { return dirname_; }
+  static TensorDumpConfig& get() {
+    static TensorDumpConfig inst;
+    return inst;
+  }
+  static std::mutex& getMutex() {
+    static std::mutex mx;
+    return mx;
+  }
+};
+
+class DumpComposit {
+ public:
+  static void execute(const std::string& label, const std::string& name,
+                      const framework::Tensor& _tensor) {
+    auto it = TensorDumpConfig::get().fetchOperator(label);
+    if (it == TensorDumpConfig::get().fetchOperatorEnd()) {
+      return;
+    }
+    std::string filename =
+        TensorDumpConfig::get().getFoldername() + label + name;
+    if (TensorDumpConfig::get().is_synchronized()) {
+      /* in case of parallel executor , io must be synchronized */
+      std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
+          TensorDumpConfig::getMutex());
+      std::ofstream(filename, std::ios_base::app) << SeqInFile::Access(filename)
+                                                  << std::endl
+                                                  << _tensor << std::endl
+                                                  << std::endl;
+    } else {
+      std::ofstream(filename, std::ios_base::app) << SeqInFile::Access(filename)
+                                                  << std::endl
+                                                  << _tensor << std::endl
+                                                  << std::endl;
+    }
+  }
+};
 
 template <typename T, typename TForward,
           typename TBackward = mkldnn_dummy_primitive>

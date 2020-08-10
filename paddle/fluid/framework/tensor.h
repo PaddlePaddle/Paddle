@@ -13,19 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <string>
-#include <tuple>
 #include <typeindex>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/tensor_extension.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -82,16 +79,6 @@ class Tensor {
   /*! Return a pointer to constant memory block. */
   template <typename T>
   const T* data() const;
-
-  template <class T>
-  bool hasType() const {
-    return type_ == ::paddle::framework::DataTypeTrait<T>::DataType();
-  }
-
-  void* raw_data() const;
-
-  /*! Serialize tensor to file with label name */
-  int dump(const char* label, const char* name = nullptr);
 
   inline bool IsInitialized() const;
 
