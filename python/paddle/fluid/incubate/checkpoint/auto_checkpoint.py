@@ -145,7 +145,7 @@ class AutoCheckpointChecker(object):
         return "run_env:{} platform:{} job_id:{} \
             hdfs_home:{} hdfs_name:{} hdfs_ugi:{} \
             hdfs_checkpoint_path:{} trainer_id:{} ce_test:{}".format(
-            self._run_env, self._platform, sefl._job_id, self._hdfs_home,
+            self._run_env, self._platform, self._job_id, self._hdfs_home,
             self._hdfs_name, self._hdfs_ugi, self._hdfs_checkpoint_path,
             self._trainer_id, self._ce_test)
 
