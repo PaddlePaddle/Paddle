@@ -222,8 +222,9 @@ class LeakyReLU(layers.Layer):
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
     
-    Returns:
-        None
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
     
     Examples:
         .. code-block:: python
