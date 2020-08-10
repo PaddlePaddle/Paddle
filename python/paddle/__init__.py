@@ -36,7 +36,7 @@ import paddle.distributed
 import paddle.sysconfig
 import paddle.tensor
 import paddle.nn
-import paddle.fleet
+import paddle.distributed.fleet
 import paddle.framework
 import paddle.optimizer
 import paddle.metric
