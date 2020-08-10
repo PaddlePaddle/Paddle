@@ -16,7 +16,7 @@ import unittest
 import paddle
 from paddle import fluid
 import os
-import paddle.fleet as fleet
+import paddle.distributed.fleet as fleet
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
