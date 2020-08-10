@@ -25,6 +25,7 @@ import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
 from . import core
+from . import framework
 from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
@@ -542,10 +543,14 @@ class Executor(object):
 
     def __init__(self, place=None):
         if place is None:
-            if core.is_compiled_with_cuda():
-                self.place = core.CUDAPlace(0)
+            expected_place = framework._current_expected_place()
+            if expected_place is None:
+                if core.is_compiled_with_cuda():
+                    self.place = core.CUDAPlace(0)
+                else:
+                    self.place = core.CPUPlace()
             else:
-                self.place = core.CPUPlace()
+                self.place = expected_place
         else:
             self.place = place
         self.program_caches = dict()

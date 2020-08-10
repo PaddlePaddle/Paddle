@@ -283,11 +283,15 @@ def guard(place=None):
     tracer = Tracer()
     VarBase = core.VarBase
 
-    if place is None:
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
+    expected_place = framework._current_expected_place()
+    if expected_place is None:
+        if place is None:
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+            else:
+                place = core.CPUPlace()
+    else:
+        place = expected_place
     tracer._expected_place = place
 
     with framework.program_guard(train, startup):
