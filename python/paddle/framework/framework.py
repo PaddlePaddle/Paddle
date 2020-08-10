@@ -15,9 +15,3 @@
 # TODO: define framework api 
 # __all__ = ['set_default_dtype',
 #            'get_default_dtype']
-
-__all__ = ['get_device', 'set_device']
-
-
-def get_device():
-    pass

@@ -24,15 +24,11 @@ from .tracer import Tracer
 import logging
 import objgraph
 from ..data_feeder import convert_dtype
+import re
 
 __all__ = [
-    'no_grad',
-    'grad',
-    'guard',
-    'enable_dygraph',
-    'disable_dygraph',
-    'enabled',
-    'to_variable',
+    'no_grad', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph', 'enabled',
+    'to_variable', 'get_device', 'set_device'
 ]
 
 
@@ -648,3 +644,36 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
                 zero_copy=zero_copy,
                 name=name if name else '')
             return py_var
+
+
+def set_device(device):
+    lower_device = device.lower()
+    if lower_device == 'cpu':
+        place = core.CPUPlace()
+        framework._set_expected_place(place)
+        framework._set_dygraph_tracer_place(place)
+    else:
+        avaliable_device = ((lower_device == 'cpu') or
+                            re.match(r'gpu:\d+', lower_device))
+        if not avaliable_device:
+            raise ValueError(
+                "The device must be a string which is like 'cpu' or 'gpu:0'")
+        device_info_list = device.split(':', 1)
+        device_id = device_info_list[1]
+        device_id = int(device_id)
+        place = core.CUDAPlace(device_id)
+        framework._set_expected_place(place)
+        framework._set_dygraph_tracer_place(place)
+
+
+def get_device():
+    device = ''
+    place = framework._current_expected_place()
+    print(place)
+    if isinstance(place, core.CPUPlace):
+        device = 'cpu'
+    else:
+        device_id = place.get_device_id()
+        device = 'gpu:' + str(device_id)
+
+    return device

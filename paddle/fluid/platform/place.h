@@ -39,7 +39,6 @@ struct CUDAPlace {
   explicit CUDAPlace(int d) : device(d) {}
 
   inline int GetDeviceId() const { return device; }
-  inline void SetDeviceId(int device_id) { device = device_id; }
   // needed for variant equality comparison
   inline bool operator==(const CUDAPlace &o) const {
     return device == o.device;
