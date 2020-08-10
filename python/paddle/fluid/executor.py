@@ -25,12 +25,12 @@ import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
 from . import core
-from . import framework
 from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
+from . import framework
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
