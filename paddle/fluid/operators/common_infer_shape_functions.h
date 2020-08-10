@@ -25,7 +25,9 @@ namespace operators {
 
 // shape input(0) -> output(0) without change.
 void UnaryOpUnchangedInferShape(framework::InferShapeContext* ctx);
-
+// shape input(0) -> output(0) without change, check if axis in range [-Rank(x),
+// Rank(x)-1]
+void UnaryOpUnchangedInferShapeCheckAxis(framework::InferShapeContext* ctx);
 // broadcast input(0) and input(1) -> output(0)
 void BinaryOpBroadcastInferShape(framework::InferShapeContext* ctx);
 
