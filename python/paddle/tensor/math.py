@@ -1359,7 +1359,7 @@ def min(x, axis=None, keepdim=False, name=None):
             result3 = paddle.min(x, axis=-1)
             print(result3.numpy()) 
             #[0.2 0.1]
-            result4 = paddle.min(x, axis=1, keep_dim=True)
+            result4 = paddle.min(x, axis=1, keepdim=True)
             print(result4.numpy())
             #[[0.2]
             # [0.1]]
