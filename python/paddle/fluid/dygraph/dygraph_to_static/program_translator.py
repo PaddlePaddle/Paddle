@@ -190,12 +190,17 @@ def unwrap(func):
 
 class PartialProgram(object):
     def __init__(self, dygraph_func, input_spec=None):
-        self._dygraph_func = dygraph_func
+        # save the instance `self` while decorating a method of class.
+        if inspect.ismethod(dygraph_func):
+            self._dygraph_func = dygraph_func.im_func
+            self._class_instance = dygraph_func.im_self
+        else:
+            self._dygraph_func = dygraph_func
+            self._class_instance = None
+
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(dygraph_func, input_spec)
         self._program_cache = ProgramCache()
-        # save the instance `self` while decorating a method of class.
-        self._class_instance = None
 
     def __get__(self, instance, owner):
         self._class_instance = instance
@@ -214,7 +219,6 @@ class PartialProgram(object):
         # 3. check whether hit the cache or build a new program for the input arguments
         cache_key = CacheKey(self._function_spec, inputs_with_spec,
                              self._class_instance)
-        # print(inputs_with_spec, hash(cache_key))
         _, partial_program_layer = self._program_cache[cache_key]
 
         # 4. Synchronize self.training attribute.
@@ -385,7 +389,6 @@ class ProgramCache(object):
         self._caches = collections.OrderedDict()
 
     def _build_once(self, cache_key):
-        print("build program for : ", cache_key)
         concrete_program = ConcreteProgram.from_func_spec(
             func_spec=cache_key.function_spec,
             inputs_spec=cache_key.inputs_with_spec,
@@ -396,9 +399,6 @@ class ProgramCache(object):
         if not isinstance(item, CacheKey):
             raise ValueError('type(item) should be CacheKey, but received %s' %
                              type_name(item))
-
-        print("hash {} in self._caches: {}".format(
-            hash(item), item in self._caches))
 
         if item not in self._caches:
             self._caches[item] = self._build_once(item)

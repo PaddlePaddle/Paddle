@@ -293,8 +293,6 @@ class FunctionSpec(object):
                 elif isinstance(input_var, core.VarBase):
                     input_var = TensorSpec.from_variable(input_var)
 
-                if isinstance(input_var, TensorSpec):
-                    self._idx_to_variable_spec[idx] = input_var
                 inputs_with_spec.append(input_var)
 
             inputs_with_spec = pack_sequence_as(args, inputs_with_spec)
