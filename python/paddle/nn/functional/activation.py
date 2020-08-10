@@ -22,7 +22,9 @@ from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
 from ...fluid.layers import logsigmoid  #DEFINE_ALIAS
+from ...fluid.layers import sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import maxout  #DEFINE_ALIAS
+from ...fluid.layers import relu  #DEFINE_ALIAS
 from ...fluid.layers import relu6  #DEFINE_ALIAS
 from ...fluid.layers import selu  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
@@ -190,119 +192,6 @@ def hsigmoid(input,
         outputs=outputs,
         attrs=attrs)
     return out
-
-
-def relu(input, inplace=False, name=None):
-    """
-	:alias_main: paddle.nn.functional.relu
-	:alias: paddle.nn.functional.relu,paddle.nn.functional.activation.relu
-
-    ReLU Activation.
-
-    .. math:
-
-        out = max(x, 0)
-
-    Parameters:
-        input (Variable): The input variable. A multi-dimension Tensor with type float16, float32, or float64.
-        inplace (bool, optional): If inplace is True, the input and output of ``ReLU`` are the same variable.
-            Otherwise, the input and output of ``ReLU`` are different variables. Default: False. Note that if x is
-            more than one OPs' input, inplace must be False.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Output of relu operator, a Tensor with shape same as input
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import paddle.nn.functional as functional
-          import numpy as np
-
-          data = np.array([-2, 0, 1]).astype('float32')
-          with fluid.dygraph.guard():
-              data = fluid.dygraph.to_variable(data)
-              res = functional.relu(data)  # [0, 0, 1]
-    """
-
-    if in_dygraph_mode():
-        if inplace:
-            warnings.warn(
-                "Inplace on ReLU is not allowed and will be discarded in dygraph mode currently."
-            )
-        return core.ops.relu(input)
-
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'relu')
-
-    helper = LayerHelper('relu', **locals())
-    outs = input if inplace else helper.create_variable_for_type_inference(
-        input.dtype)
-    helper.append_op(type='relu', inputs={'X': [input]}, outputs={'Out': outs})
-    return outs
-
-
-def sigmoid(input, inplace=False, name=None):
-    """
-	:alias_main: paddle.nn.functional.sigmoid
-	:alias: paddle.nn.functional.sigmoid,paddle.nn.functional.activation.sigmoid
-
-    Sigmoid Activation.
-
-    .. math:
-
-        output = \frac{1}{1 + e^{-input}}
-    
-    Parameters:
-        input (Variable): The input variable. A multi-dimension Tensor with type float16, float32, or float64.
-        inplace (bool, optional): If inplace is True, the input and output are the same variable.
-            Otherwise, the input and output of are different variables. Default: False. Note that if x is
-            more than one OPs' input, inplace must be False.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-    
-    Returns:
-        Output of sigmoid operator, a Tensor with shape same as input
-    
-    Examples:
-        .. code-block:: python
-          
-          import paddle.fluid as fluid
-          import paddle.nn.functional as functional
-          import numpy as np
-          # In the static graph mode
-          input = fluid.data(name="input", shape=[None, 4])
-          output = functional.sigmoid(input)
-          place = fluid.CPUPlace()
-          exe = fluid.Executor(place)
-          exe.run(fluid.default_startup_program())
-          input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
-          output_data = exe.run(feed={"input": input_data},
-                                fetch_list=[output])
-          print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
-          # In the dynamic graph mode
-          with fluid.dygraph.guard():
-              input = fluid.dygraph.to_variable(input_data)
-              output = functional.sigmoid(input)
-              print(output) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
-    """
-
-    if in_dygraph_mode():
-        if inplace:
-            warnings.warn(
-                "Inplace on sigmoid is not allowed and will be discarded in dygraph mode currently."
-            )
-        return core.ops.sigmoid(input)
-
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'sigmoid')
-    helper = LayerHelper("sigmoid", **locals())
-    outputs = helper.create_variable_for_type_inference(input.dtype)
-    helper.append_op(
-        type='sigmoid', inputs={'X': [input]}, outputs={'Out': outputs})
-    return outputs
 
 
 def log_softmax(input, axis=None, dtype=None, name=None):
