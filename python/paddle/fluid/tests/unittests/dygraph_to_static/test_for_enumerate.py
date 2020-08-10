@@ -349,7 +349,3 @@ class TestForEnumerateVarList(TestForInRange):
 
 if __name__ == '__main__':
     unittest.main()
-    # testsuit = unittest.TestSuite()
-    # testsuit.addTest(TestForEnumerateSimple('test_transformed_result_compare'))
-    # runner = unittest.TextTestRunner()
-    # runner.run(testsuit)

@@ -133,7 +133,6 @@ class TestWithTrainAndEval(unittest.TestCase):
             x = fluid.dygraph.to_variable(x_data)
             linear_net(x)
 
-            # _, partial_layer = program_translator.get_program_cache().last()[-1]
             _, partial_layer = linear_net.forward.program_cache.last()[-1]
             # check default mode is for training
             self.assertEqual(partial_layer.program,
