@@ -157,7 +157,8 @@ class TestImperativeQat(unittest.TestCase):
 
     def test_qat_save(self):
         imperative_qat = ImperativeQuantAware(
-            weight_quantize_type='abs_max',
+            #weight_quantize_type='abs_max',
+            weight_quantize_type='channel_wise_abs_max',
             activation_quantize_type='moving_average_abs_max')
 
         with fluid.dygraph.guard():
@@ -181,7 +182,6 @@ class TestImperativeQat(unittest.TestCase):
 
                     img = fluid.dygraph.to_variable(x_data)
                     label = fluid.dygraph.to_variable(y_data)
-
                     out = lenet(img)
                     acc = fluid.layers.accuracy(out, label)
                     loss = fluid.layers.cross_entropy(out, label)
@@ -275,7 +275,8 @@ class TestImperativeQat(unittest.TestCase):
 
         reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
-        weight_quantize_type = 'abs_max'
+        #weight_quantize_type = 'abs_max'
+        weight_quantize_type = 'channel_wise_abs_max'
         activation_quant_type = 'moving_average_abs_max'
         param_init_map = {}
         seed = 1000

@@ -24,7 +24,7 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 
 __all__ = [
     'FakeQuantMovingAverage', 'FakeQuantAbsMax', 'QuantizedConv2D',
-    'QuantizedLinear'
+    'QuantizedLinear', 'FakeChannelWiseQuantDequantAbsMax'
 ]
 
 
@@ -210,12 +210,15 @@ class FakeQuantAbsMax(layers.Layer):
 
 
 def _get_fake_quant_type(quant_type, name, moving_rate, quant_bits, dtype,
-                         quant_on_weight):
+                         quant_on_weight, channel_num):
+
     fake_quant_map = {
         'abs_max':
         lambda: FakeQuantAbsMax(name, quant_bits, dtype, quant_on_weight),
         'moving_average_abs_max':
-        lambda: FakeQuantMovingAverage(name, moving_rate, quant_bits, dtype)
+        lambda: FakeQuantMovingAverage(name, moving_rate, quant_bits, dtype),
+        'channel_wise_abs_max':
+        lambda: FakeChannelWiseQuantDequantAbsMax(name, channel_num, quant_bits, dtype, quant_on_weight)
     }
     return fake_quant_map[quant_type]()
 
@@ -248,10 +251,11 @@ class QuantizedConv2D(layers.Layer):
         # For FakeQuant
         self._fake_quant_weight = _get_fake_quant_type(
             weight_quantize_type, self.weight.name, moving_rate, weight_bits,
-            self._dtype, True)
+            self._dtype, True, self.weight.shape[0])
         self._fake_quant_input = _get_fake_quant_type(
             activation_quantize_type,
-            layer.full_name(), moving_rate, activation_bits, self._dtype, False)
+            layer.full_name(), moving_rate, activation_bits, self._dtype, False,
+            self.weight.shape[0])
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
@@ -327,10 +331,11 @@ class QuantizedLinear(layers.Layer):
         # For FakeQuant
         self._fake_quant_weight = _get_fake_quant_type(
             weight_quantize_type, self.weight.name, moving_rate, weight_bits,
-            self._dtype, True)
+            self._dtype, True, self.weight.shape[0])
         self._fake_quant_input = _get_fake_quant_type(
             activation_quantize_type,
-            layer.full_name(), moving_rate, activation_bits, self._dtype, False)
+            layer.full_name(), moving_rate, activation_bits, self._dtype, False,
+            self.weight.shape[0])
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
@@ -373,3 +378,82 @@ class QuantizedLinear(layers.Layer):
         else:
             pre_activation = mul_out
         return self._helper.append_activation(pre_activation, act=self._act)
+
+
+class FakeChannelWiseQuantDequantAbsMax(layers.Layer):
+    def __init__(self,
+                 name=None,
+                 channel_num=None,
+                 quant_bits=8,
+                 dtype='float32',
+                 quant_on_weight=False):
+        super(FakeChannelWiseQuantDequantAbsMax, self).__init__()
+        self._quant_bits = quant_bits
+        self._dtype = dtype
+        self._name = name
+        self._channel_num = channel_num
+        scale_prefix = "{}.scale".format(
+            name) if name else 'channel_wise_quant_dequant.scale'
+        self._scale_name = unique_name.generate(scale_prefix)
+        if quant_on_weight:
+            scale_attr = ParamAttr(
+                name=self._scale_name,
+                initializer=Constant(0.0),
+                trainable=False)
+            self._scale = self.create_parameter(
+                shape=[self._channel_num], attr=scale_attr, dtype=self._dtype)
+            self._scale.stop_gradient = True
+        else:
+            self._scale = None
+
+    def forward(self, input):
+        if in_dygraph_mode():
+            attrs = ('bit_length', self._quant_bits)
+            quant_out = _varbase_creator(
+                type=input.type,
+                name="{}channelwise.quantized.dequantized".format(input.name),
+                shape=input.shape,
+                dtype=input.dtype,
+                persistable=False)
+
+            out_scale = self._scale
+            if not out_scale[0]:
+                out_scale = _varbase_creator(
+                    type=core.VarDesc.VarType.LOD_TENSOR,
+                    name=self._scale_name,
+                    shape=[self._channel_num],
+                    dtype=self._dtype,
+                    persistable=False)
+                out_scale.stop_gradient = True
+
+            out, _, = core.ops.fake_channel_wise_quantize_dequantize_abs_max(
+                input, quant_out, out_scale, *attrs)
+            return out
+
+        check_variable_and_dtype(input, 'input', ['float32'],
+                                 "FakeChannelWiseQuantDequantAbsMax")
+        attrs = {'bit_length': self._quant_bits}
+        inputs = {"X": [input]}
+        quant_out = self._helper.create_variable(
+            name="{}.channelwise.quantized.dequantized".format(input.name),
+            dtype=input.dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=False)
+        out_scale = self._scale
+        if not out_scale:
+            out_scale = self._helper.create_variable(
+                name=self._scale_name,
+                dtype=self._dtype,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=True)
+        outputs = {"Out": [quant_out], "OutScale": [out_scale]}
+
+        self._helper.append_op(
+            type="fake_channel_wise_quantize_dequantize_abs_max",
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs)
+
+        return quant_out

@@ -81,6 +81,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
+    {"fake_channel_wise_quantize_dequantize_abs_max", {"Out", "OutScale"}},
     {"amp_check_finite_and_scale", {"Out", "FoundInfinite"}},
 };
 
