@@ -25,19 +25,19 @@ def pairwise_distance(x, y, p=2.0, eps=1e-6, keepdim=False):
 
 
 def test_static(x_np, y_np, p=2.0, eps=1e-6, keepdim=False):
-    prog = paddle.Program()
-    startup_prog = paddle.Program()
+    prog = paddle.static.Program()
+    startup_prog = paddle.static.Program()
 
-    place = paddle.CUDAPlace(0) if paddle.fluid.core.is_compiled_with_cuda(
+    place = fluid.CUDAPlace(0) if paddle.fluid.core.is_compiled_with_cuda(
     ) else fluid.CPUPlace()
 
-    with paddle.program_guard(prog, startup_prog):
+    with paddle.static.program_guard(prog, startup_prog):
         x = paddle.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
         y = paddle.data(name='y', shape=y_np.shape, dtype=x_np.dtype)
         dist = paddle.nn.layer.distance.PairwiseDistance(
             p=p, eps=eps, keepdim=keepdim)
         distance = dist(x, y)
-        exe = fluid.Executor(place)
+        exe = paddle.static.Executor(place)
         static_ret = exe.run(prog,
                              feed={'x': x_np,
                                    'y': y_np},
@@ -47,14 +47,14 @@ def test_static(x_np, y_np, p=2.0, eps=1e-6, keepdim=False):
 
 
 def test_dygraph(x_np, y_np, p=2.0, eps=1e-6, keepdim=False):
-    paddle.enable_imperative()
-    x = paddle.imperative.to_variable(x_np)
-    y = paddle.imperative.to_variable(y_np)
+    paddle.disable_static()
+    x = paddle.to_variable(x_np)
+    y = paddle.to_variable(y_np)
     dist = paddle.nn.layer.distance.PairwiseDistance(
         p=p, eps=eps, keepdim=keepdim)
     distance = dist(x, y)
     dygraph_ret = distance.numpy()
-    paddle.disable_imperative()
+    paddle.enable_static()
     return dygraph_ret
 
 

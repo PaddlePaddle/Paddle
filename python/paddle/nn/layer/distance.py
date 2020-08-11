@@ -24,9 +24,6 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_type
 
 class PairwiseDistance(layers.Layer):
     """
-	:alias_main: paddle.nn.PairwiseDistance
-	:alias: paddle.nn.PairwiseDistance,paddle.nn.layer.PairwiseDistance,paddle.nn.layer.distance.PairwiseDistance
-
     This operator computes the pairwise distance between two vectors. The
     distance is calculated by p-oreder norm:
 
@@ -55,11 +52,11 @@ class PairwiseDistance(layers.Layer):
 
             import paddle
             import numpy as np
-            paddle.enable_imperative()
+            paddle.disable_static()
             x_np = np.array([[1., 3.], [3., 5.]]).astype(np.float64)
             y_np = np.array([[5., 6.], [7., 8.]]).astype(np.float64)
-            x = paddle.imperative.to_variable(x_np)
-            y = paddle.imperative.to_variable(y_np)
+            x = paddle.to_variable(x_np)
+            y = paddle.to_variable(y_np)
             dist = paddle.nn.PairwiseDistance()
             distance = dist(x, y)
             print(distance.numpy()) # [5. 5.]
