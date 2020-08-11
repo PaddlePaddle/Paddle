@@ -22,7 +22,7 @@ from test_dist_fleet_base import TestFleetBase
 
 class TestDistMnistSync2x2(TestFleetBase):
     def _setup_config(self):
-        self._mode = "sync"
+        self._mode = "async"
         self._reader = "pyreader"
 
     def check_with_place(self,
