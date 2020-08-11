@@ -14,6 +14,7 @@
 """Test cases for role makers."""
 
 from __future__ import print_function
+import paddle
 import os
 import unittest
 
@@ -162,7 +163,8 @@ class TestCloudRoleMaker2(unittest.TestCase):
             data = "1 1 1 1\n"
             f.write(data)
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.fleet.DatasetFactory().create_dataset(
+            "InMemoryDataset")
         dataset.set_filelist(["test_fleet_gloo_role_maker_1.txt"])
         dataset.set_use_var([show, label])
         dataset.load_into_memory()

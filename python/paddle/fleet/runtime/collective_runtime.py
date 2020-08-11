@@ -30,7 +30,7 @@ class CollectiveRuntime(RuntimeBase):
             "You should not call 'run_worker' method for collective mode.")
         pass
 
-    def _init_server(self):
+    def _init_server(self, *args, **kwargs):
         logging.warn(
             "You should not call 'init_server' method for collective mode.")
         pass
