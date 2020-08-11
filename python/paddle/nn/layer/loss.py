@@ -615,9 +615,6 @@ class NLLLoss(fluid.dygraph.Layer):
 
 class KLDivLoss(fluid.dygraph.Layer):
     """
-	:alias_main: paddle.nn.KLDivLoss
-	:alias: paddle.nn.KLDivLoss,paddle.nn.layer.KLDivLoss,paddle.nn.layer.loss.KLDivLoss
-
     This operator calculates the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
     log-probability and Input(Target) is the probability.
