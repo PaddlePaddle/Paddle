@@ -81,7 +81,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         # example 1:
         # attr shape is a list which doesn't contain Tensor.
@@ -98,7 +98,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
         # example 3:
         # attr shape is a Tensor
-        var_shape = paddle.imperative.to_variable(np.array([3]))
+        var_shape = paddle.to_variable(np.array([3]))
         result_3 = paddle.randint(low=-5, high=5, shape=var_shape)
         # [-2, 2, 3]
 
@@ -187,7 +187,7 @@ def randn(shape, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         # example 1: attr shape is a list which doesn't contain Tensor.
         result_1 = paddle.randn(shape=[2, 3])
@@ -206,7 +206,7 @@ def randn(shape, dtype=None, name=None):
         #   [ 0.8086993 ,  0.6868893 ]]]
 
         # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-        var_shape = paddle.imperative.to_variable(np.array([2, 3]))
+        var_shape = paddle.to_variable(np.array([2, 3]))
         result_3 = paddle.randn(var_shape)
         # [[-2.878077 ,  0.17099959,  0.05111201]
         #  [-0.3761474, -1.044801  ,  1.1870178 ]]
@@ -252,7 +252,7 @@ def randperm(n, dtype="int64", name=None):
 
         import paddle
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         result_1 = paddle.randperm(5)
         # [4, 1, 2, 3, 0]
@@ -325,7 +325,7 @@ def rand(shape, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
         # example 1: attr shape is a list which doesn't contain Tensor.
         result_1 = paddle.rand(shape=[2, 3])
         # [[0.451152  , 0.55825245, 0.403311  ],
@@ -343,7 +343,7 @@ def rand(shape, dtype=None, name=None):
         #   [0.870881  , 0.2984597 ]]]
 
         # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-        var_shape = paddle.imperative.to_variable(np.array([2, 3]))
+        var_shape = paddle.to_variable(np.array([2, 3]))
         result_3 = paddle.rand(var_shape)
         # [[0.22920267, 0.841956  , 0.05981819],
         #  [0.4836288 , 0.24573246, 0.7516129 ]]
