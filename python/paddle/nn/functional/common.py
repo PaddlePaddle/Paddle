@@ -587,6 +587,10 @@ def pad(input,
                 pad = concat([pad, zeros((2, ), dtype="int32")], axis=0)
                 unsqueezed_dim = [1]
                 input = unsqueeze(input, axes=unsqueezed_dim)
+        else:
+            raise ValueError, "data_format should be in one of "
+            "[NCL, NCHW, NCDHW, NLC, NHWC, NDHWC] but got {}".format(
+                data_format)
     else:
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"

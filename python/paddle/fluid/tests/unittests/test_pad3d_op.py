@@ -21,7 +21,7 @@ import paddle.nn.functional as F
 import paddle.fluid.dygraph as dg
 import paddle.fluid.core as core
 
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, program_guard, Executor, default_main_program
 
 
 class TestPad3dOp(OpTest):
@@ -70,7 +70,6 @@ class TestPad3dOp(OpTest):
         elif self.mode == "circular":
             out = np.pad(self.inputs['X'], paddings, mode="wrap")
         self.outputs = {'Out': out}
-        print("[gry debug]outputs shape: ", out.shape)
 
     def test_check_output(self):
         self.check_output()
@@ -242,7 +241,7 @@ class TestPadAPI(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with paddle.program_guard(paddle.Program(), paddle.Program()):
+        with program_guard(Program(), Program()):
             input_shape = (1, 2, 3, 4, 5)
             pad = [1, 2, 1, 1, 3, 4]
             mode = "constant"
@@ -250,8 +249,8 @@ class TestPadAPI(unittest.TestCase):
             input_data = np.random.rand(*input_shape).astype(np.float32)
             x = paddle.data(name="x", shape=input_shape)
             result = F.pad(input=x, pad=pad, value=value, mode='constant')
-            exe = paddle.Executor(place)
-            fetches = exe.run(paddle.default_main_program(),
+            exe = Executor(place)
+            fetches = exe.run(default_main_program(),
                               feed={"x": input_data},
                               fetch_list=[result])
 
@@ -353,7 +352,7 @@ class TestPad3dOpError(unittest.TestCase):
             x = paddle.data(name="x", shape=input_shape)
             y = F.pad(x, pad=[5, 6, 1, 1, 1, 1], value=1, mode='reflect')
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = Executor(place)
             outputs = exe.run(feed={'x': data}, fetch_list=[y.name])
 
         def test_reflect_2():
@@ -362,7 +361,7 @@ class TestPad3dOpError(unittest.TestCase):
             x = paddle.data(name="x", shape=input_shape)
             y = F.pad(x, pad=[1, 1, 4, 3, 1, 1], value=1, mode='reflect')
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = Executor(place)
             outputs = exe.run(feed={'x': data}, fetch_list=[y.name])
 
         def test_reflect_3():
@@ -371,7 +370,7 @@ class TestPad3dOpError(unittest.TestCase):
             x = paddle.data(name="x", shape=input_shape)
             y = F.pad(x, pad=[1, 1, 1, 1, 2, 3], value=1, mode='reflect')
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = Executor(place)
             outputs = exe.run(feed={'x': data}, fetch_list=[y.name])
 
         self.assertRaises(TypeError, test_variable)
