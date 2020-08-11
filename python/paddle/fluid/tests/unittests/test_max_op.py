@@ -29,35 +29,41 @@ class ApiMaxTest(unittest.TestCase):
             self.place = core.CPUPlace()
 
     def test_api(self):
-        with paddle.program_guard(paddle.Program(), paddle.Program()):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
             data = paddle.nn.data("data", shape=[10, 10], dtype="float32")
             result_max = paddle.max(x=data, axis=1)
-            exe = paddle.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             input_data = np.random.rand(10, 10).astype(np.float32)
             res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
         self.assertEqual((res == np.max(input_data, axis=1)).all(), True)
 
-        with paddle.program_guard(paddle.Program(), paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
             data = paddle.nn.data("data", shape=[10, 10], dtype="int64")
             result_max = paddle.max(x=data, axis=0)
-            exe = paddle.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
             res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
         self.assertEqual((res == np.max(input_data, axis=0)).all(), True)
 
     def test_errors(self):
+        paddle.enable_static()
+
         def test_input_type():
-            with paddle.program_guard(paddle.Program(), paddle.Program()):
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
                 data = np.random.rand(10, 10)
                 result_max = paddle.max(x=data, axis=0)
 
         self.assertRaises(TypeError, test_input_type)
 
     def test_imperative_api(self):
-        with paddle.imperative.guard(self.place):
-            np_x = np.array([10, 10]).astype('float64')
-            x = paddle.imperative.to_variable(np_x)
-            z = paddle.max(x, axis=0)
-            np_z = z.numpy()
-            z_expected = np.array(np.max(np_x, axis=0))
-            self.assertEqual((np_z == z_expected).all(), True)
+        paddle.disable_static()
+        np_x = np.array([10, 10]).astype('float64')
+        x = paddle.to_variable(np_x)
+        z = paddle.max(x, axis=0)
+        np_z = z.numpy()
+        z_expected = np.array(np.max(np_x, axis=0))
+        self.assertEqual((np_z == z_expected).all(), True)

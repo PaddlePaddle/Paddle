@@ -516,14 +516,14 @@ Examples:
     .. code-block:: python
 
         import paddle
-        import paddle.imperative as imperative
         import numpy as np
-        paddle.enable_imperative()
+
+        paddle.disable_static()
   
         x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
         y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = imperative.to_variable(x_data)
-        y = imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.maximum(x, y)
         print(res.numpy())
         #[[5. 6.]
@@ -531,8 +531,8 @@ Examples:
 
         x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
         y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.maximum(x, y, axis=1)
         print(res.numpy())
         #[[[1. 2. 3.]
@@ -540,16 +540,16 @@ Examples:
 
         x_data = np.array([2, 3, 5], dtype=np.float32)
         y_data = np.array([1, 4, np.nan], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.maximum(x, y)
         print(res.numpy())
         #[ 2.  4. nan]
 
         x_data = np.array([5, 3, np.inf], dtype=np.float32)
         y_data = np.array([1, 4, 5], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.maximum(x, y)
         print(res.numpy())
         #[ 5.  4. inf]
@@ -568,14 +568,13 @@ Examples:
     .. code-block:: python
 
         import paddle
-        import paddle.imperative as imperative
         import numpy as np
-        paddle.enable_imperative()
+        paddle.disable_static()
   
         x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
         y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = imperative.to_variable(x_data)
-        y = imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.minimum(x, y)
         print(res.numpy())
         #[[1. 2.]
@@ -583,8 +582,8 @@ Examples:
 
         x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
         y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.minimum(x, y, axis=1)
         print(res.numpy())
         #[[[1. 1. 1.]
@@ -592,16 +591,16 @@ Examples:
 
         x_data = np.array([2, 3, 5], dtype=np.float32)
         y_data = np.array([1, 4, np.nan], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.minimum(x, y)
         print(res.numpy())
         #[ 1.  3. nan]
 
         x_data = np.array([5, 3, np.inf], dtype=np.float32)
         y_data = np.array([1, 4, 5], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.minimum(x, y)
         print(res.numpy())
         #[1. 3. 5.]
@@ -1197,15 +1196,14 @@ def max(x, axis=None, keepdim=False, name=None):
 
             import numpy as np
             import paddle
-            import paddle.imperative as imperative
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             # data_x is a variable with shape [2, 4]
             # the axis is a int element
             data_x = np.array([[0.2, 0.3, 0.5, 0.9],
                                [0.1, 0.2, 0.6, 0.7]])
-            x = imperative.to_variable(data_x)
+            x = paddle.to_variable(data_x)
             result1 = paddle.max(x)
             print(result1.numpy())
             #[0.9]
@@ -1224,7 +1222,7 @@ def max(x, axis=None, keepdim=False, name=None):
             # the axis is list 
             data_y = np.array([[[1.0, 2.0], [3.0, 4.0]],
                                [[5.0, 6.0], [7.0, 8.0]]])
-            y = imperative.to_variable(data_y)
+            y = paddle.to_variable(data_y)
             result5 = paddle.max(y, axis=[1, 2])
             print(result5.numpy())
             #[4. 8.]
@@ -1286,15 +1284,14 @@ def min(x, axis=None, keepdim=False, name=None):
 
             import numpy as np
             import paddle
-            import paddle.imperative as imperative
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             # data_x is a variable with shape [2, 4]
             # the axis is a int element
             data_x = np.array([[0.2, 0.3, 0.5, 0.9],
                             [0.1, 0.2, 0.6, 0.7]])
-            x = imperative.to_variable(data_x)
+            x = paddle.to_variable(data_x)
             result1 = paddle.min(x)
             print(result1.numpy())
             #[0.1]
@@ -1313,7 +1310,7 @@ def min(x, axis=None, keepdim=False, name=None):
             # the axis is list 
             data_y = np.array([[[1.0, 2.0], [3.0, 4.0]],
                                [[5.0, 6.0], [7.0, 8.0]]])
-            y = imperative.to_variable(data_y)
+            y = paddle.to_variable(data_y)
             result5 = paddle.min(y, axis=[1, 2])
             print(result5.numpy()) 
             #[1. 5.]

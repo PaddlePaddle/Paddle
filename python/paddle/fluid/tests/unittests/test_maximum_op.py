@@ -32,46 +32,49 @@ class ApiMaximumTest(unittest.TestCase):
         self.input_y = np.random.rand(10, 15).astype("float32")
         self.input_z = np.random.rand(15).astype("float32")
 
-    def test_api(self):
-        with paddle.program_guard(paddle.Program(), paddle.Program()):
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
             data_x = paddle.nn.data("x", shape=[10, 15], dtype="float32")
             data_y = paddle.nn.data("y", shape=[10, 15], dtype="float32")
             result_max = paddle.maximum(data_x, data_y)
-            exe = paddle.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             res, = exe.run(feed={"x": self.input_x,
                                  "y": self.input_y},
                            fetch_list=[result_max])
         self.assertEqual((res == np.maximum(self.input_x, self.input_y)).all(),
                          True)
 
-        with paddle.program_guard(paddle.Program(), paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
             data_x = paddle.nn.data("x", shape=[10, 15], dtype="float32")
             data_z = paddle.nn.data("z", shape=[15], dtype="float32")
             result_max = paddle.maximum(data_x, data_z, axis=1)
-            exe = paddle.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             res, = exe.run(feed={"x": self.input_x,
                                  "z": self.input_z},
                            fetch_list=[result_max])
         self.assertEqual((res == np.maximum(self.input_x, self.input_z)).all(),
                          True)
 
-    def test_imperative_api(self):
-        with paddle.imperative.guard(self.place):
-            np_x = np.array([10, 10]).astype('float64')
-            x = paddle.imperative.to_variable(self.input_x)
-            y = paddle.imperative.to_variable(self.input_y)
-            z = paddle.maximum(x, y)
-            np_z = z.numpy()
-            z_expected = np.array(np.maximum(self.input_x, self.input_y))
-            self.assertEqual((np_z == z_expected).all(), True)
+    def test_dynamic_api(self):
+        paddle.disable_static()
+        np_x = np.array([10, 10]).astype('float64')
+        x = paddle.to_variable(self.input_x)
+        y = paddle.to_variable(self.input_y)
+        z = paddle.maximum(x, y)
+        np_z = z.numpy()
+        z_expected = np.array(np.maximum(self.input_x, self.input_y))
+        self.assertEqual((np_z == z_expected).all(), True)
 
     def test_broadcast_axis(self):
-        with paddle.imperative.guard(self.place):
-            np_x = np.random.rand(5, 4, 3, 2).astype("float64")
-            np_y = np.random.rand(4, 3).astype("float64")
+        paddle.disable_static()
+        np_x = np.random.rand(5, 4, 3, 2).astype("float64")
+        np_y = np.random.rand(4, 3).astype("float64")
 
-            x = paddle.imperative.to_variable(self.input_x)
-            y = paddle.imperative.to_variable(self.input_y)
-            result_1 = paddle.maximum(x, y, axis=1)
-            result_2 = paddle.maximum(x, y, axis=-2)
-            self.assertEqual((result_1.numpy() == result_2.numpy()).all(), True)
+        x = paddle.to_variable(self.input_x)
+        y = paddle.to_variable(self.input_y)
+        result_1 = paddle.maximum(x, y, axis=1)
+        result_2 = paddle.maximum(x, y, axis=-2)
+        self.assertEqual((result_1.numpy() == result_2.numpy()).all(), True)
