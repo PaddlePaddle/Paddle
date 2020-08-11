@@ -478,18 +478,6 @@ class TestNLLLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_result, dy_result))
         self.assertTrue(np.allclose(dy_result, expected))
 
-    def test_NLLLoss_name(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[10, 10], dtype='float64')
-            label = fluid.data(name='label', shape=[10], dtype='int64')
-            nll_loss = paddle.nn.loss.NLLLoss(name='nll_loss')
-            res = nll_loss(input, label)
-            self.assertTrue(res.name.startswith('nll_loss'))
-
     def test_NLLLoss_in_dims_not_2or4_mean(self):
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
@@ -888,6 +876,80 @@ class TestNLLLossOp2DNoReduce(OpTest):
     def init_test_case(self):
         self.input_shape = [5, 3, 5, 5]
         self.label_shape = [5, 5, 5]
+
+
+class TestNLLLossName(unittest.TestCase):
+    def test_name(self):
+        prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        place = paddle.CPUPlace()
+        with paddle.static.program_guard(prog, startup_prog):
+            x = paddle.data(name='x', shape=[10, 10], dtype='float64')
+            label = paddle.data(name='label', shape=[10], dtype='int64')
+            nll_loss = paddle.nn.loss.NLLLoss(name='nll_loss')
+            res = nll_loss(x, label)
+            self.assertTrue(res.name.startswith('nll_loss'))
+
+
+class TestNLLLossInvalidInput(unittest.TestCase):
+    def test_error(self):
+        def test_NLLLoss_reduction_not_sum_mean_none():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            place = paddle.CPUPlace()
+            with paddle.static.program_guard(prog, startup_prog):
+                x = paddle.data(name='x', shape=[10, 10], dtype='float64')
+                label = paddle.data(name='label', shape=[10], dtype='int64')
+                nll_loss = paddle.nn.loss.NLLLoss(reduction='')
+                res = nll_loss(x, label)
+
+        self.assertRaises(ValueError, test_NLLLoss_reduction_not_sum_mean_none)
+
+        def test_NLLLoss_reduction_imperative_not_sum_mean_none():
+            with fluid.dygraph.guard():
+                x_np = np.array(
+                    [[0.88103855, 0.9908683, 0.6226845],
+                     [0.53331435, 0.07999352, 0.8549948],
+                     [0.25879037, 0.39530203, 0.698465],
+                     [0.73427284, 0.63575995, 0.18827209],
+                     [0.05689114, 0.0862954, 0.6325046]]).astype(np.float32)
+                label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
+                x = paddle.to_variable(x_np)
+                label = paddle.to_variable(label_np)
+                nll_loss = paddle.nn.loss.NLLLoss(reduction='')
+                res = nll_loss(x, label)
+
+        self.assertRaises(ValueError,
+                          test_NLLLoss_reduction_imperative_not_sum_mean_none)
+
+        def test_nll_loss_function_reduction_not_sum_mean_none():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            place = paddle.CPUPlace()
+            with paddle.static.program_guard(prog, startup_prog):
+                x = paddle.data(name='x', shape=[10, 10], dtype='float64')
+                label = paddle.data(name='label', shape=[10], dtype='int64')
+                res = paddle.nn.functional.nll_loss(x, label, reduction='')
+
+        self.assertRaises(ValueError,
+                          test_nll_loss_function_reduction_not_sum_mean_none)
+
+        def test_nll_loss_function_reduction_imperative_not_sum_mean_none():
+            with fluid.dygraph.guard():
+                x_np = np.array(
+                    [[0.88103855, 0.9908683, 0.6226845],
+                     [0.53331435, 0.07999352, 0.8549948],
+                     [0.25879037, 0.39530203, 0.698465],
+                     [0.73427284, 0.63575995, 0.18827209],
+                     [0.05689114, 0.0862954, 0.6325046]]).astype(np.float32)
+                label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
+                x = paddle.to_variable(x_np)
+                label = paddle.to_variable(label_np)
+                res = paddle.nn.functional.nll_loss(x, label, reduction='')
+
+        self.assertRaises(
+            ValueError,
+            test_nll_loss_function_reduction_imperative_not_sum_mean_none)
 
 
 if __name__ == "__main__":
