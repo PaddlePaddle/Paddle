@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
