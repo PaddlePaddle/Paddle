@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-paddle.distributed.launch is a module that spawns multiple distributed
+fleetrun is a module that spawns multiple distributed
 process on each training node for gpu training and cpu training.
 Usage:
     In both of single node training or multiple node training, this module
@@ -31,16 +31,26 @@ launch a process on each of the given gpu card or cpu machine.
                 your_training_py (arg1 arg2 and all others)
     CPU training:
     1. for single node training with multi servers and workers:
-        fleetrun --server_num=1 --worker_num=4 your_training_py (arg1 arg2 and all others)
+        fleetrun --server_num=2 --worker_num=2 your_training_py (arg1 arg2 and all others)
     2. for multiple node training such as two node:192.168.0.16, 192.168.0.17 \
-        with 2 servers and  4 workers.
+        with 2 servers and 4 workers.
         on 192.168.0.16:
-            fleetrun --servers="192.168.0.16:6170,192.168.0.17:6171" \
-                --workers="192.168.0.16:6172,192.168.0.17:6173,192.168.0.16:6174,192.168.0.17:6175" \
+            fleetrun --servers="192.168.0.16:6170,192.168.0.17:6170" \
+                --workers="192.168.0.16,192.168.0.17,192.168.0.16,192.168.0.17" \
                 your_training_py (arg1 arg2 and all others)
         on 192.168.0.17:
             fleetrun --servers="192.168.0.16:6170,192.168.0.17:6171" \
-                --workers="192.168.0.16:6172,192.168.0.17:6173,192.168.0.16:6174,192.168.0.17:6175" \
+                --workers="192.168.0.16,192.168.0.17,192.168.0.16,192.168.0.17" \
+                your_training_py (arg1 arg2 and all others)
+    3. use gloo backend for multiple node training such as two node:192.168.0.16, 192.168.0.17 \
+        with 2 servers and 4 workers. (workers should set port)
+        on 192.168.0.16:
+            fleetrun --servers="192.168.0.16:6170,192.168.0.17:6170" \
+                --workers="192.168.0.16:6171,192.168.0.17:6171,192.168.0.16:6172,192.168.0.17:6172" \
+                your_training_py (arg1 arg2 and all others)
+        on 192.168.0.17:
+            fleetrun --servers="192.168.0.16:6170,192.168.0.17:6170" \
+                --workers="192.168.0.16:6171,192.168.0.17:6171,192.168.0.16:6172,192.168.0.17:6172" \
                 your_training_py (arg1 arg2 and all others)
 """
 
@@ -215,6 +225,7 @@ def launch_collective(args):
 
 def launch_ps(args):
     ports = None
+    start_port = 6170
     if args.server_num:
         server_num = args.server_num
         ports = get_ports(server_num, 0)
@@ -240,11 +251,19 @@ def launch_ps(args):
     worker_endpoints_ips = [
         x.strip().split(":")[0] for x in worker_endpoints.split(",")
     ]
-    worker_endpoints_port = [
-        x.strip().split(":")[1] for x in worker_endpoints.split(",")
-    ]
     worker_num = len(worker_endpoints_ips)
     node_ips = list(set(server_endpoints_ips + worker_endpoints_ips))
+    worker_endpoints_len = [
+        len(x.strip().split(":")) for x in worker_endpoints.split(",")
+    ]
+    if 1 in worker_endpoints_len:
+        # if no port value in worker_endpoints, will set default port values.
+        worker_endpoints_port = range(start_port + server_num,
+                                      start_port + server_num + worker_num, 1)
+    else:
+        worker_endpoints_port = [
+            x.strip().split(":")[1] for x in worker_endpoints.split(",")
+        ]
 
     # local train
     if len(set(node_ips)) == 1:
