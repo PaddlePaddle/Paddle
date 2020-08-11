@@ -22,7 +22,7 @@ import paddle
 import paddle.fluid as fluid
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-import paddle.fleet as fleet
+import paddle.distributed.fleet as fleet
 
 
 class TestCommunicator(unittest.TestCase):
@@ -51,7 +51,7 @@ class TestCommunicator(unittest.TestCase):
 
         optimizer = fluid.optimizer.SGD(0.01)
 
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = False
 
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
