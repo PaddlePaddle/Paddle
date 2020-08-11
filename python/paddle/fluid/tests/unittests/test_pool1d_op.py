@@ -13,9 +13,15 @@
 # limitations under the License.
 
 import numpy as np
-
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.nn.functional.pooling import avg_pool1d, max_pool1d, adaptive_max_pool1d, adaptive_avg_pool1d
+from paddle.fluid import compiler, Program, program_guard
+import paddle
+import paddle.nn.functional as F
+import paddle.fluid as fluid
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -188,7 +194,7 @@ def test_np_pd_pool1d():
         # datapd = fluid.layers.assign(data)
         datapd = fluid.dygraph.to_variable(data)
 
-        res_pd = avg_pool1d(
+        res_pd = F.avg_pool1d(
             datapd, kernel_size=3, stride=2, padding=1, ceil_mode=False)
 
         res_np = pool1D_forward_naive(
@@ -210,7 +216,7 @@ def test_np_pd_avg_pool1d():
         # datapd = fluid.layers.assign(data)
         datapd = fluid.dygraph.to_variable(data)
 
-        res_pd = avg_pool1d(
+        res_pd = F.avg_pool1d(
             datapd, kernel_size=3, stride=2, padding=1, ceil_mode=True)
 
         res_np = avg_pool1D_forward_naive(
@@ -226,7 +232,7 @@ def test_np_pd_max_pool1d():
         # datapd = fluid.layers.assign(data)
         datapd = fluid.dygraph.to_variable(data)
 
-        res_pd = max_pool1d(
+        res_pd = F.max_pool1d(
             datapd, kernel_size=3, stride=2, padding=0, ceil_mode=False)
 
         res_np = max_pool1D_forward_naive(
@@ -241,7 +247,7 @@ def test_np_pd_adaptive_avg_pool1d():
     with fluid.dygraph.guard():
         datapd = fluid.dygraph.to_variable(data)
 
-        res_pd = adaptive_avg_pool1d(datapd, 6)
+        res_pd = F.adaptive_avg_pool1d(datapd, 6)
 
         res_np = avg_pool1D_forward_naive(
             data, ksize=[6], adaptive=True, paddings=[0], strides=[0])
@@ -255,7 +261,7 @@ def test_np_pd_adaptive_max_pool1d():
     with fluid.dygraph.guard():
         datapd = fluid.dygraph.to_variable(data)
 
-        res_pd = adaptive_max_pool1d(datapd, 6)
+        res_pd = F.adaptive_max_pool1d(datapd, 6)
 
         res_np = max_pool1D_forward_naive(
             data, ksize=[6], adaptive=True, paddings=[0], strides=[0])
