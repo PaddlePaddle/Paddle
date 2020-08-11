@@ -42,10 +42,6 @@ class TestMeanOp(OpTest):
 
 
 class TestMeanOpError(unittest.TestCase):
-    """
-    test paddle.fluid.layers.mean
-    """
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
@@ -95,7 +91,7 @@ class TestMeanAPI(unittest.TestCase):
             out1 = paddle.mean(x)
             out2 = paddle.tensor.mean(x)
             out3 = paddle.tensor.stat.mean(x)
-            axis = np.arange(len(self.x_shape)).to_list()
+            axis = np.arange(len(self.x_shape)).tolist()
             out4 = paddle.mean(x, axis)
             out5 = paddle.mean(x, tuple(axis))
 
@@ -126,7 +122,12 @@ class TestMeanAPI(unittest.TestCase):
         test_case(self.x, [0, 2])
         test_case(self.x, (0, 2))
         test_case(self.x, [0, 1, 2, 3])
-        paddle.disable_static()
+        paddle.enable_static()
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12], 'int8')
+            self.assertRaises(TypeError, paddle.mean, x)
 
 
 if __name__ == "__main__":
