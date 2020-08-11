@@ -58,7 +58,7 @@ constexpr char kFetchBarrierRPC[] = "FetchBarrierRPC";
 constexpr char kSendMonomerFetchBarrierRPC[] = "SendMonomerFetchBarrierRPC";
 constexpr char kSendCompleteRPC[] = "SendCompleteRPC";
 constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
-constexpr char kSendAndRecv[] = "SendAndRecvRPC";
+constexpr char kSendAndRecvRPC[] = "SendAndRecvRPC";
 constexpr int64_t kPrefetchTimeout = 60000;
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"

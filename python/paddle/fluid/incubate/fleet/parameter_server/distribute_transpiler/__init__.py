@@ -276,7 +276,12 @@ class FleetTranspiler(Fleet):
         """
 
         if self._inner_mode == PSMode.TRANSPILER:
-            self._init_transpiler_server(model_dir)
+            if self._role_maker._is_heter_worker():
+                print("Parameter Server: init heter worker")
+                self._init_transpiler_worker()
+            else:
+                print("Parameter Server: init server")
+                self._init_transpiler_server(model_dir)
         else:
             raise NotImplementedError("add implement later")
 

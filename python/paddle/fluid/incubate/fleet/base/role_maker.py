@@ -226,14 +226,14 @@ class RoleMakerBase(object):
         return heter_trainer endpoints
         """
         assert self._heter_trainer_endpoints != []
-        return self._hetet_trainer_endpoints
+        return self._heter_trainer_endpoints
 
     def _get_heter_worker_endpoint(self):
         """
         return Corresponding heter equipment's endpoint
         """
         assert self._heter_trainer_endpoints != []
-        return self._hetet_trainer_endpoints[self._current_id % self._heter_worker_num]
+        return self._heter_trainer_endpoints[(self._current_id+1) % self._heter_worker_num()]
 
     def _get_heter_worker_device(self):
         """

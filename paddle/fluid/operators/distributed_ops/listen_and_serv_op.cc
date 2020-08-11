@@ -395,6 +395,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestNotifyHandler(distributed_mode, fan_in));
   request_send_and_recv_handler_.reset(
       new distributed::SendAndRecvHandler(distributed_mode));
+  VLOG(4) << "Listen&Serv After new request handler";
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(), rpc_send_thread_num);
@@ -411,7 +412,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             request_notify_handler_.get(), rpc_send_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestSendAndRecv,
                             request_send_and_recv_handler_.get());
+  VLOG(4) << "Listen&Serv After register RPC service";
 
+  VLOG(2) << "Listen&Serv Begin get optimizer block&program";
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(optimize_blocks.size(), 1,
@@ -419,26 +422,33 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                         "optimize blocks is less than 1. Optimize blocks "
                         "should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
+  VLOG(2) << "Listen&Serv End get optimizer block&program";
+
   framework::Executor executor(dev_place);
 
+  VLOG(2) << "Listen&Serv Begin get ckpt_pre_context";
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
   if (checkpoint_block_id != -1) {
     auto ctx = executor.Prepare(*program, checkpoint_block_id);
     // see: https://stackoverflow.com/a/14856553
     ckpt_pre_context = std::move(ctx);
   }
+  VLOG(2) << "Listen&Serv End ckpt_pre_context";
 
+  VLOG(2) << "Listen&Serv Begin get lr_decay_context";
   std::shared_ptr<framework::ExecutorPrepareContext> lr_decay_context = nullptr;
   if (lr_decay_block_id != -1) {
     auto ctx = executor.Prepare(*program, lr_decay_block_id);
     // see: https://stackoverflow.com/a/14856553
     lr_decay_context = std::move(ctx);
   }
+  VLOG(2) << "Listen&Serv End get lr_decay_context";
 
   // prepare for prefetch
   std::vector<int> prefetch_block_id_list;
   std::unordered_map<int, std::string> block_id_to_prefetch_var_name;
 
+  VLOG(2) << "Listen&Serv Begin get prefetch";
   auto prefetch_var_name_to_block_id_str =
       Attr<std::vector<std::string>>(kPrefetchVarNameToBlockId);
   for (const auto &prefetch_var_name_and_id :
@@ -464,7 +474,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     auto prefetch_var_name = block_id_to_prefetch_var_name[block_id];
     prefetch_var_name_to_prepared_ctx[prefetch_var_name] = prefetch_prepared[i];
   }
+  VLOG(2) << "Listen&Serv End get prefetch";
 
+  VLOG(2) << "Listen&Serv Begin get kSparseGradToParam";
   // parse attr of kSparseGradToParam  sparse_grad_name -> param_name
   std::unordered_map<std::string, std::string> sparse_grad_name_to_param_name;
   auto sparse_grad_name_to_param_name_str =
@@ -478,7 +490,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
             << ", param_name = " << pieces[1];
     sparse_grad_name_to_param_name[pieces[0]] = pieces[1];
   }
+  VLOG(2) << "Listen&Serv End get kSparseGradToParam";
 
+  VLOG(2) << "Listen&Serv Begin get bind handler";
   auto f =
       std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,
                 &executor, program, &prefetch_var_name_to_prepared_ctx,
@@ -492,10 +506,12 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_get_no_barrier_handler_.get());
   f(request_notify_handler_.get());
   f(request_send_and_recv_handler_.get());
+  VLOG(2) << "Listen&Serv End get bind handler";
 
   // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
   signal(SIGINT, SignalHandler::StopAndExit);
   signal(SIGTERM, SignalHandler::StopAndExit);
+  VLOG(2) << "Listen&Serv End get signal";
 
   if (distributed_mode == distributed::DistributedMode::kSync) {
     // start the server listening after all member initialized.

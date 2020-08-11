@@ -439,20 +439,26 @@ class RequestSendAndRecv final : public RequestBase {
                               ::grpc::ServerCompletionQueue* cq,
                               RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    VLOG(2) << "RequestSendAndRecv Begin GRPCVariableResponse. ";
     request_.reset(new GRPCVariableResponse(
         request_handler->scope(), request_handler->dev_ctx(),
         request_handler->distributed_mode()));
+
     int method_id =
         static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
+
+    VLOG(2) << "RequestSendAndRecv Begin RequestAsyncUnary. ";
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+    VLOG(2) << "RequestSendAndRecv End RequestAsyncUnary. ";
   }
 
   virtual ~RequestSendAndRecv() {}
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    VLOG(2) << "RequestSendAndRecv Begin Process. ";
     std::string varname = GetReqName();
 
     auto scope = request_->GetMutableLocalScope();
@@ -461,6 +467,7 @@ class RequestSendAndRecv final : public RequestBase {
     std::string out_varname = request_->OutVarname();
     std::string table_name = request_->TableName();
     framework::Variable* outvar = nullptr;
+    VLOG(2) << "RequestSendAndRecv Begin Get Handle. ";
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
                              out_varname, table_name);
 
@@ -632,6 +639,8 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     b = new RequestCheckpointNotify(service_.get(), cq.get(), handler, req_id);
   } else if (rpc_name == kRequestNotify) {
     b = new RequestNotify(service_.get(), cq.get(), handler, req_id);
+  } else if (rpc_name == kRequestSendAndRecv) {
+    b = new RequestSendAndRecv(service_.get(), cq.get(), handler, req_id);
   } else {
     PADDLE_ENFORCE(false, "not supported rpc");
   }

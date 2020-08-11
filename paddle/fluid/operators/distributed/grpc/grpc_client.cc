@@ -496,24 +496,28 @@ VarHandlePtr GRPCClient::SendAndRecv(const std::string& ep,
   const std::string table_name_val = table_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
-  const std::string method = kSendAndRecv;
-
+  const std::string method = kSendAndRecvRPC;
+  VLOG(2) << "GRPCClient::SendAndRecv Begin";
   int retry_times_ = 0;
 
   while (true) {
     SendAndRecvProcessor* s = new SendAndRecvProcessor(ch);
+    VLOG(2) << "GRPCClient::SendAndRecv Get VarHandlePtr";
     VarHandlePtr h(
         new VarHandle(ep, method, send_var_name_val, p_ctx, p_scope));
+    VLOG(2) << "GRPCClient::SendAndRecv SendAndRecvProcessor Begin prepare";
     s->Prepare(h, time_out);
 
     framework::AsyncIO([send_var_name_val, recv_var_name_val, table_name_val,
                         p_scope, p_ctx, s, method, h, this] {
+      VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO";
       sendrecv::VariableMessage req;
       req.set_varname(send_var_name_val);
       req.set_out_varname(recv_var_name_val);
       req.set_table_name(table_name_val);
 
       ::grpc::ByteBuffer buf;
+      VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO RequestToByteBuffer";
       RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
 
       VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
@@ -523,10 +527,13 @@ VarHandlePtr GRPCClient::SendAndRecv(const std::string& ep,
 
       platform::RecordRPCEvent record_event(method);
 
+      VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO PrepareUnaryCall";
       auto call = s->stub_g_.PrepareUnaryCall(
           s->context_.get(), "/sendrecv.SendRecvService/SendAndRecvVariable",
           buf, &cq_);
+      VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO StartCall";
       call->StartCall();
+      VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO Finish";
       call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
 
       if (UNLIKELY(platform::IsProfileEnabled())) {

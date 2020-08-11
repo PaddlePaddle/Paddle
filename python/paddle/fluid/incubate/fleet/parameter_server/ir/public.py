@@ -216,10 +216,6 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
     optimizer_block = []
     grad_to_block_id = []
 
-    lr_decay_block = heter_program._create_block(heter_program.num_blocks - 1)
-    optimizer_block.append(lr_decay_block)
-    lr_decay_block_id = lr_decay_block.idx
-
     pre_block_idx = heter_program.num_blocks - 1
     for index, heter_block_ops in heter_ops[current_device].items():
         heter_block = heter_program._create_block(pre_block_idx)
@@ -308,20 +304,22 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
     attrs = {
         "grad_to_block_id": grad_to_block_id,
         "sparse_grad_to_param": None,
-        "lr_decay_block_id": lr_decay_block_id,
+        "lr_decay_block_id": None,
         "dense_optimize_blocks": None,
         "sparse_optimize_blocks": None,
-        "optimizer_block": optimizer_block,
+        "optimize_blocks": optimizer_block,
 
         # runtime attribute
-        "endpoint": config.get_ps_endpoint(),
+        "endpoint": config.get_heter_worker_endpoint(),
         "pserver_id": config.get_role_id(),
         "Fanin": config.get_trainers(),
         "distributed_mode": config.get_distributed_mode(),
-        "rpc_get_thread_num": -1,
-        "rpc_send_thread_num": -1,
-        "rpc_prefetch_thread_num": -1
+        "rpc_get_thread_num": 12,
+        "rpc_send_thread_num": 12,
+        "rpc_prefetch_thread_num": 12
     }
+
+    print("attrs: {}".format(attrs))
 
     # append the listen_and_serv op
     heter_program.global_block().append_op(
@@ -329,6 +327,8 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
         inputs={'X': []},
         outputs={},
         attrs=attrs)
+    # op = get_op_by_type(heter_program.global_block(), "listen_and_serv")
+    # op._set_attr("optimize_blocks", optimizer_block)
 
 
 def create_trainer_program(program, config, heter_ops, block_var_detail):
@@ -352,7 +352,8 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
 
     mode = config.get_distributed_mode()
     # Todo: replace by XPU endpoints
-    pserver_endpoints = config.get_ps_endpoints()
+    heter_worker_endpoint = config.get_heter_worker_endpoint()
+    print("heter_worker_endpoint: {}".format(heter_worker_endpoint))
     entrance_var = block_var_detail[heter_block_index]["entrance"]
     exit_var = block_var_detail[heter_block_index]["exit"]
 
@@ -396,14 +397,14 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
 
     program.global_block()._insert_op(
         index=first_op_idx,
-        type="send",
+        type="send_and_recv",
         inputs={"X": send_input_vars},
         outputs={"Out": dummy_output},
         attrs={
-            "send_varnames": entrance_var,
-            "merge_add": True,
-            "use_send_handler": False,
-            "endpoints": pserver_endpoints,
+            "send_varname": default_device_comm_info["block_output_var_name"],
+            "recv_varname": comm_info["block_output_var_name"],
+            "endpoint": heter_worker_endpoint,
+            "trainer_id": config.get_role_id(),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         }
     )
@@ -691,6 +692,13 @@ def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype, type
         index += 1
 
 
+def get_op_by_type(block, op_type):
+    for op in block.ops:
+        if op.type == op_type:
+            return op
+    raise ValueError("add_listen_and_serv_pass must at first")
+
+
 def deleter_trainer_useless_var(program):
     porgram_useful_var_list = []
     for op in program.global_block().ops:
@@ -933,6 +941,12 @@ class CompileTimeStrategy(object):
 
     def get_ps_endpoints(self):
         return self.role_maker.get_pserver_endpoints()
+
+    def get_heter_worker_endpoints(self):
+        return self.role_maker._get_heter_worker_endpoints()
+
+    def get_heter_worker_endpoint(self):
+        return self.role_maker._get_heter_worker_endpoint()
 
     def get_origin_programs(self):
         return self.origin_main_program, self.origin_startup_program

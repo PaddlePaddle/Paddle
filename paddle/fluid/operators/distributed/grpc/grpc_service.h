@@ -86,10 +86,11 @@ enum class GrpcMethod {
   kGetMonomerBarrier,
   kRequestNotify,
   kRequestSendAndRecv,
+  // when you add new handler, change kGrpcNumMethods at the same time!
 };
 
 static const int kGrpcNumMethods =
-    static_cast<int>(GrpcMethod::kRequestNotify) + 1;
+    static_cast<int>(GrpcMethod::kRequestSendAndRecv) + 1;
 
 inline const char* GrpcMethodName(GrpcMethod id) {
   switch (id) {
