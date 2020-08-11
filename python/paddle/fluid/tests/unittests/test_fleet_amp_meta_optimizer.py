@@ -24,7 +24,7 @@ class TestFleetAMPOptimizer(unittest.TestCase):
 
     def test_amp_optimizer(self):
         import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+        import paddle.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         input_x = paddle.fluid.layers.data(

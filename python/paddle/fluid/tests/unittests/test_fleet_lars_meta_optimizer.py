@@ -16,7 +16,7 @@ import unittest
 import paddle
 import os
 import paddle.fleet as fleet
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.fleet.base.role_maker as role_maker
 
 
 class TestFleetLarsMetaOptimizer(unittest.TestCase):

@@ -23,7 +23,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
     def test_pipeline_optimizer(self):
         import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+        import paddle.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         with paddle.fluid.device_guard("cpu"):
