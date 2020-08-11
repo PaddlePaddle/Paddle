@@ -16,6 +16,8 @@
 import paddle.fluid as fluid
 import paddle
 
+from ...fluid import core
+
 __all__ = [
     #       'NCELoss',
     'CrossEntropyLoss',
@@ -630,10 +632,11 @@ class KLDivLoss(fluid.dygraph.Layer):
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
             Default is ``'mean'``.
 
-    Returns:
-        Tensor: The KL divergence loss. The data type is same as input tensor
+    Shape:
+      - x: (N, *) where * means, any number of additional dimensions.
+      - label: (N, *), same shape as x
+      - output: tensor with shape: (1) by default.
 
-    Return type: Tensor.
 
     Examples:
         .. code-block:: python
@@ -677,11 +680,11 @@ class KLDivLoss(fluid.dygraph.Layer):
         super(KLDivLoss, self).__init__()
         self.reduction = reduction
 
-    def forward(self, input, target):
+    def forward(self, x, label):
         fluid.data_feeder.check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], 'KLDivLoss')
+            x, 'input', ['float32', 'float64'], 'KLDivLoss')
         fluid.data_feeder.check_variable_and_dtype(
-            target, 'target', ['float32', 'float64'], 'KLDivLoss')
+            label, 'target', ['float32', 'float64'], 'KLDivLoss')
         fluid.data_feeder.check_type(self.reduction, 'reduction', str,
                                      'KLDivLoss')
 
@@ -690,6 +693,10 @@ class KLDivLoss(fluid.dygraph.Layer):
                 "The value of 'reduction' in KLDivLoss should be 'batchmean', 'sum', 'mean' or 'none', but "
                 "received %s, which is not allowed." % self.reduction)
 
-        out = paddle.nn.functional.kl_div(input, target, self.reduction)
+        if paddle.in_imperative_mode():
+            out = core.ops.kldiv_loss(x, label, 'reduction', self.reduction)
+            return out
+
+        out = paddle.nn.functional.kl_div(x, label, self.reduction)
 
         return out

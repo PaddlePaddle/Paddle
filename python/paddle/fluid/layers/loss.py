@@ -1629,15 +1629,15 @@ def kldiv_loss(x, target, reduction='mean', name=None):
     ${comment}
 
     Args:
-        x (Variable): ${x_comment}
-        target (Variable): ${target_comment}
-        reduction (Variable): ${reduction_comment}
+        x (Tensor): ${x_comment}
+        target (Tensor): ${target_comment}
+        reduction (Tensor): ${reduction_comment}
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
     Returns:
-        Variable(Tensor): The KL divergence loss. The data type is same as input tensor
+        Tensor: The KL divergence loss. The data type is same as input tensor
 
     Examples:
         .. code-block:: python
