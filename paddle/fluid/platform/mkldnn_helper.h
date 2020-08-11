@@ -422,6 +422,11 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
   }
 }
 
+inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
+  return (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8" ||
+          op->GetAttrIfExists<bool>("use_quantizer"));
+}
+
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 
 }  // namespace platform

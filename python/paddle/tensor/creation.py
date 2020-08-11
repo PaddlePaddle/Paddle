@@ -37,7 +37,6 @@ __all__ = [
     #       'create_random_int_lodtensor',
     'crop_tensor',
     'diag',
-    'eye',
     'fill_constant',
     #       'get_tensor_from_selected_rows',
     'linspace',
@@ -84,7 +83,7 @@ def full_like(x, fill_value, dtype=None, name=None):
           import paddle
           import numpy as np
           
-          paddle.enable_imperative()  # Now we are in imperative mode 
+          paddle.disable_static()  # Now we are in imperative mode 
           input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
           output = paddle.full_like(input, 2.0)
           # [[2. 2. 2.]
@@ -144,7 +143,7 @@ def ones(shape, dtype=None, name=None):
         .. code-block:: python
 
           import paddle 
-          paddle.enable_imperative()
+          paddle.disable_static()
           
           # default dtype for ones OP
           data1 = paddle.ones(shape=[3, 2]) 
@@ -200,9 +199,9 @@ def ones_like(x, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
-        x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
+        x = paddle.to_variable(np.array([1,2,3], dtype='float32'))
         out1 = paddle.zeros_like(x) # [1., 1., 1.]
         out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
 
@@ -237,7 +236,7 @@ def zeros(shape, dtype=None, name=None):
 
           import paddle
           
-          paddle.enable_imperative()  # Now we are in imperative mode
+          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.zeros(shape=[3, 2], dtype='float32') 
           # [[0. 0.]
           #  [0. 0.]
@@ -248,7 +247,7 @@ def zeros(shape, dtype=None, name=None):
           
           # shape is a Tensor
           shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
-          data3 = paddle.ones(shape=shape, dtype='int32') 
+          data3 = paddle.zeros(shape=shape, dtype='int32') 
           # [[0 0]
           #  [0 0]]
     """
@@ -290,9 +289,9 @@ def zeros_like(x, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
-        x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
+        x = paddle.to_variable(np.array([1,2,3], dtype='float32'))
         out1 = paddle.zeros_like(x) # [0., 0., 0.]
         out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
 
@@ -329,7 +328,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
           
           import paddle
 
-          paddle.enable_imperative()  # Now we are in imperative mode
+          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.eye(3, dtype='int32')
           # [[1 0 0]
           #  [0 1 0]
@@ -383,7 +382,7 @@ def full(shape, fill_value, dtype=None, name=None):
 
           import paddle
 
-          paddle.enable_imperative()  # Now we are in imperative mode
+          paddle.disable_static()  # Now we are in imperative mode
           data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
           #[[0]
           # [0]]
@@ -460,7 +459,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         out1 = paddle.arange(5)
         # [0, 1, 2, 3, 4]
@@ -472,7 +471,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         out3 = paddle.arange(4.999, dtype='float32')
         # [0., 1., 2., 3., 4.]
 
-        start_var = paddle.imperative.to_variable(np.array([3]))
+        start_var = paddle.to_variable(np.array([3]))
         out4 = paddle.arange(start_var, 7)
         # [3, 4, 5, 6]
              
@@ -490,14 +489,13 @@ def _tril_triu_op(helper):
     """Base op of tril_op and triu_op
     """
     op_type = helper.layer_type
-    x = helper.kwargs.get('input', None)
+    x = helper.kwargs.get('x', None)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              op_type)
     if len(x.shape) < 2:
-        raise ValueError("input shape in {} must be at least 2-D".format(
-            op_type))
+        raise ValueError("x shape in {} must be at least 2-D".format(op_type))
     diagonal = helper.kwargs.get('diagonal', 0)
     if not isinstance(diagonal, (int, )):
         raise TypeError("diagonal in {} must be a python Int".format(op_type))
@@ -521,18 +519,18 @@ def _tril_triu_op(helper):
     return out
 
 
-def tril(input, diagonal=0, name=None):
+def tril(x, diagonal=0, name=None):
     """
 	:alias_main: paddle.tril
 	:alias: paddle.tril,paddle.tensor.tril,paddle.tensor.creation.tril
 
     This op returns the lower triangular part of a matrix (2-D tensor) or batch
-    of matrices :attr:`input`, the other elements of the result tensor are set 
+    of matrices :attr:`x`, the other elements of the result tensor are set 
     to 0. The lower triangular part of the matrix is defined as the elements 
     on and below the diagonal.
 
     Args:
-        input (Variable): The input variable which is a Tensor.
+        x (Variable): The input variable x which is a Tensor.
             Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
@@ -545,47 +543,41 @@ def tril(input, diagonal=0, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Tensor, results of lower triangular operation by the specified diagonal of input tensor,
-        it's data type is the same as input's Tensor.
+        Variable: Tensor, results of lower triangular operation by the specified diagonal of input tensor x,
+        it's data type is the same as x's Tensor.
 
     Raises:
         TypeError: diagonal is not a int type.
-        ValueError: dimension of :attr:`input` is less than 2.
+        ValueError: dimension of :attr:`x` is less than 2.
 
     Examples:
         .. code-block:: python
 
             import numpy as np
-            import paddle.tensor as tensor
-            import paddle.fluid as fluid
+            import paddle
 
             data = np.arange(1, 13, dtype="int64").reshape(3,-1)
             # array([[ 1,  2,  3,  4],
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
-            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
-            exe = fluid.Executor(fluid.CPUPlace())
 
-            # example 1, default diagonal
-            tril = tensor.tril(x)
-            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[tril], return_numpy=True)
+            paddle.enable_imperative()
+
+            x = paddle.imperative.to_variable(data)
+            
+            tril1 = paddle.tensor.tril(x)
             # array([[ 1,  0,  0,  0],
             #        [ 5,  6,  0,  0],
             #        [ 9, 10, 11,  0]])
 
             # example 2, positive diagonal value
-            tril = tensor.tril(x, diagonal=2)
-            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[tril], return_numpy=True)
+            tril2 = paddle.tensor.tril(x, diagonal=2)
             # array([[ 1,  2,  3,  0], 
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
             # example 3, negative diagonal value
-            tril = tensor.tril(x, diagonal=-1)
-            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[tril], return_numpy=True)
+            tril3 = paddle.tensor.tril(x, diagonal=-1)
             # array([[ 0,  0,  0,  0],
             #        [ 5,  0,  0,  0],
             #        [ 9, 10,  0,  0]])
@@ -593,23 +585,23 @@ def tril(input, diagonal=0, name=None):
     """
     if in_dygraph_mode():
         op = getattr(core.ops, 'tril_triu')
-        return op(input, 'diagonal', diagonal, "lower", True)
+        return op(x, 'diagonal', diagonal, "lower", True)
 
     return _tril_triu_op(LayerHelper('tril', **locals()))
 
 
-def triu(input, diagonal=0, name=None):
+def triu(x, diagonal=0, name=None):
     """
 	:alias_main: paddle.triu
 	:alias: paddle.triu,paddle.tensor.triu,paddle.tensor.creation.triu
 
     This op returns the upper triangular part of a matrix (2-D tensor) or batch of matrices
-    :attr:`input`, the other elements of the result tensor are set to 0.
+    :attr:`x`, the other elements of the result tensor are set to 0.
     The upper triangular part of the matrix is defined as the elements on and
     above the diagonal.
 
     Args:
-        input (Variable): The input variable which is a Tensor.
+        x (Variable): The input variable x which is a Tensor.
             Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and above the main diagonal are
@@ -622,47 +614,41 @@ def triu(input, diagonal=0, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Tensor, results of upper triangular operation by the specified diagonal of input tensor,
-        it's data type is the same as input's Tensor.
+        Variable: Tensor, results of upper triangular operation by the specified diagonal of input tensor x,
+        it's data type is the same as x's Tensor.
 
     Raises:
         TypeError: diagonal is not a int type.
-        ValueError: dimension of :attr:`input` is less than 2.
+        ValueError: dimension of :attr:`x` is less than 2.
 
     Examples:
         .. code-block:: python
 
             import numpy as np
-            import paddle.fluid as fluid
-            import paddle.tensor as tensor
+            import paddle
 
             data = np.arange(1, 13, dtype="int64").reshape(3,-1)
             # array([[ 1,  2,  3,  4],
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
-            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
-            exe = fluid.Executor(fluid.CPUPlace())
+
+            paddle.enable_imperative()
 
             # example 1, default diagonal
-            triu = tensor.triu(x)
-            triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[triu], return_numpy=True)
+            x = paddle.imperative.to_variable(data)
+            triu1 = paddle.tensor.triu(x)
             # array([[ 1,  2,  3,  4],
             #        [ 0,  6,  7,  8],
             #        [ 0,  0, 11, 12]])
 
             # example 2, positive diagonal value
-            triu = tensor.triu(x, diagonal=2)
-            triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[triu], return_numpy=True)
+            triu2 = paddle.tensor.triu(x, diagonal=2)
             # array([[0, 0, 3, 4],
             #        [0, 0, 0, 8],
             #        [0, 0, 0, 0]])
 
             # example 3, negative diagonal value
-            triu = tensor.triu(x, diagonal=-1)
-            triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[triu], return_numpy=True)
+            triu3 = paddle.tensor.triu(x, diagonal=-1)
             # array([[ 1,  2,  3,  4],
             #        [ 5,  6,  7,  8],
             #        [ 0, 10, 11, 12]])
@@ -670,7 +656,7 @@ def triu(input, diagonal=0, name=None):
     """
     if in_dygraph_mode():
         op = getattr(core.ops, 'tril_triu')
-        return op(input, 'diagonal', diagonal, "lower", False)
+        return op(x, 'diagonal', diagonal, "lower", False)
 
     return _tril_triu_op(LayerHelper('triu', **locals()))
 
@@ -723,12 +709,12 @@ def meshgrid(*args, **kwargs):
           import paddle
           import numpy as np
           
-          paddle.enable_imperative()
+          paddle.disable_static()
 
           input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
           input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          tensor_3 = paddle.imperative.to_variable(input_3)
-          tensor_4 = paddle.imperative.to_variable(input_4)
+          tensor_3 = paddle.to_variable(input_3)
+          tensor_4 = paddle.to_variable(input_4)
           grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
           #the shape of grid_x is (100, 200)

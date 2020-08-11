@@ -125,11 +125,12 @@ class MultiDeviceFeedReader {
       const std::vector<framework::proto::VarType::Type> &dtypes,
       const std::vector<bool> &need_check_feed,
       const std::vector<platform::Place> &dst_places, bool use_double_buffer,
-      bool drop_last)
+      bool drop_last, bool pin_memory = false)
       : queue_(queue),
         names_(names),
         pool_(new ::ThreadPool(dst_places.size())),
-        drop_last_(drop_last) {
+        drop_last_(drop_last),
+        pin_memory_(pin_memory) {
     std::vector<framework::DDim> dims;
     for (auto &shape : shapes) {
       dims.push_back(framework::make_ddim(shape));
@@ -157,7 +158,7 @@ class MultiDeviceFeedReader {
         VLOG(10) << "Creating " << i << "-th BufferedReader";
         holder->Reset(
             framework::MakeDecoratedReader<operators::reader::BufferedReader>(
-                reader, p, 2));
+                reader, p, 2, pin_memory_));
       } else {
         if (platform::is_gpu_place(p)) {
           PADDLE_THROW(platform::errors::PermissionDenied(
@@ -322,6 +323,7 @@ class MultiDeviceFeedReader {
 
   std::vector<std::vector<framework::LoDTensor>> ret_;
   bool drop_last_;
+  bool pin_memory_;
 };
 
 template <typename QueueType>
@@ -445,10 +447,10 @@ void BindReader(py::module *module) {
            const std::vector<framework::proto::VarType::Type> &dtypes,
            const std::vector<bool> &need_check_feed,
            const std::vector<platform::Place> &dst_places,
-           bool use_double_buffer, bool drop_last) {
+           bool use_double_buffer, bool drop_last, bool pin_memory) {
           return new MultiDeviceFeedReader<reader::LoDTensorBlockingQueue>(
               queue, names, shapes, dtypes, need_check_feed, dst_places,
-              use_double_buffer, drop_last);
+              use_double_buffer, drop_last, pin_memory);
         },
         py::return_value_policy::take_ownership);
 
@@ -461,12 +463,12 @@ void BindReader(py::module *module) {
          const std::vector<framework::proto::VarType::Type> &dtypes,
          const std::vector<bool> &need_check_feed,
          const std::vector<platform::Place> &dst_places, bool use_double_buffer,
-         bool drop_last) {
+         bool drop_last, bool pin_memory) {
         queue->SetDeviceCount(dst_places.size());
         return new MultiDeviceFeedReader<
             reader::OrderedMultiDeviceLoDTensorBlockingQueue>(
             queue, names, shapes, dtypes, need_check_feed, dst_places,
-            use_double_buffer, drop_last);
+            use_double_buffer, drop_last, pin_memory);
       },
       py::return_value_policy::take_ownership);
 }

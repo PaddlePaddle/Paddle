@@ -2308,7 +2308,8 @@ class PRelu(layers.Layer):
             #NOTE(zhiqiu): The _alpha_shape should be [1, channel] + [1] * len(input_shape[2:]), not [1, channel, 1, 1].
             # However, the suffix 1 in the list is useless, since the tensor is viewed as one demension array during kernel calculation. 
             # And, input_shape is not required when mode is 'channel', so it is simplified.
-            self._alpha_shape = [1, channel]
+            #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
+            self._alpha_shape = [1, channel, 1, 1]
         elif mode == 'element':
             assert isinstance(input_shape, (
                 list, tuple
@@ -3206,12 +3207,12 @@ class Flatten(layers.Layer):
         .. code-block:: python
 
           import paddle
-          from paddle.imperative import to_variable
+          from paddle import to_variable
           import numpy as np
 
           inp_np = np.ones([5, 2, 3, 4]).astype('float32')
           
-          paddle.enable_imperative()
+          paddle.disable_static()
           
           inp_np = to_variable(inp_np)
           flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
