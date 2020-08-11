@@ -46,8 +46,6 @@ class TestStaticDeviceManage(unittest.TestCase):
             exe.run(paddle.fluid.default_startup_program())
             res = exe.run(fetch_list=[out3])
             self.assertEqual(isinstance(exe.place, core.CUDAPlace), True)
-            device_id = core.get_device_id()
-            self.assertEqual(device_id, 0)
 
 
 class TestImperativeDeviceManage(unittest.TestCase):
@@ -62,16 +60,15 @@ class TestImperativeDeviceManage(unittest.TestCase):
                 True)
 
     def test_gpu(self):
-        with fluid.dygraph.guard():
-            paddle.set_device('gpu:0')
-            out1 = paddle.zeros(shape=[1, 3], dtype='float32')
-            out2 = paddle.ones(shape=[1, 3], dtype='float32')
-            out3 = paddle.concat(x=[out1, out2], axis=0)
-            self.assertEqual(
-                isinstance(framework._current_expected_place(), core.CUDAPlace),
-                True)
-            device_id = core.get_device_id()
-            self.assertEqual(device_id, 0)
+        if core.is_compiled_with_cuda():
+            with fluid.dygraph.guard():
+                paddle.set_device('gpu:0')
+                out1 = paddle.zeros(shape=[1, 3], dtype='float32')
+                out2 = paddle.ones(shape=[1, 3], dtype='float32')
+                out3 = paddle.concat(x=[out1, out2], axis=0)
+                self.assertEqual(
+                    isinstance(framework._current_expected_place(),
+                               core.CUDAPlace), True)
 
 
 if __name__ == '__main__':

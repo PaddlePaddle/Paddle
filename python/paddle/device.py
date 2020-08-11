@@ -30,8 +30,10 @@ __all__ = [
 
 def set_device(device):
     """
-    This function can determine whether the program is running on the CPU
-    or GPU place.
+    Paddle supports running calculations on various types of devices, including CPU and GPU.
+    They are represented by string identifiers. This function can specify the global device
+    which the OP will run.
+
     Parameters:
         device(str): This parameter determines the specific running device.
             It can be ``cpu`` or ``gpu:0``. When ``device`` is ``cpu``, the
@@ -62,7 +64,6 @@ def set_device(device):
         device_info_list = device.split(':', 1)
         device_id = device_info_list[1]
         device_id = int(device_id)
-        core.set_device_id(device_id)
         place = core.CUDAPlace(device_id)
         framework._set_expected_place(place)
         framework._set_dygraph_tracer_expected_place(place)
@@ -70,7 +71,10 @@ def set_device(device):
 
 def get_device():
     """
-    This funciton can get the device which is the programming is running.
+    This funciton can get the current global device of the program is running.
+    It's a string which is like 'cpu' and 'gpu:0'. if the global device is not
+    set, it will return a string which is 'gpu:0' when cuda is avaliable or it 
+    will return a string which is 'cpu' when cuda is not avaliable.
 
     Examples:
 
@@ -83,11 +87,15 @@ def get_device():
     """
     device = ''
     place = framework._current_expected_place()
-    print(place)
     if isinstance(place, core.CPUPlace):
         device = 'cpu'
-    else:
-        device_id = core.get_device_id()
+    elif isinstance(place, core.CUDAPlace):
+        device_id = place.get_device_id()
         device = 'gpu:' + str(device_id)
+    else:
+        if core.is_compiled_with_cuda():
+            device = 'gpu:0'
+        else:
+            device = 'cpu'
 
     return device

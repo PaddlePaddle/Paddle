@@ -56,15 +56,7 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
     const void* src, size_t num, cudaStream_t stream) {
   if (UNLIKELY(num == 0)) return;
 
-  // https://stackoverflow.com/questions/45932508/do-i-have-to-set-the-proper-device-when-cudamemcpy-from-device-to-host
-  // In Paddle2.0, we add support for the device setting, in order to make
-  // semantics accurate, we must restore the device
-  // id after we seeting it
-  auto device_id = platform::GetCurrentDeviceId();
-  bool change_device = (src_place.device != device_id);
-  if (change_device) {
-    platform::SetDeviceId(src_place.device);
-  }
+  platform::SetDeviceId(src_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by thream(" << stream << ")";
   if (stream) {
@@ -78,9 +70,6 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
       SyncCUDAStream();
     }
   }
-  if (change_device) {
-    platform::SetDeviceId(device_id);
-  }
 }
 
 template <>
@@ -89,12 +78,7 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
     const void* src, size_t num, cudaStream_t stream) {
   if (UNLIKELY(num == 0)) return;
 
-  auto device_id = platform::GetCurrentDeviceId();
-  bool change_device = (dst_place.device != device_id);
-  if (change_device) {
-    platform::SetDeviceId(dst_place.device);
-  }
-
+  platform::SetDeviceId(dst_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by thream(" << stream << ")";
   if (stream) {
@@ -108,9 +92,6 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
       SyncCUDAStream();
     }
   }
-  if (change_device) {
-    platform::SetDeviceId(device_id);
-  }
 }
 
 template <>
@@ -120,20 +101,13 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
   if (UNLIKELY(num == 0)) return;
 
   if (dst_place == src_place) {
-    auto device_id = platform::GetCurrentDeviceId();
-    bool change_device = (src_place.device != device_id);
-    if (change_device) {
-      platform::SetDeviceId(src_place.device);
-    }
+    platform::SetDeviceId(src_place.device);
     if (stream) {
       platform::RecordEvent record_event("GpuMemcpyAsync(same_gpu):GPU->GPU");
       platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice, stream);
     } else {
       platform::RecordEvent record_event("GpuMemcpySync(same_gpu):GPU->GPU");
       platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToDevice);
-    }
-    if (change_device) {
-      platform::SetDeviceId(device_id);
     }
   } else {
     if (stream) {
@@ -178,20 +152,13 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
     platform::CUDAPlace src_place, const void* src, size_t num,
     cudaStream_t stream) {
   if (UNLIKELY(num == 0)) return;
-  auto device_id = platform::GetCurrentDeviceId();
-  bool change_device = (src_place.device != device_id);
-  if (change_device) {
-    platform::SetDeviceId(src_place.device);
-  }
+  platform::SetDeviceId(src_place.device);
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CUDAPinned");
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:GPU->CUDAPinned");
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
-  }
-  if (change_device) {
-    platform::SetDeviceId(device_id);
   }
 }
 
@@ -202,20 +169,13 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
     cudaStream_t stream) {
   if (UNLIKELY(num == 0)) return;
 
-  auto device_id = platform::GetCurrentDeviceId();
-  bool change_device = (dst_place.device != device_id);
-  if (change_device) {
-    platform::SetDeviceId(dst_place.device);
-  }
+  platform::SetDeviceId(dst_place.device);
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:CUDAPinned->GPU");
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:CUDAPinned->GPU");
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
-  }
-  if (change_device) {
-    platform::SetDeviceId(device_id);
   }
 }
 

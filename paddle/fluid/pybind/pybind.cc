@@ -341,11 +341,6 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
-#ifdef PADDLE_WITH_CUDA
-  m.def("get_device_id", &platform::GetCurrentDeviceId);
-  m.def("set_device_id", &platform::SetDeviceId);
-#endif
-
   m.def("from_dlpack", [](py::capsule *dltensor) {
     DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
         PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
@@ -1326,6 +1321,8 @@ All parameter, weight, gradient are variables in Paddle.
              std::exit(-1);
 #endif
            })
+      .def("get_device_id",
+           [](const platform::CUDAPlace &self) { return self.GetDeviceId(); })
       .def("_type", &PlaceIndex<platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CUDAPlace>)
