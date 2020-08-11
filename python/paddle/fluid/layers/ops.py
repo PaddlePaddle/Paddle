@@ -68,10 +68,11 @@ Examples:
         import numpy as np
         import paddle
         import paddle.nn.functional as F
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = F.sigmoid(x)
         print(out.numpy())
         # [0.40131234 0.450166   0.52497919 0.57444252]
@@ -85,10 +86,11 @@ Examples:
         import numpy as np
         import paddle
         import paddle.nn.functional as F
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = F.logsigmoid(x)
         print(out.numpy())
         # [-0.91301525 -0.79813887 -0.64439666 -0.55435524]
@@ -101,10 +103,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.exp(x)
         print(out.numpy())
         # [0.67032005 0.81873075 1.10517092 1.34985881]
@@ -117,10 +120,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.tanh(x)
         print(out.numpy())
         # [-0.37994896 -0.19737532  0.09966799  0.29131261]
@@ -133,10 +137,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.atan(x)
         print(out.numpy())
         # [-0.38050638 -0.19739556  0.09966865  0.29145679]
@@ -150,10 +155,11 @@ Examples:
         import numpy as np
         import paddle
         import paddle.nn.functional as F
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = F.tanh_shrink(x)
         print(out.numpy())
         # [-0.02005104 -0.00262468  0.00033201  0.00868739]
@@ -166,10 +172,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([0.1, 0.2, 0.3, 0.4])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.sqrt(x)
         print(out.numpy())
         # [0.31622777 0.4472136  0.54772256 0.63245553]
@@ -182,10 +189,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([0.1, 0.2, 0.3, 0.4])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.rsqrt(x)
         print(out.numpy())
         # [3.16227766 2.23606798 1.82574186 1.58113883]
@@ -198,10 +206,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.abs(x)
         print(out.numpy())
         # [0.4 0.2 0.1 0.3]
@@ -214,10 +223,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.ceil(x)
         print(out.numpy())
         # [-0. -0.  1.  1.]
@@ -230,10 +240,10 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.floor(x)
         print(out.numpy())
         # [-1. -1.  0.  0.]
@@ -246,10 +256,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.cos(x)
         print(out.numpy())
         # [0.92106099 0.98006658 0.99500417 0.95533649]
@@ -262,10 +273,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.acos(x)
         print(out.numpy())
         # [1.98231317 1.77215425 1.47062891 1.26610367]
@@ -278,10 +290,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.sin(x)
         print(out.numpy())
         # [-0.38941834 -0.19866933  0.09983342  0.29552021]
@@ -294,10 +307,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.asin(x)
         print(out.numpy())
         # [-0.41151685 -0.20135792  0.10016742  0.30469265]
@@ -310,10 +324,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.cosh(x)
         print(out.numpy())
         # [1.08107237 1.02006676 1.00500417 1.04533851]
@@ -326,10 +341,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.sinh(x)
         print(out.numpy())
         # [-0.41075233 -0.201336    0.10016675  0.30452029]
@@ -342,10 +358,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.5, -0.2, 0.6, 1.5])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.round(x)
         print(out.numpy())
         # [-1. -0.  1.  2.]
@@ -358,10 +375,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.reciprocal(x)
         print(out.numpy())
         # [-2.5        -5.         10.          3.33333333]
@@ -374,10 +392,11 @@ Examples:
 
         import numpy as np
         import paddle
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.square(x)
         print(out.numpy())
         # [0.16 0.04 0.01 0.09]
@@ -391,10 +410,11 @@ Examples:
         import numpy as np
         import paddle
         import paddle.nn.functional as F
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = F.softplus(x)
         print(out.numpy())
         # [0.51301525 0.59813887 0.74439666 0.85435524]
@@ -408,10 +428,11 @@ Examples:
         import numpy as np
         import paddle
         import paddle.nn.functional as F
-        paddle.enable_imperative()
+
+        paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = F.softsign(x)
         print(out.numpy())
         # [-0.28571429 -0.16666667  0.09090909  0.23076923]

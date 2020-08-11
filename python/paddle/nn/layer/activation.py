@@ -254,47 +254,43 @@ class LeakyReLU(layers.Layer):
 
 class Sigmoid(layers.Layer):
     """
-	:alias_main: paddle.nn.Sigmoid
-	:alias: paddle.nn.Sigmoid,paddle.nn.layer.Sigmoid,paddle.nn.layer.activation.Sigmoid
-
-    Sigmoid Activation.
+    this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.
     
-    .. math:
+    .. math::
 
-        output = \frac{1}{1 + e^{-input}}
-
+        output = \frac{1}{1 + e^{-x}}
+    
     Parameters:
-        inplace (bool, optional): If inplace is True, the input and output
-            are the same variable. Otherwise, the input and output
-            are different variables. Default False. Note that if x is
-            more than one OPs' input, inplace must be False.
-    
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        x: N-D tensor, available dtype is float16, float32, float64.
+
     Returns:
-        None
+        A callable object of Sigmoid.
     
     Examples:
+
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import paddle.nn as nn
           import numpy as np
-          input = fluid.data(name="input", shape=[None, 4])
-          output = nn.Sigmoid()(input)
-          place = fluid.CPUPlace()
-          exe = fluid.Executor(place)
-          exe.run(fluid.default_startup_program())
+          import paddle
+          import paddle.fluid as fluid
+
+          paddle.disable_static()
           input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
-          output_data = exe.run(feed={"input": input_data},
-                                fetch_list=[output])
-          print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+          sigmoid = paddle.nn.Sigmoid()
+          x = paddle.to_variable(input_data)
+          output = sigmoid(x)
+          print(output.numpy()) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
-    def __init__(self, inplace=False):
+    def __init__(self, name=None):
         super(Sigmoid, self).__init__()
-        self._inplace = inplace
+        self.name = name
 
-    def forward(self, input):
-        return functional.sigmoid(input, self._inplace)
+    def forward(self, x):
+        return functional.sigmoid(x, self.name)
 
 
 class LogSoftmax(layers.Layer):
