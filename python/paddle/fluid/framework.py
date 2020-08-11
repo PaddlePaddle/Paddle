@@ -5400,6 +5400,14 @@ def _dygraph_place_guard(place):
         _dygraph_current_expected_place_ = tmp_place
 
 
+def _switch_current_place(place):
+    global _dygraph_tracer_
+    global _dygraph_current_expected_place_
+    if _dygraph_tracer_ is not None:
+        _dygraph_tracer_._expected_place = place
+    _dygraph_current_expected_place_ = place
+
+
 def load_op_library(lib_filename):
     """
     :api_attr: Static Graph

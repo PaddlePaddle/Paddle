@@ -45,7 +45,7 @@ import six
 import copy
 from argparse import ArgumentParser, REMAINDER
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 from paddle.distributed.utils import *
 from paddle.distributed import cloud_utils

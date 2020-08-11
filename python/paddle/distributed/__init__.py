@@ -13,9 +13,6 @@
 # limitations under the License.
 
 from . import run
-from .run import init_parallel_env, run
+from .run import run
 
-__all__ = [
-    "init_parallel_env",
-    "run",
-]
+__all__ = ["run", ]
