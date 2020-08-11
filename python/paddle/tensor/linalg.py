@@ -605,10 +605,10 @@ def cross(x, y, axis=None, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle.imperative import to_variable
+            from paddle import to_variable
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             data_x = np.array([[1.0, 1.0, 1.0],
                                [2.0, 2.0, 2.0],
@@ -782,13 +782,13 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            startup_program = paddle.Program()
-            train_program = paddle.Program()
-            with paddle.program_guard(train_program, startup_program):
+            startup_program = paddle.static.Program()
+            train_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
                 inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
                 output = paddle.histogram(inputs, bins=5, min=1, max=5)
                 place = paddle.CPUPlace()
-                exe = paddle.Executor(place)
+                exe = paddle.static.Executor(place)
                 exe.run(startup_program)
                 img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
                 res = exe.run(train_program,
@@ -800,11 +800,12 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            with paddle.imperative.guard(paddle.CPUPlace()):
-                inputs_np = np.array([1, 2, 1]).astype(np.float)
-                inputs = paddle.imperative.to_variable(inputs_np)
-                result = paddle.histogram(inputs, bins=4, min=0, max=3)
-                print(result) # [0, 2, 1, 0]
+            paddle.disable_static(paddle.CPUPlace())
+            inputs_np = np.array([1, 2, 1]).astype(np.float)
+            inputs = paddle.to_variable(inputs_np)
+            result = paddle.histogram(inputs, bins=4, min=0, max=3)
+            print(result) # [0, 2, 1, 0]
+            paddle.enable_static()
     """
     if in_dygraph_mode():
         return core.ops.histogram(input, "bins", bins, "min", min, "max", max)
