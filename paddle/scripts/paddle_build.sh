@@ -1395,7 +1395,7 @@ function main() {
       test_inference)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
-        test_fluid_lib_train
+        #test_fluid_lib_train
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
