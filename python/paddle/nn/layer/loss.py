@@ -547,30 +547,31 @@ class NLLLoss(fluid.dygraph.Layer):
                 place = paddle.CPUPlace()
 
                 # imperative mode
-                paddle.enable_imperative(place)
-                x = paddle.imperative.to_variable(x_np)
+                paddle.disable_static(place)
+                x = paddle.to_variable(x_np)
                 log_out = log_softmax(x)
-                label = paddle.imperative.to_variable(label_np)
+                label = paddle.to_variable(label_np)
                 imperative_result = nll_loss(log_out, label)
                 print(imperative_result.numpy()) # [1.0720209]
-                
+
                 # declarative mode
-                paddle.disable_imperative()
-                prog = paddle.Program()
-                startup_prog = paddle.Program()
-                with paddle.program_guard(prog, startup_prog):
-                    x = paddle.nn.data(name='x', shape=[10, 10], dtype='float32')
-                    label = paddle.nn.data(name='label', shape=[10], dtype='int64')
+                paddle.enable_static()
+                prog = paddle.static.Program()
+                startup_prog = paddle.static.Program()
+                with paddle.static.program_guard(prog, startup_prog):
+                    x = paddle.nn.data(name='x', shape=[5, 3], dtype='float32')
+                    label = paddle.nn.data(name='label', shape=[5], dtype='int64')
                     log_out = log_softmax(x)
                     res = nll_loss(log_out, label)
-                
-                    exe = paddle.Executor(place)
+
+                    exe = paddle.static.Executor(place)
                     declaritive_result = exe.run(
                         prog,
                         feed={"x": x_np,
                               "label": label_np},
                         fetch_list=[res])
                 print(declaritive_result) # [array([1.0720209], dtype=float32)]
+
     """
 
     def __init__(self,
