@@ -516,6 +516,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
+  LOG(WARNING)
+      << "The paddle::CreatePaddlePredictor(const AnalysisConfig& config) "
+         "interface will be discarded in a later release or two,"
+         "please use the paddle_infer::CreatePredictor(Config& config).";
   if (config.glog_info_disabled()) {
     FLAGS_logtostderr = 1;
     FLAGS_minloglevel = 2;  // GLOG_ERROR

@@ -83,6 +83,7 @@ struct PD_INFER_DECL Config {
       std::map<std::string, std::vector<int>> max_input_shape,
       std::map<std::string, std::vector<int>> optim_input_shape,
       bool disable_trt_plugin_fp16 = false);
+  bool tensorrt_engine_enabled() const;
 
   void EnableGpuMultiStream();
 
@@ -126,7 +127,7 @@ struct PD_INFER_DECL Config {
 
 class PD_INFER_DECL Tensor {
  public:
-  // can only be created by predictor->GetInputHandle(cosnt std::string& name)
+  // Can only be created by predictor->GetInputHandle(cosnt std::string& name)
   // or predictor->GetOutputHandle(cosnt std::string& name)
   Tensor() = delete;
   explicit Tensor(std::unique_ptr<paddle::ZeroCopyTensor> tensor)
@@ -166,8 +167,9 @@ class PD_INFER_DECL Predictor {
   explicit Predictor(std::unique_ptr<paddle::PaddlePredictor> pred)
       : predictor_(std::move(pred)) {}
 
-  explicit Predictor(Config& config) {
-    predictor_ = paddle::CreatePaddlePredictor(config.get_analysis_config());
+  explicit Predictor(const Config& config) {
+    predictor_ = paddle::CreatePaddlePredictor(
+        const_cast<Config*>(&config)->get_analysis_config());
   }
 
   std::vector<std::string> GetInputNames();
@@ -178,7 +180,7 @@ class PD_INFER_DECL Predictor {
   std::vector<std::string> GetOutputNames();
   std::unique_ptr<Tensor> GetOutputHandle(const std::string& name);
 
-  std::shared_ptr<Predictor> Clone();
+  std::unique_ptr<Predictor> Clone();
   void ClearIntermediateTensor();
 
  private:
@@ -195,5 +197,16 @@ extern "C" {
 PD_INFER_DECL std::string GetPaddleVersion();
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
 }
+
+class PD_INFER_DECL PredictorPool {
+ public:
+  PredictorPool() = delete;
+  explicit PredictorPool(const Config& config, size_t size = 1);
+  Predictor* Retrive(size_t idx);
+
+ private:
+  std::shared_ptr<Predictor> main_pred_;
+  std::vector<std::unique_ptr<Predictor>> preds_;
+};
 
 }  // namespace paddle_infer

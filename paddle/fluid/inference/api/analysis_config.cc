@@ -44,12 +44,19 @@ PassStrategy *AnalysisConfig::pass_builder() const {
 }
 
 AnalysisConfig::AnalysisConfig(const std::string &model_dir) {
+  // TODO(NHZlX): should add the link to the doc of paddle_infer::Config
+  LOG(WARNING) << "The paddle::AnalysiConfig interface will be discarded in a "
+                  "later release or two,"
+                  "please use the paddle_infer::Config.";
   model_dir_ = model_dir;
 
   Update();
 }
 AnalysisConfig::AnalysisConfig(const std::string &prog_file,
                                const std::string &params_file) {
+  LOG(WARNING) << "The paddle::AnalysiConfig interface will be discarded in a "
+                  "later release or two,"
+                  "please use the paddle_infer::Config.";
   prog_file_ = prog_file;
   params_file_ = params_file;
 

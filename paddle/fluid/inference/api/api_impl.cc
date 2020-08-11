@@ -15,6 +15,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <string>
@@ -414,6 +415,10 @@ void Config::EnableTensorRtEngine(int workspace_size, int max_batch_size,
                                use_static, use_calib_mode);
 }
 
+bool Config::tensorrt_engine_enabled() const {
+  return config_.tensorrt_engine_enabled();
+}
+
 void Config::SetTRTDynamicShapeInfo(
     std::map<std::string, std::vector<int>> min_input_shape,
     std::map<std::string, std::vector<int>> max_input_shape,
@@ -534,9 +539,9 @@ std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
 
-std::shared_ptr<Predictor> Predictor::Clone() {
+std::unique_ptr<Predictor> Predictor::Clone() {
   auto analysis_pred = predictor_->Clone();
-  std::shared_ptr<Predictor> pred(new Predictor(std::move(analysis_pred)));
+  std::unique_ptr<Predictor> pred(new Predictor(std::move(analysis_pred)));
   return pred;
 }
 
@@ -579,4 +584,31 @@ std::shared_ptr<Predictor> CreatePredictor(Config &config) {  // NOLINT
   return predictor;
 }
 
+PredictorPool::PredictorPool(const Config &config, size_t size) {
+  PADDLE_ENFORCE_GE(
+      size, 1UL,
+      paddle::platform::errors::InvalidArgument(
+          "The predictor pool size should be greater than 1, but it's (%d)",
+          size));
+  main_pred_.reset(new Predictor(config));
+  for (size_t i = 0; i < size - 1; i++) {
+    if (config.tensorrt_engine_enabled()) {
+      preds_.emplace_back(std::unique_ptr<Predictor>(new Predictor(config)));
+    } else {
+      preds_.emplace_back(std::move(main_pred_->Clone()));
+    }
+  }
+}
+
+Predictor *PredictorPool::Retrive(size_t idx) {
+  PADDLE_ENFORCE_LT(
+      idx, preds_.size() + 1,
+      paddle::platform::errors::InvalidArgument(
+          "There are (%d) predictors in the pool, but the idx is (%d)", idx,
+          preds_.size() + 1));
+  if (idx == 0) {
+    return main_pred_.get();
+  }
+  return preds_[idx - 1].get();
+}
 }  // namespace paddle_infer
