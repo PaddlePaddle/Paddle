@@ -43,7 +43,7 @@ class TestNNSigmoidAPI(unittest.TestCase):
     def check_static_api(self, place):
         paddle.enable_static()
         main_program = paddle.static.Program()
-        mysigmoid = nn.Sigmoid(inplace, name="api_sigmoid")
+        mysigmoid = nn.Sigmoid(name="api_sigmoid")
         with paddle.static.program_guard(main_program):
             x = paddle.nn.data(name='x', shape=self.x_shape)
             x.stop_gradient = False
@@ -55,11 +55,12 @@ class TestNNSigmoidAPI(unittest.TestCase):
                       fetch_list=[y, y.grad_name, x.grad_name])
         self.assertTrue(np.allclose(out[0], self.y))
         self.assertTrue(np.allclose(out[2], self.ref_backward(self.y, out[1])))
-        self.assertTrue(y.name.StartWith("api_sigmoid"))
+        self.assertTrue(y.name.startswith("api_sigmoid"))
 
-    def check_dynamic_api():
-        paddle.disable_static()
+    def check_dynamic_api(self, place):
+        paddle.disable_static(place)
         x = paddle.to_variable(self.x)
+        mysigmoid = nn.Sigmoid()
         y = mysigmoid(x)
         self.assertTrue(np.allclose(y.numpy(), self.y))
 
@@ -68,7 +69,7 @@ class TestNNSigmoidAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            self.check_imperative_api()
+            self.check_dynamic_api(place)
             self.check_static_api(place)
 
 
@@ -90,7 +91,7 @@ class TestNNFunctionalSigmoidAPI(unittest.TestCase):
         with paddle.static.program_guard(main_program):
             x = paddle.nn.data(name='x', shape=self.x_shape)
             y = functional.sigmoid(x, name="api_sigmoid")
-        exe = fluid.static.Executor(fluid.CPUPlace())
+        exe = paddle.static.Executor(fluid.CPUPlace())
         out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
         self.assertTrue(np.allclose(out[0], self.y))
 
