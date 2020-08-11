@@ -28,6 +28,15 @@ DECLARE_int32(rpc_retry_bind_port);
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+template <typename T>
+void ResponseToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
+  ::grpc::Slice slice(proto.ByteSizeLong());
+  proto.SerializeWithCachedSizesToArray(const_cast<uint8_t*>(slice.begin()));
+  ::grpc::ByteBuffer tmp(&slice, 1);
+  result->Swap(&tmp);
+}
+
 enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:
@@ -471,12 +480,17 @@ class RequestSendAndRecv final : public RequestBase {
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
                              out_varname, table_name);
 
-    VLOG(1) << "before SerializeToByteBuffer";
-    if (outvar) {
-      SerializeToByteBuffer(out_varname, outvar, *request_handler_->dev_ctx(),
-                            &reply_);
-    }
-    VLOG(1) << "after SerializeToByteBuffer";
+    sendrecv::VariableMessage reply;
+    reply.set_varname(out_varname);
+    ResponseToByteBuffer<sendrecv::VariableMessage>(reply, &reply_);
+
+    // VLOG(1) << "before SerializeToByteBuffer";
+    // if (outvar) {
+    //   SerializeToByteBuffer(out_varname, outvar,
+    //   *request_handler_->dev_ctx(),
+    //                         &reply_);
+    // }
+    // VLOG(1) << "after SerializeToByteBuffer";
     Finish(reply_, &responder_);
   }
 

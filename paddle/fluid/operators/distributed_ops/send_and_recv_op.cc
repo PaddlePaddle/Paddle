@@ -49,7 +49,8 @@ class SendAndRecvOp : public framework::OperatorBase {
 
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
-
+    VLOG(2) << "SendAndRecvOp Send_var_name: " << send_var_name
+            << " Recv_var_name: " << recv_var_name;
     distributed::VarHandlePtr rets = rpc_client->AsyncSendAndRecv(
         epmap, ctx, scope, send_var_name, recv_var_name);
     rets->Wait();

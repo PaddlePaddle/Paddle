@@ -401,8 +401,8 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
         inputs={"X": send_input_vars},
         outputs={"Out": dummy_output},
         attrs={
-            "send_varname": default_device_comm_info["block_output_var_name"],
-            "recv_varname": comm_info["block_output_var_name"],
+            "send_var_name": default_device_comm_info["block_output_var_name"],
+            "recv_var_name": comm_info["block_output_var_name"],
             "endpoint": heter_worker_endpoint,
             "trainer_id": config.get_role_id(),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
