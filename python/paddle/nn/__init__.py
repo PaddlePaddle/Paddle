@@ -18,6 +18,7 @@
 from .layer import norm
 from .functional import extension
 from .layer import common
+from .utils import weight_norm
 
 from . import initializer
 
