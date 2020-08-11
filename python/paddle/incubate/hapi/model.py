@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1530,6 +1530,8 @@ class Model(object):
                              model_only=False):
         """
         Save inference model can be in static or dynamic mode.
+        It should be noted that before using `save_inference_model`, 
+        `forward` must be called in dygraph, and it will be optimized later.
 
         Args:
             save_dir (str): The directory path to save the inference model.
@@ -1555,16 +1557,18 @@ class Model(object):
             input = hapi.Input('image', [-1, 1, 28, 28], 'float32')
             model = hapi.Model(hapi.vision.LeNet(), input)
             model.prepare()
+            tensor_img = np.array(np.random.random((1, 1, 28, 28)), dtype=np.float32)
+            results = model.test_batch(tensor_img) # Now it's necessary in a dygraph
 
             model.save_inference_model('inference_model')
+        TODO: 
+            1.Save correct shape of input, now it can not save `None` in shape. 
+            2.It's Unnecessary to call `forward` before call `save_inference_model` for users.
         """
 
         def get_inout_spec(all_vars, return_name=False):
             result_list = []
-            valid_var_dict = {}
             valid_vars = [var for var in all_vars if isinstance(var, Variable)]
-            for var in valid_vars:
-                valid_var_dict[var.name] = var
             result_list = valid_vars
             if return_name:
                 result_list = [var.name for var in result_list]
