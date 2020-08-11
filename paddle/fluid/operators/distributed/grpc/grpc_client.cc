@@ -501,7 +501,7 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
   int retry_times_ = 0;
 
   while (true) {
-    SendAndRecvProcessor* s = new SendAndRecvProcessor(ch);
+    GetProcessor* s = new GetProcessor(ch);
     VLOG(2) << "GRPCClient::SendAndRecv Get VarHandlePtr";
     VarHandlePtr h(
         new VarHandle(ep, method, send_var_name_val, p_ctx, p_scope));

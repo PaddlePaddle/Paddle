@@ -131,23 +131,26 @@ class GetProcessor : public BaseProcessor {
   RequestGetCallBack response_call_back_ = ProcGetResponse;
 };
 
-class SendAndRecvProcessor : public BaseProcessor {
- public:
-  explicit SendAndRecvProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(), stub_g_(ch) {}
+// class SendAndRecvProcessor : public BaseProcessor {
+//  public:
+//   explicit SendAndRecvProcessor(std::shared_ptr<grpc::Channel> ch)
+//       : BaseProcessor() {
+//     stub_g_ = sendrecv::SendRecvService::NewStub(ch);
+//   }
 
-  virtual ~SendAndRecvProcessor() {}
+//   virtual ~SendAndRecvProcessor() {}
 
-  void ProcessImpl() override {
-    if (response_call_back_) {
-      response_call_back_(*var_h_.get(), reply_);
-    }
-  }
+//   void ProcessImpl() override {
+//     if (response_call_back_) {
+//       response_call_back_(*var_h_.get(), reply_);
+//     }
+//   }
 
-  ::grpc::ByteBuffer reply_;
-  ::grpc::GenericStub stub_g_;
-  RequestGetCallBack response_call_back_ = ProcGetResponse;
-};
+//   sendrecv::VoidMessage reply_;
+//   ::grpc::ByteBuffer reply_;
+//   ::grpc::GenericStub stub_g_;
+//   RequestGetCallBack response_call_back_ = ProcGetResponse;
+// };
 
 class BatchBarrierProcessor : public BaseProcessor {
  public:

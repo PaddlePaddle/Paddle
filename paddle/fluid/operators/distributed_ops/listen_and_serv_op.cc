@@ -268,7 +268,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
-
+  VLOG(2) << "ListenAndServOp::RunAsyncLoop Begin optimize_prepared";
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
@@ -291,9 +291,11 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     }
   }
 
+  VLOG(2) << "ListenAndServOp::RunAsyncLoop Begin SetGradToPreparedCtx";
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_send_and_recv_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
   while (true) {
     if (rpc_service_->IsExit()) {
