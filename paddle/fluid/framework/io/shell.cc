@@ -29,16 +29,14 @@ std::shared_ptr<FILE> shell_fopen(const std::string& path,
   }
   FILE* fp;
   if (!(fp = fopen(path.c_str(), mode.c_str()))) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Failed to open file, path[%s], mode[%s].", path, mode));
+    PADDLE_THROW("Failed to open file, path[%s], mode[%s].", path, mode);
   }
   return {fp, [path](FILE* fp) {
             if (shell_verbose()) {
               LOG(INFO) << "Closing file[" << path << "]";
             }
             if (0 != fclose(fp)) {
-              PADDLE_THROW(platform::errors::Unavailable(
-                  "Failed to close file, path[%s].", path));
+              PADDLE_THROW("Failed to close file, path[%s].", path);
             }
           }};
 #endif
@@ -60,7 +58,7 @@ static int close_open_fds_internal() {
 
   int dir_fd = -1;
   if ((dir_fd = open("/proc/self/fd", O_RDONLY)) < 0) {
-    PADDLE_THROW(platform::errors::Unavailable("Failed to open proc/self/fd."));
+    PADDLE_THROW("Failed to open proc/self/fd.");
     return -1;
   }
   char buffer[sizeof(linux_dirent)];
@@ -70,8 +68,7 @@ static int close_open_fds_internal() {
     if ((bytes = syscall(SYS_getdents, dir_fd,
                          reinterpret_cast<linux_dirent*>(buffer),
                          sizeof(buffer))) < 0) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "System call failed via syscall function."));
+      PADDLE_THROW("System call failed via syscall function.");
       return -1;
     }
 
@@ -224,9 +221,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
             if (WIFEXITED(wstatus) || wstatus == (128 + SIGPIPE) * 256) {
             } else {
-              PADDLE_ENFORCE_NE(
-                  errno, ECHILD,
-                  platform::errors::Fatal("Must not be ECHILD errno here!"));
+              PADDLE_ENFORCE_NE(errno, ECHILD,
+                                "Must not be ECHILD errno here!");
               *err_no = -1;
             }
 
@@ -352,9 +348,9 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
                               int time_out, int sleep_inter,
                               bool redirect_stderr = false) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(PADDLE_ARM)
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(
       "This function(shell_get_command_output) is not implemented under _WIN32 "
-      "or __APPLE__."));
+      "or __APPLE__.");
 #else
   int err_no = 0;
   int status = 0;
