@@ -26,8 +26,8 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.label_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
 
     def run_imperative(self):
-        input = paddle.imperative.to_variable(self.input_np)
-        label = paddle.imperative.to_variable(self.label_np)
+        input = paddle.to_variable(self.input_np)
+        label = paddle.to_variable(self.label_np)
         dy_result = paddle.nn.functional.l1_loss(input, label)
         expected = np.mean(np.abs(self.input_np - self.label_np))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
@@ -69,8 +69,9 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.assertTrue('aaa' in y.name)
 
     def test_cpu(self):
-        with paddle.imperative.guard(paddle.fluid.CPUPlace()):
-            self.run_imperative()
+        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        self.run_imperative()
+        paddle.enable_static()
 
         with fluid.program_guard(fluid.Program()):
             self.run_static()
@@ -79,8 +80,9 @@ class TestFunctionalL1Loss(unittest.TestCase):
         if not fluid.core.is_compiled_with_cuda():
             return
 
-        with paddle.imperative.guard(paddle.fluid.CUDAPlace(0)):
-            self.run_imperative()
+        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        self.run_imperative()
+        paddle.enable_static()
 
         with fluid.program_guard(fluid.Program()):
             self.run_static(use_gpu=True)
@@ -104,8 +106,8 @@ class TestClassL1Loss(unittest.TestCase):
         self.label_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
 
     def run_imperative(self):
-        input = paddle.imperative.to_variable(self.input_np)
-        label = paddle.imperative.to_variable(self.label_np)
+        input = paddle.to_variable(self.input_np)
+        label = paddle.to_variable(self.label_np)
         l1_loss = paddle.nn.loss.L1Loss()
         dy_result = l1_loss(input, label)
         expected = np.mean(np.abs(self.input_np - self.label_np))
@@ -153,8 +155,9 @@ class TestClassL1Loss(unittest.TestCase):
         self.assertTrue('aaa' in result3.name)
 
     def test_cpu(self):
-        with paddle.imperative.guard(paddle.fluid.CPUPlace()):
-            self.run_imperative()
+        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        self.run_imperative()
+        paddle.enable_static()
 
         with fluid.program_guard(fluid.Program()):
             self.run_static()
@@ -163,8 +166,9 @@ class TestClassL1Loss(unittest.TestCase):
         if not fluid.core.is_compiled_with_cuda():
             return
 
-        with paddle.imperative.guard(paddle.fluid.CUDAPlace(0)):
-            self.run_imperative()
+        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        self.run_imperative()
+        paddle.enable_static()
 
         with fluid.program_guard(fluid.Program()):
             self.run_static(use_gpu=True)

@@ -146,7 +146,7 @@ class Layer(core.Layer):
               import paddle
               import paddle.nn as nn
               
-              paddle.enable_imperative()
+              paddle.disable_static()
               
               net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
 
