@@ -932,7 +932,7 @@ set +x
                     echo "This is $[$exec_times+1] re-run"
                     echo "========================================="
                     echo "The following unittest will be re-run:"
-                    echo ${failed_test_lists}
+                    echo "${failed_test_lists}"
                         
                     for line in ${retry_unittests[@]} ;
                         do
