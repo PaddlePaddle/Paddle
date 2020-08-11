@@ -29,7 +29,7 @@ from paddle.fluid.dygraph.base import to_variable
 import paddle.incubate.hapi as hapi
 from paddle.incubate.hapi import Model, Input
 from paddle.nn.layer.loss import CrossEntropyLoss
-from paddle.incubate.hapi.metrics import Accuracy
+from paddle.metric import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
 from paddle.incubate.hapi.vision.models import LeNet
 from paddle.incubate.hapi.distributed import DistributedBatchSampler, prepare_distributed_context

@@ -19,10 +19,10 @@ import os
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 
-from paddle.incubate.hapi.metrics import *
 from paddle.incubate.hapi.utils import to_list
 
 
@@ -46,6 +46,41 @@ def convert_to_one_hot(y, C):
     return oh
 
 
+class TestAccuracy(unittest.TestCase):
+    def test_acc(self):
+        paddle.enable_imperative()
+
+        x = paddle.imperative.to_variable(
+            np.array([[0.1, 0.2, 0.3, 0.4], [0.1, 0.4, 0.3, 0.2],
+                      [0.1, 0.2, 0.4, 0.3], [0.1, 0.2, 0.3, 0.4]]))
+        y = paddle.imperative.to_variable(np.array([[0], [1], [2], [3]]))
+
+        m = paddle.metric.Accuracy(name='my_acc')
+
+        # check name
+        self.assertEqual(m.name(), ['my_acc'])
+
+        correct = m.compute(x, y)
+        # check results
+        self.assertEqual(m.update(correct), 0.75)
+        self.assertEqual(m.accumulate(), 0.75)
+
+        x = paddle.imperative.to_variable(
+            np.array([[0.1, 0.2, 0.3, 0.4], [0.1, 0.3, 0.4, 0.2],
+                      [0.1, 0.2, 0.4, 0.3], [0.1, 0.2, 0.3, 0.4]]))
+        y = paddle.imperative.to_variable(np.array([[0], [1], [2], [3]]))
+        correct = m.compute(x, y)
+        # check results
+        self.assertEqual(m.update(correct), 0.5)
+        self.assertEqual(m.accumulate(), 0.625)
+
+        # check reset
+        m.reset()
+        self.assertEqual(m.total[0], 0.0)
+        self.assertEqual(m.count[0], 0.0)
+        paddle.disable_imperative()
+
+
 class TestAccuracyDynamic(unittest.TestCase):
     def setUp(self):
         self.topk = (1, )
@@ -65,17 +100,18 @@ class TestAccuracyDynamic(unittest.TestCase):
 
     def test_main(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
-            acc = Accuracy(topk=self.topk, name=self.name)
+            acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
             for _ in range(10):
                 label, pred = self.random_pred_label()
                 label_var = to_variable(label)
                 pred_var = to_variable(pred)
-                state = to_list(acc.add_metric_op(pred_var, label_var))
+                state = to_list(acc.compute(pred_var, label_var))
                 acc.update(*[s.numpy() for s in state])
                 res_m = acc.accumulate()
                 res_f = accuracy(pred, label, self.topk)
-                assert np.all(np.isclose(np.array(res_m, dtype='float64'), np.array(res_f, dtype='float64'), rtol=1e-3)), \
-                        "Accuracy precision error: {} != {}".format(res_m, res_f)
+                assert np.all(np.isclose(np.array(res_m, dtype='float64'),
+                              np.array(res_f, dtype='float64'), rtol=1e-3)), \
+                    "Accuracy precision error: {} != {}".format(res_m, res_f)
                 acc.reset()
                 assert np.sum(acc.total) == 0
                 assert np.sum(acc.count) == 0
@@ -97,8 +133,8 @@ class TestAccuracyStatic(TestAccuracyDynamic):
             pred = fluid.data(
                 name='pred', shape=[None, self.class_num], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            acc = Accuracy(topk=self.topk, name=self.name)
-            state = acc.add_metric_op(pred, label)
+            acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
+            state = acc.compute(pred, label)
 
         exe = fluid.Executor(fluid.CPUPlace())
         compiled_main_prog = fluid.CompiledProgram(main_prog)

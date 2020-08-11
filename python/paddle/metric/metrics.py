@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['Metric', 'Accuracy']
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import six
 import abc
-#import numpy as np
 import paddle.fluid as fluid
+
+__all__ = ['Metric', 'Accuracy']
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -38,9 +37,9 @@ class Metric(object):
     Advanced usage for :code:`compute`:
 
     Metric calculation can be accelerated by calculating metric states
-    from model outputs and labels by build-in operators not by Python/Numpy
-    in :code:`compute`, metric states will be fetched as numpy array and
-    call :code:`update` with states in numpy format.
+    from model outputs and labels by build-in operators not by Python/NumPy
+    in :code:`compute`, metric states will be fetched as NumPy array and
+    call :code:`update` with states in NumPy format.
     Metric calculated as follows (operations in Model and Metric are
     indicated with curly brackets, while data nodes not):
                  inputs & labels              || ------------------
@@ -49,7 +48,7 @@ class Metric(object):
                        |                      ||
                 outputs & labels              ||
                        |                      ||    tensor data
-             {Metric.compute}           ||
+             {Metric.compute}                 ||
                        |                      ||
               metric states(tensor)           ||
                        |                      ||
@@ -162,7 +161,15 @@ class Metric(object):
 
 class Accuracy(Metric):
     """
-    Encapsulates accuracy metric logic
+    Encapsulates accuracy metric logic.
+    def __init__(self, topk=(1, ), name='acc', *args, **kwargs):
+
+
+    Args:
+        topk (int|tuple(int)): Number of top elements to look at
+            for computing accuracy. Default is (1,).
+        name (str, optional): String name of the metric instance. Default
+            is `acc`.
 
     Example by standalone:
         
@@ -180,7 +187,7 @@ class Accuracy(Metric):
             [0.1, 0.2, 0.3, 0.4]]))
         y = paddle.imperative.to_variable(np.array([[0], [1], [2], [3]]))
 
-        m = paddle.incubate.hapi.metrics.Accuracy()
+        m = paddle.metric.Accuracy()
         correct = m.compute(x, y)
         m.update(correct)
         res = m.accumulate()
@@ -205,7 +212,7 @@ class Accuracy(Metric):
         model.prepare(
             optim,
             loss_function=paddle.nn.CrossEntropyLoss(),
-            metrics=paddle.metrics.Accuracy())
+            metrics=paddle.metric.Accuracy())
 
         model.fit(train_dataset, batch_size=64)
 
@@ -219,11 +226,34 @@ class Accuracy(Metric):
         self.reset()
 
     def compute(self, pred, label, *args):
+        """
+        Compute the top-k (maxinum value in `topk`) indices.
+
+        Args:
+            pred (Tensor): The predicted value is a Tensor wit type
+                float32 or float64.
+            label (Tensor): The ground truth value is a 2D Tensor, its
+                shape is [batch_size, 1] and type is int64.
+
+        Return:
+            Tensor: Correct mask, a tensor with shape [batch_size, topk].
+        """
         pred = fluid.layers.argsort(pred, descending=True)[1][:, :self.maxk]
         correct = pred == label
         return fluid.layers.cast(correct, dtype='float32')
 
     def update(self, correct, *args):
+        """
+        Update the metrics states (correct count and total count), in order to
+        calculate cumulative accuracy of all instances. This function also
+        returns the accuracy of current step.
+        
+        Args:
+            correct: Correct mask, a tensor with shape [batch_size, topk].
+
+        Return:
+            Tensor: the accuracy of current step.
+        """
         if isinstance(correct, fluid.core.VarBase):
             correct = correct.numpy()
         accs = []
@@ -233,16 +263,24 @@ class Accuracy(Metric):
             accs.append(float(num_corrects) / num_samples)
             self.total[i] += num_corrects
             self.count[i] += num_samples
+        accs = accs[0] if len(self.topk) == 1 else accs
         return accs
 
     def reset(self):
+        """
+        Resets all of the metric state.
+        """
         self.total = [0.] * len(self.topk)
         self.count = [0] * len(self.topk)
 
     def accumulate(self):
+        """
+        Computes and returns the accumulated metric.
+        """
         res = []
         for t, c in zip(self.total, self.count):
             res.append(float(t) / c)
+        res = res[0] if len(self.topk) == 1 else res
         return res
 
     def _init_name(self, name):
@@ -253,4 +291,7 @@ class Accuracy(Metric):
             self._name = [name]
 
     def name(self):
+        """
+        Return name of metric instance.
+        """
         return self._name

@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .metrics import *
+
 from ..fluid.layers.metric_op import accuracy, auc
 from ..fluid.layers.nn import chunk_eval, cos_sim, mean_iou
 
 __all__ = [
-    'Accuracy', 'Auc', 'ChunkEvaluator', 'Precision', 'Recall', 'accuracy',
-    'auc', 'chunk_eval', 'cos_sim', 'mean_iou'
+    'Accuracy',
+    'Auc',
+    'accuracy',
+    'auc',
+    'chunk_eval',
+    'cos_sim',
+    'mean_iou',
 ]

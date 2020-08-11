@@ -34,9 +34,9 @@ from paddle.fluid.layers.utils import flatten
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
 from paddle.io import DataLoader, Dataset
+from paddle.metric import Metric
 
 from .distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
-from .metrics import Metric
 from .callbacks import config_callbacks
 from .utils import to_list, to_numpy, flatten_list, restore_flatten_list, extract_args
 from .device import _get_device
@@ -404,7 +404,7 @@ class StaticGraphAdapter(object):
             if mode != 'test':
                 for metric in self.model._metrics:
                     metrics.append(
-                        to_list(metric.add_metric_op(*(outputs + labels))))
+                        to_list(metric.compute(*(outputs + labels))))
 
             if mode == 'train' and self.model._optimizer:
                 self._loss_endpoint = fluid.layers.sum(losses)
@@ -527,7 +527,7 @@ class DynamicGraphAdapter(object):
         self.model.network.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
+            metric_outs = metric.compute(*(to_list(outputs) + labels))
             m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
@@ -571,7 +571,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
+            metric_outs = metric.compute(*(to_list(outputs) + labels))
             m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
@@ -712,7 +712,7 @@ class Model(object):
             parameter_list=model.parameters())
         model.prepare(optim,
                       paddle.nn.CrossEntropyLoss(),
-                      hapi.metrics.Accuracy())
+                      paddle.metric.Accuracy())
         
         mnist_data = hapi.datasets.MNIST(mode='train', chw_format=False)
         model.fit(mnist_data, epochs=2, batch_size=32, verbose=1)
@@ -1204,7 +1204,7 @@ class Model(object):
               model.prepare(
                   optim,
                   paddle.nn.CrossEntropyLoss(),
-                  hapi.metrics.Accuracy(topk=(1, 2)))
+                  paddle.metric.Accuracy(topk=(1, 2)))
               model.fit(train_dataset,
                         val_dataset,
                         epochs=2,
@@ -1241,7 +1241,7 @@ class Model(object):
               model.prepare(
                   optim,
                   paddle.nn.CrossEntropyLoss(),
-                  hapi.metrics.Accuracy(topk=(1, 2)))
+                  paddle.metric.Accuracy(topk=(1, 2)))
               model.fit(train_loader,
                         val_loader,
                         epochs=2,
@@ -1353,6 +1353,7 @@ class Model(object):
         Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
@@ -1362,7 +1363,7 @@ class Model(object):
             input = hapi.Input('image', [-1, 1, 28, 28], 'float32')
             label = hapi.Input('label', [None, 1], 'int64')
             model = hapi.Model(hapi.vision.LeNet(), input, label)
-            model.prepare(metrics=hapi.metrics.Accuracy())
+            model.prepare(metrics=paddle.metric.Accuracy())
 
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
@@ -1370,7 +1371,7 @@ class Model(object):
             # imperative mode
             fluid.enable_dygraph()
             model = hapi.Model(hapi.vision.LeNet())
-            model.prepare(metrics=hapi.metrics.Accuracy())
+            model.prepare(metrics=paddle.metric.Accuracy())
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
                 

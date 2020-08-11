@@ -3686,5 +3686,32 @@ class TestBook(LayerTest):
                         batch_first=batch_first)
 
 
+class TestMetricsDetectionMap(unittest.TestCase):
+    def test_detection_map(self):
+        program = fluid.Program()
+        with program_guard(program):
+            detect_res = fluid.layers.data(
+                name='detect_res',
+                shape=[10, 6],
+                append_batch_size=False,
+                dtype='float32')
+            label = fluid.layers.data(
+                name='label',
+                shape=[10, 1],
+                append_batch_size=False,
+                dtype='float32')
+            box = fluid.layers.data(
+                name='bbox',
+                shape=[10, 4],
+                append_batch_size=False,
+                dtype='float32')
+            map_eval = fluid.metrics.DetectionMAP(
+                detect_res, label, box, class_num=21)
+            cur_map, accm_map = map_eval.get_map_var()
+            self.assertIsNotNone(cur_map)
+            self.assertIsNotNone(accm_map)
+        print(str(program))
+
+
 if __name__ == '__main__':
     unittest.main()
