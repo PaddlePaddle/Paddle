@@ -22,8 +22,8 @@ from ...fluid.dygraph import layers
 from .. import functional as F
 
 __all__ = [
-    'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
-    'Pad2D'
+    'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample', 'Pad',
+    'ReflectionPad1d', 'ReplicationPad1d', 'ConstantPad1d'
 ]
 
 
@@ -254,30 +254,34 @@ class UpSample(layers.Layer):
         return out
 
 
-class Pad2D(layers.Layer):
+class Pad(layers.Layer):
     """
-        :alias_main: paddle.nn.Pad2D
-        :alias: paddle.nn.Pad2D,paddle.nn.layer.Pad2D,paddle.nn.layer.common.Pad2D
+        :alias_main: paddle.nn.Pad
+        :alias: paddle.nn.Pad
 
-    This interface is used to construct a callable object of the ``Pad2D``  class.
-    The Pad2D layer pads the input tensor boundaries according to 'paddings' and 'mode'.
+    This interface is used to construct a callable object of the ``Pad`` class.
+    The Pad layer pads the input tensor boundaries according to 'paddings' and 'mode'.
     If mode is 'reflect', paddings[0] and paddings[1] must be no greater
-    than height-1. And the width dimension has the same condition.
+    than width-1. The height and depth dimensions have the same condition.
 
     Parameters:
-        paddings (int | List[int32]): The padding size. If padding is a int, uses the same 
-            padding in all boundaries, if padding is a List, it must contain four integers, 
-            (padding_top, padding_bottom, padding_left, padding_right).
-            Default is [0, 0, 0, 0].
-        mode (str): Three modes: 'constant' (default), 'reflect', 'edge' .
-        	When in 'constant' mode, this op uses a constant value to pad the input tensor.
-        	When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
-        	When in 'edge' mode, uses input boundaries to pad the input tensor.
-        	Default is 'constant'
-        pad_value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
-        data_format (str): An string from: "NHWC", "NCHW". Specify the data format of
-                           the input data.
-                           Default is  "NCHW"
+        pad (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+            of input will be padded. 1. If input dimension is 3, then the pad has the form (pad_left,
+            pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
+            pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
+            (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back). Default is [0, 0, 0, 0].
+        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+            When in 'constant' mode, this op uses a constant value to pad the input tensor.
+            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+            When in 'replicate' mode, uses input boundaries to pad the input tensor.
+            When in 'circular' mode, uses circular input to pad the input tensor.
+            Default is 'constant'
+        value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
+        data_format (str): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
+           the input data.
+           Default is  "NCHW"
+        name (str, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns: 
         None
@@ -285,30 +289,41 @@ class Pad2D(layers.Layer):
     Examples:
         .. code-block:: text
 
-            Input = [[[[1., 2., 3.],
-                       [4., 5., 6.]]]]
+            Input = [[[[[1., 2., 3.],
+                       [4., 5., 6.]]]]]
 
             Case 0:
-                paddings = [0, 1, 2, 3],
+                pad = [2, 2, 1, 1, 0, 0],
                 mode = 'constant'
                 pad_value = 0
-                Out = [[[[0., 0., 1., 2., 3., 0., 0., 0.],
-                         [0., 0., 4., 5., 6., 0., 0., 0.],
-                         [0., 0., 0., 0., 0., 0., 0., 0.]]]]
+                Out = [[[[[0. 0. 0. 0. 0. 0. 0.]
+                          [0. 0. 1. 2. 3. 0. 0.]
+                          [0. 0. 4. 5. 6. 0. 0.]
+                          [0. 0. 0. 0. 0. 0. 0.]]]]]
 
             Case 1:
-                paddings = [0, 1, 2, 1],
+                pad = [2, 2, 1, 1, 0, 0],
                 mode = 'reflect'
-                Out = [[[[3., 2., 1., 2., 3., 2.],
-                         [6., 5., 4., 5., 6., 5.],
-                         [3., 2., 1., 2., 3., 2.]]]]
+                Out = [[[[[6. 5. 4. 5. 6. 5. 4.]
+                          [3. 2. 1. 2. 3. 2. 1.]
+                          [6. 5. 4. 5. 6. 5. 4.]
+                          [3. 2. 1. 2. 3. 2. 1.]]]]]
 
             Case 2:
-                paddings = [0, 1, 2, 1],
-                mode = 'edge'
-                Out = [[[[1., 1., 1., 2., 3., 3.],
-                         [4., 4., 4., 5., 6., 6.],
-                         [4., 4., 4., 5., 6., 6.]]]]
+                pad = [2, 2, 1, 1, 0, 0],
+                mode = 'replicate'
+                Out = [[[[[1. 1. 1. 2. 3. 3. 3.]
+                          [1. 1. 1. 2. 3. 3. 3.]
+                          [4. 4. 4. 5. 6. 6. 6.]
+                          [4. 4. 4. 5. 6. 6. 6.]]]]]
+
+            Case 3:
+                pad = [2, 2, 1, 1, 0, 0],
+                mode = 'circular'
+                Out = [[[[[5. 6. 4. 5. 6. 4. 5.]
+                          [2. 3. 1. 2. 3. 1. 2.]
+                          [5. 6. 4. 5. 6. 4. 5.]
+                          [2. 3. 1. 2. 3. 1. 2.]]]]]
 
     Code Examples:
         .. code-block:: python
@@ -316,29 +331,222 @@ class Pad2D(layers.Layer):
             import paddle.fluid as fluid
             import paddle.nn as nn
             import numpy as np
-            data = np.ones((2, 2, 2, 2)).astype('float32')
-            my_pad = nn.Pad2D(paddings=[1, 1, 1, 1])
+            data = np.ones((1, 1, 2, 2)).astype('float32')
+            my_pad = nn.Pad(pad=[1, 1, 1, 1])
             with fluid.dygraph.guard():
                 data = fluid.dygraph.to_variable(data)
                 result = my_pad(data)
+            print(result.numpy())
+            # [[[[0. 0. 0. 0.]
+            #    [0. 1. 1. 0.]
+            #    [0. 1. 1. 0.]
+            #    [0. 0. 0. 0.]]]]
     """
 
     def __init__(self,
-                 paddings=0,
+                 pad=[0, 0, 0, 0],
                  mode='constant',
-                 pad_value=0.0,
-                 data_format="NCHW"):
-        super(Pad2D, self).__init__()
+                 value=0.0,
+                 data_format="NCHW",
+                 name=None):
+        super(Pad, self).__init__()
         self._mode = mode
-        self._pad_value = pad_value
+        self._value = value
         self._data_format = data_format
-        self._paddings = [paddings] * 4 if isinstance(paddings,
-                                                      int) else paddings
+        self._pad = pad
+        self._name = name
 
     def forward(self, input):
-        return F.pad2d(
-            input,
-            paddings=self._paddings,
-            mode=self._mode,
-            pad_value=self._pad_value,
-            data_format=self._data_format)
+        return F.pad(input,
+                     pad=self._pad,
+                     mode=self._mode,
+                     value=self._value,
+                     data_format=self._data_format,
+                     name=self._name)
+
+
+class ReflectionPad1d(layers.Layer):
+    """
+        :alias_main: paddle.nn.ReflectionPad1d
+        :alias: paddle.nn.ReflectionPad1d
+
+    This interface is used to construct a callable object of the ``ReflectionPad1d`` class.
+    Uses reflection of the input boundaries to pad the input tensor.
+
+    Parameters:
+        pad (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+            of input will be padded. The pad has the form (pad_left, pad_right).  Default is [0, 0, 0, 0].
+        data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
+           Default is  "NCL"
+        name (str, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        
+    Returns: 
+        None
+
+    Examples:
+        .. code-block:: text
+
+            Input = [[[1., 2., 3.],
+                       [4., 5., 6.]]]
+            pad = [1, 2],
+            Out = [[[2. 1. 2. 3. 2. 1.]
+                    [5. 4. 5. 6. 5. 4.]]]
+
+    Code Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.nn as nn
+            import numpy as np
+            input_shape = (1, 2, 3)
+            pad = [1, 2]
+            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
+            my_pad = nn.ReflectionPad1d(pad=pad)
+            with fluid.dygraph.guard():
+                data = fluid.dygraph.to_variable(data)
+                result = my_pad(data)
+            print(result.numpy())
+            # [[[2. 1. 2. 3. 2. 1.]
+            #   [5. 4. 5. 6. 5. 4.]]]
+    """
+
+    def __init__(self, pad=[0, 0], data_format="NCL", name=None):
+        super(ReflectionPad1d, self).__init__()
+        self._mode = "reflect"
+        self._data_format = data_format
+        self._pad = pad
+        self._name = name
+
+    def forward(self, input):
+        return F.pad(input,
+                     pad=self._pad,
+                     mode=self._mode,
+                     data_format=self._data_format,
+                     name=self._name)
+
+
+class ReplicationPad1d(layers.Layer):
+    """
+        :alias_main: paddle.nn.ReplicationPad1d
+        :alias: paddle.nn.ReplicationPad1d
+
+    This interface is used to construct a callable object of the ``ReplicationPad1d`` class.
+    Uses input boundaries to pad the input tensor.
+
+    Parameters:
+        pad (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+            of input will be padded. The pad has the form (pad_left, pad_right).  Default is [0, 0, 0, 0].
+        data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
+           Default is  "NCL"
+        name (str, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        
+    Returns: 
+        None
+
+    Examples:
+        .. code-block:: text
+
+            Input = [[[1., 2., 3.],
+                       [4., 5., 6.]]]
+            pad = [1, 2],
+            Out = [[[2. 1. 2. 3. 2. 1.]
+                    [5. 4. 5. 6. 5. 4.]]]
+
+    Code Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.nn as nn
+            import numpy as np
+            input_shape = (1, 2, 3)
+            pad = [1, 2]
+            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
+            my_pad = nn.ReplicationPad1d(pad=pad)
+            with fluid.dygraph.guard():
+                data = fluid.dygraph.to_variable(data)
+                result = my_pad(data)
+            print(result.numpy())
+            # [[[1. 1. 2. 3. 3. 3.]
+            #   [1. 4. 5. 6. 6. 6.]]]
+    """
+
+    def __init__(self, pad=[0, 0], data_format="NCL", name=None):
+        super(ReplicationPad1d, self).__init__()
+        self._mode = "replicate"
+        self._data_format = data_format
+        self._pad = pad
+        self._name = name
+
+    def forward(self, input):
+        return F.pad(input,
+                     pad=self._pad,
+                     mode=self._mode,
+                     data_format=self._data_format,
+                     name=self._name)
+
+
+class ConstantPad1d(layers.Layer):
+    """
+        :alias_main: paddle.nn.ConstantPad1d
+        :alias: paddle.nn.ConstantPad1d
+
+    This interface is used to construct a callable object of the ``ConstantPad1d`` class.
+    Uses a constant value to pad the input tensor.
+
+    Parameters:
+        pad (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+            of input will be padded. The pad has the form (pad_left, pad_right).  Default is [0, 0, 0, 0].
+        data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
+           Default is  "NCL"
+        name (str, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        
+    Returns: 
+        None
+
+    Examples:
+        .. code-block:: text
+
+            Input = [[[1., 2., 3.],
+                       [4., 5., 6.]]]
+            pad = [1, 2],
+            value = 0.0
+            Out = [[[0. 1. 2. 3. 0. 0.]
+                    [0. 4. 5. 6. 0. 0.]]]
+
+    Code Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.nn as nn
+            import numpy as np
+            input_shape = (1, 2, 3)
+            pad = [1, 2]
+            value = 0.0
+            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
+            my_pad = nn.ConstantPad1d(pad=pad, value=value)
+            with fluid.dygraph.guard():
+                data = fluid.dygraph.to_variable(data)
+                result = my_pad(data)
+            print(result.numpy())
+            # [[[0. 1. 2. 3. 0. 0.]
+            #   [0. 4. 5. 6. 0. 0.]]]
+    """
+
+    def __init__(self, pad=[0, 0], value=0.0, data_format="NCL", name=None):
+        super(ConstantPad1d, self).__init__()
+        self._mode = "constant"
+        self._data_format = data_format
+        self._pad = pad
+        self._value = value
+        self._name = name
+
+    def forward(self, input):
+        return F.pad(input,
+                     pad=self._pad,
+                     mode=self._mode,
+                     value=self._value,
+                     data_format=self._data_format,
+                     name=self._name)

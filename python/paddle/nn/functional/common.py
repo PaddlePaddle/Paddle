@@ -473,17 +473,17 @@ def pad(input,
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back). Default is [0, 0, 0, 0].
             
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
-        	When in 'constant' mode, this op uses a constant value to pad the input tensor.
-        	When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
-        	When in 'replicate' mode, uses input boundaries to pad the input tensor.
+            When in 'constant' mode, this op uses a constant value to pad the input tensor.
+            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+            When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
-        	Default is 'constant'
+            Default is 'constant'
         value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
         data_format (str): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
-                           the input data.
-                           Default is  "NCHW"
+           the input data.
+           Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
-                    user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
                     
     Returns: a Tensor padded according to pad and mode and data type is same as input.
     Return Type: Variable
@@ -537,7 +537,7 @@ def pad(input,
             input_shape = (1, 1, 3)
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
             x = paddle.data(name="x", shape=input_shape)
-            y = F.pad(x, pad=[5, 6], value=1, mode='constant')
+            y = F.pad(x, pad=[2, 3], value=1, mode='constant')
             place = paddle.CPUPlace()
             exe = paddle.Executor(place)
             outputs = exe.run(feed={'x': data}, fetch_list=[y.name])
