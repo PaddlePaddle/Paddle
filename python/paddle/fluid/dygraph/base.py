@@ -15,7 +15,6 @@ from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import inspect
 import decorator
 import contextlib
-import functools
 import sys
 import numpy as np
 from paddle.fluid import core
@@ -222,28 +221,22 @@ class no_grad:
     """
 
     def __call__(self, func):
-        if inspect.isgeneratorfunction(func):
-            return self._decorate_generator(func)
-        else:
-            return self._decorate_function(func)
-
-    def _decorate_function(self, func):
-        @functools.wraps(func)
-        def __impl__(*args, **kwargs):
+        @decorator.decorator
+        def _decorate_function(func, *args, **kwargs):
             with self:
                 return func(*args, **kwargs)
 
-        return __impl__
-
-    def _decorate_generator(self, func):
-        @functools.wraps(func)
-        def __impl__(*args, **kwargs):
+        @decorator.decorator
+        def _decorate_generator(func, *args, **kwargs):
             gen = func(*args, **kwargs)
             with self:
                 for x in gen:
                     yield x
 
-        return __impl__
+        if inspect.isgeneratorfunction(func):
+            return _decorate_generator(func)
+        else:
+            return _decorate_function(func)
 
     def __enter__(self):
         tracer = framework._dygraph_tracer()
