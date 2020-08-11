@@ -1340,9 +1340,9 @@ def clip(x, min=None, max=None, name=None):
 
     Args:
 	x (Tensor): An N-D Tensor with data type float32 or float64.
-        min (float32|Variable): The lower bound with type ``float32`` or a ``Tensor``
+	min (float32|Tensor): The lower bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        max (float32|Variable): The upper bound with type ``float32`` or a ``Tensor``
+        max (float32|Tensor): The upper bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
 	name (str, optional): The default value is None. Normally there is no
 	    need for user to set this property. For more information, please
