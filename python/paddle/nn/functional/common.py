@@ -491,8 +491,8 @@ def pad(input,
     Examples:
         .. code-block:: text
 
-            Input = [[[[1., 2., 3.],
-                       [4., 5., 6.]]]]
+            Input = [[[[[1., 2., 3.],
+                       [4., 5., 6.]]]]]
 
             Case 0:
                 pad = [2, 2, 1, 1, 0, 0],

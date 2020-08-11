@@ -36,6 +36,7 @@ from .activation import LogSoftmax  #DEFINE_ALIAS
 from .activation import HSigmoid  #DEFINE_ALIAS
 from .common import BilinearTensorProduct  #DEFINE_ALIAS
 from .common import Pool2D  #DEFINE_ALIAS
+from .common import Pad2D  #DEFINE_ALIAS
 from .common import Pad  #DEFINE_ALIAS
 from .common import ReflectionPad1d  #DEFINE_ALIAS
 from .common import ReplicationPad1d  #DEFINE_ALIAS
