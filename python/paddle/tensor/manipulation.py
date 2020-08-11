@@ -103,16 +103,16 @@ def concat(x, axis=0, name=None):
             import paddle
             import numpy as np
             
-            paddle.enable_imperative()  # Now we are in imperative mode
+            paddle.disable_static()  # Now we are in imperative mode
             in1 = np.array([[1, 2, 3],
                             [4, 5, 6]])
             in2 = np.array([[11, 12, 13],
                             [14, 15, 16]])
             in3 = np.array([[21, 22],
                             [23, 24]])
-            x1 = paddle.imperative.to_variable(in1)
-            x2 = paddle.imperative.to_variable(in2)
-            x3 = paddle.imperative.to_variable(in3)
+            x1 = paddle.to_variable(in1)
+            x2 = paddle.to_variable(in2)
+            x3 = paddle.to_variable(in3)
             zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             # When the axis is negative, the real axis is (axis + Rank(x))
             # As follow, axis is -1, Rank(x) is 2, the real axis is 1
@@ -156,12 +156,12 @@ def flip(x, axis, name=None):
           import paddle
           import numpy as np
 
-          paddle.enable_imperative()
+          paddle.disable_static()
 
           image_shape=(3, 2, 2)
           x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           x = x.astype('float32')
-          img = paddle.imperative.to_variable(x)
+          img = paddle.to_variable(x)
           out = paddle.flip(img, [0,1])
 
           print(out) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
@@ -247,13 +247,13 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             image_shape=(2, 3, 4, 4)
             x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3]).reshape(image_shape) / 100.
             x = x.astype('float32')
             
-            img = paddle.imperative.to_variable(x)
+            img = paddle.to_variable(x)
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
     """
@@ -325,8 +325,8 @@ def roll(x, shifts, axis=None, name=None):
             data = np.array([[1.0, 2.0, 3.0],
                              [4.0, 5.0, 6.0],
                              [7.0, 8.0, 9.0]])
-            paddle.enable_imperative()
-            x = paddle.imperative.to_variable(data)
+            paddle.disable_static()
+            x = paddle.to_variable(data)
             out_z1 = paddle.roll(x, shifts=1)
             print(out_z1.numpy())
             #[[9. 1. 2.]
@@ -503,10 +503,10 @@ def split(x, num_or_sections, axis=0, name=None):
             import numpy as np
             import paddle
             
-            paddle.enable_imperative()
+            paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.imperative.to_variable(x_np)
+            x = paddle.to_variable(x_np)
 
             out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -595,7 +595,7 @@ def squeeze(x, axis=None, name=None):
 
             import paddle
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             
             x = paddle.rand([5, 1, 10])
             output = paddle.squeeze(x, axis=1)
