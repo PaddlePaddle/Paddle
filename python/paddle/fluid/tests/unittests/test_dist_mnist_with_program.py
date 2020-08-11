@@ -45,6 +45,7 @@ class TestDistMnistGradAllReduceFleetApi(TestDistBase):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
+        self.assertEqual(1,5)
 
 
 if __name__ == "__main__":
