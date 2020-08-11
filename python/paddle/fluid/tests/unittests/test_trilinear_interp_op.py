@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.nn.functional import interpolate
+np.random.seed(2000)
 
 
 def trilinear_interp_np(input,
@@ -128,6 +129,9 @@ class TestTrilinearInterpOp(OpTest):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
+        self.scale_w = -1
+        self.scale_h = -1
+        self.scale_d = -1
         self.data_layout = 'NCDHW'
         self.init_test_case()
         self.op_type = "trilinear_interp"
@@ -143,9 +147,16 @@ class TestTrilinearInterpOp(OpTest):
             in_w = self.input_shape[3]
 
         if self.scale > 0:
-            out_d = int(in_d * self.scale)
-            out_h = int(in_h * self.scale)
-            out_w = int(in_w * self.scale)
+            if isinstance(self.scale, list) and len(self.scale) > 1:
+                self.scale_w = self.scale[2]
+                self.scale_h = self.scale[1]
+                self.scale_d = self.scale[0]
+            elif self.scale > 0:
+                self.scale_w = self.scale_h = self.scale_d = self.scale
+            if self.scale_w > 0 and self.scale_h > 0 and self.scale_d > 0:
+                out_h = int(in_h * self.scale_h)
+                out_w = int(in_w * self.scale_w)
+                out_d = int(in_d * self.scale_d)
         else:
             out_d = self.out_d
             out_h = self.out_h
@@ -168,7 +179,9 @@ class TestTrilinearInterpOp(OpTest):
             'out_d': self.out_d,
             'out_h': self.out_h,
             'out_w': self.out_w,
-            'scale': self.scale,
+            'scale_d': self.scale_d,
+            'scale_h': self.scale_h,
+            'scale_w': self.scale_w,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode,
@@ -449,6 +462,18 @@ class TestTrilinearInterpScale3(TestTrilinearInterpOp):
         self.align_mode = 1
 
 
+class TestTrilinearInterpScale4(TestTrilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 3, 5, 7, 9]
+        self.out_d = 60
+        self.out_h = 40
+        self.out_w = 25
+        self.scale = [1.5, 2.5, 2.0]
+        self.align_corners = True
+        self.align_mode = 1
+
+
 class TestTrilinearInterpZero(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
@@ -588,11 +613,33 @@ class TestTrilinearInterpAPI(unittest.TestCase):
             x, out_shape=[4, 4, 8], actual_shape=actual_size)
         out5 = fluid.layers.resize_trilinear(x, scale=scale_tensor)
         out6 = interpolate(
-            x, scale_factor=scale_tensor, mode='trilinear', data_format="NCDHW")
+            x,
+            scale_factor=[2.0, 2.0, 2.0],
+            mode='trilinear',
+            align_mode=1,
+            align_corners=True,
+            data_format="NCDHW")
         out7 = interpolate(
-            x, size=[4, 4, 8], mode='trilinear', data_format="NCDHW")
+            x,
+            size=[12, 18, 8],
+            mode='trilinear',
+            align_mode=1,
+            align_corners=True,
+            data_format="NCDHW")
         out8 = interpolate(
-            x, size=shape_tensor, mode='trilinear', data_format="NCDHW")
+            x,
+            size=shape_tensor,
+            mode='trilinear',
+            align_mode=1,
+            align_corners=True,
+            data_format="NCDHW")
+        out9 = interpolate(
+            x,
+            scale_factor=scale_tensor,
+            mode='trilinear',
+            align_mode=1,
+            align_corners=True,
+            data_format="NCDHW")
 
         x_data = np.random.random((2, 3, 6, 9, 4)).astype("float32")
         dim_data = np.array([18]).astype("int32")
@@ -606,17 +653,18 @@ class TestTrilinearInterpAPI(unittest.TestCase):
             place = core.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        results = exe.run(fluid.default_main_program(),
-                          feed={
-                              "x": x_data,
-                              "y": np.transpose(x_data, (0, 2, 3, 4, 1)),
-                              "dim": dim_data,
-                              "shape_tensor": shape_data,
-                              "actual_size": actual_size_data,
-                              "scale_tensor": scale_data
-                          },
-                          fetch_list=[out1, out2, out3, out4, out5],
-                          return_numpy=True)
+        results = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "x": x_data,
+                "y": np.transpose(x_data, (0, 2, 3, 4, 1)),
+                "dim": dim_data,
+                "shape_tensor": shape_data,
+                "actual_size": actual_size_data,
+                "scale_tensor": scale_data
+            },
+            fetch_list=[out1, out2, out3, out4, out5, out6, out7, out8, out9],
+            return_numpy=True)
 
         expect_res = trilinear_interp_np(
             x_data, out_d=12, out_h=18, out_w=8, align_mode=1)

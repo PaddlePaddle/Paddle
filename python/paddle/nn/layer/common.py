@@ -169,9 +169,9 @@ class UpSample(layers.Layer):
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Variable|None): The multiplier for the input height or width. At
+        scale_factor (float|Variable|list|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
+             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearst', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
@@ -230,7 +230,7 @@ class UpSample(layers.Layer):
                  scale_factor=None,
                  mode='nearest',
                  align_corners=False,
-                 align_mode=1,
+                 align_mode=0,
                  data_format='NCHW'):
         super(UpSample, self).__init__()
         self.size = size

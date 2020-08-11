@@ -125,6 +125,8 @@ class TestBicubicInterpOp(OpTest):
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
+        self.scale_w = -1
+        self.scale_h = -1
         self.init_test_case()
         self.op_type = "bicubic_interp"
         input_np = np.random.random(self.input_shape).astype("float64")
@@ -137,12 +139,18 @@ class TestBicubicInterpOp(OpTest):
             in_w = self.input_shape[2]
 
         if self.scale > 0:
-            out_h = int(in_h * self.scale)
-            out_w = int(in_w * self.scale)
+            if isinstance(self.scale, list) and len(self.scale) > 1:
+                self.scale_w = self.scale[1]
+                self.scale_h = self.scale[0]
+            elif self.scale > 0:
+                self.scale_w = self.scale_h = self.scale
+
+            if self.scale_w > 0 and self.scale_h > 0:
+                out_h = int(in_h * self.scale_h)
+                out_w = int(in_w * self.scale_w)
         else:
             out_h = self.out_h
             out_w = self.out_w
-
         output_np = bicubic_interp_np(input_np, out_h, out_w, self.out_size,
                                       self.actual_shape, self.align_corners,
                                       self.data_layout)
@@ -155,7 +163,8 @@ class TestBicubicInterpOp(OpTest):
         self.attrs = {
             'out_h': self.out_h,
             'out_w': self.out_w,
-            'scale': self.scale,
+            'scale_w': self.scale_w,
+            'scale_h': self.scale_h,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'data_layout': self.data_layout
@@ -241,6 +250,16 @@ class TestBicubicInterpCase6(TestBicubicInterpOp):
         self.align_corners = False
 
 
+class TestBicubicInterpCase7(TestBicubicInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'bicubic'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = [0.5, 0.5]
+        self.align_corners = False
+
+
 class TestBicubicInterpSame(TestBicubicInterpOp):
     def init_test_case(self):
         self.interp_method = 'bicubic'
@@ -289,7 +308,7 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
             scale_tensor = fluid.data(
                 name="scale_tensor", shape=[1], dtype="float32")
 
-            out1 = interpolate(
+            out1 = paddle.nn.functional.common.interpolate(
                 x, size=[12, 12], mode='bicubic', align_corners=False)
             out2 = interpolate(
                 x, size=[12, dim], mode='bicubic', align_corners=False)

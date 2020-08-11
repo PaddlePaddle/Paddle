@@ -49,7 +49,7 @@ def interpolate(input,
                 scale_factor=None,
                 mode='nearest',
                 align_corners=False,
-                align_mode=1,
+                align_mode=0,
                 data_format='NCHW',
                 name=None):
     """
@@ -194,15 +194,15 @@ def interpolate(input,
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Variable|None): The multiplier for the input height or width. At
+        scale_factor (float|Variable|list|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
+             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
-                               corner pixels.
+                               corner pixels.This only has an effect when 'linear', 'bilinear', 'bicubic' or 'trilinear'.
                                Default: False
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
@@ -319,7 +319,10 @@ def interpolate(input,
 
     if align_mode != 0 and align_mode != 1:
         raise ValueError("align_mode can only be 0 or 1")
-
+    if align_corners != 0 and resample == 'NEAREST':
+        raise ValueError(
+            "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
+        )
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
@@ -349,6 +352,9 @@ def interpolate(input,
         "out_d": -1,
         "out_h": -1,
         "out_w": -1,
+        "scale_w": -1,
+        "scale_h": -1,
+        "scale_d": -1,
         "interp_method": resample_type,
         "align_corners": align_corners,
         "align_mode": align_mode,
@@ -434,10 +440,28 @@ def interpolate(input,
         elif isinstance(scale, float) or isinstance(scale, int):
             if scale <= 0:
                 raise ValueError("Attr(scale) should be greater than zero.")
-            attrs['scale'] = float(scale)
+            attrs['scale_w'], attrs['scale_h'], attrs['scale_d'] = float(scale)
+        elif isinstance(scale, list):
+            print(len(input.shape))
+            if len(scale) != len(input.shape) - 2:
+                raise ValueError("scale_shape length should be {} for "
+                                 "input {}-D tensor.".format(
+                                     len(input.shape) - 2, len(input.shape)))
+            for value in scale:
+                if value <= 0:
+                    raise ValueError("Attr(scale) should be greater than zero.")
+            if len(scale) == 1:
+                attrs['scale_w'] = scale[0]
+            elif len(scale) == 2:
+                attrs['scale_h'] = scale[0]
+                attrs['scale_w'] = scale[1]
+            elif len(scale) == 3:
+                attrs['scale_d'] = scale[0]
+                attrs['scale_h'] = scale[1]
+                attrs['scale_w'] = scale[2]
         else:
             raise TypeError(
-                "Attr(scale)'s type should be float, int or Variable.")
+                "Attr(scale)'s type should be float, int, list or Variable.")
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(

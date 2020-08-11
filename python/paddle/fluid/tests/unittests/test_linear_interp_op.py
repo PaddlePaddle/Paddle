@@ -32,7 +32,7 @@ def linear_interp_np(input,
                      align_mode=0,
                      data_layout='NCHW'):
     if data_layout == "NHWC":
-        input = np.transpose(input, (0, 2, 1))  # NHWC => NCHW
+        input = np.transpose(input, (0, 2, 1))  # NWC => NCW
     if out_size is not None:
         out_w = out_size[0]
     if actual_shape is not None:
@@ -87,6 +87,8 @@ class TestLinearInterpOp(OpTest):
             in_w = self.input_shape[1]
 
         if self.scale > 0:
+            if isinstance(self.scale, list) and len(self.scale) > 0:
+                self.scale = self.scale[0]
             out_w = int(in_w * self.scale)
         else:
             out_w = self.out_w
@@ -102,7 +104,7 @@ class TestLinearInterpOp(OpTest):
 
         self.attrs = {
             'out_w': self.out_w,
-            'scale': self.scale,
+            'scale_w': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode,
@@ -158,6 +160,17 @@ class TestLinearInterpOpScale(TestLinearInterpOp):
         self.input_shape = [1, 3, 100]
         self.out_w = 50
         self.scale = 0.5
+        self.out_size = np.array([50, ]).astype("int32")
+        self.align_corners = False
+        self.align_mode = 0
+
+
+class TestLinearInterpOpScale(TestLinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'linear'
+        self.input_shape = [1, 3, 100]
+        self.out_w = 50
+        self.scale = [0.5]
         self.out_size = np.array([50, ]).astype("int32")
         self.align_corners = False
         self.align_mode = 0

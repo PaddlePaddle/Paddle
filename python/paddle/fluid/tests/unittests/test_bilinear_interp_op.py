@@ -97,6 +97,8 @@ class TestBilinearInterpOp(OpTest):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
+        self.scale_w = -1
+        self.scale_h = -1
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "bilinear_interp"
@@ -110,8 +112,15 @@ class TestBilinearInterpOp(OpTest):
             in_w = self.input_shape[2]
 
         if self.scale > 0:
-            out_h = int(in_h * self.scale)
-            out_w = int(in_w * self.scale)
+            if isinstance(self.scale, list) and len(self.scale) > 1:
+                self.scale_w = self.scale[1]
+                self.scale_h = self.scale[0]
+            elif self.scale > 0:
+                self.scale_w = self.scale_h = self.scale
+
+            if self.scale_w > 0 and self.scale_h > 0:
+                out_h = int(in_h * self.scale_h)
+                out_w = int(in_w * self.scale_w)
         else:
             out_h = self.out_h
             out_w = self.out_w
@@ -128,7 +137,8 @@ class TestBilinearInterpOp(OpTest):
         self.attrs = {
             'out_h': self.out_h,
             'out_w': self.out_w,
-            'scale': self.scale,
+            'scale_w': self.scale_w,
+            'sclae_h': self.scale_h,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode,
@@ -374,6 +384,17 @@ class TestBilinearInterpScale3(TestBilinearInterpOp):
         self.out_h = 60
         self.out_w = 25
         self.scale = 1.5
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpScale4(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 3, 5, 7]
+        self.out_h = 60
+        self.out_w = 25
+        self.scale = [1.5, 2.5]
         self.align_corners = True
         self.align_mode = 1
 
