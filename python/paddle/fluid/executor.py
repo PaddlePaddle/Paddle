@@ -29,6 +29,8 @@ from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
+from . import unique_name
+from .incubate.checkpoint import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -489,6 +491,9 @@ class Executor(object):
         self._default_executor = core.Executor(p)
         self._closed = False
 
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_executor__")
+
     def _get_var_cache(self, program_cache_key):
         return self.var_caches.get(program_cache_key, None)
 
@@ -803,6 +808,8 @@ class Executor(object):
             fetch_list = []
 
         compiled = isinstance(program, compiler.CompiledProgram)
+
+        acp._auto_checkpoint(self, program)
 
         # For backward compatibility, run directly.
         if not compiled:
