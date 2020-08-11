@@ -42,6 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/shell.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
