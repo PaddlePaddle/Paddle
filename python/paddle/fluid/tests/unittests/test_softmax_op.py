@@ -234,19 +234,10 @@ class TestNnFunctionalSoftmaxApi(unittest.TestCase):
     def test_api_static(self):
         with program_guard(Program()):
             x = paddle.data('X', self.x_np.shape, 'float32')
-<<<<<<< 4443e1d785e18f6e7c880a7a7ae1edb6bea19e57
             out = F.softmax(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         self.assertEqual(np.allclose(self.out_ref, res[0]), True)
-=======
-            out = paddle.nn.functional.softmax(x)
-
-        exe = paddle.static.Executor(self.place)
-        res = exe.run(train_program, feed={'X': self.x_np}, fetch_list=[out])
-
-        assert np.allclose(self.out_ref, res[0])
->>>>>>> fixed static module
 
     def test_api_imperative(self):
         paddle.disable_static(self.place)
