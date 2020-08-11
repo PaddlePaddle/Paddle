@@ -124,6 +124,7 @@ void TensorRTEngine::FreezeNetwork() {
                   << ", this might be ok when trt does not need this range";
         }
       }
+#if IS_TRT_VERSION_GE(5122)
       auto is_layer_int8 = [&](nvinfer1::ILayer *layer) -> bool {
         for (int j = 0; j < layer->getNbInputs(); j++) {
           auto *temp_in = layer->getInput(j);
@@ -161,6 +162,11 @@ void TensorRTEngine::FreezeNetwork() {
           layer->setPrecision(nvinfer1::DataType::kFLOAT);
         }
       }
+#else
+      LOG(WARNING) << "If your TensorRT version is lower than 5.1.2.2, you "
+                      "must provide quantization scales for all tensors using "
+                      "TRT to run.";
+#endif
 #endif
     }
   }
