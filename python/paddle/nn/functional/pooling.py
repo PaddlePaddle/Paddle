@@ -20,7 +20,10 @@ from ...fluid.layers import adaptive_pool3d  #DEFINE_ALIAS
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from ...fluid.layers import unsqueeze, squeeze, LayerHelper
 
-__all__ = ['pool2d', 'pool3d', 'adaptive_pool2d', 'adaptive_pool3d']
+__all__ = [
+    'pool2d', 'pool3d', 'adaptive_pool2d', 'adaptive_pool3d', 'avg_pool1d',
+    'max_pool1d', 'adaptive_avg_pool1d', 'adaptive_max_pool1d'
+]
 
 
 def update_padding(padding, pool_type='avg'):
@@ -33,8 +36,9 @@ def update_padding(padding, pool_type='avg'):
         if padding.__len__() == 1 and not is_list_or_tuple(padding[0]):
             return [0, padding[0]]
         else:
-            raise ValueError("{}_pool1d() argument 'padding' should contain one int (got {})".format(pool_type,
-                                                                                                     padding.__len__()))
+            raise ValueError(
+                "{}_pool1d() argument 'padding' should contain one int (got {})".
+                format(pool_type, padding.__len__()))
     else:
         padding = [0, padding]
 
@@ -42,13 +46,13 @@ def update_padding(padding, pool_type='avg'):
 
 
 def avg_pool1d(input,
-              kernel_size=-1,
-              stride=1,
-              padding=0,
-              ceil_mode=False,
-              count_include_pad=True,
-              use_cudnn=False,
-              name=None):
+               kernel_size=-1,
+               stride=1,
+               padding=0,
+               ceil_mode=False,
+               count_include_pad=True,
+               use_cudnn=False,
+               name=None):
     """
     :alias_main: paddle.nn.functional.avg_pool1d
     :alias: paddle.nn.functional.pool2d,paddle.nn.functional.pooling.avg_pool1d
@@ -120,10 +124,9 @@ def avg_pool1d(input,
     if not isinstance(use_cudnn, bool):
         raise TypeError("Attr(use_cudnn) should be True or False. Received "
                         "Attr(use_cudnn): %s." % str(use_cudnn))
-
     """NCL to NCHW"""
     data_format = "NCHW"
-    input = unsqueeze(input, 2)
+    input = unsqueeze(input, [2])
     kernel_size = [1, kernel_size]
     stride = [1, stride]
 
@@ -174,13 +177,13 @@ def avg_pool1d(input,
 
 
 def max_pool1d(input,
-              kernel_size=-1,
-              stride=1,
-              padding=0,
-              ceil_mode=False,
-              return_indices=False,
-              use_cudnn=False,
-              name=None):
+               kernel_size=-1,
+               stride=1,
+               padding=0,
+               ceil_mode=False,
+               return_indices=False,
+               use_cudnn=False,
+               name=None):
     """
     :alias_main: paddle.nn.functional.max_pool1d
     :alias: paddle.nn.functional.pool2d,paddle.nn.functional.pooling.max_pool1d
@@ -248,10 +251,9 @@ def max_pool1d(input,
     if not isinstance(use_cudnn, bool):
         raise TypeError("Attr(use_cudnn) should be True or False. Received "
                         "Attr(use_cudnn): %s." % str(use_cudnn))
-
     """NCL to NCHW"""
     data_format = "NCHW"
-    input = unsqueeze(input, 2)
+    input = unsqueeze(input, [2])
     kernel_size = [1, kernel_size]
     stride = [1, stride]
 
@@ -300,7 +302,8 @@ def max_pool1d(input,
             "data_format": data_format,
         })
 
-    return (squeeze(pool_out, [2]), squeeze(mask, [2])) if return_indices else squeeze(pool_out, [2])
+    return (squeeze(pool_out, [2]),
+            squeeze(mask, [2])) if return_indices else squeeze(pool_out, [2])
 
 
 def adaptive_avg_pool1d(input, output_size, name=None):
@@ -367,8 +370,8 @@ def adaptive_avg_pool1d(input, output_size, name=None):
         """
     pool_type = 'avg'
     check_variable_and_dtype(
-         input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
-         'adaptive_pool2d')
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'adaptive_pool2d')
     check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
 
     pool_size = [1, output_size]
@@ -380,7 +383,7 @@ def adaptive_avg_pool1d(input, output_size, name=None):
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     outputs = {"Out": pool_out}
-    input = unsqueeze(input, 2)
+    input = unsqueeze(input, [2])
     helper.append_op(
         type=l_type,
         inputs={"X": input},
@@ -477,7 +480,7 @@ def adaptive_max_pool1d(input, output_size, return_indices=False, name=None):
     mask = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out, "Mask": mask}
 
-    input = unsqueeze(input, 2)
+    input = unsqueeze(input, [2])
     helper.append_op(
         type=l_type,
         inputs={"X": input},
@@ -488,5 +491,5 @@ def adaptive_max_pool1d(input, output_size, return_indices=False, name=None):
             "adaptive": True,
         })
 
-    return (squeeze(pool_out, [2]), squeeze(mask, [2])) if return_indices else squeeze(pool_out, [2])
-
+    return (squeeze(pool_out, [2]),
+            squeeze(mask, [2])) if return_indices else squeeze(pool_out, [2])
