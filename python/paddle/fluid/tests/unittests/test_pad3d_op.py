@@ -316,10 +316,11 @@ class TestPad1dClass(unittest.TestCase):
             pad = [1, 2]
             value = 100
             input_data = np.random.rand(*input_shape).astype(np.float32)
-            pad_reflection = nn.ReflectionPad1d(pad=pad)
-            pad_replication = nn.ReplicationPad1d(pad=pad)
 
-            pad_constant = nn.ConstantPad1d(pad=pad, value=value)
+            pad_reflection = nn.ReflectionPad1d(padding=pad)
+            pad_replication = nn.ReplicationPad1d(padding=pad)
+            pad_constant = nn.ConstantPad1d(padding=pad, value=value)
+
             with dg.guard(place) as g:
                 data = paddle.fluid.dygraph.to_variable(input_data)
 

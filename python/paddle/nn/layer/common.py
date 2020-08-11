@@ -340,8 +340,8 @@ class Pad(layers.Layer):
         :alias: paddle.nn.Pad
 
     This interface is used to construct a callable object of the ``Pad`` class.
-    The Pad layer pads the input tensor boundaries according to 'paddings' and 'mode'.
-    If mode is 'reflect', paddings[0] and paddings[1] must be no greater
+    The Pad layer pads the input tensor boundaries according to 'pad' and 'mode'.
+    If mode is 'reflect', pad[0] and pad[1] must be no greater
     than width-1. The height and depth dimensions have the same condition.
 
     Parameters:
@@ -482,7 +482,7 @@ class ReflectionPad1d(layers.Layer):
             input_shape = (1, 2, 3)
             pad = [1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ReflectionPad1d(pad=pad)
+            my_pad = nn.ReflectionPad1d(padding=pad)
             with fluid.dygraph.guard():
                 data = fluid.dygraph.to_variable(data)
                 result = my_pad(data)
@@ -491,11 +491,11 @@ class ReflectionPad1d(layers.Layer):
             #   [5. 4. 5. 6. 5. 4.]]]
     """
 
-    def __init__(self, pad=[0, 0], data_format="NCL", name=None):
+    def __init__(self, padding=[0, 0], data_format="NCL", name=None):
         super(ReflectionPad1d, self).__init__()
         self._mode = "reflect"
         self._data_format = data_format
-        self._pad = pad
+        self._pad = padding
         self._name = name
 
     def forward(self, input):
@@ -543,7 +543,7 @@ class ReplicationPad1d(layers.Layer):
             input_shape = (1, 2, 3)
             pad = [1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ReplicationPad1d(pad=pad)
+            my_pad = nn.ReplicationPad1d(padding=pad)
             with fluid.dygraph.guard():
                 data = fluid.dygraph.to_variable(data)
                 result = my_pad(data)
@@ -552,11 +552,11 @@ class ReplicationPad1d(layers.Layer):
             #   [1. 4. 5. 6. 6. 6.]]]
     """
 
-    def __init__(self, pad=[0, 0], data_format="NCL", name=None):
+    def __init__(self, padding=[0, 0], data_format="NCL", name=None):
         super(ReplicationPad1d, self).__init__()
         self._mode = "replicate"
         self._data_format = data_format
-        self._pad = pad
+        self._pad = padding
         self._name = name
 
     def forward(self, input):
@@ -606,7 +606,7 @@ class ConstantPad1d(layers.Layer):
             pad = [1, 2]
             value = 0.0
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ConstantPad1d(pad=pad, value=value)
+            my_pad = nn.ConstantPad1d(padding=pad, value=value)
             with fluid.dygraph.guard():
                 data = fluid.dygraph.to_variable(data)
                 result = my_pad(data)
@@ -615,11 +615,11 @@ class ConstantPad1d(layers.Layer):
             #   [0. 4. 5. 6. 0. 0.]]]
     """
 
-    def __init__(self, pad=[0, 0], value=0.0, data_format="NCL", name=None):
+    def __init__(self, padding=[0, 0], value=0.0, data_format="NCL", name=None):
         super(ConstantPad1d, self).__init__()
         self._mode = "constant"
         self._data_format = data_format
-        self._pad = pad
+        self._pad = padding
         self._value = value
         self._name = name
 
