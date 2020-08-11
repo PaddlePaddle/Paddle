@@ -531,7 +531,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                 data_norm_grads.append(i[1])
                         if not is_data_norm_data:
                             grads.append(i[1])
-
+                    # for new dense table
                     multi_task_dense_tables_push = []
                     multi_task_dense_tables_pull = []
                     if flag_multi_task:
