@@ -13,17 +13,10 @@ else()
     cc_library(box_wrapper SRCS box_wrapper.cc DEPS framework_proto lod_tensor)
 endif(WITH_BOX_PS)
 
-set(gloo_library_SRCS gloo_wrapper.cc)
-
-set_source_files_properties(
-        ${gloo_library_SRCS}
-        PROPERTIES
-        COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-sign-compare")
-
 if(WITH_GLOO)
-    cc_library(gloo_wrapper SRCS ${gloo_library_SRCS} DEPS framework_proto variable_helper scope gloo)
+    cc_library(gloo_wrapper SRCS gloo_wrapper.cc DEPS framework_proto variable_helper scope gloo)
 else()
-    cc_library(gloo_wrapper SRCS ${gloo_library_SRCS} DEPS framework_proto variable_helper scope)
+    cc_library(gloo_wrapper SRCS gloo_wrapper.cc DEPS framework_proto variable_helper scope)
 endif(WITH_GLOO)
 
 cc_library(heter_wrapper SRCS heter_wrapper.cc DEPS framework_proto device_context)

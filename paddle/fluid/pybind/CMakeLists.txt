@@ -32,6 +32,7 @@ set(PYBIND_SRCS
   reader_py.cc
   fleet_wrapper_py.cc
   heter_wrapper_py.cc
+  gloo_wrapper_py.cc
   box_helper_py.cc
   data_set_py.cc
   imperative.cc
@@ -42,15 +43,6 @@ if (WITH_CRYPTO)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif (WITH_CRYPTO)
-
-set(gloo_pybind_SRCS gloo_wrapper_py.cc)
-
-set_source_files_properties(
-        ${gloo_pybind_SRCS}
-        PROPERTIES
-        COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-sign-compare")
-
-list(APPEND PYBIND_SRCS ${gloo_pybind_SRCS})
 
 if (WITH_DISTRIBUTE)
   list(APPEND PYBIND_SRCS communicator_py.cc)
