@@ -22,8 +22,8 @@ import tempfile
 import os
 import sys
 from paddle.dataset.common import download, DATA_HOME
-from paddle.fleet.base.util_factory import fleet_util
-import paddle.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.base.util_factory import fleet_util
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 
 class TestFleetUtil(unittest.TestCase):
@@ -81,7 +81,7 @@ class TestFleetUtil(unittest.TestCase):
         self.assertEqual(user_id, 10)
 
     def test_fs(self):
-        from paddle.fleet.utils import LocalFS
+        from paddle.distributed.fleet.utils import LocalFS
         fs = LocalFS()
         dirs, files = fs.ls_dir("test_tmp")
         dirs, files = fs.ls_dir("./")
