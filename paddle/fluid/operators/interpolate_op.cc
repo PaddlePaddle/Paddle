@@ -148,9 +148,10 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
         platform::errors::InvalidArgument(
             "Scale's dimension size must be 1, but got dimension = %d .",
             scale_tensor.size()));
-    PADDLE_ENFORCE(scale_tensor[0] == 2 || scale_tensor[0] == 1,
-                   "Scale's shape must be 2 or 1, but got shape = %d .",
-                   scale_tensor[0]);
+    PADDLE_ENFORCE_EQ(scale_tensor[0] == 2 || scale_tensor[0] == 1, true,
+                      platform::errors::InvalidArgument(
+                          "Scale's shape must be 2 or 1, but got shape = %d .",
+                          scale_tensor[0]));
     out_h = -1;
     out_w = -1;
   } else {
@@ -244,8 +245,9 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
             "Scale's dimension size must be 1, but got size = %d .",
             scale_tensor.size()));
     PADDLE_ENFORCE(scale_tensor[0] == 3 || scale_tensor[0] == 1,
-                   "Scale's shape must be 3 or 1, but got shape = %d .",
-                   scale_tensor[0]);
+                   platform::errors::InvalidArgument(
+                       "Scale's shape must be 3 or 1, but got shape = %d .",
+                       scale_tensor[0]));
     out_d = -1;
     out_h = -1;
     out_w = -1;
