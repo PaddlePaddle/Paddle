@@ -226,7 +226,7 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                paddle.enable_imperative()
+                paddle.disable_static()
                 x = paddle.rand([1, 5])
                 print(x)
                 # Variable: eager_tmp_0
@@ -235,7 +235,7 @@ def monkey_patch_varbase():
                 #   - layout: NCHW
                 #   - dtype: float
                 #   - data: [0.645307 0.597973 0.732793 0.646921 0.540328]
-                paddle.disable_imperative()
+                paddle.enable_static()
         """
         tensor = self.value().get_tensor()
         if tensor._is_initialized():
