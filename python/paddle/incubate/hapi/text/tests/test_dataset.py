@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import os
 from paddle.incubate.hapi.text.glue import TSVDataset, GlueCoLA, GlueSST2, GlueMRPC, GlueSTSB, GlueQQP, GlueMNLI, GlueQNLI, GlueRTE, GlueWNLI
 from paddle.incubate.hapi.text.data_utils import SimpleDataset

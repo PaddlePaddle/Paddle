@@ -24,8 +24,8 @@ from paddle.dataset.common import DATA_HOME
 from paddle.incubate.hapi.download import get_path_from_url
 from paddle.incubate.hapi.model import Model
 
-from .utils import InitTrackerMeta
-
+# from .utils import InitTrackerMeta
+from paddle.incubate.hapi.text.utils import InitTrackerMeta
 
 @six.add_metaclass(InitTrackerMeta)
 class PreTrainedModel(Model):

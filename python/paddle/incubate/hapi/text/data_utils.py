@@ -30,8 +30,8 @@ from paddle.io import Dataset
 from paddle.incubate.hapi.download import get_path_from_url
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
-from .utils import InitTrackerMeta
-
+from paddle.incubate.hapi.text.utils import InitTrackerMeta
+# from .utils import InitTrackerMeta
 # __all__ = ['Stack', 'Pad', 'Tuple']  # batchify
 # __all__ += ['']  # dataset helper, sampler helper
 # __all__ += ['']  # transform
@@ -91,19 +91,19 @@ class Pad(object):
         ret_length (int, optional): Length of the output. Default: None.
         dtype (str|numpy.dtype, optional): The value type of the output. If it is set to None, the input data type is used. Default: None.
 
-        Example:
-            .. code-block:: python
-                from paddle.incubate.hapi.text.data_utils import Pad
-                # Inputs are multiple lists
-                a = [1, 2, 3, 4]
-                b = [4, 5, 6]
-                c = [8, 2]
-                Pad(pad_val=0)([a, b, c])
-                '''
-                [[1. 2. 3. 4.]
-                 [4. 5. 6. 0.]
-                 [8. 2. 0. 0.]]
-                '''
+    Example:
+        .. code-block:: python
+            from paddle.incubate.hapi.text.data_utils import Pad
+            # Inputs are multiple lists
+            a = [1, 2, 3, 4]
+            b = [4, 5, 6]
+            c = [8, 2]
+            Pad(pad_val=0)([a, b, c])
+            '''
+            [[1. 2. 3. 4.]
+                [4. 5. 6. 0.]
+                [8. 2. 0. 0.]]
+            '''
      """
     def __init__(self, pad_val=0, axis=0, ret_length=None, dtype=None):
         self._pad_val = pad_val
@@ -165,7 +165,6 @@ class Tuple(object):
         .. code-block:: python
             from paddle.incubate.hapi.text.data_utils import Tuple, Pad, Stack
             batchify_fn = Tuple(Pad(axis=0, pad_val=0), Stack())
-
     """
     def __init__(self, fn, *args):
         if isinstance(fn, (list, tuple)):
@@ -307,7 +306,8 @@ class SimpleDataset(Dataset):
                 transform_func(self.data[idx])
                 for idx in range(len(self.data))
             ]
-        return SimpleDataset(applied_data)
+            return SimpleDataset(applied_data)
+        return self
 
     def shard(self, num_replicas=None, rank=None):
         """
@@ -353,7 +353,6 @@ class SamplerHelper(object):
     Args:
         dataset (collections.Iterable|Dataset): Input dataset for SamplerHelper.
         iterable (collections.Iterable|callable, optional): Iterator fof dataset. Default: None.
-
     """
 
     # chain sampler
@@ -407,11 +406,10 @@ class SamplerHelper(object):
         """
         Transformations would be performed. It includes `Shuffle`, `sort`, `fit` and `shard`.
         Args:
-            fn (callable): Transformations to be performed.
+            fn (callable): Transformations to be performed. It returns transformed iterable (and data_source).
 
         Returns:
-            SamplerHelper
-
+            SamplerHelper: A new transformed object.
         """
         rs = fn(self)
         if isinstance(rs, (list, tuple)):
@@ -430,7 +428,6 @@ class SamplerHelper(object):
             seed (int, optional): Seed for the random. Default: None.
         Returns:
             SamplerHelper
-
          """
         if seed is not None:
             random_generator = np.random.RandomState(seed)
@@ -465,7 +462,6 @@ class SamplerHelper(object):
                 buffer_size will be set to the length of the data. Default: -1.
         Returns:
             SamplerHelper
-
         """
         def _impl():
             data_source = self.data_source
@@ -883,7 +879,6 @@ class BertBasicTokenizer(object):
 
         Returns: 
             list(str): A list of tokens.
-
         """
         text = convert_to_unicode(text)
         text = self._clean_text(text)
@@ -1083,19 +1078,19 @@ class BertTokenizer(PreTrainedTokenizer):
     pretrained_resource_files_map = {
         "vocab_file": {
             "bert-base-uncased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-uncased-vocab.txt",
             "bert-large-uncased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-large-uncased-vocab.txt",
             "bert-base-cased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-cased-vocab.txt",
             "bert-large-cased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-large-cased-vocab.txt",
             "bert-base-multilingual-uncased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-multilingual-uncased-vocab.txt",
             "bert-base-multilingual-cased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-multilingual-cased-vocab.txt",
             "bert-base-chinese":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-chinese-vocab.txt",
         }
     }
     pretrained_init_configuration = {
@@ -1172,4 +1167,4 @@ class BertTokenizer(PreTrainedTokenizer):
             str: Converted string from tokens.
         """
         out_string = " ".join(tokens).replace(" ##", "").strip()
-        return out_string
+        return out_string# 

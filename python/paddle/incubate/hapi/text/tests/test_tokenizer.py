@@ -12,23 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# from paddle.inbubate.hapi.text import Stack, Pad, Tuple, BertTokenizer
-# from paddle.inbubate.hapi.text import BertForSequenceClassification
-
-from paddle.incubate.hapi.text.data_utils import PreTrainedTokenizer
+from paddle.incubate.hapi.text.data_utils import PreTrainedTokenizer, BertBasicTokenizer, WordpieceTokenizer, BertTokenizer, convert_to_unicode, whitespace_tokenize
+import unittest
+import chardet
 MODEL_NAME_OR_PATH = ""
 VOCAB_PATH = ""
 
-# TODO: 
+
 class TestPreProcess(unittest.TestCase):
     def test_convert_to_unicode(self):
-        text = ""
-        text = convert_to_unicode(text)
+        text1 = "中国".encode("utf-8")
+        text1 = convert_to_unicode(text1)
+        text2 = "abc"
+        text2 = convert_to_unicode(text2)
  
     def test_whitespace_tokenize(self):
-        text = ""
-        tokens = whitespace_tokenize(text)
-
+        text1 = " I love PaddlePaddle  "
+        tokens1 = whitespace_tokenize(text1)
+        for token in tokens1:
+            assert " " not in token
+        text2 = ""
+        tokens2 = whitespace_tokenize(text2)
+        assert tokens2 == []
 
 class TestPreTrainedTokenizer(unittest.TestCase):
     def setUp(self):
