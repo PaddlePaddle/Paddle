@@ -116,8 +116,6 @@ def pool1D_forward_naive(x,
                          data_format='NCHW',
                          pool_type="max",
                          padding_algorithm="EXPLICIT"):
-
-    # update paddings
     def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
         padding = []
         for input_size, filter_size, stride_size in zip(input_shape, pool_size,
@@ -191,7 +189,6 @@ def pool1D_forward_naive(x,
 def test_np_pd_pool1d():
     data = np.random.random((2, 4, 32)).astype('float32')
     with fluid.dygraph.guard():
-        # datapd = fluid.layers.assign(data)
         datapd = fluid.dygraph.to_variable(data)
 
         res_pd = F.avg_pool1d(
@@ -207,13 +204,11 @@ def test_np_pd_pool1d():
             exclusive=False)
 
     np.testing.assert_allclose(res_np, res_pd.numpy())
-    print("=> unittest avgpool1d success!")
 
 
 def test_np_pd_avg_pool1d():
     data = np.random.random((2, 4, 32)).astype('float32')
     with fluid.dygraph.guard():
-        # datapd = fluid.layers.assign(data)
         datapd = fluid.dygraph.to_variable(data)
 
         res_pd = F.avg_pool1d(
@@ -223,13 +218,11 @@ def test_np_pd_avg_pool1d():
             data, ksize=[3], paddings=[1], strides=[2], ceil_mode=True)
 
     np.testing.assert_allclose(res_np, res_pd.numpy())
-    print("=> unittest avgpool1d success!")
 
 
 def test_np_pd_max_pool1d():
     data = np.random.random((2, 4, 32)).astype('float32')
     with fluid.dygraph.guard():
-        # datapd = fluid.layers.assign(data)
         datapd = fluid.dygraph.to_variable(data)
 
         res_pd = F.max_pool1d(
@@ -239,7 +232,6 @@ def test_np_pd_max_pool1d():
             data, ksize=[3], paddings=[0], strides=[2], ceil_mode=False)
 
     np.testing.assert_allclose(res_np, res_pd.numpy())
-    print("=> unittest avgpool1d success!")
 
 
 def test_np_pd_adaptive_avg_pool1d():
@@ -253,7 +245,6 @@ def test_np_pd_adaptive_avg_pool1d():
             data, ksize=[6], adaptive=True, paddings=[0], strides=[0])
 
     np.testing.assert_allclose(res_np, res_pd.numpy())
-    print("=> unittest adaptive_avg_pool1d success!")
 
 
 def test_np_pd_adaptive_max_pool1d():
@@ -267,7 +258,6 @@ def test_np_pd_adaptive_max_pool1d():
             data, ksize=[6], adaptive=True, paddings=[0], strides=[0])
 
     np.testing.assert_allclose(res_np, res_pd.numpy())
-    print("=> unittest adaptive_avg_pool1d success!")
 
 
 if __name__ == '__main__':

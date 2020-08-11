@@ -111,12 +111,13 @@ def avg_pool1d(input,
 
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
 
           data = fluid.data(name='data', shape=[None, 3, 32], dtype='float32')
 
           # max pool2d
-          pool2d = fluid.layers.functional.avg_pool1d(input=data, kernel_size=2, stride=2, padding=0)
+          pool2d = paddle.nn.functional.avg_pool1d(input=data, kernel_size=2, stride=2, padding=0)
           # pool2d' s shape : [None, 3, 16]
 
     """
@@ -238,12 +239,13 @@ def max_pool1d(input,
 
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
 
           data = fluid.data(name='data', shape=[None, 3, 32], dtype='float32')
 
           # max pool2d
-          pool2d = fluid.layers.functional.max_pool1d(input=data, kernel_size=2, stride=2, padding=0)
+          pool2d = paddle.nn.functional.max_pool1d(input=data, kernel_size=2, stride=2, padding=0)
           # pool2d' s shape : [None, 3, 16]
 
     """
@@ -361,9 +363,10 @@ def adaptive_avg_pool1d(input, output_size, name=None):
               #         lend = ceil((i + 1) * L / m)
               #         output[:, :, i] = sum(input[:, :, lstart: lend])/(lstart - lend)
               #
+              import paddle
               import paddle.fluid as fluid
               data = fluid.data(name='data', shape=[None, 3, 32], dtype='float32')
-              pool_out = fluid.layers.functional.adaptive_average_pool1d(
+              pool_out = paddle.nn.functional.adaptive_average_pool1d(
                                 input=data,
                                 output_size=16)
               # pool_out shape: [None, 3, 16])
@@ -454,9 +457,10 @@ def adaptive_max_pool1d(input, output_size, return_indices=False, name=None):
               #         lend = ceil((i + 1) * L / m)
               #         output[:, :, i] = max(input[:, :, lstart: lend])
               #
+              import paddle
               import paddle.fluid as fluid
               data = fluid.data(name='data', shape=[None, 3, 32], dtype='float32')
-              pool_out = fluid.layers.functional.adaptive_max_pool1d(
+              pool_out = paddle.nn.functional.adaptive_max_pool1d(
                                 input=data,
                                 output_size=16)
               # pool_out shape: [None, 3, 16]
