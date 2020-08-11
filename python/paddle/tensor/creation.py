@@ -37,7 +37,6 @@ __all__ = [
     #       'create_random_int_lodtensor',
     'crop_tensor',
     'diag',
-    'eye',
     'fill_constant',
     #       'get_tensor_from_selected_rows',
     'linspace',
@@ -248,7 +247,7 @@ def zeros(shape, dtype=None, name=None):
           
           # shape is a Tensor
           shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
-          data3 = paddle.ones(shape=shape, dtype='int32') 
+          data3 = paddle.zeros(shape=shape, dtype='int32') 
           # [[0 0]
           #  [0 0]]
     """

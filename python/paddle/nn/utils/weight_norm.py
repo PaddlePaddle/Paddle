@@ -176,11 +176,14 @@ def weight_norm(layer, name='weight', dim=0):
           from paddle.nn import Conv2D
           from paddle.nn.utils import weight_norm
 
-          data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
           fluid.enable_imperative()
           conv = Conv2D(3, 5, 3)
           wn = weight_norm(conv)
-          out = conv(fluid.dygraph.to_variable(data))
+          print(conv.weight_g.shape)
+          # [5]
+          print(conv.weight_v.shape)
+          # [5, 3, 3, 3]
     """
     WeightNorm.apply(layer, name, dim)
     return layer

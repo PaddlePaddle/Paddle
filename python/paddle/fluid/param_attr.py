@@ -216,6 +216,8 @@ class WeightNormParamAttr(ParamAttr):
         It is recommended to use ``minimize(loss, grad_clip=clip)`` to clip gradient. 
         There are three clipping strategies: :ref:`api_fluid_clip_GradientClipByGlobalNorm` , 
         :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
+        
+        Please use 'paddle.nn.utils.weight_norm' in dygraph mode.
 
     Args:
         dim(int): Dimension over which to compute the norm. Dim is a non-negative

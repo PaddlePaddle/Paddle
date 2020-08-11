@@ -22,6 +22,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
 list(APPEND MIXED_DIST_TEST_OPS test_recv_save_op)
 list(APPEND MIXED_DIST_TEST_OPS test_transpiler_ops)
 list(APPEND MIXED_DIST_TEST_OPS test_launch)
+list(APPEND MIXED_DIST_TEST_OPS test_c_comm_init_op)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_ps)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
@@ -86,6 +87,10 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
 endif()
 
+
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
+LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 if(APPLE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_hdfs)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
@@ -190,9 +195,10 @@ function(bash_test_modules TARGET_NAME)
     endif()
 
     set(options SERIAL)
-    set(oneValueArgs "")
-    set(multiValueArgs MODULES DEPS ENVS LABELS)
+    set(oneValueArgs TIMEOUT START_BASH)
+    set(multiValueArgs DEPS ENVS LABELS)
     cmake_parse_arguments(bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
 
     set(timeout 350)
     if(${bash_test_modules_TIMEOUT})
@@ -204,13 +210,13 @@ function(bash_test_modules TARGET_NAME)
             COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
             WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
             COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
-            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
@@ -397,15 +403,17 @@ if(WITH_DISTRIBUTE)
     if(NOT APPLE)
         if(WITH_GPU)
             # NOTE. test_launch only work in gpu collective mode
-            bash_test_modules(test_launch MODULES test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+            bash_test_modules(test_launch START_BASH test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+            bash_test_modules(test_c_comm_init_op START_BASH test_c_comm_init_op.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
             py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
         endif()
-        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-        bash_test_modules(test_fleet_launch MODULES test_fleet_launch.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+
+        bash_test_modules(test_launch_ps START_BASH test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_launch START_BASH test_fleet_launch.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
         set(dist_ut_port 20001)
         foreach(TEST_OP ${DIST_TEST_OPS})
-            bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+            bash_test_modules(${TEST_OP} START_BASH dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
             MATH(EXPR dist_ut_port "${dist_ut_port}+50")
         endforeach(TEST_OP)
     endif(NOT APPLE)
@@ -439,6 +447,12 @@ if(NOT WIN32)
     # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
     py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
     set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
+endif()
+
+if(NOT APPLE AND NOT WIN32)
+    bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 600)
+    bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 600)
+    bash_test_modules(test_checkpoint_saver START_BASH dist_test.sh TIMEOUT 600)
 endif()
 
 add_subdirectory(sequence)
