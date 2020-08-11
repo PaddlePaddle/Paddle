@@ -18,7 +18,7 @@ set(gloo_library_SRCS gloo_wrapper.cc)
 set_source_files_properties(
         ${gloo_library_SRCS}
         PROPERTIES
-        COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare")
+        COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-sign-compare")
 
 if(WITH_GLOO)
     cc_library(gloo_wrapper SRCS ${gloo_library_SRCS} DEPS framework_proto variable_helper scope gloo)
