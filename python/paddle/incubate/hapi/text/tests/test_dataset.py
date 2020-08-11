@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
-import os, sys
-sys.path.append("../../text") 
-from glue import TSVDataset, GlueCoLA, GlueSST2, GlueMRPC, GlueSTSB, GlueQQP, GlueMNLI, GlueQNLI, GlueRTE, GlueWNLI
+import os
+from paddle.incubate.hapi.text.glue import TSVDataset, GlueCoLA, GlueSST2, GlueMRPC, GlueSTSB, GlueQQP, GlueMNLI, GlueQNLI, GlueRTE, GlueWNLI
+from paddle.incubate.hapi.text.data_utils import SimpleDataset
 from paddle.dataset.common import DATA_HOME, md5file
 import shutil
 import unittest
@@ -23,25 +23,18 @@ import unittest
 DEFAULT_ROOT = os.path.join(DATA_HOME, 'glue')
 SEGMENT_LIST = ['train', 'dev', 'test']
 
-"""
-class TestWrapDataset(unittest.TestCase):
-	pass
-
-"""
 def test_md5(dataset_list):
     for i, segment in enumerate(SEGMENT_LIST):
-	    filename, data_hash, field_indices, num_discard_samples = dataset_list[i].SEGMENTS[segment]
-	    fullname = os.path.join(DEFAULT_ROOT, filename)
-	    # print("filename:", filename)
-	    assert data_hash == md5file(fullname)
+        filename, data_hash, field_indices, num_discard_samples = dataset_list[i].SEGMENTS[segment]
+        fullname = os.path.join(DEFAULT_ROOT, filename)
+        assert data_hash == md5file(fullname)
     return fullname
 
-    # print(fullname, "   need to delete", os.path.dirname(fullname))
 
 class TestGlueCoLA(unittest.TestCase):
     def setUp(self):
         self.cola_train = GlueCoLA('train')
-        self.cola_dev = GlueCoLA('dev') 
+        self.cola_dev = GlueCoLA('dev')
         self.cola_test = GlueCoLA('test')
         self.datasets = [self.cola_train, self.cola_dev, self.cola_test]
         self.fullname = test_md5(self.datasets)
@@ -50,7 +43,7 @@ class TestGlueCoLA(unittest.TestCase):
         assert self.cola_train.get_labels() == ["0", "1"]
 
     def tearDown(self):
-     	shutil.rmtree(os.path.dirname(self.fullname))
+        shutil.rmtree(DEFAULT_ROOT)
 
 
 class TestGlueWNLI(unittest.TestCase):
@@ -65,7 +58,7 @@ class TestGlueWNLI(unittest.TestCase):
         assert self.wnli_train.get_labels() == ["0", "1"]
 
     def tearDown(self):
-     	shutil.rmtree(os.path.dirname(self.fullname))
+        shutil.rmtree(DEFAULT_ROOT)
 
 
 class TestGlueSST2(unittest.TestCase):
@@ -80,7 +73,8 @@ class TestGlueSST2(unittest.TestCase):
         assert self.sst_train.get_labels() == ["0", "1"]
 
     def tearDown(self):
-     	shutil.rmtree(os.path.dirname(self.fullname))
+        shutil.rmtree(DEFAULT_ROOT)
+
 
 class TestGlueMRPC(unittest.TestCase):
     def setUp(self):
@@ -92,9 +86,11 @@ class TestGlueMRPC(unittest.TestCase):
 
     def test_get_labels(self):
         assert self.mrpc_train.get_labels() == ["0", "1"]
+
     def tearDown(self):
-     	shutil.rmtree(os.path.dirname(self.fullname))
- 
+        shutil.rmtree(DEFAULT_ROOT)
+
+
 class TestGlueSTSB(unittest.TestCase):
     def setUp(self):
         self.stsb_train = GlueSTSB('train')
@@ -107,7 +103,8 @@ class TestGlueSTSB(unittest.TestCase):
         assert self.stsb_train.get_labels() == None
 
     def tearDown(self):
-     	shutil.rmtree(os.path.dirname(self.fullname))
+        shutil.rmtree(DEFAULT_ROOT)
+
 
 class TestGlueQQP(unittest.TestCase):
     def setUp(self):
@@ -121,7 +118,8 @@ class TestGlueQQP(unittest.TestCase):
         assert self.qqp_train.get_labels() == ["0", "1"]
 
     def tearDown(self):
-     	shutil.rmtree(os.path.dirname(self.fullname))
+        shutil.rmtree(DEFAULT_ROOT)
+
 
 class TestGlueMNLI(unittest.TestCase):
     def setUp(self):
@@ -133,20 +131,20 @@ class TestGlueMNLI(unittest.TestCase):
         self.datasets = [self.mnli_train, self.mnli_dev_matched, self.mnli_dev_mismatched, self.mnli_test_matched, self.mnli_test_mismatched]
         self.fullname = self.test_dataset()
 
-
     def test_dataset(self):
         segment_list = ['train', 'dev_matched', 'dev_mismatched', 'test_matched', 'test_mismatched']
         for i, segment in enumerate(segment_list):
-	        filename, data_hash, field_indices, num_discard_samples = self.datasets[i].SEGMENTS[segment]
-	        fullname = os.path.join(DEFAULT_ROOT, filename)
-	        assert data_hash == md5file(fullname)
+            filename, data_hash, field_indices, num_discard_samples = self.datasets[i].SEGMENTS[segment]
+            fullname = os.path.join(DEFAULT_ROOT, filename)
+            assert data_hash == md5file(fullname)
         return fullname
 
     def test_get_labels(self):
         assert self.mnli_train.get_labels() == ["contradiction", "entailment", "neutral"]
- 
+
     def tearDown(self):
-        shutil.rmtree(os.path.dirname(self.fullname))
+        shutil.rmtree(DEFAULT_ROOT)
+
 
 class TestGlueQNLI(unittest.TestCase):
     def setUp(self):
@@ -160,7 +158,8 @@ class TestGlueQNLI(unittest.TestCase):
         assert self.qnli_train.get_labels() == ["entailment", "not_entailment"]
 
     def tearDown(self):
-         shutil.rmtree(os.path.dirname(self.fullname))
+        shutil.rmtree(DEFAULT_ROOT)
+
 
 class TestGlueRTE(unittest.TestCase):
     def setUp(self):
@@ -174,7 +173,41 @@ class TestGlueRTE(unittest.TestCase):
         assert self.rte_train.get_labels() == ["entailment", "not_entailment"]
 
     def tearDown(self):
-         shutil.rmtree(os.path.dirname(self.fullname))
+        shutil.rmtree(DEFAULT_ROOT)       
+
+
+class TestSimpleDataset(unittest.TestCase):
+    def setUp(self):
+        dataset = GlueCoLA('test')
+        self.simple_dataset = SimpleDataset(dataset)
+
+    def test_shuffle(self):
+        shuffled_dataset = self.simple_dataset.shuffle()
+
+    def test_sort(self):
+        sorted_dataset = self.simple_dataset.sort(buffer_size=5)
+
+    def test_filter(self):
+        def predicate_func(each_data):
+            return True if (len(each_data[0]) % 2) == 1 else False
+        filtered_dataset = self.simple_dataset.filter(predicate_func)
+        for each_data in filtered_dataset:
+            assert len(each_data[0]) % 2 == 1
+
+    def test_apply(self):
+        def transform_func(each_data):
+            each_data[0] = each_data[0][:500]
+            return each_data
+        applied_data = self.simple_dataset.apply(transform_func)
+        for each_data in applied_data:
+            assert len(each_data[0]) <= 500
+
+    def test_shard(self):
+        shared_data = self.simple_dataset.shard()
+
+    def tearDown(self):
+        shutil.rmtree(DEFAULT_ROOT)
+
 
 if __name__ == '__main__':
     unittest.main()

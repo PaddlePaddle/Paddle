@@ -12,28 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.inbubate.hapi.text import Stack, Pad, Tuple, BertTokenizer
-from paddle.inbubate.hapi.text import BertForSequenceClassification
+# from paddle.inbubate.hapi.text import Stack, Pad, Tuple, BertTokenizer
+# from paddle.inbubate.hapi.text import BertForSequenceClassification
+
+from paddle.incubate.hapi.text.data_utils import Stack, Pad, Tuple
 import unittest
 
 
 class TestBatchify(unittest.TestCase):
-    def setUp(self):
-    	self.a = [1, 2, 3, 4]
-    	self.b = [5, 6, 7, 8]
-    	self.c = [9, 1, 2, 3]
-    	self.d = [1, 2]
-    	self.e = [3, 5, 6]
+    def test_stack(self):
+        a = [1, 2, 3, 4]
+        b = [5, 6, 7, 8]
+        c = [9, 1, 2, 3]
+        data = [a, b, c]
+        stack_data = Stack()(data)
+        assert stack_data.shape == (3, 4)
+        assert stack_data[1][3] == 8 and stack_data[2][1] == 1
 
-    def testCall(self):
-    	data = self.a + self.b + self.c
-    	stack_data = Stack(data)
-    	assert stack_data.shape == [3, 4]
+    def test_pad(self):
+        a = [1, 2, 3, 4]
+        d = [1, 2]
+        e = [3, 5, 6]
+        pad_data = Pad(pad_val=0)([a, d, e])
+        assert pad_data.shape == (3, 4)
 
-    def testPad(self):
-    	pad_data = Pad(pad_val=0)([a, d, e])
-    	assert pad_data.shape == [3, 4]
+    def test_tuple(self):
+        tuple_fn = Tuple(Pad(), Stack())
+        a = ([1, 2, 3, 4], 3)
+        b = ([2, 3], 2)
+        tuple_data = tuple_fn([a, b])
+        assert tuple_data[0].shape == (2, 4) and tuple_data[1].shape == (2,)
 
-	def testTuple(self):
-        tuple_fn = Tuple(Stack, Pad)
-        tuple_fn(self.a, self.b, self.c)
+
+if __name__ == '__main__':
+    unittest.main()

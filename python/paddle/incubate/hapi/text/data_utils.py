@@ -49,7 +49,7 @@ class Stack(object):
     Example:
         .. code-block:: python
 
-            from paddle.incubate.hapi.text import Stack
+            from paddle.incubate.hapi.text.data_utils import Stack
             # Stack multiple lists
             a = [1, 2, 3, 4]
             b = [4, 5, 6, 8]
@@ -93,7 +93,7 @@ class Pad(object):
 
         Example:
             .. code-block:: python
-                from paddle.incubate.hapi.text import Pad
+                from paddle.incubate.hapi.text.data_utils import Pad
                 # Inputs are multiple lists
                 a = [1, 2, 3, 4]
                 b = [4, 5, 6]
@@ -163,7 +163,7 @@ class Tuple(object):
 
     Example:
         .. code-block:: python
-            from paddle.incubate.hapi.text import Tuple, Pad, Stack
+            from paddle.incubate.hapi.text.data_utils import Tuple, Pad, Stack
             batchify_fn = Tuple(Pad(axis=0, pad_val=0), Stack())
 
     """
@@ -176,8 +176,10 @@ class Tuple(object):
         else:
             self._fn = (fn, ) + args
         for i, ele_fn in enumerate(self._fn):
-            assert isinstance(ele_fn, callable), 'Batchify functions must be callable! ' \
-                                                'type(fn[%d]) = %s' % (i, str(type(ele_fn)))
+            assert callable(ele_fn), 'Batchify functions must be callable! ' \
+                                                 'type(fn[%d]) = %s' % (i, str(type(ele_fn)))
+            # assert isinstance(ele_fn, callable), 'Batchify functions must be callable! ' \
+            #                                     'type(fn[%d]) = %s' % (i, str(type(ele_fn)))
 
     def __call__(self, data):
         """
@@ -187,10 +189,10 @@ class Tuple(object):
             data (list): The samples to batchfy. Each sample should contain N attributes.
         Returns:
             tuple: A tuple of length N. Contains the batchified result of each attribute in the input.
-        
         """
+
         assert len(data[0]) == len(self._fn),\
-            'The number of attributes in each data sample should contains' \
+            'The number of attributes in each data sample should contain' \
             ' {} elements'.format(len(self._fn))
         ret = []
         for i, ele_fn in enumerate(self._fn):
@@ -198,29 +200,28 @@ class Tuple(object):
         return tuple(ret)
 
 
-class WrapDataset(Dataset):
+class SimpleDataset(Dataset):
     """
     Decorates dataset with shuffle, sort and other transformations.
     It acts as some specific sampler or iterator for dataset.
     Args:
-        dataset (Dataset): An input dataset.
-
+        dataset (list|Dataset): A dataset-like object. It can be a list or a subclass of Dataset.
     """
 
-    def __init__(self, dataset):
-        self.dataset = dataset
+    def __init__(self, data):
+        self.data = data
         self._transform_func = None
 
     def __iter__(self):
-        for idx in range(len(self.dataset)):
-            yield self.dataset[idx]
+        for idx in range(len(self.data)):
+            yield self.data[idx]
 
     def __getitem__(self, idx):
-        return self._transform_func(self.dataset[
-            idx]) if self._transform_func else self.dataset[idx]
+        return self._transform_func(self.data[
+            idx]) if self._transform_func else self.data[idx]
 
     def __len__(self):
-        return len(self.dataset)
+        return len(self.data)
 
     def shuffle(self, buffer_size=-1, seed=None):
         """
@@ -230,19 +231,20 @@ class WrapDataset(Dataset):
             buffer_size (int): Buffer size for shuffle. if buffer_size < 0, buffer_size is the length of the dataset. Default: -1. 
             seed (int): Seed for the random. Default: None.
         Returns:
-            WrapDataset
+            SimpleDataset: A new object.
         """
         if seed is not None:
             np_rand_state_bak = np.random.get_state()
             np.random.seed(seed)
-        buffer_size = len(self.dataset) if buffer_size < 0 else buffer_size
-        for i in range(0, len(self.dataset), buffer_size):
+        buffer_size = len(self.data) if buffer_size < 0 else buffer_size
+        shuffled_data = []
+        for i in range(0, len(self.data), buffer_size):
             buf = list(range(i, i + buffer_size))
             np.random.shuffle(buf)
-            self.dataset[i:i + buffer_size] = [self.dataset[idx] for idx in buf]
+            shuffled_data.extend([self.data[idx] for idx in buf])
         if seed is not None:
             np.random.set_state(np_rand_state_bak)
-        return self
+        return SimpleDataset(shuffled_data)
 
     def sort(self, cmp=None, key=None, reverse=False, buffer_size=-1):
         """
@@ -255,15 +257,19 @@ class WrapDataset(Dataset):
             buffer_size (int): Buffer size for sort. If buffer_size < 0 or buffer_size is more than the length of the data, 
                 buffer_size will be set to the length of the data. Default: -1.
         Returns:
-            WrapDataset
+            SimpleDataset: A new object.
         """
-        buffer_size = len(self.dataset) if buffer_size < 0 else buffer_size
-        for i in range(0, len(self.dataset), buffer_size):
-            self.dataset[i:i + buffer_size] = sorted(
+        sorted_data = []
+        buffer_size = len(self.data) if buffer_size < 0 else buffer_size
+        if key:
+            key = lambda x, y: cmp(self.data[x], self.data[y])
+        elif cmp:
+            key=functools.cmp_to_key(lambda x, y: cmp(self.data[x], self.data[y]))
+        for i in range(0, len(self.data), buffer_size):
+             sorted_data.extend(sorted(
                 range(i, i + buffer_size),
-                cmp=lambda x, y: cmp(self.dataset[x], self.dataset[y]) if cmp else None,
-                key=lambda x: key(self.dataset[x]) if key else None,
-                reverse=reverse)
+                key=key,       
+                reverse=reverse))
         return self
 
     def filter(self, predicate_func):
@@ -273,13 +279,13 @@ class WrapDataset(Dataset):
         Args:
             predicate_func (callable): Return whether the data can be left in dataset.
         Returns:
-            WrapDataset
+            SimpleDataset: A new object.
         """
-        self.dataset = [
-            self.dataset[idx] for idx in range(len(self.dataset))
-            if predicate_func(self.dataset[idx])
+        filted_data = [
+            self.data[idx] for idx in range(len(self.data))
+            if predicate_func(self.data[idx])
         ]
-        return self
+        return SimpleDataset(filted_data)
 
     def apply(self, transform_func, lazy=False):
         """
@@ -292,16 +298,16 @@ class WrapDataset(Dataset):
                 `__getitem__`, which would run multi-times for each sample but can take
                 advantage of DataLoader multi-processing. Defalt: False.
         Returns:
-            WrapDataset
+            SimpleDataset: A new object.
         """
         if lazy:
             self._transform_func = transform_func
         else:
-            self.dataset = [
-                transform_func(self.dataset[idx])
-                for idx in range(len(self.dataset))
+            applied_data = [
+                transform_func(self.data[idx])
+                for idx in range(len(self.data))
             ]
-        return self
+        return SimpleDataset(applied_data)
 
     def shard(self, num_replicas=None, rank=None):
         """
@@ -312,21 +318,21 @@ class WrapDataset(Dataset):
             rank (int, optional): Number of training process. Equals to the value of the environment variable PADDLE_TRAINER_ID.
                 Default: None.
         Returns:
-            WrapDataset
+            SimpleDataset: A new object.
         """
         if num_replicas is None:
             num_replicas = ParallelEnv().nranks
         if rank is None:
             rank = ParallelEnv().local_rank
-        num_samples = int(math.ceil(len(self.dataset) * 1.0 / num_replicas))
+        num_samples = int(math.ceil(len(self.data) * 1.0 / num_replicas))
         total_size = num_samples * num_replicas
         # add extra samples to make it evenly divisible
-        self.dataset = [
-            self.dataset[idx]
-            for idx in range(len(self.dataset)) + range(total_size - len(
-                self.dataset)) if idx % num_replicas == rank
+        sharded_data = [
+            self.data[idx]
+            for idx in list(range(len(self.data))) + list(range(total_size - len(
+                self.data))) if idx % num_replicas == rank
         ]
-        return self
+        return SimpleDataset(sharded_data)
 
 
 class SamplerHelper(object):
@@ -866,7 +872,6 @@ class BertBasicTokenizer(object):
     def __init__(self, do_lower_case=True):
         """Constructs a BasicTokenizer."""
 
-     
         self.do_lower_case = do_lower_case
 
     def tokenize(self, text):

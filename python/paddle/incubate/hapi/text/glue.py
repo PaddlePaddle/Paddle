@@ -196,7 +196,7 @@ class GlueCoLA(_GlueDataset):
             len(cola_dev) # 1043
             len(cola_dev[0]) # 2
             cola_dev[0] # ['The sailors rode the breeze clear of the rocks.', '1']
-            cola_test = gluonnlp.data.GlueCoLA('test', root='./datasets/cola')
+            cola_test = GlueCoLA('test', root='./datasets/cola')
             len(cola_test) # 1063
             len(cola_test[0]) # 1
             cola_test[0] # ['Bill whistled past the house.']
@@ -240,7 +240,7 @@ class GlueSST2(_GlueDataset):
             len(sst_dev) # 872
             len(sst_dev[0]) # 2
             sst_dev[0] # ["it 's a charming and often affecting journey . ", '1']
-            sst_test = gluonnlp.data.GlueSST2('test', root='./datasets/sst')
+            sst_test = GlueSST2('test', root='./datasets/sst')
             len(sst_test) # 1821
             len(sst_test[0]) # 1
             sst_test[0] # ['uneasy mishmash of styles and genres .']
@@ -286,7 +286,7 @@ class GlueMRPC(_GlueDataset):
             len(mrpc_dev[0]) # 3
             mrpc_dev[0] # ["He said the foodservice pie business doesn 't fit the company 's long-term growth strategy .", 
                 # '" The foodservice pie business does not fit our long-term growth strategy .', '1']
-            mrpc_test = gluonnlp.data.GlueMRPC('test', root='./datasets/mrpc')
+            mrpc_test = GlueMRPC('test', root='./datasets/mrpc')
             len(mrpc_test) # 1725
             len(mrpc_test[0]) # 2
             mrpc_test[0] # ["PCCW 's chief operating officer , Mike Butcher , and Alex Arena , the chief financial officer ,
@@ -400,7 +400,7 @@ class GlueSTSB(_GlueDataset):
             len(stsb_dev) # 1500
             len(stsb_dev[0]) # 3
             stsb_dev[0] # ['A man with a hard hat is dancing.', 'A man wearing a hard hat is dancing.', '5.000']
-            stsb_test = gluonnlp.data.GlueSTSB('test', root='./datasets/stsb')
+            stsb_test = GlueSTSB('test', root='./datasets/stsb')
             len(stsb_test) # 1379
             len(stsb_test[0]) # 2
             stsb_test[0] # ['A girl is styling her hair.', 'A girl is brushing her hair.']
@@ -444,12 +444,12 @@ class GlueQQP(_GlueDataset):
             with warnings.catch_warnings():
                 # Ignore warnings triggered by invalid entries in GlueQQP dev set
                 warnings.simplefilter("ignore")
-                qqp_dev = gluonnlp.data.GlueQQP('dev', root='./datasets/qqp')
+                qqp_dev = GlueQQP('dev', root='./datasets/qqp')
 
             len(qqp_dev) # 40430
             len(qqp_dev[0]) # 3
             qqp_dev[0] # ['Why are African-Americans so beautiful?', 'Why are hispanics so beautiful?', '0']
-            qqp_test = gluonnlp.data.GlueQQP('test', root='./datasets/qqp')
+            qqp_test = GlueQQP('test', root='./datasets/qqp')
             len(qqp_test) # 390965
             len(qqp_test[3]) # 2
             qqp_test[3] # ['Is it safe to invest in social trade biz?', 'Is social trade geniune?']
@@ -499,7 +499,7 @@ class GlueMNLI(_GlueDataset):
             len(mnli_dev) # 9815
             len(mnli_dev[0]) # 3
             mnli_dev[0] # ['The new rights are nice enough', 'Everyone really likes the newest benefits ', 'neutral']
-            mnli_test = gluonnlp.data.GlueMNLI('test_matched', root='./datasets/mnli')
+            mnli_test = GlueMNLI('test_matched', root='./datasets/mnli')
             len(mnli_test) # 9796
             len(mnli_test[0]) # 2
             mnli_test[0] # ['Hierbas, ans seco, ans dulce, and frigola are just a few names worth keeping a look-out for.', 
@@ -553,7 +553,7 @@ class GlueQNLI(_GlueDataset):
             qnli_dev[0] # ['Which NFL team represented the AFC at Super Bowl 50?', 'The American Football Conference (AFC) champion 
                 # Denver Broncos defeated the National Football Conference (NFC) champion Carolina Panthers 24\u201310 to 
                 # earn their third Super Bowl title.', 'entailment']
-            qnli_test = gluonnlp.data.GlueQNLI('test', root='./datasets/qnli')
+            qnli_test = GlueQNLI('test', root='./datasets/qnli')
             len(qnli_test) # 5740
             len(qnli_test[0]) # 2
             qnli_test[0] # ['What seldom used term of a unit of force equal to 1000 pound s of force?', 
@@ -597,7 +597,7 @@ class GlueRTE(_GlueDataset):
             len(rte_dev[0]) # 3
             rte_dev[0] # ['Dana Reeve, the widow of the actor Christopher Reeve, has died of lung cancer at age 44, 
                 # according to the Christopher Reeve Foundation.', 'Christopher Reeve had an accident.', 'not_entailment']
-            rte_test = gluonnlp.data.GlueRTE('test', root='./datasets/rte')
+            rte_test = GlueRTE('test', root='./datasets/rte')
             len(rte_test) # 3000
             len(rte_test[16]) # 2
             rte_test[16] # ['United failed to progress beyond the group stages of the Champions League 
@@ -641,7 +641,7 @@ class GlueWNLI(_GlueDataset):
                 len(wnli_dev) # 71
                 len(wnli_dev[0]) # 3
                 wnli_dev[0] # ['The drain is clogged with hair. It has to be cleaned.', 'The hair has to be cleaned.', '0']
-                wnli_test = gluonnlp.data.GlueWNLI('test', root='./datasets/wnli')
+                wnli_test = GlueWNLI('test', root='./datasets/wnli')
                 len(wnli_test) # 146
                 len(wnli_test[0]) # 2
                 wnli_test[0] # ['Maude and Dora had seen the trains rushing across the prairie, with long, 
