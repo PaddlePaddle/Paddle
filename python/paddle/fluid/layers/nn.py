@@ -12073,11 +12073,11 @@ def logical_and(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x_data = np.array([True, True, False, False], dtype=np.bool)
             y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.imperative.to_variable(x_data)
-            y = paddle.imperative.to_variable(y_data)
+            x = paddle.to_variable(x_data)
+            y = paddle.to_variable(y_data)
             res = paddle.logical_and(x, y)
             print(res.numpy()) # [True False False False]
     """
@@ -12115,11 +12115,11 @@ def logical_or(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x_data = np.array([True, True, False, False], dtype=np.bool)
             y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.imperative.to_variable(x_data)
-            y = paddle.imperative.to_variable(y_data)
+            x = paddle.to_variable(x_data)
+            y = paddle.to_variable(y_data)
             res = paddle.logical_or(x, y)
             print(res.numpy()) # [True  True  True False]
     """
@@ -12157,11 +12157,11 @@ def logical_xor(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x_data = np.array([True, True, False, False], dtype=np.bool)
             y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.imperative.to_variable(x_data)
-            y = paddle.imperative.to_variable(y_data)
+            x = paddle.to_variable(x_data)
+            y = paddle.to_variable(y_data)
             res = paddle.logical_xor(x, y)
             print(res.numpy()) # [False  True  True False]
     """
@@ -12197,9 +12197,9 @@ def logical_not(x, out=None, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.imperative.to_variable(x_data)
+            x = paddle.to_variable(x_data)
             res = paddle.logical_not(x)
             print(res.numpy()) # [False  True False  True]
     """
