@@ -173,14 +173,6 @@ endif()
 include(cudnn)              # set cudnn libraries, must before configure
 include(third_party)        # download, build, install third_party
 
-#if(WITH_DISTRIBUTE)
-#    include(external/gloo)
-#endif()
-
-if(NOT UNIX)
-    set(WITH_GLOO OFF CACHE STRING "Disable GLOO when not compiling in UNIX." FORCE)
-endif()
-
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
         message(STATUS "Use grpc framework.")
