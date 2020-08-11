@@ -26,32 +26,44 @@ import paddle
 import paddle.fluid as fluid
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.fleet as fleet
 
 
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
     def net(self):
         x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        x1 = fluid.layers.data(name='x1', shape=[1], dtype='int64', lod_level=1)
+
+        emb = fluid.layers.embedding(
+            input=x1,
+            size=[10000, 10],
+            param_attr=fluid.ParamAttr(
+                name="embedding",
+                initializer=fluid.initializer.Constant(value=0.01)),
+            is_sparse=True)
+
+        pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
+        z = fluid.layers.concat(input=[x, pool], axis=1)
+        y_predict = fluid.layers.fc(input=z, size=1, act=None)
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
-        return avg_cost, x, y
+        return avg_cost, x, x1, y
 
     def fake_reader(self):
         def reader():
             for i in range(10000):
                 x = numpy.random.random((1, 13)).astype('float32')
+                z = numpy.random.randint(0, 9999, (1, 1)).astype('int64')
                 y = numpy.random.randint(0, 2, (1, 1)).astype('int64')
-                yield x, y
+                yield x, z, y
 
         return reader
 
     def run_pserver(self, role, strategy):
         fleet.init(role)
-        avg_cost, x, y = self.net()
+        avg_cost, x, z, y = self.net()
         optimizer = fluid.optimizer.SGD(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
@@ -64,33 +76,41 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         exe = fluid.Executor(place)
 
         fleet.init(role)
-        avg_cost, x, y = self.net()
+        avg_cost, x, z, y = self.net()
         optimizer = fluid.optimizer.SGD(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
         fleet.init_worker()
-        exe.run(fleet.startup_program)
+        exe.run(fluid.default_startup_program())
 
         train_reader = paddle.batch(self.fake_reader(), batch_size=24)
-        feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+        feeder = fluid.DataFeeder(place=place, feed_list=[x, z, y])
 
         for batch_id, data in enumerate(train_reader()):
-            exe.run(fleet.main_program, feed=feeder.feed(data), fetch_list=[])
+            exe.run(fluid.default_main_program(),
+                    feed=feeder.feed(data),
+                    fetch_list=[])
 
         fleet.stop_worker()
 
     def run_ut(self):
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
 
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=0,
-            role=role_maker.Role.WORKER
-            if training_role == "TRAINER" else role_maker.Role.SERVER,
-            worker_num=1,
-            server_endpoints=["127.0.0.1:18099"])
+        os.environ["PADDLE_PSERVER_NUMS"] = "1"
+        os.environ["PADDLE_TRAINERS_NUM"] = "1"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+        os.environ["PADDLE_TRAINERS_NUM"] = "1"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
+            "127.0.0.1:36001"
 
-        strategy = StrategyFactory.create_geo_strategy(10)
+        role = role_maker.PaddleCloudRoleMaker()
+
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"k_steps": 100}
 
         if training_role == "TRAINER":
             self.run_trainer(role, strategy)
@@ -116,8 +136,7 @@ import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.fleet as fleet
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End
 

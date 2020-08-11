@@ -509,13 +509,15 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info = {}
         opt_info["program_id_to_worker"] = prog_id_to_worker
         opt_info["program_configs"] = program_configs
-        opt_info["trainer"] = "DistMultiTrainer"
+        opt_info["trainer"] = strategy.get("trainer", "DistMultiTrainer")
         opt_info["device_worker"] = strategy.get("device_worker", "DownpourSGD")
         opt_info["optimizer"] = "DownpourSGD"
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
         opt_info["no_cvm"] = strategy.get("no_cvm", False)
+        opt_info["worker_class"] = strategy.get("worker_class",
+                                                "DownpourWorker")
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
         opt_info["local_tables"] = strategy.get("local_tables", [])
         opt_info["async_tables"] = strategy.get("async_tables", [])
@@ -529,6 +531,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_file_num"] = strategy.get("dump_file_num", 16)
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
+        opt_info["worker_places"] = strategy.get("worker_places", [])
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class in [
                     "DownpourCtrAccessor", "DownpourCtrDoubleAccessor",
