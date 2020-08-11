@@ -117,33 +117,33 @@ void FusionGroupPass::InsertFusionGroupOp(
 
   // Prepare inputs.
   std::vector<std::string> input_names;
-  std::vector<std::string> inputs_data_types;
+  std::vector<int> input_dtypes;
   std::unordered_set<Node*> output_vars_set(output_vars.begin(),
                                             output_vars.end());
   for (auto* n : input_vars) {
     // It is not an output var node.
     if (output_vars_set.find(n) == output_vars_set.end()) {
       input_names.push_back(n->Name());
-      inputs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
+      input_dtypes.push_back(n->Var()->GetDataType());
       external_nodes.insert(n);
     }
   }
 
   // Prepare outputs.
   std::vector<std::string> output_names;
-  std::vector<std::string> outs_data_types;
+  std::vector<int> output_dtypes;
   for (auto* n : output_vars) {
     output_names.push_back(n->Name());
-    outs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
+    output_dtypes.push_back(n->Var()->GetDataType());
     external_nodes.insert(n);
   }
 
   OpDesc op_desc;
   op_desc.SetType("fusion_group");
   op_desc.SetInput("Inputs", input_names);
-  op_desc.SetAttr("inputs_data_type", inputs_data_types);
   op_desc.SetOutput("Outs", output_names);
-  op_desc.SetAttr("outs_data_type", outs_data_types);
+  op_desc.SetAttr("inputs_dtype", input_dtypes);
+  op_desc.SetAttr("outs_dtype", output_dtypes);
   op_desc.SetAttr("type", subgraph->GetType());
   op_desc.SetAttr("func_name", subgraph->GetFuncName());
   op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),

@@ -85,11 +85,11 @@ class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Outs",
               "(std::vector<LoDTensor>) The outputs of fusion_group op.")
         .AsDuplicable();
-    AddAttr<std::vector<std::string>>(
-        "outs_data_type", "The data type of Outputs in fusion_group op.")
+    AddAttr<std::vector<int>>("outs_dtype",
+                              "The data type of Outputs in fusion_group op.")
         .SetDefault({});
-    AddAttr<std::vector<std::string>>(
-        "inputs_data_type", "The data type of Inputs in fusion_group op.")
+    AddAttr<std::vector<int>>("inputs_dtype",
+                              "The data type of Inputs in fusion_group op.")
         .SetDefault({});
     AddAttr<int>("type", "Fusion type.").SetDefault(0);
     AddAttr<std::string>("func_name", "Name of the generated functions.")
