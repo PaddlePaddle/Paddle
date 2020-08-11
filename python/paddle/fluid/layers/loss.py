@@ -1642,27 +1642,35 @@ def kldiv_loss(x, target, reduction='mean', name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import numpy as np
+            import paddle.nn.functional as F
             
+            paddle.enable_imperative()
+            
+            shape = (5, 20)
+            x = np.random.uniform(-10, 10, shape).astype('float32')
+            target = np.random.uniform(-10, 10, shape).astype('float32')
+
             # 'batchmean' reduction, loss shape will be [N]
-            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
-            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
-            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean') # shape=[-1]
+            pred_loss = F.kl_div(paddle.imperative.to_variable(x),
+                                 paddle.imperative.to_variable(target), reduction='batchmean')
+            # shape=[5]
             
             # 'mean' reduction, loss shape will be [1]
-            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
-            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
-            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='mean') # shape=[1]
-            
+            pred_loss = F.kl_div(paddle.imperative.to_variable(x),
+                                 paddle.imperative.to_variable(target), reduction='mean')
+            # shape=[1]
+
             # 'sum' reduction, loss shape will be [1]
-            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
-            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
-            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='sum') # shape=[1]
-            
+            pred_loss = F.kl_div(paddle.imperative.to_variable(x),
+                                 paddle.imperative.to_variable(target), reduction='sum')
+            # shape=[1]
+
             # 'none' reduction, loss shape is same with X shape
-            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
-            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
-            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='none') # shape=[-1, 4, 2, 2]
+            pred_loss = F.kl_div(paddle.imperative.to_variable(x),
+                                 paddle.imperative.to_variable(target), reduction='none')
+            # shape=[5, 20]
 
     """
     helper = LayerHelper('kldiv_loss', **locals())
