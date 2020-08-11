@@ -19,7 +19,7 @@ import numpy as np
 from scipy.special import expit
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestSigmoid
+from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestRelu6, TestSigmoid
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
@@ -29,6 +29,15 @@ class TestMKLDNNReluDim2(TestRelu):
         super(TestMKLDNNReluDim2, self).setUp()
 
         self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNRelu6Dim2(TestRelu6):
+    def setUp(self):
+        super(TestMKLDNNRelu6Dim2, self).setUp()
+        self.attrs.update({"use_mkldnn": True})
 
     def init_dtype(self):
         self.dtype = np.float32

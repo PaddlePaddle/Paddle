@@ -1190,10 +1190,6 @@ def chunk_eval(input,
 
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
-    :alias_main: paddle.nn.functional.softmax
-	:alias: paddle.nn.functional.softmax,paddle.nn.functional.activation.softmax
-	:old_api: paddle.fluid.layers.softmax
-
     This operator implements the softmax layer. The calculation process is as follows:
 
     1. The dimension :attr:`axis` of the ``input`` will be permuted to the last.
@@ -1307,8 +1303,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
     attrs = {"axis": axis, "use_cudnn": use_cudnn}
 
     helper = LayerHelper('softmax', **locals())
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'softmax')
+    check_variable_and_dtype(input, 'input/x',
+                             ['float16', 'float32', 'float64'], 'softmax')
 
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)
@@ -9375,7 +9371,10 @@ def relu6(x, threshold=6.0, name=None):
         type='relu6',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold})
+        attrs={
+            'threshold': threshold,
+            'use_mkldnn': core.globals()["FLAGS_use_mkldnn"]
+        })
     return out
 
 
@@ -9667,7 +9666,8 @@ def prelu(x, mode, param_attr=None, name=None):
         ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
         #NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
         # To be consistent with Prelu, it is simplified.
-        alpha_shape = [1, x.shape[1]]
+        #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
+        alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
         assert len(
             x.shape
