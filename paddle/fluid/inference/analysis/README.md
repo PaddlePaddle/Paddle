@@ -12,7 +12,7 @@ We borrowed some concepts from LLVM, such as
 
 There are some other basic concepts here
 
-- [Node](../../framework/ir/node.h), the node in a `DataFlowGraph`,
+- [Node](../../framework/ir/node.h), the node in a `Graph`,
   - `Function`, the Operator in Fluid,
   - `Value`, the Variable in Fluid;
 - [Argument](./argument.h), the argument that treat as the input and output of all `Pass`es in the pipeline,
@@ -21,9 +21,9 @@ There are some other basic concepts here
 
 The `inference/analysis` module make all the passes in a pipeline, and works in such way:
 
-1. Build a `DataFlowGraph` from a Fluid inference ProgramDesc,
-2. Call the middle passes one by one, the same `DataFlowGraph` is passed across all the passes,
-3. Transform a new ProgramDesc from the modified `DataFlowGraph`.
+1. Build a `Graph` from a Fluid inference ProgramDesc,
+2. Call the middle passes one by one, the same `Graph` is passed across all the passes,
+3. Transform a new ProgramDesc from the modified `Graph`.
 
 The new optimization features can be added as an independent `Pass` and controlled by gflags,
 each pass will generate unified debug information or visualization for better debugging.
