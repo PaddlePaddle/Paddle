@@ -77,24 +77,25 @@ class FusionGroupPassTest(PassTest):
             self.check_output_with_place(fluid.CUDAPlace(0))
 
 
-#class FusionGroupPassTest1(FusionGroupPassTest):
-#    def build_program(self, dtype):
-#        with fluid.program_guard(self.main_program, self.startup_program):
-#            self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 5)
-#
-#            tmp_0 = layers.assign(self.feed_vars[0])
-#            # subgraph with 9 op nodes
-#            tmp_1 = tmp_0 * layers.sigmoid(self.feed_vars[1]) + layers.sigmoid(
-#                self.feed_vars[2]) * layers.tanh(self.feed_vars[3])
-#            tmp_2 = layers.tanh(tmp_1) + layers.sigmoid(self.feed_vars[4])
-#
-#        self.append_gradients(tmp_2)
-#
-#        self.num_fused_ops = 2
-#        self.fetch_list = [tmp_2, self.grad(tmp_0)]
+class FusionGroupPassComplicatedTest(FusionGroupPassTest):
+    def build_program(self, dtype):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            self.feed_vars = self._prepare_feed_vars([32, 64], dtype, 5)
+
+            one = layers.fill_constant(shape=[1], dtype=dtype, value=1.0)
+            tmp_0 = one * self.feed_vars[0]
+            # subgraph with 9 op nodes
+            tmp_1 = tmp_0 * layers.sigmoid(self.feed_vars[1]) + layers.sigmoid(
+                self.feed_vars[2]) * layers.tanh(self.feed_vars[3])
+            tmp_2 = layers.tanh(tmp_1) + layers.sigmoid(self.feed_vars[4])
+
+        self.append_gradients(tmp_2)
+
+        self.num_fused_ops = 2
+        self.fetch_list = [tmp_2, self.grad(tmp_0)]
 
 
-class FusionGroupPassTest2(FusionGroupPassTest):
+class FusionGroupPassInplaceTest(FusionGroupPassTest):
     def build_program(self, dtype):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 3)
@@ -106,112 +107,107 @@ class FusionGroupPassTest2(FusionGroupPassTest):
             tmp_0 = self.feed_vars[0] - self.feed_vars[1]
             tmp_1 = tmp_0 * self.feed_vars[2]
             tmp_2 = layers.assign(tmp_1, output=tmp_0)
-#            tmp_1 = layers.assign(self.feed_vars[2] * tmp_0)
-# subgraph with 2 op nodes
-#            tmp_2 = layers.relu(layers.sigmoid(self.feed_vars[3]))
-#            tmp_3 = layers.mul(tmp_1, tmp_2)
+            tmp_3 = layers.mul(tmp_2, self.feed_vars[3])
 
-#        self.append_gradients(tmp_3)
-#        self.num_fused_ops = 2
-#        self.fetch_list = [tmp_3, self.grad(tmp_1)]
         self.num_fused_ops = 1
-        self.fetch_list = [tmp_1]
+        self.fetch_list = [tmp_3]
 
 
-#class FusionGroupPassTestFP64(FusionGroupPassTest):
-#    def setUp(self):
-#        self.build_program("float64")
-#        self.feeds = self._feed_random_data(self.feed_vars)
-#        self.pass_names = "fusion_group_pass"
-#        self.fused_op_type = "fusion_group"
-#
-#
-#class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
-#    def build_program(self, dtype):
-#        with fluid.program_guard(self.main_program, self.startup_program):
-#            self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 2)
-#            self.feed_vars.append(
-#                fluid.data(
-#                    name="data2", shape=[128, 128], dtype=dtype))
-#
-#            # subgraph with 2 op nodes
-#            tmp_0 = self.feed_vars[0] * self.feed_vars[1]
-#            tmp_1 = layers.cast(tmp_0, dtype="float16")
-#            zero = layers.fill_constant(shape=[128], dtype="float16", value=0)
-#            # TODO(xreki): fix precision problem when using softmax of float16.
-#            # tmp_2 = layers.softmax(tmp_1)
-#            tmp_2 = layers.elementwise_add(tmp_1, zero)
-#            tmp_3 = layers.mul(tmp_0, self.feed_vars[2])
-#            # subgraph with 4 op nodes
-#            tmp_3 = layers.cast(tmp_2, dtype="float16")
-#            tmp_4 = layers.relu(tmp_1 + tmp_3)
-#            tmp_5 = layers.cast(tmp_4, dtype=dtype)
-#            tmp_3 = layers.cast(tmp_2, dtype=dtype)
-#
-#        self.append_gradients(tmp_5)
-#
-#        self.num_fused_ops = 4
-#        self.fetch_list = [tmp_5, self.grad(tmp_0)]
-#
-#
-#class FusionGroupPassSumTest(FusionGroupPassTest):
-#    def build_program(self, dtype):
-#        with fluid.program_guard(self.main_program, self.startup_program):
-#            self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 3)
-#            self.feed_vars.append(
-#                fluid.data(
-#                    name="data3", shape=[128, 128], dtype=dtype))
-#
-#            # subgraph with 2 op nodes
-#            tmp_0 = layers.sum(
-#                [self.feed_vars[0], self.feed_vars[1], self.feed_vars[2]])
-#            tmp_1 = layers.sqrt(tmp_0)
-#            tmp_2 = layers.mul(tmp_0, self.feed_vars[3])
-#            # subgraph with 2 op nodes
-#            tmp_3 = layers.square(layers.sum([tmp_1, tmp_2]))
-#
-#        self.append_gradients(tmp_3)
-#
-#        self.num_fused_ops = 4
-#        self.fetch_list = [tmp_3, self.grad(tmp_0)]
-#
-#
-#class FusionGroupPassCastTest(FusionGroupPassTest):
-#    def build_program(self, dtype):
-#        with fluid.program_guard(self.main_program, self.startup_program):
-#            self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
-#
-#            tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
-#            tmp_1 = layers.cast(tmp_0, dtype="float64")
-#            tmp_2 = layers.cast(tmp_1, dtype="float32")
-#
-#        self.append_gradients(tmp_2)
-#
-#        self.num_fused_ops = 2
-#        self.fetch_list = [tmp_2, self.grad(tmp_0)]
-#
-#    def setUp(self):
-#        self.build_program("float64")
-#        self.feeds = self._feed_random_data(self.feed_vars)
-#        self.pass_names = "fusion_group_pass"
-#        self.fused_op_type = "fusion_group"
-#
-#
-#class FusionGroupPassFillConstantTest(FusionGroupPassTest):
-#    def build_program(self, dtype):
-#        with fluid.program_guard(self.main_program, self.startup_program):
-#            self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
-#
-#            tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
-#            tmp_1 = layers.fill_constant(shape=[2, 2], dtype=dtype, value=2.0)
-#            tmp_2 = layers.scale(
-#                tmp_1, scale=3.0, bias=1.0, bias_after_scale=True)
-#            tmp_3 = layers.elementwise_mul(tmp_2, tmp_0)
-#
-#        self.append_gradients(tmp_3)
-#
-#        self.num_fused_ops = 1
-#        self.fetch_list = [tmp_2, self.grad(tmp_0)]
+class FusionGroupPassTestFP64(FusionGroupPassTest):
+    def setUp(self):
+        self.build_program("float64")
+        self.feeds = self._feed_random_data(self.feed_vars)
+        self.pass_names = "fusion_group_pass"
+        self.fused_op_type = "fusion_group"
+
+
+class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
+    def build_program(self, dtype):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 2)
+            self.feed_vars.append(
+                fluid.data(
+                    name="data2", shape=[128, 128], dtype=dtype))
+
+            # subgraph with 2 op nodes
+            tmp_0 = self.feed_vars[0] * self.feed_vars[1]
+            tmp_1 = layers.cast(tmp_0, dtype="float16")
+            zero = layers.fill_constant(shape=[128], dtype="float16", value=0)
+            # TODO(xreki): fix precision problem when using softmax of float16.
+            # tmp_2 = layers.softmax(tmp_1)
+            tmp_2 = layers.elementwise_add(tmp_1, zero)
+            tmp_3 = layers.mul(tmp_0, self.feed_vars[2])
+            # subgraph with 4 op nodes
+            tmp_3 = layers.cast(tmp_2, dtype="float16")
+            tmp_4 = layers.relu(tmp_1 + tmp_3)
+            tmp_5 = layers.cast(tmp_4, dtype=dtype)
+            tmp_3 = layers.cast(tmp_2, dtype=dtype)
+
+        self.append_gradients(tmp_5)
+
+        self.num_fused_ops = 4
+        self.fetch_list = [tmp_5, self.grad(tmp_0)]
+
+
+class FusionGroupPassSumTest(FusionGroupPassTest):
+    def build_program(self, dtype):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 3)
+            self.feed_vars.append(
+                fluid.data(
+                    name="data3", shape=[128, 128], dtype=dtype))
+
+            # subgraph with 2 op nodes
+            tmp_0 = layers.sum(
+                [self.feed_vars[0], self.feed_vars[1], self.feed_vars[2]])
+            tmp_1 = layers.sqrt(tmp_0)
+            tmp_2 = layers.mul(tmp_0, self.feed_vars[3])
+            # subgraph with 2 op nodes
+            tmp_3 = layers.square(layers.sum([tmp_1, tmp_2]))
+
+        self.append_gradients(tmp_3)
+
+        self.num_fused_ops = 4
+        self.fetch_list = [tmp_3, self.grad(tmp_0)]
+
+
+class FusionGroupPassCastTest(FusionGroupPassTest):
+    def build_program(self, dtype):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
+
+            tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
+            tmp_1 = layers.cast(tmp_0, dtype="float64")
+            tmp_2 = layers.cast(tmp_1, dtype="float32")
+
+        self.append_gradients(tmp_2)
+
+        self.num_fused_ops = 2
+        self.fetch_list = [tmp_2, self.grad(tmp_0)]
+
+    def setUp(self):
+        self.build_program("float64")
+        self.feeds = self._feed_random_data(self.feed_vars)
+        self.pass_names = "fusion_group_pass"
+        self.fused_op_type = "fusion_group"
+
+
+class FusionGroupPassFillConstantTest(FusionGroupPassTest):
+    def build_program(self, dtype):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
+
+            tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
+            tmp_1 = layers.fill_constant(shape=[2, 2], dtype=dtype, value=2.0)
+            tmp_2 = layers.scale(
+                tmp_1, scale=3.0, bias=1.0, bias_after_scale=True)
+            tmp_3 = layers.elementwise_mul(tmp_2, tmp_0)
+
+        self.append_gradients(tmp_3)
+
+        self.num_fused_ops = 1
+        self.fetch_list = [tmp_2, self.grad(tmp_0)]
+
 
 if __name__ == "__main__":
     unittest.main()
