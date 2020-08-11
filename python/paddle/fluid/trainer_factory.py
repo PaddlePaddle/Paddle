@@ -22,7 +22,7 @@ from paddle.fluid.log_helper import get_logger
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer
 from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
 from .framework import Variable
 from multiprocessing import Process, Manager
@@ -75,6 +75,8 @@ class TrainerFactory(object):
                 if opt_info.get("dump_param") is not None and len(
                         opt_info.get("dump_param")) != 0:
                     trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("worker_places") is not None:
+                    trainer._set_worker_places(opt_info["worker_places"])
                 if opt_info.get("enable_random_dump") is not None:
                     trainer._set_enable_random_dump(opt_info[
                         "enable_random_dump"])
