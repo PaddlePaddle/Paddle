@@ -1326,8 +1326,8 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
 
 def clip(x, min=None, max=None, name=None):
     """
-	:alias_main: paddle.clip
-	:alias: paddle.clip,paddle.tensor.clip,paddle.tensor.math.clip
+        :alias_main: paddle.clip
+        :alias: paddle.clip,paddle.tensor.clip,paddle.tensor.math.clip
 
     **clip layer**
 
@@ -1339,35 +1339,35 @@ def clip(x, min=None, max=None, name=None):
         Out = MIN(MAX(x, min), max)
 
     Args:
-	x (Tensor): An N-D Tensor with data type float32 or float64.
-	min (float32|Tensor): The lower bound with type ``float32`` or a ``Tensor``
+        x (Tensor): An N-D Tensor with data type float32 or float64.
+        min (float32|Tensor): The lower bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         max (float32|Tensor): The upper bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-	name (str, optional): The default value is None. Normally there is no
-	    need for user to set this property. For more information, please
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-	Tensor: A Tensor with the same data type and data shape as input.
+        Tensor: A Tensor with the same data type and data shape as input.
 
     Examples:
         .. code-block:: python
 
             import paddle
-	    import numpy as np
+            import numpy as np
 
-	    paddle.enable_imperative()
-	    x = np.array([[1.2,3.5], [4.5,6.4]]).astype('float32')
-	    x1 = paddle.imperative.to_variable(x)
-	    out1 = paddle.clip(x1, min=3.5, max=5.0)
-	    out2 = paddle.clip(x1, min=2.5)
-	    print(out1.numpy())
-	    # [[3.5, 3.5]
-	    # [4.5, 5.0]]
-	    print(out2.numpy())
-	    # [[2.5, 3.5]
-	    # [[4.5, 6.4]
+            paddle.enable_imperative()
+            x = np.array([[1.2,3.5], [4.5,6.4]]).astype('float32')
+            x1 = paddle.imperative.to_variable(x)
+            out1 = paddle.clip(x1, min=3.5, max=5.0)
+            out2 = paddle.clip(x1, min=2.5)
+            print(out1.numpy())
+            # [[3.5, 3.5]
+            # [4.5, 5.0]]
+            print(out2.numpy())
+            # [[2.5, 3.5]
+            # [[4.5, 6.4]
     """
 
     assert min is not None or max is not None, "either min or max should be defined."
