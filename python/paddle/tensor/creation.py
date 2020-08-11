@@ -37,7 +37,6 @@ __all__ = [
     #       'create_random_int_lodtensor',
     'crop_tensor',
     'diag',
-    'eye',
     'fill_constant',
     #       'get_tensor_from_selected_rows',
     'linspace',
