@@ -321,7 +321,6 @@
         "elementwise_sub",
         "Switch.case",
         "IfElse.input",
-        "prepare_context",
         "PRelu.forward",
         "Recall.update",
         "start_gperf_profiler",
