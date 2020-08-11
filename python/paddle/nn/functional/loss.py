@@ -63,7 +63,7 @@ __all__ = [
 ]
 
 
-def mse_loss(input, label, reduction='mean'):
+def mse_loss(input, label, reduction='mean', name=None):
     """
     This op accepts input predications and label and returns the mean square error.
 
@@ -91,6 +91,8 @@ def mse_loss(input, label, reduction='mean'):
             If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
 
     Returns:
         Tensor: The tensor tensor storing the mean square error difference of input and label.
@@ -145,13 +147,16 @@ def mse_loss(input, label, reduction='mean'):
             input, 'input', ['float32', 'float64'], 'mse_loss')
         paddle.fluid.data_feeder.check_variable_and_dtype(
             label, 'label', ['float32', 'float64'], 'mse_loss')
-    square_out = paddle.fluid.layers.square(
-        paddle.fluid.layers.elementwise_sub(input, label))
 
     if reduction == 'none':
-        return square_out
-    reduce_op = 'reduce_mean'
-    if reduction == 'sum':
-        reduce_op = 'reduce_sum'
-
-    return getattr(paddle.fluid.layers, reduce_op)(square_out)
+        return paddle.fluid.layers.square(
+            paddle.fluid.layers.elementwise_sub(input, label), name=name)
+    elif reduction == 'mean':
+        return paddle.mean(
+            paddle.fluid.layers.square(
+                paddle.fluid.layers.elementwise_sub(input, label)),
+            name=name)
+    else:
+        return paddle.sum(paddle.fluid.layers.square(
+            paddle.fluid.layers.elementwise_sub(input, label)),
+                          name=name)
