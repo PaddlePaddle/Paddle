@@ -21,7 +21,7 @@ from ..fluid import layers
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn
+from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
 import sys
 
 # TODO: define math functions
@@ -33,7 +33,6 @@ from ..fluid.layers import ceil    #DEFINE_ALIAS
 from ..fluid.layers import cos    #DEFINE_ALIAS
 from ..fluid.layers import sinh    #DEFINE_ALIAS
 from ..fluid.layers import cosh    #DEFINE_ALIAS
-from ..fluid.layers import cumsum    #DEFINE_ALIAS
 from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
 from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
 from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
@@ -488,18 +487,18 @@ Examples:
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
         x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
         y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.multiply(x, y)
         print(res.numpy()) # [[5, 12], [21, 32]]
 
         x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
         y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.multiply(x, y, axis=1)
         print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
 
@@ -1432,11 +1431,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             case2 = np.random.randn(3, 10, 10).astype('float32')
             case3 = np.random.randn(3, 10, 5, 10).astype('float32')
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
-            case1 = paddle.imperative.to_variable(case1)
-            case2 = paddle.imperative.to_variable(case2)
-            case3 = paddle.imperative.to_variable(case3)
+            case1 = paddle.to_variable(case1)
+            case2 = paddle.to_variable(case2)
+            case3 = paddle.to_variable(case3)
             data1 = paddle.trace(case1) # data1.shape = [1]
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
@@ -1543,3 +1542,73 @@ ${comment}
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})
     return out
+
+
+def cumsum(x, axis=None, dtype=None, name=None):
+    """
+	:alias_main: paddle.cumsum
+	:alias: paddle.cumsum,paddle.tensor.cumsum,paddle.tensor.math.cumsum
+
+    The cumulative sum of the elements along a given axis. The first element of the result is the same of the first element of the input. 
+
+    Args:
+        x (Tensor): Input of cumsum operator, the Tensor needed to be cumsumed. 
+        axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the result of cumsum operator, output of cumsum operator. 
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            from paddle.imperative import to_variable
+            import numpy as np
+
+            paddle.enable_imperative()
+            data_np = np.arange(12).reshape(3, 4)
+            data = to_variable(data_np)
+
+            y = paddle.cumsum(data)
+            print(y.numpy())
+            # [ 0  1  3  6 10 15 21 28 36 45 55 66]
+
+            y = paddle.cumsum(data, axis=0)
+            print(y.numpy())
+            # [[ 0  1  2  3]
+            #  [ 4  6  8 10]
+            #  [12 15 18 21]]
+            
+            y = paddle.cumsum(data, axis=-1)
+            print(y.numpy())
+            # [[ 0  1  3  6]
+            #  [ 4  9 15 22]
+            #  [ 8 17 27 38]]
+
+            y = paddle.cumsum(data, dtype='float64')
+            print(y.dtype)
+            # VarType.FP64
+    """
+    if axis is None:
+        flatten = True
+    else:
+        flatten = False
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = layers.cast(x, dtype)
+
+    if in_dygraph_mode():
+        if axis is None:
+            return core.ops.cumsum(x, 'flatten', flatten)
+        else:
+            return core.ops.cumsum(x, 'axis', axis, 'flatten', flatten)
+
+    check_type(x, 'x', (Variable), 'cumsum')
+    locals_var = locals().copy()
+    kwargs = dict()
+    for name, val in locals_var.items():
+        if val is not None:
+            kwargs[name] = val
+    _cum_sum_ = generate_layer_fn('cumsum')
+    return _cum_sum_(**kwargs)
