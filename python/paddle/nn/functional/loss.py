@@ -88,11 +88,11 @@ def smooth_l1_loss(x, label, reduction='mean'):
         \\end{array} \\right.
 
     Parameters:
-        x (Variable): Input tensor, the data type is float32. Shape is
-        (N, C), where C is number of classes, and if shape is more than 2D, this
-        is (N, C, D1, D2,..., Dk), k >= 1.
-        label (Variable): Label tensor, the data type is float32. The shape of label
-        is the same as the shape of x.
+        x (Tensor): Input tensor, the data type is float32. Shape is
+            (N, C), where C is number of classes, and if shape is more than 2D, this
+            is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor, the data type is float32. The shape of label
+            is the same as the shape of x.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;

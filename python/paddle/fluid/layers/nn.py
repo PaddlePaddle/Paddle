@@ -5831,7 +5831,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     return loss
 
 
-def smooth_l1_v2(x, y, inside_weight=None, outside_weight=None, sigma=None):
+def smooth_l1_v2(x, y, inside_weight=None, outside_weight=None, sigma=1.0):
     """
     :alias_main: paddle.nn.functional.smooth_l1_v2
 	:alias: paddle.nn.functional.smooth_l1_v2,paddle.nn.functional.loss.smooth_l1_v2
@@ -5839,15 +5839,13 @@ def smooth_l1_v2(x, y, inside_weight=None, outside_weight=None, sigma=None):
 
     This layer computes the smooth L1 loss for Variable :attr:`x` and :attr:`y`.
     It takes the first dimension of :attr:`x` and :attr:`y` as batch size.
-    For each instance, it computes the smooth L1 loss element by element first
-    and then sums all the losses. So the shape of output Variable is
-    [batch_size, 1].
+    For each instance, it computes the smooth L1 loss element by element.
 
     Args:
-        x (Variable): A tensor with rank at least 2. The input value of smooth
+        x (Tensor): A tensor with rank at least 2. The input value of smooth
             L1 loss op with shape [batch_size, dim1, ..., dimN].
             A LoDTensor or Tensor with type float32.
-        y (Variable): A tensor with rank at least 2. The target value of smooth
+        y (Tensor): A tensor with rank at least 2. The target value of smooth
             L1 loss op with same shape as :attr:`x`.
             A LoDTensor or Tensor with type float32.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
@@ -5861,10 +5859,10 @@ def smooth_l1_v2(x, y, inside_weight=None, outside_weight=None, sigma=None):
             element by element.
             A Tensor with type float32.
         sigma (float|None): Hyper parameter of smooth L1 loss layer. A float
-           scalar with default value 1.0.
+            scalar with default value 1.0.
 
     Returns:
-        Variable: The output smooth L1 loss shape is the same as the shape of x(input).  A Tensor with type float32.
+        Tensor: The output smooth L1 loss shape is the same as the shape of x(input). A Tensor with type float32.
 
     Examples:
         .. code-block:: python
@@ -5903,7 +5901,7 @@ def smooth_l1_v2(x, y, inside_weight=None, outside_weight=None, sigma=None):
         },
         outputs={'Diff': diff,
                  'Out': loss},
-        attrs={'sigma': sigma if sigma is not None else 1.0})
+        attrs={'sigma': sigma})
     return loss
 
 

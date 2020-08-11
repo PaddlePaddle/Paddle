@@ -640,13 +640,13 @@ class SmoothL1Loss(fluid.dygraph.Layer):
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-    
+
     Call Parameters:
-        x (Variable): Input tensor, the data type is float32. Shape is
-	    (N, C), where C is number of classes, and if shape is more than 2D, this
-	    is (N, C, D1, D2,..., Dk), k >= 1. 
-        label (Variable): Label tensor, the data type is float32. The shape of label 
-        is the same as the shape of x.
+        x (Tensor): Input tensor, the data type is float32. Shape is
+            (N, C), where C is number of classes, and if shape is more than 2D, this
+            is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor, the data type is float32. The shape of label
+            is the same as the shape of x.
 
     Returns:
         The tensor variable storing the smooth_l1_loss of x and label.
