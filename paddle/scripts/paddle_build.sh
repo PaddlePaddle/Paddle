@@ -944,7 +944,7 @@ set +x
                             read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
 
                             if [[ "$tmp_one_tmp" != ""  ]]; then
-                                if [[ "$one_card_tests" == "" ]]; then
+                                if [[ "$one_card_retry" == "" ]]; then
                                     one_card_retry="^$line$"
                                 else
                                     one_card_retry="$one_card_retry|^$line$"
@@ -956,7 +956,7 @@ set +x
                                     multiple_card_retry="$multiple_card_retry|^$line$"
                                 fi
                             else
-                                if [[ "$exclusive_tmp" == "" ]];then
+                                if [[ "$exclusive_retry" == "" ]];then
                                     exclusive_retry="^$line$"
                                 else
                                     exclusive_retry="$exclusive_retry|^$line$"
