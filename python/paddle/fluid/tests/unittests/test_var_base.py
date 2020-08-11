@@ -83,8 +83,7 @@ class TestVarBase(unittest.TestCase):
 
             with self.assertRaises(TypeError):
                 paddle.to_tensor("test")
-                # test to_variable of LayerObjectHelper(LayerHelperBase)
-            with self.assertRaises(TypeError):
+            with self.assertRaises(ValueError):
                 paddle.to_tensor([[1], [2, 3]])
             if not core.is_compiled_with_cuda():
                 with self.assertRaises(AssertionError):

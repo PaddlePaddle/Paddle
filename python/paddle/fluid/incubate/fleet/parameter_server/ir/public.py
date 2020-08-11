@@ -329,7 +329,7 @@ class CompileTimeStrategy(object):
 
                 is_distributed = True if param_name in distibuted_varnames else False
 
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False,
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
 

@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ..runtime.collective_runtime import CollectiveRuntime
+from ..runtime.parameter_server_runtime import ParameterServerRuntime
 
 
 class RuntimeFactory(object):
     def __init__(self):
         pass
 
-    def _create_runtime(self, final_dist_strategy, role_maker, opt_ops,
-                        params_grads):
-        if role_maker._is_collective:
+    def _create_runtime(self, context):
+        if context["role_maker"]._is_collective:
             collective_runtime = CollectiveRuntime()
-            collective_runtime._set_basic_info(final_dist_strategy, role_maker,
-                                               opt_ops, params_grads)
+            collective_runtime._set_basic_info(context)
             return collective_runtime
+
+        k_steps = context["valid_strategy"].a_sync_configs["k_steps"]
+        if not context["role_maker"]._is_collective and k_steps >= 0:
+            ps_runtime = ParameterServerRuntime()
+            ps_runtime._set_basic_info(context)
+            return ps_runtime

@@ -17,7 +17,7 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 
-paddle.enable_imperative()
+paddle.disable_static()
 SEED = 2020
 np.random.seed(SEED)
 fluid.default_main_program().random_seed = SEED
@@ -73,7 +73,7 @@ class TestRetainGraph(unittest.TestCase):
 
             outs = paddle.fill_constant(disc_interpolates.shape,
                                         disc_interpolates.dtype, 1.0)
-            gradients = paddle.imperative.grad(
+            gradients = paddle.grad(
                 outputs=disc_interpolates,
                 inputs=fake_AB,
                 grad_outputs=outs,
@@ -103,8 +103,8 @@ class TestRetainGraph(unittest.TestCase):
         A = np.random.rand(2, 3, 32, 32).astype('float32')
         B = np.random.rand(2, 3, 32, 32).astype('float32')
 
-        realA = paddle.imperative.to_variable(A)
-        realB = paddle.imperative.to_variable(B)
+        realA = paddle.to_variable(A)
+        realB = paddle.to_variable(B)
         fakeB = g(realA)
 
         optim_d.clear_gradients()

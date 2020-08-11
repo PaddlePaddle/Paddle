@@ -21,7 +21,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 
 from paddle.fluid.incubate.fleet.base.mode import Mode
-from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
+from paddle.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
 from . import mode
 
@@ -149,6 +149,16 @@ class Fleet(object):
         """
         return self._role_maker.is_server()
 
+    def is_xpu(self):
+        """
+        Check whether the node is an instance of server.
+
+        Returns:
+            bool: True if this is a node of server,
+                  False if not.
+        """
+        return self._role_maker.is_xpu()
+
     def split_files(self, files):
         """
         split files before distributed training,
@@ -199,7 +209,10 @@ class Fleet(object):
         self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
-            raise TypeError("role_maker must be an instance of RoleMakerBase")
+            from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase as RoleMakerBaseIncubate
+            if role_maker and not isinstance(role_maker, RoleMakerBaseIncubate):
+                raise TypeError(
+                    "role_maker must be an instance of RoleMakerBase")
 
         self._role_maker = role_maker
         self._role_maker.generate_role()
