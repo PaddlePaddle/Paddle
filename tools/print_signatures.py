@@ -168,8 +168,9 @@ def visit_all_module(mod):
             visit_all_module(instance)
         else:
             if member_name != instance.__name__:
-                logging.warn("Found alias, member_name: {}, mod.__name__: {}".
-                             format(member_name, instance.__name__))
+                logging.warn(
+                    "Found alias API, alias name is: {}, original name is: {}".
+                    format(member_name, instance.__name__))
                 visit_member(mod.__name__, instance, member_name)
             else:
                 visit_member(mod.__name__, instance)
