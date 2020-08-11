@@ -20,6 +20,7 @@ import paddle
 from ...fluid.dygraph import layers
 from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
+from ...fluid.layer_helper import LayerHelper
 
 
 class PairwiseDistance(layers.Layer):
@@ -39,6 +40,8 @@ class PairwiseDistance(layers.Layer):
             in the output Tensor. The result tensor is one dimension less than
             the result of ``'x-y'`` unless :attr:`keepdim` is True, default
             value is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         x: :math:`(N, D)` where `D` is the dimension of vector, available dtype
@@ -63,11 +66,12 @@ class PairwiseDistance(layers.Layer):
 
     """
 
-    def __init__(self, p=2., eps=1e-6, keepdim=False):
+    def __init__(self, p=2., eps=1e-6, keepdim=False, name=None):
         super(PairwiseDistance, self).__init__()
         self.p = p
         self.eps = eps
         self.keepdim = keepdim
+        self.name = name
         check_type(self.p, 'porder', (float, int), 'PairwiseDistance')
         check_type(self.eps, 'epsilon', (float), 'PairwiseDistance')
         check_type(self.keepdim, 'keepdim', (bool), 'PairwiseDistance')
@@ -84,15 +88,16 @@ class PairwiseDistance(layers.Layer):
                                  'PairwiseDistance')
         sub = paddle.elementwise_sub(x, y)
 
+        helper = LayerHelper("p_norm", name=self.name)
         attrs = {
             'axis': 1,
             'porder': self.p,
             'keepdim': self.keepdim,
             'epsilon': self.eps,
         }
-        out = self._helper.create_variable_for_type_inference(
+        out = helper.create_variable_for_type_inference(
             dtype=self._helper.input_dtype(x))
-        self._helper.append_op(
+        helper.append_op(
             type='p_norm', inputs={'X': sub}, outputs={'Out': out}, attrs=attrs)
 
         return out
