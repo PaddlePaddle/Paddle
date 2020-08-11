@@ -49,7 +49,7 @@ class AmpScaler(object):
                                 steps with finite gradients. Default is 1000.
         decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n 
                                     accumulated steps with nan or inf gradients. Default is 2.
-
+        use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
     Returns:
         An AmpScaler object.
 
@@ -76,14 +76,14 @@ class AmpScaler(object):
     """
 
     @dygraph_only
-    def __init__(
-            self,
-            enable=True,
-            init_loss_scaling=2.**15,
-            incr_ratio=2.0,
-            decr_ratio=0.5,
-            incr_every_n_steps=1000,
-            decr_every_n_nan_or_inf=1, ):
+    def __init__(self,
+                 enable=True,
+                 init_loss_scaling=2.**15,
+                 incr_ratio=2.0,
+                 decr_ratio=0.5,
+                 incr_every_n_steps=1000,
+                 decr_every_n_nan_or_inf=1,
+                 use_dynamic_loss_scaling=True):
 
         tracer = _dygraph_tracer()
         if not tracer:
@@ -109,6 +109,7 @@ class AmpScaler(object):
             self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf
             self._incr_count = 0
             self._decr_count = 0
+            self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
 
             self._found_inf = to_variable(np.array([0]).astype(np.int32))
             self._scale = to_variable(
@@ -200,8 +201,9 @@ class AmpScaler(object):
             optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
             self._cache_founf_inf = False
 
-        # uopdate the scale
-        self._update()
+        if self._use_dynamic_loss_scaling:
+            # uopdate the scale
+            self._update()
 
         return optimize_ops, params_grads
 

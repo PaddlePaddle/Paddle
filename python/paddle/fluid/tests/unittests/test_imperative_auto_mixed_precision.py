@@ -135,10 +135,16 @@ class TestAmpScaler(unittest.TestCase):
 
                 out = model(data)
                 loss = fluid.layers.mean(out)
-                scaled_loss = scaler.scale(loss)
-                scaled_loss.backward()
-                optimize_ops, params_grads = scaler.minimize(optimizer,
-                                                             scaled_loss)
+                if use_scaler:
+                    print('use scaler')
+                    scaled_loss = scaler.scale(loss)
+                    scaled_loss.backward()
+                    optimize_ops, params_grads = scaler.minimize(optimizer,
+                                                                 scaled_loss)
+                else:
+                    print('use no scaler')
+                    loss.backward()
+                    optimize_ops, params_grads = optimizer.minimize(loss)
             return optimize_ops, params_grads
 
         outs_with_scaler = run_simple_conv(inp_np, use_scaler=True)
@@ -190,15 +196,6 @@ class TestAmpScaler(unittest.TestCase):
 
 
 class TestResnet(unittest.TestCase):
-    def reader_decorator(self, reader):
-        def _reader_imple():
-            for item in reader():
-                doc = np.array(item[0]).reshape(3, 224, 224)
-                label = np.array(item[1]).astype('int64').reshape(1)
-                yield doc, label
-
-        return _reader_imple
-
     def train_resnet(self, enable_amp=True):
         seed = 90
 
