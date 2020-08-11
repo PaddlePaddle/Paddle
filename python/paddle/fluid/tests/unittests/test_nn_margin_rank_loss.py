@@ -18,9 +18,8 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.imperative as imperative
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle.static import Program, program_guard
 
 
 def calc_margin_rank_loss(x, y, label, margin=0.0, reduction='none'):
@@ -46,7 +45,32 @@ def create_test_case(margin, reduction):
             if core.is_compiled_with_cuda():
                 self.places.append(paddle.CUDAPlace(0))
 
-        def run_staic_api(self, place):
+        def run_static_functional_api(self, place):
+            paddle.enable_static()
+            expected = calc_margin_rank_loss(
+                self.x_data,
+                self.y_data,
+                self.label_data,
+                margin=margin,
+                reduction=reduction)
+            with program_guard(Program(), Program()):
+                x = paddle.nn.data(name="x", shape=[10, 10], dtype="float64")
+                y = paddle.nn.data(name="y", shape=[10, 10], dtype="float64")
+                label = paddle.nn.data(
+                    name="label", shape=[10, 10], dtype="float64")
+                result = paddle.nn.functional.margin_ranking_loss(
+                    x, y, label, margin, reduction)
+                exe = paddle.static.Executor(place)
+                result_numpy, = exe.run(feed={
+                    "x": self.x_data,
+                    "y": self.y_data,
+                    "label": self.label_data
+                },
+                                        fetch_list=[result])
+                self.assertTrue(np.allclose(result_numpy, expected))
+
+        def run_static_api(self, place):
+            paddle.enable_static()
             expected = calc_margin_rank_loss(
                 self.x_data,
                 self.y_data,
@@ -61,7 +85,7 @@ def create_test_case(margin, reduction):
                 margin_rank_loss = paddle.nn.loss.MarginRankingLoss(
                     margin=margin, reduction=reduction)
                 result = margin_rank_loss(x, y, label)
-                exe = fluid.Executor(place)
+                exe = paddle.static.Executor(place)
                 result_numpy, = exe.run(feed={
                     "x": self.x_data,
                     "y": self.y_data,
@@ -71,10 +95,27 @@ def create_test_case(margin, reduction):
                 self.assertTrue(np.allclose(result_numpy, expected))
                 self.assertTrue('loss' in result.name)
 
-        def run_imperative_api(self):
-            x = imperative.to_variable(self.x_data)
-            y = imperative.to_variable(self.y_data)
-            label = imperative.to_variable(self.label_data)
+        def run_dynamic_functional_api(self, place):
+            paddle.disable_static(place)
+            x = paddle.to_variable(self.x_data)
+            y = paddle.to_variable(self.y_data)
+            label = paddle.to_variable(self.label_data)
+
+            result = paddle.nn.functional.margin_ranking_loss(x, y, label,
+                                                              margin, reduction)
+            expected = calc_margin_rank_loss(
+                self.x_data,
+                self.y_data,
+                self.label_data,
+                margin=margin,
+                reduction=reduction)
+            self.assertTrue(np.allclose(result.numpy(), expected))
+
+        def run_dynamic_api(self, place):
+            paddle.disable_static(place)
+            x = paddle.to_variable(self.x_data)
+            y = paddle.to_variable(self.y_data)
+            label = paddle.to_variable(self.label_data)
             margin_rank_loss = paddle.nn.loss.MarginRankingLoss(
                 margin=margin, reduction=reduction)
             result = margin_rank_loss(x, y, label)
@@ -86,11 +127,12 @@ def create_test_case(margin, reduction):
                 reduction=reduction)
             self.assertTrue(np.allclose(result.numpy(), expected))
 
-        def run_imperative_broadcast_api(self):
+        def run_dynamic_broadcast_api(self, place):
+            paddle.disable_static(place)
             label_data = np.random.choice([-1, 1], size=[10]).astype("float64")
-            x = imperative.to_variable(self.x_data)
-            y = imperative.to_variable(self.y_data)
-            label = imperative.to_variable(label_data)
+            x = paddle.to_variable(self.x_data)
+            y = paddle.to_variable(self.y_data)
+            label = paddle.to_variable(label_data)
             margin_rank_loss = paddle.nn.loss.MarginRankingLoss(
                 margin=margin, reduction=reduction)
             result = margin_rank_loss(x, y, label)
@@ -104,10 +146,11 @@ def create_test_case(margin, reduction):
 
         def test_case(self):
             for place in self.places:
-                with paddle.imperative.guard(place):
-                    self.run_imperative_api()
-                    self.run_imperative_broadcast_api()
-                self.run_staic_api(place)
+                self.run_static_api(place)
+                self.run_static_functional_api(place)
+                self.run_dynamic_api(place)
+                self.run_dynamic_functional_api(place)
+                self.run_dynamic_broadcast_api(place)
 
     cls_name = "TestMarginRankLossCase_{}_{}".format(margin, reduction)
     MarginRankingLossCls.__name__ = cls_name
@@ -121,6 +164,8 @@ for margin in [0.0, 0.2]:
 
 # test case the raise message
 class MarginRakingLossError(unittest.TestCase):
+    paddle.enable_static()
+
     def test_errors(self):
         def test_margin_value_error():
             margin_rank_loss = paddle.nn.loss.MarginRankingLoss(

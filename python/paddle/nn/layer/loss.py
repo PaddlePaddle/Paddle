@@ -617,11 +617,11 @@ class MarginRankingLoss(fluid.dygraph.Layer):
     """
 
     This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
-    The MarginRankingLoss layer calculates the margin rank loss between the input x, y and target 
-    labels, use the math function as follows.
+    The MarginRankingLoss layer calculates the margin rank loss between the input x1, x2 and target 
+    , use the math function as follows.
 
     .. math:: 
-        margin\_rank\_loss = max(0, -label * (left - right) + margin)
+        margin\_rank\_loss = max(0, -target * (x1 - x2) + margin)
 
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
 
@@ -641,10 +641,10 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape: 
-        x: N-D Tensor, the shape is [N, *], Nis batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
-        y: N-D Tensor, y have the same shape and dtype as `x`.
-        label: N-D Tensor, label have the same shape and dtype as `x`.
-        out: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as input `x` .The same dtype as input tensor.
+        x1: N-D Tensor, the shape is [N, *], N is batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
+        x2: N-D Tensor, y have the same shape and dtype as `x1`.
+        target: N-D Tensor, target have the same shape and dtype as `x1`.
+        out: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as input `x1` .The same dtype as input tensor.
 
     Returns:
         A callable object of MarginRankingLoss.
@@ -652,17 +652,17 @@ class MarginRankingLoss(fluid.dygraph.Layer):
     Examples:
 
         .. code-block:: python
+
             import numpy as np 
             import paddle 
-            import paddle.imperative as imperative
             
-            paddle.enable_imperative()
+            paddle.disable_static()
              
-            x = imperative.to_variable(np.array([[1, 2], [3, 4]]))
-            y = imperative.to_variable(np.array([[2, 1], [2, 4]]))
-            label = imperative.to_variable(np.array([[1, -1], [-1, -1]]))
-            margin_rank_loss = MarginRankingLoss()
-            loss = margin_rank_loss(x, y, label) 
+            x1 = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype("float32"))
+            x2 = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype("float32"))
+            target = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype("float32"))
+            margin_rank_loss = paddle.nn.MarginRankingLoss()
+            loss = margin_rank_loss(x1, x2, target) 
             print(loss.numpy()) # [0.75]
     """
 
@@ -674,57 +674,9 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         super(MarginRankingLoss, self).__init__()
         self.margin = margin
         self.reduction = reduction
+        self.name = name
 
-    def forward(self, x, y, label):
-        if fluid.framework.in_dygraph_mode():
-            out = core.ops.elementwise_sub(y, x)
-            out = core.ops.elementwise_mul(out, label)
-            if self.margin != 0.0:
-                margin = fluid.dygraph.base.to_variable(
-                    [self.margin], dtype=out.dtype)
-                out = core.ops.elementwise_add(out, margin)
-            out = core.ops.relu(out)
-            if self.reduction == 'sum':
-                return core.ops.reduce_sum(out, 'reduce_all', True)
-            elif self.reduction == 'mean':
-                return core.ops.mean(out)
-            return out
-
-        fluid.data_feeder.check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'margin_rank_loss')
-        fluid.data_feeder.check_variable_and_dtype(
-            y, 'y', ['float32', 'float64'], 'margin_rank_loss')
-        fluid.data_feeder.check_variable_and_dtype(
-            label, 'label', ['float32', 'float64'], 'margin_rank_loss')
-
-        out = paddle.elementwise_sub(y, x)
-        out = paddle.multiply(out, label)
-
-        if self.margin != 0.0:
-            margin_var = out.block.create_var(dtype=out.dtype)
-            paddle.fill_constant([1], out.dtype, self.margin, out=margin_var)
-            out = paddle.add(out, margin_var)
-
-        result_out = self._helper.create_variable_for_type_inference(x.dtype)
-
-        if self.reduction == 'none':
-            self._helper.append_op(
-                type="relu", inputs={"X": out}, outputs={"Out": result_out})
-            return result_out
-        elif self.reduction == 'sum':
-            out = paddle.nn.functional.relu(out)
-            attrs = {"dim": [0], "keep_dim": False, "reduce_all": True}
-            self._helper.append_op(
-                type="reduce_sum",
-                inputs={"X": out},
-                outputs={"Out": result_out},
-                attrs=attrs)
-            return result_out
-        elif self.reduction == 'mean':
-            out = paddle.nn.functional.relu(out)
-            self._helper.append_op(
-                type="mean",
-                inputs={"X": out},
-                outputs={"Out": result_out},
-                attrs={})
-            return result_out
+    def forward(self, x1, x2, target):
+        out = paddle.nn.functional.margin_ranking_loss(
+            x1, x2, target, self.margin, self.reduction, self.name)
+        return out
