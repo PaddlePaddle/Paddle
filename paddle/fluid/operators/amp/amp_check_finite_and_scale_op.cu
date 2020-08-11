@@ -22,7 +22,7 @@ namespace operators {
 
 template <typename T>
 __global__ void AmpCheckFiniteAndScale(const T* in, const T* scale, int num,
-                                       int* found_inf, T* out) {
+                                       bool* found_inf, T* out) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (idx < num) {
