@@ -633,10 +633,8 @@ def pad(input,
 
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
-
     helper.append_op(
         type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
-
     if len(unsqueezed_dim) != 0:
         out = squeeze(out, axes=unsqueezed_dim)
 
