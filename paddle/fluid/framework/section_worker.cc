@@ -154,6 +154,7 @@ void SectionWorker::TrainFiles() {
         }
       }
       dev_ctx_->Wait();
+
       VLOG(0) << "real_microbatch_num for thread 0 " << real_microbatch_num;
       // backward pass
       for (int i = 0; i < real_microbatch_num; ++i) {
@@ -391,11 +392,13 @@ void SectionWorker::TrainFilesWithProfiler() {
               op_total_time[op_idx] += time;
               {
                 std::unique_lock<std::mutex> lk(cout_mutex);
-	            std::cout << std::fixed;
+                std::cout << std::fixed;
                 std::cout.precision(0);
-                std::cout << "::FWD:B[" << batch_id_ << "]:SEC[" << thread_id_ << "]:SCOPE[" << i
-                        << "]:OP[" << op->Type() << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
-                        << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
+                std::cout << "::FWD:B[" << batch_id_ << "]:SEC[" << thread_id_
+                          << "]:SCOPE[" << i << "]:OP[" << op->Type()
+                          << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
+                          << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]"
+                          << std::endl;
               }
             }
             op_idx++;
@@ -403,11 +406,13 @@ void SectionWorker::TrainFilesWithProfiler() {
           gettimeofday(&micro_end, NULL);
           {
             std::unique_lock<std::mutex> lk(cout_mutex);
-	        std::cout << std::fixed;
+            std::cout << std::fixed;
             std::cout.precision(0);
             std::cout << "!!FWD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                      << "]:START[" << micro_start.tv_sec * 1e6 + micro_start.tv_usec
-                      << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
+                      << "]:START["
+                      << micro_start.tv_sec * 1e6 + micro_start.tv_usec
+                      << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec
+                      << "]" << std::endl;
           }
         } catch (platform::EOFException&) {
           std::unique_lock<std::mutex> lk(thread_mutex);
@@ -467,11 +472,13 @@ void SectionWorker::TrainFilesWithProfiler() {
             op_total_time[op_idx] += time;
             {
               std::unique_lock<std::mutex> lk(cout_mutex);
-	          std::cout << std::fixed;
+              std::cout << std::fixed;
               std::cout.precision(0);
-              std::cout << "::BWD:B[" << batch_id_ << "]:SEC[" << thread_id_ << "]:SCOPE[" << i
-                      << "]:OP[" << op->Type() << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
-                      << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
+              std::cout << "::BWD:B[" << batch_id_ << "]:SEC[" << thread_id_
+                        << "]:SCOPE[" << i << "]:OP[" << op->Type()
+                        << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
+                        << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]"
+                        << std::endl;
             }
           }
           op_idx++;
@@ -479,11 +486,13 @@ void SectionWorker::TrainFilesWithProfiler() {
         gettimeofday(&micro_end, NULL);
         {
           std::unique_lock<std::mutex> lk(cout_mutex);
-	      std::cout << std::fixed;
+          std::cout << std::fixed;
           std::cout.precision(0);
           std::cout << "!!BWD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                    << "]:START[" << micro_start.tv_sec * 1e6 + micro_start.tv_usec
-                    << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
+                    << "]:START["
+                    << micro_start.tv_sec * 1e6 + micro_start.tv_usec
+                    << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec
+                    << "]" << std::endl;
         }
       }
       dev_ctx_->Wait();
@@ -522,11 +531,13 @@ void SectionWorker::TrainFilesWithProfiler() {
           op_total_time[op_idx] += time;
           {
             std::unique_lock<std::mutex> lk(cout_mutex);
-	        std::cout << std::fixed;
+            std::cout << std::fixed;
             std::cout.precision(0);
-            std::cout << "::UPD:B[" << batch_id_ << "]:SEC[" << thread_id_ << "]:SCOPE[" << num_microbatches_
-                    << "]:OP[" << op->Type() << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
-                    << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
+            std::cout << "::UPD:B[" << batch_id_ << "]:SEC[" << thread_id_
+                      << "]:SCOPE[" << num_microbatches_ << "]:OP["
+                      << op->Type() << "]:START["
+                      << start.tv_sec * 1e6 + start.tv_usec << "]:END["
+                      << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
           }
         }
         op_idx++;
@@ -534,11 +545,13 @@ void SectionWorker::TrainFilesWithProfiler() {
       gettimeofday(&micro_end, NULL);
       {
         std::unique_lock<std::mutex> lk(cout_mutex);
-	    std::cout << std::fixed;
+        std::cout << std::fixed;
         std::cout.precision(0);
         std::cout << "!!UPD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                  << "]:START[" << micro_start.tv_sec * 1e6 + micro_start.tv_usec
-                  << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
+                  << "]:START["
+                  << micro_start.tv_sec * 1e6 + micro_start.tv_usec << "]:END["
+                  << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]"
+                  << std::endl;
       }
       dev_ctx_->Wait();
       batch_timer.Pause();
@@ -582,7 +595,8 @@ void SectionWorker::TrainFilesWithProfiler() {
             lk.unlock();
             VLOG(0) << "============timeline============";
             for (size_t i = 0; i < ops_.size(); ++i) {
-              VLOG(0) << "op: " << op_name[i] << ", max_time: " << op_max_time[i]
+              VLOG(0) << "op: " << op_name[i]
+                      << ", max_time: " << op_max_time[i]
                       << ", min_time: " << op_min_time[i]
                       << ", mean_time: " << op_total_time[i] / op_count[i];
             }
@@ -632,11 +646,13 @@ void SectionWorker::TrainFilesWithProfiler() {
             op_total_time[op_idx] += time;
             {
               std::unique_lock<std::mutex> lk(cout_mutex);
-	          std::cout << std::fixed;
+              std::cout << std::fixed;
               std::cout.precision(0);
-              std::cout << "::FWD:B[" << local_batch_id_ << "]:SEC[" << thread_id_ << "]:SCOPE[" << i
-                      << "]:OP[" << op->Type() << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
-                      << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
+              std::cout << "::FWD:B[" << local_batch_id_ << "]:SEC["
+                        << thread_id_ << "]:SCOPE[" << i << "]:OP["
+                        << op->Type() << "]:START["
+                        << start.tv_sec * 1e6 + start.tv_usec << "]:END["
+                        << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
             }
           }
           op_idx++;
@@ -644,11 +660,13 @@ void SectionWorker::TrainFilesWithProfiler() {
         gettimeofday(&micro_end, NULL);
         {
           std::unique_lock<std::mutex> lk(cout_mutex);
-	      std::cout << std::fixed;
+          std::cout << std::fixed;
           std::cout.precision(0);
           std::cout << "!!FWD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                    << "]:START[" << micro_start.tv_sec * 1e6 + micro_start.tv_usec
-                    << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
+                    << "]:START["
+                    << micro_start.tv_sec * 1e6 + micro_start.tv_usec
+                    << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec
+                    << "]" << std::endl;
         }
       }
       dev_ctx_->Wait();
@@ -685,11 +703,13 @@ void SectionWorker::TrainFilesWithProfiler() {
             op_total_time[op_idx] += time;
             {
               std::unique_lock<std::mutex> lk(cout_mutex);
-	          std::cout << std::fixed;
+              std::cout << std::fixed;
               std::cout.precision(0);
-              std::cout << "::BWD:B[" << local_batch_id_ << "]:SEC[" << thread_id_ << "]:SCOPE[" << i
-                      << "]:OP[" << op->Type() << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
-                      << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
+              std::cout << "::BWD:B[" << local_batch_id_ << "]:SEC["
+                        << thread_id_ << "]:SCOPE[" << i << "]:OP["
+                        << op->Type() << "]:START["
+                        << start.tv_sec * 1e6 + start.tv_usec << "]:END["
+                        << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
             }
           }
           op_idx++;
@@ -697,11 +717,13 @@ void SectionWorker::TrainFilesWithProfiler() {
         gettimeofday(&micro_end, NULL);
         {
           std::unique_lock<std::mutex> lk(cout_mutex);
-	      std::cout << std::fixed;
+          std::cout << std::fixed;
           std::cout.precision(0);
           std::cout << "!!BWD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                    << "]:START[" << micro_start.tv_sec * 1e6 + micro_start.tv_usec
-                    << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
+                    << "]:START["
+                    << micro_start.tv_sec * 1e6 + micro_start.tv_usec
+                    << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec
+                    << "]" << std::endl;
         }
       }
       dev_ctx_->Wait();
@@ -738,11 +760,13 @@ void SectionWorker::TrainFilesWithProfiler() {
           op_total_time[op_idx] += time;
           {
             std::unique_lock<std::mutex> lk(cout_mutex);
-	        std::cout << std::fixed;
+            std::cout << std::fixed;
             std::cout.precision(0);
-            std::cout << "::UPD:B[" << batch_id_ << "]:SEC[" << thread_id_ << "]:SCOPE[" << num_microbatches_
-                    << "]:OP[" << op->Type() << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
-                    << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
+            std::cout << "::UPD:B[" << batch_id_ << "]:SEC[" << thread_id_
+                      << "]:SCOPE[" << num_microbatches_ << "]:OP["
+                      << op->Type() << "]:START["
+                      << start.tv_sec * 1e6 + start.tv_usec << "]:END["
+                      << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
           }
         }
         op_idx++;
@@ -750,11 +774,13 @@ void SectionWorker::TrainFilesWithProfiler() {
       gettimeofday(&micro_end, NULL);
       {
         std::unique_lock<std::mutex> lk(cout_mutex);
-	    std::cout << std::fixed;
+        std::cout << std::fixed;
         std::cout.precision(0);
         std::cout << "!!UPD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                  << "]:START[" << micro_start.tv_sec * 1e6 + micro_start.tv_usec
-                  << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
+                  << "]:START["
+                  << micro_start.tv_sec * 1e6 + micro_start.tv_usec << "]:END["
+                  << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]"
+                  << std::endl;
       }
       dev_ctx_->Wait();
       if (local_completed) {

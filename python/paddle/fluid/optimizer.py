@@ -4132,7 +4132,7 @@ class PipelineOptimizer(object):
                 index=0,
                 type='fill_constant',
                 inputs={},
-                outputs={'Out':[grad_var]},
+                outputs={'Out': [grad_var]},
                 attrs={
                     'shape': grad_var.shape,
                     'dtype': grad_var.dtype,
@@ -4326,6 +4326,7 @@ class PipelineOptimizer(object):
         # attribute have not been set yet. Then check all ops have the
         # op_device attribute.
         self._add_default_opdevice_attr(main_block)
+
         device_specs = self._check_validation(main_block)
 
         # Step3: add enqueue and dequeue ops between section boundaries

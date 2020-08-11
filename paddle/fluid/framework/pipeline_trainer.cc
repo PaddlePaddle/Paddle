@@ -254,7 +254,7 @@ void PipelineTrainer::Finalize() {
           const LoDTensor& minibatch_tensor = minibatch_ptr->Get<LoDTensor>();
           TensorCopy(*static_cast<const Tensor*>(&minibatch_tensor), places_[0],
                      static_cast<Tensor*>(root_tensor));
-          VLOG(4) << "Copy persitable var " << var->Name() << " to root scope";
+          VLOG(3) << "Copy persitable var " << var->Name() << " to root scope";
         }
       }
     }
