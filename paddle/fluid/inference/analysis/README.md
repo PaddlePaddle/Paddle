@@ -6,13 +6,13 @@ and make the various optimization features be pluggable and co-exist in a pipeli
 
 We borrowed some concepts from LLVM, such as
 
-- [Pass](./pass.h)es to implement optimization that traverse the inference program,
-- [DataFlowGraph](./data_flow_graph.h) to represent the data flow graph built from a program,
-- [PassManager](./pass_manager.h) to manage a sequence of `Pass`es over a graph.
+- [Pass](../../framework/ir/pass.h)es to implement optimization that traverse the inference program,
+- [Graph](../../framework/ir/graph.h) to represent the data flow graph built from a program,
+- [PassManager](./ir_pass_manager.h) to manage a sequence of `Pass`es over a graph.
 
 There are some other basic concepts here
 
-- [Node](./node.h), the node in a `DataFlowGraph`,
+- [Node](../../framework/ir/node.h), the node in a `DataFlowGraph`,
   - `Function`, the Operator in Fluid,
   - `Value`, the Variable in Fluid;
 - [Argument](./argument.h), the argument that treat as the input and output of all `Pass`es in the pipeline,
@@ -54,5 +54,5 @@ It can be used as a helper class that draws the modified graph after each pass.
 There is some helper legacy/function/class for analysis.
 
 - [dot.h](./dot.h) give a easy to use interface for generating `DOT` codes,
-- [graph_traits.h](./graph_traits.h) contains the interfaces of the graph traversal algorithms, it uses `iterator`to make the algorithms easy to share across different passes,
-there are some implementations in  [data_flow_graph.cc](./data_flow_graph.cc) , such as BFS and DFS..
+- [graph_traits.h](../../framework/ir/graph_traits.h) contains the interfaces of the graph traversal algorithms, it uses `iterator`to make the algorithms easy to share across different passes,
+there are some implementations in  [graph_helper.cc](../../framework/ir/graph_helper.cc) , such as BFS and DFS..
