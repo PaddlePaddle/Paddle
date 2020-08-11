@@ -535,9 +535,14 @@ class TestLACModel(unittest.TestCase):
             batch = [np.vstack(var) for var in zip(*batch)]
             dy_pre = self.predict_dygraph(batch)
             st_pre = self.predict_static(batch)
+            dy_jit_pre = self.predict_dygraph_jit(batch)
             self.assertTrue(
                 np.allclose(dy_pre, st_pre),
                 msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
+            self.assertTrue(
+                np.allclose(dy_jit_pre, st_pre),
+                msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre,
+                                                               st_pre))
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
@@ -575,6 +580,16 @@ class TestLACModel(unittest.TestCase):
                   feed_target_names[1]: length},
             fetch_list=fetch_targets)
         return pred_res[0]
+
+    def predict_dygraph_jit(self, batch):
+        words, targets, length = batch
+        with fluid.dygraph.guard(self.place):
+            model = fluid.dygraph.jit.load(self.args.model_save_dir)
+            model.eval()
+
+            pred_res = model(to_variable(words), to_variable(length))
+
+            return pred_res.numpy()
 
 
 if __name__ == "__main__":

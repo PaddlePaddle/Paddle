@@ -1,11 +1,8 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
 http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -83,23 +80,10 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
 
     if (engine_->with_dynamic_shape()) {
-      auto use_fp16 = engine_->WithFp16();
       plugin::DynamicPluginTensorRT* plugin = nullptr;
-      if (use_fp16) {
-#ifdef SUPPORTS_CUDA_FP16
-        plugin = new plugin::EmbEltwiseLayernormPluginDynamic<half>(
-            input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-            eps);
-#else
-        plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
-            input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-            eps);
-#endif
-      } else {
-        plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
-            input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-            eps);
-      }
+      plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
+          input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
+          eps);
       layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
     } else {
       PADDLE_THROW(platform::errors::Fatal(

@@ -21,7 +21,7 @@ from ..fluid import layers
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from ..fluid.layers.layer_function_generator import _generate_doc_string_
+from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
 import sys
 
 # TODO: define math functions
@@ -33,7 +33,6 @@ from ..fluid.layers import ceil    #DEFINE_ALIAS
 from ..fluid.layers import cos    #DEFINE_ALIAS
 from ..fluid.layers import sinh    #DEFINE_ALIAS
 from ..fluid.layers import cosh    #DEFINE_ALIAS
-from ..fluid.layers import cumsum    #DEFINE_ALIAS
 from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
 from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
 from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
@@ -57,6 +56,9 @@ from ..fluid.layers import square    #DEFINE_ALIAS
 from ..fluid.layers import stanh    #DEFINE_ALIAS
 from ..fluid.layers import atan    #DEFINE_ALIAS
 from ..fluid.layers import erf    #DEFINE_ALIAS
+from ..fluid.layers import sqrt    #DEFINE_ALIAS
+from ..fluid.layers import sin    #DEFINE_ALIAS
+from ..fluid.layers import tanh    #DEFINE_ALIAS
 
 from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
@@ -121,67 +123,7 @@ __all__ = [
         'trace',
         'kron'
 ]
-
-
 # yapf: enable.
-
-
-def generate_op_noattr(op_type):
-    """Register the Python layer for an Operator without Attribute..
-
-    Args:
-       op_type: The name of the operator to be created.
-
-    This function takes in the operator type (sin, tanh etc) and
-    creates the operator functionality.
-
-    """
-    op_proto = OpProtoHolder.instance().get_op_proto(op_type)
-
-    def func(x, name=None):
-        if in_dygraph_mode():
-            op = getattr(core.ops, op_type)
-            return op(x)
-
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
-        helper = LayerHelper(op_type, **locals())
-
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": out})
-        return out
-
-    func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(
-        op_proto,
-        additional_args_lines=[
-            "name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.\n    "
-            "out(Variable, optional): The default value is None. Optional output can be any created Variable that meets the requirements to store the result of operation. if out is None, a new Varibale will be create to store the result."
-        ])
-    func.__doc__ = func.__doc__ + """
-
-Return type
-  Variable
-Examples:
-    .. code-block:: python
-
-        import numpy as np
-
-        import paddle
-        import paddle.fluid as fluid
-
-        inputs = fluid.data(name="x", shape = [None, 4], dtype='float32')
-        output = paddle.%s(inputs)
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
-
-        #input.shape=1X4, batch_size=1
-        img = np.array([[1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
-        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-        print(res)
-""" % op_type
-    return func
 
 @templatedoc()
 def pow(input, exponent, name=None):
@@ -241,17 +183,6 @@ def pow(input, exponent, name=None):
     helper.append_op(
         type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
-
-
-__ops__noattr__ = [
-    'atan',
-    'sin',
-    'sqrt',
-    'tanh',
-]
-
-for _OP in set(__ops__noattr__):
-    globals()[_OP] = generate_op_noattr(_OP)
 
 
 @dygraph_only
@@ -554,18 +485,18 @@ Examples:
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
         x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
         y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.multiply(x, y)
         print(res.numpy()) # [[5, 12], [21, 32]]
 
         x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
         y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.multiply(x, y, axis=1)
         print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
 
@@ -712,7 +643,7 @@ for func in [
         op_proto,
         additional_args_lines=additional_args_lines,
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
-            "use_quantizer", "Scale_x", "Scale_y", "Scale_out"
+            "use_quantizer", "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
 
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
@@ -1018,7 +949,7 @@ def mm(input, mat2, name=None):
     return out
 
 
-def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
+def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
 	:alias_main: paddle.addmm
 	:alias: paddle.addmm,paddle.tensor.addmm,paddle.tensor.math.addmm
@@ -1038,8 +969,8 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
         input (Variable): The input Tensor/LoDTensor to be added to the final result.
         x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
         y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
-        alpha (float): Coefficient of $x*y$.
         beta (float): Coefficient of $input$.
+        alpha (float): Coefficient of $x*y$.
         name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -1050,25 +981,43 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
-
-            input = fluid.data(name='input', shape=[2, 2], dtype='float32')
-            x = fluid.data(name='x', shape=[2, 2], dtype='float32')
-            y = fluid.data(name='y', shape=[2, 2], dtype='float32')
-            out = paddle.addmm( input=input, x=x, y=y, alpha=5.0, beta=0.5 )
 
             data_x = np.ones((2, 2)).astype(np.float32)
             data_y = np.ones((2, 2)).astype(np.float32)
             data_input = np.ones((2, 2)).astype(np.float32)
 
-            place =  fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            results = exe.run(fluid.default_main_program(),
-                              fetch_list=[out], feed={"input": data_input, 'x': data_x, "y": data_y})
-            print( np.array(results[0]) )
+            paddle.enable_imperative()
+
+            x = paddle.imperative.to_variable(data_x)
+            y = paddle.imperative.to_variable(data_y)
+            input = paddle.imperative.to_variable(data_input)
+
+            out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
+
+            print( out.numpy() )
             # [[10.5 10.5]
             # [10.5 10.5]]
     """
+    input_shape = input.shape
+    x_shape = x.shape
+    y_shape = y.shape
+    if not len(input_shape) == len(x_shape) == len(y_shape) == 2:
+        raise ValueError("The dimention of input, x, y should be 2 but receive input's shape: {}, x's shape: {}, y's shape: {}".format(input_shape, x_shape, y_shape))
+    if input_shape[0] != x_shape[0]:
+        if input_shape[0] != 1:
+            raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+        if input_shape[1] != y_shape[1] and input_shape[1] != 1:
+            raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+    if input_shape[1] != y_shape[1]:
+        if input_shape[1] != 1:
+            raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+        if input_shape[0] != x_shape[0] and input_shape[0] != 1:
+            raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+    if x_shape[1] != y_shape[0]:
+        raise ValueError("The input Variable x's width must be equal with Variable y' height. But received x's shape = {}, y's shape = {}.".format(x_shape, y_shape))
+
+
+
     if in_dygraph_mode():
         out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
         return out
@@ -1077,7 +1026,7 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
     attrs = {'Alpha': alpha, 'Beta': beta}
 
     helper = LayerHelper("addmm", **locals())
-    check_variable_and_dtype(x, 'Input', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(input, 'Input', ['float32', 'float64'], 'addmm')
     check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
     check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1614,11 +1563,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             case2 = np.random.randn(3, 10, 10).astype('float32')
             case3 = np.random.randn(3, 10, 5, 10).astype('float32')
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
-            case1 = paddle.imperative.to_variable(case1)
-            case2 = paddle.imperative.to_variable(case2)
-            case3 = paddle.imperative.to_variable(case3)
+            case1 = paddle.to_variable(case1)
+            case2 = paddle.to_variable(case2)
+            case3 = paddle.to_variable(case3)
             data1 = paddle.trace(case1) # data1.shape = [1]
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
@@ -1725,3 +1674,73 @@ ${comment}
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})
     return out
+
+
+def cumsum(x, axis=None, dtype=None, name=None):
+    """
+	:alias_main: paddle.cumsum
+	:alias: paddle.cumsum,paddle.tensor.cumsum,paddle.tensor.math.cumsum
+
+    The cumulative sum of the elements along a given axis. The first element of the result is the same of the first element of the input. 
+
+    Args:
+        x (Tensor): Input of cumsum operator, the Tensor needed to be cumsumed. 
+        axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the result of cumsum operator, output of cumsum operator. 
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            from paddle.imperative import to_variable
+            import numpy as np
+
+            paddle.enable_imperative()
+            data_np = np.arange(12).reshape(3, 4)
+            data = to_variable(data_np)
+
+            y = paddle.cumsum(data)
+            print(y.numpy())
+            # [ 0  1  3  6 10 15 21 28 36 45 55 66]
+
+            y = paddle.cumsum(data, axis=0)
+            print(y.numpy())
+            # [[ 0  1  2  3]
+            #  [ 4  6  8 10]
+            #  [12 15 18 21]]
+            
+            y = paddle.cumsum(data, axis=-1)
+            print(y.numpy())
+            # [[ 0  1  3  6]
+            #  [ 4  9 15 22]
+            #  [ 8 17 27 38]]
+
+            y = paddle.cumsum(data, dtype='float64')
+            print(y.dtype)
+            # VarType.FP64
+    """
+    if axis is None:
+        flatten = True
+    else:
+        flatten = False
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = layers.cast(x, dtype)
+
+    if in_dygraph_mode():
+        if axis is None:
+            return core.ops.cumsum(x, 'flatten', flatten)
+        else:
+            return core.ops.cumsum(x, 'axis', axis, 'flatten', flatten)
+
+    check_type(x, 'x', (Variable), 'cumsum')
+    locals_var = locals().copy()
+    kwargs = dict()
+    for name, val in locals_var.items():
+        if val is not None:
+            kwargs[name] = val
+    _cum_sum_ = generate_layer_fn('cumsum')
+    return _cum_sum_(**kwargs)

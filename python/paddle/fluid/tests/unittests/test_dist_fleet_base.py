@@ -21,6 +21,9 @@ import os
 import sys
 import subprocess
 
+import six
+import shutil
+import numpy as np
 import argparse
 from contextlib import closing
 import socket
@@ -29,7 +32,8 @@ import tempfile
 import unittest
 
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.fleet.base.role_maker as role_maker
+from paddle.fleet.base.util_factory import fleet_util
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
@@ -48,18 +52,26 @@ class FleetDistRunnerBase(object):
     """
 
     def build_role(self, args):
+
         if args.role.upper() == "PSERVER":
             role = role_maker.UserDefinedRoleMaker(
+                is_collective=False,
+                init_gloo=True,
+                path=args.gloo_path,
                 current_id=args.current_id,
                 role=role_maker.Role.SERVER,
-                worker_num=args.trainers,
+                worker_endpoints=args.trainer_endpoints.split(","),
                 server_endpoints=args.endpoints.split(","))
         else:
             role = role_maker.UserDefinedRoleMaker(
+                is_collective=False,
+                init_gloo=True,
+                path=args.gloo_path,
                 current_id=args.current_id,
                 role=role_maker.Role.WORKER,
-                worker_num=args.trainers,
+                worker_endpoints=args.trainer_endpoints.split(","),
                 server_endpoints=args.endpoints.split(","))
+        self.role = role
         return role
 
     def build_strategy(self, args):
@@ -114,26 +126,13 @@ class FleetDistRunnerBase(object):
         optimizer.minimize(avg_cost)
 
     def run_pserver(self, args):
-        fleet.init(self.build_role(args))
-        strategy = self.build_strategy(args)
-        avg_cost = self.net(args)
-        self.build_optimizer(avg_cost, strategy)
-
         fleet.init_server()
         fleet.run_server()
 
     def run_dataset_trainer(self, args):
-        fleet.init(self.build_role(args))
-        strategy = self.build_strategy(args)
-        avg_cost = self.net(args)
-        self.build_optimizer(avg_cost, strategy)
         out = self.do_dataset_training(fleet)
 
     def run_pyreader_trainer(self, args):
-        fleet.init(self.build_role(args))
-        strategy = self.build_strategy(args)
-        avg_cost = self.net(args)
-        self.build_optimizer(avg_cost, strategy)
         out = self.do_pyreader_training(fleet)
 
     def net(self, args, batch_size=4, lr=0.01):
@@ -173,9 +172,13 @@ class TestFleetBase(unittest.TestCase):
             print("set begin_port:", DIST_UT_PORT)
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 DIST_UT_PORT, DIST_UT_PORT + 1)
-            DIST_UT_PORT += 2
+            self._tr_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                DIST_UT_PORT + 2, DIST_UT_PORT + 3)
+            DIST_UT_PORT += 4
         else:
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                self._find_free_port(), self._find_free_port())
+            self._tr_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 self._find_free_port(), self._find_free_port())
 
         self._python_interp = sys.executable
@@ -236,18 +239,22 @@ class TestFleetBase(unittest.TestCase):
     def _run_cluster(self, model, envs):
         env = {'GRAD_CLIP': str(self._grad_clip_mode)}
         python_path = self._python_interp
+        gloo_path = tempfile.mkdtemp()
+
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             python_path += " -m coverage run --branch -p"
         env.update(envs)
 
-        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {6}".format(
-            python_path, model, self._ps_endpoints, self._trainers, self._mode,
-            self._geo_sgd_need_push_nums, self._reader)
+        tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8}".format(
+            python_path, model, self._ps_endpoints, self._tr_endpoints,
+            self._trainers, self._mode, self._geo_sgd_need_push_nums,
+            self._reader, gloo_path)
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {6}".format(
-            python_path, model, self._ps_endpoints, self._trainers, self._mode,
-            self._geo_sgd_need_push_nums, self._reader)
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8}".format(
+            python_path, model, self._ps_endpoints, self._tr_endpoints,
+            self._trainers, self._mode, self._geo_sgd_need_push_nums,
+            self._reader, gloo_path)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
@@ -284,6 +291,7 @@ class TestFleetBase(unittest.TestCase):
         ps0.terminate()
         ps1.terminate()
 
+        shutil.rmtree(gloo_path)
         return 0, 0
 
     def check_with_place(self,
@@ -313,6 +321,9 @@ def runtime_main(test_class):
     parser.add_argument(
         '--role', type=str, required=True, choices=['pserver', 'trainer'])
     parser.add_argument('--endpoints', type=str, required=False, default="")
+    parser.add_argument(
+        '--trainer_endpoints', type=str, required=False, default="")
+    parser.add_argument('--gloo_path', type=str, required=False, default="")
     parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--mode', type=str, required=False, default='geo')
@@ -322,6 +333,13 @@ def runtime_main(test_class):
     args = parser.parse_args()
 
     model = test_class()
+    role = model.build_role(args)
+    fleet.init(role)
+    strategy = model.build_strategy(args)
+    avg_cost = model.net(args)
+    model.build_optimizer(avg_cost, strategy)
+    fleet_util._set_strategy(strategy)
+    fleet_util._set_role_maker(role)
     if args.role == "pserver":
         model.run_pserver(args)
     else:

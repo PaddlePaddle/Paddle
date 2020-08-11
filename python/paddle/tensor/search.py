@@ -46,8 +46,7 @@ def argsort(x, axis=-1, descending=False, name=None):
 	:alias_main: paddle.argsort
 	:alias: paddle.argsort,paddle.tensor.argsort,paddle.tensor.search.argsort
 
-    This OP sorts the input along the given axis, and returns sorted output
-    data Varibale and its corresponding index Variable with the same shape as ``x``.
+    This OP sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
         x(Tensor): An input N-D Tensor with type float32, float64, int16,
@@ -69,41 +68,40 @@ def argsort(x, axis=-1, descending=False, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            import paddle.imperative as imperative 
             import numpy as np
             
-            paddle.enable_imperative()
+            paddle.disable_static()
             input_array = np.array([[[5,8,9,5],
                             [0,0,1,7],
                             [6,9,2,4]],
                             [[5,2,4,2],
                             [4,7,7,9],
                             [1,7,0,6]]]).astype(np.float32)
-            x = imperative.to_variable(input_array)
+            x = paddle.to_variable(input_array)
             out1 = paddle.argsort(x=x, axis=-1)
             out2 = paddle.argsort(x=x, axis=0)
             out3 = paddle.argsort(x=x, axis=1)
             print(out1.numpy())
-	    #[[[0 3 1 2]
-	    #  [0 1 2 3]
-	    #  [2 3 0 1]]
+            #[[[0 3 1 2]
+            #  [0 1 2 3]
+            #  [2 3 0 1]]
             # [[1 3 2 0]
-	    #  [0 1 2 3]
-	    #  [2 0 3 1]]]
+            #  [0 1 2 3]
+            #  [2 0 3 1]]]
             print(out2.numpy())
-	    #[[[0 1 1 1]
-	    #  [0 0 0 0]
-	    #  [1 1 1 0]]
-	    # [[1 0 0 0]
-	    #  [1 1 1 1]
-	    #  [0 0 0 1]]]
+            #[[[0 1 1 1]
+            #  [0 0 0 0]
+            #  [1 1 1 0]]
+            # [[1 0 0 0]
+            #  [1 1 1 1]
+            #  [0 0 0 1]]]
             print(out3.numpy())
-	    #[[[1 1 1 2]
-	    #  [0 0 2 0]
-	    #  [2 2 0 1]]
-	    # [[2 0 2 0]
-	    #  [1 1 0 2]
-	    #  [0 2 1 1]]]
+            #[[[1 1 1 2]
+            #  [0 0 2 0]
+            #  [2 2 0 1]]
+            # [[2 0 2 0]
+            #  [1 1 0 2]
+            #  [0 2 1 1]]]
     """
     if in_dygraph_mode():
         _, ids = core.ops.argsort(x, 'axis', axis, 'descending', descending)
@@ -251,14 +249,14 @@ def index_select(x, index, axis=0, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()  # Now we are in imperative mode
+            paddle.disable_static()  # Now we are in imperative mode
             data = np.array([[1.0, 2.0, 3.0, 4.0],
                              [5.0, 6.0, 7.0, 8.0],
                              [9.0, 10.0, 11.0, 12.0]])
             data_index = np.array([0, 1, 1]).astype('int32')
 
-            x = paddle.imperative.to_variable(data)
-            index = paddle.imperative.to_variable(data_index)
+            x = paddle.to_variable(data)
+            index = paddle.to_variable(data_index)
             out_z1 = paddle.index_select(x=x, index=index)
             #[[1. 2. 3. 4.]
             # [5. 6. 7. 8.]
@@ -381,8 +379,7 @@ def sort(x, axis=-1, descending=False, name=None):
 	:alias_main: paddle.sort
 	:alias: paddle.sort,paddle.tensor.sort,paddle.tensor.search.sort
 
-    This OP sorts the input along the given axis, and returns sorted output
-    data Tensor and its corresponding index Tensor with the same shape as ``x``.
+    This OP sorts the input along the given axis, and returns the sorted output tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
         x(Tensor): An input N-D Tensor with type float32, float64, int16,
@@ -397,58 +394,48 @@ def sort(x, axis=-1, descending=False, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        tuple: A tuple of sorted data tensor(with the same shape and data
-        type as ``x``) and the sorted indices(with the same shape as ``x``
-        and with data type int64).
+        Tensor: sorted tensor(with the same shape and data type as ``x``).
     Examples:
         .. code-block:: python
             import paddle
-            import paddle.imperative as imperative 
             import numpy as np
             
-            paddle.enable_imperative()
+            paddle.disable_static()
             input_array = np.array([[[5,8,9,5],
                             [0,0,1,7],
                             [6,9,2,4]],
                             [[5,2,4,2],
                             [4,7,7,9],
                             [1,7,0,6]]]).astype(np.float32)
-            x = imperative.to_variable(input_array)
+            x = paddle.to_variable(input_array)
             out1 = paddle.sort(x=x, axis=-1)
             out2 = paddle.sort(x=x, axis=0)
             out3 = paddle.sort(x=x, axis=1)
-            print(out1[0].numpy())
-	    #[[[5. 5. 8. 9.]
-	    #  [0. 0. 1. 7.]
-	    #  [2. 4. 6. 9.]]
-	    # [[2. 2. 4. 5.]
-	    #  [4. 7. 7. 9.]
-	    #  [0. 1. 6. 7.]]]
-            print(out1[1].numpy())
-	    #[[[0 3 1 2]
-	    #  [0 1 2 3]
-	    #  [2 3 0 1]]
-            # [[1 3 2 0]
-	    #  [0 1 2 3]
-	    #  [2 0 3 1]]]
-            print(out2[0].numpy())
+            print(out1.numpy())
+            #[[[5. 5. 8. 9.]
+            #  [0. 0. 1. 7.]
+            #  [2. 4. 6. 9.]]
+            # [[2. 2. 4. 5.]
+            #  [4. 7. 7. 9.]
+            #  [0. 1. 6. 7.]]]
+            print(out2.numpy())
             #[[[5. 2. 4. 2.]
-	    #  [0. 0. 1. 7.]
-	    #  [1. 7. 0. 4.]]
-	    # [[5. 8. 9. 5.]
-	    #  [4. 7. 7. 9.]
-	    #  [6. 9. 2. 6.]]]
-            print(out3[0].numpy())
+            #  [0. 0. 1. 7.]
+            #  [1. 7. 0. 4.]]
+            # [[5. 8. 9. 5.]
+            #  [4. 7. 7. 9.]
+            #  [6. 9. 2. 6.]]]
+            print(out3.numpy())
             #[[[0. 0. 1. 4.]
-	    #  [5. 8. 2. 5.]
-	    #  [6. 9. 9. 7.]]
-	    # [[1. 2. 0. 2.]
-	    #  [4. 7. 4. 6.]
-	    #  [5. 7. 7. 9.]]]
+            #  [5. 8. 2. 5.]
+            #  [6. 9. 9. 7.]]
+            # [[1. 2. 0. 2.]
+            #  [4. 7. 4. 6.]
+            #  [5. 7. 7. 9.]]]
     """
     if in_dygraph_mode():
-        out, ids = core.ops.argsort(x, 'axis', axis, 'descending', descending)
-        return out, ids
+        out, _ = core.ops.argsort(x, 'axis', axis, 'descending', descending)
+        return out
     helper = LayerHelper("sort", **locals())
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=False)
@@ -461,7 +448,7 @@ def sort(x, axis=-1, descending=False, name=None):
                  'Indices': ids},
         attrs={'axis': axis,
                'descending': descending})
-    return out, ids
+    return out
 
 
 def where(condition, x, y, name=None):
