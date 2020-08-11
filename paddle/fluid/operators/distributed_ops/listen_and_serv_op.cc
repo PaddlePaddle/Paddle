@@ -394,7 +394,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   request_notify_handler_.reset(
       new distributed::RequestNotifyHandler(distributed_mode, fan_in));
   request_send_and_recv_handler_.reset(
-      new distributed::SendAndRecvHandler(distributed_mode));
+      new distributed::RequestSendAndRecvHandler(distributed_mode));
   VLOG(4) << "Listen&Serv After new request handler";
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
@@ -411,7 +411,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(distributed::kRequestNotify,
                             request_notify_handler_.get(), rpc_send_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestSendAndRecv,
-                            request_send_and_recv_handler_.get());
+                            request_send_and_recv_handler_.get(),
+                            rpc_get_thread_num);
   VLOG(4) << "Listen&Serv After register RPC service";
 
   VLOG(2) << "Listen&Serv Begin get optimizer block&program";

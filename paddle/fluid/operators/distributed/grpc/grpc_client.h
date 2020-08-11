@@ -249,13 +249,13 @@ class GRPCClient : public RPCClient {
       const framework::Scope& scope, const std::string& var_name,
       int64_t time_out = FLAGS_rpc_deadline) override;
 
-  VarHandlePtr SendAndRecv(const std::string& ep,
-                           const platform::DeviceContext& ctx,
-                           const framework::Scope& scope,
-                           const std::string& send_var_name,
-                           const std::string& recv_var_name,
-                           const std::string& table_name = "",
-                           int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncSendAndRecv(const std::string& ep,
+                                const platform::DeviceContext& ctx,
+                                const framework::Scope& scope,
+                                const std::string& send_var_name,
+                                const std::string& recv_var_name,
+                                const std::string& table_name = "",
+                                int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncSendComplete(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;

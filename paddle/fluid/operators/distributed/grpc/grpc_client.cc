@@ -482,13 +482,13 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   return h;
 }
 
-VarHandlePtr GRPCClient::SendAndRecv(const std::string& ep,
-                                     const platform::DeviceContext& ctx,
-                                     const framework::Scope& scope,
-                                     const std::string& send_var_name,
-                                     const std::string& recv_var_name,
-                                     const std::string& table_name,
-                                     int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
+                                          const platform::DeviceContext& ctx,
+                                          const framework::Scope& scope,
+                                          const std::string& send_var_name,
+                                          const std::string& recv_var_name,
+                                          const std::string& table_name,
+                                          int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string send_var_name_val = send_var_name;
