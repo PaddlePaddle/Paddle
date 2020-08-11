@@ -15,7 +15,7 @@
 # TODO: define loss functions of neural network  
 import paddle.fluid as fluid
 import paddle
-import paddle.nn.functional as F
+from .. import functional as F
 
 __all__ = [
     #       'NCELoss',

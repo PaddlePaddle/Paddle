@@ -13,9 +13,8 @@
 # limitations under the License.
 
 # TODO: define loss functions of neural network  
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import core
+from ...fluid import core
+from ...fluid import data_feeder
 from ...fluid.layers import bpr_loss  #DEFINE_ALIAS
 from ...fluid.layers import center_loss  #DEFINE_ALIAS
 from ...fluid.layers import cross_entropy  #DEFINE_ALIAS
@@ -26,6 +25,7 @@ from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import mse_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
 from ...fluid.layers import rank_loss  #DEFINE_ALIAS
+from ...fluid.layers import reshape
 from ...fluid.layers import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid_focal_loss  #DEFINE_ALIAS
 from ...fluid.layers import smooth_l1  #DEFINE_ALIAS
@@ -40,6 +40,7 @@ from ...fluid.layers import margin_rank_loss  #DEFINE_ALIAS
 from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode
+from ...fluid.framework import Variable
 
 __all__ = [
     'bpr_loss',
@@ -158,18 +159,17 @@ def nll_loss(x,
     c = x_shape[1]
 
     if x_dims != 2 and x_dims != 4:
-        x = paddle.reshape(x, shape=[n, c, 1, -1])
-        label = paddle.reshape(label, shape=[n, 1, -1])
+        x = reshape(x, shape=[n, c, 1, -1])
+        label = reshape(label, shape=[n, 1, -1])
         out_shape = [n] + x_shape[2:]
 
-    fluid.data_feeder.check_variable_and_dtype(x, 'x', ['float32', 'float64'],
-                                               'nll_loss')
-    fluid.data_feeder.check_variable_and_dtype(label, 'label', ['int64'],
-                                               'nll_loss')
+    data_feeder.check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                         'nll_loss')
+    data_feeder.check_variable_and_dtype(label, 'label', ['int64'], 'nll_loss')
     inputs = {'X': x, 'Label': label}
     attrs = {'reduction': reduction, 'ignore_index': ignore_index}
     if weight is not None:
-        if isinstance(weight, paddle.Variable):
+        if isinstance(weight, Variable):
             inputs['Weight'] = weight
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -179,6 +179,6 @@ def nll_loss(x,
     helper.append_op(
         type='nll_loss', inputs=inputs, outputs=outputs, attrs=attrs)
     if x_dims != 2 and x_dims != 4 and reduction == 'none':
-        out = paddle.reshape(out, shape=out_shape)
+        out = reshape(out, shape=out_shape)
 
     return out
