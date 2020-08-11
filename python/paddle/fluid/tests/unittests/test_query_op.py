@@ -12,26 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the functions to manipulate devices 
+from __future__ import print_function
+
+import unittest
+import paddle
 from paddle.fluid import core
-__all__ = [
-    'cudnn_version',
-    #            'cpu_places',
-    #            'CPUPlace',
-    #            'cuda_pinned_places',
-    #            'cuda_places',
-    #            'CUDAPinnedPlace',
-    #            'CUDAPlace',
-    #            'is_compiled_with_cuda'
-]
 
 
-def cudnn_version():
-    """
-    This funciton return the version of cudnn.
-    """
-    cudnn_version = core.cudnn_version()
-    if cudnn_version < 0:
-        return None
-    else:
-        return cudnn_version
+class TestCudnnVersion(unittest.TestCase):
+    def test_no_cudnn(self):
+        if not core.is_compiled_with_cuda():
+            cudnn_version = paddle.cudnn_version()
+            self.assertEqual((cudnn_version is None), True)
+
+    def test_cudnn(self):
+        cudnn_version = paddle.cudnn_version()
+
+
+if __name__ == '__main__':
+    unittest.main()
