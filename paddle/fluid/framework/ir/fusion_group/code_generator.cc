@@ -131,9 +131,9 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       // Output ids should be set in fixed order, like:
       //  - dx, dy in backward operations
       std::vector<int> output_ids;
+      std::vector<int> intermediate_output_ids;
       std::vector<std::string> output_names =
           OperationMap::Instance().Get(op->Type()).output_names;
-      std::unordered_map<int, bool> intermediate_state;
 
       for (auto& name : output_names) {
         Node* output_var = GetOutputVar(node, op->Output(name)[0]);
@@ -142,9 +142,10 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
             platform::errors::InvalidArgument(
                 "Output(%s) of operation %s is not set.", name, op->Type()));
         output_ids.push_back(var_ids[output_var]);
-        if (intermediate_out_vars_set.find(output_var) !=
-            intermediate_out_vars_set.end()) {
-          intermediate_state[var_ids[output_var]] = true;
+        if (!subgraph->SaveIntermediateOut() &&
+            intermediate_out_vars_set.find(output_var) !=
+                intermediate_out_vars_set.end()) {
+          intermediate_output_ids.push_back(var_ids[output_var]);
         }
       }
 
@@ -152,7 +153,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       std::string rhs_type = ExtractDataType(node->inputs);
       auto expression =
           OperationExpression(node->Name(), input_ids, output_ids, rhs_type,
-                              lhs_type, intermediate_state);
+                              lhs_type, intermediate_output_ids);
       expression.SetAttr(attr);
       expressions.push_back(expression);
     }
@@ -168,17 +169,18 @@ std::string CodeGenerator::Generate(
   // TODO(liuyiqun): Check whether all expressions are elementwise operations.
   std::set<int> input_ids = std::move(DistilInputIds(expressions));
   std::set<int> output_ids = std::move(DistilOutputIds(expressions));
-  std::set<int> intermediate_ids =
+  std::set<int> intermediate_output_ids =
       std::move(DistilIntermediateIds(expressions));
   std::unordered_map<int, std::string> dtypes =
       std::move(DistilDtypes(expressions));
   TemplateVariable template_var;
   template_var.Add("func_name", func_name);
-  template_var.Add("parameters", EmitParameters(input_ids, output_ids,
-                                                intermediate_ids, dtypes));
+  template_var.Add(
+      "parameters",
+      EmitParameters(input_ids, output_ids, intermediate_output_ids, dtypes));
   template_var.Add("compute_body",
                    EmitComputeBody(expressions, input_ids, output_ids,
-                                   intermediate_ids, dtypes));
+                                   intermediate_output_ids, dtypes));
 
   std::set<std::string> all_dtype;
   for (const auto& type : dtypes) {
@@ -226,18 +228,14 @@ std::set<int> CodeGenerator::DistilOutputIds(
 
 std::set<int> CodeGenerator::DistilIntermediateIds(
     const std::vector<OperationExpression>& expressions) {
-  std::set<int> intermediate_ids;
+  std::set<int> intermediate_output_ids;
   // Use std::set to remove the reptead id and get a ordered list.
   for (size_t i = 0; i < expressions.size(); i++) {
-    for (auto id : expressions[i].GetOutputIds()) {
-      auto intermediate_state = expressions[i].GetIntermediateState();
-      if (intermediate_state.find(id) != intermediate_state.end() &&
-          intermediate_state[id]) {
-        intermediate_ids.insert(id);
-      }
+    for (auto id : expressions[i].GetIntermediateOutputIds()) {
+      intermediate_output_ids.insert(id);
     }
   }
-  return intermediate_ids;
+  return intermediate_output_ids;
 }
 
 std::unordered_map<int, std::string> CodeGenerator::DistilDtypes(
