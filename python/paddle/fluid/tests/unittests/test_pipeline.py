@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import numpy as np
@@ -186,18 +187,10 @@ class TestPipeline(unittest.TestCase):
         data_loader.set_sample_generator(train_reader, batch_size=1)
         place = fluid.CPUPlace()
 
-        # The following dataset is only used for the 
-        # interface 'train_from_dataset'.
-        # And it has no actual meaning.
-        dataset = fluid.DatasetFactory().create_dataset('FileInstantDataset')
-        dataset.set_batch_size(1)
-        dataset.set_thread(1)
-        dataset.set_filelist(['/tmp/tmp_2.txt'])
-        dataset.set_use_var([image, label])
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         data_loader.start()
-        exe.train_from_dataset(main_prog, dataset, debug=debug)
+        exe.train_from_dataset(main_prog, debug=debug)
 
     def test_pipeline(self):
         self._run(False)

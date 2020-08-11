@@ -22,8 +22,8 @@ class InitTrackerMeta(type(paddle.fluid.dygraph.Layer)):
     Since InitTrackerMeta would be used as metaclass for model, thus use
     type(Layer) rather than type to avoid multiple inheritance metaclass
     conflicts temporarily.
+    
     """
-
     # def __new__(cls, name, bases, attrs):
     #     if '__init__' in attrs:
     #         init_func = attrs['__init__']

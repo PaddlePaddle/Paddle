@@ -189,12 +189,12 @@ class Fleet(object):
         assert self._runtime_handle is not None
         self._runtime_handle._init_worker()
 
-    def init_server(self, model_dir=None):
+    def init_server(self, *args, **kwargs):
         """
         init server
         """
         assert self._runtime_handle is not None
-        self._runtime_handle._init_server()
+        self._runtime_handle._init_server(*args, **kwargs)
 
     def run_server(self):
         """
@@ -228,6 +228,7 @@ class Fleet(object):
         """
         self.user_defined_optimizer = optimizer
         self.user_defined_strategy = strategy
+        self.valid_strategy = None
         return self
 
     def minimize(self,
@@ -278,22 +279,30 @@ class Fleet(object):
             # for more examples, please reference https://github.com/PaddlePaddle/Fleet
 
         """
+        context = {}
         # cache original feed forward program
         self.origin_main_program = loss.block.program
+        context["origin_main_program"] = self.origin_main_program
+        context["loss"] = loss
         if startup_program == None:
             self.origin_startup_program = \
-                paddle.default_startup_program().clone(for_test=False)
-            startup_program = paddle.default_startup_program()
+                paddle.static.default_startup_program().clone(for_test=False)
+            startup_program = paddle.static.default_startup_program()
         else:
             self.origin_startup_program = \
                 startup_program.clone(for_test=False)
+
+        context["origin_startup_program"] = startup_program
+        context["role_maker"] = self._role_maker
 
         # compile time
         distributed_optimizer_list = \
             MetaOptimizerFactory()._get_valid_meta_optimizers(
                 self.user_defined_optimizer)
+
         valid_optimizer_list = []
         valid_graph_optimizer_list = []
+        can_not_apply_optimizer_list = []
         # recall meta optimizers for ranking
         for opt in distributed_optimizer_list:
             opt._set_basic_info(loss, self._role_maker,
@@ -301,16 +310,27 @@ class Fleet(object):
                                 self.user_defined_strategy)
             if opt._can_apply() and not opt._is_graph_out():
                 valid_optimizer_list.append(opt)
-            if opt._can_apply() and opt._is_graph_out():
+            elif opt._can_apply() and opt._is_graph_out():
                 valid_graph_optimizer_list.append(opt)
+            else:
+                can_not_apply_optimizer_list.append(opt)
         # combine recalled meta optimizers to be a valid meta optimizer
-        meta_optimizer, graph_optimizer, final_dist_strategy = \
+        meta_optimizer, graph_optimizer = \
                 self.strategy_compiler.generate_optimizer(
                     loss, self._role_maker, self.user_defined_optimizer,
                     self.user_defined_strategy, valid_optimizer_list,
                     valid_graph_optimizer_list)
+
+        valid_strategy = self.strategy_compiler._get_valid_strategy(
+            self.user_defined_strategy, can_not_apply_optimizer_list)
+
+        context["valid_strategy"] = valid_strategy
+
+        self.valid_strategy = valid_strategy
+
         optimize_ops = []
         params_grads = []
+
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss,
@@ -318,8 +338,23 @@ class Fleet(object):
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set)
 
+            default_program = paddle.static.default_main_program()
+
+            if id(default_program) != id(loss.block.program):
+                paddle.fluid.framework.switch_main_program(loss.block.program)
+
+        else:
+            optimize_ops, params_grads = self.user_defined_optimizer.minimize(
+                loss,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set)
+
+        context["program_optimize_ops"] = optimize_ops
+        context["program_params_grads"] = params_grads
+
         if graph_optimizer:
-            optimizer_ops, params_grads = graph_optimizer.minimize(
+            optimize_ops, params_grads = graph_optimizer.minimize(
                 loss,
                 startup_program=startup_program,
                 parameter_list=parameter_list,
@@ -328,15 +363,13 @@ class Fleet(object):
             # if a graph optimizer takes effect, mostly
             # optimizers_ops and params_grads are None
             # i.e. users can not modify current computation graph anymore
+            context["graph_optimize_ops"] = optimize_ops
+            context["graph_optimize_grads"] = params_grads
 
         if self._runtime_handle is None:
-            self._runtime_handle = RuntimeFactory()._create_runtime(
-                final_dist_strategy, self._role_maker, optimize_ops,
-                params_grads)
+            self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
         if self._util is None:
-            self._util = UtilFactory()._create_util(final_dist_strategy,
-                                                    self._role_maker,
-                                                    optimize_ops, params_grads)
+            self._util = UtilFactory()._create_util(context)
 
         return optimize_ops, params_grads

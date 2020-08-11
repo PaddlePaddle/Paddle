@@ -605,10 +605,10 @@ def cross(x, y, axis=None, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle.imperative import to_variable
+            from paddle import to_variable
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             data_x = np.array([[1.0, 1.0, 1.0],
                                [2.0, 2.0, 2.0],
@@ -632,7 +632,7 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]]
     """
     if in_dygraph_mode():
-        if axis:
+        if axis is not None:
             return core.ops.cross(x, y, 'dim', axis)
         else:
             return core.ops.cross(x, y)
@@ -729,26 +729,32 @@ def bmm(x, y, name=None):
 
     Examples:
         import paddle
-        import paddle.fluid as fluid
-        x = fluid.layers.data(name='x', shape=[10, 3, 4], dtype='float32')
-        y = fluid.layers.data(name='y', shape=[10, 4, 5], dtype='float32')
-        out = paddle.bmm(x, y)
-    
-        # In dygraph mode:
+
+        # In imperative mode:
         # size input1: (2, 2, 3) and input2: (2, 3, 2)
         input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
         input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
 
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(input1)
-            y = fluid.dygraph.to_variable(input2)
-            out = paddle.bmm(x, y)
-            #output size: (2, 2, 2)
-            #output value:
-            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
-            out_np = out.numpy()
+        paddle.enable_imperative()
+        
+        x = paddle.imperative.to_variable(input1)
+        y = paddle.imperative.to_variable(input2)
+        out = paddle.bmm(x, y)
+        #output size: (2, 2, 2)
+        #output value:
+        #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+        out_np = out.numpy()
     """
-
+    x_shape = x.shape
+    y_shape = y.shape
+    if not len(x_shape) == len(y_shape) == 3:
+        raise ValueError(
+            "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}".
+            format(x_shape, y_shape))
+    if x_shape[2] != y_shape[1]:
+        raise ValueError(
+            "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".
+            format(x_shape, y_shape))
     helper = LayerHelper('bmm', **locals())
     if in_dygraph_mode():
         return core.ops.bmm(x, y)
@@ -776,13 +782,13 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            startup_program = paddle.Program()
-            train_program = paddle.Program()
-            with paddle.program_guard(train_program, startup_program):
+            startup_program = paddle.static.Program()
+            train_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
                 inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
                 output = paddle.histogram(inputs, bins=5, min=1, max=5)
                 place = paddle.CPUPlace()
-                exe = paddle.Executor(place)
+                exe = paddle.static.Executor(place)
                 exe.run(startup_program)
                 img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
                 res = exe.run(train_program,
@@ -794,11 +800,12 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            with paddle.imperative.guard(paddle.CPUPlace()):
-                inputs_np = np.array([1, 2, 1]).astype(np.float)
-                inputs = paddle.imperative.to_variable(inputs_np)
-                result = paddle.histogram(inputs, bins=4, min=0, max=3)
-                print(result) # [0, 2, 1, 0]
+            paddle.disable_static(paddle.CPUPlace())
+            inputs_np = np.array([1, 2, 1]).astype(np.float)
+            inputs = paddle.to_variable(inputs_np)
+            result = paddle.histogram(inputs, bins=4, min=0, max=3)
+            print(result) # [0, 2, 1, 0]
+            paddle.enable_static()
     """
     if in_dygraph_mode():
         return core.ops.histogram(input, "bins", bins, "min", min, "max", max)

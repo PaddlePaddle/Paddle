@@ -15,19 +15,23 @@
 from __future__ import print_function
 
 import os
-import six
 import pickle
-
 import warnings
+
+import six
 from paddle.fluid import core
-from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
+from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
+from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import FunctionSpec, ProgramTranslator
+from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
-from paddle.fluid.framework import Program, Block, Variable, ParamBase, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
+from paddle.fluid.framework import Block, ParamBase, Program, Variable
+from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dygraph_tracer
+from paddle.fluid.framework import dygraph_only, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.dygraph.io import TranslatedLayer, VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
 
 __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
@@ -43,10 +47,13 @@ def create_program_from_desc(program_desc):
 def _extract_vars(inputs, result_list):
     if isinstance(inputs, Variable):
         result_list.append(inputs)
-
-    if isinstance(inputs, (list, tuple)):
+    elif isinstance(inputs, (list, tuple)):
         for var in inputs:
             _extract_vars(var, result_list)
+    else:
+        raise TypeError(
+            "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received {}.".
+            format(type(inputs)))
 
 
 def extract_vars(inputs):
@@ -163,7 +170,25 @@ def _declarative_(dygraph_func):
                 "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
-        return program_translator.get_output(dygraph_func, *args, **kwargs)
+        try:
+            return program_translator.get_output(dygraph_func, *args, **kwargs)
+        except Exception as e:
+            error_data = getattr(e, ERROR_DATA, None)
+            if error_data:
+                new_exception = error_data.create_exception()
+                if six.PY3:
+                    # NOTE(liym27):
+                    # 1. Why `raise new_exception from None`?
+                    #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
+                    #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
+                    #   caught exception.
+                    # 2. Use exec to bypass syntax error checking in Python 2.
+
+                    six.exec_("raise new_exception from None")
+                else:
+                    raise new_exception
+            else:
+                raise
 
     return __impl__
 
@@ -653,8 +678,9 @@ def save(layer, model_path, input_spec=None, configs=None):
     """
 
     def get_inout_spec(all_vars, target_vars, return_name=False):
-        valid_vars = [var for var in all_vars if isinstance(var, Variable)]
+        result_list = []
         valid_var_dict = {}
+        valid_vars = [var for var in all_vars if isinstance(var, Variable)]
         for var in valid_vars:
             valid_var_dict[var.name] = var
         if target_vars:
@@ -663,23 +689,23 @@ def save(layer, model_path, input_spec=None, configs=None):
                 if var.name not in valid_var_dict:
                     raise RuntimeError(
                         "The variable to feed/fetch are not exist.")
-                target_vars[i] = valid_var_dict[var.name]
+                result_list.append(valid_var_dict[var.name])
         else:
-            target_vars = valid_vars
+            result_list = valid_vars
         if return_name:
-            target_vars = [var.name for var in target_vars]
+            result_list = [var.name for var in result_list]
 
-        return target_vars
+        return result_list
 
     # 1. input check
     prog_translator = ProgramTranslator()
     if not prog_translator.enable:
         raise RuntimeError(
-            "The paddle.imperative.jit.save doesn't work when setting ProgramTranslator.enable=False."
+            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable=False."
         )
     if not isinstance(layer, Layer):
         raise TypeError(
-            "The input layer of paddle.imperative.jit.save should be 'Layer', but received layer type is %s."
+            "The input layer of paddle.jit.save should be 'Layer', but received layer type is %s."
             % type(layer))
 
     if configs is None:
@@ -702,18 +728,27 @@ def save(layer, model_path, input_spec=None, configs=None):
     layer_func = FunctionSpec(type(layer).forward, [layer], {})
     concrete_program, _ = prog_cache.get_program(layer_func)
 
+    # NOTE: we maintain the mapping of variable name to
+    # structured name, the buffer variable (non-persistable)
+    # saved to inference program may not need by dygraph Layer, 
+    # we only record the state_dict variable's structured name
+    state_names_dict = dict()
+    for structured_name, var in layer.state_dict().items():
+        state_names_dict[var.name] = structured_name
+
     # 3. share parameters from Layer to scope & record var info
     scope = core.Scope()
-    state_dict = layer.state_dict()
     extra_var_info = dict()
-    for structured_name, param_or_buffer in state_dict.items():
+    for param_or_buffer in concrete_program.parameters:
         # share to scope
         param_or_buffer_tensor = scope.var(param_or_buffer.name).get_tensor()
         src_tensor = param_or_buffer.value().get_tensor()
         param_or_buffer_tensor._share_data_with(src_tensor)
         # record var info
         extra_info_dict = dict()
-        extra_info_dict['structured_name'] = structured_name
+        if param_or_buffer.name in state_names_dict:
+            extra_info_dict['structured_name'] = state_names_dict[
+                param_or_buffer.name]
         extra_info_dict['stop_gradient'] = param_or_buffer.stop_gradient
         if isinstance(param_or_buffer, ParamBase):
             extra_info_dict['trainable'] = param_or_buffer.trainable
@@ -1062,12 +1097,13 @@ class TracedLayer(object):
 
         Args:
             layer (dygraph.Layer): the layer object to be traced.
-            inputs (list(Variable)): the input variables of the layer object.
+            inputs (list(Tensor)|tuple(Tensor)|Tensor): the input tensors of
+                the layer object.
 
         Returns:
             tuple: A tuple of 2 items, whose the first item is the output of
-            :code:`layer(*inputs)` , and the second item is the created
-            TracedLayer object.
+                :code:`layer(*inputs)` , and the second item is the created
+                TracedLayer object.
 
         Examples:
             .. code-block:: python:
@@ -1099,6 +1135,10 @@ class TracedLayer(object):
                     # save the static graph model for inference
                     static_layer.save_inference_model(dirname='./saved_infer_model')
         """
+        assert isinstance(
+            layer, Layer
+        ), "The type of 'layer' in fluid.dygraph.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received {}.".format(
+            type(layer))
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)
         traced = TracedLayer(prog, parameters, feed, fetch)
         return outs, traced
@@ -1148,6 +1188,14 @@ class TracedLayer(object):
                     out_static_graph = static_layer([in_var])
         """
         assert self._compiled_program is None, "Cannot set strategy after run"
+        assert isinstance(
+            build_strategy, (type(None), BuildStrategy)
+        ), "The type of 'build_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received {}.".format(
+            type(build_strategy))
+        assert isinstance(
+            exec_strategy, (type(None), ExecutionStrategy)
+        ), "The type of 'exec_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received {}.".format(
+            type(exec_strategy))
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
 
@@ -1238,6 +1286,21 @@ class TracedLayer(object):
                 fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
                 print(fetch.shape) # (2, 10)
         """
+        check_type(dirname, "dirname", str,
+                   "fluid.dygraph.jit.TracedLayer.save_inference_model")
+        check_type(feed, "feed", (type(None), list),
+                   "fluid.dygraph.jit.TracedLayer.save_inference_model")
+        if isinstance(feed, list):
+            for f in feed:
+                check_type(f, "each element of feed", int,
+                           "fluid.dygraph.jit.TracedLayer.save_inference_model")
+        check_type(fetch, "fetch", (type(None), list),
+                   "fluid.dygraph.jit.TracedLayer.save_inference_model")
+        if isinstance(fetch, list):
+            for f in fetch:
+                check_type(f, "each element of fetch", int,
+                           "fluid.dygraph.jit.TracedLayer.save_inference_model")
+
         from paddle.fluid.io import save_inference_model
 
         def get_feed_fetch(all_vars, partial_vars):

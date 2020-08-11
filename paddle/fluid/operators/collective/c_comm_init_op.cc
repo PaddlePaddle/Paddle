@@ -52,10 +52,12 @@ class CCommInitOp : public framework::OperatorBase {
     int nranks = Attr<int>("nranks");
     int rank_id = Attr<int>("rank");
     int rid = Attr<int>("ring_id");
-
+    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    if (Attr<int>("device_id") >= 0) {
+      device_id = Attr<int>("device_id");
+    }
     platform::NCCLCommContext::Instance().CreateNCCLComm(
-        nccl_id, nranks, rank_id,
-        BOOST_GET_CONST(platform::CUDAPlace, place).device, rid);
+        nccl_id, nranks, rank_id, device_id, rid);
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif
@@ -74,6 +76,11 @@ Initialize collective communicatoin context within this trainer
     AddAttr<int>("nranks", "(int) The number of ranks of distributed trainers");
     AddAttr<int>("rank",
                  "(int) The rank of the trainer in distributed training.");
+    AddAttr<int>("device_id",
+                 "(int) The deivce_id on which to initialize the communicator."
+                 "Now, you only have to set this attr manually for pipeline "
+                 "training. Otherwise, make it as default.")
+        .SetDefault(-1);
     AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
   }

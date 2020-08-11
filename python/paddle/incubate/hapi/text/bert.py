@@ -14,7 +14,8 @@
 
 from paddle.incubate.hapi.model import Model
 
-from .model_utils import PreTrainedModel
+# from .model_utils import PreTrainedModel
+from paddle.incubate.hapi.text.model_utils import PreTrainedModel
 
 
 class BertModel(PreTrainedModel):
@@ -22,4 +23,7 @@ class BertModel(PreTrainedModel):
 
 
 class BertForSequenceClassification(PreTrainedModel):
+    """
+    Bert class, which is used to complete sequence classification.
+    """
     pass

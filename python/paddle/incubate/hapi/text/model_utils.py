@@ -24,11 +24,15 @@ from paddle.dataset.common import DATA_HOME
 from paddle.incubate.hapi.download import get_path_from_url
 from paddle.incubate.hapi.model import Model
 
-from .utils import InitTrackerMeta
-
+# from .utils import InitTrackerMeta
+from paddle.incubate.hapi.text.utils import InitTrackerMeta
 
 @six.add_metaclass(InitTrackerMeta)
 class PreTrainedModel(Model):
+    """
+    The base class of the pre-training model, which provides the interface for 
+    loading and saving models used in the pre-training.
+    """
     model_config_file = "model_config.json"
     pretrained_init_configuration = {}
     # TODO: more flexible resource handle, namedtuple with fileds as:
@@ -40,6 +44,16 @@ class PreTrainedModel(Model):
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path, *init_inputs,
                         **kwargs):
+        """
+        Load model from pre-trained model.
+
+        Args:
+            pretrained_model_name_or_path: A name or a path of pre-trained model.
+            *init_inputs: he additional init inputs.
+            **kwargs: The Additional inputs.
+        Returns:
+            PreTrainedModel
+        """
         pretrained_models = list(cls.pretrained_init_configuration.keys())
         resource_files = {}
         init_configuration = {}
@@ -96,6 +110,13 @@ class PreTrainedModel(Model):
         return model
 
     def save_pretrained(self, save_directory):
+        """
+        Save pre-trained model into files.
+        Args:
+            save_directory (str): The directory to save the pre-trained model.
+        Returns:
+            None
+        """
         assert os.path.isdir(
             save_directory
         ), "Saving directory ({}) should be a directory".format(save_directory)

@@ -30,24 +30,84 @@ from paddle.io import Dataset
 from paddle.incubate.hapi.download import get_path_from_url
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
-from .utils import InitTrackerMeta
+from paddle.incubate.hapi.text.utils import InitTrackerMeta
 
+# from .utils import InitTrackerMeta
 # __all__ = ['Stack', 'Pad', 'Tuple']  # batchify
 # __all__ += ['']  # dataset helper, sampler helper
 # __all__ += ['']  # transform
 
 
 class Stack(object):
+    """
+    Stack the input data samples to construct the batch.
+    The N input samples must have the same shape/length and will be stacked to construct a batch.
+
+    Args:
+        axis (int, optional): The axis in the result data along which the input data are stacked. Default: 0.
+        dtype (str|numpy.dtype, optional): The value type of the output. If it is set to None, the input data type is used. Default: None.
+
+    Example:
+        .. code-block:: python
+
+            from paddle.incubate.hapi.text.data_utils import Stack
+            # Stack multiple lists
+            a = [1, 2, 3, 4]
+            b = [4, 5, 6, 8]
+            c = [8, 9, 1, 2]
+            Stack()([a, b, c])
+            '''
+            [[1 2 3 4]
+             [4 5 6 8]
+             [8 9 1 2]]
+             '''
+    """
+
     def __init__(self, axis=0, dtype=None):
         self._dtype = dtype
 
     def __call__(self, data):
+        """
+        Batchify the input data
+
+        Args:
+            data (list): The input data samples.
+        Returns:
+            numpy.ndarray: Batch data.
+
+        """
         data = np.stack(data).astype(self._dtype) if self._dtype else np.stack(
             data)
         return data
 
 
 class Pad(object):
+    """
+    Return a callable that pads and stacks data.
+
+    Args:
+        pad_val (float|int, optional): The padding value. Default: 0.
+        axis (int, optional): The axis to pad the arrays. The arrays will be padded to the largest dimension at axis. For example, 
+            assume the input arrays have shape (10, 8, 5), (6, 8, 5), (3, 8, 5) and the axis is 0.Each input will be padded into 
+            (10, 8, 5) and then stacked to form the final output, which has shape（3, 10, 8, 5). Default: 0.
+        ret_length (int, optional): Length of the output. Default: None.
+        dtype (str|numpy.dtype, optional): The value type of the output. If it is set to None, the input data type is used. Default: None.
+
+    Example:
+        .. code-block:: python
+            from paddle.incubate.hapi.text.data_utils import Pad
+            # Inputs are multiple lists
+            a = [1, 2, 3, 4]
+            b = [4, 5, 6]
+            c = [8, 2]
+            Pad(pad_val=0)([a, b, c])
+            '''
+            [[1. 2. 3. 4.]
+                [4. 5. 6. 0.]
+                [8. 2. 0. 0.]]
+            '''
+     """
+
     def __init__(self, pad_val=0, axis=0, ret_length=None, dtype=None):
         self._pad_val = pad_val
         self._axis = axis
@@ -55,6 +115,20 @@ class Pad(object):
         self._dtype = dtype
 
     def __call__(self, data):
+        """
+        Batchify the input data.
+        The input can be list of numpy.ndarray, list of numbers. 
+
+        The arrays will be padded to the largest dimension at axis and then stacked to form the final output. 
+        In addition, the function will output the original dimensions at the axis if ret_length is not None.
+
+        Args:
+            data (list(numpy.ndarray)|list(list)): List of samples to pad and stack.
+
+        Returns:
+            numpy.ndarray: Batch data, data in the minibatch. Shape is (N, …)
+            numpy.ndarray (optional): Includes original length and output length. This will only be returned in ret_length is not None.
+        """
         arrs = [np.asarray(ele) for ele in data]
         original_length = [ele.shape[self._axis] for ele in arrs]
         max_size = max(original_length)
@@ -81,6 +155,21 @@ class Pad(object):
 
 
 class Tuple(object):
+    """
+    Wrap multiple batchify functions together. The input functions will be applied to the corresponding input fields.
+    Each data sample should be a list or tuple containing multiple attributes. The i'th batchify function stored in 
+    Tuple will be applied on the i'th attribute. For example, each data sample is (nd_data, label). 
+
+    Args:
+        fn (list|tuple|callable): The batchify functions to wrap.
+        *args (tuple of callable): The additional batchify functions to wrap.
+
+    Example:
+        .. code-block:: python
+            from paddle.incubate.hapi.text.data_utils import Tuple, Pad, Stack
+            batchify_fn = Tuple(Pad(axis=0, pad_val=0), Stack())
+    """
+
     def __init__(self, fn, *args):
         if isinstance(fn, (list, tuple)):
             assert len(args) == 0, 'Input pattern not understood. The input of Tuple can be ' \
@@ -96,8 +185,17 @@ class Tuple(object):
                 i, str(type(ele_fn)))
 
     def __call__(self, data):
+        """
+        Batchify the input data.
+
+        Args:
+            data (list): The samples to batchfy. Each sample should contain N attributes.
+        Returns:
+            tuple: A tuple of length N. Contains the batchified result of each attribute in the input.
+        """
+
         assert len(data[0]) == len(self._fn),\
-            'The number of attributes in each data sample should contains' \
+            'The number of attributes in each data sample should contain' \
             ' {} elements'.format(len(self._fn))
         ret = []
         for i, ele_fn in enumerate(self._fn):
@@ -105,87 +203,141 @@ class Tuple(object):
         return tuple(ret)
 
 
-class WrapDataset(Dataset):
+class SimpleDataset(Dataset):
     """
-    decorates dataset with shuffle, sort and other transformations.
-    It acts as some specific sampler or iterator for dataset, and
+    Decorates dataset with shuffle, sort and other transformations.
+    It acts as some specific sampler or iterator for dataset.
+    Args:
+        dataset (list|Dataset): A dataset-like object. It can be a list or a subclass of Dataset.
     """
 
-    def __init__(self, dataset):
-        self.dataset = dataset
+    def __init__(self, data):
+        self.data = data
         self._transform_func = None
 
     def __iter__(self):
-        for idx in range(len(self.dataset)):
-            yield self.dataset[idx]
+        for idx in range(len(self.data)):
+            yield self.data[idx]
 
     def __getitem__(self, idx):
-        return self._transform_func(self.dataset[
-            idx]) if self._transform_func else self.dataset[idx]
+        return self._transform_func(self.data[
+            idx]) if self._transform_func else self.data[idx]
 
     def __len__(self):
-        return len(self.dataset)
+        return len(self.data)
 
     def shuffle(self, buffer_size=-1, seed=None):
+        """
+        Shuffle the dataset according to the given buffer size and random seed.
+
+        Args:
+            buffer_size (int): Buffer size for shuffle. if buffer_size < 0, buffer_size is the length of the dataset. Default: -1. 
+            seed (int): Seed for the random. Default: None.
+        Returns:
+            SimpleDataset: A new object.
+        """
         if seed is not None:
             np_rand_state_bak = np.random.get_state()
             np.random.seed(seed)
-        buffer_size = len(self.dataset) if buffer_size < 0 else buffer_size
-        for i in range(0, len(self.dataset), buffer_size):
+        buffer_size = len(self.data) if buffer_size < 0 else buffer_size
+        shuffled_data = []
+        for i in range(0, len(self.data), buffer_size):
             buf = list(range(i, i + buffer_size))
             np.random.shuffle(buf)
-            self.dataset[i:i + buffer_size] = [self.dataset[idx] for idx in buf]
+            shuffled_data.extend([self.data[idx] for idx in buf])
         if seed is not None:
             np.random.set_state(np_rand_state_bak)
-        return self
+        return SimpleDataset(shuffled_data)
 
     def sort(self, cmp=None, key=None, reverse=False, buffer_size=-1):
-        buffer_size = len(self.dataset) if buffer_size < 0 else buffer_size
-        for i in range(0, len(self.dataset), buffer_size):
-            self.dataset[i:i + buffer_size] = sorted(
-                range(i, i + buffer_size),
-                cmp=lambda x, y: cmp(self.dataset[x], self.dataset[y]) if cmp else None,
-                key=lambda x: key(self.dataset[x]) if key else None,
-                reverse=reverse)
+        """
+        Sort the dataset according to the given callable cmp or key.
+        Args:
+            cmp (callable): The function of comparison. Default: None. 
+            key (callable): Return elements to be compared. Default: None.
+            reverse (bool): If True, it means sorted results are in descending order, and False means in ascending order. 
+                Default: False.
+            buffer_size (int): Buffer size for sort. If buffer_size < 0 or buffer_size is more than the length of the data, 
+                buffer_size will be set to the length of the data. Default: -1.
+        Returns:
+            SimpleDataset: A new object.
+        """
+        sorted_data = []
+        buffer_size = len(self.data) if buffer_size < 0 else buffer_size
+        if key:
+            key = lambda x, y: cmp(self.data[x], self.data[y])
+        elif cmp:
+            key = functools.cmp_to_key(
+                lambda x, y: cmp(self.data[x], self.data[y]))
+        for i in range(0, len(self.data), buffer_size):
+            sorted_data.extend(
+                sorted(
+                    range(i, i + buffer_size), key=key, reverse=reverse))
         return self
 
     def filter(self, predicate_func):
-        self.dataset = [
-            self.dataset[idx] for idx in range(len(self.dataset))
-            if predicate_func(self.dataset[idx])
+        """
+        Filter the dataset with predicate_func.
+
+        Args:
+            predicate_func (callable): Return whether the data can be left in dataset.
+        Returns:
+            SimpleDataset: A new object.
+        """
+        filted_data = [
+            self.data[idx] for idx in range(len(self.data))
+            if predicate_func(self.data[idx])
         ]
-        return self
+        return SimpleDataset(filted_data)
 
     def apply(self, transform_func, lazy=False):
         """
-        If `lazy`, transformations would be delayed and performed when calling
-        `__getitem__`, which would run multi-times for each sample but can take
-        advantage of DataLoader multi-processing. `transform_func` receives single
-        sample as argument rather than dataset.
+        Transformations would be performed to dataset. It includes `Shuffle`, `sort`, `fit` and `shard`.
+
+        Args:
+            transform_func (callable): Transformations to be performed. It receives single
+                sample as argument rather than dataset.
+            lazy (bool): If True, transformations would be delayed and performed when calling
+                `__getitem__`, which would run multi-times for each sample but can take
+                advantage of DataLoader multi-processing. Defalt: False.
+        Returns:
+            SimpleDataset: A new object.
         """
         if lazy:
             self._transform_func = transform_func
         else:
-            self.dataset = [
-                transform_func(self.dataset[idx])
-                for idx in range(len(self.dataset))
+            applied_data = [
+                transform_func(self.data[idx])
+                for idx in range(len(self.data))
             ]
+            return SimpleDataset(applied_data)
         return self
 
     def shard(self, num_replicas=None, rank=None):
+        """
+        Operates slice using multi GPU.
+        Args:
+            num_replicas (int, optional): The number of training process, and is also the number of GPU cards used in training. 
+                Default: None.
+            rank (int, optional): Number of training process. Equals to the value of the environment variable PADDLE_TRAINER_ID.
+                Default: None.
+        Returns:
+            SimpleDataset: A new object.
+        """
         if num_replicas is None:
             num_replicas = ParallelEnv().nranks
         if rank is None:
             rank = ParallelEnv().local_rank
-        num_samples = int(math.ceil(len(self.dataset) * 1.0 / num_replicas))
+        num_samples = int(math.ceil(len(self.data) * 1.0 / num_replicas))
         total_size = num_samples * num_replicas
         # add extra samples to make it evenly divisible
-        self.dataset = [
-            self.dataset[idx]
-            for idx in range(len(self.dataset)) + range(total_size - len(
-                self.dataset)) if idx % num_replicas == rank
+        sharded_data = [
+            self.data[idx]
+            for idx in list(range(len(self.data))) + list(
+                range(total_size - len(self.data)))
+            if idx % num_replicas == rank
         ]
-        return self
+        return SimpleDataset(sharded_data)
 
     # def __getattribute__(self, name):
     #     return super().__getattribute__(name)
@@ -198,7 +350,7 @@ class SamplerHelper(object):
     """
     Sampler Factory. chain of sampling strategies
 
-    Every Sampler subclass has to provide an :meth:`__iter__` method, providing a
+    Every SamplerHelper subclass has to provide an :meth:`__iter__` method, providing a
     way to iterate over indices of dataset elements, and a :meth:`__len__` method
     that returns the length of the returned iterators.
 
@@ -209,6 +361,9 @@ class SamplerHelper(object):
     .. note:: The :meth:`__len__` method isn't strictly required by
               :class:`DataLoader`, but is expected in any
               calculation involving the length of a :class:`DataLoader`.
+    Args:
+        dataset (collections.Iterable|Dataset): Input dataset for SamplerHelper.
+        iterable (collections.Iterable|callable, optional): Iterator fof dataset. Default: None.
     """
 
     # chain sampler
@@ -241,6 +396,11 @@ class SamplerHelper(object):
 
     @property
     def length(self):
+        """
+        Returns:
+            the length of the SamplerHelper.
+        """
+
         # since `len()` only produce integer, use length property to get None
         # for uncertain length. samplers can set length if necessary.
         try:
@@ -254,6 +414,14 @@ class SamplerHelper(object):
         self._length = length
 
     def apply(self, fn):
+        """
+        Transformations would be performed. It includes `Shuffle`, `sort`, `fit` and `shard`.
+        Args:
+            fn (callable): Transformations to be performed. It returns transformed iterable (and data_source).
+
+        Returns:
+            SamplerHelper: A new transformed object.
+        """
         rs = fn(self)
         if isinstance(rs, (list, tuple)):
             iterable, data_source = rs
@@ -263,6 +431,15 @@ class SamplerHelper(object):
         return sampler
 
     def shuffle(self, buffer_size=-1, seed=None):
+        """
+        Shuffle the dataset according to the given buffer size and random seed.
+        Args:
+            buffer_size (int): Buffer size for shuffle. if buffer_size < 0 or more than the length of the dataset, 
+                buffer_size is the length of the dataset. Default: -1. 
+            seed (int, optional): Seed for the random. Default: None.
+        Returns:
+            SamplerHelper
+         """
         if seed is not None:
             random_generator = np.random.RandomState(seed)
         else:  # use the global random generator
@@ -285,6 +462,19 @@ class SamplerHelper(object):
         return type(self)(self.data_source, _impl)
 
     def sort(self, cmp=None, key=None, reverse=False, buffer_size=-1):
+        """
+        Sort samples according to given callable cmp or key.
+
+        Args:
+            cmp (callable): The funcation of comparison. Default: None. 
+            key (callable): Return element to be compared. Default: None.
+            reverse (bool): If True, it means in descending order, and False means in ascending order. Default: False.
+            buffer_size (int): Buffer size for sort. If buffer_size < 0 or buffer_size is more than the length of the data, 
+                buffer_size will be set to the length of the data. Default: -1.
+        Returns:
+            SamplerHelper
+        """
+
         def _impl():
             data_source = self.data_source
             buf = []
@@ -318,6 +508,14 @@ class SamplerHelper(object):
               batch_fn=None):
         """
         To produce a BatchSampler.
+
+        Agrs:
+            batch_size (int): Batch size.
+            drop_last (bool): Whether to drop the last mini batch. Default: False.
+            batch_size_fn (callable, optional): Return the size of mini batch so far. Default: None.
+            batch_fn (callable, optional): Transformations to be performed. Default: None.
+        Returns:
+            SamplerHelper
         """
         if batch_size_fn is None:
             batch_size_fn = lambda new, count, sofar, data_source: count
@@ -352,6 +550,17 @@ class SamplerHelper(object):
         return sampler
 
     def shard(self, num_replicas=None, rank=None):
+        """
+        Operates slice using multi GPU.
+
+        Args:
+            num_replicas (int, optional): The number of training process, and is also the number of GPU cards used in training. 
+                Default: None.
+            rank (int, optional): Number of training process. Equal to the value of the environment variable PADDLE_TRAINER_ID.
+                Default: None.
+        Returns:
+            SamplerHelper
+        """
         if num_replicas is None:
             num_replicas = ParallelEnv().nranks
         if rank is None:
@@ -376,6 +585,9 @@ class SamplerHelper(object):
         """
         Produce a sampler with a `listiterator` when calling `iter`. Since `list`
         would fetch all contents at time, thus it can get accurate length.
+
+        Returns:
+            SamplerHelper
         """
 
         def _impl(sampler):
@@ -610,6 +822,10 @@ class Vocab(object):
 
 @six.add_metaclass(InitTrackerMeta)
 class PreTrainedTokenizer(object):
+    """
+    The base class of the BertTokenizer, which provides the interface for 
+    loading and saving the tokenzier used in the pre-raining.
+    """
     tokenizer_config_file = "tokenizer_config.json"
     pretrained_init_configuration = {}
     resource_files_names = {}  # keys are arguments of __init__
@@ -634,19 +850,40 @@ class PreTrainedTokenizer(object):
                 setattr(self, identifier, token)
 
     def convert_tokens_to_ids(self, tokens):
-        """Converts a sequence of tokens into ids using the vocab."""
+        """
+        Converts a sequence of tokens into ids using the vocab.
+        Args：
+            tokens (list(str)): List of tokens.
+        Returns:
+            list: Converted id list.
+
+        """
         return [self.vocab[token] for token in tokens]
 
     def convert_tokens_to_string(self, tokens):
-        """ Converts a sequence of tokens (string) in a single string.
-            The most simple way to do it is ' '.join(self.convert_ids_to_tokens(token_ids))
-            but we often want to remove sub-word tokenization artifacts at the same time.
+        """ 
+        Converts a sequence of tokens (string) in a single string.
+        The most simple way to do it is ' '.join(self.convert_ids_to_tokens(token_ids))
+        but we often want to remove sub-word tokenization artifacts at the same time.
+        Args:
+            tokens (list(str)): List of tokens.
+        Returns:
+            str: Converted string.
         """
         return " ".join(tokens)
 
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path, *init_inputs,
                         **kwargs):
+        """
+        Load tokenizer from pretrained model.
+        Args:
+            pretrained_model_name_or_path (str): A name or a path of pre-trained model.
+            *init_inputs (tuple): The additional init inputs.
+            **kwargs (dict): The Additional inputs.
+        Returns:
+            PreTrainedTokenizer
+        """
         pretrained_models = list(cls.pretrained_init_configuration.keys())
         vocab_files = {}
         init_configuration = {}
@@ -707,6 +944,11 @@ class PreTrainedTokenizer(object):
         return tokenizer
 
     def save_pretrained(self, save_directory):
+        """
+        Save tokenizer config and resources to files.
+        Args:
+            save_directory (str): Directory to store token configuration file and vocab.
+        """
         assert os.path.isdir(
             save_directory
         ), "Saving directory ({}) should be a directory".format(save_directory)
@@ -719,6 +961,11 @@ class PreTrainedTokenizer(object):
         self.save_resources(save_directory)
 
     def save_resources(self, save_directory):
+        """
+        Save resources to a file.
+        Args:
+            save_directory (str): Directory to store resources.
+        """
         assert hasattr(self, 'vocab') and len(
             self.resource_files_names) == 1, "Must overwrite `save_resources`"
         file_name = os.path.join(save_directory,
@@ -727,6 +974,15 @@ class PreTrainedTokenizer(object):
 
     @staticmethod
     def load_vocabulary(filename, unk_token=None, **kwargs):
+        """
+        Loads a vocabulary file into a dictionary.
+        Args:
+            filename (str): File path to load.
+            unk_token (str, optional): UNK token. Default: None.
+            **kwargs (dict): The additional inputs for Vocab.from_dict.
+        Returns:
+            Vocab: vocab.
+        """
         token_to_idx = {}
         with io.open(filename, 'r', encoding='utf-8') as f:
             for index, line in enumerate(f):
@@ -737,6 +993,12 @@ class PreTrainedTokenizer(object):
 
     @staticmethod
     def save_vocabulary(filename, vocab):
+        """
+        Save all tokens to a vocabulary file.
+        Agrs:
+            filename (str): File path to be saved.
+            vocab (Vocab|dict): Vocab to be saved.
+        """
         if isinstance(vocab, Vocab):
             tokens = vocab.idx_to_token
         else:
@@ -747,7 +1009,13 @@ class PreTrainedTokenizer(object):
 
 
 def convert_to_unicode(text):
-    """Converts `text` to Unicode (if it's not already), assuming utf-8 input."""
+    """
+    Converts `text` to Unicode (if it's not already), assuming utf-8 input.
+    Args:
+        text (str|bytes): Text to be converted to unicode.
+    Returns: 
+        str: converted text.
+    """
     if six.PY3:
         if isinstance(text, str):
             return text
@@ -767,7 +1035,13 @@ def convert_to_unicode(text):
 
 
 def whitespace_tokenize(text):
-    """Runs basic whitespace cleaning and splitting on a peice of text."""
+    """
+    Runs basic whitespace cleaning and splitting on a peice of text.
+    Args:
+        text (str): Text to be tokened.
+    Returns:
+        list(str): Token list.
+    """
     text = text.strip()
     if not text:
         return []
@@ -776,7 +1050,9 @@ def whitespace_tokenize(text):
 
 
 def _is_whitespace(char):
-    """Checks whether `chars` is a whitespace character."""
+    """
+    Checks whether `chars` is a whitespace character.
+    """
     # \t, \n, and \r are technically contorl characters but we treat them
     # as whitespace since they are generally considered as such.
     if char == " " or char == "\t" or char == "\n" or char == "\r":
@@ -816,18 +1092,28 @@ def _is_punctuation(char):
 
 
 class BertBasicTokenizer(object):
-    """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
+    """
+    Runs basic tokenization (punctuation splitting, lower casing, etc.).
+
+    Args:
+        do_lower_case (bool): Whether to convert the input to lowercase. Default: True.
+    """
 
     def __init__(self, do_lower_case=True):
-        """Constructs a BasicTokenizer.
+        """Constructs a BasicTokenizer."""
 
-        Args:
-            do_lower_case: Whether to lower case the input.
-        """
         self.do_lower_case = do_lower_case
 
     def tokenize(self, text):
-        """Tokenizes a piece of text."""
+        """
+        Tokenizes a piece of text using basic tokenizer.
+
+        Args:
+            text (str): A piece of text.
+
+        Returns: 
+            list(str): A list of tokens.
+        """
         text = convert_to_unicode(text)
         text = self._clean_text(text)
 
@@ -851,7 +1137,9 @@ class BertBasicTokenizer(object):
         return output_tokens
 
     def _run_strip_accents(self, text):
-        """Strips accents from a piece of text."""
+        """
+        Strips accents from a piece of text.
+        """
         text = unicodedata.normalize("NFD", text)
         output = []
         for char in text:
@@ -862,7 +1150,9 @@ class BertBasicTokenizer(object):
         return "".join(output)
 
     def _run_split_on_punc(self, text):
-        """Splits punctuation on a piece of text."""
+        """
+        Splits punctuation on a piece of text.
+        """
         chars = list(text)
         i = 0
         start_new_word = True
@@ -882,7 +1172,9 @@ class BertBasicTokenizer(object):
         return ["".join(x) for x in output]
 
     def _tokenize_chinese_chars(self, text):
-        """Adds whitespace around any CJK character."""
+        """
+        Adds whitespace around any CJK character.
+        """
         output = []
         for char in text:
             cp = ord(char)
@@ -895,7 +1187,10 @@ class BertBasicTokenizer(object):
         return "".join(output)
 
     def _is_chinese_char(self, cp):
-        """Checks whether CP is the codepoint of a CJK character."""
+        """
+        Checks whether CP is the codepoint of a CJK character.
+        """
+
         # This defines a "chinese character" as anything in the CJK Unicode block:
         #     https://en.wikipedia.org/wiki/CJK_Unified_Ideographs_(Unicode_block)
         #
@@ -917,7 +1212,9 @@ class BertBasicTokenizer(object):
         return False
 
     def _clean_text(self, text):
-        """Performs invalid character removal and whitespace cleanup on text."""
+        """
+        Performs invalid character removal and whitespace cleanup on text.
+        """
         output = []
         for char in text:
             cp = ord(char)
@@ -931,7 +1228,14 @@ class BertBasicTokenizer(object):
 
 
 class WordpieceTokenizer(object):
-    """Runs WordPiece tokenization."""
+    """
+    Runs WordPiece tokenization.
+    Args:
+        vocab (Vocab): Vocab of the word piece tokenizer.
+        unk_token (str):  A specific token to replace all unkown tokens.
+        max_input_chars_per_word (int):  If a word's length is more than max_input_chars_per_word, it will be 
+            dealt as unknown word. Default: 100.
+    """
 
     def __init__(self, vocab, unk_token, max_input_chars_per_word=100):
         self.vocab = vocab
@@ -939,21 +1243,22 @@ class WordpieceTokenizer(object):
         self.max_input_chars_per_word = max_input_chars_per_word
 
     def tokenize(self, text):
-        """Tokenizes a piece of text into its word pieces.
+        """
+        Tokenizes a piece of text into its word pieces.
 
         This uses a greedy longest-match-first algorithm to perform tokenization
         using the given vocabulary.
 
-        For example:
-          input = "unaffable"
-          output = ["un", "##aff", "##able"]
-
         Args:
-          text: A single token or whitespace separated tokens. This should have
-            already been passed through `BasicTokenizer`.
+            text: A single token or whitespace separated tokens. This should have
+                already been passed through `BasicTokenizer`.
 
         Returns:
-          A list of wordpiece tokens.
+            list (str): A list of wordpiece tokens.
+
+        Example:
+            input = "unaffable"
+            output = ["un", "##aff", "##able"]
         """
 
         output_tokens = []
@@ -991,23 +1296,35 @@ class WordpieceTokenizer(object):
 
 
 class BertTokenizer(PreTrainedTokenizer):
+    """
+    Runs bert tokenization, including BertBasicTokenize and WordpieceTokenizer.
+    Args:
+        vocab_file (str): filename of the vocab
+        do_lower_case (bool): Whether to convert the input to lowercase. Default: True.
+        unk_token (str): A specific token for unkown words. Default: "[UNK]".
+        sep_token (str): A specific token for separator token . Default: "[SEP]".
+        pad_token (str): A specific token for padding. Default: "[PAD]".
+        cls_token (str): A specific token for cls. Default: "[CLS]".
+        mask_token (str): A specific token for mask. Default: "[MASK]".
+
+    """
     resource_files_names = {"vocab_file": "vocab.txt"}  # for save_pretrained
     pretrained_resource_files_map = {
         "vocab_file": {
             "bert-base-uncased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-uncased-vocab.txt",
             "bert-large-uncased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-large-uncased-vocab.txt",
             "bert-base-cased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-cased-vocab.txt",
             "bert-large-cased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-large-cased-vocab.txt",
             "bert-base-multilingual-uncased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-multilingual-uncased-vocab.txt",
             "bert-base-multilingual-cased":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-multilingual-cased-vocab.txt",
             "bert-base-chinese":
-            "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-vocab.txt",
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-chinese-vocab.txt",
         }
     }
     pretrained_init_configuration = {
@@ -1057,6 +1374,9 @@ class BertTokenizer(PreTrainedTokenizer):
 
     @property
     def vocab_size(self):
+        """
+        return size of the vocab.
+        """
         return len(self.vocab)
 
     def _tokenize(self, text):
@@ -1067,9 +1387,18 @@ class BertTokenizer(PreTrainedTokenizer):
         return split_tokens
 
     def __call__(self, text):
+        """
+        Return list of tokens of text.
+        """
         return self._tokenize(text)
 
     def convert_tokens_to_string(self, tokens):
-        """ Converts a sequence of tokens (string) in a single string. """
+        """
+        Converts a sequence of tokens (string) in a single string.
+        Args:
+            tokens (list): Tokens to be converted.
+        Returns:
+            str: Converted string from tokens.
+        """
         out_string = " ".join(tokens).replace(" ##", "").strip()
-        return out_string
+        return out_string  # 

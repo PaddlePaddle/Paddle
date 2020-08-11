@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..meta_optimizers import RecomputeOptimizer
-from ..meta_optimizers import GraphExecutionOptimizer
-
 __all__ = ["MetaOptimizerFactory"]
 
-meta_optimizer_names = ["RecomputeOptimizer", "GraphExecutionOptimizer"]
+from ..meta_optimizers import *
+
+meta_optimizer_names = list(
+    filter(lambda name: name.endswith("Optimizer"), dir()))
 
 
 class MetaOptimizerFactory(object):
