@@ -189,12 +189,12 @@ class Fleet(object):
         assert self._runtime_handle is not None
         self._runtime_handle._init_worker()
 
-    def init_server(self, model_dir=None):
+    def init_server(self, *args, **kwargs):
         """
         init server
         """
         assert self._runtime_handle is not None
-        self._runtime_handle._init_server()
+        self._runtime_handle._init_server(*args, **kwargs)
 
     def run_server(self):
         """
@@ -286,11 +286,12 @@ class Fleet(object):
         context["loss"] = loss
         if startup_program == None:
             self.origin_startup_program = \
-                paddle.default_startup_program().clone(for_test=False)
-            startup_program = paddle.default_startup_program()
+                paddle.static.default_startup_program().clone(for_test=False)
+            startup_program = paddle.static.default_startup_program()
         else:
             self.origin_startup_program = \
                 startup_program.clone(for_test=False)
+
         context["origin_startup_program"] = startup_program
         context["role_maker"] = self._role_maker
 
@@ -329,12 +330,19 @@ class Fleet(object):
 
         optimize_ops = []
         params_grads = []
+
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss,
                 startup_program=startup_program,
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set)
+
+            default_program = paddle.static.default_main_program()
+
+            if id(default_program) != id(loss.block.program):
+                paddle.fluid.framework.switch_main_program(loss.block.program)
+
         else:
             optimize_ops, params_grads = self.user_defined_optimizer.minimize(
                 loss,
@@ -344,6 +352,7 @@ class Fleet(object):
 
         context["program_optimize_ops"] = optimize_ops
         context["program_params_grads"] = params_grads
+
         if graph_optimizer:
             optimize_ops, params_grads = graph_optimizer.minimize(
                 loss,

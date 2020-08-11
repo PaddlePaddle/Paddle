@@ -190,7 +190,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                  parameter_list=None,
                  no_grad_set=None):
         if startup_program == None:
-            startup_program = paddle.default_startup_program()
+            startup_program = paddle.static.default_startup_program()
         compiled_program = self._try_to_compile(startup_program,
                                                 loss.block.program, loss)
         loss.block.program._graph = compiled_program

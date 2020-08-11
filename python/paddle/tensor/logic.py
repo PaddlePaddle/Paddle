@@ -71,12 +71,11 @@ def equal_all(x, y, name=None):
 
           import numpy as np
           import paddle
-          import paddle.imperative as imperative
 
-          paddle.enable_imperative()
-          x = imperative.to_variable(np.array([1, 2, 3]))
-          y = imperative.to_variable(np.array([1, 2, 3]))
-          z = imperative.to_variable(np.array([1, 4, 3]))
+          paddle.disable_static()
+          x = paddle.to_variable(np.array([1, 2, 3]))
+          y = paddle.to_variable(np.array([1, 2, 3]))
+          z = paddle.to_variable(np.array([1, 4, 3]))
           result1 = paddle.equal_all(x, y)
           print(result1.numpy()) # result1 = [True ]
           result2 = paddle.equal_all(x, z)
@@ -201,11 +200,10 @@ def equal(x, y, name=None):
 
           import numpy as np
           import paddle
-          import paddle.imperative as imperative
 
-          paddle.enable_imperative()
-          x = imperative.to_variable(np.array([1, 2, 3]))
-          y = imperative.to_variable(np.array([1, 3, 2]))
+          paddle.disable_static()
+          x = paddle.to_variable(np.array([1, 2, 3]))
+          y = paddle.to_variable(np.array([1, 3, 2]))
           result1 = paddle.equal(x, y)
           print(result1.numpy())  # result1 = [True False False]
     """
@@ -234,11 +232,10 @@ def greater_equal(x, y, name=None):
         .. code-block:: python
             import numpy as np
             import paddle
-            import paddle.imperative as imperative
 
-            paddle.enable_imperative()
-            x = imperative.to_variable(np.array([1, 2, 3]))
-            y = imperative.to_variable(np.array([1, 3, 2]))
+            paddle.disable_static()
+            x = paddle.to_variable(np.array([1, 2, 3]))
+            y = paddle.to_variable(np.array([1, 3, 2]))
             result1 = paddle.greater_equal(x, y)
             print(result1.numpy())  # result1 = [True False True]
     """
@@ -267,11 +264,10 @@ def greater_than(x, y, name=None):
         .. code-block:: python
             import numpy as np
             import paddle
-            import paddle.imperative as imperative
 
-            paddle.enable_imperative()
-            x = imperative.to_variable(np.array([1, 2, 3]))
-            y = imperative.to_variable(np.array([1, 3, 2]))
+            paddle.disable_static()
+            x = paddle.to_variable(np.array([1, 2, 3]))
+            y = paddle.to_variable(np.array([1, 3, 2]))
             result1 = paddle.greater_than(x, y)
             print(result1.numpy())  # result1 = [False False True]
     """
@@ -301,11 +297,10 @@ def less_equal(x, y, name=None):
         .. code-block:: python
             import numpy as np
             import paddle
-            import paddle.imperative as imperative
 
-            paddle.enable_imperative()
-            x = imperative.to_variable(np.array([1, 2, 3]))
-            y = imperative.to_variable(np.array([1, 3, 2]))
+            paddle.disable_static()
+            x = paddle.to_variable(np.array([1, 2, 3]))
+            y = paddle.to_variable(np.array([1, 3, 2]))
             result1 = paddle.less_equal(x, y)
             print(result1.numpy())  # result1 = [True True False]
     """
@@ -335,11 +330,10 @@ def less_than(x, y, name=None):
         .. code-block:: python
             import numpy as np
             import paddle
-            import paddle.imperative as imperative
 
-            paddle.enable_imperative()
-            x = imperative.to_variable(np.array([1, 2, 3]))
-            y = imperative.to_variable(np.array([1, 3, 2]))
+            paddle.disable_static()
+            x = paddle.to_variable(np.array([1, 2, 3]))
+            y = paddle.to_variable(np.array([1, 3, 2]))
             result1 = paddle.less_than(x, y)
             print(result1.numpy())  # result1 = [False True False]
     """
@@ -369,11 +363,10 @@ def not_equal(x, y, name=None):
         .. code-block:: python
             import numpy as np
             import paddle
-            import paddle.imperative as imperative
 
-            paddle.enable_imperative()
-            x = imperative.to_variable(np.array([1, 2, 3]))
-            y = imperative.to_variable(np.array([1, 3, 2]))
+            paddle.disable_static()
+            x = paddle.to_variable(np.array([1, 2, 3]))
+            y = paddle.to_variable(np.array([1, 3, 2]))
             result1 = paddle.not_equal(x, y)
             print(result1.numpy())  # result1 = [False True True]
     """

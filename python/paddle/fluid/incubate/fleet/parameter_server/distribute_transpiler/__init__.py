@@ -579,7 +579,7 @@ class FleetTranspiler(Fleet):
                 block.append_op(
                     type='recv_save',
                     attrs={
-                        "trainer_id": self._role_maker.worker_id(),
+                        "trainer_id": self._role_maker.worker_index(),
                         "shape": var.shape,
                         "slice_shapes":
                         [",".join([str(i) for i in var.shape])],
