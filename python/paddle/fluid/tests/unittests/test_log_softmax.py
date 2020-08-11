@@ -32,7 +32,7 @@ def ref_log_softmax_grad(x, axis):
         axis += len(x.shape)
     out = np.apply_along_axis(ref_log_softmax, axis, x)
     axis_dim = x.shape[axis]
-    dout = np.full(x.shape, fill_value=1 / x.size, dtype='float64')
+    dout = np.full_like(x, fill_value=1 / x.size)
     dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
         axis_dim, axis=axis)
     return dx
@@ -87,19 +87,21 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
     def check_api(self, axis=-1):
         ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
 
-        main_program = paddle.Program()
         logsoftmax = paddle.nn.LogSoftmax(axis)
-        with paddle.program_guard(main_program):
+        # test static api
+        with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data(name='x', shape=self.x_shape)
             y = logsoftmax(x)
-        exe = paddle.Executor(self.place)
-        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
+            exe = paddle.static.Executor(self.place)
+            out = exe.run(feed={'x': self.x}, fetch_list=[y])
         self.assertTrue(np.allclose(out[0], ref_out))
 
-        with paddle.imperative.guard(self.place):
-            x = paddle.imperative.to_variable(self.x)
-            y = logsoftmax(x)
+        # test dygrapg api
+        paddle.disable_static()
+        x = paddle.to_variable(self.x)
+        y = logsoftmax(x)
         self.assertTrue(np.allclose(y.numpy(), ref_out))
+        paddle.enable_static()
 
     def test_check_api(self):
         for axis in [-1, 1]:
@@ -115,19 +117,22 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def check_api(self, axis=-1, dtype=None):
-        ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
-        main_program = paddle.Program()
-        with paddle.program_guard(main_program):
+        x = self.x.copy()
+        if dtype is not None:
+            x = x.astype(dtype)
+        ref_out = np.apply_along_axis(ref_log_softmax, axis, x)
+        with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data(name='x', shape=self.x_shape)
             y = F.log_softmax(x, axis, dtype)
-        exe = paddle.Executor(self.place)
-        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
+            exe = paddle.static.Executor(self.place)
+            out = exe.run(feed={'x': self.x}, fetch_list=[y])
         self.assertTrue(np.allclose(out[0], ref_out))
 
-        with paddle.imperative.guard(self.place):
-            x = paddle.imperative.to_variable(self.x)
-            y = F.log_softmax(x, axis, dtype)
-        self.assertTrue(np.allclose(y.numpy(), ref_out))
+        paddle.disable_static()
+        x = paddle.to_variable(self.x)
+        y = F.log_softmax(x, axis, dtype)
+        self.assertTrue(np.allclose(y.numpy(), ref_out), True)
+        paddle.enable_static()
 
     def test_check_api(self):
         for axis in [-1, 1]:
@@ -135,7 +140,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
         self.check_api(-1, 'float64')
 
     def test_errors(self):
-        with paddle.program_guard(paddle.Program(), paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data(name='X1', shape=[100], dtype='int32')
             self.assertRaises(TypeError, F.log_softmax, x)
 

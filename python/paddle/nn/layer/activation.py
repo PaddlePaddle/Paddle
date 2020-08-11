@@ -232,8 +232,6 @@ class LeakyReLU(layers.Layer):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
-
         lrelu = paddle.nn.LeakyReLU()
         x = paddle.imperative.to_variable(np.array([-2, 0, 1], 'float32'))
         out = lrelu(x)  # [-0.02, 0, 1]
@@ -320,7 +318,7 @@ class LogSoftmax(layers.Layer):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         x = np.array([[[-2.0, 3.0, -4.0, 5.0],
                         [3.0, -4.0, 5.0, -6.0],
@@ -329,7 +327,7 @@ class LogSoftmax(layers.Layer):
                         [-5.0, 6.0, 7.0, -8.0],
                         [6.0, 7.0, 8.0, 9.0]]], 'float32')
         log_softnmax = paddle.nn.LogSoftmax()
-        x = paddle.imperative.to_variable(x)
+        x = paddle.to_variable(x)
         out = log_softnmax(x)
         # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
         #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]

@@ -401,8 +401,6 @@ def softmax(x, axis=-1, name=None):
         import paddle.nn.functional as F
         import numpy as np
 
-        paddle.enable_imperative()
-
         x = np.array([[[2.0, 3.0, 4.0, 5.0],
                        [3.0, 4.0, 5.0, 6.0],
                        [7.0, 8.0, 8.0, 9.0]],
@@ -457,7 +455,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
         import paddle.nn.functional as F
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         x = np.array([[[-2.0, 3.0, -4.0, 5.0],
                         [3.0, -4.0, 5.0, -6.0],
@@ -465,7 +463,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
                         [[1.0, -2.0, -3.0, 4.0],
                         [-5.0, 6.0, 7.0, -8.0],
                         [6.0, 7.0, 8.0, 9.0]]]).astype('float32')
-        x = paddle.imperative.to_variable(x)
+        x = paddle.to_variable(x)
         out1 = F.log_softmax(x)
         out2 = F.log_softmax(x, dtype='float64')
         # out1's data type is float32; out2's data type is float64
