@@ -14,23 +14,49 @@
 
 # TODO: import framework api under this directory 
 __all__ = [
-    'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
-    'BuildStrategy', 'CompiledProgram', 'default_main_program',
-    'default_startup_program', 'create_global_var', 'create_parameter', 'Print',
-    'py_func', 'ExecutionStrategy', 'name_scope', 'ParallelExecutor',
-    'ParamAttr', 'Program', 'program_guard', 'Variable', 'WeightNormParamAttr',
+    'create_global_var', 'create_parameter', 'ParamAttr', 'Variable',
     'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace'
+]
+
+__all__ += [
+    'BackwardStrategy', 'grad', 'LayerList', 'load', 'save', 'prepare_context',
+    'to_variable', 'no_grad', 'ParallelEnv', 'DataParallel'
+]
+
+__all__ += [
+    'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
+    'InverseTimeDecay', 'PolynomialDecay', 'CosineDecay'
 ]
 
 from . import random
 from .random import manual_seed
-from ..fluid.executor import Executor, global_scope, scope_guard
-from ..fluid.backward import append_backward, gradients
-from ..fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
-from ..fluid.framework import default_main_program, default_startup_program, name_scope, Program, program_guard, Variable
-from ..fluid.layers.control_flow import Print
-from ..fluid.layers.nn import py_func
-from ..fluid.parallel_executor import ParallelExecutor
-from ..fluid.param_attr import ParamAttr, WeightNormParamAttr
-from ..fluid.layers.tensor import create_global_var, create_parameter
-from ..fluid.core import CPUPlace, CUDAPlace, CUDAPinnedPlace
+
+from ..fluid.framework import Variable  #DEFINE_ALIAS
+from ..fluid.param_attr import ParamAttr  #DEFINE_ALIAS
+from ..fluid.layers.tensor import create_global_var  #DEFINE_ALIAS
+from ..fluid.layers.tensor import create_parameter  #DEFINE_ALIAS
+from ..fluid.core import CPUPlace  #DEFINE_ALIAS
+from ..fluid.core import CUDAPlace  #DEFINE_ALIAS
+from ..fluid.core import CUDAPinnedPlace  #DEFINE_ALIAS
+
+from paddle.fluid import core  #DEFINE_ALIAS
+from ..fluid.dygraph.base import no_grad  #DEFINE_ALIAS
+from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
+from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
+from ..fluid.dygraph.checkpoint import load_dygraph  #DEFINE_ALIAS
+from ..fluid.dygraph.checkpoint import save_dygraph  #DEFINE_ALIAS
+from ..fluid.dygraph.checkpoint import load_dygraph as load  #DEFINE_ALIAS
+from ..fluid.dygraph.checkpoint import save_dygraph as save  #DEFINE_ALIAS
+from ..fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
+from ..fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
+from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS
+
+from ..fluid.dygraph.learning_rate_scheduler import NoamDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import PiecewiseDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import NaturalExpDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import ExponentialDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import InverseTimeDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import PolynomialDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import CosineDecay  #DEFINE_ALIAS
+
+BackwardStrategy = core.BackwardStrategy

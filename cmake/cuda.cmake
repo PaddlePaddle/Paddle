@@ -202,6 +202,11 @@ if (NOT WIN32) # windows msvc2015 support c++11 natively.
   set(CMAKE_CUDA_STANDARD 11)
 endif(NOT WIN32)
 
+# (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflic with -w
+# So replace /W[1-4] with /W0
+if (WIN32)
+  string(REGEX REPLACE "/W[1-4]" " /W0 " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
+endif(WIN32)
 # in cuda9, suppress cuda warning on eigen
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings

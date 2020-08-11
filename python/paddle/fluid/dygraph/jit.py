@@ -15,20 +15,23 @@
 from __future__ import print_function
 
 import os
-import six
 import pickle
-
 import warnings
+
+import six
 from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
+from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import FunctionSpec, ProgramTranslator
+from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
-from paddle.fluid.framework import Program, Block, Variable, ParamBase, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
+from paddle.fluid.framework import Block, ParamBase, Program, Variable
+from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dygraph_tracer
+from paddle.fluid.framework import dygraph_only, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.dygraph.io import TranslatedLayer, VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
 
 __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
@@ -167,7 +170,25 @@ def _declarative_(dygraph_func):
                 "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
-        return program_translator.get_output(dygraph_func, *args, **kwargs)
+        try:
+            return program_translator.get_output(dygraph_func, *args, **kwargs)
+        except Exception as e:
+            error_data = getattr(e, ERROR_DATA, None)
+            if error_data:
+                new_exception = error_data.create_exception()
+                if six.PY3:
+                    # NOTE(liym27):
+                    # 1. Why `raise new_exception from None`?
+                    #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
+                    #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
+                    #   caught exception.
+                    # 2. Use exec to bypass syntax error checking in Python 2.
+
+                    six.exec_("raise new_exception from None")
+                else:
+                    raise new_exception
+            else:
+                raise
 
     return __impl__
 
@@ -680,11 +701,11 @@ def save(layer, model_path, input_spec=None, configs=None):
     prog_translator = ProgramTranslator()
     if not prog_translator.enable:
         raise RuntimeError(
-            "The paddle.imperative.jit.save doesn't work when setting ProgramTranslator.enable=False."
+            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable=False."
         )
     if not isinstance(layer, Layer):
         raise TypeError(
-            "The input layer of paddle.imperative.jit.save should be 'Layer', but received layer type is %s."
+            "The input layer of paddle.jit.save should be 'Layer', but received layer type is %s."
             % type(layer))
 
     if configs is None:

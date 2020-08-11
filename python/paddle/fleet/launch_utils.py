@@ -142,12 +142,16 @@ class Pod(object):
         self.addr = None
         self.port = None
         self.trainers = []
+        self.servers = []
+        self.workers = []
         self.gpus = []
 
     def __str__(self):
-        return "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{}".format(
-            self.rank, self.id, self.addr, self.port, self.gpus,
-            [str(t) for t in self.trainers])
+        return "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{} servers:{} \
+            workers:{}".format(self.rank, self.id, self.addr, self.port,
+                               self.gpus, [str(t) for t in self.trainers],
+                               [str(s) for s in self.servers],
+                               [str(w) for w in self.workers])
 
     def __eq__(self, pod):
         if self.rank != pod.rank or \
@@ -166,6 +170,26 @@ class Pod(object):
             if self.trainers[i] != pod.trainers[i]:
                 logger.debug("trainer {} != {}".format(self.trainers[i],
                                                        pod.trainers[i]))
+                return False
+
+        if len(self.servers) != len(pod.servers):
+            logger.debug("servers {} != {}".format(self.servers, pod.servers))
+            return False
+
+        for i in range(len(self.servers)):
+            if self.servers[i] != pod.servers[i]:
+                logger.debug("servers {} != {}".format(self.servers[i],
+                                                       pod.servers[i]))
+                return False
+
+        if len(self.workers) != len(pod.workers):
+            logger.debug("workers {} != {}".format(self.workers, pod.workers))
+            return False
+
+        for i in range(len(self.workers)):
+            if self.workers[i] != pod.workers[i]:
+                logger.debug("workers {} != {}".format(self.workers[i],
+                                                       pod.workers[i]))
                 return False
 
         return True
@@ -301,6 +325,17 @@ def find_free_ports(num):
             return None
 
     return None
+
+
+def get_ports(num, offset):
+    if os.environ.get('FLAGS_START_PORT') is None:
+        ports = find_free_ports(num)
+        if ports is not None:
+            ports = list(ports)
+    else:
+        start_port = os.environ.get('FLAGS_START_PORT')
+        ports = range(start_port + offset, start_port + offset + num, 1)
+    return ports
 
 
 class TrainerProc(object):

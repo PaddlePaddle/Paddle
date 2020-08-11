@@ -80,7 +80,7 @@ message ExecutionStrategy {
 }
 
 message AsyncConfig {
-  optional int32 k_steps = 1 [ default = 1 ];
+  optional int32 k_steps = 1 [ default = -1 ];
   optional int32 max_merge_var_num = 2 [ default = 1 ];
   optional int32 send_queue_size = 3 [ default = 16 ];
   optional bool independent_recv_thread = 4 [ default = false ];

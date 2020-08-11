@@ -21,3 +21,4 @@ prettytable
 objgraph
 astor
 pathlib
+netifaces

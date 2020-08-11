@@ -25,7 +25,7 @@ class RuntimeBase(object):
     def _run_worker(self):
         pass
 
-    def _init_server(self):
+    def _init_server(self, *args, **kwargs):
         pass
 
     def _run_server(self):
