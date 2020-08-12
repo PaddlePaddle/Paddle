@@ -23,7 +23,6 @@ from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import expand  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import reshape  #DEFINE_ALIAS
 from ..fluid.layers import scatter  #DEFINE_ALIAS
@@ -787,3 +786,109 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
+
+
+def expand(x, shape, name=None):
+    """
+    :alias_main: paddle.expand
+	:alias: paddle.expand,paddle.tensor.expand,paddle.tensor.manipulation.expand
+	:old_api: paddle.fluid.layers.expand
+
+    This operation tiles ``x`` to a given shape defined by the parameter ``shape``.
+    The rank of ``x`` should be less than or equal to 6. Please note that size of ``shape`` must be the same
+    with X's rank. Following is a using case:
+
+
+    .. code-block:: text
+
+        Input(X) is a 3-D tensor with shape [2, 3, 1]:
+
+                [
+                   [[1], [2], [3]],
+                   [[4], [5], [6]]
+                ]
+
+        Attr(shape):  [2, 6, 2]
+
+        Output(Out) is a 3-D tensor with shape [2, 6, 2]:
+
+                [
+                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
+                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
+                ]
+
+    Args:
+        x (Variable): A ``Tensor`` or ``LoDTensor`` with dimension in [1, 6]. The data type is ``bool``, ``float32``, ``float64`` or ``int32`` .
+        shape (list|tuple|Variable): The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``shape`` is an Variable, it should be an 1-D Tensor. 
+                The value -1 in shape, means keep the corresponding dimension unchanged.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``. After expanding, the shape is equal to the given shape defined by the parameter ```shape```.
+
+    Raises:
+        TypeError: The type of ``shape`` must be list, tuple or Variable.
+        ValueError: The elements of ``shape`` must be positive or -1.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            # example 1:
+            data_1 = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
+            expanded_1 = paddle.tensor.expand(data_1, shape=[2, 6, 2])
+            # the shape of expanded_1 is [2, 6, 2].
+
+            # example 2:
+            data_2 = fluid.layers.fill_constant(shape=[12, 14], dtype="int32", value=3)
+            expand_shape = fluid.layers.fill_constant(shape=[2], dtype="int32", value=48)
+            expanded_2 = paddle.tensor.expand(data_2, shape=expand_shape)
+            # the shape of expanded_2 is [48, 48].
+    """
+    if in_dygraph_mode():
+        if isinstance(shape, (list, tuple)):
+            expand_shape = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in expand_times
+            ]
+
+            return core.ops.expand(x, 'shape', expand_shape)
+
+    inputs = {"X": [x]}
+    attrs = {}
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
+    check_type(shape, 'shape', (list, tuple, Variable), 'expand')
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
+        raise ValueError("When the data type of input 'x' for expand is bool, "
+                         "you must set its stop_gradient to be False")
+
+    helper = LayerHelper('expand', input=x, **locals())
+
+    def get_attr_expand_shape(list_expand_shape):
+        attrs_expand_shape = []
+        for idx, shape in enumerate(list_expand_shape):
+            if isinstance(shape, Variable):
+                attrs_expand_shape.append(-1)
+            else:
+                attrs_expand_shape.append(shape)
+                assert shape > 0 or shape == -1, (
+                    "Each element given in shape must be positive or -1.")
+        return attrs_expand_shape
+
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        inputs['Shape'] = shape
+    elif isinstance(shape, (list, tuple)):
+        attrs['shape'] = get_attr_expand_shape(shape)
+        if utils._contain_var(shape):
+            inputs['expand_shapes_tensor'] = utils._convert_to_tensor_list(
+                shape)
+
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
