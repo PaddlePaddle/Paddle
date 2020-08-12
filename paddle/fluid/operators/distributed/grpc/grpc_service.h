@@ -111,7 +111,7 @@ inline const char* GrpcMethodName(GrpcMethod id) {
     case GrpcMethod::kRequestNotify:
       return "/sendrecv.SendRecvService/DistributeNotify";
     case GrpcMethod::kRequestSendAndRecv:
-      return "./sendrecv.SendRecvService/SendAndRecvVariable";
+      return "/sendrecv.SendRecvService/SendAndRecvVariable";
   }
 
   // Shouldn't be reached.

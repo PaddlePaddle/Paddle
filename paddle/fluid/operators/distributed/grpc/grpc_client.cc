@@ -132,6 +132,16 @@ void ProcGetResponse(const VarHandle& var_h,
                             &trainer_id);
 }
 
+void ProcGetRecvResponse(const VarHandle& var_h,
+                         const ::grpc::ByteBuffer& ret_msg) {
+  VLOG(4) << "ProcGetResponse";
+  framework::Variable* outvar = nullptr;
+  // get response's trainer_id is not used
+  int trainer_id;
+  DeserializeRecvFromByteBuffer(ret_msg, *var_h.ctx(), var_h.scope(), &outvar,
+                                &trainer_id);
+}
+
 template <typename T>
 void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   ::grpc::Slice slice(proto.ByteSizeLong());
@@ -502,12 +512,15 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
   int retry_times_ = 0;
 
   while (true) {
-    GetProcessor* s = new GetProcessor(ch);
+    SendAndRecvProcessor* s = new SendAndRecvProcessor(ch);
     VLOG(2) << "GRPCClient::SendAndRecv Get VarHandlePtr";
     VarHandlePtr h(
         new VarHandle(ep, method, send_var_name_val, p_ctx, p_scope));
     VLOG(2) << "GRPCClient::SendAndRecv SendAndRecvProcessor Begin prepare";
+    VarHandlePtr h_recv(
+        new VarHandle(ep, method, recv_var_name_val, p_ctx, p_scope));
     s->Prepare(h, time_out);
+    s->RecvPrepare(h_recv);
 
     framework::AsyncIO([send_var_name_val, recv_var_name_val, table_name_val,
                         p_scope, p_ctx, s, method, h, this] {
@@ -525,7 +538,7 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
       VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
       // stub context
-      s->response_call_back_ = ProcGetResponse;
+      s->response_call_back_ = ProcGetRecvResponse;
 
       platform::RecordRPCEvent record_event(method);
 

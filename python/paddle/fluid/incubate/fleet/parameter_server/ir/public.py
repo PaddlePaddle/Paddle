@@ -245,8 +245,9 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
 
         # create slice op
         first_op_index = 0
+
         get_type_var_name = comm_info["input_var_reshape_name"][0].split(
-            "@")[0]
+            "@HETER_BLOCK")[0]
         get_type_var = heter_program.global_block().vars[get_type_var_name]
 
         insert_recv_slice_op(
@@ -261,9 +262,7 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
             [(-1, comm_info["input_var_reshape_dim"][i])
              for i in range(len(comm_info["input_var_reshape_dim"]))]
         )
-
-        first_op_index += len(comm_info["output_var_reshape_dim"])
-
+        first_op_index += len(comm_info["input_var_reshape_dim"])
         # create reshape op
         for i in range(len(comm_info["input_var_reshape_name"])):
             var_name = entrance_vars[i]
@@ -299,6 +298,7 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
             comm_info["block_output_var_name"],
             [-1, sum(comm_info["output_var_reshape_dim"])]
         )
+        check_op_device(heter_block, current_device)
 
     # add info in listen&serv
     attrs = {
@@ -319,8 +319,6 @@ def create_heter_program(program, config, heter_program, heter_ops, block_var_de
         "rpc_prefetch_thread_num": 12
     }
 
-    print("attrs: {}".format(attrs))
-
     # append the listen_and_serv op
     heter_program.global_block().append_op(
         type="listen_and_serv",
@@ -336,7 +334,11 @@ def create_trainer_program(program, config, heter_ops, block_var_detail):
         for heter_block_index in sorted(heter_ops[device]):
             replace_ops_by_communicate_op(
                 program, config, heter_block_index, heter_ops[device][heter_block_index], block_var_detail)
+            remove_trainer_send_op(
+                program, heter_block_index, block_var_detail)
     deleter_trainer_useless_var(program)
+
+    check_op_device(program.global_block(), DEFAULT_DEVICE)
 
 
 def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, block_var_detail):
@@ -390,16 +392,27 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
         program.global_block(
         ).vars[default_device_comm_info["block_output_var_name"]]
     ]
-    dummy_output = []
-    if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
-        dummy_output = program.global_block().create_var(
-            name=framework.generate_control_dev_var_name())
+
+    get_type_var_name = comm_info["output_var_reshape_name"][0].split(
+        "@HETER_BLOCK")[0]
+    get_type_var = program.global_block().vars[get_type_var_name]
+
+    program.global_block().create_var(
+        name=comm_info["block_output_var_name"],
+        shape=(-1, sum(comm_info["output_var_reshape_dim"])),
+        dtype=get_type_var.dtype,
+        type=get_type_var.type)
+
+    recv_vars = [
+        program.global_block(
+        ).vars[comm_info["block_output_var_name"]]
+    ]
 
     program.global_block()._insert_op(
         index=first_op_idx,
         type="send_and_recv",
         inputs={"X": send_input_vars},
-        outputs={"Out": dummy_output},
+        outputs={"Out": recv_vars},
         attrs={
             "send_var_name": default_device_comm_info["block_output_var_name"],
             "recv_var_name": comm_info["block_output_var_name"],
@@ -412,9 +425,7 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
 
     # recv
     # create slice op
-    get_type_var_name = comm_info["output_var_reshape_name"][0].split(
-        "@")[0]
-    get_type_var = program.global_block().vars[get_type_var_name]
+
     insert_recv_slice_op(
         program,
         program.global_block(),
@@ -432,7 +443,8 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
 
     # create reshape op
     for i in range(len(comm_info["output_var_reshape_name"])):
-        var_name = comm_info["output_var_reshape_name"][i].split("@")[0]
+        var_name = comm_info["output_var_reshape_name"][i].split(
+            "@HETER_BLOCK")[0]
         insert_reshape_op(
             program,
             program.global_block(),
@@ -443,16 +455,28 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list, 
         first_op_idx += 1
 
 
+def remove_trainer_send_op(program, heter_block_index, block_var_detaile):
+    persistables = block_var_detaile[heter_block_index]["persistables"]
+    need_remove_send_op = []
+    for op in program.global_block().ops:
+        if op.type == "send":
+            input_list, _ = find_op_input_output(
+                program, program.global_block(), op)
+            if list(set(input_list) & set(persistables)) != None:
+                need_remove_send_op.append(op)
+
+    delete_ops(program.global_block(), need_remove_send_op)
+
+
 def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_list):
     input_var_reshape_dim = []
     input_var_reshape_name = []
-    block_input_var_name = "HETER_BLOCK_{}_TO_{}@JOINT_VAR".format(block_index-1,
+    block_input_var_name = "HETER_BLOCK@{}_TO_{}@JOINT_VAR".format(block_index-1,
                                                                    block_index)
     output_var_reshape_dim = []
     output_var_reshape_name = []
-    block_output_var_name = "HETER_BLOCK_{}_TO_{}@JOINT_VAR".format(block_index,
+    block_output_var_name = "HETER_BLOCK@{}_TO_{}@JOINT_VAR".format(block_index,
                                                                     block_index + 1)
-
     # input
     # HETER_BLOCK_index@JOINT_VAR -> slice -> var@HETER_BLOCK@INPUT_RESHAPE_VAR -> reshape -> var
     for name in entrance_var_list:
@@ -485,6 +509,7 @@ def get_communicate_var_info(program, block_index, entrance_var_list, exit_var_l
             "output_var_reshape_dim": output_var_reshape_dim,
             "output_var_reshape_name": output_var_reshape_name,
             "block_output_var_name": block_output_var_name}
+
     return info
 
 
@@ -500,17 +525,18 @@ def find_block_joints(program, program_block_ops_list, heter_ops):
 
 def find_entrance_exit_private(program, program_block_ops_list):
     block_var_detail = []
+    persistables = []
     for block_op_list in program_block_ops_list:
         block_input, block_output = find_ops_list_input_output(
             program, block_op_list)
-        screen_persistables(program, block_input)
-        screen_persistables(program, block_output)
+        persistables = screen_persistables(
+            program, block_input) + screen_persistables(program, block_output)
         # find entrance & exit
         block_private_vars = list(set(block_input) & set(block_output))
         block_entrance = list(set(block_input)-set(block_private_vars))
         block_exit = list(set(block_output)-set(block_private_vars))
         detail = {"entrance": block_entrance,
-                  "exit": block_exit, "private": block_private_vars}
+                  "exit": block_exit, "private": block_private_vars, "persistables": persistables}
         block_var_detail.append(detail)
     return block_var_detail
 
@@ -586,6 +612,11 @@ def delete_block_useless_exit(program, program_block_ops_list, block_var_detail)
     return block_var_detail
 
 
+def check_op_device(block, device):
+    for op in block.ops:
+        op._set_attr('op_device', device)
+
+
 def screen_persistables(program, var_list):
     need_remove = []
     for var_name in var_list:
@@ -600,6 +631,7 @@ def screen_persistables(program, var_list):
 
     for var_name in need_remove:
         var_list.remove(var_name)
+    return need_remove
 
 
 def insert_reshape_op(program, block, index, var_name, new_var_name, new_var_shape=None):
@@ -650,11 +682,14 @@ def insert_send_concat_op(program, block, index, var_name_list, new_var_name, ne
 
 def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype, type, new_var_name_list, new_var_shape_list):
 
-    input_var = program.global_block().create_var(
-        name=var_name,
-        shape=var_shape,
-        dtype=dtype,
-        type=type)
+    if var_name not in program.global_block().vars:
+        input_var = program.global_block().create_var(
+            name=var_name,
+            shape=var_shape,
+            dtype=dtype,
+            type=type)
+    else:
+        input_var = program.global_block().vars[var_name]
 
     out_list = []
     for i in range(len(new_var_name_list)):

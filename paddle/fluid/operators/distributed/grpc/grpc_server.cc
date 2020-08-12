@@ -468,29 +468,30 @@ class RequestSendAndRecv final : public RequestBase {
 
   void Process() override {
     VLOG(2) << "RequestSendAndRecv Begin Process. ";
-    std::string varname = GetReqName();
+    std::string in_var_name = request_->Varname();
+    std::string out_var_name = request_->OutVarname();
+    std::string table_name = request_->TableName();
+    int trainer_id = request_->GetTrainerId();
+
+    VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
+            << " out_var_name: " << out_var_name << " trainer: " << trainer_id;
 
     auto scope = request_->GetMutableLocalScope();
-    auto invar = request_->GetVar();
-    int trainer_id = request_->GetTrainerId();
-    std::string out_varname = request_->OutVarname();
-    std::string table_name = request_->TableName();
+    auto invar = scope->FindVar(in_var_name);
+    // out var must be created in local scope!
     framework::Variable* outvar = nullptr;
+    // framework::Variable* outvar = scope->Var(out_var_name);
+
     VLOG(2) << "RequestSendAndRecv Begin Get Handle. ";
-    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
-                             out_varname, table_name);
+    request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
+                             out_var_name, table_name);
 
-    sendrecv::VariableMessage reply;
-    reply.set_varname(out_varname);
-    ResponseToByteBuffer<sendrecv::VariableMessage>(reply, &reply_);
+    VLOG(1) << "before SerializeToByteBuffer";
 
-    // VLOG(1) << "before SerializeToByteBuffer";
-    // if (outvar) {
-    //   SerializeToByteBuffer(out_varname, outvar,
-    //   *request_handler_->dev_ctx(),
-    //                         &reply_);
-    // }
-    // VLOG(1) << "after SerializeToByteBuffer";
+    SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
+                          &reply_);
+
+    VLOG(1) << "after SerializeToByteBuffer";
     Finish(reply_, &responder_);
   }
 

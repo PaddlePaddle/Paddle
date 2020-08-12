@@ -279,6 +279,7 @@ class FleetTranspiler(Fleet):
             if self._role_maker._is_heter_worker():
                 print("Parameter Server: init heter worker")
                 self._init_transpiler_worker()
+                self._init_transpiler_server(model_dir)
             else:
                 print("Parameter Server: init server")
                 self._init_transpiler_server(model_dir)

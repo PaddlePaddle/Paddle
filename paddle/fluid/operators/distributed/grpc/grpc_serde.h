@@ -47,6 +47,11 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const framework::Scope* scope,
                                framework::Variable** var, int* trainer_id);
 
+void DeserializeRecvFromByteBuffer(const ::grpc::ByteBuffer& msg,
+                                   const platform::DeviceContext& ctx,
+                                   const framework::Scope* scope,
+                                   framework::Variable** var, int* trainer_id);
+
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
