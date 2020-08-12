@@ -146,7 +146,7 @@ class TestTrilinearInterpOp(OpTest):
             in_h = self.input_shape[2]
             in_w = self.input_shape[3]
 
-        if self.scale > 0:
+        if self.scale:
             if isinstance(self.scale, list) and len(self.scale) > 1:
                 self.scale_w = self.scale[2]
                 self.scale_h = self.scale[1]

@@ -111,7 +111,7 @@ class TestBilinearInterpOp(OpTest):
             in_h = self.input_shape[1]
             in_w = self.input_shape[2]
 
-        if self.scale > 0:
+        if self.scale:
             if isinstance(self.scale, list) and len(self.scale) > 1:
                 self.scale_w = self.scale[1]
                 self.scale_h = self.scale[0]
@@ -138,7 +138,7 @@ class TestBilinearInterpOp(OpTest):
             'out_h': self.out_h,
             'out_w': self.out_w,
             'scale_w': self.scale_w,
-            'sclae_h': self.scale_h,
+            'scale_h': self.scale_h,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode,

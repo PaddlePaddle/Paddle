@@ -86,7 +86,7 @@ class TestLinearInterpOp(OpTest):
         else:
             in_w = self.input_shape[1]
 
-        if self.scale > 0:
+        if self.scale:
             if isinstance(self.scale, list) and len(self.scale) > 0:
                 self.scale = self.scale[0]
             out_w = int(in_w * self.scale)
