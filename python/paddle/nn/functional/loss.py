@@ -69,7 +69,7 @@ __all__ = [
 ]
 
 
-def nll_loss(x,
+def nll_loss(input,
              label,
              weight=None,
              ignore_index=-100,
@@ -80,10 +80,13 @@ def nll_loss(x,
     See more detail in :ref:`api_nn_loss_NLLLoss` .
 
     Parameters:
-         x (Tensor): Input tensor, the data type is float32, float64.
-         label (Tensor): Label tensor, the data type is int64.
+         input (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of classes.
+             But in K-dimension situation, the shape is :math:`[N, C, d_1, d_2, ..., d_K]`.
+             The data type is float32, float64.
+         label (Tensor): Label tensor, the shape is :math:`[N,]` or :math:`[N, d_1, d_2, ..., d_K]`.
+             The data type is int64.
          weight (Tensor, optional): Weight tensor, a manual rescaling weight given
-             to each class. If given, it has to be a Tensor of size `C`. Otherwise,
+             to each class. If given, it has to be a 1D Tensor whose size is `[C, ]`. Otherwise,
              it treated as if having all ones. the data type is
              float32, float64, Default is ``'None'``.
          ignore_index (int64, optional): Specifies a target value that is ignored
@@ -127,14 +130,14 @@ def nll_loss(x,
             "The value of 'reduction' in nll_loss should be 'sum', 'mean' or "
             "'none', but received %s, which is not allowed." % reduction)
 
+    x_shape = list(x.shape)
+    x_dims = len(x_shape)
+    if x_dims < 2:
+        raise ValueError('Expected 2 or more dimensions (got {})'.format(
+            x_dims))
+    n = x_shape[0]
+    c = x_shape[1]
     if in_dygraph_mode():
-        x_shape = list(core.ops.shape(x))
-        x_dims = len(x_shape)
-        if x_dims < 2:
-            raise ValueError('Expected 2 or more dimensions (got {})'.format(
-                x_dims))
-        n = x_shape[0]
-        c = x_shape[1]
         if x_dims != 2 and x_dims != 4:
             x, _ = core.ops.reshape2(x, 'shape', [n, c, 1, -1])
             label, _ = core.ops.reshape2(label, 'shape', [n, 1, -1])
@@ -147,13 +150,6 @@ def nll_loss(x,
         return out
 
     helper = LayerHelper('nll_loss', **locals())
-    x_shape = list(x.shape)
-    x_dims = len(x_shape)
-    if x_dims < 2:
-        raise ValueError('Expected 2 or more dimensions (got {})'.format(
-            x_dims))
-    n = x_shape[0]
-    c = x_shape[1]
 
     if x_dims != 2 and x_dims != 4:
         x = reshape(x, shape=[n, c, 1, -1])

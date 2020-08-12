@@ -472,11 +472,11 @@ class NLLLoss(fluid.dygraph.Layer):
 	:alias_main: paddle.nn.NLLLoss
 	:alias: paddle.nn.NLLLoss,paddle.nn.layer.NLLLoss,paddle.nn.layer.loss.NLLLoss
 
-    This class accepts input and target label and returns negative log likelihood 
+    This class accepts input and target label and returns negative log likelihood
     cross error. It is useful to train a classification problem with C classes.
      
     The input for the loss is epected to contain log-probabilities of
-    each classes. It hs to be a Tensor of size either (batch_size, C) or 
+    each classes. It has to be a Tensor of size either (batch_size, C) or
     (batch_size, C, d1, d2, ..., dK) with K >= 1 for the K-dimensional case.
     The label for the loss should be a class index in the range [0, C-1]
     where C is the number of classes. If ignore_index is specified, the
@@ -507,7 +507,7 @@ class NLLLoss(fluid.dygraph.Layer):
 
     Parameters:
         weight (Tensor, optional): Weight tensor, a manual rescaling weight given
-            to each class. If given, it has to be a Tensor of size `C`. Otherwise,
+            to each class. If given, it has to be a 1D Tensor whose size is `[C, ]`. Otherwise,
             it treated as if having all ones. the data type is 
             float32, float64, Default is ``'None'``.
         ignore_index (int64, optional): Specifies a target value that is ignored
@@ -522,9 +522,14 @@ class NLLLoss(fluid.dygraph.Layer):
              For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        x (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of class. But in multi dimension situation, the shape is :math:`[N, C, d_1, d_2, ..., d_K]`. The data type is float32, float64.
-        label (Tensor): Label tensor, the shape is :math:`[N,]` or :math:`[N, d_1, d_2, ..., d_K]`. The data type is int64.
-        output (Tensor): the `negative log likelihood loss` between input `x` and `label`. If `reduction` is `'none'`, the shape is `[N, *]`. If `reduction` is `'sum'` or `'mean'`, the shape is `[1]`.
+        input (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of classes.
+            But in K-dimension situation, the shape is :math:`[N, C, d_1, d_2, ..., d_K]`.
+            The data type is float32, float64.
+        label (Tensor): Label tensor, the shape is :math:`[N,]` or :math:`[N, d_1, d_2, ..., d_K]`.
+            The data type is int64.
+        output (Tensor): the `negative log likelihood loss` between input `x` and `label`.
+            If `reduction` is `'none'`, the shape is `[N, *]`.
+            If `reduction` is `'sum'` or `'mean'`, the shape is `[1]`.
 
     Examples:
         .. code-block:: python
@@ -562,16 +567,16 @@ class NLLLoss(fluid.dygraph.Layer):
                 "The value of 'reduction' in nll_loss should be 'sum', 'mean' or "
                 "'none', but received %s, which is not allowed." % reduction)
         super(NLLLoss, self).__init__()
-        self.weight = weight
-        self.ignore_index = ignore_index
-        self.reduction = reduction
-        self.name = name
+        self._weight = weight
+        self._ignore_index = ignore_index
+        self._reduction = reduction
+        self._name = name
 
-    def forward(self, x, label):
+    def forward(self, input, label):
         return F.nll_loss(
-            x,
+            input,
             label,
-            weight=self.weight,
-            ignore_index=self.ignore_index,
-            reduction=self.reduction,
-            name=self.name)
+            weight=self._weight,
+            ignore_index=self._ignore_index,
+            reduction=self._reduction,
+            name=self._name)
