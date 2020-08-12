@@ -82,7 +82,13 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       auto y_dims = ctx->GetInputDim("Y");
       int max_dim = std::max(x_dims.size(), y_dims.size());
       int axis = ctx->Attrs().Get<int>("axis");
-      axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+      PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim), true,
+                        platform::errors::InvalidArgument(
+                            "The axis range must be [%s, %s), but axis is %s. "
+                            "Please set the axis again.",
+                            -1 * max_dim, max_dim, axis));
+      axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
+                       : axis);
       std::vector<int> x_dims_array(max_dim);
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
@@ -132,8 +138,7 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Y.dimension must be a subsequence of x.dimension. And axis "
                  "is the start dimension index "
                  "for broadcasting Y onto X. ")
-        .SetDefault(-1)
-        .EqualGreaterThan(-1);
+        .SetDefault(-1);
     AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
         .SetDefault(false);
     AddAttr<std::string>("x_data_format", "This parameter is no longer used.")

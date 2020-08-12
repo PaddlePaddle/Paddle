@@ -887,7 +887,10 @@ void PartialGradTask::RunEachOp(OpBase *op) {
                                              op->Attrs(), op->place());
     PADDLE_ENFORCE_NOT_NULL(
         double_grad_node,
-        platform::errors::NotFound("The Op %s doesn't have any grad op.",
+        platform::errors::NotFound("The Op %s doesn't have any grad op. If you "
+                                   "don't intend calculating higher order "
+                                   "derivatives, please set `create_graph` to "
+                                   "False.",
                                    op->Type()));
     VLOG(10) << "Create " << double_grad_node->size()
              << " double grad op(s) for " << op->Type()
