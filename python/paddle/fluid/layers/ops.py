@@ -81,7 +81,6 @@ Examples:
         import numpy as np
         import paddle
         import paddle.nn.functional as F
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -99,7 +98,6 @@ Examples:
         import numpy as np
         import paddle
         import paddle.nn.functional as F
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -116,7 +114,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -133,7 +130,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -150,7 +146,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -168,7 +163,6 @@ Examples:
         import numpy as np
         import paddle
         import paddle.nn.functional as F
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -185,7 +179,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([0.1, 0.2, 0.3, 0.4])
@@ -202,7 +195,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([0.1, 0.2, 0.3, 0.4])
@@ -219,7 +211,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -236,7 +227,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -269,7 +259,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -286,7 +275,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -303,7 +291,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -320,7 +307,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -337,7 +323,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -354,7 +339,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -371,7 +355,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.5, -0.2, 0.6, 1.5])
@@ -388,7 +371,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -405,7 +387,6 @@ Examples:
 
         import numpy as np
         import paddle
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -423,7 +404,6 @@ Examples:
         import numpy as np
         import paddle
         import paddle.nn.functional as F
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
@@ -441,7 +421,6 @@ Examples:
         import numpy as np
         import paddle
         import paddle.nn.functional as F
-
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
