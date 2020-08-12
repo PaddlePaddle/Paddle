@@ -379,7 +379,7 @@ void DownpourWorker::CopyDenseTable() {
       pull_dense_status.resize(0);
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
                                      dense_value_names_[dest_table],
-                                     &pull_dense_status);
+                                     &pull_dense_status, true);
       for (auto& t : pull_dense_status) {
         t.wait();
         auto status = t.get();
@@ -556,9 +556,11 @@ void DownpourWorker::TrainFilesWithProfiler() {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                        "Tensor %s contains Inf", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                        "Tensor %s contains NAN", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -771,7 +773,50 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
+#ifdef PADDLE_WITH_PSLIB
+        try {
+          op->Run(*thread_scope_, place_);
+        } catch (std::exception& e) {
+          fprintf(stderr, "error message: %s\n", e.what());
+          auto& ins_id_vec = device_reader_->GetInsIdVec();
+          size_t batch_size = device_reader_->GetCurBatchSize();
+          std::string s = "";
+          for (auto& ins_id : ins_id_vec) {
+            if (s != "") s += ",";
+            s += ins_id;
+          }
+          fprintf(stderr, "batch_size: %zu, ins_ids_vec: %s\n", batch_size,
+                  s.c_str());
+          s = "";
+          for (auto& param : all_param_) {
+            Variable* var = thread_scope_->FindVar(param);
+            if (var == nullptr) {
+              continue;
+            }
+            Tensor* tensor = nullptr;
+            int64_t len = 0;
+            if (var->IsType<framework::LoDTensor>()) {
+              tensor = var->GetMutable<LoDTensor>();
+              len = tensor->numel();
+            } else if (var->IsType<SelectedRows>()) {
+              auto selected_rows = var->GetMutable<SelectedRows>();
+              tensor = selected_rows->mutable_value();
+              len = tensor->numel();
+            }
+            if (!tensor->IsInitialized()) {
+              continue;
+            }
+            s += param + ":" + std::to_string(len) + ":";
+            s += PrintLodTensor(tensor, 0, len);
+            fprintf(stderr, "%s\n", s.c_str());
+            fflush(stderr);
+            s = "";
+          }
+          throw e;
+        }
+#else
         op->Run(*thread_scope_, place_);
+#endif
       }
     }
 
@@ -786,9 +831,11 @@ void DownpourWorker::TrainFiles() {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                        "Tensor %s contains Inf", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                        "Tensor %s contains NAN", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {

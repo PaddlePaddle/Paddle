@@ -96,6 +96,7 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
   }
 }
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T>
 inline void StridedNumelCopyWithAxis(platform::CUDADeviceContext* dst_ctx,
                                      const platform::DeviceContext& src_ctx,
@@ -104,7 +105,6 @@ inline void StridedNumelCopyWithAxis(platform::CUDADeviceContext* dst_ctx,
                                      const T* src,
                                      const framework::DDim& src_stride_numel,
                                      int64_t size) {
-#ifdef PADDLE_WITH_CUDA
   int64_t before = dst_stride_numel[0] / dst_stride_numel[axis];
   int64_t src_after = src_stride_numel[axis];
   int64_t dst_after = dst_stride_numel[axis];
@@ -138,10 +138,8 @@ inline void StridedNumelCopyWithAxis(platform::CUDADeviceContext* dst_ctx,
     memory::Copy(gpu_place, dst + i * dst_after, cpu_place, src + i * src_after,
                  sizeof(T) * size, dst_ctx->stream());
   }
-#else
-  PADDLE_THROW("Paddle is not compiled with GPU");
-#endif
 }
+#endif
 
 template <typename T>
 inline void StridedMemcpyWithAxis0(

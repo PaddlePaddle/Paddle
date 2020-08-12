@@ -43,10 +43,7 @@ class CSyncCalcStreamOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto dev_ctx = static_cast<platform::CUDADeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
-    cudaError_t e_sync = cudaStreamSynchronize(dev_ctx->stream());
-    if (e_sync != 0) {
-      LOG(FATAL) << "Fail to sync cuda stream: " << cudaGetErrorString(e_sync);
-    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(dev_ctx->stream()));
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif

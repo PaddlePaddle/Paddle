@@ -60,10 +60,10 @@ platform::DeviceCode* DeviceCodePool::Get(const platform::Place& place,
 }
 
 DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
-  PADDLE_ENFORCE_GT(
-      places.size(), 0,
-      errors::InvalidArgument(
-          "Expected the number of places >= 1. Expected %d.", places.size()));
+  PADDLE_ENFORCE_GT(places.size(), 0,
+                    errors::InvalidArgument(
+                        "Expected the number of places >= 1. But received %d.",
+                        places.size()));
   // Remove the duplicated places
   std::set<Place> set;
   for (auto& p : places) {

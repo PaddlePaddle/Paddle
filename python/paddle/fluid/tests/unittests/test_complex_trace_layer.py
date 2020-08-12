@@ -33,7 +33,7 @@ class TestComplexTraceLayer(unittest.TestCase):
         for place in self._places:
             with dg.guard(place):
                 var_x = dg.to_variable(input)
-                result = cpx.trace(var_x, offset=1, dim1=0, dim2=2).numpy()
+                result = cpx.trace(var_x, offset=1, axis1=0, axis2=2).numpy()
                 target = np.trace(input, offset=1, axis1=0, axis2=2)
                 self.assertTrue(np.allclose(result, target))
 

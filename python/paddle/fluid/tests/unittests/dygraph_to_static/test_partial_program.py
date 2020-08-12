@@ -16,7 +16,9 @@ from __future__ import print_function
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
-from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph import declarative, ProgramTranslator
+
+from test_fetch_feed import Linear
 
 import unittest
 
@@ -119,6 +121,34 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.assertTrue(np.allclose(dy_var.numpy(), st_var.numpy()))
             else:
                 self.assertTrue(dy_var, st_var)
+
+
+class TestWithTrainAndEval(unittest.TestCase):
+    def test_switch_eval_and_train(self):
+        program_translator = ProgramTranslator()
+
+        with fluid.dygraph.guard():
+            linear_net = Linear()
+            x_data = np.random.random((4, 10)).astype('float32')
+            x = fluid.dygraph.to_variable(x_data)
+            linear_net(x)
+
+            _, partial_layer = program_translator.get_program_cache().last()[-1]
+            # check default mode is for training
+            self.assertEqual(partial_layer.program,
+                             partial_layer._train_program)
+
+            # switch to run test program after `eval()`
+            linear_net.eval()
+            linear_net(x)
+            self.assertEqual(partial_layer.program,
+                             partial_layer._infer_program)
+
+            # switch back into training
+            linear_net.train()
+            linear_net(x)
+            self.assertEqual(partial_layer.program,
+                             partial_layer._train_program)
 
 
 if __name__ == '__main__':

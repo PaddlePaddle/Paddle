@@ -117,7 +117,7 @@ TEST(OpRegistry, IllegalAttr) {
     paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
-    std::string msg = "larger_than check fail";
+    std::string msg = "OutOfRangeError";
     std::string err_msg = err.what();
     ASSERT_TRUE(err_msg.find(msg) != std::string::npos);
   }
@@ -151,7 +151,7 @@ TEST(OpRegistry, CustomChecker) {
     paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
-    std::string msg = "Attribute 'test_attr' is required!";
+    std::string msg = "InvalidArgumentError";
     std::string err_msg = err.what();
     ASSERT_TRUE(err_msg.find(msg) != std::string::npos);
   }

@@ -465,6 +465,9 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
     argument_.SetLitePassesFilter(config_.lite_passes_filter_);
     argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
+    argument_.SetLiteZeroCopy(config_.lite_zero_copy_);
+    argument_.SetUseXpu(config_.use_xpu_);
+    argument_.SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
@@ -579,11 +582,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 
     if (config.thread_local_stream_enabled() &&
         process_level_allocator_enabled) {
-      LOG(FATAL) << " When binding threads and streams, the use of "
-                    "process-level allocators will result in undefined result "
-                    "errors due to memory asynchronous operations."
-                    "The thread and stream binding configuration of all "
-                    "predictors should be the same in a single process.";
+      PADDLE_THROW(platform::errors::Fatal(
+          "When binding threads and streams, the use of "
+          "process-level allocators will result in undefined result "
+          "errors due to memory asynchronous operations."
+          "The thread and stream binding configuration of all "
+          "predictors should be the same in a single process."));
     }
   }
 
@@ -827,6 +831,25 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+void AnalysisPredictor::ClearIntermediateTensor() {
+  PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
+                          platform::errors::PreconditionNotMet(
+                              "The inference program should be loaded first."));
+  const auto &global_block = inference_program_->MutableBlock(0);
+  for (auto *var : global_block->AllVars()) {
+    if (!IsPersistable(var)) {
+      const std::string name = var->Name();
+      auto *variable = executor_->scope()->FindVar(name);
+      if (variable != nullptr && variable->IsType<framework::LoDTensor>() &&
+          name != "feed" && name != "fetch") {
+        VLOG(3) << "Clear Intermediate Tensor: " << name;
+        auto *t = variable->GetMutable<framework::LoDTensor>();
+        t->clear();
+      }
+    }
+  }
+}
+
 #if PADDLE_WITH_TENSORRT
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE(config_.tensorrt_engine_enabled(),
@@ -917,8 +940,9 @@ std::string AnalysisPredictor::GetSerializedProgram() const {
 
 bool AnalysisPredictor::CheckOperatorCompatible() {
   if (!inference_program_) {
-    LOG(FATAL) << "Inference program version check failed because the program "
-                  "does not exist.";
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Inference program version check failed because the program does not "
+        "exist."));
     return false;
   }
   bool res = true;

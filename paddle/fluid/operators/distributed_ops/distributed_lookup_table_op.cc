@@ -41,26 +41,23 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
     for (auto &ids_dim : ids_dims) {
       PADDLE_ENFORCE_EQ(ids_dim.size(), 2,
                         "The dimension of the 'Ids' tensor must be 2.");
-      PADDLE_ENFORCE_EQ(ids_dim[1], 1,
-                        "The last dimension of the 'Ids' tensor must be 1.");
     }
 
-    auto lookup_tables =
-        ctx->Attrs().Get<std::vector<std::string>>("table_names");
-    auto height_sections =
-        ctx->Attrs().Get<std::vector<int64_t>>("height_sections");
     auto endpoints = ctx->Attrs().Get<std::vector<std::string>>("endpoints");
-
-    PADDLE_ENFORCE(lookup_tables.size() == height_sections.size() &&
-                       lookup_tables.size() == endpoints.size() &&
-                       lookup_tables.size() != 0,
-                   "Attrs lookup_tables/height_sections/endpoints must have "
-                   "save size and can not be 0.");
+    auto lookup_table_version =
+        ctx->Attrs().Get<std::string>("lookup_table_version");
 
     auto outputs_dims = std::vector<framework::DDim>();
 
     for (auto &ids_dim : ids_dims) {
-      outputs_dims.push_back(framework::make_ddim({ids_dim[0], table_dims[1]}));
+      if (lookup_table_version == "lookup_table") {
+        outputs_dims.push_back(
+            framework::make_ddim({ids_dim[0], table_dims[1]}));
+      } else if (lookup_table_version == "lookup_table_v2") {
+        outputs_dims.push_back(framework::make_ddim(
+            {static_cast<int64_t>(ids_dim[0]), static_cast<int64_t>(ids_dim[1]),
+             static_cast<int64_t>(table_dims[1])}));
+      }
     }
 
     ctx->SetOutputsDim("Outputs", outputs_dims);
@@ -97,18 +94,25 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string vector, such as emb_block0, emb_block1)"
         "Server endpoints in the order of input variables for mapping")
         .SetDefault({""});
-
-    AddAttr<std::vector<int64_t>>("height_sections",
-                                  "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int64_t>({}));
-
     AddAttr<std::vector<std::string>>(
         "endpoints",
         "(string vector, default 127.0.0.1:6164)"
         "Server endpoints in the order of input variables for mapping")
         .SetDefault({"127.0.0.1:6164"});
 
+    AddAttr<int>("pserver_num", "the number of pserver").SetDefault(0);
+
+    AddAttr<bool>("is_distributed",
+                  "(boolean, default false) distributed lookup table.")
+        .SetDefault(false);
+
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+
+    AddAttr<std::string>(
+        "lookup_table_version",
+        "(string, default lookup_table) "
+        "To distinguish between different versions of embedding OP")
+        .SetDefault(std::string("lookup_table"));
 
     AddAttr<int64_t>("padding_idx",
                      "(int64, default -1) "

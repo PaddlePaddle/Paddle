@@ -29,20 +29,25 @@ np.random.seed(SEED)
 
 def while_loop_dyfunc(x):
     i = fluid.dygraph.to_variable(x)
-    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
-    x = fluid.dygraph.to_variable(
-        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     while x < 10:
         i = i + x
         x = x + 1
     return i
 
 
+def while_loop_dyfunc_without_tensor(x):
+    a = 1
+    # There are no tensors in the while condition, which means it's a plain while in python,
+    # so it wont't be transformed to `while_loop` op.
+    while not a > 4 and a > 0:
+        x = x + 1
+        a = a + 1
+
+    return x
+
+
 def while_loop_dyfun_with_conflict_var(x):
     i = fluid.dygraph.to_variable(x)
-    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
-    x = fluid.dygraph.to_variable(
-        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
 
     def relu(y):
         # 'y' is not visible outside the scope.
@@ -79,15 +84,34 @@ def for_loop_dyfunc(max_len):
     return ret
 
 
+def for_loop_dyfunc2(max_len):
+    # Test case: a variable is used and created in loop, but used before created
+    for i in range(max_len):
+        if i > 1:
+            s = a
+        a = 1
+    ret = fluid.layers.fill_constant(shape=[1], dtype="int32", value=s)
+    return ret
+
+
 def while_loop_bool_op(x):
     i = fluid.dygraph.to_variable(x)
 
-    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
-    x = fluid.dygraph.to_variable(
-        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     while x <= -1 or x < -3 or (x < -7 or x < -5) or (x >= 0 and x < 10):
         i = i + x
         x = x + 1
+    return i
+
+
+def while_loop_bool_op2(x):
+    i = fluid.dygraph.to_variable(x)
+    a = 1
+
+    # In the while condition, there are both Paddle Variable and non-Variable.
+    while x < 10 and (a < 4 or a > 0) or a < -1 or not x > -1:
+        i = i + x
+        x = x + 1
+        a = a + 1
     return i
 
 
@@ -117,9 +141,9 @@ def for_loop_class_var(max_len):
     foo = Foo()
 
     # Use `to_variable` so that static analysis can analyze the type of X is Tensor
-    # TODO(liym27): Delete it if the type of parameter x can be resolved
     max_len = fluid.layers.fill_constant(
         shape=[1], value=max_len, dtype="int32")
+
     for i in range(max_len):
         foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
         foo.c = foo.b + foo.a
@@ -145,15 +169,28 @@ def nested_for_loop_dyfunc():
     return b
 
 
+def for_loop_dufunc_with_listcomp(array):
+    a = 1
+    for j in range(array):
+        res = [x + a for x in array]
+        res = [i for i in array]
+        x = 1
+    b = [i for i in array]
+    print(x)
+    return res
+
+
 class TestNameVisitor(unittest.TestCase):
     def setUp(self):
         self.loop_funcs = [
-            while_loop_dyfunc, for_loop_dyfunc, while_loop_dyfunc_with_none
+            while_loop_dyfunc, for_loop_dyfunc, while_loop_dyfunc_with_none,
+            for_loop_dufunc_with_listcomp
         ]
         self.loop_var_names = [
-            set(["i", "x"]), set(["i", "ret", "max_len"]), set(["i", "x"])
+            set(["i", "x"]), set(["i", "ret", "max_len"]), set(["i", "x"]),
+            set(["j", "array", "res", "x"])
         ]
-        self.create_var_names = [set(), set(["ret"]), set()]
+        self.create_var_names = [set(), set(["ret"]), set(), set(["res", "x"])]
 
         self.nested_for_loop_func = nested_for_loop_dyfunc
 
@@ -187,7 +224,6 @@ class TestNameVisitor(unittest.TestCase):
             if isinstance(node, (gast.While, gast.For)):
                 loop_var_names, create_var_names = name_visitor.get_loop_var_names(
                     node)
-                # print(loop_var_names)
                 self.assertEqual(loop_var_names, self.loop_var_names[i])
                 self.assertEqual(create_var_names, self.create_var_names[i])
                 i += 1
@@ -211,16 +247,23 @@ class TestTransformWhileLoop(unittest.TestCase):
 
     def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
+            # Set the input of dyfunc to VarBase
+            tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
             if to_static:
-                ret = declarative(self.dyfunc)(self.x)
+                ret = declarative(self.dyfunc)(tensor_x)
             else:
-                ret = self.dyfunc(self.x)
+                ret = self.dyfunc(tensor_x)
             return ret.numpy()
 
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
         self.assertTrue(np.allclose(dygraph_numpy, static_numpy))
+
+
+class TestTransformWhileLoopWithoutTensor(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = while_loop_dyfunc_without_tensor
 
 
 class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
@@ -236,6 +279,11 @@ class TestTransformWhileLoopWithNone(TestTransformWhileLoop):
 class TestWhileLoopBoolOp(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = while_loop_bool_op
+
+
+class TestWhileLoopBoolOp2(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = while_loop_bool_op2
 
 
 class TestWhileLoopClassVar(TestTransformWhileLoop):
@@ -269,6 +317,11 @@ class TestTransformForLoop(unittest.TestCase):
 
     def test_ast_to_func(self):
         self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+
+
+class TestTransformForLoop2(TestTransformForLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = for_loop_dyfunc2
 
 
 class TestClassVarInForLoop(TestTransformForLoop):

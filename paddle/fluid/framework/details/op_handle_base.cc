@@ -36,7 +36,7 @@ OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
 #ifdef PADDLE_WITH_CUDA
   for (auto &ev : events_) {
     if (ev.second) {
-      PADDLE_ENFORCE(cudaEventDestroy(ev.second));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(ev.second));
     }
   }
 #endif
