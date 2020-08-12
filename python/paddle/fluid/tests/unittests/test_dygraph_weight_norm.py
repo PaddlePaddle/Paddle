@@ -96,9 +96,10 @@ class TestDygraphWeightNorm(unittest.TestCase):
                 p_transposed, (p_transposed.shape[0],
                                transposed_shape_numel // p_transposed.shape[0]))
             v_norm = v / numpy.expand_dims(
-                numpy.linalg.norm(
-                    p_matrix, axis=1, keepdims=True),
-                axis=(0, -1))
+                numpy.expand_dims(
+                    numpy.linalg.norm(
+                        p_matrix, axis=1, keepdims=True), axis=0),
+                axis=(ndims - 1))
             v_norm = numpy.reshape(v_norm, transposed_shape)
             v_norm = numpy.transpose(v_norm, perm)
             g = numpy.squeeze(g, axis=1)
@@ -106,7 +107,11 @@ class TestDygraphWeightNorm(unittest.TestCase):
                 eaxis = 2
             elif dim == 2:
                 eaxis = 1
-            g_mul = numpy.expand_dims(g, axis=(0, eaxis, ndims - 1))
+            g_mul = numpy.expand_dims(
+                numpy.expand_dims(
+                    numpy.expand_dims(
+                        g, axis=0), axis=eaxis),
+                axis=(ndims - 1))
         w = g_mul * v_norm
         return g, v
 
