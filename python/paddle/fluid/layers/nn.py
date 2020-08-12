@@ -9735,13 +9735,10 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.leaky_relu")
 @templatedoc()
 def leaky_relu(x, alpha=0.02, name=None):
     """
-    :alias_main: paddle.nn.functional.leaky_relu
-	:alias: paddle.nn.functional.leaky_relu,paddle.nn.functional.activation.leaky_relu
-	:old_api: paddle.fluid.layers.leaky_relu
-
     ${comment}
     Args:
         x(${x_type}): ${x_comment}
@@ -9770,19 +9767,7 @@ def leaky_relu(x, alpha=0.02, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[-0.1, 2], [3, -0.4]]
     """
-    if in_dygraph_mode():
-        return core.ops.leaky_relu(x, 'alpha', alpha)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                             'leaky_relu')
-
-    inputs = {'X': [x]}
-    attrs = {'alpha': alpha}
-    helper = LayerHelper('leaky_relu', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='leaky_relu', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-    return out
+    return paddle.nn.functional.leaky_relu(x, alpha, name)
 
 
 def soft_relu(x, threshold=40.0, name=None):
