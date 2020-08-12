@@ -883,11 +883,11 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             data_y = np.ones((2, 2)).astype(np.float32)
             data_input = np.ones((2, 2)).astype(np.float32)
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
-            x = paddle.imperative.to_variable(data_x)
-            y = paddle.imperative.to_variable(data_y)
-            input = paddle.imperative.to_variable(data_input)
+            x = paddle.to_variable(data_x)
+            y = paddle.to_variable(data_y)
+            input = paddle.to_variable(data_input)
 
             out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
 
@@ -1561,10 +1561,10 @@ def cumsum(x, axis=None, dtype=None, name=None):
         .. code-block:: python
             
             import paddle
-            from paddle.imperative import to_variable
+            from paddle import to_variable
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             data_np = np.arange(12).reshape(3, 4)
             data = to_variable(data_np)
 
