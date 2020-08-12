@@ -22,7 +22,7 @@ rem =================================================
 
 set work_dir=%cd%
 if not defined BRANCH set BRANCH=develop
-if not defined PYTHON_ROOT set PYTHON_ROOT=c:\Python27
+if not defined PYTHON_ROOT set PYTHON_ROOT=c:\Python37
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
 if not defined WITH_AVX set WITH_AVX=ON
@@ -34,7 +34,8 @@ if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=d:/.cache/inference_demo
 if not defined THIRD_PARTY_PATH set THIRD_PARTY_PATH=%work_dir:\=/%/build/third_party
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-dir d:\.cache
+set cache_dir=%work_dir%\..\cache
+dir %cache_dir%
 
 goto :CASE_%1
 
@@ -115,7 +116,7 @@ if %ERRORLEVEL% NEQ 0 (
 goto:eof
 
 :build_error
-exit /b %ERRORLEVEL%
+exit /b 
 
 rem ---------------------------------------------------------------------------------------------
 :test_whl_pacakage
@@ -158,12 +159,12 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
-if NOT EXIST "d:\.cache\tools" (
-  git clone https://github.com/zhouwei25/tools.git d:\.cache\tools
+if NOT EXIST "%cache_dir%\tools" (
+  git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
 cd %work_dir%\paddle\fluid\inference\api\demo_ci
 
-d:\.cache\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% d:/.cache/inference_demo
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo
 goto:eof
 
 :test_inference_error
@@ -236,7 +237,7 @@ echo          exit 1 >>  check_change_of_unittest.sh
 echo     fi>>  check_change_of_unittest.sh
 echo fi>>  check_change_of_unittest.sh
 echo git checkout -f origin_pr >>  check_change_of_unittest.sh
-d:\.cache\tools\busybox64.exe bash check_change_of_unittest.sh
+%cache_dir%\tools\busybox64.exe bash check_change_of_unittest.sh
 goto:eof
 
 :check_change_of_unittest_error
