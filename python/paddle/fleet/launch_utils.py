@@ -227,8 +227,8 @@ def get_logger(log_level=20, name="root"):
     return logger
 
 
-def get_cluster(node_ips, node_ip, paddle_ports, selected_gpus):
-    assert type(paddle_ports) is list, "paddle_ports must be list"
+def get_cluster(node_ips, node_ip, cur_endpoints, selected_gpus):
+    assert type(cur_endpoints) is list, "cur_endpoints must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
     for node_rank, ip in enumerate(node_ips):
@@ -238,7 +238,7 @@ def get_cluster(node_ips, node_ip, paddle_ports, selected_gpus):
         for i in range(len(selected_gpus)):
             trainer = Trainer()
             trainer.gpus.append(selected_gpus[i])
-            trainer.endpoint = "%s:%d" % (ip, paddle_ports[i])
+            trainer.endpoint = "%s" % (cur_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
 

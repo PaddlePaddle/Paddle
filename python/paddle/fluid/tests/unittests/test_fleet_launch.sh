@@ -44,6 +44,7 @@ export PADDLE_TRAINERS_NUM=2
 export POD_IP=127.0.0.1
 export PADDLE_TRAINERS=127.0.0.1,127.0.0.2
 export PADDLE_TRAINER_ID=0
+export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:35789,127.0.0.1:35790,127.0.0.2:35789,127.0.0.2:35790
 
 export PADDLE_PORT=35789
 export TRAINER_PORTS_NUM=2
@@ -82,6 +83,7 @@ fi
 
 unset PADDLE_PORT
 unset TRAINER_PORTS_NUM
+unset PADDLE_TRAINER_ENDPOINTS
 
 echo ""
 echo "paddle.distributed.launch async poll process test"

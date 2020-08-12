@@ -157,7 +157,8 @@ def get_cluster_from_args(args, gpus):
 
         free_ports = [x for x in range(start_port, start_port + len(gpus))]
 
-    return get_cluster(node_ips, node_ip, free_ports, gpus)
+    cur_endpoints = ["%s:%d" % (node_ip, port) for port in free_ports]
+    return get_cluster(node_ips, node_ip, cur_endpoints, gpus)
 
 
 def get_gpus(gpus):
@@ -199,7 +200,7 @@ def launch_collective(args):
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
     if cloud_utils.use_paddlecloud() and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(args.ips, gpus, start_port)
+        cluster, pod = cloud_utils.get_cloud_cluster(args.ips, gpus)
         logger.info("get cluster from cloud:{}".format(cluster))
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
