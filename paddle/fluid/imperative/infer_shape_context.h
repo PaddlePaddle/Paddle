@@ -144,12 +144,23 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   std::string GetInputNameByIdx(size_t idx) const override {
     auto& op_proto =
         paddle::framework::OpInfoMap::Instance().Get(op_type_).proto_;
+    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
+                      platform::errors::OutOfRange(
+                          "The index should be less than the size of inputs of "
+                          "operator %s, but got index is %d and size is %d",
+                          op_type_, idx, op_proto->inputs().size()));
     return op_proto->inputs()[idx].name();
   }
 
   std::string GetOutputNameByIdx(size_t idx) const override {
     auto& op_proto =
         paddle::framework::OpInfoMap::Instance().Get(op_type_).proto_;
+    PADDLE_ENFORCE_LT(
+        idx, op_proto->outputs().size(),
+        platform::errors::OutOfRange(
+            "The index should be less than the size of outputs of "
+            "operator %s, but got index is %d and size is %d",
+            op_type_, idx, op_proto->outputs().size()));
     return op_proto->outputs()[idx].name();
   }
 

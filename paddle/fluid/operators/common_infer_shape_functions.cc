@@ -75,14 +75,17 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
 
 // shape input(0) -> output(0) without change.
 void UnaryOpUnchangedInferShape(framework::InferShapeContext *ctx) {
-  ctx->ShareDim(ctx->GetInputNameByIdx(0), /*->*/ ctx->GetOutputNameByIdx(0));
-  ctx->ShareLoD(ctx->GetInputNameByIdx(0), /*->*/ ctx->GetOutputNameByIdx(0));
+  auto x_name = ctx->GetInputNameByIdx(0);
+  auto out_name = ctx->GetOutputNameByIdx(0);
+  ctx->ShareDim(x_name, /*->*/ out_name);
+  ctx->ShareLoD(x_name, /*->*/ out_name);
 }
 
 // shape input(0) -> output(0) without change, check if axis in range [-Rank(x),
 // Rank(x)-1]
 void UnaryOpUnchangedInferShapeCheckAxis(framework::InferShapeContext *ctx) {
   auto x_name = ctx->GetInputNameByIdx(0);
+  auto out_name = ctx->GetOutputNameByIdx(0);
   auto x_dim = ctx->GetInputDim(x_name);
   auto x_rank = x_dim.size();
   auto axis = ctx->Attrs().Get<int>("axis");
@@ -98,8 +101,8 @@ void UnaryOpUnchangedInferShapeCheckAxis(framework::InferShapeContext *ctx) {
           "Attr(axis) value should be in range [-R, R-1], "
           "R is the rank of Input(X). But received axis: %d, R: %d.",
           axis, x_rank));
-  ctx->ShareDim(ctx->GetInputNameByIdx(0), /*->*/ ctx->GetOutputNameByIdx(0));
-  ctx->ShareLoD(ctx->GetInputNameByIdx(0), /*->*/ ctx->GetOutputNameByIdx(0));
+  ctx->ShareDim(x_name, /*->*/ out_name);
+  ctx->ShareLoD(x_name, /*->*/ out_name);
 }
 
 // broadcast input(0) and input(1) -> output(0)
@@ -107,40 +110,37 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
   auto x_name = ctx->GetInputNameByIdx(0);
   auto y_name = ctx->GetInputNameByIdx(1);
   auto out_name = ctx->GetOutputNameByIdx(0);
-  OP_INOUT_CHECK(ctx->HasInput(x_name), "Input", x_name, "ElementwiseOp");
-  OP_INOUT_CHECK(ctx->HasInput(y_name), "Input", y_name, "ElementwiseOp");
-  OP_INOUT_CHECK(ctx->HasOutput(out_name), "Output", out_name, "ElementwiseOp");
   auto x_dims = ctx->GetInputDim(x_name);
   auto y_dims = ctx->GetInputDim(y_name);
   PADDLE_ENFORCE_EQ(
       ctx->GetInputsVarType(y_name).front(),
       framework::proto::VarType::LOD_TENSOR,
       platform::errors::InvalidArgument(
-          "The input var's type should be LoDTensor, but the "
-          "received is %s [%s].",
-          ctx->GetInputsVarType(y_name).front(), ctx->Inputs(y_name).front()));
+          "The var type of input %s should be LoDTensor, but got %s.",
+          ctx->Inputs(y_name).front(), ctx->GetInputsVarType(y_name).front()));
 
   if (ctx->GetInputsVarType(x_name).front() ==
       framework::proto::VarType::SELECTED_ROWS) {
-    PADDLE_ENFORCE_EQ(
-        y_dims.size(), 1u,
-        platform::errors::InvalidArgument(
-            "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
-            "), Y must be scalar, the size of Y should be 1. "
-            "But reveived the size of Y = %s.",
-            y_dims.size()));
+    PADDLE_ENFORCE_EQ(y_dims.size(), 1u,
+                      platform::errors::InvalidArgument(
+                          "For binary broadcastable operator, if X is "
+                          "Sparse(VarType.SELECTED_ROWS"
+                          "), Y must be scalar, and the size of Y should be 1. "
+                          "But reveived the size of Y = %s.",
+                          y_dims.size()));
     PADDLE_ENFORCE_EQ(
         y_dims[0], 1,
         platform::errors::InvalidArgument(
-            "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
+            "For binary broadcastable operator, if X is "
+            "Sparse(VarType.SELECTED_ROWS"
             "), Y must be scalar, the first dimension of Y should be 1. "
             "But reveived the first dimension of Y = %s.",
             y_dims[0]));
   } else if (ctx->GetInputsVarType(x_name).front() !=
              framework::proto::VarType::LOD_TENSOR) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Input X's type[%s] is not supported by elementwise_op. Please set its "
-        "type to LOD_TENSOR.",
+        "For binary broadcastable operator, the var type of input X should "
+        "be LOD_TENSOR, but got %s",
         ctx->GetInputsVarType(x_name).front()));
   }
 
@@ -158,7 +158,6 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
                                     y_dims_array.data(), out_dims_array.data(),
                                     max_dim, axis);
     ctx->SetOutputDim(out_name, framework::make_ddim(out_dims_array));
-    // to do
     ctx->ShareLoD(x_name, /*->*/ out_name);
   }
 }
