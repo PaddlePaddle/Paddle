@@ -23,7 +23,8 @@ from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, TensorSpec, PartialProgram, unwrap
+from paddle.fluid.dygraph.dygraph_to_static.input_spec import TensorSpec
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, PartialProgram, unwrap
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
