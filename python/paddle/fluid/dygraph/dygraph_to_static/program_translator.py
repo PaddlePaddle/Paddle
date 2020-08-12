@@ -700,3 +700,67 @@ class ProgramTranslator(object):
 
         """
         return self._program_cache
+
+
+class PartialProgram(object):
+    def __init__(self, dygraph_func, input_spec=None):
+        # save the instance `self` while decorating a method of class.
+        if inspect.ismethod(dygraph_func):
+            self._dygraph_func = dygraph_func.im_func
+            self._class_instance = dygraph_func.im_self
+        else:
+            self._dygraph_func = dygraph_func
+            self._class_instance = None
+
+        self._input_spec = input_spec
+        self._function_spec = FunctionSpec(dygraph_func, input_spec)
+        self._program_cache = ProgramCache()
+
+    def __get__(self, instance, owner):
+        self._class_instance = instance
+        return self
+
+    def __call__(self, *args, **kwargs):
+        # 1. call dygraph function if not enable `declarative`
+        if not program_trans.enable_declarative:
+            return self._call_dygraph_func(*args, **kwargs)
+
+        # 2. convert tensor and numpy array into TensorSpec
+        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        inputs_with_spec = self._function_spec.args_to_variable_spec(args,
+                                                                     kwargs)
+
+        # 3. check whether hit the cache or build a new program for the input arguments
+        cache_key = CacheKey(self._function_spec, inputs_with_spec,
+                             self._class_instance)
+        _, partial_program_layer = self._program_cache[cache_key]
+
+        # 4. Synchronize self.training attribute.
+        if isinstance(self._class_instance, layers.Layer):
+            partial_program_layer.training = self._class_instance.training
+
+        try:
+            return partial_program_layer(args)
+        except Exception as e:
+            error_data = getattr(e, ERROR_DATA, None)
+            if error_data:
+                new_exception = error_data.create_exception()
+                if six.PY3:
+                    # NOTE(liym27):
+                    # 1. Why `raise new_exception from None`?
+                    #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
+                    #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
+                    #   caught exception.
+                    # 2. Use exec to bypass syntax error checking in Python 2.
+
+                    six.exec_("raise new_exception from None")
+                else:
+                    raise new_exception
+
+    def _call_dygraph_func(self, *args, **kwargs):
+        if self._class_instance is not None:
+            dygraph_func = self._dygraph_func.__get__(self._class_instance)
+        else:
+            dygraph_func = self._dygraph_func
+
+        return dygraph_func(*args, **kwargs)
