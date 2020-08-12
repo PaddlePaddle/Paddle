@@ -92,11 +92,11 @@ class TestCholeskyOp2D(TestCholeskyOp):
 
 class TestDygraph(unittest.TestCase):
     def test_dygraph(self):
-        paddle.enable_imperative()
+        paddle.disable_static()
         a = np.random.rand(3, 3)
         a_t = np.transpose(a, [1, 0])
         x_data = np.matmul(a, a_t) + 1e-03
-        x = paddle.imperative.to_variable(x_data)
+        x = paddle.to_variable(x_data)
         out = paddle.cholesky(x, upper=False)
 
 

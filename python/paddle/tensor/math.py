@@ -1051,9 +1051,6 @@ def logsumexp(x, dim=None, keepdim=False, name=None):
 
 def inverse(x, name=None):
     """
-	:alias_main: paddle.inverse
-	:alias: paddle.inverse, paddle.tensor.inverse, paddle.tensor.math.inverse
-
     Takes the inverse of the square matrix. A square matrix is a matrix with
     the same number of rows and columns. The input can be a square matrix
     (2-D Tensor) or batches of square matrices.
@@ -1078,8 +1075,8 @@ def inverse(x, name=None):
             import paddle
 
             mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
-            paddle.enable_imperative()
-            mat = paddle.imperative.to_variable(mat_np)
+            paddle.disable_static()
+            mat = paddle.to_variable(mat_np)
             inv = paddle.inverse(mat)
             print(inv) # [[0.5, 0], [0, 0.5]]
 

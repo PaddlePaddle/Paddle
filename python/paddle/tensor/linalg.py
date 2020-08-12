@@ -452,9 +452,6 @@ def dist(x, y, p=2):
 
 def dot(x, y, name=None):
     """
-	:alias_main: paddle.dot
-	:alias: paddle.dot, paddle.tensor.dot, paddle.tensor.linalg.dot
-
     This operator calculates inner product for vectors.
    
     .. note::
@@ -476,11 +473,11 @@ def dot(x, y, name=None):
         import paddle.fluid as fluid
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
         x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
         y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         z = paddle.dot(x, y)
         print(z.numpy())
 
@@ -655,9 +652,6 @@ def cross(x, y, axis=None, name=None):
 
 def cholesky(x, upper=False, name=None):
     """
-	:alias_main: paddle.cholesky
-	:alias: paddle.cholesky, paddle.tensor.cholesky, paddle.tensor.linalg.cholesky
-
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrice. 
     
@@ -684,11 +678,11 @@ def cholesky(x, upper=False, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             a = np.random.rand(3, 3)
             a_t = np.transpose(a, [1, 0])
             x_data = np.matmul(a, a_t) + 1e-03
-            x = paddle.imperative.to_variable(x_data)
+            x = paddle.to_variable(x_data)
             out = paddle.cholesky(x, upper=False)
             print(out.numpy())
             # [[1.190523   0.         0.        ]
