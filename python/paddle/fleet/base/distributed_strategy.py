@@ -628,6 +628,15 @@ class DistributedStrategy(object):
             print("WARNING: lamb should have value of bool type")
 
     @property
+    def lamb_configs(self):
+        return get_msg_dict(self.strategy.lamb_configs)
+
+    @lamb_configs.setter
+    def lamb_configs(self, configs):
+        check_configs_key(self.strategy.lamb_configs, configs, "lamb_configs")
+        assign_configs_value(self.strategy.lamb_configs, configs)
+
+    @property
     def elastic(self):
         return self.strategy.elastic
 
