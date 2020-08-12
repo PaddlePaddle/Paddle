@@ -514,19 +514,17 @@ class NLLLoss(fluid.dygraph.Layer):
             and does not contribute to the input gradient.
         reduction (str, optional): Indicate how to average the loss, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-               :attr:`reduction` is ``'sum'``, the reduced sum loss is returned;
-               :attr:`reduction` is ``'none'``, no reduction will be apllied.
+            If `reduction` is ``'mean'``, the reduced mean loss is returned;
+            if `reduction` is ``'sum'``, the reduced sum loss is returned;
+            if `reduction` is ``'none'``, no reduction will be apllied.
             Default is ``'mean'``.
          name (str, optional): Name for the operation (optional, default is None).
              For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        x (Tensor): Input tensor, the data type is float32, float64.
-        label (Tensor): Label tensor, the data type is int64.
-
-    Returns:
-        The callable object which calculates negative log likelihood loss.
+        x (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of class. But in multi dimension situation, the shape is :math:`[N, C, d_1, d_2, ..., d_K]`. The data type is float32, float64.
+        label (Tensor): Label tensor, the shape is :math:`[N,]` or :math:`[N, d_1, d_2, ..., d_K]`. The data type is int64.
+        output (Tensor): the `negative log likelihood loss` between input `x` and `label`. If `reduction` is `'none'`, the shape is `[N, *]`. If `reduction` is `'sum'` or `'mean'`, the shape is `[1]`.
 
     Examples:
         .. code-block:: python
@@ -545,32 +543,12 @@ class NLLLoss(fluid.dygraph.Layer):
                 label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
 
                 place = paddle.CPUPlace()
-
-                # imperative mode
                 paddle.disable_static(place)
                 x = paddle.to_variable(x_np)
                 log_out = log_softmax(x)
                 label = paddle.to_variable(label_np)
-                imperative_result = nll_loss(log_out, label)
-                print(imperative_result.numpy()) # [1.0720209]
-
-                # declarative mode
-                paddle.enable_static()
-                prog = paddle.static.Program()
-                startup_prog = paddle.static.Program()
-                with paddle.static.program_guard(prog, startup_prog):
-                    x = paddle.nn.data(name='x', shape=[5, 3], dtype='float32')
-                    label = paddle.nn.data(name='label', shape=[5], dtype='int64')
-                    log_out = log_softmax(x)
-                    res = nll_loss(log_out, label)
-
-                    exe = paddle.static.Executor(place)
-                    declaritive_result = exe.run(
-                        prog,
-                        feed={"x": x_np,
-                              "label": label_np},
-                        fetch_list=[res])
-                print(declaritive_result) # [array([1.0720209], dtype=float32)]
+                result = nll_loss(log_out, label)
+                print(result.numpy()) # [1.0720209]
 
     """
 

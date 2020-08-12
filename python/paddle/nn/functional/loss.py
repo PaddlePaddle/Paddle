@@ -90,15 +90,15 @@ def nll_loss(x,
              and does not contribute to the input gradient.
          reduction (str, optional): Indicate how to average the loss,
              the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-                :attr:`reduction` is ``'sum'``, the reduced sum loss is returned;
-                :attr:`reduction` is ``'none'``, no reduction will be apllied.
+             If `reduction` is ``'mean'``, the reduced mean loss is returned;
+             if `reduction` is ``'sum'``, the reduced sum loss is returned;
+             if `reduction` is ``'none'``, no reduction will be apllied.
              Default is ``'mean'``.
          name (str, optional): Name for the operation (optional, default is None).
              For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-         The tensor variable storing the nll_loss.
+         `Tensor`, the value of negative log likelihood loss.
 
     Examples:
         .. code-block:: python
@@ -115,14 +115,12 @@ def nll_loss(x,
                 label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
 
                 place = paddle.CPUPlace()
-
-                # imperative mode
                 paddle.disable_static(place)
                 x = paddle.to_variable(x_np)
                 log_out = log_softmax(x)
                 label = paddle.to_variable(label_np)
-                imperative_result = nll_loss(log_out, label)
-                print(imperative_result.numpy()) # [1.0720209]
+                result = nll_loss(log_out, label)
+                print(result.numpy()) # [1.0720209]
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
