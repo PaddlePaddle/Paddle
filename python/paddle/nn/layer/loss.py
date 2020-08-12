@@ -540,7 +540,7 @@ class NLLLoss(fluid.dygraph.Layer):
                 nll_loss = paddle.nn.layer.NLLLoss()
                 log_softmax = paddle.nn.LogSoftmax(axis=1)
 
-                x_np = np.array([[0.88103855, 0.9908683 , 0.6226845 ],
+                input_np = np.array([[0.88103855, 0.9908683 , 0.6226845 ],
                                  [0.53331435, 0.07999352, 0.8549948 ],
                                  [0.25879037, 0.39530203, 0.698465  ],
                                  [0.73427284, 0.63575995, 0.18827209],
@@ -549,8 +549,8 @@ class NLLLoss(fluid.dygraph.Layer):
 
                 place = paddle.CPUPlace()
                 paddle.disable_static(place)
-                x = paddle.to_variable(x_np)
-                log_out = log_softmax(x)
+                input = paddle.to_variable(input_np)
+                log_out = log_softmax(input)
                 label = paddle.to_variable(label_np)
                 result = nll_loss(log_out, label)
                 print(result.numpy()) # [1.0720209]

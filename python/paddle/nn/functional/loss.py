@@ -110,17 +110,17 @@ def nll_loss(input,
                 from paddle.nn.functional import nll_loss
                 log_softmax = paddle.nn.LogSoftmax(axis=1)
 
-                x_np = np.array([[0.88103855, 0.9908683 , 0.6226845 ],
-                                 [0.53331435, 0.07999352, 0.8549948 ],
-                                 [0.25879037, 0.39530203, 0.698465  ],
-                                 [0.73427284, 0.63575995, 0.18827209],
-                                 [0.05689114, 0.0862954 , 0.6325046 ]]).astype(np.float32)
+                input_np = np.array([[0.88103855, 0.9908683 , 0.6226845 ],
+                                     [0.53331435, 0.07999352, 0.8549948 ],
+                                     [0.25879037, 0.39530203, 0.698465  ],
+                                     [0.73427284, 0.63575995, 0.18827209],
+                                     [0.05689114, 0.0862954 , 0.6325046 ]]).astype(np.float32)
                 label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
 
                 place = paddle.CPUPlace()
                 paddle.disable_static(place)
-                x = paddle.to_variable(x_np)
-                log_out = log_softmax(x)
+                input = paddle.to_variable(input_np)
+                log_out = log_softmax(input)
                 label = paddle.to_variable(label_np)
                 result = nll_loss(log_out, label)
                 print(result.numpy()) # [1.0720209]
@@ -130,48 +130,48 @@ def nll_loss(input,
             "The value of 'reduction' in nll_loss should be 'sum', 'mean' or "
             "'none', but received %s, which is not allowed." % reduction)
 
-    x_shape = list(x.shape)
-    x_dims = len(x_shape)
-    if x_dims < 2:
+    input_shape = list(input.shape)
+    input_dims = len(input_shape)
+    if input_dims < 2:
         raise ValueError('Expected 2 or more dimensions (got {})'.format(
-            x_dims))
-    n = x_shape[0]
-    c = x_shape[1]
+            input_dims))
+    n = input_shape[0]
+    c = input_shape[1]
     if in_dygraph_mode():
-        if x_dims != 2 and x_dims != 4:
-            x, _ = core.ops.reshape2(x, 'shape', [n, c, 1, -1])
+        if input_dims != 2 and input_dims != 4:
+            input, _ = core.ops.reshape2(input, 'shape', [n, c, 1, -1])
             label, _ = core.ops.reshape2(label, 'shape', [n, 1, -1])
-            out_shape = [n] + x_shape[2:]
-        out, total_weight = core.ops.nll_loss(x, label, weight, 'ignore_index',
-                                              ignore_index, 'reduction',
-                                              reduction)
-        if x_dims != 2 and x_dims != 4 and reduction == 'none':
+            out_shape = [n] + input_shape[2:]
+        out, total_weight = core.ops.nll_loss(input, label, weight,
+                                              'ignore_index', ignore_index,
+                                              'reduction', reduction)
+        if input_dims != 2 and input_dims != 4 and reduction == 'none':
             out, _ = core.ops.reshape2(out, 'shape', out_shape)
         return out
 
     helper = LayerHelper('nll_loss', **locals())
 
-    if x_dims != 2 and x_dims != 4:
-        x = reshape(x, shape=[n, c, 1, -1])
+    if input_dims != 2 and input_dims != 4:
+        input = reshape(input, shape=[n, c, 1, -1])
         label = reshape(label, shape=[n, 1, -1])
-        out_shape = [n] + x_shape[2:]
+        out_shape = [n] + input_shape[2:]
 
-    data_feeder.check_variable_and_dtype(x, 'x', ['float32', 'float64'],
-                                         'nll_loss')
+    data_feeder.check_variable_and_dtype(input, 'input',
+                                         ['float32', 'float64'], 'nll_loss')
     data_feeder.check_variable_and_dtype(label, 'label', ['int64'], 'nll_loss')
-    inputs = {'X': x, 'Label': label}
+    inputs = {'X': input, 'Label': label}
     attrs = {'reduction': reduction, 'ignore_index': ignore_index}
     if weight is not None:
         if isinstance(weight, Variable):
             inputs['Weight'] = weight
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    total_weight = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    total_weight = helper.create_variable_for_type_inference(dtype=input.dtype)
     outputs = {'Out': out, 'Total_weight': total_weight}
 
     helper.append_op(
         type='nll_loss', inputs=inputs, outputs=outputs, attrs=attrs)
-    if x_dims != 2 and x_dims != 4 and reduction == 'none':
+    if input_dims != 2 and input_dims != 4 and reduction == 'none':
         out = reshape(out, shape=out_shape)
 
     return out
