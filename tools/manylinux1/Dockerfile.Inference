@@ -107,6 +107,13 @@ RUN tar -zxvf pip-18.0.tar.gz
 WORKDIR pip-18.0
 RUN python setup.py install
 
+RUN wget https://files.pythonhosted.org/packages/69/81/52b68d0a4de760a2f1979b0931ba7889202f302072cc7a0d614211bc7579/pip-18.0.tar.gz && tar -zxvf pip-18.0.tar.gz
+WORKDIR pip-18.0
+RUN python setup.py install && \
+  python3.7 setup.py install && \
+  python3.6 setup.py install && \
+  python3 setup.py install
+
 WORKDIR /home
 RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-18.0.tar.gz && \
     rm -r Python-$version setuptools-40.6.2 pip-18.0
