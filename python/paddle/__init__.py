@@ -134,8 +134,6 @@ from .tensor.math import cumsum  #DEFINE_ALIAS
 from .tensor.math import elementwise_add  #DEFINE_ALIAS
 from .tensor.math import elementwise_div  #DEFINE_ALIAS
 from .tensor.math import elementwise_floordiv  #DEFINE_ALIAS
-from .tensor.math import elementwise_max  #DEFINE_ALIAS
-from .tensor.math import elementwise_min  #DEFINE_ALIAS
 from .tensor.math import elementwise_mod  #DEFINE_ALIAS
 from .tensor.math import elementwise_pow  #DEFINE_ALIAS
 from .tensor.math import elementwise_sub  #DEFINE_ALIAS
@@ -164,7 +162,9 @@ from .tensor.math import sums  #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
 from .tensor.math import elementwise_sum  #DEFINE_ALIAS
 from .tensor.math import max  #DEFINE_ALIAS
+from .tensor.math import maximum  #DEFINE_ALIAS
 from .tensor.math import min  #DEFINE_ALIAS
+from .tensor.math import minimum  #DEFINE_ALIAS
 from .tensor.math import mm  #DEFINE_ALIAS
 from .tensor.math import div  #DEFINE_ALIAS
 from .tensor.math import multiply  #DEFINE_ALIAS

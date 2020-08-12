@@ -37,6 +37,23 @@ set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 set cache_dir=%work_dir%\..\cache
 dir %cache_dir%
 
+if "%WITH_TPCACHE%"=="ON" (
+    if not exist %cache_dir%\tools (
+        git clone https://github.com/zhouwei25/tools %cache_dir%\tools
+    )
+
+    echo set -ex > cache.sh
+    echo md5_content=$(cat $PWD/cmake/external/*.cmake  ^|md5sum ^| awk '{print $1}') >> cache.sh
+    echo echo ${md5_content}^>md5.txt >> cache.sh
+
+    %cache_dir%\tools\busybox64.exe cat cache.sh
+    %cache_dir%\tools\busybox64.exe bash cache.sh
+
+    set /p md5=< md5.txt
+    set THIRD_PARTY_PATH=d:/third_party/%md5%
+)
+
+
 goto :CASE_%1
 
 echo "Usage: paddle_build.bat [OPTION]"
@@ -116,7 +133,7 @@ if %ERRORLEVEL% NEQ 0 (
 goto:eof
 
 :build_error
-exit /b 
+exit /b 7
 
 rem ---------------------------------------------------------------------------------------------
 :test_whl_pacakage
@@ -125,7 +142,10 @@ echo    Step 3. Test pip install whl package ...
 echo    ========================================
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
+
 %PYTHON_EXECUTABLE% -m pip install -U %PADDLE_WHL_FILE_WIN%
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
 echo import paddle.fluid;print(paddle.__version__) > test_whl.py
 %PYTHON_EXECUTABLE% test_whl.py
 goto:eof
@@ -152,16 +172,14 @@ ctest.exe --output-on-failure -C Release -j 10
 goto:eof
 
 :unit_test_error
-exit /b %ERRORLEVEL%
+exit /b 8
 
 rem ---------------------------------------------------------------------------------------------
 :test_inference
 echo    ========================================
 echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
-if NOT EXIST "%cache_dir%\tools" (
-  git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
-)
+
 cd %work_dir%\paddle\fluid\inference\api\demo_ci
 
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo
