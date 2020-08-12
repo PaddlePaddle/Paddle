@@ -20,19 +20,16 @@ import warnings
 import textwrap
 import threading
 import collections
-from paddle.fluid import scope_guard
+import numpy as np
 from paddle.fluid import framework
-from paddle.fluid import executor
-from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
-from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
-from paddle.fluid.dygraph.dygraph_to_static.input_spec import TensorSpec, FunctionSpec
+from paddle.fluid.dygraph.dygraph_to_static.input_spec import FunctionSpec
 from paddle.fluid.dygraph.dygraph_to_static.input_spec import get_buffers, get_parameters
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.base import param_guard
@@ -135,32 +132,30 @@ def convert_to_static(function):
 
 
 class CacheKey(object):
-    def __init__(self, function_spec, inputs_with_spec, class_instance):
+    """
+    Cached key for ProgramCache.
+    """
+
+    def __init__(self, function_spec, input_with_spec, class_instance):
         self.function_spec = function_spec
-        # TODO: make sure it can hash 
-        self.inputs_with_spec = inputs_with_spec
+        self.input_with_spec = input_with_spec
         self.class_instance = class_instance
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
+        # 1. filter `self` in args
         if args and isinstance(args[0], layers.Layer):
             args = args[1:]
         # 2. convert tensor and numpy array into TensorSpec 
         _args, _kwargs = function_spec.unified_args_and_kwargs(args, kwargs)
-        inputs_with_spec = function_spec.args_to_variable_spec(_args, _kwargs)
+        input_with_spec = function_spec.args_to_tensor_spec(_args, _kwargs)
 
         # 3. check whether hit the cache or build a new program for the input arguments
-        return CacheKey(function_spec, inputs_with_spec, class_instance)
+        return CacheKey(function_spec, input_with_spec, class_instance)
 
     def __hash__(self):
-        # TODO(Aurelius84): list, dict is not hashable. Currently just consider tensorSpec as hash key.
-        tensor_specs = [
-            input for input in flatten(self.inputs_with_spec)
-            if isinstance(input, TensorSpec)
-        ]
-
-        return hash(
-            (id(self.function_spec), tuple(tensor_specs), self.class_instance))
+        return hash((id(self.function_spec),
+                     _make_hashable(self.input_with_spec), self.class_instance))
 
     def __eq__(self, other):
         return (type(self) is type(other)) and hash(self) == hash(other)
@@ -169,8 +164,32 @@ class CacheKey(object):
         return not self == other
 
     def __repr__(self):
-        return "id(function_spec): {}, inputs_with_spec: {}, class_instance: {}".format(
-            id(self.function_spec), self.inputs_with_spec, self.class_instance)
+        return "id(function_spec): {}, input_with_spec: {}, class_instance: {}".format(
+            id(self.function_spec), self.input_with_spec, self.class_instance)
+
+
+def _make_hashable(x):
+    """
+    Make input `x` hashable.
+    """
+    if isinstance(x, (tuple, list)):
+        return tuple(map(_make_hashable, x))
+
+    try:
+        hash(x)
+    except TypeError:
+        if isinstance(x, np.ndarray):
+            # Note: `tostring()` will return the binary data from np.ndarray that
+            # means different value will lead to different hash code.
+            return hash(x.tostring())
+        elif isinstance(x, dict):
+            return tuple(map(_make_hashable, x.values()))
+
+        raise ValueError("Arguments to a `@declarative` must be a hashable"
+                         "Python objects (or nested structures of these types)."
+                         " But received type: %s" % type_name(x))
+
+    return x
 
 
 def unwrap(func):
@@ -182,24 +201,29 @@ def unwrap(func):
     while True:
         if isinstance(cur, PartialProgram):
             decorators.append(cur)
-            cur = cur.dygraph_function
+            # Note: if `cur` is a method, keep it as bound method of class.
+            instance = cur._class_instance
+            if instance is not None:
+                cur = cur.dygraph_function.__get__(instance)
+            else:
+                cur = cur.dygraph_function
         else:
             break
     return decorators, cur
 
 
 class PartialProgram(object):
-    def __init__(self, dygraph_func, input_spec=None):
+    def __init__(self, function, input_spec=None):
         # save the instance `self` while decorating a method of class.
-        if inspect.ismethod(dygraph_func):
-            self._dygraph_func = getattr(dygraph_func, '__func__')
-            self._class_instance = getattr(dygraph_func, '__self__')
+        if inspect.ismethod(function):
+            self._dygraph_function = getattr(function, '__func__')
+            self._class_instance = getattr(function, '__self__')
         else:
-            self._dygraph_func = dygraph_func
+            self._dygraph_function = function
             self._class_instance = None
 
         self._input_spec = input_spec
-        self._function_spec = FunctionSpec(dygraph_func, input_spec)
+        self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
 
     def __get__(self, instance, owner):
@@ -207,24 +231,20 @@ class PartialProgram(object):
         return self
 
     def __call__(self, *args, **kwargs):
-        # 1. call dygraph function if not enable `declarative`
+        # 1. call dygraph function directly if not enable `declarative`
         if not program_trans.enable_declarative:
-            return self._call_dygraph_func(*args, **kwargs)
+            return self._call_dygraph_function(*args, **kwargs)
 
-        # 2. convert tensor and numpy array into TensorSpec 
+        # 2. trace ops from dygraph layers and cache the generated program.
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
-        inputs_with_spec = self._function_spec.args_to_variable_spec(args,
-                                                                     kwargs)
+        concrete_program, partial_program_layer = self.get_concrete_program(
+            *args, **kwargs)
 
-        # 3. check whether hit the cache or build a new program for the input arguments
-        cache_key = CacheKey(self._function_spec, inputs_with_spec,
-                             self._class_instance)
-        _, partial_program_layer = self._program_cache[cache_key]
-
-        # 4. Synchronize self.training attribute.
+        # 3. synchronize self.training attribute.
         if isinstance(self._class_instance, layers.Layer):
             partial_program_layer.training = self._class_instance.training
 
+        # 4. return outputs.
         try:
             return partial_program_layer(args)
         except Exception as e:
@@ -245,40 +265,82 @@ class PartialProgram(object):
             else:
                 raise
 
-    def _call_dygraph_func(self, *args, **kwargs):
+    def _call_dygraph_function(self, *args, **kwargs):
         """
         Calls dygraph function directly and returns the outputs.
         """
         if self._class_instance is not None:
-            dygraph_func = self._dygraph_func.__get__(self._class_instance)
+            dygraph_function = self._dygraph_function.__get__(
+                self._class_instance)
         else:
-            dygraph_func = self._dygraph_func
+            dygraph_function = self._dygraph_function
 
-        return dygraph_func(*args, **kwargs)
+        return dygraph_function(*args, **kwargs)
+
+    def get_concrete_program(self, *args, **kwargs):
+        """
+        Returns traced concrete program and inner executable partial layer.
+
+        Args:
+            *args(tuple): input arguments values or TensorSpec
+            **kwargs(dict) : input kwargs values.
+
+        Returns:
+            Traced ConcreteProgram and executable PartialProgramLayer.
+        """
+        # 1. unify args/kwargs and replace Tensor with TensorSpec
+        if len(args) != self._function_spec.args_name:
+            args, kwargs = self._function_spec.unified_args_and_kwargs(args,
+                                                                       kwargs)
+        input_with_spec = self._function_spec.args_to_tensor_spec(args, kwargs)
+
+        # 2. generate cache key
+        cache_key = CacheKey(self._function_spec, input_with_spec,
+                             self._class_instance)
+
+        # 3. check whether hit the cache or build a new program for the input arguments
+        concrete_program, partial_program_layer = self._program_cache[cache_key]
+        return concrete_program, partial_program_layer
 
     def get_trace_count(self):
+        """
+        Returns the number of traced program for the dygraph function.
+        """
         return len(self._program_cache)
 
-    @property
     def to_code(self):
-        # TODO: provide a interface to get the transformed static code.
-        return None
+        """
+        Returns the source code of transformed static function for debugging.
+        """
+        static_func = convert_to_static(self._dygraph_function)
+        source_code = func_to_source_code(static_func)
+        return source_code
 
     @property
     def dygraph_function(self):
-        return self._dygraph_func
+        return self._dygraph_function
 
     @property
     def concrete_program(self):
         # if specific the `input_spec`, the length of program_cache will always 1,
         # else, return the last one.
-        if len(self._program_cache) > 0:
-            cache_key, (concrete_program,
-                        partial_layer) = self._program_cache.last()
-            return concrete_program
-        else:
-            raise ValueError("No valid transformed program for function: {}".
-                             fromat(self._dygraph_func.__name__))
+        cached_program_len = len(self._program_cache)
+        if cached_program_len == 0:
+            if len(self._function_spec.flat_input_spec) > 0:
+                input_spec = self._function_spec.input_spec
+                concrete_program, _ = self.get_concrete_program(*input_spec)
+                return concrete_program
+            else:
+                raise ValueError("No valid transformed program for {}".format(
+                    self._function_spec))
+        elif cached_program_len > 1:
+            logging.warning(
+                "Current {} has more than one cache program: {}, the last traced progam will be return by default.".
+                format(self._function_spec, cached_program_len))
+
+        cache_key, (concrete_program,
+                    partial_layer) = self._program_cache.last()
+        return concrete_program
 
     @property
     def program_cache(self):
@@ -324,13 +386,13 @@ class ConcreteProgram(object):
 
     @staticmethod
     @switch_to_static_graph
-    def from_func_spec(func_spec, inputs_spec, class_instance):
+    def from_func_spec(func_spec, input_spec, class_instance):
         """
         Builds the main_program with specialized inputs and returns outputs
         of program as fetch_list.
         """
         # Transforms dygraph function into static function and caches it.
-        dygraph_function = func_spec.dyfunc
+        dygraph_function = func_spec.dygraph_function
         static_func = convert_to_static(dygraph_function)
 
         main_program, startup_program = framework.Program(), framework.Program()
@@ -344,7 +406,7 @@ class ConcreteProgram(object):
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `fluid.data` layers for input if needed
-                inputs = func_spec.to_static_inputs_with_spec(inputs_spec,
+                inputs = func_spec.to_static_inputs_with_spec(input_spec,
                                                               main_program)
                 if class_instance:
                     inputs = tuple([class_instance] + list(inputs))
@@ -391,7 +453,7 @@ class ProgramCache(object):
     def _build_once(self, cache_key):
         concrete_program = ConcreteProgram.from_func_spec(
             func_spec=cache_key.function_spec,
-            inputs_spec=cache_key.inputs_with_spec,
+            input_spec=cache_key.input_with_spec,
             class_instance=cache_key.class_instance)
         return concrete_program, partial_program_from(concrete_program)
 
@@ -402,7 +464,7 @@ class ProgramCache(object):
 
         if item not in self._caches:
             self._caches[item] = self._build_once(item)
-            # raise warnings if number of traced program is out of `max_tracing_count`
+            # Note: raise warnings if number of traced program is more than `max_tracing_count`
             current_tracing_count = len(self._caches)
             if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
                 logging.warning(

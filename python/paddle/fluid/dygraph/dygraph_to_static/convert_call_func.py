@@ -104,9 +104,9 @@ def convert_call(func):
     if isinstance(func, PartialProgram):
         instance = func._class_instance
         if instance is not None:
-            func = func._dygraph_func.__get__(instance)
+            func = func.dygraph_function.__get__(instance)
         else:
-            func = func._dygraph_func
+            func = func.dygraph_function
 
     if is_builtin_len(func):
         return convert_len

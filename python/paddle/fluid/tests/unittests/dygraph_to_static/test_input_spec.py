@@ -109,10 +109,6 @@ class TestInputSpec(unittest.TestCase):
             out = net.add_func(x_2, np.ones([20]).astype('float32'))
             self.assertTrue(len(net.add_func.program_cache) == 1)
 
-            # 4. kwargs and input_spec should not be specificed in same time
-            with self.assertRaises(ValueError):
-                net(x, a=1, other_kwarg=2)
-
             # 5. test input with list
             out = net.func_with_list([x, y, int_val])
 
@@ -123,9 +119,61 @@ class TestInputSpec(unittest.TestCase):
             int_np = np.ones([1]).astype('float32')
             out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
 
+    def test_with_error(self):
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            x = to_variable(np.ones([4, 10]).astype('float32'))
+            y = to_variable(np.ones([4, 10]).astype('float32') * 2)
+            int_val = 4.
 
-@declarative
-def foo(a, b, c=1, d=2):
+            net = SimpleNet()
+
+            # 1. kwargs and input_spec should not be specificed in same time
+            with self.assertRaises(ValueError):
+                net(x, a=1, other_kwarg=2)
+
+            # 2. requires len(input_spec) <= len(args)
+            with self.assertRaises(ValueError):
+                net.add_func = declarative(
+                    net.add_func,
+                    input_spec=[
+                        TensorSpec([-1, 10]), TensorSpec([-1, 10]),
+                        TensorSpec([10])
+                    ])
+                net.add_func(x, y)
+
+    def test_concrete_program(self):
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            x = to_variable(np.ones([4, 10]).astype('float32'))
+            y = to_variable(np.ones([4, 10]).astype('float32') * 2)
+            int_val = 4.
+
+            net = SimpleNet()
+            # We can get concrete_program by specificing TensorSpec information. Faking input is no need.
+            net.add_func = declarative(
+                net.add_func,
+                input_spec=[
+                    TensorSpec([-1, 10]), TensorSpec(
+                        [-1, 10], name='y')
+                ])
+            cp1 = net.add_func.concrete_program
+            self.assertTrue(cp1.inputs[-1].shape == (-1, 10))
+            self.assertTrue(cp1.inputs[-1].name == 'y')
+
+            # generate another program
+            net.add_func = declarative(
+                net.add_func,
+                input_spec=[TensorSpec([10]), TensorSpec(
+                    [10], name='label')])
+            cp2 = net.add_func.concrete_program
+            self.assertTrue(cp2.inputs[-1].shape == (10, ))
+            self.assertTrue(cp2.inputs[-1].name == 'label')
+            # Note(Aurelius84): New instance will be returned if we use `declarative(foo)` every time.
+            # So number of cache program is 1.
+            self.assertTrue(len(net.add_func.program_cache) == 1)
+            self.assertTrue(cp1 != cp2)
+
+
+def foo_func(a, b, c=1, d=2):
     z = a + b
     return z
 
@@ -136,6 +184,8 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             x_data = np.ones([16, 10]).astype('float32')
             y_data = np.ones([10]).astype('float32') * 2
             z_data = np.ones([10]).astype('float32') * 2.2
+
+            foo = declarative(foo_func)
 
             # [16, 10] + [10] (varbase)
             out_1 = foo(to_variable(x_data), to_variable(y_data))
@@ -157,7 +207,43 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             out_4 = foo(to_variable(x_data), z_data, 3)
             self.assertTrue(np.allclose(x_data + z_data, out_4.numpy()))
             # create a new program
-            self.assertTrue(len(foo.program_cache) == 1)
+            self.assertTrue(len(foo.program_cache) == 2)
+
+    def test_get_concrete_program(self):
+
+        foo = declarative(foo_func)
+
+        # 1. specific TensorSpec for `x`/`y`
+        concrete_program_1 = foo.get_concrete_program(
+            TensorSpec([None, 10]), TensorSpec([10]))
+        print(concrete_program_1)
+        self.assertTrue(len(foo.program_cache) == 1)
+
+        # 2. specific `c`/`d` explicitly with same default value
+        concrete_program_2 = foo.get_concrete_program(
+            TensorSpec([None, 10]), TensorSpec([10]), 1, 2)
+        self.assertTrue(concrete_program_2 == concrete_program_1)
+        self.assertTrue(len(foo.program_cache) == 1)
+
+        # 3. specific `c` = 2
+        concrete_program_3 = foo.get_concrete_program(
+            TensorSpec([None, 10]), TensorSpec([10]), c=2)
+        self.assertTrue(concrete_program_3 != concrete_program_1)
+        self.assertTrue(len(foo.program_cache) == 2)
+
+        # 4. specific x.shape = [10]
+        concrete_program_4 = foo.get_concrete_program(
+            TensorSpec([10]), TensorSpec([10]))
+        self.assertTrue(concrete_program_4 != concrete_program_1)
+        self.assertTrue(len(foo.program_cache) == 3)
+
+        # 5. only specific TensorSpec of x
+        with self.assertRaises(ValueError):
+            concrete_program_5 = foo.get_concrete_program(TensorSpec([10]))
+
+        # 6. specific unknown kwargs `e`=4
+        concrete_program_5 = foo.get_concrete_program(
+            TensorSpec([10]), TensorSpec([10]), e=4)
 
 
 if __name__ == '__main__':

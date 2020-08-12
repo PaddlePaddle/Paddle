@@ -58,11 +58,17 @@ class TestTensorSpec(unittest.TestCase):
         self.assertEqual(tensor_spec.shape, (-1, 4, -1))
 
     def test_shape_raise_error(self):
+        # 1. shape should only contain int and None.
         with self.assertRaises(ValueError):
             tensor_spec = TensorSpec(['None', 4, None], dtype='int8')
 
+        # 2. shape should be type `list` or `tuple`
         with self.assertRaises(TypeError):
             tensor_spec = TensorSpec(4, dtype='int8')
+
+        # 3. len(shape) should be greater than 0.
+        with self.assertRaises(ValueError):
+            tensor_spec = TensorSpec([], dtype='int8')
 
     def test_batch_and_unbatch(self):
         tensor_spec = TensorSpec([10])
@@ -74,8 +80,17 @@ class TestTensorSpec(unittest.TestCase):
         unbatch_spec = batch_tensor_spec.unbatch()
         self.assertEqual(unbatch_spec.shape, (10, ))
 
+        # 1. `unbatch` requires len(shape) > 1
         with self.assertRaises(ValueError):
             unbatch_spec.unbatch()
+
+        # 2. `batch` requires len(batch_size) == 1
+        with self.assertRaises(ValueError):
+            tensor_spec.batch([16, 12])
+
+        # 3. `batch` requires type(batch_size) == int
+        with self.assertRaises(TypeError):
+            tensor_spec.batch('16')
 
     def test_eq_and_hash(self):
         tensor_spec_1 = TensorSpec([10, 16], dtype='float32')

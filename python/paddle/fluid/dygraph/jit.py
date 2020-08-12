@@ -23,8 +23,7 @@ from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec, TensorSpec, PartialProgram, unwrap
-from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, TensorSpec, PartialProgram, unwrap
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
@@ -181,7 +180,7 @@ def declarative(function=None, input_spec=None):
         return make_decorate(
             original_func=python_func,
             wrapper_func=PartialProgram(
-                dygraph_func=python_func, input_spec=input_spec))
+                function=python_func, input_spec=input_spec))
 
     # for `declarative2(foo, ...)`
     if function is not None:

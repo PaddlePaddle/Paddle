@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import six
 import inspect
 import numpy as np
@@ -24,6 +25,7 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_, Variable
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
+from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 
 
 class TensorSpec(object):
@@ -169,9 +171,17 @@ def get_buffers(layer_instance, include_sublayer=True):
     return buffers
 
 
-def convert_inputs_to_tensor_spec(inputs, inputs_spec):
+def convert_inputs_to_tensor_spec(inputs, input_spec):
     """
-    Replace tensor in structured `inputs` by tensorSpec in `inputs_spec`.
+    Replaces tensor in structured `inputs` by tensorSpec in `input_spec`.
+    
+    args:
+        inputs(list|dict): nested structure list or dict.
+        input_spec(list|dict): same nested structure list or dict as inputs. 
+
+    
+    Returns:
+        Same structure with inputs by replacing the element with specified TensorSpec.
     """
 
     def check_type_and_len(input, spec, check_length=False):
@@ -180,53 +190,55 @@ def convert_inputs_to_tensor_spec(inputs, inputs_spec):
                             format(type(spec), type(input)))
         if check_length and len(input) < len(spec):
             raise ValueError(
-                'Requires len(inputs) >= len(inputs_spec), but received len(inputs):{} < len(inputs_spec):{}'.
-                format(len(inputs), len(inputs_spec)))
+                'Requires len(inputs) >= len(input_spec), but received len(inputs):{} < len(input_spec):{}'.
+                format(len(inputs), len(input_spec)))
 
-    if isinstance(inputs_spec, (tuple, list)):
-        inputs_with_spec = []
-        check_type_and_len(inputs, inputs_spec, True)
+    if isinstance(input_spec, (tuple, list)):
+        input_with_spec = []
+        check_type_and_len(inputs, input_spec, True)
 
-        for i, spec in enumerate(inputs_spec):
+        for i, spec in enumerate(input_spec):
             out_spec = convert_inputs_to_tensor_spec(inputs[i], spec)
-            inputs_with_spec.append(out_spec)
+            input_with_spec.append(out_spec)
 
-        # TODO(Aurelius84): If the rest inputs contains tensor or numpy.ndarray,
-        # should we enhance check and raise warning for users?
-        inputs_with_spec.extend(inputs[len(inputs_spec):])
-        return inputs_with_spec
-    elif isinstance(inputs_spec, dict):
-        inputs_with_spec = {}
-        check_type_and_len(inputs, inputs_spec, True)
+        # Note: If the rest inputs contain tensor or numpy.ndarray
+        # without specific TensorSpec, raise waring.
+        if len(inputs) > len(input_spec):
+            for rest_input in inputs[len(input_spec):]:
+                if isinstance(rest_input, (core.VarBase, np.ndarray)):
+                    logging.warning(
+                        "The inputs constain `{}` without specificing TensorSpec, its shape and dtype will be treated immutable. Please specific TensorSpec information in `@declarative` if you expect them as mutable inputs.".
+                        format(type_name(rest_input)))
+        input_with_spec.extend(inputs[len(input_spec):])
+
+        return input_with_spec
+    elif isinstance(input_spec, dict):
+        input_with_spec = {}
+        check_type_and_len(inputs, input_spec, True)
         for name, input in inputs.items():
-            if name in inputs_spec:
-                inputs_with_spec[name] = convert_inputs_to_tensor_spec(
-                    input, inputs_spec[name])
+            if name in input_spec:
+                input_with_spec[name] = convert_inputs_to_tensor_spec(
+                    input, input_spec[name])
             else:
-                print('{} has no spec info.'.format(name))
-                inputs_with_spec[name] = input
-        return inputs_with_spec
-    elif isinstance(inputs_spec, TensorSpec):
-        return inputs_spec
+                input_with_spec[name] = input
+        return input_with_spec
+    elif isinstance(input_spec, TensorSpec):
+        return input_spec
     else:
         raise TypeError(
-            "type(inputs_spec) should be `TensorSpec` or dict/list/tuple of it, but received {}.".
-            type_name(inputs_spec))
+            "The type(input_spec) should be a `TensorSpec` or dict/list/tuple of it, but received {}.".
+            type_name(input_spec))
 
 
 class FunctionSpec(object):
     def __init__(self, function, input_spec=None, is_method=False):
-        self._dyfunc = function
+        self._dygraph_function = function
         if input_spec is None:
             self._input_spec = None
-            self._flatten_spec = None
+            self._flat_input_spec = None
         else:
-            if not isinstance(input_spec, (tuple, list)):
-                raise TypeError(
-                    "Type of `input_spec` should be one of (tuple, list), but received {}.".
-                    format(type_name(input_spec)))
-            self._input_spec = tuple(input_spec)
-            self._flatten_signature = flatten(self._input_spec)
+            self._input_spec = self.verify_tensor_spec(input_spec)
+            self._flat_input_spec = flatten(self._input_spec)
 
         self._is_method = is_method
         # parse full argument names list.
@@ -234,17 +246,25 @@ class FunctionSpec(object):
 
     def unified_args_and_kwargs(self, args, kwargs):
         """
-        Move kwarg with default value into arguments list.
+        Moves kwargs with default value into arguments list to keep `args` constain the same length
+        value as function definition.
         
         For example: 
         
-        Given function definition: `def foo(x, a=1, b=2)`, 
-        when calling it by `foo(23)`, the args is `[23]`, kwargs is `{a=1, b=2}`.
-        In this function, it will return args with `[23, 1, 2]`, kwargs with `{}`
+            Given function definition: `def foo(x, a=1, b=2)`, 
+            when calling it by `foo(23)`, the args is `[23]`, kwargs is `{a=1, b=2}`.
+            In this function, it will return args with `[23, 1, 2]`, kwargs with `{}`
+
+        args:
+            args(tuple): tuple of input arguments value of function.
+            kwargs(dict): dict of input kwargs arguments value of function.
+
+        Returns:
+            New tuple of args with same length of all arguments containing default kwargs.
         """
         if len(self._arg_names) < len(args):
             error_msg = "The decorated function `{}` requires {} arguments: {}, but received {} with {}.".format(
-                self._dyfunc.__name__,
+                self._dygraph_function.__name__,
                 len(self._arg_names), self._arg_names, len(args), args)
             if args and inspect.isclass(args[0]):
                 error_msg += "\n\tMaybe the function has more than one decorator, we don't support this for now."
@@ -253,38 +273,51 @@ class FunctionSpec(object):
                 raise ValueError(error_msg)
 
         args = list(args)
+
         for i in six.moves.range(len(args), len(self._arg_names)):
             arg_name = self._arg_names[i]
             if arg_name in kwargs:
                 args.append(kwargs[arg_name])
                 del kwargs[arg_name]
             else:
+                if arg_name not in self._default_kwargs:
+                    raise ValueError(
+                        "`{}()` requires `{}` arguments, but not found in input `args`: {} and `kwargs`: {}.".
+                        format(self._dygraph_function.__name__, arg_name, args,
+                               kwargs))
                 args.append(self._default_kwargs[arg_name])
 
         return tuple(args), kwargs
 
-    def args_to_variable_spec(self, args, kwargs):
+    def args_to_tensor_spec(self, args, kwargs):
         """
         Convert input arguments into TensorSpec.
         
         1. If specific input_spec, use them to construct feed layers.
         2. If input_spec is None, consider all Tensor and Numpy.ndarray as feed layers
+
+        args:
+            args(tuple): tuple of input arguments value of function containing default kwargs value.
+            kwargs(dict): kwargs arguments received by **kwargs.
+
+        Return:
+            Same nest structure with args by replacing value with TensorSpec.
         """
-        inputs_with_spec = []
+        input_with_spec = []
 
         if self._input_spec is not None:
             if kwargs:
                 raise ValueError(
-                    "{} got unexpected keyword arguments: {}. Cannot trace the function when input_spec is specificed.".
-                    format(self._dyfunc.__name__, kwargs))
+                    "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specificed.".
+                    format(self._dygraph_function.__name__, kwargs))
 
             if len(args) < len(self._input_spec):
                 raise ValueError(
                     "Requires len(arguments) >= len(input_spec), but received len(args):{} < len(TensorSpec): {}".
                     format(len(args), len(self._input_spec)))
 
-            inputs_with_spec = convert_inputs_to_tensor_spec(args,
-                                                             self._input_spec)
+            input_with_spec = convert_inputs_to_tensor_spec(args,
+                                                            self._input_spec)
         else:
             for idx, input_var in enumerate(flatten(args)):
                 if isinstance(input_var, np.ndarray):
@@ -292,19 +325,26 @@ class FunctionSpec(object):
                 elif isinstance(input_var, core.VarBase):
                     input_var = TensorSpec.from_variable(input_var)
 
-                inputs_with_spec.append(input_var)
+                input_with_spec.append(input_var)
 
-            inputs_with_spec = pack_sequence_as(args, inputs_with_spec)
+            input_with_spec = pack_sequence_as(args, input_with_spec)
 
-        return inputs_with_spec
+        return input_with_spec
 
     @switch_to_static_graph
-    def to_static_inputs_with_spec(self, inputs_with_spec, main_program):
-        flat_inputs_spec = flatten(inputs_with_spec)
+    def to_static_inputs_with_spec(self, input_with_spec, main_program):
+        """
+        Constructs feed layer by inputs with TensorSpec information for main program.
+
+        args:
+            input_with_spec(tuple): input arguments by replacing value with TensorSpec.
+            main_program(Program): main program for inserting feed layer.
+        """
+        flat_input_spec = flatten(input_with_spec)
 
         inputs = []
         block = main_program.global_block()
-        for i, var_spec in enumerate(flat_inputs_spec):
+        for i, var_spec in enumerate(flat_input_spec):
             if isinstance(var_spec, TensorSpec):
                 feed_layer = block.create_var(
                     # TODO: consider more elegant way to name this
@@ -317,21 +357,50 @@ class FunctionSpec(object):
                 feed_layer = var_spec
             inputs.append(feed_layer)
 
-        return pack_sequence_as(inputs_with_spec, inputs)
+        return pack_sequence_as(input_with_spec, inputs)
+
+    def verify_tensor_spec(self, input_spec):
+        """
+        Verifies the `input_spec` and its element type is valid.
+        """
+        if not isinstance(input_spec, (tuple, list)):
+            raise TypeError(
+                "The  type(input_spec) should be one of (tuple, list), but received {}.".
+                format(type_name(input_spec)))
+        input_spec = tuple(input_spec)
+        for spec in flatten(input_spec):
+            if not isinstance(spec, TensorSpec):
+                raise ValueError(
+                    "The type(elem) from input_spec should be `TensorSpec`, but received {}.".
+                    format(type_name(spec)))
+
+        return input_spec
+
+    def __repr__(self):
+        return "function: {}({}), is_method: {},  input_spec: {}".format(
+            self._dygraph_function.__name__, ','.join(self._arg_names),
+            self._is_method, self._input_spec)
 
     @property
-    def dyfunc(self):
-        return self._dyfunc
+    def dygraph_function(self):
+        return self._dygraph_function
 
     @property
-    def args(self):
-        return self._args
+    def args_name(self):
+        return self._arg_names
 
     @property
     def is_method(self):
         return self._is_method
 
     @property
+    def input_spec(self):
+        return self._input_spec
+
+    @property
+    def flat_input_spec(self):
+        return self._flat_input_spec
+
+    @property
     def code(self):
-        dyfunc = getattr(self._function, '__wrapped__', self._function)
-        return inspect.getsource(dyfunc)
+        return func_to_source_code(self._dygraph_function)
