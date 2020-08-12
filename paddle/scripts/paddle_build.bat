@@ -19,22 +19,26 @@ rem =================================================
 rem       Paddle CI Task On Windows Platform
 rem =================================================
 
-
 set work_dir=%cd%
-if not defined BRANCH set BRANCH=develop
+mkdir build
+cd /d build
+
+rem ------initialize the virtual environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=c:\Python37
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
+%PYTHON_EXECUTABLE% -m pip install virtualenv
+virtualenv Paddle_Winci
+Paddle_Winci\Scripts\activate.bat
+pip install -r %work_dir%\python\requirements.txt
 
-if not defined WITH_MKL set WITH_MKL=ON
+rem ------initialize common variable------
+if not defined BRANCH set BRANCH=develop
 if not defined WITH_AVX set WITH_AVX=ON
-if not defined WITH_AVX set WITH_AVX=ON
-if not defined WITH_GPU set WITH_GPU=OFF
 if not defined WITH_TESTING set WITH_TESTING=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=OFF
-if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
-if not defined THIRD_PARTY_PATH set THIRD_PARTY_PATH=%work_dir:\=/%/build/third_party
+if not defined WITH_TPCACHE set WITH_TPCACHE=ON
 
 set cache_dir=%work_dir%\..\cache
 dir %cache_dir%
@@ -45,6 +49,7 @@ if not exist %cache_dir%\tools (
 )
 
 if "%WITH_TPCACHE%"=="OFF" (
+    set THIRD_PARTY_PATH=%work_dir:\=/%/build/third_party
     goto :CASE_%1
 )
 
@@ -71,6 +76,9 @@ echo "wincheck_openbals: run Windows OPENBLAS/CPU CI tasks on Windows"
 exit /b 1
 
 :CASE_wincheck_mkl
+
+set WITH_MKL=ON
+set WITH_GPU=OFF
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
@@ -80,6 +88,9 @@ call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 :CASE_wincheck_openblas
+
+set WITH_MKL=OFF
+set WITH_GPU=ON
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
@@ -96,9 +107,8 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
-mkdir build
-cd /d build
-cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0" -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH%
+
+cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0" -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH%
 goto:eof
 
 :cmake_error
@@ -151,11 +161,11 @@ echo    ========================================
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 
-%PYTHON_EXECUTABLE% -m pip install -U %PADDLE_WHL_FILE_WIN%
+pip install -U %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
 echo import paddle.fluid;print(paddle.__version__) > test_whl.py
-%PYTHON_EXECUTABLE% test_whl.py
+python test_whl.py
 goto:eof
 
 :test_whl_pacakage_error
@@ -166,7 +176,7 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
-%PYTHON_EXECUTABLE% -m pip install --upgrade pip
+pip -m pip install --upgrade pip
 
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
@@ -176,7 +186,7 @@ dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;%THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
-ctest.exe --output-on-failure -C Release -j 10
+ctest.exe --output-on-failure -C Release -j 6
 goto:eof
 
 :unit_test_error
@@ -232,7 +242,7 @@ echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_
 echo fi>>  check_change_of_unittest.sh
 echo git checkout -b origin_pr >>  check_change_of_unittest.sh
 echo git checkout -f $BRANCH >>  check_change_of_unittest.sh
-echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE:\=\\% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0" -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% >>  check_change_of_unittest.sh
+echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0" -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% >>  check_change_of_unittest.sh
 echo cat ^<^<EOF>>  check_change_of_unittest.sh
 echo     ============================================       >>  check_change_of_unittest.sh
 echo     Generate unit tests.spec of develop.               >>  check_change_of_unittest.sh
@@ -285,6 +295,7 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
+Paddle_Winci\Scripts\deactivate.bat
 echo Windows CI run successfully!
 exit /b 0
 
