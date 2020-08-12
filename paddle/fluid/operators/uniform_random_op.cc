@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/uniform_random_op.h"
 #include <string>
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+
 namespace paddle {
 namespace operators {
 
@@ -55,12 +57,17 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
           "supports SelectedRows and LoDTensor");
     }
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
-    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
+
+    auto gen_ptr = framework::Generator::GetInstance();
+    std::mt19937_64 &engine = gen_ptr->GetCPUEngine();
+    // auto engine = gen_ptr_->GetCPUEngine();
+
+    // unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
+    // std::minstd_rand engine;
+    // if (seed == 0) {
+    //   seed = std::random_device()();
+    // }
+    // engine.seed(seed);
     std::uniform_real_distribution<T> dist(
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));

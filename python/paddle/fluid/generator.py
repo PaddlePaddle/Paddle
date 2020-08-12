@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 
 from . import core
 
+__all__ = ['Generator']
+
 default_rng_seed_val = 34342423252
 
 
@@ -26,24 +28,26 @@ class Generator(object):
         self.device = device
         seed_in = default_rng_seed_val
         if self.device == "CPU":
-            self.generator = core.CPUGenerator(seed_in)
+            self.generator = core.Generator()
+            self.generator.manual_seed(seed_in)
         elif self.device == "CUDA":
-            self.generator = core.CUDAGenerator(seed_in)
+            self.generator = core.Generator()
+            self.generator.manual_seed(seed_in)
         else:
             raise ValueError("generator class %s does not exist" %
                              generator_class)
 
     def get_state(self):
-        pass
+        return self.generator.get_state()
 
     def set_state(self, state):
-        pass
+        self.generator.set_state(state)
 
     def manual_seed(self, seed):
-        pass
+        self.generator.manual_seed(seed)
 
     def seed(self):
-        pass
+        self.generator.manual_seed(default_rng_seed_val)
 
     def initial_seed(self):
-        pass
+        return self.initial_seed()
