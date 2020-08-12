@@ -426,13 +426,13 @@ class GeneratorLoader(DataLoaderBase):
         return self._iterable
 
     def __iter__(self):
-        self._ignore_epoch = dacp._ignore_epoch(self._auto_checkpoint_name)
-        if self._ignore_epoch:
-            return self
-
         assert self.iterable, "DataLoader is not iterable"
         assert self._tensor_reader is not None, \
             "Data source of DataLoader has not set yet"
+
+        self._ignore_epoch = dacp._ignore_epoch(self._auto_checkpoint_name)
+        if self._ignore_epoch:
+            return self
 
         self._init_iterable()
         self._start()
