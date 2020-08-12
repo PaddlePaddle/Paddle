@@ -251,6 +251,15 @@ class TestVarBase(unittest.TestCase):
             assert bool(var1) == False, "bool(var1) is False"
             assert bool(var2) == True, "bool(var2) is True"
 
+    def test_dim(self):
+        with fluid.dygraph.guard():
+            tensor = fluid.dygraph.to_variable(
+                np.random.uniform(0.1, 1, [10, 5, 2]))
+            self.assertEqual(tensor.dim(), 3)
+            self.assertEqual(tensor.ndimension(), 3)
+            self.assertEqual(tensor.ndim, 100)
+            self.assertEqual(tensor.size(), [10, 5, 2])
+
     def test_to_static_var(self):
         with fluid.dygraph.guard():
             # Convert VarBase into Variable or Parameter

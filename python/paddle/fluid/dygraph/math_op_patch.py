@@ -140,6 +140,16 @@ def monkey_patch_math_varbase():
         else:
             return int(var.numpy().flatten()[0])
 
+    def _dim_(var):
+        return len(var.shape)
+
+    @property
+    def _ndim_(var):
+        return len(var.shape)
+
+    def _size_(var):
+        return var.shape
+
     def _scalar_elementwise_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
 
@@ -247,6 +257,10 @@ def monkey_patch_math_varbase():
     core.VarBase.__len__ = _len_
     core.VarBase.__index__ = _index_
     core.VarBase.astype = astype
+    core.VarBase.dim = _dim_
+    core.VarBase.ndimension = _dim_
+    core.VarBase.ndim = _ndim_
+    core.VarBase.size = _size_
     """
     When code is written like this
     y = np.pi * var
