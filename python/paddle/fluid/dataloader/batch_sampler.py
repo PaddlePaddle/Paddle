@@ -16,7 +16,7 @@ from __future__ import print_function
 from __future__ import division
 
 import numpy as np
-from .dataset import Dataset
+from .dataset import Dataset, IterableDataset
 
 __all__ = ["BatchSampler"]
 
@@ -106,12 +106,18 @@ class BatchSampler(object):
             assert isinstance(indices, list) or isinstance(indices, tuple), \
                 "indices should be a list or tuple, but got {}".format(type(indices))
             self.indices = indices
+            self.sampler_iter = None
         else:
-            assert isinstance(dataset, Dataset), \
-                "dataset should be an instance of paddle.io.Dataset"
-            assert indices is None, \
-                "should not set both dataset and indices"
-            self.indices = list(range(len(dataset)))
+            if isinstance(dataset, IterableDataset):
+                self.sampler_iter = iter(
+                    _InfiniteIterableSampler(dataset, batch_size))
+            else:
+                self.sampler_iter = None
+                assert isinstance(dataset, Dataset), \
+                    "dataset should be an instance of paddle.io.Dataset"
+                assert indices is None, \
+                    "should not set both dataset and indices"
+                self.indices = list(range(len(dataset)))
 
         assert isinstance(batch_size, int) and batch_size > 0, \
             "batch_size should be a positive integer, but got {}".format(batch_size)
@@ -124,6 +130,9 @@ class BatchSampler(object):
         self.drop_last = drop_last
 
     def __iter__(self):
+        if self.sampler_iter:
+            yield next(self.sampler_iter)
+
         if self.shuffle:
             np.random.shuffle(self.indices)
         _iter = iter(self.indices)
@@ -138,6 +147,22 @@ class BatchSampler(object):
             yield batch_indices
 
     def __len__(self):
+        if self.sampler_iter:
+            raise RuntimeError("'{}' should not be called for IterableDataset".
+                               format('__len__'))
         num_samples = len(self.indices)
         num_samples += int(not self.drop_last) * (self.batch_size - 1)
         return num_samples // self.batch_size
+
+
+class _InfiniteIterableSampler(object):
+    def __init__(self, dataset, batch_size=1):
+        assert isinstance(
+            dataset, IterableDataset
+        ), "dataset should be an instance of paddle.io.IterableDataset"
+        self.dataset = dataset
+        self.batch_size = batch_size
+
+    def __iter__(self):
+        while True:
+            yield [None] * self.batch_size
