@@ -34,7 +34,7 @@ class PairwiseDistance(layers.Layer):
 
     Parameters:
         p (float): The order of norm. The default value is 2.
-        eps (float, optional): Add small value to avoid division by zero,
+        epsilon (float, optional): Add small value to avoid division by zero,
             default value is 1e-6.
         keepdim (bool, optional): Whether to reserve the reduced dimension
             in the output Tensor. The result tensor is one dimension less than
@@ -66,21 +66,21 @@ class PairwiseDistance(layers.Layer):
 
     """
 
-    def __init__(self, p=2., eps=1e-6, keepdim=False, name=None):
+    def __init__(self, p=2., epsilon=1e-6, keepdim=False, name=None):
         super(PairwiseDistance, self).__init__()
         self.p = p
-        self.eps = eps
+        self.epsilon = epsilon
         self.keepdim = keepdim
         self.name = name
         check_type(self.p, 'porder', (float, int), 'PairwiseDistance')
-        check_type(self.eps, 'epsilon', (float), 'PairwiseDistance')
+        check_type(self.epsilon, 'epsilon', (float), 'PairwiseDistance')
         check_type(self.keepdim, 'keepdim', (bool), 'PairwiseDistance')
 
     def forward(self, x, y):
         if in_dygraph_mode():
             sub = core.ops.elementwise_sub(x, y)
             return core.ops.p_norm(sub, 'axis', 1, 'porder', self.p, 'keepdim',
-                                   self.keepdim, 'epsilon', self.eps)
+                                   self.keepdim, 'epsilon', self.epsilon)
 
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'PairwiseDistance')
@@ -88,15 +88,14 @@ class PairwiseDistance(layers.Layer):
                                  'PairwiseDistance')
         sub = paddle.elementwise_sub(x, y)
 
-        helper = LayerHelper("p_norm", name=self.name)
+        helper = LayerHelper("PairwiseDistance", name=self.name)
         attrs = {
             'axis': 1,
             'porder': self.p,
             'keepdim': self.keepdim,
-            'epsilon': self.eps,
+            'epsilon': self.epsilon,
         }
-        out = helper.create_variable_for_type_inference(
-            dtype=self._helper.input_dtype(x))
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type='p_norm', inputs={'X': sub}, outputs={'Out': out}, attrs=attrs)
 
