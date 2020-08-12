@@ -1238,7 +1238,7 @@ def max(x, axis=None, keepdim=False, name=None):
             axis= [axis]
         else:
             raise TypeError(
-                "The type of axis must be int, list or tuple, must but received {}".format(type(axis)))
+                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
 
     reduce_all = True if axis == None or axis == [] else False
     axis = axis if axis != None and axis != [] else [0]
@@ -1333,7 +1333,7 @@ def min(x, axis=None, keepdim=False, name=None):
             axis= [axis]
         else:
             raise TypeError(
-                "The type of axis must be int, list or tuple, must but received {}".format(type(axis)))
+                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
     reduce_all = True if axis == None or axis == [] else False
     axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():
