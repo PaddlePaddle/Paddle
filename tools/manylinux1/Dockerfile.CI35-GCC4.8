@@ -35,11 +35,11 @@ RUN cd /opt && wget -q --no-check-certificate https://github.com/google/protobuf
     cd protobuf-3.6.1 && ./configure && make -j4 && make install && cd .. && rm -f protobuf-cpp-3.6.1.tar.gz
 
 # ccache 3.7.9
- RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
-     tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
-     ./configure -prefix=/usr/local/ccache-3.7.9 && \
-     make -j8 && make install && \
-     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
+RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
+    tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
+    ./configure -prefix=/usr/local/ccache-3.7.9 && \
+    make -j8 && make install && \
+    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
 
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
 
