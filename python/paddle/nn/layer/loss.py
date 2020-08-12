@@ -679,7 +679,7 @@ class KLDivLoss(fluid.dygraph.Layer):
                 "The value of 'reduction' in KLDivLoss should be 'batchmean', 'sum', 'mean' or 'none', but "
                 "received %s, which is not allowed." % self.reduction)
 
-        if paddle.in_imperative_mode():
+        if paddle.in_dynamic_mode():
             out = core.ops.kldiv_loss(x, label, 'reduction', self.reduction)
             return out
 
