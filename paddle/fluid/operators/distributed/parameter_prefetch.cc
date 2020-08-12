@@ -146,9 +146,8 @@ void prefetch_core(
   }
 
   for (size_t i = 0; i < rets.size(); i++) {
-    PADDLE_ENFORCE_NE(
-        rets[i]->Wait(), 0U,
-        platform::errors::ExecutionTimeout("internal error in RPCClient"));
+    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
+                                               "internal error in RPCClient"));
   }
 
   for (size_t o_idx = 0; o_idx < out_var_names.size(); ++o_idx) {
@@ -230,9 +229,8 @@ void prefetchs(const std::vector<std::string> &id_var_names,
 
   for (auto &i : ids_union) {
     PADDLE_ENFORCE_GE(
-        i, 0,
-        platform::errors::OutOfRange(
-            "each element in embedding should be larger or equal 0"));
+        i, 0, platform::errors::OutOfRange(
+                  "each element in embedding should be larger or equal 0"));
     if (!is_distributed) {
       PADDLE_ENFORCE_LT(
           i, vec_dim_0,
