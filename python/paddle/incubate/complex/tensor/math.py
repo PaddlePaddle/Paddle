@@ -261,8 +261,8 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             
             case1 = np.random.randn(3, 10, 10).astype('float64') + 1j * np.random.randn(3, 10, 10).astype('float64')
             
-            paddle.enable_imperative()
-            case1 = paddle.imperative.to_variable(case1)
+            paddle.disable_static()
+            case1 = paddle.to_variable(case1)
             data1 = paddle.complex.trace(case1, offset=1, axis1=1, axis2=2) # data1.shape = [3]
     """
     complex_variable_exists([x], "trace")

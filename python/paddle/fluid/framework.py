@@ -2385,11 +2385,28 @@ class Operator(object):
     def _is_optimize_op(self):
         op_maker = core.op_proto_and_checker_maker
         OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+
+        if not self.desc.has_attr(op_maker.kOpRoleAttrName()):
+            return False
+
         op_role = self.desc.attr(op_maker.kOpRoleAttrName())
         if op_role & int(OPTIMIZE):
             return True
-        else:
+
+        return False
+
+    def _is_backward_op(self):
+        op_maker = core.op_proto_and_checker_maker
+        BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
+
+        if not self.desc.has_attr(op_maker.kOpRoleAttrName()):
             return False
+
+        op_role = self.desc.attr(op_maker.kOpRoleAttrName())
+        if op_role & int(BACKWARD):
+            return True
+
+        return False
 
 
 class Block(object):
@@ -3942,6 +3959,10 @@ class Program(object):
         # appending gradients times
         self._appending_grad_times = 0
 
+        # identifier for auto checkpoint
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_program__")
+
         # compiled program, i.e. Graph
         self._graph = None
 
@@ -5154,7 +5175,7 @@ class ParamBase(core.VarBase):
             .. code-block:: python
 
                 import paddle
-                paddle.enable_imperative()
+                paddle.disable_static()
                 conv = paddle.nn.Conv2D(3, 3, 5)
                 print(conv.weight)
                 # Parameter: conv2d_0.w_0
@@ -5163,7 +5184,7 @@ class ParamBase(core.VarBase):
                 #   - layout: NCHW
                 #   - dtype: float
                 #   - data: [...] 
-                paddle.disable_imperative()
+                paddle.enable_static()
         """
         tensor = self.value().get_tensor()
         if tensor._is_initialized():
