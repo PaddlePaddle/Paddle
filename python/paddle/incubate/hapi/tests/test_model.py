@@ -67,6 +67,37 @@ class LeNetDygraph(fluid.dygraph.Layer):
         return x
 
 
+class LeNetDeclarative(fluid.dygraph.Layer):
+    def __init__(self, num_classes=10, classifier_activation=None):
+        super(LeNetDeclarative, self).__init__()
+        self.num_classes = num_classes
+        self.features = Sequential(
+            Conv2D(
+                1, 6, 3, stride=1, padding=1),
+            ReLU(),
+            Pool2D(2, 'max', 2),
+            Conv2D(
+                6, 16, 5, stride=1, padding=0),
+            ReLU(),
+            Pool2D(2, 'max', 2))
+
+        if num_classes > 0:
+            self.fc = Sequential(
+                Linear(400, 120),
+                Linear(120, 84),
+                Linear(
+                    84, 10, act=classifier_activation))
+
+    @declarative
+    def forward(self, inputs):
+        x = self.features(inputs)
+
+        if self.num_classes > 0:
+            x = fluid.layers.flatten(x, 1)
+            x = self.fc(x)
+        return x
+
+
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True, sample_num=None):
         super(MnistDataset, self).__init__(mode=mode)
@@ -444,7 +475,7 @@ class TestModelFunction(unittest.TestCase):
             prog_translator.enable(False) if not dynamic else None
             new_scope = fluid.Scope()
             with fluid.scope_guard(new_scope):
-                net = LeNet()
+                net = LeNetDeclarative()
                 inputs = [Input('X', [None, 1, 28, 28], 'float32')]
                 model = Model(net, inputs)
                 model.prepare()
@@ -466,8 +497,8 @@ class TestModelFunction(unittest.TestCase):
                 results = exe.run(inference_program,
                                   feed={feed_target_names[0]: tensor_img},
                                   fetch_list=fetch_targets)
-
-                np.testing.assert_allclose(results, ori_results, rtol=1e-6)
+                np.testing.assert_allclose(
+                    results, ori_results, rtol=1e-5, atol=1e-7)
                 shutil.rmtree(save_dir)
 
 
