@@ -192,8 +192,8 @@ class PartialProgram(object):
     def __init__(self, dygraph_func, input_spec=None):
         # save the instance `self` while decorating a method of class.
         if inspect.ismethod(dygraph_func):
-            self._dygraph_func = dygraph_func.im_func
-            self._class_instance = dygraph_func.im_self
+            self._dygraph_func = getattr(dygraph_func, '__func__')
+            self._class_instance = getattr(dygraph_func, '__self__')
         else:
             self._dygraph_func = dygraph_func
             self._class_instance = None
