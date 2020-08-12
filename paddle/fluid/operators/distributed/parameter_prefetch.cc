@@ -266,7 +266,9 @@ void prefetchs(const std::vector<std::string>& id_var_names,
           std::copy_n(recved_vec_map[id].begin(), vec_dim_1,
                       out_d + idx * vec_dim_1);
         }
-      } else {
+      }
+#ifdef PADDLE_WITH_CUDA
+      else {
         auto stream = context.cuda_device_context().stream();
         if (padding_idx != distributed::kNoPadding && id == padding_idx) {
           platform::GpuMemsetAsync(out_d + idx * vec_dim_1, 0,
@@ -282,6 +284,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
                        &recved_vec_map[id][0], sizeof(float) * vec_dim_1,
                        stream);
         }
+#endif
       }
     }
   }

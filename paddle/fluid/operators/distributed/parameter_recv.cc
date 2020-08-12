@@ -101,7 +101,9 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
           StridedNumelCopyWithAxis<T>(
               cpu_ctx, 0, recv_tensor->data<T>() + output_offset, out_stride,
               in.data<T>(), in_stride, in_stride[0]);
-        } else {
+        }
+#ifdef PADDLE_WITH_CUDA
+        else {
           VLOG(4) << "StridedNumelCopyWithAxis CPU<->GPU Begin";
           auto cpu_ctx = paddle::platform::CPUDeviceContext();
           auto *gpu_ctx = reinterpret_cast<platform::CUDADeviceContext *>(
@@ -112,6 +114,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
               gpu_ctx, cpu_ctx, 0, recv_tensor->data<T>() + output_offset,
               out_stride, in.data<T>(), in_stride, in_stride[0]);
         }
+#endif
         output_offset += in_stride[0];
       } else if (recv_var->IsType<framework::SelectedRows>()) {
         auto &recv_slr = recv_var->Get<framework::SelectedRows>();
