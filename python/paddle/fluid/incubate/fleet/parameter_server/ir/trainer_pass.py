@@ -91,6 +91,7 @@ def distributed_ops_pass(program, config):
             w = program.global_block().vars[ops[0].input("W")[0]]
             padding_idx = ops[0].attr("padding_idx")
             is_distributed = ops[0].attr("is_distributed")
+            op_type = ops[0].type
 
             outputs = [
                 program.global_block().vars[op.output("Out")[0]] for op in ops
@@ -139,7 +140,8 @@ def distributed_ops_pass(program, config):
                         "is_distributed": is_distributed,
                         "pserver_num": len(pserver_endpoints),
                         "padding_idx": padding_idx,
-                        "trainer_id": trainer_id
+                        "trainer_id": trainer_id,
+                        "lookup_table_version": op_type
                     })
             else:
                 raise ValueError(
