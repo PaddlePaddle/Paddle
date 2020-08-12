@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -32,7 +33,6 @@ class ScalarMulKernel : public framework::OpKernel<T> {
     auto x = in_t->data<T>();
     auto out = out_t->mutable_data<T>(ctx.GetPlace());
 
-    // may have error
     for (int i = 0; i < in_t->numel(); ++i) {
       out[i] = a * x[i] + b;
     }
