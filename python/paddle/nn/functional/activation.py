@@ -401,7 +401,7 @@ def softmax(x, axis=-1, name=None):
         import paddle.nn.functional as F
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         x = np.array([[[2.0, 3.0, 4.0, 5.0],
                        [3.0, 4.0, 5.0, 6.0],
@@ -409,7 +409,7 @@ def softmax(x, axis=-1, name=None):
                       [[1.0, 2.0, 3.0, 4.0],
                        [5.0, 6.0, 7.0, 8.0],
                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
-        x = paddle.imperative.to_variable(x)
+        x = paddle.to_variable(x)
         out = F.softmax(x)
         # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
