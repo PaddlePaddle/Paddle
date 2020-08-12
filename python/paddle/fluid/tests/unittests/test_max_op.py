@@ -48,6 +48,15 @@ class ApiMaxTest(unittest.TestCase):
             res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
         self.assertEqual((res == np.max(input_data, axis=0)).all(), True)
 
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data = paddle.nn.data("data", shape=[10, 10], dtype="int64")
+            result_max = paddle.max(x=data, axis=(0, 1))
+            exe = paddle.static.Executor(self.place)
+            input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
+        self.assertEqual((res == np.max(input_data, axis=(0, 1))).all(), True)
+
     def test_errors(self):
         paddle.enable_static()
 
@@ -58,6 +67,15 @@ class ApiMaxTest(unittest.TestCase):
                 result_max = paddle.max(x=data, axis=0)
 
         self.assertRaises(TypeError, test_input_type)
+
+        def test_axis_type():
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+                data = paddle.nn.data("data", shape=[10, 10], dtype="int64")
+                axis = paddle.nn.data("axis", shape=[10, 10], dtype="int64")
+                result_min = paddle.min(data, axis)
+
+        self.assertRaises(TypeError, test_axis_type)
 
     def test_imperative_api(self):
         paddle.disable_static()

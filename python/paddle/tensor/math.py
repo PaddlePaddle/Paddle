@@ -1177,19 +1177,19 @@ def max(x, axis=None, keepdim=False, name=None):
             float64, int32, int64.
         axis(list|int, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
+             `x` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keepdim` is true, default
+            than the `x` unless :attr:`keepdim` is true, default
             value is False.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         Tensor, results of maximum on the specified axis of input tensor,
-        it's data type is the same as input's Tensor.
+        it's data type is the same as `x`.
 
     Examples:
         .. code-block:: python
@@ -1232,7 +1232,14 @@ def max(x, axis=None, keepdim=False, name=None):
     """
 
     if axis is not None and not isinstance(axis, list):
-        axis = [axis]
+        if isinstance(axis, tuple):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis= [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, must but received {}".format(type(axis)))
+
     reduce_all = True if axis == None or axis == [] else False
     axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():
@@ -1265,12 +1272,12 @@ def min(x, axis=None, keepdim=False, name=None):
         x(Tensor): A tensor, the data type is float32, float64, int32, int64.
         axis(list|int, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
+            `x` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keepdim` is true, default
+            than the `x` unless :attr:`keepdim` is true, default
             value is False.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
@@ -1320,7 +1327,13 @@ def min(x, axis=None, keepdim=False, name=None):
     """
 
     if axis is not None and not isinstance(axis, list):
-        axis= [axis]
+        if isinstance(axis, tuple):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis= [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, must but received {}".format(type(axis)))
     reduce_all = True if axis == None or axis == [] else False
     axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():
