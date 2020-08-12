@@ -28,7 +28,7 @@ namespace paddle {
 namespace operators {
 namespace details {
 
-class InferShapeTest {
+class DygraphInferShapeTest {
  public:
   void AddInput(const std::string& name, const framework::DDim& dim) {
     std::shared_ptr<imperative::VarBase> vin(
@@ -51,10 +51,9 @@ class InferShapeTest {
         &ins_, &outs_, &attrs_, op_type_);
     infer_shape(&ctx);
     for (const auto& pair : expected_dims_) {
-      ASSERT_EQ(pair.second, outs_[pair.first]
-                                  [0]->MutableVar()
-                                      ->GetMutable<framework::LoDTensor>()
-                                      ->dims());
+      auto out = outs_[pair.first][0];
+      ASSERT_EQ(pair.second,
+                out->MutableVar()->GetMutable<framework::LoDTensor>()->dims());
     }
   }
 
@@ -68,7 +67,7 @@ class InferShapeTest {
 }  // namespace details
 
 TEST(test_UnaryOpUnchangedInferShape, test_shape) {
-  details::InferShapeTest test;
+  details::DygraphInferShapeTest test;
   test.AddInput("X", {2, 10});
   test.AddOutput("Out", {2, 10});
   test.SetOpType("relu");
@@ -76,7 +75,7 @@ TEST(test_UnaryOpUnchangedInferShape, test_shape) {
 }
 
 TEST(test_BinaryOpBroadcastInferShape, test_same_shape) {
-  details::InferShapeTest test;
+  details::DygraphInferShapeTest test;
   test.AddInput("X", {2, 3, 4, 5});
   test.AddInput("Y", {2, 3, 4, 5});
   test.AddOutput("Out", {2, 3, 4, 5});
@@ -85,7 +84,7 @@ TEST(test_BinaryOpBroadcastInferShape, test_same_shape) {
 }
 
 TEST(test_BinaryOpBroadcastInferShape, test_broadcast1) {
-  details::InferShapeTest test;
+  details::DygraphInferShapeTest test;
   test.AddInput("X", {2, 3, 4, 5});
   test.AddInput("Y", {4, 5});
   test.AddOutput("Out", {2, 3, 4, 5});
@@ -97,7 +96,7 @@ TEST(test_BinaryOpBroadcastInferShape, test_broadcast1) {
 }
 
 TEST(test_BinaryOpBroadcastInferShape, test_broadcast2) {
-  details::InferShapeTest test;
+  details::DygraphInferShapeTest test;
   test.AddInput("X", {2, 10, 5, 1});
   test.AddInput("Y", {10, 1, 1});
   test.AddOutput("Out", {2, 10, 5, 1});
@@ -108,8 +107,20 @@ TEST(test_BinaryOpBroadcastInferShape, test_broadcast2) {
   test.Run(BinaryOpBroadcastInferShape);
 }
 
+TEST(test_BinaryOpBroadcastInferShape, test_broadcast3) {
+  details::DygraphInferShapeTest test;
+  test.AddInput("X", {10, 1, 1});
+  test.AddInput("Y", {2, 10, 5, 5});
+  test.AddOutput("Out", {2, 10, 5, 5});
+  test.AddAttrs({
+      {"axis", -1},
+  });
+  test.SetOpType("elementwise_add");
+  test.Run(BinaryOpBroadcastInferShape);
+}
+
 TEST(test_UnaryOpUnchangedInferShapeCheckAxis, test_shape) {
-  details::InferShapeTest test;
+  details::DygraphInferShapeTest test;
   test.AddInput("X", {2, 10});
   test.AddOutput("Out", {2, 10});
   test.AddAttrs({
@@ -120,7 +131,7 @@ TEST(test_UnaryOpUnchangedInferShapeCheckAxis, test_shape) {
 }
 
 TEST(test_UnaryOpUnchangedInferShapeCheckAxis, test_axis_exception) {
-  details::InferShapeTest test;
+  details::DygraphInferShapeTest test;
   test.AddInput("X", {2, 10});
   test.AddOutput("Out", {2, 10});
   test.AddAttrs({
