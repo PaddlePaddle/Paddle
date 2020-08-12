@@ -334,6 +334,9 @@ class Fleet(object):
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set)
 
+        if self.user_defined_strategy.zero:
+            graph_optimizer = None
+
         if graph_optimizer:
             optimizer_ops, params_grads = graph_optimizer.minimize(
                 loss,
