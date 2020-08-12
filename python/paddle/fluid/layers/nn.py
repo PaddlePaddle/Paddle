@@ -4868,7 +4868,7 @@ def split(input, num_or_sections, dim=-1, name=None):
 
         if isinstance(dim, Variable):
             dim = dim.numpy()
-            dim = dim[0]
+            dim = dim.item(0)
         dim = (len(input.shape) + dim) if dim < 0 else dim
         attrs += ('axis', dim)
 
@@ -5912,7 +5912,7 @@ def one_hot(input, depth, allow_out_of_range=False):
             depth = depth.numpy()
             assert depth.shape == (
                 1, ), "depth of type Variable should have shape [1]"
-            depth = depth[0]
+            depth = depth.item(0)
         out = core.ops.one_hot(input, 'depth', depth, 'allow_out_of_range',
                                allow_out_of_range)
         out.stop_gradient = True
@@ -6094,7 +6094,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             )
         if isinstance(shape, (list, tuple)):
             shape = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
             out, _ = core.ops.reshape2(x, 'shape', shape)
@@ -10222,7 +10222,7 @@ def expand(x, expand_times, name=None):
     if in_dygraph_mode():
         if isinstance(expand_times, (list, tuple)):
             expand_times = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in expand_times
             ]
 
@@ -10833,11 +10833,11 @@ def slice(input, axes, starts, ends):
         if isinstance(starts, (list, tuple)) and isinstance(ends,
                                                             (list, tuple)):
             starts = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in starts
             ]
             ends = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in ends
             ]
 
