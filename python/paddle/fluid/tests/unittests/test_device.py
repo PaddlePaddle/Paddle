@@ -34,7 +34,9 @@ class TestStaticDeviceManage(unittest.TestCase):
         exe = paddle.fluid.Executor()
         exe.run(paddle.fluid.default_startup_program())
         res = exe.run(fetch_list=[out3])
+        device = paddle.get_device()
         self.assertEqual(isinstance(exe.place, core.CPUPlace), True)
+        self.assertEqual(device, "cpu")
 
     def test_gpu_device(self):
         if core.is_compiled_with_cuda():
@@ -45,7 +47,9 @@ class TestStaticDeviceManage(unittest.TestCase):
             exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
             res = exe.run(fetch_list=[out3])
+            device = paddle.get_device()
             self.assertEqual(isinstance(exe.place, core.CUDAPlace), True)
+            self.assertEqual(device, "gpu:0")
 
 
 class TestImperativeDeviceManage(unittest.TestCase):
@@ -55,9 +59,11 @@ class TestImperativeDeviceManage(unittest.TestCase):
             out1 = paddle.zeros(shape=[1, 3], dtype='float32')
             out2 = paddle.ones(shape=[1, 3], dtype='float32')
             out3 = paddle.concat(x=[out1, out2], axis=0)
+            device = paddle.get_device()
             self.assertEqual(
                 isinstance(framework._current_expected_place(), core.CPUPlace),
                 True)
+            self.assertEqual(device, "cpu")
 
     def test_gpu(self):
         if core.is_compiled_with_cuda():
@@ -66,9 +72,11 @@ class TestImperativeDeviceManage(unittest.TestCase):
                 out1 = paddle.zeros(shape=[1, 3], dtype='float32')
                 out2 = paddle.ones(shape=[1, 3], dtype='float32')
                 out3 = paddle.concat(x=[out1, out2], axis=0)
+                device = paddle.get_device()
                 self.assertEqual(
                     isinstance(framework._current_expected_place(),
                                core.CUDAPlace), True)
+                self.assertEqual(device, "gpu:0")
 
 
 if __name__ == '__main__':
