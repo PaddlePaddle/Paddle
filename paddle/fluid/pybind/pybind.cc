@@ -66,6 +66,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
+#include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
@@ -1563,6 +1564,15 @@ All parameter, weight, gradient are variables in Paddle.
                                                              sleep_inter);
         },
         py::arg("cmd"), py::arg("time_out") = -1, py::arg("sleep_inter") = -1);
+  m.def("shell_execute_cmd",
+        [](const std::string &cmd, int time_out = 0, int sleep_inter = 0,
+           bool redirect_stderr = false) -> std::vector<std::string> {
+          return paddle::framework::shell_execute_cmd(
+              cmd, time_out, sleep_inter, redirect_stderr);
+        },
+        py::arg("cmd"), py::arg("time_out") = 0, py::arg("sleep_inter") = 0,
+        py::arg("redirect_stderr") = false);
+
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
@@ -2470,6 +2480,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
+#ifdef PADDLE_WITH_PSLIB
+  BindHeterWrapper(&m);
+#endif
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
 #ifdef PADDLE_WITH_BOX_PS
@@ -2487,6 +2500,8 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindCommunicator(&m);
+  BindCommunicatorContext(&m);
+  BindLargeScaleKV(&m);
 #endif
 }
 }  // namespace pybind

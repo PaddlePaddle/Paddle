@@ -89,6 +89,8 @@
 
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+# including io directory for inference lib paddle_api.h
+include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 
 if(NOT APPLE)
   find_package(Threads REQUIRED)
@@ -185,9 +187,9 @@ function(merge_static_libs TARGET_NAME)
       COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
       DEPENDS ${libs})
 
-    # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    # Generate dummy static lib
+    generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:merge_static_libs")
+
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
     foreach(lib ${libs})
@@ -227,8 +229,8 @@ function(merge_static_libs TARGET_NAME)
       DEPENDS ${libs} ${target_OBJS})
 
     # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:merge_static_libs")
+
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
     # Get the file name of the generated library
@@ -246,10 +248,9 @@ function(merge_static_libs TARGET_NAME)
     add_custom_command(OUTPUT ${target_SRCS}
       COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
       DEPENDS ${libs})
-
     # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:merge_static_libs")
+
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
     foreach(lib ${libs})
@@ -278,9 +279,7 @@ function(cc_library TARGET_NAME)
       if(cc_library_SHARED OR cc_library_shared) # build *.so
         add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
       elseif(cc_library_INTERFACE OR cc_library_interface)
-        set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
-        file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-        add_library(${TARGET_NAME} STATIC ${target_SRCS})
+        generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:cc_library")
       else()
         add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
         find_fluid_modules(${TARGET_NAME})
@@ -329,9 +328,9 @@ function(cc_library TARGET_NAME)
   else(cc_library_SRCS)
     if(cc_library_DEPS)
       list(REMOVE_DUPLICATES cc_library_DEPS)
-      set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
-      file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-      add_library(${TARGET_NAME} STATIC ${target_SRCS})
+
+      generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:cc_library")
+
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     else()
       message(FATAL_ERROR "Please specify source files or libraries in cc_library(${TARGET_NAME} ...).")
@@ -435,9 +434,8 @@ function(nv_library TARGET_NAME)
     else(nv_library_SRCS)
       if (nv_library_DEPS)
         list(REMOVE_DUPLICATES nv_library_DEPS)
-        set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
-        file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
-        add_library(${TARGET_NAME} STATIC ${target_SRCS})
+        generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:nv_library")
+
         target_link_libraries(${TARGET_NAME} ${nv_library_DEPS})
         add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
       else()
@@ -820,3 +818,50 @@ function(brpc_library TARGET_NAME)
   cc_library("${TARGET_NAME}_proto" SRCS "${brpc_proto_srcs}")
   cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()
+
+# copy_if_different from src_file to dst_file At the beginning of the build.
+function(copy_if_different src_file dst_file)
+  get_filename_component(FILE_NAME ${dst_file} NAME_WE)
+
+  # this is a dummy target for custom command, should always be run firstly to update ${dst_file}
+  add_custom_target(copy_${FILE_NAME}_command ALL
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${src_file} ${dst_file}
+      COMMENT "copy_if_different ${dst_file}"
+      VERBATIM
+  )
+
+  add_dependencies(extern_glog copy_${FILE_NAME}_command)
+endfunction()
+
+# create a dummy source file, then create a static library.
+# LIB_NAME should be the static lib name.
+# FILE_PATH should be the dummy source file path.
+# GENERATOR should be the file name invoke this function.
+# CONTENT should be some helpful info.
+# example: generate_dummy_static_lib(mylib FILE_PATH /path/to/dummy.c GENERATOR mylib.cmake CONTENT "helpful info")
+function(generate_dummy_static_lib)
+  set(options "")
+  set(oneValueArgs LIB_NAME FILE_PATH GENERATOR CONTENT)
+  set(multiValueArgs "")
+  cmake_parse_arguments(dummy "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if(NOT dummy_LIB_NAME)
+    message(FATAL_ERROR "You must provide a static lib name.")
+  endif()
+  if(NOT dummy_FILE_PATH)
+    set(dummy_FILE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${dummy_LIB_NAME}_dummy.c")
+  endif()
+  if(NOT dummy_GENERATOR)
+    message(FATAL_ERROR "You must provide a generator file name.")
+  endif()
+  # if ${dummy_GENERATOR} contains "/", it may be a file path
+  if(NOT ${dummy_GENERATOR} MATCHES ".*/.*")
+    set(dummy_GENERATOR "${CMAKE_CURRENT_LIST_DIR}/${dummy_GENERATOR}")
+  endif()
+  if(NOT dummy_CONTENT)
+    set(dummy_CONTENT "${dummy_FILE_PATH} for lib ${dummy_LIB_NAME}")
+  endif()
+
+  configure_file(${PROJECT_SOURCE_DIR}/cmake/dummy.c.in ${dummy_FILE_PATH} @ONLY)
+  add_library(${dummy_LIB_NAME} STATIC ${dummy_FILE_PATH})
+endfunction()
+

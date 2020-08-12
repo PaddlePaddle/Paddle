@@ -25,7 +25,7 @@ if (WITH_PYTHON)
   endif(NOT WIN32)
 endif()
 
-cc_library(flags SRCS flags.cc DEPS gflags) 
+cc_library(flags SRCS flags.cc DEPS gflags)
 
 cc_library(errors SRCS errors.cc DEPS error_codes_proto)
 cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
@@ -93,13 +93,6 @@ if(WITH_GPU)
     target_link_libraries(device_context cuda_resource_pool)
 endif()
 
-if(WIN32)
-    if(WITH_GPU AND NOT WITH_DSO)
-        get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
-        target_link_libraries(device_context ${cuda_modules})
-    endif(WITH_GPU AND NOT WITH_DSO)
-endif(WIN32)
-
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)
@@ -124,10 +117,7 @@ else()
   cc_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info place)
 endif()
 
-# TODO: Fix this unittest failed on Windows
-if(NOT WIN32)
-  cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
-endif(NOT WIN32)
+cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)

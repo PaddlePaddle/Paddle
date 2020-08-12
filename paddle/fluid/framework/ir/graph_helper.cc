@@ -136,7 +136,9 @@ bool FindCircleSubGraph(const Graph &graph,
 std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
       adj_list = BuildOperationAdjList(graph);
-  PADDLE_ENFORCE(!HasCircleInternal(adj_list, nullptr));
+  PADDLE_ENFORCE_EQ(HasCircleInternal(adj_list, nullptr), false,
+                    platform::errors::InvalidArgument(
+                        "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
   for (auto adj : adj_list) {
@@ -161,7 +163,11 @@ BuildOperationAdjList(const Graph &graph) {
     }
     for (auto &var : n->inputs) {
       for (auto &adj_n : var->inputs) {
-        PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
+        PADDLE_ENFORCE_EQ(
+            adj_n->NodeType(), ir::Node::Type::kOperation,
+            platform::errors::InvalidArgument(
+                "Node(%s)'s type(%d) must be kOperation type.", adj_n->Name(),
+                static_cast<int>(adj_n->NodeType())));
         VLOG(4) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
                 << " -> " << n->Name() << reinterpret_cast<void *>(n)
                 << "  via " << var->Name() << reinterpret_cast<void *>(var);
@@ -184,7 +190,11 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationOutAdjList(
     }
     for (auto &var : n->outputs) {
       for (auto &adj_n : var->outputs) {
-        PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
+        PADDLE_ENFORCE_EQ(
+            adj_n->NodeType(), ir::Node::Type::kOperation,
+            platform::errors::InvalidArgument(
+                "Node(%s)'s type(%d) must be kOperation type.", adj_n->Name(),
+                static_cast<int>(adj_n->NodeType())));
         VLOG(40) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
                  << " -> " << n->Name() << reinterpret_cast<void *>(n)
                  << "  via " << var->Name() << reinterpret_cast<void *>(var);
@@ -359,7 +369,10 @@ size_t GraphNum(const Graph &graph) {
       }
       std::unique_ptr<std::ostream> fout(
           new std::ofstream(FLAGS_print_sub_graph_dir));
-      PADDLE_ENFORCE(fout->good());
+      PADDLE_ENFORCE_EQ(fout->good(), true,
+                        platform::errors::Unavailable(
+                            "Can not open file %s for printing the graph.",
+                            FLAGS_print_sub_graph_dir));
       *fout << out.str();
     }
   }

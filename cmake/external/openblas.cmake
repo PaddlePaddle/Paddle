@@ -19,6 +19,11 @@ SET(CBLAS_SOURCE_DIR  ${THIRD_PARTY_PATH}/openblas/src/extern_openblas)
 SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 SET(CBLAS_REPOSITORY  https://github.com/xianyi/OpenBLAS.git)
 SET(CBLAS_TAG         v0.3.7)
+IF(WITH_ARM)
+    # Under the FT2000 architecture, the calculation result of blas.sgemm in openblas 0.3+ is wrong,
+    # so version 0.2 is used by default.
+    SET(CBLAS_TAG v0.2.18)
+ENDIF()
 cache_third_party(extern_openblas
     REPOSITORY    ${CBLAS_REPOSITORY}
     TAG           ${CBLAS_TAG}
