@@ -50,4 +50,4 @@ class Generator(object):
         self.generator.manual_seed(default_rng_seed_val)
 
     def initial_seed(self):
-        return self.initial_seed()
+        return self.generator.initial_seed()
