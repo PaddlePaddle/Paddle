@@ -119,7 +119,8 @@ class ActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    return UnaryOpUnchangedInferShape(ctx);
+    ctx->ShareDim("X", /*->*/ "Out");
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
