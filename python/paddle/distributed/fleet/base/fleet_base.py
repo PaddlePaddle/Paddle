@@ -35,8 +35,7 @@ class Fleet(object):
         .. code-block:: python
 
             import paddle.distributed.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             strategy = fleet.DistributedStrategy()
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)
@@ -219,8 +218,7 @@ class Fleet(object):
         Examples:
             .. code-block:: python
             import paddle.distributed.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             strategy = fleet.DistributedStrategy()
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)
@@ -261,7 +259,6 @@ class Fleet(object):
         Examples:
             import paddle
             import paddle.distributed.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
             fc_1 = paddle.layers.fc(input=input_x, size=hid_dim, act='tanh')
             fc_2 = paddlen.layers.fc(input=fc_1, size=hid_dim, act='tanh')
@@ -269,7 +266,7 @@ class Fleet(object):
             cost = paddle.layers.cross_entropy(input=prediction, label=input_y)
             avg_cost = paddle.layers.mean(x=cost)
 
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             strategy = fleet.DistributedStrategy()
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)

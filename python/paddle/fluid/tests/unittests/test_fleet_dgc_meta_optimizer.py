@@ -47,7 +47,7 @@ class TestFleetDGCOptimizer(unittest.TestCase):
                     input=prediction, label=input_y)
                 avg_cost = paddle.fluid.layers.mean(x=cost)
 
-                strategy = paddle.fleet.DistributedStrategy()
+                strategy = paddle.distributed.fleet.DistributedStrategy()
                 strategy.dgc = True
                 strategy.dgc_configs = {
                     "rampup_begin_step": 128,

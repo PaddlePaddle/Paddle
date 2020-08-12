@@ -1,0 +1,8 @@
+class_name: "MultiTrainer"
+device_worker_name: "HogwildWorker"
+thread_num: 1
+debug: false
+fetch_config {
+  print_period: 100
+}
+thread_barrier: false
