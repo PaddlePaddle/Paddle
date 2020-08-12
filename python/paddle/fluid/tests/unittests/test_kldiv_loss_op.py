@@ -84,12 +84,11 @@ class TestKLDivLossDygraph(unittest.TestCase):
         target = np.random.uniform(-10, 10, shape).astype('float64')
         gt_loss = kldiv_loss(x, target, reduction)
 
-        with paddle.imperative.guard():
+        with paddle.fluid.dygraph.guard():
             kldiv_criterion = paddle.nn.KLDivLoss(reduction)
             pred_loss = kldiv_criterion(
-                paddle.imperative.to_variable(x),
-                paddle.imperative.to_variable(target))
-        self.assertTrue(np.allclose(pred_loss.numpy(), gt_loss))
+                paddle.to_variable(x), paddle.to_variable(target))
+            self.assertTrue(np.allclose(pred_loss.numpy(), gt_loss))
 
     def test_kl_loss_batchmean(self):
         self.run_kl_loss('batchmean')
