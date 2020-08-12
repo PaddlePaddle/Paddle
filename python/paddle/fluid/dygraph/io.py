@@ -33,6 +33,8 @@ __all__ = ['TranslatedLayer']
 VARIABLE_FILENAME = "__variables__"
 EXTRA_VAR_INFO_FILENAME = "__variables.info__"
 LOADED_VAR_SUFFIX = "load"
+PARAMETER_NAME_PREFIX = "param"
+BUFFER_NAME_PREFIX = "buffer"
 
 
 def _load_program_desc(model_file_path):
@@ -119,6 +121,11 @@ def _append_loaded_suffix(name):
     name = cpt.to_text(name)
     new_name = unique_name.generate_with_ignorable_key('.'.join((name, suffix)))
     return new_name
+
+
+@switch_to_static_graph
+def _generate_unique_var_name(prefix):
+    return unique_name.generate_with_ignorable_key(prefix)
 
 
 def _append_loaded_suffix_to_var(program_desc):
@@ -427,8 +434,8 @@ def _load_persistable_vars(model_path,
     load_var_dict = dict()
     load_var_list = []
     inv_suffix_varname_dict = {
-        v: k
-        for k, v in program_holder._suffix_varname_dict.items()
+        value: key
+        for key, value in program_holder._suffix_varname_dict.items()
     }
     # NOTE: some var may not be Parameter
     for name in sorted(extra_var_info):
@@ -626,11 +633,23 @@ class TranslatedLayer(layers.Layer):
 
         self._program_holder_dict = programs
 
+        # NOTE(chenweihang): [ why not use var name directly? ]
+        # When add parameter or buffer to Layer by follow apis,
+        # the variable name can't contain `.`, beccause which may cause
+        # AttributeError when access the newly added parameter or buffer
+        # in the form of `self.**.**``, but the ParamBase or BarBase
+        # name contains `.` originally, such as `linear_0.w_0`, so here
+        # need to generate new var name for each var
+        self._persistable_var_name_dict = dict()
         for name, var in persistable_vars.items():
             if isinstance(var, framework.ParamBase):
-                self.add_parameter(name, var)
+                dy_name = _generate_unique_var_name(PARAMETER_NAME_PREFIX)
+                self._persistable_var_name_dict[name] = dy_name
+                self.add_parameter(dy_name, var)
             elif isinstance(var, core.VarBase):
-                self.register_buffer(name, var)
+                dy_name = _generate_unique_var_name(BUFFER_NAME_PREFIX)
+                self._persistable_var_name_dict[name] = dy_name
+                self.register_buffer(dy_name, var)
             else:
                 raise TypeError(
                     "Adding persistent variable which  to layer is not supported now"
@@ -701,10 +720,11 @@ class TranslatedLayer(layers.Layer):
 
             persistable_vars = []
             for var_name in program_holder.persistable_names:
-                if var_name in self._parameters:
-                    persistable_vars.append(self._parameters[var_name])
-                elif var_name in self._buffers:
-                    persistable_vars.append(self._buffers[var_name])
+                dy_var_name = self._persistable_var_name_dict[var_name]
+                if dy_var_name in self._parameters:
+                    persistable_vars.append(self._parameters[dy_var_name])
+                elif dy_var_name in self._buffers:
+                    persistable_vars.append(self._buffers[dy_var_name])
                 else:
                     raise ValueError(
                         "The persistable variable %s is not exists in current TranslatedLayer."
