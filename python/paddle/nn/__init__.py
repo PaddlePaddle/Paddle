@@ -53,14 +53,17 @@ from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 # from .layer.activation import PReLU        #DEFINE_ALIAS
 from .layer.activation import ReLU  #DEFINE_ALIAS
+from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
 # from .layer.activation import Softmax        #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import HSigmoid  #DEFINE_ALIAS
 from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pool2D  #DEFINE_ALIAS
+from .layer.common import Pad2D  #DEFINE_ALIAS
 from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
+from .layer.common import Flatten  #DEFINE_ALIAS
 from .layer.common import UpSample  #DEFINE_ALIAS
 from .layer.conv import Conv2D  #DEFINE_ALIAS
 from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
@@ -90,6 +93,7 @@ from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
+from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
 
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS

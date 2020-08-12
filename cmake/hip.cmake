@@ -13,10 +13,6 @@ include_directories("/opt/rocm/thrust")
 
 set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -fPIC -DPADDLE_WITH_HIP -std=c++11" )
 
-if(WITH_DSO)
-  set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_USE_DSO")
-endif(WITH_DSO)
-
 if(WITH_TESTING)
   set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_WITH_TESTING")
 endif(WITH_TESTING)

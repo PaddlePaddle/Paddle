@@ -16,9 +16,8 @@
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/lite/op_teller.h"
-
-#include "lite/core/op_registry.h"
 
 namespace paddle {
 namespace inference {
@@ -27,15 +26,14 @@ namespace lite {
 // Just tell by the op_types.
 struct SimpleOpTeller : public Teller {
   SimpleOpTeller() {
-    const std::map<std::string, std::string>& op2path =
-        paddle::lite::GetOp2PathDict();
+    std::vector<std::string> lite_ops = paddle::lite::GetAllOps();
     auto is_non_inst = [](const std::string& op) -> bool {
       const std::vector<std::string> ops = {"feed", "fetch", "while"};
       return std::find(ops.begin(), ops.end(), op) != ops.end();
     };
-    for (const auto& op : op2path) {
-      if (!is_non_inst(op.first)) {
-        ops_.insert(op.first);
+    for (const auto& op : lite_ops) {
+      if (!is_non_inst(op)) {
+        ops_.insert(op);
       }
     }
   }

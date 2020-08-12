@@ -33,8 +33,7 @@ class TestCloudRoleMaker(unittest.TestCase):
     def test_pslib_1(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
         try:
             import netifaces
@@ -78,6 +77,21 @@ class TestCloudRoleMaker(unittest.TestCase):
         except:
             print("do not support pslib test, skip")
             return
+
+        from paddle.fluid.incubate.fleet.base.role_maker import MockBarrier
+        mb = MockBarrier()
+        mb.barrier()
+        mb.barrier_all()
+        mb.all_reduce(1)
+        mb.all_gather(1)
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36005"
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36005"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36006"
+        os.environ["PADDLE_IS_BARRIER_ALL_ROLE"] = "0"
+        role_maker = GeneralRoleMaker(path="test_mock1")
+        role_maker.generate_role()
 
 
 if __name__ == "__main__":

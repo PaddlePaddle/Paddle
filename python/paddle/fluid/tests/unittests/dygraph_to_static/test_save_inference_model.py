@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
+from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME
 
 SEED = 2020
 
@@ -60,21 +61,26 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
                                        parameter_list=layer.parameters())
 
             for i in range(5):
-                loss, _ = layer(x)
+                loss, pred = layer(x)
                 loss.backward()
                 adam.minimize(loss)
                 layer.clear_gradients()
             # test for saving model in dygraph.guard
-            infer_model_dir = "./test_dy2stat_save_inference_model"
-            program_translator.save_inference_model(
-                infer_model_dir, feed=[0], fetch=[1])
+            infer_model_dir = "./test_dy2stat_save_inference_model_in_guard"
+            configs = fluid.dygraph.jit.SaveLoadConfig()
+            configs.output_spec = [pred]
+            fluid.dygraph.jit.save(
+                layer=layer,
+                model_path=infer_model_dir,
+                input_spec=[x],
+                configs=configs)
             # Check the correctness of the inference
             dygraph_out, _ = layer(x)
         self.check_save_inference_model(layer, [x_data], dygraph_out.numpy())
         self.check_save_inference_model(
-            layer, [x_data], dygraph_out.numpy(), fetch=[0])
+            layer, [x_data], dygraph_out.numpy(), fetch=[loss])
         self.check_save_inference_model(
-            layer, [x_data], dygraph_out.numpy(), feed=[0])
+            layer, [x_data], dygraph_out.numpy(), feed=[x])
 
     def check_save_inference_model(self,
                                    model,
@@ -86,11 +92,18 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         expected_persistable_vars = set([p.name for p in model.parameters()])
 
         infer_model_dir = "./test_dy2stat_save_inference_model"
-        program_translator.save_inference_model(
-            infer_model_dir, feed=feed, fetch=fetch)
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        if fetch is not None:
+            configs.output_spec = fetch
+        configs.separate_params = True
+        fluid.dygraph.jit.save(
+            layer=model,
+            model_path=infer_model_dir,
+            input_spec=feed if feed else None,
+            configs=configs)
         saved_var_names = set([
             filename for filename in os.listdir(infer_model_dir)
-            if filename != '__model__'
+            if filename != '__model__' and filename != EXTRA_VAR_INFO_FILENAME
         ])
         self.assertEqual(saved_var_names, expected_persistable_vars)
         # Check the correctness of the inference

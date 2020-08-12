@@ -18,7 +18,6 @@ import unittest
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
-from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 
 from test_program_translator import get_source_code
 

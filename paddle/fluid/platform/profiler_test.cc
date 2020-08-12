@@ -28,6 +28,9 @@ TEST(Event, CpuElapsedTime) {
   while (counter != 1000) {
     counter++;
   }
+#ifdef _WIN32
+  Sleep(1);
+#endif
   Event stop_event(EventType::kPopRange, "test", 0);
   EXPECT_GT(start_event.CpuElapsedMs(stop_event), 0);
 }

@@ -227,45 +227,20 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
             ['X'], 'Out', max_relative_error=1, no_grad_set=set('Y'))
 
 
+class TestElementwiseDivBroadcast(unittest.TestCase):
+    def test_shape_with_batch_sizes(self):
+        with fluid.program_guard(fluid.Program()):
+            x_var = fluid.data(
+                name='x', dtype='float32', shape=[None, 3, None, None])
+            one = 2.
+            out = one / x_var
+            exe = fluid.Executor(fluid.CPUPlace())
+            x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
+            out_result, = exe.run(feed={'x': x}, fetch_list=[out])
+            self.assertEqual((out_result == (2 / x)).all(), True)
+
+
 class TestDivOp(unittest.TestCase):
-    def test_out(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[3], dtype="float32")
-            y = fluid.data(name='y', shape=[3], dtype='float32')
-
-            res = fluid.data(name="output", shape=[3], dtype="float32")
-            y_1 = paddle.div(x, y, out=res)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            data1 = np.array([2, 3, 4], dtype='float32')
-            data2 = np.array([1, 5, 2], dtype='float32')
-            np_res, np_y_1 = exe.run(feed={'x': data1,
-                                           'y': data2},
-                                     fetch_list=[res, y_1])
-
-            self.assertEqual((np_res == np_y_1).all(), True)
-
-    def test_out_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
-            return
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[3], dtype="float32")
-            y = fluid.data(name='y', shape=[3], dtype='float32')
-
-            res = fluid.data(name="output", shape=[3], dtype="float32")
-            y_1 = paddle.div(x, y, out=res)
-
-            place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-            data1 = np.array([2, 3, 4], dtype='float32')
-            data2 = np.array([1, 5, 2], dtype='float32')
-            np_res, np_y_1 = exe.run(feed={'x': data1,
-                                           'y': data2},
-                                     fetch_list=[res, y_1])
-
-            self.assertEqual((np_res == np_y_1).all(), True)
-
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")

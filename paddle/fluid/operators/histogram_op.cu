@@ -25,10 +25,6 @@ using IndexType = int64_t;
 using Tensor = framework::Tensor;
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
 }
