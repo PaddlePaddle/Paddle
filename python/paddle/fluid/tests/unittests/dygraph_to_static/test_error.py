@@ -143,5 +143,10 @@ class TestErrorInRuntime(TestErrorInCompileTime):
             self.assertIn(m, error_message)
 
 
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 if __name__ == '__main__':
-    unittest.main()
+    # unittest.main()
+    with fluid.dygraph.guard():
+        # print(ProgramTranslator().get_code(func_error_in_compile_time))
+        print(func_error_in_compile_time.code)
+        # func_error_in_compile_time(np.ones(3))

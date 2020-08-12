@@ -128,6 +128,103 @@ def _dygraph_to_static_func_(dygraph_func):
 dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
+class Function(object):
+    def __init__(self, dygraph_func):
+        self._dygraph_func = dygraph_func
+        self.prog_translator = ProgramTranslator()
+
+    @property
+    def dygraph_function(self):
+        return self._dygraph_func
+
+    @property
+    def code(self):
+        static_code = self.prog_translator.get_code(self._dygraph_func)
+        return static_code
+
+    @property
+    def static_function(self):
+        static_func = self.prog_translator.get_func(self._dygraph_func)
+        return static_func
+
+    @property
+    def program(self):
+        # TODO(liym27): input_spec is needed.
+        return self.prog_translator.get_program(
+            self._dygraph_func, input_spec=None)
+
+    def __call__(self, *args, **kwargs):
+        if not self.prog_translator.enable_declarative:
+            warnings.warn(
+                "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
+                "We will just return dygraph output.")
+            return self._dygraph_func(*args, **kwargs)
+        try:
+            return self.prog_translator.get_output(self._dygraph_func, *args,
+                                                   **kwargs)
+        except Exception as e:
+            error_data = getattr(e, ERROR_DATA, None)
+            if error_data:
+                new_exception = error_data.create_exception()
+                if six.PY3:
+                    # NOTE(liym27):
+                    # 1. Why `raise new_exception from None`?
+                    #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
+                    #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
+                    #   caught exception.
+                    # 2. Use exec to bypass syntax error checking in Python 2.
+
+                    six.exec_("raise new_exception from None")
+                else:
+                    raise new_exception
+            else:
+                raise
+
+
+def make_decorator(func, decorator_func, decorator_name=None):
+
+    decorator_func.__wrapped__ = func
+    decorator_func._decorator_name = decorator_name
+
+    decorator_func.__doc__ = func.__doc__
+    decorator_func.__module__ = getattr(func, "__module__")
+    decorator_func.__name__ = getattr(func, "__name__")
+
+    if hasattr(func, '__dict__'):
+        decorator_func_dict = getattr(decorator_func, "__dict__", {})
+        setattr(decorator_func, "__dict__",
+                decorator_func_dict.update(func.__dict__))
+
+    return decorator_func
+
+
+def unwrap(func):
+    def _is_wrapped(f):
+        return hasattr(f, '__wrapped__')
+
+    unwrapped_f = func
+    while (_is_wrapped(unwrapped_f)):
+        unwrapped_f = unwrapped_f.__wrapped__
+
+    return unwrapped_f
+
+
+def declarative(function=None):
+    def _decorator_(python_func):
+        python_func = unwrap(python_func)
+        return make_decorator(
+            func=python_func,
+            decorator_func=Function(python_func),
+            decorator_name=declarative)
+
+    # for `declarative(foo, ...)`
+    if function is not None:
+        return _decorator_(function)
+
+    # for `@declarative()`
+    return _decorator_
+
+
 def _declarative_(dygraph_func):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
@@ -191,9 +288,6 @@ def _declarative_(dygraph_func):
                 raise
 
     return __impl__
-
-
-declarative = wrap_decorator(_declarative_)
 
 
 class SaveLoadConfig(object):
