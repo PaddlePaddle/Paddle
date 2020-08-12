@@ -72,14 +72,18 @@ __all__ = [
 ]
 
 
-def margin_ranking_loss(x1, x2, target, margin=0.0, reduction='mean',
+def margin_ranking_loss(input,
+                        other,
+                        target,
+                        margin=0.0,
+                        reduction='mean',
                         name=None):
     """
 
     This op the calcluate the the margin rank loss between the input x, y and target, use the math function as follows. 
 
     .. math:: 
-        margin\_rank\_loss = max(0, -target * (x1- x2) + margin)
+        margin\_rank\_loss = max(0, -target * (input - other) + margin)
 
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
 
@@ -94,14 +98,14 @@ def margin_ranking_loss(x1, x2, target, margin=0.0, reduction='mean',
     If :attr:`reduction` set to ``'none'``, just return the origin ``margin_rank_loss``.
 
     Parameters:
-        x1(Tensor): the first input tensor, it's data type should be float32, float64.
-        x2(Tensor): the second input tensor, it's data type should be float32, float64.
+        input(Tensor): the first input tensor, it's data type should be float32, float64.
+        other(Tensor): the second input tensor, it's data type should be float32, float64.
         target(Tensor): the target value corresponding to input, it's data type should be float32, float64. 
         margin (float, optional): The margin value to add, default value is 0;
         reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Returns: Tensor, if :attr:`reduction` is ``'mean'`` or ``'sum'``, the out shape is :math:`[1]`, otherwise the shape is the same as input `x1` .The same dtype as input tensor.
+    Returns: Tensor, if :attr:`reduction` is ``'mean'`` or ``'sum'``, the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Examples:
 
@@ -119,7 +123,7 @@ def margin_ranking_loss(x1, x2, target, margin=0.0, reduction='mean',
             print(loss.numpy()) # [0.75]
     """
     if fluid.framework.in_dygraph_mode():
-        out = core.ops.elementwise_sub(x2, x1)
+        out = core.ops.elementwise_sub(other, input)
         out = core.ops.elementwise_mul(out, target)
         if margin != 0.0:
             margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
@@ -133,13 +137,13 @@ def margin_ranking_loss(x1, x2, target, margin=0.0, reduction='mean',
 
     helper = LayerHelper("margin_ranking_loss", **locals())
     fluid.data_feeder.check_variable_and_dtype(
-        x1, 'x1', ['float32', 'float64'], 'margin_rank_loss')
+        input, 'input', ['float32', 'float64'], 'margin_rank_loss')
     fluid.data_feeder.check_variable_and_dtype(
-        x2, 'x2', ['float32', 'float64'], 'margin_rank_loss')
+        other, 'other', ['float32', 'float64'], 'margin_rank_loss')
     fluid.data_feeder.check_variable_and_dtype(
         target, 'target', ['float32', 'float64'], 'margin_rank_loss')
 
-    out = paddle.elementwise_sub(x2, x1)
+    out = paddle.elementwise_sub(other, input)
     out = paddle.multiply(out, target)
 
     if margin != 0.0:
@@ -147,7 +151,7 @@ def margin_ranking_loss(x1, x2, target, margin=0.0, reduction='mean',
         paddle.fill_constant([1], out.dtype, margin, out=margin_var)
         out = paddle.add(out, margin_var)
 
-    result_out = helper.create_variable_for_type_inference(x1.dtype)
+    result_out = helper.create_variable_for_type_inference(input.dtype)
 
     if reduction == 'none':
         helper.append_op(
