@@ -111,7 +111,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto *init_h = ctx.Input<Tensor>("InitH");
     auto *init_c = ctx.Input<Tensor>("InitC");
     auto *reserve = ctx.Input<Tensor>("Reserve");
-    auto *state = ctx.Input<Tensor>("State");
+    auto *state_out = ctx.Input<Tensor>("StateOut");
 
     auto *out = ctx.Input<Tensor>("Out");
     auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
@@ -169,7 +169,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     cudnn_rnn_cache->init(handle, ctx.GetPlace(), seq_len, batch_size,
                           input_dim, hidden_size, num_layers, dropout_prob,
                           is_bidirec, seed, input_w_numel, &reserve_size,
-                          const_cast<Tensor *>(state), true, cudnn_type);
+                          const_cast<Tensor *>(state_out), true, cudnn_type);
 
     auto work_data = cudnn_rnn_cache->workspace_data_.data<uint8_t>();
     const uint8_t *reserve_data = reserve->data<uint8_t>();

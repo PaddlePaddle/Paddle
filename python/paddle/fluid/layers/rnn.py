@@ -2308,10 +2308,9 @@ def lstm(input,
     last_c = helper.create_variable_for_type_inference(dtype)
     reserve = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
-    state = helper.create_variable_for_type_inference(
+    state_out = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
-    state.persistable = True
-    state_out = state
+    state_out.persistable = True
 
     helper.append_op(
         type='cudnn_lstm',
@@ -2320,7 +2319,6 @@ def lstm(input,
             'InitH': init_h,
             'InitC': init_c,
             'W': weight,
-            'State': state,
         },
         outputs={
             'Out': out,

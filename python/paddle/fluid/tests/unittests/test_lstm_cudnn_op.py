@@ -142,14 +142,13 @@ class TestCUDNNLstmOp(OpTest):
 
         init_h = np.zeros((1, batch_size, hidden_size), dtype=np.float32)
         init_c = np.zeros((1, batch_size, hidden_size), dtype=np.float32)
-        state = np.ndarray((300)).astype("uint8")
+        state_out = np.ndarray((300)).astype("uint8")
 
         self.inputs = {
             'Input': input,
             'W': flat_w,
             'InitH': init_h,
-            'InitC': init_c,
-            'State': state
+            'InitC': init_c
         }
         self.attrs = {
             'dropout_prob': 0.0,
@@ -163,7 +162,7 @@ class TestCUDNNLstmOp(OpTest):
             "LastH": last_hidden,
             'LastC': last_cell,
             'Reserve': np.ndarray((400)).astype("uint8"),
-            'StateOut': state
+            'StateOut': state_out
         }
 
     def test_output_with_place(self):

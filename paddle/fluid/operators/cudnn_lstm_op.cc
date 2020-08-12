@@ -28,7 +28,6 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasInput("InitH"), "Input", "InitH", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTM");
-    OP_INOUT_CHECK(ctx->HasInput("State"), "Input", "State", "CudnnLSTM");
 
     OP_INOUT_CHECK(ctx->HasOutput("Reserve"), "Output", "Reserve", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasOutput("StateOut"), "Output", "StateOut",
@@ -113,9 +112,6 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the learnable hidden-hidden weights."
              " The shape is (N), where N is total weight size of the LSTM. "
              " cudnn concatenate all the weight to one Tensor");
-    AddInput(
-        "State",
-        "(Tensor)  The global drop state to store in LSTM. (for training)");
     AddOutput("Reserve",
               "(Tensor, a temporary output Tensor to store the reserve_data "
               "of cudnn kernel.")
@@ -240,7 +236,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("InitC", this->Input("InitC"));
     op->SetInput("W", this->Input("W"));
     op->SetInput("Reserve", this->Output("Reserve"));
-    op->SetInput("State", this->Output("StateOut"));
+    op->SetInput("StateOut", this->Output("StateOut"));
     op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput(framework::GradVarName("LastC"), this->OutputGrad("LastC"));
