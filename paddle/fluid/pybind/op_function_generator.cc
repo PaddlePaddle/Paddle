@@ -40,6 +40,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"assign", {"X"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"X", "InScale", "InAccum", "InState"}},
+    {"nll_loss", {"X", "Label", "Weight"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
