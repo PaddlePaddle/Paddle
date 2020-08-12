@@ -137,7 +137,7 @@ def convert_call(func):
                 if inspect.isfunction(fn):
                     global_funcs.add(fn)
                 elif isinstance(fn, PartialProgram):
-                    global_funcs.add(fn._dygraph_func)
+                    global_funcs.add(fn.dygraph_function)
 
             if func in global_funcs:
                 converted_call = convert_to_static(func)

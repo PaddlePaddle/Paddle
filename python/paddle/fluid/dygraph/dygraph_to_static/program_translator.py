@@ -289,7 +289,7 @@ class PartialProgram(object):
             Traced ConcreteProgram and executable PartialProgramLayer.
         """
         # 1. unify args/kwargs and replace Tensor with TensorSpec
-        if len(args) != self._function_spec.args_name:
+        if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(args,
                                                                        kwargs)
         input_with_spec = self._function_spec.args_to_tensor_spec(args, kwargs)
