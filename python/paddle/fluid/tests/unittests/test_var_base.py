@@ -30,61 +30,71 @@ class TestVarBase(unittest.TestCase):
         self.array = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
 
     def test_to_tensor(self):
-        with fluid.dygraph.guard():
-            place = 'pin_memory' if core.is_compiled_with_cuda() else 'cpu'
-            x = paddle.to_tensor(
-                1, dtype='float32', place=place, stop_gradient=False)
-            self.assertTrue(np.array_equal(x.numpy(), [1.]))
-            self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
-            self.assertEqual(x.shape, [1])
-            self.assertEqual(x.stop_gradient, False)
-            self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
+        def _test_place(place):
+            with fluid.dygraph.guard(place):
+                place = 'pin_memory' if core.is_compiled_with_cuda() else 'cpu'
+                x = paddle.to_tensor(
+                    1, dtype='float32', place=place, stop_gradient=False)
+                self.assertTrue(np.array_equal(x.numpy(), [1.]))
+                self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+                self.assertEqual(x.shape, [1])
+                self.assertEqual(x.stop_gradient, False)
+                self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
-            x = paddle.to_tensor(
-                (1, 2), dtype='float32', place=place, stop_gradient=False)
-            place = 'cuda' if core.is_compiled_with_cuda() else 'cpu'
-            x = paddle.to_tensor(
-                [1, 2], dtype='float32', place=plcace, stop_gradient=False)
-            self.assertTrue(np.array_equal(x.numpy(), [1., 2.]))
-            self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
-            self.assertEqual(x.grad, None)
-            self.assertEqual(x.shape, [2])
-            self.assertEqual(x.stop_gradient, False)
-            self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
+                x = paddle.to_tensor(
+                    (1, 2), dtype='float32', place=place, stop_gradient=False)
+                place = 'cuda' if core.is_compiled_with_cuda() else 'cpu'
+                x = paddle.to_tensor(
+                    [1, 2], dtype='float32', place=place, stop_gradient=False)
+                self.assertTrue(np.array_equal(x.numpy(), [1., 2.]))
+                self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+                self.assertEqual(x.grad, None)
+                self.assertEqual(x.shape, [2])
+                self.assertEqual(x.stop_gradient, False)
+                self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
-            place = 'cuda:0' if core.is_compiled_with_cuda() else 'cpu'
-            x = paddle.to_tensor(
-                self.array, dtype='float32', place=plcace, stop_gradient=False)
-            self.assertTrue(np.array_equal(x.numpy(), self.array))
-            self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
-            self.assertEqual(x.shape, self.shape)
-            self.assertEqual(x.stop_gradient, False)
-            self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
+                place = 'cuda' if core.is_compiled_with_cuda() else 'cpu'
+                x = paddle.to_tensor(
+                    self.array,
+                    dtype='float32',
+                    place=place,
+                    stop_gradient=False)
+                self.assertTrue(np.array_equal(x.numpy(), self.array))
+                self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+                self.assertEqual(x.shape, self.shape)
+                self.assertEqual(x.stop_gradient, False)
+                self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
-            y = paddle.to_tensor(x)
-            y = paddle.to_tensor(y, dtype='int32')
-            z = x + y
-            self.assertTrue(np.array_equal(x.numpy(), self.array))
-            self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
-            self.assertEqual(x.shape, self.shape)
-            self.assertEqual(x.stop_gradient, False)
-            self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
+                y = paddle.to_tensor(x)
+                y = paddle.to_tensor(y, dtype='int32', place='cpu')
+                self.assertTrue(np.array_equal(x.numpy(), self.array))
+                self.assertEqual(y.dtype, core.VarDesc.VarType.INT32)
+                self.assertEqual(y.shape, self.shape)
+                self.assertEqual(y.stop_gradient, True)
+                self.assertEqual(y.type, core.VarDesc.VarType.LOD_TENSOR)
 
-            x = paddle.to_tensor([1 + 2j, 1 - 2j], dtype='complex64')
-            y = paddle.to_tensor(x)
-            self.assertTrue(np.array_equal(x.numpy(), [1 + 2j, 1 - 2j]))
-            self.assertEqual(x.dtype, 'complex64')
-            self.assertEqual(x.shape, [2])
-            self.assertEqual(x.real.stop_gradient, True)
-            self.assertEqual(x.real.type, core.VarDesc.VarType.LOD_TENSOR)
+                x = paddle.to_tensor([1 + 2j, 1 - 2j], dtype='complex64')
+                y = paddle.to_tensor(x)
+                self.assertTrue(np.array_equal(x.numpy(), [1 + 2j, 1 - 2j]))
+                self.assertEqual(y.dtype, 'complex64')
+                self.assertEqual(y.shape, [2])
+                self.assertEqual(y.real.stop_gradient, True)
+                self.assertEqual(y.real.type, core.VarDesc.VarType.LOD_TENSOR)
 
-            with self.assertRaises(TypeError):
-                paddle.to_tensor("test")
-            with self.assertRaises(ValueError):
-                paddle.to_tensor([[1], [2, 3]])
-            if not core.is_compiled_with_cuda():
-                with self.assertRaises(AssertionError):
-                    paddle.to_tensor(1, pin_memory=True)
+                with self.assertRaises(TypeError):
+                    paddle.to_tensor('test')
+                with self.assertRaises(TypeError):
+                    paddle.to_tensor(1, dtype='test')
+                with self.assertRaises(ValueError):
+                    paddle.to_tensor([[1], [2, 3]])
+                with self.assertRaises(ValueError):
+                    paddle.to_tensor([[1], [2, 3]], place='test')
+                with self.assertRaises(ValueError):
+                    paddle.to_tensor([[1], [2, 3]], place=1)
+
+        _test_place(core.CPUPlace())
+        if core.is_compiled_with_cuda():
+            _test_place(core.CUDAPlace(0))
 
     def test_to_variable(self):
         with fluid.dygraph.guard():

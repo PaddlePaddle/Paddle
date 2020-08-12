@@ -816,6 +816,11 @@ void BindImperative(py::module *m_ptr) {
               bool blocking) { return self.NewVarBase(place, blocking); },
            py::return_value_policy::copy)
       .def("_copy_to",
+           [](const imperative::VarBase &self,
+              const platform::CUDAPinnedPlace &place,
+              bool blocking) { return self.NewVarBase(place, blocking); },
+           py::return_value_policy::copy)
+      .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CUDAPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },
            py::return_value_policy::copy)
@@ -843,6 +848,18 @@ void BindImperative(py::module *m_ptr) {
               return std::vector<int>();
             }
           })
+      .def_property_readonly(
+          "place",
+          [](imperative::VarBase &self) {
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              return self.Var().Get<framework::LoDTensor>().place();
+            } else if (self.Var().IsType<framework::SelectedRows>()) {
+              return self.Var().Get<framework::SelectedRows>().value().place();
+            } else {
+              return paddle::platform::Place();
+            }
+          },
+          py::return_value_policy::copy)
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
 

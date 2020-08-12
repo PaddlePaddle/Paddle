@@ -344,6 +344,7 @@ py_test_modules(test_imperative_ocr_attention_model MODULES test_imperative_ocr_
 py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
+set_tests_properties(test_var_base PROPERTIES LABELS "RUN_TYPE=DIST")
 py_test_modules(test_imperative_debug_string MODULES test_imperative_debug_string ENVS FLAGS_dygraph_debug=1)
 py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_static_runner_mnist ENVS
     FLAGS_cudnn_deterministic=1)

@@ -60,3 +60,5 @@ from ..fluid.dygraph.learning_rate_scheduler import ExponentialDecay  #DEFINE_AL
 from ..fluid.dygraph.learning_rate_scheduler import InverseTimeDecay  #DEFINE_ALIAS
 from ..fluid.dygraph.learning_rate_scheduler import PolynomialDecay  #DEFINE_ALIAS
 from ..fluid.dygraph.learning_rate_scheduler import CosineDecay  #DEFINE_ALIAS
+
+BackwardStrategy = core.BackwardStrategy

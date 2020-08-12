@@ -1769,10 +1769,9 @@ class ComplexVariable(object):
         return self.real.numpy() + 1j * self.imag.numpy()
 
     def __str__(self):
-        return "ComplexTensor[real]: %s\n%s" % (
-            self.real.name, str(self.real.value().get_tensor())
-        ) + "\nComplexTensor[imag]: %s\n%s" % (
-            self.imag.name, str(self.imag.value().get_tensor()))
+        return "ComplexTensor[real]: %s\n%s\nComplexTensor[imag]: %s\n%s" % (
+            self.real.name, str(self.real.value().get_tensor()), self.imag.name,
+            str(self.imag.value().get_tensor()))
 
     __repr__ = __str__
 
@@ -5196,8 +5195,8 @@ class ParamBase(core.VarBase):
                 #   - data: [...] 
                 paddle.enable_static()
         """
-        return 'Parameter containing:\n  ' + super(ParamBase, self).__str__(
-        ) + "\n  - stop_gradient: {}".format(self.stop_gradient)
+        return "Parameter containing:\n  {}\n  - stop_gradient: {}".format(
+            super(ParamBase, self).__str__(), self.stop_gradient)
 
     __repr__ = __str__
 
