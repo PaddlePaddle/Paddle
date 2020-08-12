@@ -11237,6 +11237,22 @@ def scalar_mul(x, a=1.0, b=0.0):
         
     Returns:
         Variable(Tensor|LoDTensor): Output tensor of scalar mul operator, with shape and data type same as input.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            inputs = fluid.layers.data(name="x", shape=[2, 3], dtype='float32')
+            output = fluid.layers.scalar_mul(inputs, a = 2.0, b = 1.0)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+            print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
     """
 
     check_variable_and_dtype(x, "x", ['float32', 'float64'], "scalar_mul")
