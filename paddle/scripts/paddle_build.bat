@@ -1,4 +1,4 @@
-@ECHO OFF
+@ECHO ON
 SETLOCAL
 
 rem Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
@@ -23,6 +23,8 @@ rem =================================================
 set work_dir=%cd%
 if not defined BRANCH set BRANCH=develop
 if not defined PYTHON_ROOT set PYTHON_ROOT=c:\Python37
+set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
+
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
 if not defined WITH_AVX set WITH_AVX=ON
@@ -31,28 +33,34 @@ if not defined WITH_TESTING set WITH_TESTING=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=OFF
-if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=d:/.cache/inference_demo
+if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
 if not defined THIRD_PARTY_PATH set THIRD_PARTY_PATH=%work_dir:\=/%/build/third_party
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
+
 set cache_dir=%work_dir%\..\cache
 dir %cache_dir%
+set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
-if "%WITH_TPCACHE%"=="ON" (
-    if not exist %cache_dir%\tools (
-        git clone https://github.com/zhouwei25/tools %cache_dir%\tools
-    )
-
-    echo set -ex > cache.sh
-    echo md5_content=$(cat $PWD/cmake/external/*.cmake  ^|md5sum ^| awk '{print $1}') >> cache.sh
-    echo echo ${md5_content}^>md5.txt >> cache.sh
-
-    %cache_dir%\tools\busybox64.exe cat cache.sh
-    %cache_dir%\tools\busybox64.exe bash cache.sh
-
-    set /p md5=< md5.txt
-    set THIRD_PARTY_PATH=d:/third_party/%md5%
+if not exist %cache_dir%\tools (
+    git clone https://github.com/zhouwei25/tools %cache_dir%\tools
 )
 
+if "%WITH_TPCACHE%"=="OFF" (
+    goto :CASE_%1
+)
+
+echo set -ex > cache.sh
+echo md5_content=$(cat $PWD/cmake/external/*.cmake  ^|md5sum ^| awk '{print $1}') >> cache.sh
+echo echo ${md5_content}^>md5.txt >> cache.sh
+
+%cache_dir%\tools\busybox64.exe cat cache.sh
+%cache_dir%\tools\busybox64.exe bash cache.sh
+
+set /p md5=< md5.txt
+if "%WITH_GPU%"=="ON" (
+    set THIRD_PARTY_PATH=%cache_dir:\=/%/third_party_GPU/%md5%
+) else (
+    set THIRD_PARTY_PATH=%cache_dir:\=/%/third_party/%md5%
+)
 
 goto :CASE_%1
 
