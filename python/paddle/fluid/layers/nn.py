@@ -4397,6 +4397,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.mean")
 def reduce_mean(input, dim=None, keep_dim=False, name=None):
     """
     Computes the mean of the input tensor's elements along the given dimension.
