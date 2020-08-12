@@ -24,6 +24,7 @@ import sys
 from paddle.fleet.utils.fs import LocalFS, HDFSClient
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
 
+
 class CheckpointerSaverTest(unittest.TestCase):
     def test(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7", None)
