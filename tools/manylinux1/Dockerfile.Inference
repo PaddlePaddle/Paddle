@@ -205,6 +205,10 @@ RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
            -DCMAKE_BUILD_TYPE=Release . \
      make)
 
+# Install hadoop
+RUN wget --no-check-certificate  -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
+     tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/
+
 # ar mishandles 4GB files
 # https://sourceware.org/bugzilla/show_bug.cgi?id=14625
 # remove them when apt-get support 2.27 and higher version
