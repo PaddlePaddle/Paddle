@@ -292,7 +292,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np_t = v.numpy()
                 self.model_base[k] = np_t
 
-            paddle.imperative.save(self.state_dict, "./test_dy")
+            paddle.save(self.state_dict, "./test_dy")
 
     def testLoadAndSetVarBase(self):
         seed = 90
@@ -373,8 +373,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             if isinstance(adam._learning_rate, LearningRateDecay):
                 adam._learning_rate.step_num = 0
 
-            para_state_dict, opti_state_dict = paddle.imperative.load(
-                "./test_dy")
+            para_state_dict, opti_state_dict = paddle.load("./test_dy")
             adam.set_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
@@ -900,18 +899,17 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.imperative.save(state_dict,
-                                   os.path.join('saved_dy', 'emb_dy'))
+            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy'))
 
-            para_state_dict, opti_state_dict = paddle.imperative.load(
+            para_state_dict, opti_state_dict = paddle.load(
                 os.path.join('saved_dy', 'emb_dy'))
 
             self.assertTrue(opti_state_dict == None)
 
-            para_state_dict, opti_state_dict = paddle.imperative.load(
+            para_state_dict, opti_state_dict = paddle.load(
                 os.path.join('saved_dy', 'emb_dy.pdparams'))
 
-            para_state_dict, opti_state_dict = paddle.imperative.load(
+            para_state_dict, opti_state_dict = paddle.load(
                 os.path.join('saved_dy', 'emb_dy.pdopt'))
 
 

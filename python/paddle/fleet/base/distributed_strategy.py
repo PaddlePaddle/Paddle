@@ -227,8 +227,11 @@ class DistributedStrategy(object):
     def a_sync(self, flag):
         if isinstance(flag, bool):
             self.strategy.a_sync = flag
+            self.a_sync_configs = {"k_steps": 0}
         else:
-            print("WARNING: a_sync should have value of bool type")
+            raise ValueError(
+                "The type of `flag` is invalid, expected type is bool, but received %s".
+                format(type(flag)))
 
     @property
     def a_sync_configs(self):
@@ -623,6 +626,15 @@ class DistributedStrategy(object):
             self.strategy.lamb = flag
         else:
             print("WARNING: lamb should have value of bool type")
+
+    @property
+    def lamb_configs(self):
+        return get_msg_dict(self.strategy.lamb_configs)
+
+    @lamb_configs.setter
+    def lamb_configs(self, configs):
+        check_configs_key(self.strategy.lamb_configs, configs, "lamb_configs")
+        assign_configs_value(self.strategy.lamb_configs, configs)
 
     @property
     def elastic(self):
