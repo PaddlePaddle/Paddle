@@ -62,8 +62,8 @@ class TensorSpec(object):
         if isinstance(batch_size, (list, tuple)):
             if len(batch_size) != 1:
                 raise ValueError(
-                    "Length of  {}: batch_size shall be 1, but received {}.".
-                    format(type_name(variable), len(batch_size)))
+                    "Length of batch_size: {} shall be 1, but received {}.".
+                    format(batch_size, len(batch_size)))
             batch_size = batch_size[1]
         elif not isinstance(batch_size, six.integer_types):
             raise TypeError("type(batch_size) shall be `int`, but received {}.".
