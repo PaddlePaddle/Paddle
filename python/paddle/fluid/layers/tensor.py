@@ -28,7 +28,7 @@ from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 import numpy
 import warnings
-
+import paddle
 __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
@@ -1465,33 +1465,8 @@ def linspace(start, stop, num, dtype=None, name=None):
              data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
 
     """
-    if dtype is None:
-        dtype = 'float32'
-    if not isinstance(start, Variable):
-        start = fill_constant([1], dtype, start)
-    if not isinstance(stop, Variable):
-        stop = fill_constant([1], dtype, stop)
-    if not isinstance(num, Variable):
-        num = fill_constant([1], 'int32', num)
-    if in_dygraph_mode():
-        return core.ops.linspace(start, stop, num)
-
-    helper = LayerHelper("linspace", **locals())
-
-    check_dtype(start.dtype, 'start', ['float32', 'float64'], 'linspace')
-    check_dtype(stop.dtype, 'stop', ['float32', 'float64'], 'linspace')
-    check_dtype(num.dtype, 'num', ['int32', 'int64'], 'linspace')
-    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'linspace')
-
-    out = helper.create_variable_for_type_inference(dtype=start.dtype)
-
-    helper.append_op(
-        type='linspace',
-        inputs={'Start': start,
-                'Stop': stop,
-                'Num': num},
-        outputs={'Out': [out]})
-    return out
+    return paddle.linspace(
+        start=start, stop=stop, num=num, dtype=dtype, name=name)
 
 
 def zeros_like(x, out=None):

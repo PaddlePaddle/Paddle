@@ -28,7 +28,7 @@ from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
 from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 from ..fluid.layers import create_tensor  #DEFINE_ALIAS
-from ..fluid.layers import linspace  #DEFINE_ALIAS
+#from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
 
 __all__ = [
@@ -52,6 +52,70 @@ __all__ = [
     'tril',
     'meshgrid'
 ]
+
+
+def linspace(start, stop, num, dtype=None, name=None):
+    """
+    This OP return fixed number of evenly spaced values within a given interval.
+
+    Args:
+        start(float|Tensor): The input :attr:`start` is start variable of range. It is a float scalar, \
+            or a Tensor of shape [1] with input data type float32, float64.
+        stop(float|Tensor): The input :attr:`stop` is start variable of range. It is a float scalar, \
+            or a Tensor of shape [1] with input data type float32, float64.
+        num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int scalar, \
+            or a Tensor of shape [1] with data type int32.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output tensor, it could be 'float32' and 'float64'.
+            Default: if None, the data type is float32.
+        name(str, optional): Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name`.Default: None.
+
+    Returns:
+        Tensor: the output data type will be float32, float64. The 1-D tensor with fixed number of evenly spaced values, \
+        the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
+        the value with input :attr:`start`. 
+
+    Raises:
+        TypeError: The ``dtype`` must be one of float32 and float64.
+        TypeError: The data type of ``start`` and ``stop``  must be one of float32 and float64.
+        TypeError: The data type of ``num`` must be one of int32 and int64.
+
+
+    Examples:
+        .. code-block:: python
+
+             import paddle.fluid as fluid
+             data = fluid.layers.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
+             data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
+
+    """
+    if dtype is None:
+        dtype = 'float32'
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+    if not isinstance(stop, Variable):
+        stop = fill_constant([1], dtype, stop)
+    if not isinstance(num, Variable):
+        num = fill_constant([1], 'int32', num)
+    if in_dygraph_mode():
+        return core.ops.linspace(start, stop, num)
+
+    helper = LayerHelper("linspace", **locals())
+
+    check_dtype(start.dtype, 'start', ['float32', 'float64'], 'linspace')
+    check_dtype(stop.dtype, 'stop', ['float32', 'float64'], 'linspace')
+    check_dtype(num.dtype, 'num', ['int32', 'int64'], 'linspace')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'linspace')
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='linspace',
+        inputs={'Start': start,
+                'Stop': stop,
+                'Num': num},
+        outputs={'Out': [out]})
+    return out
 
 
 def full_like(x, fill_value, dtype=None, name=None):
