@@ -503,7 +503,10 @@ class Layer(core.Layer):
                 "The name of buffer should be a string, but received {}.".
                 format(type(name).__name__))
         elif '.' in name:
-            raise KeyError("The name of buffer can not contain \".\"")
+            raise KeyError(
+                "The name of buffer can not contain `.`, "
+                "because when you access the newly added buffer in the "
+                "form of `self.**.**`, it will cause AttributeError.")
         elif name == '':
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
@@ -686,20 +689,38 @@ class Layer(core.Layer):
         Returns:
             Parameter: the parameter passed in.
         """
-        if parameter is None:
-            self._parameters[name] = None
-        elif not isinstance(parameter, framework.Parameter):
+        if '_parameters' not in self.__dict__:
+            raise ValueError(
+                "super(YourLayer, self).__init__() should be called first.")
+        elif not isinstance(name, six.string_types):
             raise TypeError(
-                "parameter assignment requires Parameter or None, but got '{}'"
-                .format(type(parameter).__name__))
+                "The name of parameter should be a string, but received {}.".
+                format(type(name).__name__))
+        elif '.' in name:
+            raise KeyError(
+                "The name of parameter can not contain `.`, "
+                "because when you access the newly added parameter in the "
+                "form of `self.**.**`, it will cause AttributeError.")
+        elif name == '':
+            raise KeyError("The name of parameter can not be empty.")
+        elif hasattr(self, name) and name not in self._parameters:
+            raise KeyError("The parameter '{}' already exists.".format(name))
+        elif parameter is not None and not isinstance(parameter,
+                                                      framework.Parameter):
+            raise TypeError(
+                "The parameter to be added should be a Parameter, but received {}.".
+                format(type(parameter).__name__))
+        else:
+            if parameter is None:
+                self._parameters[name] = None
 
-        if len(self._loaddict_holder) > 0:
-            assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
-                parameter.name)
+            if len(self._loaddict_holder) > 0:
+                assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
+                    parameter.name)
 
-            parameter.set_value(self._loaddict_holder[parameter.name])
+                parameter.set_value(self._loaddict_holder[parameter.name])
 
-        self._parameters[name] = parameter
+            self._parameters[name] = parameter
         return parameter
 
     def __getattr__(self, name):
