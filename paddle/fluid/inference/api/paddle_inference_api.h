@@ -150,7 +150,6 @@ class PD_INFER_DECL Tensor {
   void SetLoD(const std::vector<std::vector<size_t>>& x);
   std::vector<std::vector<size_t>> lod() const;
 
-  void SetPlace(PaddlePlace place, int device = -1);
   PaddleDType type() const;
 
   std::vector<int> shape() const;
@@ -190,13 +189,9 @@ class PD_INFER_DECL Predictor {
 PD_INFER_DECL std::shared_ptr<Predictor> CreatePredictor(
     Config& config);  // NOLINT
 PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
-PD_INFER_DECL std::shared_ptr<paddle::framework::Cipher> MakeCipher(
-    const std::string& config_file);
 
-extern "C" {
 PD_INFER_DECL std::string GetPaddleVersion();
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
-}
 
 class PD_INFER_DECL PredictorPool {
  public:

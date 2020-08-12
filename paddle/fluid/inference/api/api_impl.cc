@@ -509,10 +509,6 @@ std::vector<std::vector<size_t>> Tensor::lod() const { return tensor_->lod(); }
 
 const std::string &Tensor::name() const { return tensor_->name(); }
 
-void Tensor::SetPlace(PaddlePlace place, int device) {
-  tensor_->SetPlace(static_cast<paddle::PaddlePlace>(place), device);
-}
-
 PaddleDType Tensor::type() const {
   return static_cast<PaddleDType>(tensor_->type());
 }
@@ -571,11 +567,6 @@ std::string UpdateDllFlag(const char *name, const char *value) {
   return paddle::UpdateDllFlag(name, value);
 }
 
-std::shared_ptr<paddle::framework::Cipher> MakeCipher(
-    const std::string &config_file) {
-  return paddle::framework::CipherFactory::CreateCipher(config_file);
-}
-
 }  // namespace paddle_infer
 
 namespace paddle_infer {
@@ -590,10 +581,14 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
       paddle::platform::errors::InvalidArgument(
           "The predictor pool size should be greater than 1, but it's (%d)",
           size));
+  const paddle::AnalysisConfig &analysis_config =
+      const_cast<Config *>(&config)->get_analysis_config();
   main_pred_.reset(new Predictor(config));
   for (size_t i = 0; i < size - 1; i++) {
     if (config.tensorrt_engine_enabled()) {
-      preds_.emplace_back(std::unique_ptr<Predictor>(new Predictor(config)));
+      paddle::AnalysisConfig config_tmp(analysis_config);
+      preds_.emplace_back(std::unique_ptr<Predictor>(
+          new Predictor(paddle::CreatePaddlePredictor(config_tmp))));
     } else {
       preds_.emplace_back(std::move(main_pred_->Clone()));
     }
