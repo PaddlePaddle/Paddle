@@ -15,6 +15,7 @@
 # TODO: define loss functions of neural network  
 import paddle.fluid as fluid
 import paddle
+from paddle.fluid.framework import core, in_dygraph_mode, _varbase_creator
 
 __all__ = [
     #       'NCELoss',
@@ -340,90 +341,97 @@ class L1Loss(fluid.dygraph.Layer):
 
 class BCELoss(fluid.dygraph.Layer):
     """
-	:alias_main: paddle.nn.BCELoss
-	:alias: paddle.nn.BCELoss,paddle.nn.layer.BCELoss,paddle.nn.layer.loss.BCELoss
-
     This interface is used to construct a callable object of the ``BCELoss`` class.
-    The BCELoss layer measures the binary_cross_entropy loss between input predictions 
-    and target labels. The binary_cross_entropy loss can be described as:
+    The BCELoss layer measures the binary_cross_entropy loss between input predictions ``x``
+    and target labels ``label`` . The binary_cross_entropy loss can be described as:
 
     If :attr:`weight` is set, the loss is:
 
     .. math::
-        Out = -1 * weight * (label * log(input) + (1 - label) * log(1 - input))
+        Out = -1 * weight * (label * log(x) + (1 - label) * log(1 - x))
+
     If :attr:`weight` is None, the loss is:
 
     .. math::
-        Out = -1 * (label * log(input) + (1 - label) * log(1 - input))
+        Out = -1 * (label * log(x) + (1 - label) * log(1 - x))
 
-    If :attr:`reduction` set to ``'none'``, the unreduced loss is:
+    If :attr:`reduction` set to ``'none'``, the inferface will return the original loss `Out`.
 
-    .. math::
-        Out = Out
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
 
     .. math::
         Out = MEAN(Out)
+
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
 
     .. math::
         Out = SUM(Out)
 
-    Note that the input predictions always be the output of sigmoid, and the target labels 
+    Note that the input predictions ``x`` always be the output of sigmoid, and the target labels ``label``
     should be numbers between 0 and 1.
 
-    The shape of input predictions and target labels are [N, *], where N is batch_size and `*` 
-    means any number of additional dimensions. If ``reduction`` is ``'none'``, the shape of 
-    output is scalar, else the shape of output is same as input.
-
     Parameters:
-        weight (Variable, optional): A manual rescaling weight given to the loss of each 
+        weight (Tensor, optional): A manual rescaling weight given to the loss of each
             batch element. If given, has to be a Variable of size nbatch and the data type
             is float32, float64. Default is ``'None'``.
-        reduction (str, optional): Indicate how to average the loss by batch_size, 
+        reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
-    Returns: 
+    Shape:
+        x (Tensor): 2-D tensor with shape: (N, *), N is batch_size, `*` means
+            number of additional dimensions. The input ``x`` should always
+            be the output of sigmod.  Available dtype is float32, float64.
+        label (Tensor): 2-D tensor with the same shape as ``x``. The target
+            labels which values should be numbers between 0 and 1. Available
+            dtype is float32, float64.
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``x`` , else the shape of output is scalar.
+
+    Returns:
         A callable object of BCELoss.
 
     Examples:
         .. code-block:: python
 
-            # declarative mode
             import paddle.fluid as fluid
             import numpy as np
             import paddle
-            input = fluid.data(name="input", shape=[3, 1], dtype='float32')
-            label = fluid.data(name="label", shape=[3, 1], dtype='float32')
-            bce_loss = paddle.nn.loss.BCELoss()
-            output = bce_loss(input, label)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-    
-            input_data = np.array([0.5, 0.6, 0.7]).astype("float32")
+            x_data = np.array([0.5, 0.6, 0.7]).astype("float32")
             label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
+
+            # imperative mode
+            paddle.disable_static()
+            x = paddle.to_variable(x_data)
+            label = paddle.to_variable(label_data)
+            bce_loss = paddle.nn.loss.BCELoss()
+            output = bce_loss(x, label)
+            print(output.numpy())  # [0.65537095]
+            paddle.enable_static()
+
+            # declarative mode
+            x = paddle.data(name="x", shape=[3, 1], dtype='float32')
+            label = paddle.data(name="label", shape=[3, 1], dtype='float32')
+            bce_loss = paddle.nn.loss.BCELoss()
+            output = bce_loss(x, label)
+            place = paddle.static.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(fluid.default_startup_program())
+
             output_data = exe.run(fluid.default_main_program(),
-                    feed={"input":input_data, "label":label_data},
+                    feed={"x":x_data, "label":label_data},
                     fetch_list=[output],
                     return_numpy=True)
-    
             print(output_data)  # [array([0.65537095], dtype=float32)]
-            
-            # imperative mode
-            import paddle.fluid.dygraph as dg
-            with dg.guard(place) as g:
-                input = dg.to_variable(input_data)
-                label = dg.to_variable(label_data)
-                output = bce_loss(input, label)
-                print(output.numpy())  # [0.65537095]
+
     """
 
-    def __init__(self, weight=None, reduction='mean'):
+    def __init__(self, weight=None, reduction='mean', name=None):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "
@@ -432,36 +440,65 @@ class BCELoss(fluid.dygraph.Layer):
         super(BCELoss, self).__init__()
         self.weight = weight
         self.reduction = reduction
+        self.name = name
 
-    def forward(self, input, label):
-        dtype = self._helper.input_dtype(input)
+    def forward(self, x, label):
+        if in_dygraph_mode():
+            one = _varbase_creator(dtype=x.dtype)
+            core.ops.fill_constant(one, 'value',
+                                   float(1.0), 'force_cpu', False, 'dtype',
+                                   one.dtype, 'str_value', '1.0', 'shape', [1])
+            one.stop_gradient = True
+            label_minus = core.ops.elementwise_sub(label, one)
+            x_minus = core.ops.elementwise_sub(one, x)
+            x_minus_log = core.ops.log(x_minus)
+            x_log = core.ops.log(x)
+            loss_1 = core.ops.elementwise_mul(label_minus, x_minus_log)
+            loss_2 = core.ops.elementwise_mul(label, x_log)
+            out = core.ops.elementwise_sub(loss_1, loss_2)
 
+            if self.weight is not None:
+                out = core.ops.elementwise_mul(out, self.weight, 'axis', -1)
+
+            if self.reduction == 'sum':
+                return core.ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
+                                           "reduce_all", True)
+            elif self.reduction == 'mean':
+                return core.ops.reduce_mean(out, 'dim', [0], 'keep_dim', False,
+                                            "reduce_all", True)
+            else:
+                return out
+
+        dtype = self._helper.input_dtype(x)
         fluid.data_feeder.check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], 'bce_loss')
+            x, 'x', ['float32', 'float64'], 'BCELoss')
         fluid.data_feeder.check_variable_and_dtype(
-            label, 'label', ['float32', 'float64'], 'bce_loss')
+            label, 'label', ['float32', 'float64'], 'BCELoss')
 
-        out = self._helper.create_variable_for_type_inference(dtype=input.dtype)
-        self._helper.append_op(
-            type='bce_loss',
-            inputs={
-                'X': [input],
-                'Label': [label],
-            },
-            outputs={'Out': [out]})
+        one = paddle.fill_constant(shape=[1], value=1.0, dtype=dtype)
+        one.stop_gradient = True
+        label_minus = paddle.elementwise_sub(label, one)
+        x_minus = paddle.elementwise_sub(one, x)
+        x_minus_log = paddle.log(x_minus)
+        x_log = paddle.log(x)
+        loss_1 = paddle.multiply(label_minus, x_minus_log)
+        loss_2 = paddle.multiply(label, x_log)
+        sub_name = self.name if self.weight is None and self.reduction is 'none' else None
+        out = paddle.elementwise_sub(loss_1, loss_2, name=sub_name)
 
         if self.weight is not None:
-            if isinstance(self.weight, fluid.framework.Variable):
-                w = self.weight
-                out = fluid.layers.elementwise_mul(out, w, axis=-1)
+            if isinstance(self.weight, paddle.framework.Variable):
+                weight_name = self.name if self.reduction is 'none' else None
+                out = paddle.multiply(
+                    out, self.weight, axis=-1, name=weight_name)
             else:
                 raise ValueError(
                     "The weight is not a Variable, please convert to Variable.")
 
         if self.reduction == 'sum':
-            return fluid.layers.reduce_sum(out)
+            return paddle.sum(out, name=self.name)
         elif self.reduction == 'mean':
-            return fluid.layers.reduce_mean(out)
+            return paddle.mean(out, name=self.name)
         else:
             return out
 
