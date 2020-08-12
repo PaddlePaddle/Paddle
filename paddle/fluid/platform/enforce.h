@@ -377,7 +377,7 @@ struct EnforceNotMet : public std::exception {
   do {                                                               \
     if (UNLIKELY(nullptr == (__VAL))) {                              \
       __THROW_ERROR_INTERNAL__(                                      \
-          "%s\n  [Hint: " #__VAL " should not be null.]",            \
+          "%s\n  [Hint: `" #__VAL "` should not be null.]",          \
           ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString()); \
     }                                                                \
   } while (0)
@@ -399,8 +399,8 @@ struct EnforceNotMet : public std::exception {
           ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
           ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
       __THROW_ERROR_INTERNAL__(                                                \
-          "%s\n  [Hint: Expected %s " #__CMP                                   \
-          " %s, but received %s " #__INV_CMP " %s.]",                          \
+          "%s\n  [Hint: Expected `%s` " #__CMP                                 \
+          " `%s`, but received `%s` " #__INV_CMP " `%s`.]",                    \
           ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString(), #__VAL1,   \
           #__VAL2, ::paddle::platform::details::BinaryCompareMessageConverter< \
                        __kCanToString__>::Convert(#__VAL1, __val1),            \
