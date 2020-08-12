@@ -474,6 +474,7 @@ __all__ += ['hard_shrink']
 _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.hardshrink")
 def hard_shrink(x, threshold=None):
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hard_shrink')
@@ -487,10 +488,6 @@ def hard_shrink(x, threshold=None):
 
 
 hard_shrink.__doc__ = _hard_shrink_.__doc__ + """
-	:alias_main: paddle.nn.functional.hard_shrink
-	:alias: paddle.nn.functional.hard_shrink,paddle.nn.functional.activation.hard_shrink
-	:old_api: paddle.fluid.layers.hard_shrink
-
 Examples:
 
     >>> import paddle.fluid as fluid
