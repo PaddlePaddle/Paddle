@@ -56,7 +56,7 @@ __all__ = [
 
 
 @dygraph_only
-def to_tensor(data, dtype=None, stop_gradient=True, pin_memory=False):
+def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     """
     :api_attr: imperative
 
@@ -72,8 +72,7 @@ def to_tensor(data, dtype=None, stop_gradient=True, pin_memory=False):
     the corresponding dtype and the current place is cpu, no copy will be performed.
 
     The ``ComplexTensor`` is a unique type of paddle. If x is ``ComplexTensor``, then 
-    ``x.real`` is the real part of ``x`` which is a tensor, and ``x.imag`` is the 
-    imaginary part.
+    ``x.real`` is the real part, and ``x.imag`` is the imaginary part.
 
     Args:
         data(scalar|tuple|list|ndarray|Tensor|ComplexTensor): Initial data for the tensor.
@@ -82,19 +81,19 @@ def to_tensor(data, dtype=None, stop_gradient=True, pin_memory=False):
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8'. And
             'complex64' , 'complex128' only for ComplexTensor.
             Default: None, infers data type from data.
+        place(str|place, optional): The place to allocate Tensor. Can be 'cpu' , 'pin_memory' , 'cuda' 
+            or 'cuda:idx'. It can be `paddle.CPUPlace()` , `paddle.CUDAPinnedPlace` , `paddle.CUDAPlace(0)` 
+            too. Default: None, means default place.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
-        pin_memory (bool, optional): If True, returned tensor would be allocated in the pinned memory. Works 
-            only for GPU version Paddle. Default: False.
-
 
     Returns:
-        Tensor: A Tensor constructed from ``data``.
+        Tensor: A Tensor or ComplexTensor constructed from ``data``.
 
     Raises:
-        TypeError: The data type of ``data`` must be any of scalar, list, tuple, numpy.ndarray, paddle.Tensor, paddle.ComplexTensor
-        TypeError: ``dtype`` must be any of bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
+        TypeError: If the data type of ``data`` is not scalar, list, tuple, numpy.ndarray, paddle.Tensor, paddle.ComplexTensor
+        TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
         ValueError: If ``data`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]
-        ValueError: ``pin_memory`` must be False for CPU-Version Paddle
+        ValueError: If ``place`` is not 'cpu'|'pin_memory'|'cuda'|'cuda:idx' or paddle.CPUPlace|paddle.CUDAPinnedPlace|paddle.CUDAPlace
 
     Examples:
 
@@ -157,11 +156,6 @@ def to_tensor(data, dtype=None, stop_gradient=True, pin_memory=False):
         #   - data: [1 0 2 0]
     """
 
-    if not core.is_compiled_with_cuda() and pin_memory:
-        raise ValueError(
-            "Cannot allocate Tensor in the CUDA pinned memory for CPU version Paddle, Please recompile or reinstall Paddle with CUDA support."
-        )
-
     if not isinstance(data, np.ndarray):
         if np.isscalar(data) and not isinstance(data, str):
             data = np.array([data])
@@ -184,34 +178,53 @@ def to_tensor(data, dtype=None, stop_gradient=True, pin_memory=False):
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor|paddle.ComplexTensor".
                 format(type(data)))
 
-    if dtype is not None:
+    if dtype:
         dtype = convert_dtype(dtype)
         if dtype != data.dtype:
             data = data.astype(dtype)
+
+    if place is None:
+        place = _current_expected_place()
+    elif isinstance(place, str):
+        place = place.lower().replace(" ", "")
+        if 'cuda' in place:
+            if ':' in place:
+                _, idx = place.split(":")
+            else:
+                idx = 0
+            place = core.CUDAPlace(idx)
+        elif place == 'pin_memory':
+            place = core.CUDAPinnedPlace()
+        elif place == 'cpu':
+            place = core.CPUPlace()
+        else:
+            wrong_place = True
+    elif wrong_place or not isinstance(place, core.Place):
+        raise ValueError(
+            "'place' must be 'cpu'|'pin_memory'||'cuda:idx' or paddle.CPUPlace|paddle.CUDAPinnedPlace|paddle.CUDAPlace!"
+        )
+
     if not np.iscomplexobj(data):
         return paddle.Tensor(
             value=data,
-            place=_current_expected_place(),
+            place=place,
             persistable=False,
             zero_copy=True,
-            stop_gradient=stop_gradient,
-            pin_memory=pin_memory)
+            stop_gradient=stop_gradient)
     else:
         name = unique_name.generate('generated_tensor')
         real_tensor = paddle.Tensor(
             value=data.real,
-            place=_current_expected_place(),
+            place=place,
             zero_copy=True,
             name=name + ".real",
-            stop_gradient=stop_gradient,
-            pin_memory=pin_memory)
+            stop_gradient=stop_gradient)
         imag_tensor = paddle.Tensor(
             value=data.imag,
-            place=_current_expected_place(),
+            place=place,
             zero_copy=True,
             name=name + ".imag",
-            stop_gradient=stop_gradient,
-            pin_memory=pin_memory)
+            stop_gradient=stop_gradient)
         return paddle.ComplexTensor(real_tensor, imag_tensor)
 
 
@@ -362,7 +375,7 @@ def ones_like(x, dtype=None, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([1,2,3], dtype='float32'))
+        x = paddle.to_tensor(np.array([1,2,3], dtype='float32'))
         out1 = paddle.zeros_like(x) # [1., 1., 1.]
         out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
 
@@ -452,7 +465,7 @@ def zeros_like(x, dtype=None, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([1,2,3], dtype='float32'))
+        x = paddle.to_tensor(np.array([1,2,3], dtype='float32'))
         out1 = paddle.zeros_like(x) # [0., 0., 0.]
         out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
 
@@ -632,7 +645,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         out3 = paddle.arange(4.999, dtype='float32')
         # [0., 1., 2., 3., 4.]
 
-        start_var = paddle.to_variable(np.array([3]))
+        start_var = paddle.to_tensor(np.array([3]))
         out4 = paddle.arange(start_var, 7)
         # [3, 4, 5, 6]
              
@@ -874,8 +887,8 @@ def meshgrid(*args, **kwargs):
 
           input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
           input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          tensor_3 = paddle.to_variable(input_3)
-          tensor_4 = paddle.to_variable(input_4)
+          tensor_3 = paddle.to_tensor(input_3)
+          tensor_4 = paddle.to_tensor(input_4)
           grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
           #the shape of grid_x is (100, 200)

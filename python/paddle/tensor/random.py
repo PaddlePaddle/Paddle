@@ -98,7 +98,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
         # example 3:
         # attr shape is a Tensor
-        var_shape = paddle.to_variable(np.array([3]))
+        var_shape = paddle.to_tensor(np.array([3]))
         result_3 = paddle.randint(low=-5, high=5, shape=var_shape)
         # [-2, 2, 3]
 
@@ -206,7 +206,7 @@ def randn(shape, dtype=None, name=None):
         #   [ 0.8086993 ,  0.6868893 ]]]
 
         # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-        var_shape = paddle.to_variable(np.array([2, 3]))
+        var_shape = paddle.to_tensor(np.array([2, 3]))
         result_3 = paddle.randn(var_shape)
         # [[-2.878077 ,  0.17099959,  0.05111201]
         #  [-0.3761474, -1.044801  ,  1.1870178 ]]
@@ -343,7 +343,7 @@ def rand(shape, dtype=None, name=None):
         #   [0.870881  , 0.2984597 ]]]
 
         # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-        var_shape = paddle.to_variable(np.array([2, 3]))
+        var_shape = paddle.to_tensor(np.array([2, 3]))
         result_3 = paddle.rand(var_shape)
         # [[0.22920267, 0.841956  , 0.05981819],
         #  [0.4836288 , 0.24573246, 0.7516129 ]]

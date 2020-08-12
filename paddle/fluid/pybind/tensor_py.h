@@ -177,7 +177,7 @@ template <typename T, typename P>
 void SetTensorFromPyArrayT(
     framework::Tensor *self,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
-    const P &place, bool zero_copy, bool pin_memory) {
+    const P &place, bool zero_copy) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
@@ -185,77 +185,66 @@ void SetTensorFromPyArrayT(
   }
   self->Resize(framework::make_ddim(dims));
 
-#ifdef PADDLE_WITH_CUDA
-  if (pin_memory) {
-    auto dst = self->mutable_data<T>(platform::CUDAPinnedPlace());
-    std::memcpy(dst, array.data(), array.nbytes());
-  } else if (paddle::platform::is_cuda_pinned_place(place)) {
-    auto dst = self->mutable_data<T>(place);
-    std::memcpy(dst, array.data(), array.nbytes());
-  } else if (paddle::platform::is_gpu_place(place)) {
-    auto dst = self->mutable_data<T>(place);
-    paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
-                                    cudaMemcpyHostToDevice);
-  } else {
-#endif
-    if (paddle::platform::is_cpu_place(place)) {
-      if (zero_copy) {
-        auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
-        auto type = framework::ToDataType(std::type_index(typeid(T)));
-        self->ResetHolderWithType(holder, type);
-      } else {
-        auto dst = self->mutable_data<T>(place);
-        std::memcpy(dst, array.data(), array.nbytes());
-      }
+  if (paddle::platform::is_cpu_place(place)) {
+    if (zero_copy) {
+      auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
+      auto type = framework::ToDataType(std::type_index(typeid(T)));
+      self->ResetHolderWithType(holder, type);
     } else {
+      auto dst = self->mutable_data<T>(place);
+      std::memcpy(dst, array.data(), array.nbytes());
+    }
+  } else {
 #ifdef PADDLE_WITH_CUDA
+    auto dst = self->mutable_data<T>(place);
+    if (paddle::platform::is_cuda_pinned_place(place)) {
+      std::memcpy(dst, array.data(), array.nbytes());
+    } else if (paddle::platform::is_gpu_place(place)) {
+      paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
+                                      cudaMemcpyHostToDevice);
+    } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Incompatible place type: Tensor.set() supports "
           "CPUPlace, CUDAPlace "
           "and CUDAPinnedPlace, but got %s!",
           place));
     }
-  }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use CUDAPlace in CPU only version, "
+        "Cannot use CUDAPlace or CUDAPinnedPlace in CPU only version, "
         "Please recompile or reinstall Paddle with CUDA support."));
-  }
 #endif
+  }
 }
 
 template <typename P>
 void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
-                          const P &place, bool zero_copy,
-                          bool pin_memory = false) {
+                          const P &place, bool zero_copy) {
   auto array = obj.cast<py::array>();
   if (py::isinstance<py::array_t<float>>(array)) {
-    SetTensorFromPyArrayT<float, P>(self, array, place, zero_copy, pin_memory);
+    SetTensorFromPyArrayT<float, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int>>(array)) {
-    SetTensorFromPyArrayT<int, P>(self, array, place, zero_copy, pin_memory);
+    SetTensorFromPyArrayT<int, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-    SetTensorFromPyArrayT<int64_t, P>(self, array, place, zero_copy,
-                                      pin_memory);
+    SetTensorFromPyArrayT<int64_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<double>>(array)) {
-    SetTensorFromPyArrayT<double, P>(self, array, place, zero_copy, pin_memory);
+    SetTensorFromPyArrayT<double, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int8_t>>(array)) {
-    SetTensorFromPyArrayT<int8_t, P>(self, array, place, zero_copy, pin_memory);
+    SetTensorFromPyArrayT<int8_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int16_t>>(array)) {
-    SetTensorFromPyArrayT<int16_t, P>(self, array, place, zero_copy,
-                                      pin_memory);
+    SetTensorFromPyArrayT<int16_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<uint8_t>>(array)) {
-    SetTensorFromPyArrayT<uint8_t, P>(self, array, place, zero_copy,
-                                      pin_memory);
+    SetTensorFromPyArrayT<uint8_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
-                                                        zero_copy, pin_memory);
+                                                        zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
     // TODO(cql): temporary keeping uint16, which is used for casting float16
     // before. It should be depracated later.
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
-                                                        zero_copy, pin_memory);
+                                                        zero_copy);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
-    SetTensorFromPyArrayT<bool, P>(self, array, place, zero_copy, pin_memory);
+    SetTensorFromPyArrayT<bool, P>(self, array, place, zero_copy);
   } else {
     // obj may be any type, obj.cast<py::array>() may be failed,
     // then the array.dtype will be string of unknown meaning,

@@ -75,30 +75,26 @@ static void InitTensorForVarBase(imperative::VarBase *self,
                                  const platform::Place place,
                                  bool persistable = false,
                                  bool zero_copy = false, std::string name = "",
-                                 int stop_gradient = -1,
-                                 bool pin_memory = false) {
+                                 int stop_gradient = -1) {
   if (name == "") {
     name =
         imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor");
   }
   VLOG(5) << "Init Tensor as: / name: " << name
           << " / persistable: " << persistable << " / zero_copy: " << zero_copy
-          << " / stop_gradient: " << stop_gradient
-          << " / pin_memory: " << pin_memory;
+          << " / stop_gradient: " << stop_gradient;
   new (self) imperative::VarBase(name);
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CPUPlace, place), zero_copy,
-        pin_memory);
+        tensor, array, BOOST_GET_CONST(platform::CPUPlace, place), zero_copy);
   } else if (platform::is_gpu_place(place)) {
     SetTensorFromPyArray<platform::CUDAPlace>(
-        tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place), zero_copy,
-        pin_memory);
+        tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place), zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(
         tensor, array, BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
-        zero_copy, pin_memory);
+        zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
@@ -129,38 +125,37 @@ static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
   auto stop_gradient = kwargs.contains("stop_gradient")
                            ? kwargs["stop_gradient"].cast<int>()
                            : -1;
-  auto pin_memory =
-      kwargs.contains("pin_memory") ? kwargs["pin_memory"].cast<bool>() : false;
   auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
   auto place = kwargs.contains("place") ? PyObjectToPlace(kwargs["place"])
                                         : default_place;
   InitTensorForVarBase(self, array, place, persistable, zero_copy, name,
-                       stop_gradient, pin_memory);
+                       stop_gradient);
 }
 
 template <typename P>
-static void InitVarBaseFromNumpyWithArg(
-    imperative::VarBase *self, const py::array &array, const P &place,
-    bool persistable = false, bool zero_copy = false, std::string name = "",
-    int stop_gradient = -1, bool pin_memory = false) {
+static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
+                                        const py::array &array, const P &place,
+                                        bool persistable = false,
+                                        bool zero_copy = false,
+                                        std::string name = "",
+                                        int stop_gradient = -1) {
   VLOG(4) << "Init VarBase from Arg: ";
   // 0: self, 1: value, 2: place, 3: persistable, 4: zero_copy, 5: name , 6:
-  // pin_memory
+  // stop_gradient
   if (name == "") {
     name =
         imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor");
   }
   VLOG(5) << "Init Tensor as: / name: " << name
           << " / persistable: " << persistable << " / zero_copy: " << zero_copy
-          << " / stop_gradient: " << stop_gradient
-          << " / pin_memory: " << pin_memory;
+          << " / stop_gradient: " << stop_gradient;
   new (self) imperative::VarBase(name);
   self->SetPersistable(persistable);
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   if (stop_gradient != -1) {
     self->SetOverridedStopGradient(stop_gradient);
   }
-  SetTensorFromPyArray<P>(tensor, array, place, zero_copy, pin_memory);
+  SetTensorFromPyArray<P>(tensor, array, place, zero_copy);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor->type());
 }
@@ -589,15 +584,15 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CPUPlace>,
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "",
-           py::arg("stop_gradient") = -1, py::arg("pin_memory") = false)
+           py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CUDAPlace>,
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "",
-           py::arg("stop_gradient") = -1, py::arg("pin_memory") = false)
+           py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CUDAPinnedPlace>,
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "",
-           py::arg("stop_gradient") = -1, py::arg("pin_memory") = false)
+           py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
