@@ -649,7 +649,7 @@ class DistributionTestError(unittest.TestCase):
         categorical_other = Normal(1.0, 2.0)
         # type of other must be an instance of Normal
         self.assertRaises(TypeError, mnd.kl_divergence, categorical_other)
-
+        self.assertEqual(1,3)
 
 if __name__ == '__main__':
     unittest.main()

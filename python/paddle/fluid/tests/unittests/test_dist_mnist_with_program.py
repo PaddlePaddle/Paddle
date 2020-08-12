@@ -15,7 +15,7 @@
 from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
-
+import random
 
 class TestDistMnistLocalSGDFleetApi(TestDistBase):
     def _setup_config(self):
@@ -45,6 +45,9 @@ class TestDistMnistGradAllReduceFleetApi(TestDistBase):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
+        num_rand=random.ranint(0,9)
+        if num_rand < 7:
+            self.assertEqual(1,7)
 
 
 if __name__ == "__main__":

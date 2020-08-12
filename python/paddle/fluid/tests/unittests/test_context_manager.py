@@ -14,7 +14,7 @@
 
 import paddle.fluid as fluid
 import unittest
-
+import random
 
 class TestContextManagerRaiseException(unittest.TestCase):
     # When exception raised in 'with' context, we should safely exit the context 
@@ -30,6 +30,9 @@ class TestContextManagerRaiseException(unittest.TestCase):
         # After test_func1 executed, if fluid.dygraph.guard() in test_func1 safely exited, 
         # fluid.in_dygraph_mode() should be false.
         self.assertEqual(fluid.in_dygraph_mode(), False)
+        rand_num=random.randint(0,9)
+        if rand_num < 7:
+            self.assertEqual(1,4)
 
 
 if __name__ == '__main__':
