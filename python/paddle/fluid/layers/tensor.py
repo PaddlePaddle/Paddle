@@ -1474,7 +1474,7 @@ def linspace(start, stop, num, dtype=None, name=None):
     if not isinstance(num, Variable):
         num = fill_constant([1], 'int32', num)
     if in_dygraph_mode():
-        return core.ops.linspace(start, stop, num)
+        return core.ops.linspace(start, stop, num, 'dtype', dtype)
 
     helper = LayerHelper("linspace", **locals())
 
@@ -1489,7 +1489,8 @@ def linspace(start, stop, num, dtype=None, name=None):
         type='linspace',
         inputs={'Start': start,
                 'Stop': stop,
-                'Num': num},
+                'Num': num,
+                'dtype': dtype},
         outputs={'Out': [out]})
     return out
 

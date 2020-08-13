@@ -68,4 +68,6 @@ class CUDALinspaceKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(linspace, ops::CUDALinspaceKernel<float>,
+                        ops::CUDALinspaceKernel<int32_t>,
+                        ops::CUDALinspaceKernel<int64_t>,
                         ops::CUDALinspaceKernel<double>);
