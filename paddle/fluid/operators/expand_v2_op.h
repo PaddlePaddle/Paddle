@@ -190,7 +190,7 @@ class ExpandV2GradKernel : public framework::OpKernel<T> {
     //    each dimension expanded, the gradients should be summed to original
     //    size.
     std::vector<int> expand_times(x_dims.size());
-    for (size_t i = 0; i < x_dims.size(); i++) {
+    for (decltype(x_dims.size()) i = 0; i < x_dims.size(); i++) {
       if (expand_shape[i] < 0) {
         expand_times[i] = 1;
       } else {
