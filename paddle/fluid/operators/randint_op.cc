@@ -43,21 +43,20 @@ class CPURandintKernel : public framework::OpKernel<T> {
     if (!new_shape.empty()) out->Resize(framework::make_ddim(new_shape));
     T* data = out->mutable_data<T>(ctx.GetPlace());
     int64_t size = out->numel();
-    /*
-    auto gen_ptr = framework::Generator::GetInstance();
-    std::mt19937_64& engine = gen_ptr->GetCPUEngine();
-    */
-
-    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
-
     std::uniform_int_distribution<T> dist(ctx.Attr<int>("low"),
                                           ctx.Attr<int>("high") - 1);
-    for (int64_t i = 0; i < size; ++i) data[i] = dist(engine);
+    if (framework::Generator::GetInstance()->is_init_py) {
+      auto& gen_engine = framework::Generator::GetInstance()->GetCPUEngine();
+      for (int64_t i = 0; i < size; ++i) data[i] = dist(gen_engine);
+    } else {
+      unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
+      std::minstd_rand engine;
+      if (seed == 0) {
+        seed = std::random_device()();
+      }
+      engine.seed(seed);
+      for (int64_t i = 0; i < size; ++i) data[i] = dist(engine);
+    }
   }
 };
 
