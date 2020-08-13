@@ -298,6 +298,29 @@ class ExecutionContext {
     return it->second;
   }
 
+  virtual std::string GetInputNameByIdx(size_t idx) const {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
+    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
+                      platform::errors::OutOfRange(
+                          "The index should be less than the size of inputs of "
+                          "operator %s, but got index is %d and size is %d",
+                          op_.Type(), idx, op_proto->inputs().size()));
+    return op_proto->inputs()[idx].name();
+  }
+
+  virtual std::string GetOutputNameByIdx(size_t idx) const {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
+    PADDLE_ENFORCE_LT(
+        idx, op_proto->outputs().size(),
+        platform::errors::OutOfRange(
+            "The index should be less than the size of outputs of "
+            "operator %s, but got index is %d and size is %d",
+            op_.Type(), idx, op_proto->outputs().size()));
+    return op_proto->outputs()[idx].name();
+  }
+
   virtual std::vector<std::string> InNameList() const {
     std::vector<std::string> vec_temp;
     vec_temp.reserve(ctx_.inputs.size());
