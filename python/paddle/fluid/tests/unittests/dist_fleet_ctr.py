@@ -28,7 +28,7 @@ import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
-from paddle.fleet.base.util_factory import fleet_util
+from paddle.distributed.fleet.base.util_factory import fleet_util
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -217,7 +217,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             filelist.append(train_file_path)
 
         # config dataset
-        dataset = paddle.fleet.DatasetFactory().create_dataset()
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
         dataset.set_batch_size(batch_size)
         dataset.set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
