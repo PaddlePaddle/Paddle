@@ -26,6 +26,7 @@ __all__ = []
 __all__ += norm.__all__
 __all__ += extension.__all__
 __all__ += common.__all__
+__all__ += weight_norm.__all__
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue        #DEFINE_ALIAS
