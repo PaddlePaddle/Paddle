@@ -583,28 +583,32 @@ def t(input, name=None):
     return out
 
 
-def cross(input, other, dim=None):
+def cross(x, y, axis=None, name=None):
     """
 	:alias_main: paddle.cross
 	:alias: paddle.cross,paddle.tensor.cross,paddle.tensor.linalg.cross
 
-    Returns the cross product of vectors in dimension `dim` of the `input` and `other` tensor. 
-    Inputs must have the same shape, and the size of their dim-th dimension should be equla to 3. 
-    If `dim` is not given, it defaults to the first dimension found with the size 3.
+    Computes the cross product between two tensors along an axis.
+    Inputs must have the same shape, and the length of their axes should be equal to 3.
+    If `axis` is not given, it defaults to the first axis found with the length 3.
     
     Args:
-        input (Variable): The first input tensor variable.
-        other (Variable): The second input tensor variable.
-        dim (int): The dimension to take the cross-product in.
+        x (Variable): The first input tensor variable.
+        y (Variable): The second input tensor variable.
+        axis (int, optional): The axis along which to compute the cross product. It defaults to the first axis found with the length 3.
+        name (str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: A Tensor with same data type as `input`.
+        Variable: A Tensor with same data type as `x`.
         
     Examples:
         .. code-block:: python
             import paddle
-            import paddle.fluid as fluid
+            from paddle import to_variable
             import numpy as np
+
+            paddle.disable_static()
 
             data_x = np.array([[1.0, 1.0, 1.0],
                                [2.0, 2.0, 2.0],
@@ -612,37 +616,36 @@ def cross(input, other, dim=None):
             data_y = np.array([[1.0, 1.0, 1.0],
                                [1.0, 1.0, 1.0],
                                [1.0, 1.0, 1.0]])
+            x = to_variable(data_x)
+            y = to_variable(data_y)
 
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(data_x)
-                y = fluid.dygraph.to_variable(data_y)
-                out_z1 = paddle.cross(x, y)
-                print(out_z1.numpy())
-                #[[-1. -1. -1.]
-                # [ 2.  2.  2.]
-                # [-1. -1. -1.]]
-                out_z2 = paddle.cross(x, y, dim=1)
-                print(out_z2.numpy())
-                #[[0. 0. 0.]
-                # [0. 0. 0.]
-                # [0. 0. 0.]]
+            z1 = paddle.cross(x, y)
+            print(z1.numpy())
+            # [[-1. -1. -1.]
+            #  [ 2.  2.  2.]
+            #  [-1. -1. -1.]]
+
+            z2 = paddle.cross(x, y, axis=1)
+            print(z2.numpy())
+            # [[0. 0. 0.]
+            #  [0. 0. 0.]
+            #  [0. 0. 0.]]
     """
-    helper = LayerHelper("cross", **locals())
     if in_dygraph_mode():
-        if dim:
-            return core.ops.cross(input, other, 'dim', dim)
+        if axis is not None:
+            return core.ops.cross(x, y, 'dim', axis)
         else:
-            return core.ops.cross(input, other)
+            return core.ops.cross(x, y)
 
-    out = helper.create_variable_for_type_inference(input.dtype)
+    helper = LayerHelper("cross", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
     attrs = dict()
-    if dim:
-        attrs['dim'] = dim
+    attrs['dim'] = axis
 
     helper.append_op(
         type='cross',
-        inputs={'X': input,
-                'Y': other},
+        inputs={'X': x,
+                'Y': y},
         outputs={'Out': out},
         attrs=attrs)
     return out
@@ -726,26 +729,32 @@ def bmm(x, y, name=None):
 
     Examples:
         import paddle
-        import paddle.fluid as fluid
-        x = fluid.layers.data(name='x', shape=[10, 3, 4], dtype='float32')
-        y = fluid.layers.data(name='y', shape=[10, 4, 5], dtype='float32')
-        out = paddle.bmm(x, y)
-    
-        # In dygraph mode:
+
+        # In imperative mode:
         # size input1: (2, 2, 3) and input2: (2, 3, 2)
         input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
         input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
 
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(input1)
-            y = fluid.dygraph.to_variable(input2)
-            out = paddle.bmm(x, y)
-            #output size: (2, 2, 2)
-            #output value:
-            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
-            out_np = out.numpy()
+        paddle.disable_static()
+        
+        x = paddle.to_variable(input1)
+        y = paddle.to_variable(input2)
+        out = paddle.bmm(x, y)
+        #output size: (2, 2, 2)
+        #output value:
+        #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+        out_np = out.numpy()
     """
-
+    x_shape = x.shape
+    y_shape = y.shape
+    if not len(x_shape) == len(y_shape) == 3:
+        raise ValueError(
+            "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}".
+            format(x_shape, y_shape))
+    if x_shape[2] != y_shape[1]:
+        raise ValueError(
+            "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".
+            format(x_shape, y_shape))
     helper = LayerHelper('bmm', **locals())
     if in_dygraph_mode():
         return core.ops.bmm(x, y)
@@ -773,13 +782,13 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            startup_program = paddle.Program()
-            train_program = paddle.Program()
-            with paddle.program_guard(train_program, startup_program):
+            startup_program = paddle.static.Program()
+            train_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
                 inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
                 output = paddle.histogram(inputs, bins=5, min=1, max=5)
                 place = paddle.CPUPlace()
-                exe = paddle.Executor(place)
+                exe = paddle.static.Executor(place)
                 exe.run(startup_program)
                 img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
                 res = exe.run(train_program,
@@ -791,11 +800,12 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            with paddle.imperative.guard(paddle.CPUPlace()):
-                inputs_np = np.array([1, 2, 1]).astype(np.float)
-                inputs = paddle.imperative.to_variable(inputs_np)
-                result = paddle.histogram(inputs, bins=4, min=0, max=3)
-                print(result) # [0, 2, 1, 0]
+            paddle.disable_static(paddle.CPUPlace())
+            inputs_np = np.array([1, 2, 1]).astype(np.float)
+            inputs = paddle.to_variable(inputs_np)
+            result = paddle.histogram(inputs, bins=4, min=0, max=3)
+            print(result) # [0, 2, 1, 0]
+            paddle.enable_static()
     """
     if in_dygraph_mode():
         return core.ops.histogram(input, "bins", bins, "min", min, "max", max)

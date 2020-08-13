@@ -130,6 +130,104 @@ def cosine_annealing_decay(global_step, learning_rate, T_max, eta_min=0):
 
 
 class TestLearningRateDecayDygraph(unittest.TestCase):
+    def test_LR_state_dict(self):
+        with fluid.dygraph.guard():
+            x = np.random.uniform(-1, 1, [3, 10]).astype("float32")
+            linear = fluid.dygraph.Linear(10, 10)
+            input = fluid.dygraph.to_variable(x)
+
+            Exponential_scheduler = fluid.dygraph.ExponentialDecay(
+                learning_rate=0.1,
+                decay_steps=10000,
+                decay_rate=0.5,
+                staircase=True)
+            Step_scheduler = fluid.dygraph.StepDecay(0.5, step_size=3)
+            Reducelr_scheduler = fluid.dygraph.ReduceLROnPlateau(
+                learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3)
+
+            adam1 = fluid.optimizer.Adam(
+                learning_rate=Exponential_scheduler,
+                parameter_list=linear.parameters())
+            adam2 = fluid.optimizer.Adam(
+                learning_rate=Step_scheduler,
+                parameter_list=linear.parameters())
+            adam3 = fluid.optimizer.Adam(
+                learning_rate=Reducelr_scheduler,
+                parameter_list=linear.parameters())
+            print(adam3.state_dict())
+
+            for epoch in range(10):
+                out = linear(input)
+                loss = fluid.layers.reduce_mean(out)
+                loss.backward()
+                adam1.minimize(loss)
+                adam2.minimize(loss)
+                adam3.minimize(loss)
+                linear.clear_gradients()
+
+                Step_scheduler.epoch()
+                Reducelr_scheduler.step(loss)
+
+            fluid.dygraph.save_dygraph(linear.state_dict(), "save_path")
+
+            Exponential_scheduler_test = fluid.dygraph.ExponentialDecay(
+                learning_rate=0.1,
+                decay_steps=10000,
+                decay_rate=0.5,
+                staircase=True)
+            Step_scheduler_test = fluid.dygraph.StepDecay(0.5, step_size=3)
+            Reducelr_scheduler_test = fluid.dygraph.ReduceLROnPlateau(
+                learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3)
+
+            fluid.dygraph.save_dygraph(adam1.state_dict(), "save_path")
+            _, opt_state = fluid.dygraph.load_dygraph("save_path")
+            adam_test = fluid.optimizer.Adam(
+                learning_rate=Exponential_scheduler_test,
+                parameter_list=linear.parameters())
+            adam_test.set_dict(opt_state)
+            self.assertEqual(adam_test._learning_rate.step_num,
+                             adam1._learning_rate.step_num,
+                             "epoch_num is different before and after set_dict")
+
+            fluid.dygraph.save_dygraph(adam2.state_dict(), "save_path")
+            _, opt_state = fluid.dygraph.load_dygraph("save_path")
+            adam_test = fluid.optimizer.Adam(
+                learning_rate=Step_scheduler_test,
+                parameter_list=linear.parameters())
+            adam_test.set_dict(opt_state)
+            self.assertEqual(adam_test._learning_rate.epoch_num,
+                             adam2._learning_rate.epoch_num,
+                             "epoch_num is different before and after set_dict")
+            self.assertEqual(
+                adam_test._learning_rate(),
+                adam2._learning_rate(),
+                "current learning rate is different before and after set_dict")
+
+            fluid.dygraph.save_dygraph(adam3.state_dict(), "save_path")
+            _, opt_state = fluid.dygraph.load_dygraph("save_path")
+            adam_test = fluid.optimizer.Adam(
+                learning_rate=Reducelr_scheduler_test,
+                parameter_list=linear.parameters())
+            adam_test.set_dict(opt_state)
+            self.assertEqual(adam_test._learning_rate.best_loss,
+                             adam3._learning_rate.best_loss.numpy()[0],
+                             "best_loss is different before and after set_dict")
+            self.assertEqual(
+                adam_test._learning_rate.cooldown_counter,
+                adam3._learning_rate.cooldown_counter,
+                "cooldown_counter is different before and after set_dict")
+            self.assertEqual(
+                adam_test._learning_rate.num_bad_epochs,
+                adam3._learning_rate.num_bad_epochs,
+                "num_bad_epochs is different before and after set_dict")
+            self.assertEqual(adam_test._learning_rate.epoch_num,
+                             adam3._learning_rate.epoch_num,
+                             "epoch is different before and after set_dict")
+            self.assertEqual(
+                adam_test._learning_rate(),
+                adam3._learning_rate(),
+                "current learning rate is different before and after set_dict")
+
     def test_NoamDecay(self):
         with fluid.dygraph.guard():
             d_model = 0.01
@@ -178,12 +276,17 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             learning_rate = 0.5
             milestones = [2, 4, 8]
             decay_rate = 0.2
+            linear = fluid.dygraph.Linear(10, 10)
+
             scheduler = fluid.dygraph.MultiStepDecay(learning_rate, milestones,
                                                      decay_rate)
+
+            adam = fluid.optimizer.AdamOptimizer(
+                learning_rate=scheduler, parameter_list=linear.parameters())
             for epoch in range(10):
                 right_result = multi_step_decay(epoch, learning_rate,
                                                 milestones, decay_rate)
-                fluid_result = scheduler().numpy()[0]
+                fluid_result = adam.current_step_lr()
                 scheduler.epoch()
                 self.assertAlmostEqual(
                     right_result,
@@ -203,7 +306,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 lr = fluid.dygraph.MultiStepDecay("test", [20, 30, 50])
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.MultiStepDecay(2.0, [20, 30, 50])
+                lr = fluid.dygraph.MultiStepDecay(-1, [20, 30, 50])
 
     def test_StepDecay(self):
         with fluid.dygraph.guard():

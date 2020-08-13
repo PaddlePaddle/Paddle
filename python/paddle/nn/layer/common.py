@@ -17,10 +17,14 @@ from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
 from ...fluid.dygraph import Linear  #DEFINE_ALIAS
+from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
 from .. import functional as F
 
-__all__ = ['BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample']
+__all__ = [
+    'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
+    'Pad2D'
+]
 
 
 class UpSample(layers.Layer):
@@ -248,3 +252,93 @@ class UpSample(layers.Layer):
             data_format=self.data_format)
 
         return out
+
+
+class Pad2D(layers.Layer):
+    """
+        :alias_main: paddle.nn.Pad2D
+        :alias: paddle.nn.Pad2D,paddle.nn.layer.Pad2D,paddle.nn.layer.common.Pad2D
+
+    This interface is used to construct a callable object of the ``Pad2D``  class.
+    The Pad2D layer pads the input tensor boundaries according to 'paddings' and 'mode'.
+    If mode is 'reflect', paddings[0] and paddings[1] must be no greater
+    than height-1. And the width dimension has the same condition.
+
+    Parameters:
+        paddings (int | List[int32]): The padding size. If padding is a int, uses the same 
+            padding in all boundaries, if padding is a List, it must contain four integers, 
+            (padding_top, padding_bottom, padding_left, padding_right).
+            Default is [0, 0, 0, 0].
+        mode (str): Three modes: 'constant' (default), 'reflect', 'edge' .
+        	When in 'constant' mode, this op uses a constant value to pad the input tensor.
+        	When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+        	When in 'edge' mode, uses input boundaries to pad the input tensor.
+        	Default is 'constant'
+        pad_value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
+        data_format (str): An string from: "NHWC", "NCHW". Specify the data format of
+                           the input data.
+                           Default is  "NCHW"
+
+    Returns: 
+        None
+
+    Examples:
+        .. code-block:: text
+
+            Input = [[[[1., 2., 3.],
+                       [4., 5., 6.]]]]
+
+            Case 0:
+                paddings = [0, 1, 2, 3],
+                mode = 'constant'
+                pad_value = 0
+                Out = [[[[0., 0., 1., 2., 3., 0., 0., 0.],
+                         [0., 0., 4., 5., 6., 0., 0., 0.],
+                         [0., 0., 0., 0., 0., 0., 0., 0.]]]]
+
+            Case 1:
+                paddings = [0, 1, 2, 1],
+                mode = 'reflect'
+                Out = [[[[3., 2., 1., 2., 3., 2.],
+                         [6., 5., 4., 5., 6., 5.],
+                         [3., 2., 1., 2., 3., 2.]]]]
+
+            Case 2:
+                paddings = [0, 1, 2, 1],
+                mode = 'edge'
+                Out = [[[[1., 1., 1., 2., 3., 3.],
+                         [4., 4., 4., 5., 6., 6.],
+                         [4., 4., 4., 5., 6., 6.]]]]
+
+    Code Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.nn as nn
+            import numpy as np
+            data = np.ones((2, 2, 2, 2)).astype('float32')
+            my_pad = nn.Pad2D(paddings=[1, 1, 1, 1])
+            with fluid.dygraph.guard():
+                data = fluid.dygraph.to_variable(data)
+                result = my_pad(data)
+    """
+
+    def __init__(self,
+                 paddings=0,
+                 mode='constant',
+                 pad_value=0.0,
+                 data_format="NCHW"):
+        super(Pad2D, self).__init__()
+        self._mode = mode
+        self._pad_value = pad_value
+        self._data_format = data_format
+        self._paddings = [paddings] * 4 if isinstance(paddings,
+                                                      int) else paddings
+
+    def forward(self, input):
+        return F.pad2d(
+            input,
+            paddings=self._paddings,
+            mode=self._mode,
+            pad_value=self._pad_value,
+            data_format=self._data_format)

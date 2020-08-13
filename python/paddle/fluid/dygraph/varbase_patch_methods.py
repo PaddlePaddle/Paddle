@@ -124,7 +124,7 @@ def monkey_patch_varbase():
                                       framework._current_expected_place())
 
     @framework.dygraph_only
-    def backward(self, backward_strategy=None):
+    def backward(self, backward_strategy=None, retain_graph=False):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
@@ -133,6 +133,10 @@ def monkey_patch_varbase():
 
         Args:
             backward_strategy( :ref:`api_fluid_dygraph_BackwardStrategy` ): The Backward Strategy to run backward
+            retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
+            like to add more ops to the built graph after calling this method(`backward`), set the parameter
+            `retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+            Defaults to False.
 
         Returns:
             NoneType: None
@@ -164,7 +168,8 @@ def monkey_patch_varbase():
                 backward_strategy = BackwardStrategy()
                 backward_strategy.sort_sum_gradient = False
 
-            self._run_backward(backward_strategy, framework._dygraph_tracer())
+            self._run_backward(backward_strategy,
+                               framework._dygraph_tracer(), retain_graph)
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
@@ -212,46 +217,35 @@ def monkey_patch_varbase():
             return np.array(new_ivar.value().get_tensor())
 
     def __str__(self):
-        return self.to_string(True)
-
-    @property
-    def block(self):
-        return framework.default_main_program().global_block()
-
-    def to_string(self, throw_on_error, with_details=False):
         """
-        Get debug string.
+        Convert a VarBase object to a readable string.
 
-        Args:
-
-            throw_on_error (bool): True if raise an exception when self is not initialized.
-
-            with_details (bool): more details about variables and parameters (e.g. trainable, optimize_attr, ...) will be printed when with_details is True. Default value is False;
-
-        Returns:
-            str: The debug string.
+        Returns(str): A readable string.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-
-                cur_program = fluid.Program()
-                cur_block = cur_program.current_block()
-                new_variable = cur_block.create_var(name="X",
-                                                    shape=[-1, 23, 48],
-                                                    dtype='float32')
-                print(new_variable.to_string(True))
-                print("=============with detail===============")
-                print(new_variable.to_string(True, True))
+                import paddle
+                paddle.disable_static()
+                x = paddle.rand([1, 5])
+                print(x)
+                # Variable: eager_tmp_0
+                #   - place: CUDAPlace(0)
+                #   - shape: [1, 5]
+                #   - layout: NCHW
+                #   - dtype: float
+                #   - data: [0.645307 0.597973 0.732793 0.646921 0.540328]
+                paddle.enable_static()
         """
-        if framework.in_dygraph_mode():
-            # TODO(panyx0718): add more dygraph debug info.
-            tensor = self.value().get_tensor()
-            if tensor._is_initialized():
-                return 'Variable: %s\n%s' % (self.name, str(tensor))
-            else:
-                return 'Variable: %s, not initialized' % (self.name)
+        tensor = self.value().get_tensor()
+        if tensor._is_initialized():
+            return 'Variable: %s\n%s' % (self.name, str(tensor))
+        else:
+            return 'Variable: %s, not initialized' % (self.name)
+
+    @property
+    def block(self):
+        return framework.default_main_program().global_block()
 
     def __nonzero__(self):
         numel = np.prod(self.shape)
@@ -267,7 +261,7 @@ def monkey_patch_varbase():
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
         ("block", block), ("backward", backward), ("gradient", gradient),
-        ("__str__", __str__), ("to_string", to_string)):
+        ("__str__", __str__)):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase

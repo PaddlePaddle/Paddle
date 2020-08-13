@@ -277,8 +277,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
             self.opti_dict = adam.state_dict()
             self.base_opti = {}
             for k, v in self.opti_dict.items():
-                self.base_opti[v.name] = v.numpy()
-                self.assertTrue(np.sum(np.abs(v.numpy())) != 0)
+                if isinstance(v, core.VarBase):
+                    self.base_opti[v.name] = v.numpy()
+                    self.assertTrue(np.sum(np.abs(v.numpy())) != 0)
+                else:
+                    self.base_opti[k] = v
 
             fluid.save_dygraph(self.opti_dict, "./test_dy")
 
@@ -289,7 +292,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np_t = v.numpy()
                 self.model_base[k] = np_t
 
-            paddle.imperative.save(self.state_dict, "./test_dy")
+            paddle.save(self.state_dict, "./test_dy")
 
     def testLoadAndSetVarBase(self):
         seed = 90
@@ -360,23 +363,26 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             # set to zero
             for k, v in opti_dict.items():
-                np_t = v.numpy()
-                var = v.value().get_tensor()
-                var.set(np.zeros_like(np_t), place)
+                if isinstance(v, core.VarBase):
+                    np_t = v.numpy()
+                    var = v.value().get_tensor()
+                    var.set(np.zeros_like(np_t), place)
 
-                self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
+                    self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
 
             if isinstance(adam._learning_rate, LearningRateDecay):
                 adam._learning_rate.step_num = 0
 
-            para_state_dict, opti_state_dict = paddle.imperative.load(
-                "./test_dy")
+            para_state_dict, opti_state_dict = paddle.load("./test_dy")
             adam.set_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                self.assertTrue(
-                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+                if isinstance(v, core.VarBase):
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name]))
+                else:
+                    self.assertEqual(v, self.base_opti[k])
 
             # check parameter
             state_dict = ptb_model.state_dict()
@@ -466,21 +472,24 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             # set to zero
             for k, v in opti_dict.items():
-                np_t = v.numpy()
-                var = v.value().get_tensor()
-                var.set(np.zeros_like(np_t), place)
+                if isinstance(v, core.VarBase):
+                    np_t = v.numpy()
+                    var = v.value().get_tensor()
+                    var.set(np.zeros_like(np_t), place)
 
-                self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
+                    self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
 
             if isinstance(adam._learning_rate, LearningRateDecay):
                 adam._learning_rate.step_num = 0
 
             adam.set_dict(self.opti_dict)
-
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                self.assertTrue(
-                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+                if isinstance(v, core.VarBase):
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name]))
+                else:
+                    self.assertEqual(v, self.base_opti[k])
 
             # check parameter
             state_dict = ptb_model.state_dict()
@@ -571,12 +580,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
             np_opti_dict = {}
             # set to zero
             for k, v in opti_dict.items():
-                np_t = v.numpy()
-                np_opti_dict[v.name] = np_t
-                var = v.value().get_tensor()
-                var.set(np.zeros_like(np_t), place)
-
-                self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
+                if isinstance(v, core.VarBase):
+                    np_t = v.numpy()
+                    np_opti_dict[v.name] = np_t
+                    var = v.value().get_tensor()
+                    var.set(np.zeros_like(np_t), place)
+                    self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
+                else:
+                    np_opti_dict[k] = v
 
             if isinstance(adam._learning_rate, LearningRateDecay):
                 adam._learning_rate.step_num = 0
@@ -585,8 +596,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                self.assertTrue(
-                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+                if isinstance(v, core.VarBase):
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name]))
+                else:
+                    self.assertEqual(v, self.base_opti[k])
 
             # check parameter
             state_dict = ptb_model.state_dict()
@@ -827,7 +841,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
             np_state_dict = {}
 
             for k, v in self.opti_dict.items():
-                np_opti_dict[v.name] = v.numpy()
+                if isinstance(v, core.VarBase):
+                    np_opti_dict[v.name] = v.numpy()
+                else:
+                    np_opti_dict[k] = v
 
             for k, v in self.state_dict.items():
                 np_state_dict[k] = v.numpy()
@@ -882,18 +899,17 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.imperative.save(state_dict,
-                                   os.path.join('saved_dy', 'emb_dy'))
+            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy'))
 
-            para_state_dict, opti_state_dict = paddle.imperative.load(
+            para_state_dict, opti_state_dict = paddle.load(
                 os.path.join('saved_dy', 'emb_dy'))
 
             self.assertTrue(opti_state_dict == None)
 
-            para_state_dict, opti_state_dict = paddle.imperative.load(
+            para_state_dict, opti_state_dict = paddle.load(
                 os.path.join('saved_dy', 'emb_dy.pdparams'))
 
-            para_state_dict, opti_state_dict = paddle.imperative.load(
+            para_state_dict, opti_state_dict = paddle.load(
                 os.path.join('saved_dy', 'emb_dy.pdopt'))
 
 

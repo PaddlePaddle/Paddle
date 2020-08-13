@@ -18,6 +18,7 @@ import contextlib
 import unittest
 import numpy as np
 import six
+import itertools
 
 import paddle
 import paddle.fluid as fluid
@@ -697,6 +698,31 @@ class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
     def test_recompute(self):
         exception_message = "In dygraph, don't support RecomputeOptimizer."
         self._check_exception(exception_message)
+
+
+class TestImperativeOptimizerList(unittest.TestCase):
+    def test_parameter_list(self):
+        with fluid.dygraph.guard():
+            linear_1 = Linear(10, 10)
+            linear_2 = Linear(10, 10)
+
+            sgd = SGDOptimizer(
+                1.0,
+                parameter_list=itertools.chain(linear_1.parameters(),
+                                               linear_2.parameters()))
+
+            in_np = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            in_data = fluid.dygraph.to_variable(in_np)
+
+            y = linear_1(in_data)
+            y = linear_2(y)
+            loss = fluid.layers.reduce_mean(y)
+            loss.backward()
+            sgd.minimize(loss)
+
+            self.assertTrue(
+                len(sgd._parameter_list) ==
+                len(linear_1.parameters() + linear_2.parameters()))
 
 
 if __name__ == '__main__':

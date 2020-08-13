@@ -132,9 +132,6 @@ int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
 
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
-size_t GeluPluginDynamic::getSerializationSize() const { return 0; }
-
-void GeluPluginDynamic::serialize(void* buffer) const {}
 
 nvinfer1::DimsExprs GeluPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,

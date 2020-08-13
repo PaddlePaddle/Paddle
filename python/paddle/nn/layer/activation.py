@@ -17,6 +17,7 @@
 __all__ = [
     #       'PReLU',
     'ReLU',
+    'LeakyReLU',
     'Sigmoid',
     #       'Softmax',
     'LogSoftmax',
@@ -205,6 +206,46 @@ class ReLU(layers.Layer):
 
     def forward(self, input):
         return functional.relu(input, self._inplace)
+
+
+class LeakyReLU(layers.Layer):
+    """
+    Leaky ReLU Activation.
+
+    .. math:
+
+        out = max(x, alpha * x)
+
+    Parameters:
+        alpha (float, optional): Slope of the activation function at :math:`x < 0` .
+            Default: 0.01.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        lrelu = paddle.nn.LeakyReLU()
+        x = paddle.to_variable(np.array([-2, 0, 1], 'float32'))
+        out = lrelu(x)  # [-0.02, 0., 1.]
+    """
+
+    def __init__(self, alpha=1e-2, name=None):
+        super(LeakyReLU, self).__init__()
+        self._alpha = alpha
+        self._name = name
+
+    def forward(self, x):
+        return functional.leaky_relu(x, self._alpha, self._name)
 
 
 class Sigmoid(layers.Layer):

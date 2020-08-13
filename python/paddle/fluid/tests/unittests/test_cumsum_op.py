@@ -17,9 +17,92 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+from paddle import to_variable
+
+
+class TestCumsumOp(unittest.TestCase):
+    def run_cases(self):
+        data_np = np.arange(12).reshape(3, 4)
+        data = to_variable(data_np)
+
+        y = paddle.cumsum(data)
+        z = np.cumsum(data_np)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
+        y = paddle.cumsum(data, axis=0)
+        z = np.cumsum(data_np, axis=0)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
+        y = paddle.cumsum(data, axis=-1)
+        z = np.cumsum(data_np, axis=-1)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
+        y = paddle.cumsum(data, dtype='float64')
+        self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
+
+        y = paddle.cumsum(data, dtype=np.int32)
+        self.assertTrue(y.dtype == core.VarDesc.VarType.INT32)
+
+        y = paddle.cumsum(data, axis=-2)
+        z = np.cumsum(data_np, axis=-2)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
+    def run_static(self, use_gpu=False):
+        with fluid.program_guard(fluid.Program()):
+            data_np = np.random.random((100, 100)).astype(np.float32)
+            x = paddle.nn.data('X', [100, 100])
+            y = paddle.cumsum(x)
+            y2 = paddle.cumsum(x, axis=0)
+            y3 = paddle.cumsum(x, axis=-1)
+            y4 = paddle.cumsum(x, dtype='float64')
+            y5 = paddle.cumsum(x, dtype=np.int32)
+            y6 = paddle.cumsum(x, axis=-2)
+
+            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            out = exe.run(feed={'X': data_np},
+                          fetch_list=[
+                              y.name, y2.name, y3.name, y4.name, y5.name,
+                              y6.name
+                          ])
+
+            z = np.cumsum(data_np)
+            self.assertTrue(np.allclose(z, out[0]))
+            z = np.cumsum(data_np, axis=0)
+            self.assertTrue(np.allclose(z, out[1]))
+            z = np.cumsum(data_np, axis=-1)
+            self.assertTrue(np.allclose(z, out[2]))
+            self.assertTrue(out[3].dtype == np.float64)
+            self.assertTrue(out[4].dtype == np.int32)
+            z = np.cumsum(data_np, axis=-2)
+            self.assertTrue(np.allclose(z, out[5]))
+
+    def test_cpu(self):
+        paddle.disable_static(paddle.fluid.CPUPlace())
+        self.run_cases()
+        paddle.enable_static()
+
+        self.run_static()
+
+    def test_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
+        paddle.disable_static(paddle.fluid.CUDAPlace(0))
+        self.run_cases()
+        paddle.enable_static()
+
+        self.run_static(use_gpu=True)
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = paddle.nn.data('x', [3, 4])
+            y = paddle.cumsum(x, name='out')
+            self.assertTrue('out' in y.name)
 
 
 class TestSumOp1(OpTest):

@@ -16,8 +16,9 @@ from .plot import Ploter
 from .profiler import ProfilerOptions
 from .profiler import Profiler
 from .profiler import get_profiler
+from .deprecated import deprecated
 
-__all__ = ['dump_config', 'Ploter']
+__all__ = ['dump_config', 'Ploter', 'deprecated']
 
 #TODO: define new api under this directory
 # __all__ = ['unique_name',
