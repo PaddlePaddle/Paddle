@@ -25,6 +25,8 @@ class TestFleetRuntime(unittest.TestCase):
         base._init_server()
         base._run_server()
         base._stop_worker()
+        base._save_inference_model()
+        base._save_persistables()
 
     def test_fleet_collective_runtime(self):
         import paddle.distributed.fleet.runtime
@@ -35,6 +37,8 @@ class TestFleetRuntime(unittest.TestCase):
         collective_runtime._init_worker()
         collective_runtime._run_server()
         collective_runtime._stop_worker()
+        collective_runtime._save_inference_model()
+        collective_runtime._save_persistables()
 
 
 if __name__ == "__main__":
