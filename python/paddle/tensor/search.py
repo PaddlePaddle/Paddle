@@ -77,7 +77,7 @@ def argsort(x, axis=-1, descending=False, name=None):
                             [[5,2,4,2],
                             [4,7,7,9],
                             [1,7,0,6]]]).astype(np.float32)
-            x = paddle.to_tensor(input_array)
+            x = paddle.to_variable(input_array)
             out1 = paddle.argsort(x=x, axis=-1)
             out2 = paddle.argsort(x=x, axis=0)
             out3 = paddle.argsort(x=x, axis=1)
@@ -255,8 +255,8 @@ def index_select(x, index, axis=0, name=None):
                              [9.0, 10.0, 11.0, 12.0]])
             data_index = np.array([0, 1, 1]).astype('int32')
 
-            x = paddle.to_tensor(data)
-            index = paddle.to_tensor(data_index)
+            x = paddle.to_variable(data)
+            index = paddle.to_variable(data_index)
             out_z1 = paddle.index_select(x=x, index=index)
             #[[1. 2. 3. 4.]
             # [5. 6. 7. 8.]
@@ -407,7 +407,7 @@ def sort(x, axis=-1, descending=False, name=None):
                             [[5,2,4,2],
                             [4,7,7,9],
                             [1,7,0,6]]]).astype(np.float32)
-            x = paddle.to_tensor(input_array)
+            x = paddle.to_variable(input_array)
             out1 = paddle.sort(x=x, axis=-1)
             out2 = paddle.sort(x=x, axis=0)
             out3 = paddle.sort(x=x, axis=1)

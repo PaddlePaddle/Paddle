@@ -58,18 +58,13 @@ __all__ = [
 @dygraph_only
 def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     """
-    :api_attr: imperative
-
-    :alias_main: paddle.to_tensor
-	:alias: paddle.tensor.to_tensor, paddle.tensor.creation.to_tensor
-
     Constructs a ``paddle.Tensor`` or ``paddle.ComplexTensor`` from ``data`` , 
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
 
     If the ``data`` is already a tensor, and ``dtype`` or ``place`` does't change, no copy 
-    will be performed and return origin tensor, otherwise a new tensor will be returned. 
-    Similarly, if the data is an numpy\.ndarray of with the same ``dtype`` and the current 
-    place is cpu, no copy will be performed.
+    will be performed and return origin tensor, otherwise a new tensor will be constructed
+    and returned. Similarly, if the data is an numpy\.ndarray of with the same ``dtype`` 
+    and the current place is cpu, no copy will be performed.
 
     The ``ComplexTensor`` is a unique type of paddle. If x is ``ComplexTensor``, then 
     ``x.real`` is the real part, and ``x.imag`` is the imaginary part.
@@ -81,8 +76,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8'. And
             'complex64' , 'complex128' only for ComplexTensor.
             Default: None, infers data type from ``data`` .
-        place(str|place, optional): The place to allocate Tensor. Can be 'cpu' , 'pin_memory' , 'cuda'.
-            When set 'cuda', place is current CUDAPlace. Default: None, means global place.
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace, optional): The place to allocate Tensor. Can be  
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
@@ -90,13 +85,13 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     Raises:
         TypeError: If the data type of ``data`` is not scalar, list, tuple, numpy.ndarray, paddle.Tensor, paddle.ComplexTensor
-        TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
         ValueError: If ``data`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]
-        ValueError: If ``place`` is not 'cpu'|'pin_memory'|'cuda'
+        TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
+        ValueError: If ``place`` is not paddle.Place, paddle.CUDAPinnedPlace, paddle.CUDAPlace
 
     Examples:
 
-     .. code-block:: python
+    .. code-block:: python
 
         import paddle
         import numpy as np
@@ -107,14 +102,14 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
         paddle.to_tensor(1)
         # Tensor: generated_tensor_0
-        # - place: CUDAPlace(0)
+        # - place: CUDAPlace(0)   # allocate on global default place CPU:0
         # - shape: [1]
         # - layout: NCHW
         # - dtype: int64_t
         # - data: [1]
 
         x = paddle.to_tensor(1)
-        paddle.to_tensor(x, dtype='int32', place='cpu') # A new tensor will be constructed
+        paddle.to_tensor(x, dtype='int32', place=paddle.CPUPlace()) # A new tensor will be constructed due to different dtype or place
         # Tensor: generated_tensor_01
         # - place: CPUPlace
         # - shape: [1]
@@ -122,7 +117,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         # - dtype: int
         # - data: [1]
 
-        paddle.to_tensor((1.1, 2.2), place='pin_memory')
+        paddle.to_tensor((1.1, 2.2), place=paddle.CUDAPinnedPlace())
         # Tensor: generated_tensor_1
         #   - place: CUDAPinnedPlace
         #   - shape: [2]
@@ -130,9 +125,9 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         #   - dtype: double
         #   - data: [1.1 2.2]
 
-        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place='cuda', stop_gradient=False)
+        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CUDAPlace(0), stop_gradient=False)
         # Tensor: generated_tensor_2
-        #   - place: CUDAPlace(0)   # current cuda place is CUDAPlace(0)
+        #   - place: CUDAPlace(0)
         #   - shape: [2, 2]
         #   - layout: NCHW
         #   - dtype: double
@@ -146,29 +141,29 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         #   - place: CUDAPlace(0)
         #   - shape: [2, 2]
         #   - layout: NCHW
-        #   - dtype: double
+        #   - dtype: float
         #   - data: [1 2 3 4]
         # ComplexTensor[imag]: generated_tensor_0.imag
         #   - place: CUDAPlace(0)
         #   - shape: [2, 2]
         #   - layout: NCHW
-        #   - dtype: double
+        #   - dtype: float
         #   - data: [1 0 2 0]
     """
 
     if place is None:
         place = _current_expected_place()
-    elif place == 'cpu':
-        place = core.CPUPlace()
-    elif place == 'pin_memory':
-        place = core.CUDAPinnedPlace()
-    elif place == 'cuda':
-        #To Do(zhouwei25): Support allocate on any specified cards
-        idx = _current_expected_place._get_device_id() if isinstance(
-            _current_expected_place, core.CUDAPlace) else 0
-        place = core.CUDAPlace(idx)
-    else:
-        raise ValueError("'place' must be any of 'cpu'|'pin_memory'|'cuda'")
+    elif not isinstance(place,
+                        (core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
+        raise ValueError(
+            "'place' must be any of paddle.Place, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
+        )
+
+    #Todo(zhouwei): Support allocate tensor on any other specified card
+    if isinstance(place, core.CUDAPlace) and isinstance(
+            _current_expected_place(), core.CUDAPlace) and place._get_device_id(
+            ) != _current_expected_place()._get_device_id():
+        place = _current_expected_place()
 
     if not isinstance(data, np.ndarray):
         if np.isscalar(data) and not isinstance(data, str):
@@ -182,9 +177,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                 )
         elif isinstance(data, paddle.Tensor):
             data.stop_gradient = stop_gradient
-            if place:
-                if not data.place._equals(place):
-                    data = data._copy_to(place, False)
+            if not data.place._equals(place):
+                data = data._copy_to(place, False)
             if dtype:
                 if convert_dtype(dtype) != convert_dtype(data.dtype):
                     return data.astype(convert_dtype(dtype))

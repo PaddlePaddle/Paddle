@@ -802,7 +802,7 @@ def histogram(input, bins=100, min=0, max=0):
             import numpy as np
             paddle.disable_static(paddle.CPUPlace())
             inputs_np = np.array([1, 2, 1]).astype(np.float)
-            inputs = paddle.to_tensor(inputs_np)
+            inputs = paddle.to_variable(inputs_np)
             result = paddle.histogram(inputs, bins=4, min=0, max=3)
             print(result) # [0, 2, 1, 0]
             paddle.enable_static()

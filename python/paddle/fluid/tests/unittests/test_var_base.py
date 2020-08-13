@@ -25,14 +25,13 @@ import numpy as np
 
 class TestVarBase(unittest.TestCase):
     def setUp(self):
-        self.shape = [512, 1234]
+        self.shape = [2, 3]
         self.dtype = np.float32
         self.array = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
 
     def test_to_tensor(self):
         def _test_place(place):
-            with fluid.dygraph.guard(place):
-                place = 'pin_memory' if core.is_compiled_with_cuda() else 'cpu'
+            with fluid.dygraph.guard():
                 x = paddle.to_tensor(
                     1, dtype='float32', place=place, stop_gradient=False)
                 self.assertTrue(np.array_equal(x.numpy(), [1.]))
@@ -43,7 +42,6 @@ class TestVarBase(unittest.TestCase):
 
                 x = paddle.to_tensor(
                     (1, 2), dtype='float32', place=place, stop_gradient=False)
-                place = 'cuda' if core.is_compiled_with_cuda() else 'cpu'
                 x = paddle.to_tensor(
                     [1, 2], dtype='float32', place=place, stop_gradient=False)
                 self.assertTrue(np.array_equal(x.numpy(), [1., 2.]))
@@ -53,7 +51,6 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(x.stop_gradient, False)
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
-                place = 'cuda' if core.is_compiled_with_cuda() else 'cpu'
                 x = paddle.to_tensor(
                     self.array,
                     dtype='float32',
@@ -66,14 +63,17 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
                 y = paddle.to_tensor(x)
-                y = paddle.to_tensor(y, dtype='int32', place='cpu')
-                self.assertTrue(np.array_equal(x.numpy(), self.array))
-                self.assertEqual(y.dtype, core.VarDesc.VarType.INT32)
+                y = paddle.to_tensor(y, dtype='float64', place=place)
+                self.assertTrue(np.array_equal(y.numpy(), self.array))
+                self.assertEqual(y.dtype, core.VarDesc.VarType.FP64)
                 self.assertEqual(y.shape, self.shape)
                 self.assertEqual(y.stop_gradient, True)
                 self.assertEqual(y.type, core.VarDesc.VarType.LOD_TENSOR)
+                z = x + y
+                self.assertTrue(np.array_equal(z.numpy(), 2 * self.array))
 
-                x = paddle.to_tensor([1 + 2j, 1 - 2j], dtype='complex64')
+                x = paddle.to_tensor(
+                    [1 + 2j, 1 - 2j], dtype='complex64', place=place)
                 y = paddle.to_tensor(x)
                 self.assertTrue(np.array_equal(x.numpy(), [1 + 2j, 1 - 2j]))
                 self.assertEqual(y.dtype, 'complex64')
@@ -94,6 +94,7 @@ class TestVarBase(unittest.TestCase):
 
         _test_place(core.CPUPlace())
         if core.is_compiled_with_cuda():
+            _test_place(core.CUDAPinnedPlace())
             _test_place(core.CUDAPlace(0))
 
     def test_to_variable(self):
