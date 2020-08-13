@@ -19,8 +19,11 @@ import gast
 
 from paddle.fluid import core
 from paddle.fluid.framework import Variable
-from paddle.fluid.layers import fill_constant
-from paddle.fluid.layers.control_flow import array_write, array_read
+from paddle.fluid.layers import assign, fill_constant, slice
+from paddle.fluid.layers.control_flow import array_length, create_array
+from paddle.fluid.layers.control_flow import array_read, array_write
+from paddle.fluid.layers.control_flow import cond, while_loop
+from paddle.fluid.layers.control_flow import less_than, increment
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = [
@@ -39,7 +42,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
      Note: 
         The default :code:`stop_gradient` attribute of the Variable created by
         this API is true, which means the gradient won't be passed backward
-        through the data Varaible. Set :code:`var.stop_gradient = False` If
+        through the data Variable. Set :code:`var.stop_gradient = False` If
         user would like to pass backward gradient.
 
     Args:
@@ -125,7 +128,26 @@ def to_static_variable(x):
     return x
 
 
-class DynamicList(object):
+def slice_tensor_array(array, start, end):
+    def true_fn():
+        null_array = create_array("float32")
+        return null_array
+
+    def false_fn(array, start, end):
+        new_array = slice(array, starts=[start], ends=[end], axes=[0])
+        return new_array
+
+    new_array = cond(start == end, true_fn, lambda: false_fn(array, start, end))
+    return new_array
+
+
+def dynamic_list_as_tensor_array(x):
+    if isinstance(x, DynamicList) and x.private_type == Variable:
+        return x.private_array
+    return x
+
+
+class DynamicList(list):
     '''
     A class casts python list to LoDTensorArray dynamically at run time.
     '''
@@ -134,97 +156,173 @@ class DynamicList(object):
         self.private_type = self._get_same_type(iterable)
         # self.private_array is LoDTensorArray if all types are LoDTensor
         # else python list
-        if self.private_type == Varaible:
-            self.private_array = core.LoDTensorArray()
-            count = 0
+        if self.private_type == Variable:
+            self.private_array = create_array("float32")
+            self.private_size = 0
             for i in iterable:
-                array_i = fill_constant(shape=[1], dtype='int64', value=i)
-                array_write(args[i], array_i, self.private_array)
+                self.append(i)
         else:
-            self.private_array = list(iterable)
+            self.private_size = 0
+            self.private_array = None
+            super(DynamicList, self).__init__(iterable)
 
     def __len__(self):
-        return len(self.private_array)
+        if self.private_type == Variable:
+            return len(self.private_array)
+        return super(DynamicList, self).__len__()
 
     def __getitem__(self, i):
-        return self.private_array[i]
+        if self.private_type == Variable:
+            if isinstance(i, int):
+                idx = fill_constant(shape=[1], dtype='int64', value=i)
+                return array_read(self.private_array, idx)
+            else:
+                # i should be python slice here
+                if i.step is not None:
+                    raise NotImplementedError(
+                        "LoDTensorArray hasn't implemented read by slice with step."
+                    )
+                return slice(
+                    self.private_array,
+                    axes=[0],
+                    starts=[i.start],
+                    ends=[i.stop])
+        return super(DynamicList, self).__getitem__(i)
 
     def __setitem__(self, i, elem):
-        if self.private_type == Variable and not isinstance(elem, Variable):
-            # Transfer from LoDTensorArray to python list
-            self.private_array = self.private_array._move_to_list()
-            self.private_type = self._get_same_type(args)
-        self.private_array[i] = elem
+        if self.private_type == Variable:
+            if isinstance(elem, Variable):
+                if isinstance(i, int):
+                    array_write(elem, i, self.private_array)
+                else:
+                    # i should be python slice here
+                    raise NotImplementedError(
+                        "LoDTensorArray hasn't implemented write by slice")
+            else:
+                # Transfer from LoDTensorArray to python list
+                tmp_list = self.private_array._move_to_list()
+                tmp_list[i] = elem
+                self.private_type = self._get_same_type(tmp_list)
+                self.private_array = None
+                super(DynamicList, self).__init__(tmp_list)
+        else:
+            super(DynamicList, self).__setitem__(i, elem)
 
     def append(self, elem):
-        if self.private_type == Variable and not isinstance(elem, Variable):
-            # Transfer from LoDTensorArray to python list
-            self.private_array = self.private_array._move_to_list()
-            self.private_array.append(elem)
-            self.private_type = self._get_same_type(args)
-            return
-        self.private_array.append(elem)
+        if self.private_type == Variable:
+            if isinstance(elem, Variable):
+                append_index = array_length(self.private_array)
+                array_write(x=elem, i=append_index, array=self.private_array)
+                self.private_size += 1
+            else:
+                # Transfer from LoDTensorArray to python list
+                tmp_list = self.private_array._move_to_list()
+                tmp_list.append(elem)
+                self.private_type = self._get_same_type(tmp_list)
+                self.private_array = None
+                self.private_size = 0
+                super(DynamicList, self).__init__(tmp_list)
+        else:
+            super(DynamicList, self).append(elem)
 
-    def pop(self):
-        ret = self.private_array.pop()
-        if len(self.private_array) == 0:
+    def pop(self, i=None):
+        if self.private_type == Variable:
+            arr_length = array_length(self.private_array)
+            if i == None:
+                remove_idx = arr_length - 1
+                pop_elem = array_read(self.private_array, remove_idx)
+                new_array = slice_tensor_array(self.private_array, 0,
+                                               arr_length - 1)
+                assign(input=new_array, output=self.private_array)
+                self.private_size -= 1
+            else:
+                if i < 0:
+                    remove_idx = i + arr_length
+                else:
+                    remove_idx = fill_constant(
+                        shape=[1], dtype='int64', value=i)
+                pop_elem = array_read(self.private_array, remove_idx)
+                new_array = slice_tensor_array(self.private_array, 0,
+                                               remove_idx)
+
+                i = remove_idx + 1
+
+                def cond(i, new_array):
+                    return less_than(i, arr_length)
+
+                def body(i, new_array):
+                    item = array_read(array=self.private_array, i=i)
+                    array_write(item, array_length(new_array), new_array)
+                    i = increment(i)
+                    return i, new_array
+
+                _, new_array = while_loop(cond, body, [i, new_array])
+
+                assign(input=new_array, output=self.private_array)
+                self.private_size -= 1
+            return pop_elem
+        ret = super(DynamicList, self).pop()
+        if super(DynamicList, self).__len__() == 0:
             self.private_type = Variable
-            self.private_array = core.LoDTensorArray()
+            self.private_array = create_array("float32")
+            self.private_size = 0
         return ret
 
     def extend(self, iterable):
         if self.private_type == Variable:
             for i in iterable:
-                self.private_array.append(i)
+                self.append(i)
             return
-        self.private_array.extend(iterable)
+        super(DynamicList, self).extend(iterable)
 
     def insert(self, i, x):
         if self.private_type == Variable:
             raise NotImplementedError(
                 "LoDTensorArray hasn't implemented 'insert' method.")
-        self.private_array.insert(x)
+        super(DynamicList, self).insert(i, x)
 
     def remove(self, x):
         if self.private_type == Variable:
             raise NotImplementedError(
                 "LoDTensorArray hasn't implemented 'remove' method.")
-        self.private_array.remove(x)
+        super(DynamicList, self).remove(x)
 
     def clear(self):
         self.private_type = Variable
-        self.private_array = core.LoDTensorArray()
+        self.private_array = create_array("float32")
+        self.private_size = 0
+        super(DynamicList, self).clear()
 
     def index(self, x, start=None, end=None):
         if self.private_type == Variable:
             raise NotImplementedError(
                 "LoDTensorArray hasn't implemented 'index' method.")
-        return self.private_array.index(x, start, end)
+        return super(DynamicList, self).index(x, start, end)
 
     def count(self, x):
         if self.private_type == Variable:
             raise NotImplementedError(
                 "LoDTensorArray hasn't implemented 'count' method.")
-        return self.private_array.count(x)
+        return super(DynamicList, self).count(x)
 
     def sort(self, key=None, reverse=None):
         if self.private_type == Variable:
             raise NotImplementedError(
                 "LoDTensorArray hasn't implemented 'sort' method.")
-        return self.private_array.sort(key, reverse)
+        return super(DynamicList, self).sort(key, reverse)
 
     def reverse(self):
         if self.private_type == Variable:
             raise NotImplementedError(
                 "LoDTensorArray hasn't implemented 'reverse' method.")
-        return self.private_array.reverse()
+        return super(DynamicList, self).reverse()
 
     def copy(self):
-        return self.private_array[:]
+        return DynamicList(self)
 
     def _get_same_type(self, iterable):
         """
-        Returns the type if all iterable have same type. Returns Variable if
+        Returns the type if all iterable have same type. Returns LoDTensor if
         iterable is empty. Returns None if iterable contains different types.
         """
         len_args = len(iterable)

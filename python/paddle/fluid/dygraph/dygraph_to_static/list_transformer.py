@@ -104,23 +104,48 @@ class ListTransformer(gast.NodeTransformer):
         self.visit(self.root)
 
     def visit_Call(self, node):
+        self.generic_visit(node)
         if isinstance(node.func, gast.Name) and node.func.id == 'list':
-            dynamic_list_node = gast.Parse(
+            dynamic_list_node = gast.parse(
                 "fluid.dygraph.dygraph_to_static.variable_trans_func.DynamicList"
-            )
+            ).body[0].value
             node.func = dynamic_list_node
+        else:
+            # {api: parameters} have to change dynamic_list to tensor array
+            # TODO: Ugly code because we have to update API/parameters during
+            # Paddle development, had better to find a better way.
+            tensor_array_api_parameter = {"stack": "x", "concat": "input"}
+            func_name = ast_to_source_code(node.func).strip()
+            for api in tensor_array_api_parameter:
+                if func_name.endswith(api):
+                    parameter = tensor_array_api_parameter[api]
+                    for kw in node.keywords:
+                        if kw.arg == tensor_array_api_parameter:
+                            kw.value = gast.parse(
+                                "fluid.dygraph.dygraph_to_static.variable_trans_func.dynamic_list_as_tensor_array({})".
+                                format(ast_to_source_code(kw.value))).body[
+                                    0].value
+                            return node
+                    if len(node.args) > 0:
+                        node.args[0] = gast.parse(
+                            "fluid.dygraph.dygraph_to_static.variable_trans_func.dynamic_list_as_tensor_array({})".
+                            format(ast_to_source_code(node.args[0]))).body[
+                                0].value
+                        return node
         return node
 
     def visit_List(self, node):
-        dynamic_list_node = gast.Parse(
+        self.generic_visit(node)
+        dynamic_list_node = gast.parse(
             "fluid.dygraph.dygraph_to_static.variable_trans_func.DynamicList({})"
-            .format(ast_to_source_code(node)))
+            .format(ast_to_source_code(node))).body[0].value
         return dynamic_list_node
 
     def visit_ListComp(self, node):
-        dynamic_list_node = gast.Parse(
+        self.generic_visit(node)
+        dynamic_list_node = gast.parse(
             "fluid.dygraph.dygraph_to_static.variable_trans_func.DynamicList({})"
-            .format(ast_to_source_code(node)))
+            .format(ast_to_source_code(node))).body[0].value
         return dynamic_list_node
 
 

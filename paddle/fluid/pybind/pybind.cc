@@ -1663,14 +1663,19 @@ All parameter, weight, gradient are variables in Paddle.
                    arr.append(t)
            )DOC")
       .def("pop",
-           [](LoDTensorArray &self) -> LoDTensor * {
-             LoDTensor back_tensor = self.back();
-             self.pop_back();
-             return &back_tensor;
+           [](LoDTensorArray &self, boost::optional<int> i) -> LoDTensor * {
+             int remove_index = self.size() - 1;
+             if (i != boost::none) {
+               remove_index = *i;
+             }
+             LoDTensor *tensor = new LoDTensor(self[remove_index]);
+             self.erase(self.begin() + remove_index);
+             return tensor;
            },
-           py::return_value_policy::move, R"DOC(
-             Removes the last element from the LoDTensorArray and returns the
-             last LoDTensor
+           py::return_value_policy::take_ownership, R"DOC(
+             Removes the i-th element from the LoDTensorArray and returns the
+             removed LoDTensor if index argument i is specified, else removes
+             the last element and return it.
               
              Returns:
                    LoDTensor.
