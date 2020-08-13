@@ -578,11 +578,11 @@ class MarginRankingLoss(fluid.dygraph.Layer):
     """
 
     This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
-    The MarginRankingLoss layer calculates the margin rank loss between the input, other and target 
+    The MarginRankingLoss layer calculates the margin rank loss between the input, other and label 
     , use the math function as follows.
 
     .. math:: 
-        margin\_rank\_loss = max(0, -target * (input - other) + margin)
+        margin\_rank\_loss = max(0, -label * (input - other) + margin)
 
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
 
@@ -604,8 +604,8 @@ class MarginRankingLoss(fluid.dygraph.Layer):
     Shape: 
         input: N-D Tensor, the shape is [N, *], N is batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
         other: N-D Tensor, `other` have the same shape and dtype as `input`.
-        target: N-D Tensor, target have the same shape and dtype as `input`.
-        out: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
+        label: N-D Tensor, label have the same shape and dtype as `input`.
+        output: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Returns:
         A callable object of MarginRankingLoss.
@@ -621,9 +621,9 @@ class MarginRankingLoss(fluid.dygraph.Layer):
              
             input = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype("float32"))
             other = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype("float32"))
-            target = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype("float32"))
+            label = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype("float32"))
             margin_rank_loss = paddle.nn.MarginRankingLoss()
-            loss = margin_rank_loss(input, other, target) 
+            loss = margin_rank_loss(input, other, label) 
             print(loss.numpy()) # [0.75]
     """
 
@@ -637,7 +637,7 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         self.reduction = reduction
         self.name = name
 
-    def forward(self, input, other, target):
+    def forward(self, input, other, label):
         out = paddle.nn.functional.margin_ranking_loss(
-            input, other, target, self.margin, self.reduction, self.name)
+            input, other, label, self.margin, self.reduction, self.name)
         return out
