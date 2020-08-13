@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,11 +32,6 @@ GeneratorState* Generator::GetState() {
 
 void Generator::SetState(GeneratorState* state_in) {
   std::lock_guard<std::mutex> lock(this->mutex);
-  /*
-  if (state_in->device_type != this->state_->device_type) {
-    AT_ERROR("Invalid state used for setState() function.");
-  }
-  */
   *this->state_ = *state_in;
 }
 
@@ -45,10 +40,21 @@ uint64_t Generator::GetCurrentSeed() {
   return this->state_->current_seed;
 }
 
+uint64_t Generator::Seed() {
+  std::lock_guard<std::mutex> lock(this->mutex);
+  uint64_t seed;
+  std::random_device de;
+  seed = ((((uint64_t)de()) << 32) + de()) & 0x1FFFFFFFFFFFFF;
+  this->state_->current_seed = seed;
+  std::seed_seq seq({seed});
+  this->state_->cpu_engine.seed(seq);
+
+  return this->state_->current_seed;
+}
+
 void Generator::SetCurrentSeed(uint64_t seed) {
   std::lock_guard<std::mutex> lock(this->mutex);
   this->state_->current_seed = uint64_t(seed);
-  // this->state_->philox_offset_per_thread = 0;
   std::seed_seq seq({seed});
   this->state_->cpu_engine.seed(seq);
 }

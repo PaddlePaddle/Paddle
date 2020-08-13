@@ -39,7 +39,7 @@ void BindGenerator(py::module* m) {
       .def("set_state", &framework::Generator::SetState,
            py::return_value_policy::copy)
       .def("manual_seed", &framework::Generator::SetCurrentSeed)
-      // .def("seed", &framework::Generator::SetCurrentSeed)
+      .def("seed", &framework::Generator::Seed)
       .def("initial_seed", &framework::Generator::GetCurrentSeed);
 }  // end Generator
 }  // end namespace pybind

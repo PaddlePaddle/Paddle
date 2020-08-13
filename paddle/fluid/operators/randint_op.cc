@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
@@ -42,12 +43,16 @@ class CPURandintKernel : public framework::OpKernel<T> {
     if (!new_shape.empty()) out->Resize(framework::make_ddim(new_shape));
     T* data = out->mutable_data<T>(ctx.GetPlace());
     int64_t size = out->numel();
+    auto gen_ptr = framework::Generator::GetInstance();
+    std::mt19937_64& engine = gen_ptr->GetCPUEngine();
+    /*
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
       seed = std::random_device()();
     }
     engine.seed(seed);
+    */
     std::uniform_int_distribution<T> dist(ctx.Attr<int>("low"),
                                           ctx.Attr<int>("high") - 1);
     for (int64_t i = 0; i < size; ++i) data[i] = dist(engine);

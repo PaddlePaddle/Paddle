@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ namespace framework {
 
 struct GeneratorState {
   int64_t device = -1;
-  uint64_t current_seed = 67280421310721;
+  uint64_t current_seed = 34342423252;
   std::mt19937_64 cpu_engine;
 };
 
@@ -37,8 +37,8 @@ struct Generator {
   Generator() {
     GeneratorState default_gen_state_cpu;
     default_gen_state_cpu.device = -1;
-    default_gen_state_cpu.current_seed = 67280421310721;
-    std::seed_seq seq({67280421310721});
+    default_gen_state_cpu.current_seed = 34342423252;
+    std::seed_seq seq({34342423252});
     default_gen_state_cpu.cpu_engine = std::mt19937_64(seq);
     this->state_ = std::make_shared<GeneratorState>(default_gen_state_cpu);
   }
@@ -47,15 +47,25 @@ struct Generator {
   Generator(const Generator& other)
       : Generator(other, std::lock_guard<std::mutex>(other.mutex)) {}
 
+  // get random state
   GeneratorState* GetState();
+  // set random state
   void SetState(GeneratorState* state_in);
+  // get current seed
   uint64_t GetCurrentSeed();
+  // random a seed and get
+  uint64_t Seed();
+
+  // set seed
   void SetCurrentSeed(uint64_t seed);
+  // get cpu engine
   std::mt19937_64& GetCPUEngine();
+  // set cpu engine
   void SetCPUEngine(std::mt19937_64 engine);
 
   uint64_t Random64();
 
+  // CPU Generator singleton
   static std::shared_ptr<Generator> GetInstance() {
     if (NULL == gen_instance_) {
       gen_instance_.reset(new paddle::framework::Generator());
