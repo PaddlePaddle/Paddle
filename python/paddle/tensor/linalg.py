@@ -455,11 +455,11 @@ def dot(x, y, name=None):
     This operator calculates inner product for vectors.
    
     .. note::
-       Only support 1-d Tensor(vector).
+       Support 1-d and 2-d Tensor.
 
     Parameters:
-        x(Tensor): 1-D ``Tensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
-        y(Tensor): 1-D ``Tensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``
+        y(Tensor): 1-D or 2-D ``Tensor``. Its dtype soulde be ``float32``, ``float64``, ``int32``, ``int64``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
@@ -470,7 +470,6 @@ def dot(x, y, name=None):
     .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import numpy as np
 
         paddle.disable_static()
