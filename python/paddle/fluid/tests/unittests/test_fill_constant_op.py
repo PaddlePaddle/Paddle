@@ -313,7 +313,7 @@ class TestFillConstantImperative(unittest.TestCase):
                 shape=shape, dtype='float32', value=1.1)
             res3 = fluid.layers.fill_constant(
                 shape=shape, dtype='float32', value=val)
-            res3 = fluid.layers.fill_constant(
+            res4 = fluid.layers.fill_constant(
                 shape=shape, dtype='int32', value=88)
             assert np.array_equal(
                 res1.numpy(), np.full(
@@ -325,7 +325,7 @@ class TestFillConstantImperative(unittest.TestCase):
                 res3.numpy(), np.full(
                     [1, 2], 1.1, dtype="float32"))
             assert np.array_equal(
-                res3.numpy(), np.full(
+                res4.numpy(), np.full(
                     [1, 2], 88, dtype="int32"))
 
 
