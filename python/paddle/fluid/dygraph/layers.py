@@ -690,7 +690,7 @@ class Layer(core.Layer):
             Parameter: the parameter passed in.
         """
         if '_parameters' not in self.__dict__:
-            raise ValueError(
+            raise RuntimeError(
                 "super(YourLayer, self).__init__() should be called first.")
         elif not isinstance(name, six.string_types):
             raise TypeError(
@@ -715,7 +715,7 @@ class Layer(core.Layer):
                 self._parameters[name] = None
 
             if len(self._loaddict_holder) > 0:
-                assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
+                assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in state_dict".format(
                     parameter.name)
 
                 parameter.set_value(self._loaddict_holder[parameter.name])
