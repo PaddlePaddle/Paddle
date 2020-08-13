@@ -20,6 +20,10 @@ from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+import paddle
+import paddle.nn.functional as F
+
+np.random.seed(10)
 
 
 def stable_softmax(x):
@@ -218,6 +222,43 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
 class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
+
+
+class TestNnFunctionalSoftmaxApi(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+        self.x_np = np.random.uniform(-1., 1., [2, 3, 4, 5]).astype('float32')
+        self.out_ref = np.apply_along_axis(stable_softmax, -1, self.x_np)
+
+    def test_api_static(self):
+        with program_guard(Program()):
+            x = paddle.data('X', self.x_np.shape, 'float32')
+            out = F.softmax(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        self.assertEqual(np.allclose(self.out_ref, res[0]), True)
+
+    def test_api_imperative(self):
+        paddle.disable_static(self.place)
+
+        x = paddle.to_variable(self.x_np)
+        out = F.softmax(x)
+        self.assertEqual(np.allclose(self.out_ref, out.numpy()), True)
+
+        out = F.softmax(x, axis=0)
+        out_ref = np.apply_along_axis(stable_softmax, 0, self.x_np)
+        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+
+        paddle.enable_static()
+
+    def test_error(self):
+        with program_guard(Program(), Program()):
+            # The x should be variable and its dtype should be float32, float64.
+            self.assertRaises(TypeError, F.softmax, [1])
+
+            x = paddle.data(name='x', shape=[2, 3], dtype='int32')
+            self.assertRaises(TypeError, F.softmax, x)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ from . import conv
 from . import extension
 from . import activation
 from . import norm
+from . import distance
 
 from .activation import *
 from .loss import *
@@ -39,6 +40,7 @@ from .common import Pool2D  #DEFINE_ALIAS
 from .common import Pad2D  #DEFINE_ALIAS
 from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
+from .common import Flatten  #DEFINE_ALIAS
 from .common import UpSample  #DEFINE_ALIAS
 from .conv import Conv2D  #DEFINE_ALIAS
 from .conv import Conv2DTranspose  #DEFINE_ALIAS
@@ -68,3 +70,4 @@ from .norm import InstanceNorm  #DEFINE_ALIAS
 # from .rnn import RNNCell        #DEFINE_ALIAS
 # from .rnn import GRUCell        #DEFINE_ALIAS
 # from .rnn import LSTMCell        #DEFINE_ALIAS
+from .distance import PairwiseDistance  #DEFINE_ALIAS

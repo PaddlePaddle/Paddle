@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.reader import use_pinned_memory
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -76,6 +77,18 @@ class TestDygraphDataLoader(unittest.TestCase):
                 sample_generator_creator(self.batch_size, self.batch_num),
                 batch_size=self.batch_size)
             self.iter_loader_data(loader)
+
+    def test_set_pin_memory(self):
+        with fluid.dygraph.guard():
+            use_pinned_memory(False)
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, iterable=False, use_multiprocess=False)
+            loader.set_sample_generator(
+                sample_generator_creator(self.batch_size, self.batch_num),
+                batch_size=self.batch_size,
+                places=fluid.CPUPlace())
+            self.iter_loader_data(loader)
+            use_pinned_memory(True)
 
 
 if __name__ == '__main__':

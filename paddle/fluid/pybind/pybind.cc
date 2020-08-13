@@ -67,6 +67,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/generator_py.h"
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
+#include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
@@ -1213,8 +1214,6 @@ All parameter, weight, gradient are variables in Paddle.
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
         []() { return std::string(framework::kGradVarSuffix); });
-  m.def("loaded_var_suffix",
-        []() { return std::string(framework::kLoadedVarSuffix); });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
@@ -2480,6 +2479,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
+#ifdef PADDLE_WITH_PSLIB
+  BindHeterWrapper(&m);
+#endif
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
 #ifdef PADDLE_WITH_BOX_PS
