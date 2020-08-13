@@ -26,7 +26,7 @@ __all__ = [
     'L1Loss',
     'NLLLoss',
     'BCELoss',
-    'SmoothL1Loss'
+    'SmoothL1Loss',
     'MarginRankingLoss'
 ]
 
