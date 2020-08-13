@@ -1,5 +1,5 @@
 requests>=2.20.0
-numpy>=1.12, <=1.16.4 ; python_version<"3.5"
+numpy>=1.12, <=1.16.4 ; python_version<="3.6"
 numpy>=1.12 ; python_version>="3.5"
 protobuf>=3.1.0
 gast>=0.3.3
