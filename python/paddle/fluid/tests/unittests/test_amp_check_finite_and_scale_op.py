@@ -28,7 +28,7 @@ class TestAmpCheckFiniteAndScaleOp(OpTest):
         self.inputs = {'X': [('x0', x)], 'Scale': scale}
         self.outputs = {
             'FoundInfinite': np.array([0]),
-            'Out': [('out0', x * scale)],
+            'Out': [('out0', x / scale)],
         }
 
     def init_dtype(self):

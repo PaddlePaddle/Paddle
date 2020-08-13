@@ -23,44 +23,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+inline HOSTDEVICE T inverse(T s) {
+  T eps = 1e-6;
+  return s <= 1e-30 ? 1.0 / (s + eps) : 1.0 / s;
+}
+
 template <typename DeviceContext, typename T>
-class AmpCheckFiniteAndScaleKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    const auto xs = ctx.MultiInput<framework::Tensor>("X");
-    const auto* scale = ctx.Input<framework::Tensor>("Scale");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
-
-    const T* scale_data = scale->data<T>();
-    bool* found_inf_data = found_inf->mutable_data<bool>(dev_ctx.GetPlace());
-
-    *found_inf_data = false;
-    framework::Tensor is_finite =
-        ctx.AllocateTmpTensor<bool, DeviceContext>({1}, dev_ctx);
-    bool* is_finite_data = is_finite.template data<bool>();
-
-    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    for (size_t i = 0; i < xs.size(); ++i) {
-      const auto* x = xs[i];
-      auto* out = outs[i];
-      out->mutable_data<T>(dev_ctx.GetPlace());
-      if (!(*found_inf_data)) {
-        framework::TensorIsfinite(*x, &is_finite);
-        if (*is_finite_data) {
-          auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-          auto eigen_in = framework::EigenVector<T>::Flatten(*x);
-          eigen_out.device(dev) = (*scale_data) * eigen_in;
-        } else {
-          *found_inf_data = true;
-          break;
-        }
-      }
-    }
-    return;
-  }
-};
+class AmpCheckFiniteAndScaleKernel;
 
 }  // namespace operators
 }  // namespace paddle

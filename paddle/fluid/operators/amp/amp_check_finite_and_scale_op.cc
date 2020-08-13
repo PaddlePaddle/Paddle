@@ -22,13 +22,13 @@ namespace operators {
 
 class AmpCheckFiniteAndScaleOp : public framework::OperatorWithKernel {
  public:
-  AmpCheckFiniteAndScaleOp(const std::string &type,
-                           const framework::VariableNameMap &inputs,
-                           const framework::VariableNameMap &outputs,
-                           const framework::AttributeMap &attrs)
+  AmpCheckFiniteAndScaleOp(const std::string& type,
+                           const framework::VariableNameMap& inputs,
+                           const framework::VariableNameMap& outputs,
+                           const framework::AttributeMap& attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X",
                    "amp_check_finite_and_unscale");
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out",
@@ -47,7 +47,7 @@ class AmpCheckFiniteAndScaleOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
@@ -82,6 +82,47 @@ Out should not be used, and its data may not be deterministic.
 Otherwise, FoundInfinite will be 0 (False).
 
 )DOC");
+  }
+};
+
+template <typename T>
+class AmpCheckFiniteAndScaleKernel<platform::CPUDeviceContext, T>
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const {
+    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    const auto xs = ctx.MultiInput<framework::Tensor>("X");
+    const auto* scale = ctx.Input<framework::Tensor>("Scale");
+    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+    auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
+
+    const T* scale_data = scale->data<T>();
+    bool* found_inf_data = found_inf->mutable_data<bool>(dev_ctx.GetPlace());
+
+    *found_inf_data = false;
+    framework::Tensor is_finite =
+        ctx.AllocateTmpTensor<bool, platform::CPUDeviceContext>({1}, dev_ctx);
+    bool* is_finite_data = is_finite.template data<bool>();
+
+    auto& dev = *ctx.template device_context<platform::CPUDeviceContext>()
+                     .eigen_device();
+    for (size_t i = 0; i < xs.size(); ++i) {
+      const auto* x = xs[i];
+      auto* out = outs[i];
+      out->mutable_data<T>(dev_ctx.GetPlace());
+      if (!(*found_inf_data)) {
+        framework::TensorIsfinite(*x, &is_finite);
+        if (*is_finite_data) {
+          auto eigen_out = framework::EigenVector<T>::Flatten(*out);
+          auto eigen_in = framework::EigenVector<T>::Flatten(*x);
+          eigen_out.device(dev) = inverse(*scale_data) * eigen_in;
+        } else {
+          *found_inf_data = true;
+          break;
+        }
+      }
+    }
+    return;
   }
 };
 

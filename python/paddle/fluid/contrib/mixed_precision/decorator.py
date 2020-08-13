@@ -139,13 +139,8 @@ class OptimizerWithMixedPrecision(object):
         # Change the op_role_var attr for some ops, so that gradients
         # transferred across GPUs can be FP16.
         update_role_var_grad(self._train_program, self._params_grads)
-        scaled_params_grads = []
-        for p, g in self._params_grads:
-            with self._train_program._optimized_guard([p, g]):
-                scaled_g = g / self._loss_scaling
-                scaled_params_grads.append([p, scaled_g])
 
-        return scaled_params_grads
+        return self._params_grads
 
     def apply_gradients(self, scaled_params_grads):
         """
@@ -159,9 +154,15 @@ class OptimizerWithMixedPrecision(object):
             A list of optimize operators.
         """
 
+        unscaled_params_grads = []
+        for p, g in scaled_params_grads:
+            with self._train_program._optimized_guard([p, g]):
+                unscaled_g = g / self._loss_scaling
+                unscaled_params_grads.append([p, unscaled_g])
+
         if self._use_dynamic_loss_scaling:
 
-            grads = [layers.reduce_sum(g) for [_, g] in scaled_params_grads]
+            grads = [layers.reduce_sum(g) for [_, g] in unscaled_params_grads]
             all_grads = layers.concat(grads)
             all_grads_sum = layers.reduce_sum(all_grads)
             is_overall_finite = layers.isfinite(all_grads_sum)
@@ -178,10 +179,10 @@ class OptimizerWithMixedPrecision(object):
                 with switch.case(is_overall_finite):
                     pass
                 with switch.default():
-                    for _, g in scaled_params_grads:
+                    for _, g in unscaled_params_grads:
                         layers.assign(layers.zeros_like(g), g)
 
-        optimize_ops = self._optimizer.apply_gradients(scaled_params_grads)
+        optimize_ops = self._optimizer.apply_gradients(unscaled_params_grads)
 
         return optimize_ops
 
