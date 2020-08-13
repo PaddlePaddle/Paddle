@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/log_softmax_op.h"
 #include <string>
 #include <unordered_map>
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 
 namespace paddle {
 namespace operators {
@@ -24,27 +25,7 @@ class LogSoftmaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "log_softmax");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "log_softmax");
-
-    auto dim_x = ctx->GetInputDim("X");
-    auto rank_x = dim_x.size();
-    auto axis = ctx->Attrs().Get<int>("axis");
-    PADDLE_ENFORCE_GE(
-        axis, -rank_x,
-        platform::errors::InvalidArgument(
-            "Attr(axis) value should be in range [-R, R-1], "
-            "R is the rank of Input(X). But received axis: %d, R: %d.",
-            axis, rank_x));
-    PADDLE_ENFORCE_LT(
-        axis, rank_x,
-        platform::errors::InvalidArgument(
-            "Attr(axis) value should be in range [-R, R-1], "
-            "R is the rank of Input(X). But received axis: %d, R: %d.",
-            axis, rank_x));
-
-    ctx->SetOutputDim("Out", dim_x);
-    ctx->ShareLoD("X", /*->*/ "Out");
+    return UnaryOpUnchangedInferShapeCheckAxis(ctx);
   }
 
  protected:
