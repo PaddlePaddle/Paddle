@@ -365,7 +365,7 @@ class BCELoss(fluid.dygraph.Layer):
 
     Parameters:
         weight (Tensor, optional): A manual rescaling weight given to the loss of each
-            batch element. If given, has to be a Variable of size nbatch and the data type
+            batch element. If given, has to be a Tensor of size nbatch and the data type
             is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -377,7 +377,7 @@ class BCELoss(fluid.dygraph.Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        x (Tensor): 2-D tensor with shape: (N, *), N is batch_size, `*` means
+        input (Tensor): 2-D tensor with shape: (N, *), N is batch_size, `*` means
             number of additional dimensions. The input ``input`` should always
             be the output of sigmod.  Available dtype is float32, float64.
         label (Tensor): 2-D tensor with the same shape as ``input``. The target
@@ -398,7 +398,6 @@ class BCELoss(fluid.dygraph.Layer):
             input_data = np.array([0.5, 0.6, 0.7]).astype("float32")
             label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
 
-            # imperative mode
             paddle.disable_static()
             input = paddle.to_variable(input_data)
             label = paddle.to_variable(label_data)
@@ -486,7 +485,7 @@ class BCELoss(fluid.dygraph.Layer):
                     out, self.weight, axis=-1, name=weight_name)
             else:
                 raise ValueError(
-                    "The weight is not a Variable, please convert to Variable.")
+                    "The weight is not a Tensor, please convert to Tensor.")
 
         if self.reduction == 'sum':
             return paddle.sum(out, name=self.name)
