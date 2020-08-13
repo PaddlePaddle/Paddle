@@ -55,9 +55,8 @@ message LarsConfig {
 }
 
 message LambConfig {
-  optional float beta1 = 1 [ default = 0.001 ];
-  optional float beta2 = 2 [ default = 0.999 ];
-  optional float epsilon = 3 [ default = 0.000001 ];
+  optional float lamb_weight_decay = 1 [ default = 0.01 ];
+  repeated string exclude_from_weight_decay = 2;
 }
 
 message BuildStrategy {

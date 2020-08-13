@@ -50,9 +50,8 @@ class Fleet(object):
     Examples:
         .. code-block:: python
 
-            import paddle.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            import paddle.distributed.fleet as fleet
+            role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             strategy = fleet.DistributedStrategy()
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)
@@ -248,9 +247,8 @@ class Fleet(object):
 
         Examples:
             .. code-block:: python
-            import paddle.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            import paddle.distributed.fleet as fleet
+            role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             strategy = fleet.DistributedStrategy()
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)
@@ -290,8 +288,7 @@ class Fleet(object):
 
         Examples:
             import paddle
-            import paddle.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+            import paddle.distributed.fleet as fleet
 
             fc_1 = paddle.layers.fc(input=input_x, size=hid_dim, act='tanh')
             fc_2 = paddlen.layers.fc(input=fc_1, size=hid_dim, act='tanh')
@@ -299,7 +296,7 @@ class Fleet(object):
             cost = paddle.layers.cross_entropy(input=prediction, label=input_y)
             avg_cost = paddle.layers.mean(x=cost)
 
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             strategy = fleet.DistributedStrategy()
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)
@@ -316,8 +313,8 @@ class Fleet(object):
         context["loss"] = loss
         if startup_program == None:
             self.origin_startup_program = \
-                paddle.default_startup_program().clone(for_test=False)
-            startup_program = paddle.default_startup_program()
+                paddle.static.default_startup_program().clone(for_test=False)
+            startup_program = paddle.static.default_startup_program()
         else:
             self.origin_startup_program = \
                 startup_program.clone(for_test=False)
@@ -368,7 +365,7 @@ class Fleet(object):
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set)
 
-            default_program = paddle.default_main_program()
+            default_program = paddle.static.default_main_program()
 
             if id(default_program) != id(loss.block.program):
                 paddle.fluid.framework.switch_main_program(loss.block.program)

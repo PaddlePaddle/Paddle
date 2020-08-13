@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.dygraph.jit import save, load, SaveLoadConfig
-from ...fluid.dygraph.io import TranslatedLayer
+from . import auto_cast
+from .auto_cast import *
 
-__all__ = ['save', 'load', 'SaveLoadConfig']
+from . import loss_scaler
+from .loss_scaler import *
+
+__all__ = []
+__all__ += auto_cast.__all__
+__all__ += loss_scaler.__all__
