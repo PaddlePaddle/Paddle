@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from paddle.incubate.hapi.text.data_utils import SimpleDataset, SamplerHelper
-from paddle.incubate.hapi.text.glue import GlueCoLA
+from paddle.incubate.hapi.text.data_utils import SamplerHelper
 import unittest
-import shutil
 import numpy as np
-from paddle.dataset.common import DATA_HOME
-
-DEFAULT_ROOT = os.path.join(DATA_HOME, 'glue')
 
 
 class TestSamplerHelper(unittest.TestCase):
     def setUp(self):
-        dataset = [["Paddle"], ["Baidu"], ["DLTP"]]
+        dataset = ["Paddle", "Baidu", "DLTP"]
         self.sampler_helper = SamplerHelper(dataset)
 
     def test_get_set_length(self):
@@ -51,37 +46,36 @@ class TestSamplerHelper(unittest.TestCase):
                         yield b
             return _impl
         applied_sampler = self.sampler_helper.apply(fn)
-        # for idx in iter(applied_sampler):
-            # print(idx)
+        for idx in iter(applied_sampler):
+            break
 
     def test_shuffle(self):
         shuffled_sampler = self.sampler_helper.shuffle()
-        # for idx in iter(shuffled_sampler):
-            # print(idx)
+        for idx in iter(shuffled_sampler):
+            break
 
     def test_sort(self):
         sorted_sampler = self.sampler_helper.sort(buffer_size=-1)
-        # for idx in iter(sorted_sampler):
-            # print(idx)
+        for idx in iter(sorted_sampler):
+            break
+            print(idx)
 
     def test_batch(self):
         batch_size = 2
         batched_sampler = self.sampler_helper.batch(batch_size, drop_last=True)
-        # for idx in iter(batched_sampler):
-            # print(idx)
+        for idx in iter(batched_sampler):
+            break
 
     def test_shard(self):
-        shared_data = self.sampler_helper.shard()
-        # for idx in iter(batched_sampler):
-            # print(idx)
+        shared_sampler = self.sampler_helper.shard()
+        for idx in iter(shared_sampler):
+            break
 
     def test_list(self):
         listed_sampler = self.sampler_helper.list()
-        for idx in iter(listed_sampler):
-            print(idx)
-
-    def tearDown(self):
-        shutil.rmtree(DEFAULT_ROOT) if os.path.exists(DEFAULT_ROOT) else None
+        iterator = listed_sampler.iterable()
+        for idx in iterator:
+            break
     
 
 if __name__ == '__main__':

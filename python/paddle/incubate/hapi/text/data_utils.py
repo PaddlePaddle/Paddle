@@ -247,7 +247,7 @@ class SimpleDataset(Dataset):
             shuffled_data.extend([self.data[idx] for idx in buf])
         if seed is not None:
             np.random.set_state(np_rand_state_bak)
-        return SimpleDataset(shuffled_data)
+        return type(self)(shuffled_data)
 
     def sort(self, cmp=None, key=None, reverse=False, buffer_size=-1):
         """
@@ -265,7 +265,7 @@ class SimpleDataset(Dataset):
         sorted_data = []
         buffer_size = len(self.data) if buffer_size < 0 else buffer_size
         if key:
-            key = lambda x, y: cmp(self.data[x], self.data[y])
+            key = lambda x: key(self.dataset[x])
         elif cmp:
             key = functools.cmp_to_key(
                 lambda x, y: cmp(self.data[x], self.data[y]))
@@ -273,7 +273,7 @@ class SimpleDataset(Dataset):
             sorted_data.extend(
                 sorted(
                     range(i, i + buffer_size), key=key, reverse=reverse))
-        return self
+        return type(self)(sorted_data)
 
     def filter(self, predicate_func):
         """
@@ -288,7 +288,7 @@ class SimpleDataset(Dataset):
             self.data[idx] for idx in range(len(self.data))
             if predicate_func(self.data[idx])
         ]
-        return SimpleDataset(filted_data)
+        return type(self)(filted_data)
 
     def apply(self, transform_func, lazy=False):
         """
@@ -310,7 +310,7 @@ class SimpleDataset(Dataset):
                 transform_func(self.data[idx])
                 for idx in range(len(self.data))
             ]
-            return SimpleDataset(applied_data)
+            return type(self)(applied_data)
         return self
 
     def shard(self, num_replicas=None, rank=None):
@@ -337,13 +337,13 @@ class SimpleDataset(Dataset):
                 range(total_size - len(self.data)))
             if idx % num_replicas == rank
         ]
-        return SimpleDataset(sharded_data)
+        return type(self)(sharded_data)
 
     # def __getattribute__(self, name):
     #     return super().__getattribute__(name)
 
     def __getattr__(self, name):
-        return getattr(self.dataset, name)
+        return getattr(self.data, name)
 
 
 class SamplerHelper(object):
@@ -363,7 +363,7 @@ class SamplerHelper(object):
               calculation involving the length of a :class:`DataLoader`.
     Args:
         dataset (collections.Iterable|Dataset): Input dataset for SamplerHelper.
-        iterable (collections.Iterable|callable, optional): Iterator fof dataset. Default: None.
+        iterable (collections.Iterable|callable, optional): Iterator of dataset. Default: None.
     """
 
     # chain sampler
@@ -474,6 +474,10 @@ class SamplerHelper(object):
         Returns:
             SamplerHelper
         """
+        if key:
+            key = (lambda x: key(x, data_source))
+        elif cmp:
+            key = functools.cmp_to_key(lambda x, y: cmp(x, y, data_source))
 
         def _impl():
             data_source = self.data_source
@@ -481,21 +485,12 @@ class SamplerHelper(object):
             for idx in iter(self):
                 buf.append(idx)
                 if buffer_size > 0 and len(buf) >= buffer_size:
-                    buf = sorted(
-                        buf,
-                        cmp=(lambda x, y: cmp(x, y, data_source))
-                        if cmp else None,
-                        key=(lambda x: key(x, data_source)) if key else None,
-                        reverse=reverse)
+                    buf = sorted(buf, key=key, reverse=reverse)
                     for b in buf:
                         yield b
                     buf = []
             if len(buf) > 0:
-                buf = sorted(
-                    buf,
-                    cmp=(lambda x, y: cmp(x, y, data_source)) if cmp else None,
-                    key=(lambda x: key(x, data_source)) if key else None,
-                    reverse=reverse)
+                buf = sorted(buf, key=key, reverse=reverse)
                 for b in buf:
                     yield b
 
@@ -566,7 +561,7 @@ class SamplerHelper(object):
         if rank is None:
             rank = ParallelEnv().local_rank
 
-        def _impl(self):
+        def _impl():
             for i, idx in enumerate(self):
                 if i % num_replicas == rank:
                     yield idx
@@ -590,15 +585,31 @@ class SamplerHelper(object):
             SamplerHelper
         """
 
-        def _impl(sampler):
+        def _impl():
             indices = list(iter(self))
-            sampler.length = len(indices)
+            self.length = len(indices)
             return iter(indices)
 
         return type(self)(self.data_source, _impl)
 
 
 class Vocab(object):
+    """
+    A vocab class.
+    Args:
+        counter (collections.Counter|dict, optional): A dict describes the tokens and their frequencies. If None,
+            `token_to_idx` must be provided. Default: None.
+        max_size (int, optional): Max size of vocab, not including special tokens. Default: None.
+        min_freq (int): Ignore tokens whose frequencies are less than `min_freq`. Default: 1.
+        token_to_idx (dict, optional): A dict describes the mapping relationship between tokens
+            and indices. If None, counter must be provided. Default: None.
+        unk_token (str): special token for unknow token. Default: '<unk>'.
+        pad_token (str): special token for padding token. Default: '<pad>'.
+        bos_token (str): special token for bos token. Default: <bos>'.
+        eos_token (str): special token for eos token. Default: '<eos>'.
+        **kwargs (dict): The additional inputs.
+    """
+
     def __init__(self,
                  counter=None,
                  max_size=None,
@@ -714,6 +725,13 @@ class Vocab(object):
             self.idx_to_token[new_idx] = token
 
     def to_tokens(self, indices):
+        """
+        Map the input indices to token list.
+        Args:
+            indices (list|tuple|int): input indices for mapping.
+        Returns:
+            list|str: obtained token(s).
+        """
         to_reduce = False
         if not isinstance(indices, (list, tuple)):
             indices = [indices]
@@ -732,6 +750,13 @@ class Vocab(object):
         return tokens[0] if to_reduce else tokens
 
     def to_indices(self, tokens):
+        """
+        Map the input tokens into indices
+        Args:
+            tokens (list|tuple, optional): input tokens for mapping.
+        Returns:
+            list|int: obationed indice list.
+        """
         return self[tokens]
 
     def __getitem__(self, tokens):
@@ -751,13 +776,28 @@ class Vocab(object):
 
     @property
     def idx_to_token(self):
+        """
+        Return index-token dict
+        """
         return self._idx_to_token
 
     @property
     def token_to_idx(self):
+        """
+        Return token-index dict
+        """
         return self._token_to_idx
 
     def to_json(self, path=None):
+        """
+        Summarize some information of vocab as JSON string. If path is gaven,
+        the JSON string will be saved into files.
+        Args:
+            path (str, optional): the path to save JSON string. If None, the
+                JSON will not be saved. Default: None.
+            Returns:
+                str: JSON string.
+        """
         vocab_dict = {}
         vocab_dict['idx_to_token'] = self.idx_to_token
         vocab_dict['token_to_idx'] = dict(self.token_to_idx)
@@ -771,6 +811,13 @@ class Vocab(object):
 
     @classmethod
     def from_json(cls, json_str):
+        """
+        Load vocab from JSON string or JSON file.
+        Args:
+            json_str (str): JSON string or file path of JSON string.
+        Returns:
+            Vocab: vocab generated from information contained in JSON string.
+        """
         if os.path.isfile(json_str):
             with io.open(json_str, 'w', encoding='utf-8') as f:
                 vocab_dict = json.load(f)
@@ -779,7 +826,6 @@ class Vocab(object):
         token_to_idx = vocab_dict.get('token_to_idx')
         unk_token = vocab_dict.get('unk_token')
         identifiers_to_tokens = vocab_dict.get('identifiers_to_tokens', dict())
-
         vocab = cls(counter=None,
                     token_to_idx=token_to_idx,
                     unk_token=unk_token,
@@ -788,6 +834,15 @@ class Vocab(object):
 
     @classmethod
     def from_dict(cls, token_to_idx, unk_token=None, **kwargs):
+        """
+        Generate vocab from dict information.
+        Args:
+            token_to_idx (dict): A dict describes the mapping relationship between tokens to indices.
+            unk_token (str): Special token for unkown tokens. If None, '<unk>' will be set. Default: None
+            **kwargs (dict): The additional inputs.
+        Returns:
+            Vocab: vocab generated from given dict and unk token.
+        """
         vocab = cls(counter=None,
                     token_to_idx=token_to_idx,
                     unk_token=unk_token,
@@ -804,6 +859,22 @@ class Vocab(object):
                     bos_token='<bos>',
                     eos_token='<eos>',
                     **kwargs):
+        """
+        Building vocab accoring to given iterator and other information.
+        Args:
+            iterator (collections.Iterable): Iterator of tokens.
+            max_size (int, optional): Max size of vocab, not including special tokens. Default: None.
+            min_freq (int): Ignore tokens whose frequencies are less than `min_freq`. Default: 1.
+            token_to_idx (dict, optional): A dict describes the mapping relationship between tokens
+                and indices. Default: None.
+            unk_token (str): special token for unknow token. Default: '<unk>'.
+            pad_token (str): special token for padding token. Default: '<pad>'.
+            bos_token (str): special token for bos token. Default: <bos>'.
+            eos_token (str): special token for eos token. Default: '<eos>'.
+            **kwargs (dict): The additional inputs.
+        Returns:
+            Vocab: Generated vocab from given iterator and other informations.
+        """
         counter = collections.Counter()
         for tokens in iterator:
             counter.update(tokens)
@@ -880,7 +951,7 @@ class PreTrainedTokenizer(object):
         Args:
             pretrained_model_name_or_path (str): A name or a path of pre-trained model.
             *init_inputs (tuple): The additional init inputs.
-            **kwargs (dict): The Additional inputs.
+            **kwargs (dict): The additional inputs.
         Returns:
             PreTrainedTokenizer
         """
@@ -939,7 +1010,6 @@ class PreTrainedTokenizer(object):
         for args_name, file_path in resolved_vocab_files.items():
             if args_name not in init_kwargs:
                 init_kwargs[args_name] = file_path
-
         tokenizer = cls(*init_inputs, **init_kwargs)
         return tokenizer
 
@@ -1116,13 +1186,6 @@ class BertBasicTokenizer(object):
         """
         text = convert_to_unicode(text)
         text = self._clean_text(text)
-
-        # This was added on November 1st, 2018 for the multilingual and Chinese
-        # models. This is also applied to the English models now, but it doesn't
-        # matter since the English models were not trained on any Chinese data
-        # and generally don't have any Chinese data in them (there are Chinese
-        # characters in the vocabulary because Wikipedia does have some Chinese
-        # words in the English Wikipedia.).
         text = self._tokenize_chinese_chars(text)
 
         orig_tokens = whitespace_tokenize(text)
@@ -1401,4 +1464,4 @@ class BertTokenizer(PreTrainedTokenizer):
             str: Converted string from tokens.
         """
         out_string = " ".join(tokens).replace(" ##", "").strip()
-        return out_string  # 
+        return out_string

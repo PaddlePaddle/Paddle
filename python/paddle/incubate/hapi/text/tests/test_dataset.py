@@ -22,9 +22,11 @@ import unittest
 DEFAULT_ROOT = os.path.join(DATA_HOME, 'glue')
 SEGMENT_LIST = ['train', 'dev', 'test']
 
+
 def test_md5(dataset_list):
     for i, segment in enumerate(SEGMENT_LIST):
-        filename, data_hash, field_indices, num_discard_samples = dataset_list[i].SEGMENTS[segment]
+        filename, data_hash, field_indices, num_discard_samples = dataset_list[
+            i].SEGMENTS[segment]
         fullname = os.path.join(DEFAULT_ROOT, filename)
         assert data_hash == md5file(fullname)
     return fullname
@@ -127,19 +129,27 @@ class TestGlueMNLI(unittest.TestCase):
         self.mnli_dev_mismatched = GlueMNLI('dev_mismatched')
         self.mnli_test_matched = GlueMNLI('test_matched')
         self.mnli_test_mismatched = GlueMNLI('test_mismatched')
-        self.datasets = [self.mnli_train, self.mnli_dev_matched, self.mnli_dev_mismatched, self.mnli_test_matched, self.mnli_test_mismatched]
+        self.datasets = [
+            self.mnli_train, self.mnli_dev_matched, self.mnli_dev_mismatched,
+            self.mnli_test_matched, self.mnli_test_mismatched
+        ]
         self.fullname = self.test_dataset()
 
     def test_dataset(self):
-        segment_list = ['train', 'dev_matched', 'dev_mismatched', 'test_matched', 'test_mismatched']
+        segment_list = [
+            'train', 'dev_matched', 'dev_mismatched', 'test_matched',
+            'test_mismatched'
+        ]
         for i, segment in enumerate(segment_list):
-            filename, data_hash, field_indices, num_discard_samples = self.datasets[i].SEGMENTS[segment]
+            filename, data_hash, field_indices, num_discard_samples = self.datasets[
+                i].SEGMENTS[segment]
             fullname = os.path.join(DEFAULT_ROOT, filename)
             assert data_hash == md5file(fullname)
         return fullname
 
     def test_get_labels(self):
-        assert self.mnli_train.get_labels() == ["contradiction", "entailment", "neutral"]
+        assert self.mnli_train.get_labels(
+        ) == ["contradiction", "entailment", "neutral"]
 
     def tearDown(self):
         shutil.rmtree(DEFAULT_ROOT)
@@ -172,7 +182,7 @@ class TestGlueRTE(unittest.TestCase):
         assert self.rte_train.get_labels() == ["entailment", "not_entailment"]
 
     def tearDown(self):
-        shutil.rmtree(DEFAULT_ROOT)       
+        shutil.rmtree(DEFAULT_ROOT)
 
 
 class TestSimpleDataset(unittest.TestCase):
@@ -189,6 +199,7 @@ class TestSimpleDataset(unittest.TestCase):
     def test_filter(self):
         def predicate_func(each_data):
             return True if (len(each_data[0]) % 2) == 1 else False
+
         filtered_dataset = self.simple_dataset.filter(predicate_func)
         for each_data in filtered_dataset:
             assert len(each_data[0]) % 2 == 1
@@ -197,6 +208,7 @@ class TestSimpleDataset(unittest.TestCase):
         def transform_func(each_data):
             each_data[0] = each_data[0][:500]
             return each_data
+
         applied_data = self.simple_dataset.apply(transform_func)
         for each_data in applied_data:
             assert len(each_data[0]) <= 500
