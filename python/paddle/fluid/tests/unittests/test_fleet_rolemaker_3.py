@@ -51,10 +51,10 @@ class TestCloudRoleMaker(unittest.TestCase):
             init_timeout_seconds=100,
             run_timeout_seconds=100,
             http_ip_port="127.0.0.1:36003")
-        role_maker.generate_role()
+        #role_maker.generate_role()
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        fleet.init(role_maker)
+        #fleet.init(role_maker)
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
