@@ -333,6 +333,15 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   keep_index.Resize({keep_num});
 
   Tensor scores_filter, proposals_filter;
+  // Handle the case when there is no keep index left
+  if (keep_num == 0) {
+    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    proposals_filter.mutable_data<T>({1, 4}, ctx.GetPlace());
+    scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
+    set_zero(ctx, &proposals_filter, static_cast<T>(0));
+    set_zero(ctx, &scores_filter, static_cast<T>(0));
+    return std::make_pair(proposals_filter, scores_filter);
+  }
   proposals_filter.mutable_data<T>({keep_num, 4}, ctx.GetPlace());
   scores_filter.mutable_data<T>({keep_num, 1}, ctx.GetPlace());
   GPUGather<T>(ctx, proposals, keep_index, &proposals_filter);

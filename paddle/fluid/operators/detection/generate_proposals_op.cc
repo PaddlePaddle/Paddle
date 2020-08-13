@@ -433,6 +433,16 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     Tensor keep;
     FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, &keep);
+    // Handle the case when there is no keep index left
+    if (keep.numel() == 0) {
+      math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      bbox_sel.mutable_data<T>({1, 4}, ctx.GetPlace());
+      set_zero(ctx, &bbox_sel, static_cast<T>(0));
+      Tensor scores_filter;
+      scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
+      set_zero(ctx, &scores_filter, static_cast<T>(0));
+      return std::make_pair(bbox_sel, scores_filter);
+    }
 
     Tensor scores_filter;
     bbox_sel.mutable_data<T>({keep.numel(), 4}, ctx.GetPlace());

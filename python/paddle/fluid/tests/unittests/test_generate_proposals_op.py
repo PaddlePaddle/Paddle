@@ -87,6 +87,10 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     proposals = clip_tiled_boxes(proposals, im_info[:2])
     # remove predicted boxes with height or width < min_size
     keep = filter_boxes(proposals, min_size, im_info)
+    if len(keep) == 0:
+        proposals = np.zeros((1, 4)).astype('float32')
+        scores = np.zeros((1, 1)).astype('float32')
+        return proposals, scores
     proposals = proposals[keep, :]
     scores = scores[keep, :]
 
@@ -354,6 +358,15 @@ class TestGenerateProposalsOutLodOp(TestGenerateProposalsOp):
             'RpnRoisNum': (np.asarray(
                 self.rois_num, dtype=np.int32))
         }
+
+
+class TestGenerateProposalsOpNoBoxLeft(TestGenerateProposalsOp):
+    def init_test_params(self):
+        self.pre_nms_topN = 12000  # train 12000, test 2000
+        self.post_nms_topN = 5000  # train 6000, test 1000
+        self.nms_thresh = 0.7
+        self.min_size = 1000.0
+        self.eta = 1.
 
 
 if __name__ == '__main__':
