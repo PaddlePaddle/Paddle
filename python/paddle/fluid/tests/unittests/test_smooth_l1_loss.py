@@ -28,8 +28,8 @@ def smooth_l1_loss_forward(val):
         return abs_val - 0.5
 
 
-def smooth_l1_loss_np(x, label, reduction='mean'):
-    diff = x - label
+def smooth_l1_loss_np(input, label, reduction='mean'):
+    diff = input - label
     out = np.vectorize(smooth_l1_loss_forward)(diff)
     if reduction == 'sum':
         return np.sum(out)
@@ -41,22 +41,22 @@ def smooth_l1_loss_np(x, label, reduction='mean'):
 
 class SmoothL1Loss(unittest.TestCase):
     def test_smooth_l1_loss_mean(self):
-        x_np = np.random.random([100, 200]).astype(np.float32)
+        input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            x = fluid.data(name='x', shape=[100, 200], dtype='float32')
+            input = fluid.data(name='input', shape=[100, 200], dtype='float32')
             label = fluid.data(name='label', shape=[100, 200], dtype='float32')
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
-            ret = smooth_l1_loss(x, label)
+            ret = smooth_l1_loss(input, label)
 
             exe = fluid.Executor(place)
             static_ret = exe.run(prog,
                                  feed={
-                                     'x': x_np,
+                                     'input': input_np,
                                      'label': label_np,
                                  },
                                  fetch_list=[ret])
@@ -64,32 +64,32 @@ class SmoothL1Loss(unittest.TestCase):
         with fluid.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
             dy_ret = smooth_l1_loss(
-                fluid.dygraph.to_variable(x_np),
+                fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
-        expected = smooth_l1_loss_np(x_np, label_np, reduction='mean')
+        expected = smooth_l1_loss_np(input_np, label_np, reduction='mean')
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_smooth_l1_loss_sum(self):
-        x_np = np.random.random([100, 200]).astype(np.float32)
+        input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            x = fluid.data(name='x', shape=[100, 200], dtype='float32')
+            input = fluid.data(name='input', shape=[100, 200], dtype='float32')
             label = fluid.data(name='label', shape=[100, 200], dtype='float32')
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
-            ret = smooth_l1_loss(x, label)
+            ret = smooth_l1_loss(input, label)
 
             exe = fluid.Executor(place)
             static_ret = exe.run(prog,
                                  feed={
-                                     'x': x_np,
+                                     'input': input_np,
                                      'label': label_np,
                                  },
                                  fetch_list=[ret])
@@ -97,32 +97,32 @@ class SmoothL1Loss(unittest.TestCase):
         with fluid.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
             dy_ret = smooth_l1_loss(
-                fluid.dygraph.to_variable(x_np),
+                fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
-        expected = smooth_l1_loss_np(x_np, label_np, reduction='sum')
+        expected = smooth_l1_loss_np(input_np, label_np, reduction='sum')
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_smooth_l1_loss_none(self):
-        x_np = np.random.random([100, 200]).astype(np.float32)
+        input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            x = fluid.data(name='x', shape=[100, 200], dtype='float32')
+            input = fluid.data(name='input', shape=[100, 200], dtype='float32')
             label = fluid.data(name='label', shape=[100, 200], dtype='float32')
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
-            ret = smooth_l1_loss(x, label)
+            ret = smooth_l1_loss(input, label)
 
             exe = fluid.Executor(place)
             static_ret = exe.run(prog,
                                  feed={
-                                     'x': x_np,
+                                     'input': input_np,
                                      'label': label_np,
                                  },
                                  fetch_list=[ret])
@@ -130,11 +130,11 @@ class SmoothL1Loss(unittest.TestCase):
         with fluid.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
             dy_ret = smooth_l1_loss(
-                fluid.dygraph.to_variable(x_np),
+                fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
-        expected = smooth_l1_loss_np(x_np, label_np, reduction='none')
+        expected = smooth_l1_loss_np(input_np, label_np, reduction='none')
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
