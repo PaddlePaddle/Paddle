@@ -1531,7 +1531,7 @@ class Model(object):
         """
         Save inference model can be in static or dynamic mode.
         It should be noted that before using `save_inference_model`, 
-        `forward` must be called and `@paddle.jit.to_static` should
+        `test_batch` must be called and `@paddle.jit.to_static` must
         be added in dygraph now and these will be optimized later.
 
         Args:
@@ -1553,58 +1553,29 @@ class Model(object):
         .. code-block:: python
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
-            from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
+            from paddle.nn import Linear
             import numpy as np
             from paddle.incubate.hapi import Model, Input
-            import os
-            from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
-            class LeNet(fluid.dygraph.Layer):
-                def __init__(self, num_classes=10, classifier_activation=None):
-                    super(LeNet, self).__init__()
-                    self.num_classes = num_classes
-                    self.features = Sequential(
-                        Conv2D(
-                            1, 6, 3, stride=1, padding=1),
-                        ReLU(),
-                        Pool2D(2, 'max', 2),
-                        Conv2D(
-                            6, 16, 5, stride=1, padding=0),
-                        ReLU(),
-                        Pool2D(2, 'max', 2))
+            class MyModel(fluid.dygraph.Layer):
+                def __init__(self, classifier_activation='softmax'):
+                    super(MyModel, self).__init__()
+                    self._fc = Linear(20, 10, act=classifier_activation)
 
-                    if num_classes > 0:
-                        self.fc = Sequential(
-                            Linear(400, 120),
-                            Linear(120, 84),
-                            Linear(
-                                84, 10, act=classifier_activation))
+                @fluid.dygraph.jit.declarative # In static mode, you need to delete this.
+                def forward(self, x):
+                    y = self._fc(x)
+                    return y
 
-                @paddle.jit.to_static
-                def forward(self, inputs):
-                     x = self.features(inputs)
-
-                     if self.num_classes > 0:
-                         x = fluid.layers.flatten(x, 1)
-                         x = self.fc(x)
-                     return x
-
-            dynamic = True # False
+            dynamic = True # False.
             fluid.enable_dygraph() if dynamic else None
-            prog_translator = ProgramTranslator()
-            prog_translator.enable(False) if not dynamic else None
-            inputs = hapi.Input('image', [-1, 1, 28, 28], 'float32')
-            model = hapi.Model(LeNet(), inputs)
+            inputs = hapi.Input('x', [-1, 20], 'float32')
+            model = hapi.Model(MyModel(), inputs)
             model.prepare()
-            tensor_img = np.array(np.random.random((1, 1, 28, 28)), dtype=np.float32)
+            tensor_img = np.array(np.random.random((1, 20)), dtype=np.float32)
             results = model.test_batch(tensor_img) # Now it's necessary in a dygraph
 
             model.save_inference_model('inference_model')
-
-        TODO:
-            1. Save correct shape of input, now it can not save `None` in shape.
-            2. Make it Unnecessary to call `forward` before call `save_inference_model` for users.
-            3. Make it Unnecessary to add `@paddle.jit.to_static` for users.
         """
 
         def get_inout_spec(all_vars, return_name=False):
@@ -1616,6 +1587,10 @@ class Model(object):
 
             return result_list
 
+        # TODO:
+        # 1. Save correct shape of input, now the interface stores the shape that the user sent to `test_batch`.
+        # 2. Make it Unnecessary to call `forward` before calling `save_inference_model` for users.
+        # 3. Make it Unnecessary to add `@paddle.jit.to_static` for users.
         if fluid.in_dygraph_mode():
             layer = self.network
             fluid.disable_dygraph()
@@ -1670,7 +1645,7 @@ class Model(object):
 
             # 5. save inference model
             with scope_guard(scope):
-                fluid.io.save_inference_model(
+                return fluid.io.save_inference_model(
                     dirname=save_dir,
                     feeded_var_names=input_var_names,
                     target_vars=output_vars,
