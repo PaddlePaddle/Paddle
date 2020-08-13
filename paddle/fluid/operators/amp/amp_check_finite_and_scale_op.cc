@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/amp/amp_check_finite_and_scale_op.h"
+
 #include <string>
 #include <vector>
 
@@ -67,7 +68,7 @@ class AmpCheckFiniteAndScaleOpMaker : public framework::OpProtoAndCheckerMaker {
               "amp_check_finite_and_unscale operator.")
         .AsDuplicable();
     AddOutput("FoundInfinite",
-              "(Tensor) 1-dim tensor, contains a int scalar, which indicates "
+              "(Tensor) 1-dim tensor, contains a bool scalar, which indicates "
               "if there there is infinite or nan item in input X.");
     AddComment(R"DOC(
 amp_check_finite_and_scale operator.

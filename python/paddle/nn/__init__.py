@@ -93,6 +93,7 @@ from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
+from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
 
 from .layer.vision import PixelShuffle
 

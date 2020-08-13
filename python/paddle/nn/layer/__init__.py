@@ -21,6 +21,7 @@ from . import extension
 from . import activation
 from . import norm
 from . import vision
+from . import distance
 
 from .activation import *
 from .loss import *
@@ -74,3 +75,4 @@ from .norm import InstanceNorm  #DEFINE_ALIAS
 # from .rnn import LSTMCell        #DEFINE_ALIAS
 
 from .vision import PixelShuffle  #DEFINE_ALIAS
+from .distance import PairwiseDistance  #DEFINE_ALIAS
