@@ -1620,13 +1620,13 @@ def huber_loss(input, label, delta):
 
 
 @templatedoc()
-def kldiv_loss(input, target, reduction='mean', name=None):
+def kldiv_loss(x, target, reduction='mean', name=None):
     """
 
     ${comment}
 
     Args:
-        input (Tensor): ${x_comment}
+        x (Tensor): ${x_comment}
         target (Tensor): ${target_comment}
         reduction (Tensor): ${reduction_comment}
         name(str, optional): For detailed information, please refer
@@ -1671,15 +1671,14 @@ def kldiv_loss(input, target, reduction='mean', name=None):
 
     """
     helper = LayerHelper('kldiv_loss', **locals())
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'kldiv_loss')
+    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'kldiv_loss')
     check_variable_and_dtype(target, 'target', ['float32', 'float64'],
                              'kldiv_loss')
     check_type(reduction, 'reduction', str, 'kldiv_loss')
-    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='kldiv_loss',
-        inputs={'X': input,
+        inputs={'X': x,
                 'Target': target},
         outputs={'Loss': loss},
         attrs={'reduction': reduction})
