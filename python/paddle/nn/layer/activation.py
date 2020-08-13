@@ -254,7 +254,7 @@ class Sigmoid(layers.Layer):
     
     .. math::
 
-        output = \frac{1}{1 + e^{-x}}
+        output = \\frac{1}{1 + e^{-x}}
     
     Parameters:
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
