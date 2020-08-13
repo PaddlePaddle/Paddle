@@ -93,14 +93,24 @@ class TestKLDivLossDygraph(unittest.TestCase):
     def test_kl_loss_batchmean(self):
         self.run_kl_loss('batchmean')
 
-    def test_kl_loss_batchmean(self):
+    def test_kl_loss_mean(self):
         self.run_kl_loss('mean')
 
-    def test_kl_loss_batchmean(self):
+    def test_kl_loss_sum(self):
         self.run_kl_loss('sum')
 
-    def test_kl_loss_batchmean(self):
+    def test_kl_loss_none(self):
         self.run_kl_loss('none')
+
+    def test_kl_loss_error(self):
+        self.assertRaises(ValueError, self.run_kl_loss, 'error')
+
+    def test_kl_loss_static(self):
+        x = paddle.fluid.data(name='x', shape=[5, 20])
+        target = paddle.fluid.data(name='target', shape=[5, 20])
+
+        kldiv_criterion = paddle.nn.KLDivLoss()
+        pred_loss = kldiv_criterion(x, target)
 
 
 if __name__ == "__main__":

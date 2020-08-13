@@ -591,8 +591,8 @@ class KLDivLoss(fluid.dygraph.Layer):
             Default is ``'mean'``.
 
     Shape:
-      - x: (N, *) where * means, any number of additional dimensions.
-      - label: (N, *), same shape as x
+      - input: (N, *) where * means, any number of additional dimensions.
+      - label: (N, *), same shape as input
       - output: tensor with shape: (1) by default.
 
 
@@ -638,9 +638,9 @@ class KLDivLoss(fluid.dygraph.Layer):
         super(KLDivLoss, self).__init__()
         self.reduction = reduction
 
-    def forward(self, x, label):
+    def forward(self, input, label):
         fluid.data_feeder.check_variable_and_dtype(
-            x, 'input', ['float32', 'float64'], 'KLDivLoss')
+            input, 'input', ['float32', 'float64'], 'KLDivLoss')
         fluid.data_feeder.check_variable_and_dtype(
             label, 'target', ['float32', 'float64'], 'KLDivLoss')
         fluid.data_feeder.check_type(self.reduction, 'reduction', str,
@@ -652,9 +652,9 @@ class KLDivLoss(fluid.dygraph.Layer):
                 "received %s, which is not allowed." % self.reduction)
 
         if paddle.in_dynamic_mode():
-            out = core.ops.kldiv_loss(x, label, 'reduction', self.reduction)
+            out = core.ops.kldiv_loss(input, label, 'reduction', self.reduction)
             return out
 
-        out = paddle.nn.functional.kl_div(x, label, self.reduction)
+        out = paddle.nn.functional.kl_div(input, label, self.reduction)
 
         return out

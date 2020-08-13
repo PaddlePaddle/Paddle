@@ -1620,13 +1620,13 @@ def huber_loss(input, label, delta):
 
 
 @templatedoc()
-def kldiv_loss(x, target, reduction='mean', name=None):
+def kldiv_loss(input, target, reduction='mean', name=None):
     """
 
     ${comment}
 
     Args:
-        x (Tensor): ${x_comment}
+        input (Tensor): ${x_comment}
         target (Tensor): ${target_comment}
         reduction (Tensor): ${reduction_comment}
         name(str, optional): For detailed information, please refer
@@ -1646,39 +1646,40 @@ def kldiv_loss(x, target, reduction='mean', name=None):
             paddle.enable_imperative()
             
             shape = (5, 20)
-            x = np.random.uniform(-10, 10, shape).astype('float32')
+            input = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [N]
-            pred_loss = F.kl_div(paddle.imperative.to_variable(x),
+            pred_loss = F.kl_div(paddle.imperative.to_variable(input),
                                  paddle.imperative.to_variable(target), reduction='batchmean')
             # shape=[5]
             
             # 'mean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.imperative.to_variable(x),
+            pred_loss = F.kl_div(paddle.imperative.to_variable(input),
                                  paddle.imperative.to_variable(target), reduction='mean')
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.imperative.to_variable(x),
+            pred_loss = F.kl_div(paddle.imperative.to_variable(input),
                                  paddle.imperative.to_variable(target), reduction='sum')
             # shape=[1]
 
-            # 'none' reduction, loss shape is same with X shape
-            pred_loss = F.kl_div(paddle.imperative.to_variable(x),
+            # 'none' reduction, loss shape is same with input shape
+            pred_loss = F.kl_div(paddle.imperative.to_variable(input),
                                  paddle.imperative.to_variable(target), reduction='none')
             # shape=[5, 20]
 
     """
     helper = LayerHelper('kldiv_loss', **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'kldiv_loss')
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'kldiv_loss')
     check_variable_and_dtype(target, 'target', ['float32', 'float64'],
                              'kldiv_loss')
     check_type(reduction, 'reduction', str, 'kldiv_loss')
-    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='kldiv_loss',
-        inputs={'X': x,
+        inputs={'X': input,
                 'Target': target},
         outputs={'Loss': loss},
         attrs={'reduction': reduction})
