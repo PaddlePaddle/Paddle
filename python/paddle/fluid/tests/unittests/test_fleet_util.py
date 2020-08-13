@@ -22,8 +22,8 @@ import tempfile
 import os
 import sys
 from paddle.dataset.common import download, DATA_HOME
-from paddle.fleet.base.util_factory import fleet_util
-import paddle.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.base.util_factory import fleet_util
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 
 class TestFleetUtil(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestFleetUtil(unittest.TestCase):
     train_dir = os.path.join("fleet_util_data", "train_program")
 
     def test_util_base(self):
-        import paddle.fleet as fleet
+        import paddle.distributed.fleet as fleet
         util = fleet.UtilBase()
         strategy = fleet.DistributedStrategy()
         util._set_strategy(strategy)
@@ -42,7 +42,7 @@ class TestFleetUtil(unittest.TestCase):
         util._set_role_maker(role_maker)
 
     def test_util_factory(self):
-        import paddle.fleet as fleet
+        import paddle.distributed.fleet as fleet
         factory = fleet.base.util_factory.UtilFactory()
         strategy = fleet.DistributedStrategy()
         role_maker = None  # should be fleet.PaddleCloudRoleMaker()
@@ -55,7 +55,7 @@ class TestFleetUtil(unittest.TestCase):
         self.assertEqual(util.role_maker, None)
 
     def test_get_util(self):
-        import paddle.fleet as fleet
+        import paddle.distributed.fleet as fleet
         import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -63,7 +63,7 @@ class TestFleetUtil(unittest.TestCase):
         self.assertEqual(default_util, None)
 
     def test_set_user_defined_util(self):
-        import paddle.fleet as fleet
+        import paddle.distributed.fleet as fleet
 
         class UserDefinedUtil(fleet.UtilBase):
             def __init__(self):
@@ -81,7 +81,7 @@ class TestFleetUtil(unittest.TestCase):
         self.assertEqual(user_id, 10)
 
     def test_fs(self):
-        from paddle.fleet.utils import LocalFS
+        from paddle.distributed.fleet.utils import LocalFS
         fs = LocalFS()
         dirs, files = fs.ls_dir("test_tmp")
         dirs, files = fs.ls_dir("./")

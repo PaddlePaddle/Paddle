@@ -66,8 +66,8 @@ from argparse import ArgumentParser, REMAINDER
 import paddle
 import paddle.fluid as fluid
 
-from paddle.fleet.launch_utils import *
-import paddle.fleet.cloud_utils as cloud_utils
+from paddle.distributed.fleet.launch_utils import *
+import paddle.distributed.fleet.cloud_utils as cloud_utils
 
 
 def _print_arguments(args):
