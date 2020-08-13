@@ -30,7 +30,7 @@ limitations under the License. */
 
 #define TILE_TEMPLATE(z, n, data) \
   case n + 1: {                   \
-    TILE<n + 1>(context);         \
+    Tile<n + 1>(context);         \
     break;                        \
   }
 #define REP_TILE_TEMPLATE(n) BOOST_PP_REPEAT(n, TILE_TEMPLATE, ~)
@@ -119,7 +119,7 @@ class TileKernel : public framework::OpKernel<T> {
     auto in_dims = in0->dims();
     auto repeat_times = get_repeat_times(context);
     PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(in_dims.size()), expand_times.size(),
+        static_cast<size_t>(in_dims.size()), repeat_times.size(),
         platform::errors::InvalidArgument(
             "The number of elements (%d) of 'repeat_times' for "
             "Op(tile) must be equal to the number "

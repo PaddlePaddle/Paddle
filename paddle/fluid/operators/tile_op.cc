@@ -171,13 +171,13 @@ class TileGradOp : public framework::OperatorWithKernel {
       start_pos = 1u;
     }
 
-    for (size_t i = start_pos; i < expand_times.size(); ++i) {
+    for (size_t i = start_pos; i < repeat_times.size(); ++i) {
       if (repeat_times[i] == -1) {
         continue;
       } else {
         if (ctx->IsRuntime()) {
           PADDLE_ENFORCE_EQ(
-              x_dims[i] * expand_times[i], out_dims[i],
+              x_dims[i] * repeat_times[i], out_dims[i],
               platform::errors::InvalidArgument(
                   "The %uth dimension size (%d) of Input(Out@GRAD) should be "
                   "equal to the multiplication of the crroresponding dimension "
