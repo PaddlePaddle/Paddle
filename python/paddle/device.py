@@ -15,7 +15,7 @@
 # TODO: define the functions to manipulate devices 
 from paddle.fluid import core
 __all__ = [
-    'cudnn_version',
+    'get_cudnn_version',
     #            'cpu_places',
     #            'CPUPlace',
     #            'cuda_pinned_places',
@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 
-def cudnn_version():
+def get_cudnn_version():
     """
     This funciton return the version of cudnn.
     """

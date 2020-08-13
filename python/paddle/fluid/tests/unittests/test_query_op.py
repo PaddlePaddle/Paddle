@@ -21,12 +21,11 @@ from paddle.fluid import core
 
 class TestCudnnVersion(unittest.TestCase):
     def test_no_cudnn(self):
-        if not core.is_compiled_with_cuda():
-            cudnn_version = paddle.cudnn_version()
-            self.assertEqual((cudnn_version is None), True)
-
-    def test_cudnn(self):
         cudnn_version = paddle.cudnn_version()
+        if not core.is_compiled_with_cuda():
+            self.assertEqual((cudnn_version is None), True)
+        else:
+            self.assertEqual((isinstance(cudnn_version, int)), True)
 
 
 if __name__ == '__main__':
