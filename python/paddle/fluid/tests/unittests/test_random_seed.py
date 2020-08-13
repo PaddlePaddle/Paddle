@@ -55,7 +55,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
     def test_generator_uniform_random_static(self):
 
-        paddle.disable_dygraph()
+        fluid.disable_dygraph()
 
         gen = generator.Generator()
         gen.manual_seed(123123143)
