@@ -31,7 +31,6 @@ from ...fluid.layers import reshape
 from ...fluid.layers import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid_focal_loss  #DEFINE_ALIAS
 from ...fluid.layers import smooth_l1  #DEFINE_ALIAS
-from ...fluid.layers import smooth_l1_v2  #DEFINE_ALIAS
 from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
 from ...fluid.layers import ssd_loss  #DEFINE_ALIAS
@@ -127,9 +126,9 @@ def smooth_l1_loss(input, label, reduction='mean'):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            x = np.random.rand(3,3).astype("float32")
-            label = np.random.rand(3,3).astype("float32")
-            output= exe.run(feed={"input": input, "label": label},
+            input_data = np.random.rand(3,3).astype("float32")
+            label_data = np.random.rand(3,3).astype("float32")
+            output= exe.run(feed={"input": input_data, "label": label_data},
                             fetch_list=[result])
             print(output)
 
@@ -147,11 +146,27 @@ def smooth_l1_loss(input, label, reduction='mean'):
     fluid.data_feeder.check_variable_and_dtype(label, 'label', ['float32'],
                                                'smooth_l1_loss')
 
+    helper = LayerHelper('smooth_l1_loss_v2', **locals())
+
+    diff = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    sigma = 1.0
+    helper.append_op(
+        type='smooth_l1_loss_v2',
+        inputs={
+            'X': input,
+            'Y': label,
+            'InsideWeight': None,
+            'OutsideWeight': None
+        },
+        outputs={'Diff': diff,
+                 'Out': out},
+        attrs={'sigma': sigma})
+
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in smooth_l1_loss should be 'sum', 'mean' or"
             " 'none', but received %s, which is not allowed." % reduction)
-    out = smooth_l1_v2(input, label)
     if reduction == 'none':
         return out
     reduce_op = 'reduce_mean'

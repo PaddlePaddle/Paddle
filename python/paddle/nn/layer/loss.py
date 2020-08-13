@@ -628,9 +628,9 @@ class SmoothL1Loss(fluid.dygraph.Layer):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            x = np.random.rand(3,3).astype("float32")
-            label = np.random.rand(3,3).astype("float32")
-            output= exe.run(feed={"input": input, "label": label},
+            input_data = np.random.rand(3,3).astype("float32")
+            label_data = np.random.rand(3,3).astype("float32")
+            output= exe.run(feed={"input": input_data, "label": label_data},
                             fetch_list=[result])
             print(output)
 
