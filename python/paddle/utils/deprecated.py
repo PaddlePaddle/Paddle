@@ -18,7 +18,6 @@ decorator to deprecate a function or class
 import warnings
 import functools
 import paddle
-import sys
 
 # NOTE(zhiqiu): Since python 3.2, DeprecationWarning is ignored by default,
 # and since python 3.7, it is once again shown by default when triggered directly by code in __main__.
