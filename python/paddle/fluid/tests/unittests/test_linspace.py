@@ -32,6 +32,7 @@ class TestLinspaceOpCommonCase(OpTest):
             'Stop': np.array([10]).astype(dtype),
             'Num': np.array([11]).astype('int32')
         }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
         self.outputs = {'Out': np.arange(0, 11).astype(dtype)}
 
@@ -48,6 +49,7 @@ class TestLinspaceOpReverseCase(OpTest):
             'Stop': np.array([0]).astype(dtype),
             'Num': np.array([11]).astype('int32')
         }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
         self.outputs = {'Out': np.arange(10, -1, -1).astype(dtype)}
 
@@ -64,6 +66,7 @@ class TestLinspaceOpNumOneCase(OpTest):
             'Stop': np.array([0]).astype(dtype),
             'Num': np.array([1]).astype('int32')
         }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
         self.outputs = {'Out': np.array(10, dtype=dtype)}
 
@@ -89,10 +92,16 @@ class TestLinspaceAPI(unittest.TestCase):
 
     def test_imperative(self):
         paddle.disable_static()
-        out = paddle.linspace(0, 10, 5, dtype='float32')
-        np_out = np.linspace(0, 10, 5, dtype='float32')
+        out1 = paddle.linspace(0, 10, 5, dtype='float32')
+        np_out1 = np.linspace(0, 10, 5, dtype='float32')
+        out2 = paddle.linspace(0, 10, 5, dtype='int32')
+        np_out2 = np.linspace(0, 10, 5, dtype='int32')
+        out3 = paddle.linspace(0, 10, 18, dtype='int32')
+        np_out3 = np.linspace(0, 10, 18, dtype='int32')
         paddle.enable_static()
-        self.assertEqual((out.numpy() == np_out).all(), True)
+        self.assertEqual((out1.numpy() == np_out1).all(), True)
+        self.assertEqual((out2.numpy() == np_out2).all(), True)
+        self.assertEqual((out3.numpy() == np_out3).all(), True)
 
 
 class TestLinspaceOpError(unittest.TestCase):
@@ -100,7 +109,12 @@ class TestLinspaceOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
 
             def test_dtype():
-                fluid.layers.linspace(0, 10, 1, dtype="int32")
+                fluid.layers.linspace(0, 10, 1, dtype="int8")
+
+            self.assertRaises(TypeError, test_dtype)
+
+            def test_dtype():
+                fluid.layers.linspace(0, 10, 1.33, dtype="int32")
 
             self.assertRaises(TypeError, test_dtype)
 
