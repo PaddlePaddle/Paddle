@@ -629,7 +629,7 @@ class SmoothL1Loss(fluid.dygraph.Layer):
     .. math::
 
          \\mathop{z_i}=\\left\\{\\begin{array}{rcl}
-        0.5(x_i - y_i) & & {if |x_i - y_i| > 1} \\\\
+        0.5(x_i - y_i)^2 & & {if |x_i - y_i| > 1} \\\\
         |x_i - y_i| - 0.5 & & {otherwise}
         \\end{array} \\right.
 
@@ -642,16 +642,16 @@ class SmoothL1Loss(fluid.dygraph.Layer):
             Default is ``'mean'``.
 
     Call Parameters:
-        x (Tensor): Input tensor, the data type is float32. Shape is
+        input (Tensor): Input tensor, the data type is float32. Shape is
             (N, C), where C is number of classes, and if shape is more than 2D, this
             is (N, C, D1, D2,..., Dk), k >= 1.
         label (Tensor): Label tensor, the data type is float32. The shape of label
-            is the same as the shape of x.
+            is the same as the shape of input.
 
     Returns:
-        The tensor variable storing the smooth_l1_loss of x and label.
+        The tensor variable storing the smooth_l1_loss of input and label.
 
-    Return type: Variable.
+    Return type: Tensor.
 
     Examples:
         .. code-block:: python
@@ -660,27 +660,27 @@ class SmoothL1Loss(fluid.dygraph.Layer):
             import paddle
             import paddle.fluid as fluid
             import numpy as np
-            x = fluid.layers.data(name="x", shape=[-1, 3], dtype="float32")
+            input = fluid.layers.data(name="input", shape=[-1, 3], dtype="float32")
             label = fluid.layers.data(name="label", shape=[-1, 3], dtype="float32")
             loss = paddle.nn.SmoothL1Loss()
-            result = loss(x,label)
+            result = loss(input, label)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             x = np.random.rand(3,3).astype("float32")
             label = np.random.rand(3,3).astype("float32")
-            output= exe.run(feed={"x": x, "label": label},
+            output= exe.run(feed={"input": input, "label": label},
                             fetch_list=[result])
             print(output)
 
             # imperative mode
             import paddle.fluid.dygraph as dg
             with dg.guard(place) as g:
-                x = dg.to_variable(input_data)
+                input = dg.to_variable(input_data)
                 label = dg.to_variable(label_data)
                 weight = dg.to_variable(weight_data)
                 loss = paddle.nn.SmoothL1Loss()
-                output = loss(x, label)
+                output = loss(input, label)
                 print(output.numpy())
     """
 
@@ -688,6 +688,6 @@ class SmoothL1Loss(fluid.dygraph.Layer):
         super(SmoothL1Loss, self).__init__()
         self.reduction = reduction
 
-    def forward(self, x, label):
+    def forward(self, input, label):
         return paddle.nn.functional.smooth_l1_loss(
-            x, label, reduction=self.reduction)
+            input, label, reduction=self.reduction)
