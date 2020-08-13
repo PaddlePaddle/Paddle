@@ -100,15 +100,15 @@ class ExpandV2Kernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rank, 1,
         platform::errors::InvalidArgument(
-            "The rank of the input 'x' for expand_v2_op must be greater than "
-            "or equal to 1, but the value received is %d.",
+            "The rank of the input 'X' for expand_v2_op must be greater than "
+            "0, but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
         rank, MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The rank of the input 'X' for expand_v2_op must be less than "
-            "or equal to %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, rank));
+            "%d, but the value received is %d.",
+            MAX_RANK_SUPPORTED + 1, rank));
     switch (rank) { REP_EXPAND_TEMPLATE(MAX_RANK_SUPPORTED) }
   }
 
@@ -122,17 +122,16 @@ class ExpandV2Kernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(in_dims.size()), expand_shape.size(),
         platform::errors::InvalidArgument(
-            "The number of elements (%d) of 'shape' for "
-            "expand_v2_op must be equal to the number "
-            "of dimensions (%d) of the input.",
-            expand_shape.size(), static_cast<size_t>(in_dims.size())));
+            "The number of elements (%d) in 'shape' for "
+            "expand_v2_op must be equal to the rank (%d) of the input(X).",
+            expand_shape.size(), in_dims.size()));
     std::vector<int> expand_times(in_dims.size());
-    for (size_t i = 0; i < in_dims.size(); i++) {
+    for (decltype(in_dims.size()) i = 0; i < in_dims.size(); ++i) {
       if (expand_shape[i] < 0) {
         PADDLE_ENFORCE_EQ(
             expand_shape[i], -1,
             platform::errors::InvalidArgument(
-                "When some value of shape is negative for expand_v2_op, "
+                "When the value in shape is negative for expand_v2_op, "
                 "only -1 is supported, but the value received is %d.",
                 expand_shape[i]));
         expand_times[i] = 1;
@@ -140,14 +139,14 @@ class ExpandV2Kernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_GT(
             expand_shape[i], 0,
             platform::errors::InvalidArgument(
-                "The value of shape for expand_v2_op must be greater than 0, "
+                "The value in shape for expand_v2_op must be positive, "
                 "but the value received is %d.",
                 expand_shape[i]));
         PADDLE_ENFORCE_EQ(
             expand_shape[i] % in_dims[i], 0,
             platform::errors::InvalidArgument(
-                "The value (%d) of shape for expand_v2_op must be an integer "
-                "multiple of the input (%d) for dimension %d.",
+                "The value (%d) in shape for expand_v2_op must be an integer "
+                "multiple of the input(X) (%d) for dimension %d.",
                 expand_shape[i], in_dims[i], i));
         expand_times[i] = expand_shape[i] / in_dims[i];
       }

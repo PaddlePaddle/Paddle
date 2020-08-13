@@ -41,13 +41,13 @@ class ExpandV2Op : public framework::OperatorWithKernel {
         static_cast<size_t>(x_dims.size()), expand_shape.size(),
         platform::errors::InvalidArgument(
             "The number of elements (%d) of 'shape' for "
-            "Op(expand) must be equal to the number of dimensions "
+            "expand_v2 op must be equal to the number of dimensions "
             "(%d) of the input.",
             expand_shape.size(), static_cast<size_t>(x_dims.size())));
     PADDLE_ENFORCE_LE(
         x_dims.size(), 6,
         platform::errors::InvalidArgument(
-            "The number of dimensions of the input for Op(expand) "
+            "The number of dimensions of the input for expand_v2 op "
             "must not be greater than 6, but the value received is %d.",
             x_dims.size()));
 
@@ -61,7 +61,7 @@ class ExpandV2Op : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GT(
             expand_shape[i], 0,
             platform::errors::InvalidArgument(
-                "The %uth element of 'shape' for Op(expand) must be "
+                "The %uth element of 'shape' for expand_v2 op must be "
                 "greater than 0, but the value given is %d.",
                 i, expand_shape[i]));
         out_shape[i] = expand_shape[i];
@@ -170,17 +170,6 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
     }
 
     for (size_t i = start_pos; i < expand_shape.size(); ++i) {
-      // if (expand_shape[i] == -1) {
-      //   if (ctx->IsRuntime()) {
-      //     PADDLE_ENFORCE_EQ(
-      //         x_dims[i], out_dims[i],
-      //         platform::errors::InvalidArgument(
-      //             "The %uth dimension size (%d) of Input(Out@GRAD) "
-      //             should be equal to the crroresponding dimension "
-      //             "sizes of Input(X) (%d) when the value of shape is -1.",
-      //             i, out_dims[i], x_dims[i]));
-      //   }
-      // } else {
       if (expand_shape[i] > 0) {
         if (ctx->IsRuntime()) {
           PADDLE_ENFORCE_EQ(
