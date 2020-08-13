@@ -720,7 +720,7 @@ void OpDesc::Flush() {
 
 void OpDesc::CheckAttrs() {
   PADDLE_ENFORCE_EQ(Type().empty(), false,
-                    platform::errors::AlreadyExists(
+                    platform::errors::PreconditionNotMet(
                         "CheckAttrs() can not be called before type is set."));
   auto *checker = OpInfoMap::Instance().Get(Type()).Checker();
   if (checker == nullptr) {
