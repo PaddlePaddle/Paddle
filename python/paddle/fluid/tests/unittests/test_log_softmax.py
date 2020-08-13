@@ -39,25 +39,23 @@ def ref_log_softmax_grad(x, axis):
 
 
 class TestLogSoftmaxOp(OpTest):
-    def get_x_shape(self):
-        return [2, 3, 4, 5]
-
-    def get_axis(self):
-        return -1
-
     def setUp(self):
         self.op_type = 'log_softmax'
         self.dtype = 'float64'
-        self.shape = self.get_x_shape()
-        self.axis = self.get_axis()
+        self.shape = [2, 3, 4, 5]
+        self.axis = -1
+        self.set_attrs()
 
-        x = np.random.uniform(0.1, 1., self.shape).astype('float64')
+        x = np.random.uniform(0.1, 1., self.shape).astype(self.dtype)
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
         self.x_grad = ref_log_softmax_grad(x, self.axis)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {'axis': self.axis}
+
+    def set_attrs(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -67,13 +65,13 @@ class TestLogSoftmaxOp(OpTest):
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
-    def get_x_shape(self):
-        return [12, 10]
+    def set_attrs(self):
+        self.shape = [12, 10]
 
 
 class TestLogSoftmaxAxis(TestLogSoftmaxOp):
-    def get_x_axis(self):
-        return 1
+    def set_attrs(self):
+        self.axis = 1
 
 
 class TestNNLogSoftmaxAPI(unittest.TestCase):
