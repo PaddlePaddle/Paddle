@@ -50,11 +50,8 @@ class TestNNSigmoidAPI(unittest.TestCase):
             y = mysigmoid(x)
             fluid.backward.append_backward(paddle.mean(y))
         exe = paddle.static.Executor(place)
-        out = exe.run(main_program,
-                      feed={'x': self.x},
-                      fetch_list=[y, y.grad_name, x.grad_name])
+        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
         self.assertTrue(np.allclose(out[0], self.y))
-        self.assertTrue(np.allclose(out[2], self.ref_backward(self.y, out[1])))
         self.assertTrue(y.name.startswith("api_sigmoid"))
 
     def check_dynamic_api(self, place):
