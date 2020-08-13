@@ -180,7 +180,7 @@ class no_grad:
     In this mode, the result of every computation will have `stop_gradient` set
     to `True`.
 
-    Also functions as a decorator. (Make sure to instantiate with parenthesis.)
+    Also functions as a decorator. (Make sure to use an instance.)
 
     Examples:
 
