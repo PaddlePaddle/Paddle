@@ -33,7 +33,7 @@ void BindGenerator(py::module* m) {
   py::class_<framework::GeneratorState>(*m, "GeneratorState", "");
   py::class_<framework::Generator, std::shared_ptr<framework::Generator>>(
       *m, "Generator")
-      .def(py::init([]() { return framework::Generator::GetInstance(); }))
+      .def(py::init([]() { return framework::Generator::GetInstanceX(); }))
       .def("get_state", &framework::Generator::GetState,
            py::return_value_policy::copy)
       .def("set_state", &framework::Generator::SetState,

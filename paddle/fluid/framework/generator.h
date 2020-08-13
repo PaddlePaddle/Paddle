@@ -65,10 +65,20 @@ struct Generator {
 
   uint64_t Random64();
 
+  bool is_init_py = false;
+
   // CPU Generator singleton
   static std::shared_ptr<Generator> GetInstance() {
     if (NULL == gen_instance_) {
       gen_instance_.reset(new paddle::framework::Generator());
+    }
+    return gen_instance_;
+  }
+
+  static std::shared_ptr<Generator> GetInstanceX() {
+    if (NULL == gen_instance_) {
+      gen_instance_.reset(new paddle::framework::Generator());
+      gen_instance_->is_init_py = true;
     }
     return gen_instance_;
   }
