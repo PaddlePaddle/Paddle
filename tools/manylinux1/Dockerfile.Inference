@@ -108,7 +108,6 @@ RUN tar -zxvf pip-18.0.tar.gz
 WORKDIR pip-18.0
 RUN python setup.py install && \
   python3.7 setup.py install && \
-  python3.6 setup.py install && \
   python3 setup.py install
 
 WORKDIR /home
