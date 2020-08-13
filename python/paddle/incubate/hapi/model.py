@@ -1530,9 +1530,10 @@ class Model(object):
                              model_only=False):
         """
         Save inference model can be in static or dynamic mode.
-        It should be noted that before using `save_inference_model`, 
-        `test_batch` must be called and `@paddle.jit.to_static` must
-        be added in dygraph now and these will be optimized later.
+        It should be noted that before using `save_inference_model`, you should
+        run the model, and the shape you saved is as same as the input of its
+        running. `@paddle.jit.to_static` must be added on `forward` function of
+        your layer in dynamic mode now and these will be optimized later.
 
         Args:
             save_dir (str): The directory path to save the inference model.
@@ -1547,7 +1548,6 @@ class Model(object):
 
         Returns:
             list: The fetch variables' name list
-
 
         Examples:
         .. code-block:: python
@@ -1588,9 +1588,10 @@ class Model(object):
             return result_list
 
         # TODO:
-        # 1. Save correct shape of input, now the interface stores the shape that the user sent to `test_batch`.
-        # 2. Make it Unnecessary to call `forward` before calling `save_inference_model` for users.
-        # 3. Make it Unnecessary to add `@paddle.jit.to_static` for users.
+        # 1. Make it Unnecessary to run model before calling `save_inference_model` for users in dygraph.
+        # 2. Save correct shape of input, now the interface stores the shape that the user sent to 
+        #    the inputs of the model in running.
+        # 3. Make it Unnecessary to add `@paddle.jit.to_static` for users in dynamic mode.
         if fluid.in_dygraph_mode():
             layer = self.network
             fluid.disable_dygraph()
