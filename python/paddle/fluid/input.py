@@ -22,7 +22,7 @@ from ..utils import deprecated
 __all__ = ['one_hot', 'embedding']
 
 
-@deprecated(since='2.0.0', update_to='paddle.functional.one_hot')
+@deprecated(since='2.0.0', update_to='paddle.nn.functional.one_hot')
 def one_hot(input, depth, allow_out_of_range=False):
     """
     :alias_main: paddle.nn.functional.one_hot

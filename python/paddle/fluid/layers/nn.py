@@ -5832,7 +5832,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     return loss
 
 
-@deprecated(since='2.0.0', update_to='paddle.functional.one_hot')
+@deprecated(since='2.0.0', update_to='paddle.nn.functional.one_hot')
 def one_hot(input, depth, allow_out_of_range=False):
     """
 
