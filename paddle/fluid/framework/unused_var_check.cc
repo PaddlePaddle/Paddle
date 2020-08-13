@@ -73,7 +73,6 @@ static const std::unordered_set<std::string> &GetOpWithUnusedVarAllowSet() {
       "fused_batch_norm_act",            // 2
       "fused_batch_norm_act_grad",       // 2
       "data_norm",                       // 0
-      "cudnn_lstm",                      // 1
       "data_norm_grad",                  // 0);
   });
   return *allow_set;
