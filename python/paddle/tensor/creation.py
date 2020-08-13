@@ -136,8 +136,9 @@ def ones(shape, dtype=None, name=None):
 
     Raises:
         TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
+        TypeError: The ``shape`` must be one of list, tuple and Tensor.  The type of it's element  must be int
+            when it's list or tuple, the data type of ``shape`` must be int32 or int64 when ``shape`` is a Tensor.
+        ValueError: All elements in the ``shape`` must be positive.
     
     Examples:
         .. code-block:: python
@@ -228,8 +229,9 @@ def zeros(shape, dtype=None, name=None):
 
     Raises:
         TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
+        TypeError: The ``shape`` must be one of list, tuple and Tensor.  The type of it's element  must be int
+            when it's list or tuple, the data type of ``shape`` must be int32 or int64 when ``shape`` is a Tensor.
+        ValueError: All elements in the ``shape`` must be positive.
     
     Examples:
         .. code-block:: python
@@ -374,8 +376,9 @@ def full(shape, fill_value, dtype=None, name=None):
 
     Raises:
         TypeError: The ``dtype`` must be one of None, bool, float16, float32, float64, int32 and int64.
-        TypeError: The ``shape`` must be one of Tensor, list and tuple. The data type of ``shape`` must
-            be int32 or int64 when the it's a Tensor
+        TypeError: The ``shape`` must be one of list, tuple and Tensor.  The type of it's element  must be int
+            when it's list or tuple, the data type of ``shape`` must be int32 or int64 when ``shape`` is a Tensor.
+        ValueError: All elements in the ``shape`` must be positive.
     
     Examples:
         .. code-block:: python
