@@ -16,7 +16,7 @@
 from __future__ import print_function
 import os
 import unittest
-import paddle.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 
 class TestRoleMakerBase(unittest.TestCase):
