@@ -26,7 +26,7 @@ import paddle
 import paddle.fluid as fluid
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-import paddle.fleet as fleet
+import paddle.distributed.fleet as fleet
 
 
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
@@ -108,7 +108,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
 
         role = role_maker.PaddleCloudRoleMaker()
 
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         strategy.a_sync_configs = {"k_steps": 100}
 
@@ -136,7 +136,7 @@ import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
-import paddle.fleet as fleet
+import paddle.distributed.fleet as fleet
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End
 
