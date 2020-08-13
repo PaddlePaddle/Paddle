@@ -145,19 +145,20 @@ packages=['paddle',
           'paddle.incubate',
           'paddle.incubate.complex',
           'paddle.incubate.complex.tensor',
-          'paddle.fleet',
-          'paddle.fleet.base',
-          'paddle.fleet.meta_optimizers',
-          'paddle.fleet.runtime',
-          'paddle.fleet.dataset',
-          'paddle.fleet.metrics',
-          'paddle.fleet.proto',
-          'paddle.fleet.utils',
+          'paddle.distributed.fleet',
+          'paddle.distributed.fleet.base',
+          'paddle.distributed.fleet.meta_optimizers',
+          'paddle.distributed.fleet.runtime',
+          'paddle.distributed.fleet.dataset',
+          'paddle.distributed.fleet.metrics',
+          'paddle.distributed.fleet.proto',
+          'paddle.distributed.fleet.utils',
           'paddle.framework',
           'paddle.jit',
           'paddle.fluid',
           'paddle.fluid.dygraph',
           'paddle.fluid.dygraph.dygraph_to_static',
+          'paddle.fluid.dygraph.amp',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
           'paddle.fluid.distributed',
@@ -481,7 +482,7 @@ with redirect_stdout():
         },
         entry_points={
             'console_scripts': [
-                'fleetrun = paddle.fleet.launch:launch'
+                'fleetrun = paddle.distributed.fleet.launch:launch'
             ]
         }
     )

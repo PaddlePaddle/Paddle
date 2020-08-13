@@ -43,7 +43,7 @@ def sum(input, scope=None):
           
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
-          print("sum array: ", paddle.fleet.sum(res))
+          print("sum array: ", paddle.distributed.fleet.sum(res))
     """
     fleet._role_maker._barrier_worker()
     if scope is None:
@@ -82,7 +82,7 @@ def max(input, scope=None):
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
-          print("max array: ", paddle.fleet.max(res))
+          print("max array: ", paddle.distributed.fleet.max(res))
     """
     fleet._role_maker._barrier_worker()
     if scope is None:
@@ -121,7 +121,7 @@ def min(input, scope=None):
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
-          print("min array: ", paddle.fleet.min(res))
+          print("min array: ", paddle.distributed.fleet.min(res))
     """
     fleet._role_maker._barrier_worker()
     if scope is None:
@@ -162,7 +162,7 @@ def auc(stat_pos, stat_neg, scope=None):
           # in train.py, after train or infer
           pos = np.array(scope.find_var(stat_pos.name).get_tensor())
           neg = np.array(scope.find_var(stat_neg.name).get_tensor())
-          print("auc: ", paddle.fleet.auc(pos, neg))
+          print("auc: ", paddle.distributed.fleet.auc(pos, neg))
     """
     fleet._role_maker._barrier_worker()
     if scope is None:
@@ -240,7 +240,7 @@ def mae(abserr, total_ins_num, scope=None):
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(abserr.name).get_tensor())
-          print("mae: ", paddle.fleet.mae(res, total_ins_num))
+          print("mae: ", paddle.distributed.fleet.mae(res, total_ins_num))
     """
     fleet._role_maker._barrier_worker()
     if scope is None:
@@ -278,7 +278,7 @@ def rmse(sqrerr, total_ins_num, scope=None):
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(sqrerr.name).get_tensor())
-          print("rmse: ", paddle.fleet.rmse(res, total_ins_num))
+          print("rmse: ", paddle.distributed.fleet.rmse(res, total_ins_num))
     """
     fleet._role_maker._barrier_worker()
     if scope is None:
@@ -316,7 +316,7 @@ def mse(sqrerr, total_ins_num, scope=None):
 
           # in train.py, after train or infer
           metric = np.array(scope.find_var(sqrerr.name).get_tensor())
-          print("mse: ", paddle.fleet.mse(metric, total_ins_num))
+          print("mse: ", paddle.distributed.fleet.mse(metric, total_ins_num))
     """
     fleet._role_maker._barrier_worker()
     if scope is None:
@@ -365,7 +365,7 @@ def acc(correct, total, scope=None):
           # in train.py, after train or infer
           correct_num = np.array(scope.find_var(correct.name).get_tensor())
           total_num = np.array(scope.find_var(total.name).get_tensor())
-          print("accuracy: ", paddle.fleet.acc(correct_num, total_num))
+          print("accuracy: ", paddle.distributed.fleet.acc(correct_num, total_num))
     """
     fleet._role_maker._barrier_worker()
     if scope is None:
