@@ -424,6 +424,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._need_check_feed, self._places, self._use_buffer_reader, True,
             self._pin_memory)
 
+        # see _try_put_indices
+        self._thread_lock = theading.Lock()
+
         self._thread_done_event = threading.Event()
         self._thread = threading.Thread(target=self._thread_loop)
         self._thread.daemon = True
@@ -661,7 +664,15 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         assert self._batches_outstanding <= self._outstanding_capacity, \
                     "too many indices have been put to queue"
         try:
-            indices = next(self._sampler_iter)
+            # In multi-process mode for IterableDataset, _try_put_indices will
+            # be called both in main process(for our implement has blocking queue,
+            # and blocking queue read is in main process) and thread, which may
+            # cause error: "ValueError: generator already executing", add a lock
+            # for threading save, for _try_put_indices is only a slight function
+            # which is not in data reading pipeline, this lock almost no influence
+            # on performance
+            with self.thread_lock:
+                indices = next(self._sampler_iter)
         except StopIteration:
             return
 
