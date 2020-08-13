@@ -23,7 +23,7 @@ COPY ./paddle/scripts/docker/root/ /root/
 RUN apt-get update && \
     apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-    xz-utils tk-dev libffi-dev liblzma-dev
+    xz-utils tk-dev libffi-dev liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev
 
 # Downgrade gcc&&g++
 RUN apt-get update
@@ -108,6 +108,7 @@ RUN tar -zxvf pip-18.0.tar.gz
 WORKDIR pip-18.0
 RUN python setup.py install && \
   python3.7 setup.py install && \
+  python3.6 setup.py install && \
   python3 setup.py install
 
 WORKDIR /home
