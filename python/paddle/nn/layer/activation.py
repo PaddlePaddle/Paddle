@@ -65,8 +65,8 @@ class Hardshrink(layers.Layer):
         paddle.disable_static()
 
         x = paddle.to_variable(np.array([-1, 0.3, 2.5]))
-        hd = paddle.nn.Hardshrink()
-        out = hd(x) # [-1., 0., 2.5]
+        m = paddle.nn.Hardshrink()
+        out = m(x) # [-1., 0., 2.5]
     """
 
     def __init__(self, threshold=0.5, name=None):
