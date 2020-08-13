@@ -19,11 +19,11 @@ import unittest
 from op_test import OpTest
 
 
-def test_static(place, x_np, label_np, red='mean', weight_np=None):
+def test_static(place, input_np, label_np, red='mean', weight_np=None):
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        x = paddle.data(name='x', shape=x_np.shape, dtype='float64')
+        input = paddle.data(name='input', shape=input_np.shape, dtype='float64')
         label = paddle.data(name='label', shape=label_np.shape, dtype='float64')
         if weight_np is not None:
             weight = paddle.data(
@@ -31,13 +31,13 @@ def test_static(place, x_np, label_np, red='mean', weight_np=None):
             bce_loss = paddle.nn.loss.BCELoss(weight=weight, reduction=red)
         else:
             bce_loss = paddle.nn.loss.BCELoss(reduction=red)
-        res = bce_loss(x, label)
+        res = bce_loss(input, label)
         exe = paddle.static.Executor(place)
         static_result = exe.run(prog,
-                                feed={"x": x_np,
+                                feed={"input": input_np,
                                       "label": label_np}
                                 if weight_np is None else {
-                                    "x": x_np,
+                                    "input": input_np,
                                     "label": label_np,
                                     "weight": weight_np
                                 },
@@ -45,26 +45,27 @@ def test_static(place, x_np, label_np, red='mean', weight_np=None):
     return static_result
 
 
-def test_dygraph(place, x_np, label_np, red='mean', weight_np=None):
+def test_dygraph(place, input_np, label_np, red='mean', weight_np=None):
     paddle.disable_static()
     if weight_np is not None:
         weight = paddle.to_variable(weight_np)
         bce_loss = paddle.nn.loss.BCELoss(weight=weight, reduction=red)
     else:
         bce_loss = paddle.nn.loss.BCELoss(reduction=red)
-    dy_res = bce_loss(paddle.to_variable(x_np), paddle.to_variable(label_np))
+    dy_res = bce_loss(
+        paddle.to_variable(input_np), paddle.to_variable(label_np))
     dy_result = dy_res.numpy()
     paddle.enable_static()
     return dy_result
 
 
-def calc_bceloss(x_np, label_np, red='mean', weight_np=None):
+def calc_bceloss(input_np, label_np, red='mean', weight_np=None):
     if weight_np is None:
-        expected = -1 * (label_np * np.log(x_np) +
-                         (1. - label_np) * np.log(1. - x_np))
+        expected = -1 * (label_np * np.log(input_np) +
+                         (1. - label_np) * np.log(1. - input_np))
     else:
-        expected = -1 * weight_np * (label_np * np.log(x_np) +
-                                     (1. - label_np) * np.log(1. - x_np))
+        expected = -1 * weight_np * (label_np * np.log(input_np) +
+                                     (1. - label_np) * np.log(1. - input_np))
 
     if red == 'mean':
         expected = np.mean(expected)
@@ -78,7 +79,7 @@ def calc_bceloss(x_np, label_np, red='mean', weight_np=None):
 
 class TestBCELoss(unittest.TestCase):
     def test_BCELoss(self):
-        x_np = np.random.random(size=(20, 30)).astype(np.float64)
+        input_np = np.random.random(size=(20, 30)).astype(np.float64)
         label_np = np.random.random(size=(20, 30)).astype(np.float64)
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -86,38 +87,39 @@ class TestBCELoss(unittest.TestCase):
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for red in reductions:
-                static_result = test_static(place, x_np, label_np, red)
-                dy_result = test_dygraph(place, x_np, label_np, red)
-                expected = calc_bceloss(x_np, label_np, red)
+                static_result = test_static(place, input_np, label_np, red)
+                dy_result = test_dygraph(place, input_np, label_np, red)
+                expected = calc_bceloss(input_np, label_np, red)
                 self.assertTrue(np.allclose(static_result, expected))
                 self.assertTrue(np.allclose(static_result, dy_result))
                 self.assertTrue(np.allclose(dy_result, expected))
 
     def test_BCELoss_weight(self):
-        x_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
+        input_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
         label_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
         weight_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         for red in ['sum', 'mean', 'none']:
             static_result = test_static(
-                place, x_np, label_np, red, weight_np=weight_np)
+                place, input_np, label_np, red, weight_np=weight_np)
             dy_result = test_dygraph(
-                place, x_np, label_np, red, weight_np=weight_np)
-            expected = calc_bceloss(x_np, label_np, red, weight_np=weight_np)
+                place, input_np, label_np, red, weight_np=weight_np)
+            expected = calc_bceloss(
+                input_np, label_np, red, weight_np=weight_np)
             self.assertTrue(np.allclose(static_result, expected))
             self.assertTrue(np.allclose(static_result, dy_result))
             self.assertTrue(np.allclose(dy_result, expected))
 
     def test_BCELoss_boardcast(self):
-        x_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
+        input_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
         label_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
 
-        static_result = test_static(place, x_np, label_np)
-        dy_result = test_dygraph(place, x_np, label_np)
-        expected = calc_bceloss(x_np, label_np)
+        static_result = test_static(place, input_np, label_np)
+        dy_result = test_dygraph(place, input_np, label_np)
+        expected = calc_bceloss(input_np, label_np)
         self.assertTrue(np.allclose(static_result, expected))
         self.assertTrue(np.allclose(static_result, dy_result))
         self.assertTrue(np.allclose(dy_result, expected))
@@ -131,11 +133,11 @@ class TestBceLossOp(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "bce_loss"
-        x_np = np.random.uniform(0.1, 0.8, self.shape).astype("float64")
+        input_np = np.random.uniform(0.1, 0.8, self.shape).astype("float64")
         label_np = np.random.randint(0, 2, self.shape).astype("float64")
-        output_np = bce_loss(x_np, label_np)
+        output_np = bce_loss(input_np, label_np)
 
-        self.inputs = {'X': x_np, 'Label': label_np}
+        self.inputs = {'X': input_np, 'Label': label_np}
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
