@@ -34,7 +34,7 @@ import unittest
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.fleet.base.util_factory import fleet_util
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+import paddle.distributed.fleet as fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']

@@ -149,6 +149,10 @@ class TestFleetBase(unittest.TestCase):
         optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
+    def test_exception(self):
+        import paddle.distributed.fleet as fleet
+        self.assertRaises(Exception, fleet.init_worker)
+
     def test_minimize(self):
         import paddle
         import paddle.distributed.fleet as fleet
