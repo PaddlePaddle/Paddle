@@ -17,6 +17,7 @@ import gast
 import logging
 import inspect
 import warnings
+import six
 import textwrap
 import threading
 import collections
@@ -248,6 +249,9 @@ class PartialProgram(object):
         try:
             return partial_program_layer(args)
         except Exception as e:
+            if not hasattr(e, ERROR_DATA):
+                # runtime error
+                attach_error_data(e, in_runtime=True)
             error_data = getattr(e, ERROR_DATA, None)
             if error_data:
                 new_exception = error_data.create_exception()

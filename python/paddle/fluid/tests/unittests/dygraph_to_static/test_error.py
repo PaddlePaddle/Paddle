@@ -93,11 +93,9 @@ class TestErrorInCompileTime(unittest.TestCase):
             with self.assertRaises(self.exception_type) as cm:
                 self.func(self.input)
             exception = cm.exception
-            # TODO(Aurelius84): AttributeError: 'EnforceNotMet' object has no attribute 'Error data about original source code information and traceback.'
-
-            # error_data = getattr(exception, ERROR_DATA)
-            # self.assertIsInstance(error_data, ErrorData)
-            # self._test_create_message(error_data)
+            error_data = getattr(exception, ERROR_DATA)
+            self.assertIsInstance(error_data, ErrorData)
+            self._test_create_message(error_data)
 
 
 class TestErrorInCompileTime2(TestErrorInCompileTime):
