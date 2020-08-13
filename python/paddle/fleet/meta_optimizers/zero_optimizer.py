@@ -98,6 +98,8 @@ class ZeroOptimizer(MetaOptimizerBase):
             startup_program = default_startup_program()
 
         # step1: initialize nccl
+        # TODO(mapingshuo) fix get_trainer_endpoints
+        print("work idx: ", self.role_maker.worker_index())
         endpoints = self.role_maker.get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker.worker_index()]
         collective_helper = CollectiveHelper(self.role_maker, self._nrings)
@@ -130,6 +132,8 @@ class ZeroOptimizer(MetaOptimizerBase):
             for output_name in op.desc.output_arg_names():
                 if (output_name in self._varname2param) and \
                     (output_name not in self._device2params[self.role_maker.worker_index()]):
+                    print("%d: main_block remove op %s" %
+                          (self.role_maker.worker_index(), op.type))
                     main_block._remove_op(idx)
                     break
 
@@ -152,6 +156,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                             shape=self._varname2param[input_name].shape,
                             dtype=self._varname2param[input_name].dtype,
                             persistable=False)
+                    print("main_block insert broadcast op for %s" % param.name)
                     main_block._insert_op(
                         op_idx,
                         type='c_sync_comm_stream',
