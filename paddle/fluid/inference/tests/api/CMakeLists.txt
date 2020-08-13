@@ -20,6 +20,12 @@ function(download_int8_data install_dir data_file)
     endif()
 endfunction()
 
+function(download_GRU_data install_dir data_file)
+    if (NOT EXISTS ${install_dir}/${data_file})
+        inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/gru ${data_file})
+    endif()
+endfunction()
+
 function(download_quant_data install_dir data_file)
     if (NOT EXISTS ${install_dir}/${data_file})
 	    inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/int8/QAT_models ${data_file})
@@ -94,6 +100,18 @@ function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_mode
              --batch_size=50
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=false
+             --iterations=2)
+endfunction()
+
+function(inference_analysis_api_lexical_test_run TARGET_NAME test_binary infer_model data_path)
+    inference_analysis_test_run(${TARGET_NAME}
+    COMMAND ${test_binary}
+        ARGS --infer_model=${infer_model}
+             --infer_data=${data_path}
+             --batch_size=50
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --with_accuracy_layer=true
+             --use_analysis=true
              --iterations=2)
 endfunction()
 
@@ -314,6 +332,20 @@ if(WITH_MKLDNN)
   set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
   download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
   inference_analysis_api_object_dection_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
+
+  ### Lexcial analysis GRU model
+  set(GRU_PATH "${INFERENCE_DEMO_INSTALL_DIR}/gru")
+  download_GRU_data("${GRU_PATH}" "GRU_eval_data.tar.gz")
+  download_GRU_data("${GRU_PATH}" "GRU_eval_model.tar.gz")
+  set(GRU_DATA_PATH "${GRU_PATH}/GRU_eval_data.bin")
+  set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model")
+  set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis")
+  set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_gru_tester.cc")
+
+  # build test binary to be used in subsequent tests
+  inference_analysis_api_test_build(${LEXICAL_TEST_APP} ${LEXICAL_TEST_APP_SRC})
+  # run lexcial analysis test
+  inference_analysis_api_lexical_test_run(test_analyzer_lexical_gru ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH} ${GRU_DATA_PATH})
 
   ### optimized FP32 vs. Quant INT8 tests
   

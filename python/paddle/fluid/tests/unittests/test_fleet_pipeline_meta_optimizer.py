@@ -19,7 +19,9 @@ import os
 
 class TestFleetMetaOptimizer(unittest.TestCase):
     def setUp(self):
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
+        os.environ["PADDLE_TRAINER_ID"] = "1"
+        os.environ[
+            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002"
 
     def test_pipeline_optimizer(self):
         import paddle.fleet as fleet
