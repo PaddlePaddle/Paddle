@@ -29,18 +29,18 @@ BATCH_NUM = 20
 SEED = 10
 
 
-def random_batch_reader():
-    def _get_random_images_and_labels(image_shape, label_shape):
+def random_batch_reader(input_size, label_size):
+    def _get_random_inputs_and_labels(input_size, label_size):
         np.random.seed(SEED)
-        image = np.random.random(size=image_shape).astype('float32')
-        label = np.random.random(size=label_shape).astype('int64')
-        return image, label
+        input = np.random.random(size=input_size).astype('float32')
+        label = np.random.random(size=label_size).astype('int64')
+        return input, label
 
     def __reader__():
         for _ in range(BATCH_NUM):
-            batch_image, batch_label = _get_random_images_and_labels(
-                [BATCH_SIZE, 784], [BATCH_SIZE, 1])
-            yield batch_image, batch_label
+            batch_input, batch_label = _get_random_inputs_and_labels(
+                [BATCH_SIZE, input_size], [BATCH_SIZE, label_size])
+            yield batch_input, batch_label
 
     return __reader__
 
@@ -77,13 +77,14 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
         return z, loss
 
 
-def train(layer):
+def train(layer, input_size=784, label_size=1):
     # create optimizer
     adam = fluid.optimizer.SGDOptimizer(
         learning_rate=0.01, parameter_list=layer.parameters())
     # create data loader
     train_loader = fluid.io.DataLoader.from_generator(capacity=5)
-    train_loader.set_batch_generator(random_batch_reader())
+    train_loader.set_batch_generator(
+        random_batch_reader(input_size, label_size))
     # train
     for data in train_loader():
         img, label = data
@@ -98,11 +99,6 @@ def train(layer):
         adam.minimize(avg_loss)
         layer.clear_gradients()
     return [img], layer, avg_loss
-
-
-def infer(layer):
-    x = fluid.dygraph.to_variable(np.random.random((1, 784)).astype('float32'))
-    return layer(x)
 
 
 class TestJitSaveLoad(unittest.TestCase):
@@ -277,6 +273,49 @@ class TestJitSaveLoadConfig(unittest.TestCase):
             np.random.random((4, 8)).astype('float32'))
         self.assertTrue(
             np.array_equal(train_layer(x)[0].numpy(), infer_layer(x).numpy()))
+
+
+class MultiLoadingLinearNet(fluid.dygraph.Layer):
+    def __init__(self, size, model_path):
+        super(MultiLoadingLinearNet, self).__init__()
+        self._linear = Linear(size, size)
+        self._load_linear1 = fluid.dygraph.jit.load(model_path)
+        self._load_linear2 = fluid.dygraph.jit.load(model_path)
+
+    @declarative
+    def forward(self, x):
+        tmp1 = self._linear(x)
+        tmp2 = self._load_linear1(tmp1)
+        tmp3 = self._load_linear2(tmp2)
+        y = self._linear(tmp3)
+        return y
+
+
+class TestJitMultipleLoading(unittest.TestCase):
+    def setUp(self):
+        self.linear_size = 4
+        self.model_path = "model.jit_multi_load"
+        # enable dygraph mode
+        fluid.enable_dygraph()
+        # config seed
+        fluid.default_main_program().random_seed = SEED
+        # train and save base model
+        self.train_and_save_orig_model()
+
+    def train_and_save_orig_model(self):
+        layer = LinearNet(self.linear_size, self.linear_size)
+        example_inputs, layer, _ = train(layer, self.linear_size, 1)
+        fluid.dygraph.jit.save(
+            layer=layer, model_path=self.model_path, input_spec=example_inputs)
+
+    def test_load_model_retransform_inference(self):
+        multi_loaded_layer = MultiLoadingLinearNet(self.linear_size,
+                                                   self.model_path)
+        state_dict = multi_loaded_layer.state_dict()
+        name_set = set()
+        for _, var in state_dict.items():
+            self.assertTrue(var.name not in name_set)
+            name_set.add(var.name)
 
 
 if __name__ == '__main__':

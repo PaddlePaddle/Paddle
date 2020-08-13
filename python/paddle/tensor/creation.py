@@ -561,9 +561,9 @@ def tril(x, diagonal=0, name=None):
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
-            x = paddle.imperative.to_variable(data)
+            x = paddle.to_variable(data)
             
             tril1 = paddle.tensor.tril(x)
             # array([[ 1,  0,  0,  0],
@@ -632,10 +632,10 @@ def triu(x, diagonal=0, name=None):
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             # example 1, default diagonal
-            x = paddle.imperative.to_variable(data)
+            x = paddle.to_variable(data)
             triu1 = paddle.tensor.triu(x)
             # array([[ 1,  2,  3,  4],
             #        [ 0,  6,  7,  8],
