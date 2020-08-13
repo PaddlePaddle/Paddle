@@ -347,6 +347,7 @@ class PD_INFER_DECL PaddlePredictor {
 /// place of inference, etc.)
 ///
 struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
+  NativeConfig();
   /// GPU related fields.
   bool use_gpu{false};
   int device{0};
@@ -421,15 +422,18 @@ enum class PaddleEngineKind {
 };
 
 template <typename ConfigT, PaddleEngineKind engine>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
+    const ConfigT& config, bool deprecated_warning = true);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig& config);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
+    const NativeConfig& config, bool deprecated_warning);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+    const AnalysisConfig& config, bool deprecated_warning);
 
 PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
@@ -437,6 +441,4 @@ PD_INFER_DECL std::string get_version();
 
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
 
-PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
-    const std::string& config_file);
 }  // namespace paddle

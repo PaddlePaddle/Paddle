@@ -206,9 +206,9 @@ void BindInferenceApi(py::module *m) {
   BindMkldnnQuantizerConfig(m);
 #endif
   m->def("create_paddle_predictor",
-         &paddle::CreatePaddlePredictor<AnalysisConfig>);
+         &paddle::CreatePaddlePredictor<AnalysisConfig>, py::arg("config"));
   m->def("create_paddle_predictor",
-         &paddle::CreatePaddlePredictor<NativeConfig>);
+         &paddle::CreatePaddlePredictor<NativeConfig>, py::arg("config"));
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
 }

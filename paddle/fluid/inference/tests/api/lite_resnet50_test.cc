@@ -80,7 +80,7 @@ TEST(Predictor, use_gpu) {
   Config config;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
-  config.EnableLiteEngine(Config::Precision::kFloat32);
+  config.EnableLiteEngine(PrecisionType::kFloat32);
 
   auto predictor = CreatePredictor(config);
   const int batch = 1;

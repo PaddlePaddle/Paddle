@@ -32,98 +32,10 @@ limitations under the License. */
 #include "paddle_api.h"              // NOLINT
 
 namespace paddle_infer {
-enum PaddleDType {
-  FLOAT32,
-  INT64,
-  INT32,
-  UINT8,
-};
-
-enum class PaddlePlace {
-  kUNK = -1,
-  kCPU,
-  kGPU,
-};
-
-struct PD_INFER_DECL Config {
-  Config() = default;
-  enum class Precision {
-    kFloat32 = 0,  ///< fp32
-    kInt8,         ///< int8
-    kHalf,         ///< fp16
-  };
-  // Must be configured
-  explicit Config(const Config& config) = delete;
-  explicit Config(const std::string& model_dir);
-  explicit Config(const std::string& prog_file, const std::string& params_file);
-  void SetModel(const std::string& model_dir);
-  void SetModel(const std::string& prog_file, const std::string& params_file);
-  void SetModelBuffer(const char* prog_buffer, size_t prog_buffer_size,
-                      const char* params_buffer, size_t params_buffer_size);
-  // Optional configuration
-  void EnableMemoryOptim();
-
-  // cpu
-  void EnableMKLDNN();
-  void SetMkldnnCacheCapacity(int capacity);
-
-  void SetCpuMathLibraryNumThreads(int cpu_math_library_num_threads);
-  void EnableMkldnnQuantizer();
-  paddle::MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
-
-  // gpu
-  void EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id = 0);
-  void EnableTensorRtEngine(int workspace_size = 1 << 20,
-                            int max_batch_size = 1, int min_subgraph_size = 3,
-                            Precision precision = Precision::kFloat32,
-                            bool use_static = false,
-                            bool use_calib_mode = true);
-  void SetTRTDynamicShapeInfo(
-      std::map<std::string, std::vector<int>> min_input_shape,
-      std::map<std::string, std::vector<int>> max_input_shape,
-      std::map<std::string, std::vector<int>> optim_input_shape,
-      bool disable_trt_plugin_fp16 = false);
-  bool tensorrt_engine_enabled() const;
-
-  void EnableGpuMultiStream();
-
-  // xpu
-  void EnableLiteEngine(Precision precision = Precision::kFloat32,
-                        bool zero_copy = false,
-                        const std::vector<std::string>& passes_filter = {},
-                        const std::vector<std::string>& ops_filter = {});
-  void EnableXpu(int l3_workspace_size = 0xfffc00);
-
-  // debug
-  void SwitchIrOptim(int x = true);
-  void EnableProfile();
-  void DisableGlogInfo();
-  paddle::PassStrategy* pass_builder() const;
-
-  // not for users
-  void SetInValid() const { config_.SetInValid(); }
-  void PartiallyRelease() { config_.PartiallyRelease(); }
-  paddle::AnalysisConfig& get_analysis_config() { return config_; }
-
- private:
-  void Init() { config_.SwitchUseFeedFetchOps(false); }
-  paddle::AnalysisConfig::Precision PrecisionTrait(
-      Config::Precision precision) {
-    switch (precision) {
-      case Config::Precision::kFloat32:
-        return paddle::AnalysisConfig::Precision::kFloat32;
-      case Config::Precision::kInt8:
-        return paddle::AnalysisConfig::Precision::kInt8;
-      case Config::Precision::kHalf:
-        return paddle::AnalysisConfig::Precision::kHalf;
-      default:
-        throw std::runtime_error(
-            "Wrong Precision: Your precion specific should be kFloat32, kInt8, "
-            "kHalf");
-    }
-  }
-  paddle::AnalysisConfig config_;
-};
+using DataType = paddle::PaddleDType;
+using PlaceType = paddle::PaddlePlace;
+using PrecisionType = paddle::AnalysisConfig::Precision;
+using Config = paddle::AnalysisConfig;
 
 class PD_INFER_DECL Tensor {
  public:
@@ -139,18 +51,18 @@ class PD_INFER_DECL Tensor {
 
   // should add the place
   template <typename T>
-  T* mutable_data(PaddlePlace place);
+  T* mutable_data(PlaceType place);
 
   template <typename T>
   void CopyToCpu(T* data);
 
   template <typename T>
-  T* data(PaddlePlace* place, int* size) const;
+  T* data(PlaceType* place, int* size) const;
 
   void SetLoD(const std::vector<std::vector<size_t>>& x);
   std::vector<std::vector<size_t>> lod() const;
 
-  PaddleDType type() const;
+  DataType type() const;
 
   std::vector<int> shape() const;
   const std::string& name() const;
@@ -163,12 +75,17 @@ class PD_INFER_DECL Predictor {
  public:
   Predictor() = delete;
   ~Predictor() {}
+  // Use for clone
   explicit Predictor(std::unique_ptr<paddle::PaddlePredictor> pred)
       : predictor_(std::move(pred)) {}
 
   explicit Predictor(const Config& config) {
-    predictor_ = paddle::CreatePaddlePredictor(
-        const_cast<Config*>(&config)->get_analysis_config());
+    const_cast<Config*>(&config)->SwitchUseFeedFetchOps(false);
+    // The second parameter indicates that the discard log is not printed
+    predictor_ =
+        paddle::CreatePaddlePredictor<Config,
+                                      paddle::PaddleEngineKind::kAnalysis>(
+            config, false);
   }
 
   std::vector<std::string> GetInputNames();
@@ -187,11 +104,14 @@ class PD_INFER_DECL Predictor {
 };
 
 PD_INFER_DECL std::shared_ptr<Predictor> CreatePredictor(
-    Config& config);  // NOLINT
-PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
+    const Config& config);  // NOLINT
+PD_INFER_DECL int GetNumBytesOfDataType(DataType dtype);
 
 PD_INFER_DECL std::string GetPaddleVersion();
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
+}  // namespace paddle_infer
+
+namespace paddle_infer {
 
 class PD_INFER_DECL PredictorPool {
  public:

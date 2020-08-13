@@ -24,12 +24,19 @@ limitations under the License. */
 namespace paddle_infer {
 
 TEST(Predictor, use_gpu) {
+  LOG(INFO) << GetPaddleVersion();
+  UpdateDllFlag("conv_workspace_size_limit", "4000");
   std::string model_dir = FLAGS_infer_model + "/model";
   Config config;
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableUseGpu(100, 0);
+  Config config1(config);
+
   auto predictor = CreatePredictor(config);
-  auto pred2 = predictor->Clone();
+  auto pred_clone = predictor->Clone();
+  PredictorPool pred_pool(config1, 4);
+  auto pred2 = pred_pool.Retrive(2);
+
   std::vector<int> in_shape = {1, 3, 318, 318};
   int in_num = std::accumulate(in_shape.begin(), in_shape.end(), 1,
                                [](int &a, int &b) { return a * b; });
@@ -58,7 +65,7 @@ TEST(Predictor, use_gpu) {
   auto input_t2 = pred2->GetInputHandle(in_names2[0]);
   input_t2->name();
   input_t2->Reshape(in_shape);
-  auto *input_t2_tensor_data = input_t2->mutable_data<float>(PaddlePlace::kGPU);
+  auto *input_t2_tensor_data = input_t2->mutable_data<float>(PlaceType::kGPU);
 
   cudaMemcpy(input_t2_tensor_data, input.data(), in_num * sizeof(float),
              cudaMemcpyHostToDevice);
@@ -67,10 +74,12 @@ TEST(Predictor, use_gpu) {
   auto out_names2 = pred2->GetOutputNames();
   auto output_t2 = pred2->GetOutputHandle(out_names2[0]);
   auto out2_type = output_t2->type();
-  if (out2_type == PaddleDType::FLOAT32) {
-    PaddlePlace place;
+  LOG(INFO) << GetNumBytesOfDataType(out2_type);
+  if (out2_type == DataType::FLOAT32) {
+    PlaceType place;
     int size;
     output_t2->data<float>(&place, &size);
   }
 }
+
 }  // namespace paddle_infer
