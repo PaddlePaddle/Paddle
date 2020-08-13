@@ -17,6 +17,7 @@ import warnings
 from .framework import Variable, in_dygraph_mode
 from .layer_helper import LayerHelper
 from .data_feeder import check_variable_and_dtype, check_dtype
+from ..utils import deprecated
 
 __all__ = ['one_hot', 'embedding']
 

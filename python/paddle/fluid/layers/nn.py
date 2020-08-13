@@ -35,6 +35,7 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
+from ..utils import deprecated
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
 from paddle.utils import deprecated
