@@ -54,7 +54,6 @@ def set_device(device):
     if lower_device == 'cpu':
         place = core.CPUPlace()
         framework._set_expected_place(place)
-        framework._set_dygraph_tracer_expected_place(place)
     else:
         avaliable_device = ((lower_device == 'cpu') or
                             re.match(r'gpu:\d+', lower_device))
@@ -66,7 +65,6 @@ def set_device(device):
         device_id = int(device_id)
         place = core.CUDAPlace(device_id)
         framework._set_expected_place(place)
-        framework._set_dygraph_tracer_expected_place(place)
 
 
 def get_device():
@@ -92,10 +90,5 @@ def get_device():
     elif isinstance(place, core.CUDAPlace):
         device_id = place.get_device_id()
         device = 'gpu:' + str(device_id)
-    else:
-        if core.is_compiled_with_cuda():
-            device = 'gpu:0'
-        else:
-            device = 'cpu'
 
     return device

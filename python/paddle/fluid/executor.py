@@ -546,13 +546,7 @@ class Executor(object):
     def __init__(self, place=None):
         if place is None:
             expected_place = framework._current_expected_place()
-            if expected_place is None:
-                if core.is_compiled_with_cuda():
-                    self.place = core.CUDAPlace(0)
-                else:
-                    self.place = core.CPUPlace()
-            else:
-                self.place = expected_place
+            self.place = expected_place
         else:
             self.place = place
         self.program_caches = dict()

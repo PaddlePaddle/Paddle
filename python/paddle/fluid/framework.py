@@ -248,6 +248,12 @@ def _dygraph_tracer():
 
 def _current_expected_place():
     global _global_expected_place_
+    if _global_expected_place_ is None:
+        if core.is_compiled_with_cuda():
+            _global_expected_place_ = core.CUDAPlace(0)
+        else:
+            _global_expected_place_ = core.CPUPlace()
+
     return _global_expected_place_
 
 
@@ -260,6 +266,7 @@ def _set_dygraph_tracer_expected_place(place):
 def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
+    _set_dygraph_tracer_expected_place(place)
 
 
 # TODO(zhiqiu): remove this function.
