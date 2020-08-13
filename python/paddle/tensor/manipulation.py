@@ -457,10 +457,10 @@ def stack(x, axis=0, name=None):
             data2 = np.array([[3.0, 4.0]])
             data3 = np.array([[5.0, 6.0]])
 
-            paddle.enable_imperative()
-            x1 = paddle.imperative.to_variable(data1)
-            x2 = paddle.imperative.to_variable(data2)
-            x3 = paddle.imperative.to_variable(data3)
+            paddle.disable_static()
+            x1 = paddle.to_variable(data1)
+            x2 = paddle.to_variable(data2)
+            x3 = paddle.to_variable(data3)
 
             out = paddle.stack([x1, x2, x3], axis=0)
             print(out.shape)  # [3, 1, 2]
@@ -637,7 +637,7 @@ def unsqueeze(x, axis, name=None):
 
             import paddle
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = paddle.rand([5, 10])
             print(x.shape)  # [5, 10]
             

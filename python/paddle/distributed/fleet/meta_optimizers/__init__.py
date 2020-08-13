@@ -21,6 +21,7 @@ from .localsgd_optimizer import LocalSGDOptimizer
 from .lars_optimizer import LarsOptimizer
 from .async_graph_execution_optimizer import AsyncGraphExecutionOptimizer
 from .dgc_optimizer import DGCOptimizer
+from .lamb_optimizer import LambOptimizer
 
 __all__ = [
     'AMPOptimizer',
@@ -33,4 +34,5 @@ __all__ = [
     'LarsOptimizer',
     'AsyncGraphExecutionOptimizer',
     'DGCOptimizer',
+    'LambOptimizer',
 ]
