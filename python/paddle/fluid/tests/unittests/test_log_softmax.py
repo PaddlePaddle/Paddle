@@ -32,7 +32,7 @@ def ref_log_softmax_grad(x, axis):
         axis += len(x.shape)
     out = np.apply_along_axis(ref_log_softmax, axis, x)
     axis_dim = x.shape[axis]
-    dout = np.full_like(x, fill_value=1 / x.size)
+    dout = np.full_like(x, fill_value=1. / x.size)
     dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
         axis_dim, axis=axis)
     return dx
