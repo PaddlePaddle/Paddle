@@ -89,11 +89,7 @@ class TestBaseLayer(unittest.TestCase):
     def test_add_parameter_with_error(self):
         with fluid.dygraph.guard():
             net = fluid.Layer()
-            uninit_net = fluid.Layer.__new__(fluid.Layer)
             param = net.create_parameter(shape=[1])
-
-            with self.assertRaises(RuntimeError):
-                uninit_net.add_parameter("param", param)
 
             with self.assertRaises(TypeError):
                 net.add_parameter(10, param)
