@@ -209,6 +209,12 @@ class Fleet(object):
         assert self._runtime_handle is not None
         self._runtime_handle._stop_worker()
 
+    def is_single_run(self):
+        """
+        is run in single card or in single node
+        """
+        return self._role_maker.is_single_run()
+
     def distributed_optimizer(self, optimizer, strategy):
         """
         distirbuted_optimizer
@@ -327,6 +333,9 @@ class Fleet(object):
 
         optimize_ops = []
         params_grads = []
+
+        if self.is_single_run():
+            meta_optimizer, graph_optimizer = None, None
 
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(

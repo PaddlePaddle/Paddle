@@ -171,6 +171,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._node_type_comm = None
         self._all_comm = None
 
+        self.single_run = False
+
         if not self._is_collective:
             self._hdfs_name = kwargs.get("hdfs_name", "")
             self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
@@ -302,6 +304,12 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._server_endpoints
 
+    def is_single_run(self):
+        """
+        is run in single card or in single node
+        """
+        return self.single_run
+
     def _get_rank(self):
         """
         get current rank in all workers and pservers
@@ -322,26 +330,28 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         try:
             # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
             # format: string(ip:port), eg. 127.0.0.1:6001
-            self._server_endpoints = os.environ[
-                "PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
+            self._server_endpoints = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
             self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                                "").split(",")
-
-            trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
-            training_role = os.environ["TRAINING_ROLE"]
+            if self._server_endpoints is None:
+                self._server_endpoints = ""
+                self.single_run = True
+            self._server_endpoints = self._server_endpoints.split(",")
+            trainers_num = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+            training_role = os.getenv("TRAINING_ROLE", "TRAINER")
 
             if training_role not in ["TRAINER", "PSERVER"]:
                 raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
 
             if training_role == "TRAINER":
                 role = Role.WORKER
-                current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
                 if len(self._worker_endpoints) > 0:
                     self._cur_endpoint = self._worker_endpoints[current_id]
             elif training_role == "PSERVER":
                 role = Role.SERVER
-                port = os.environ["PADDLE_PORT"]
-                ip = os.environ["POD_IP"]
+                port = os.getenv("PADDLE_PORT", "6170")
+                ip = os.getenv("POD_IP", "127.0.0.1")
                 self._cur_endpoint = ip + ":" + port
                 current_id = self._server_endpoints.index(self._cur_endpoint)
             else:
@@ -360,7 +370,12 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         assert (self._training_role == "TRAINER")
         self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
         self._cur_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
-        assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
+        if self._worker_endpoints is None:
+            assert self._cur_endpoint is None, "can't find PADDLE_TRAINER_ENDPOINTS"
+            self._worker_endpoints = "127.0.0.1:6170"
+            self._cur_endpoint = self._worker_endpoints
+            self.single_run = True
+        # assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
 
