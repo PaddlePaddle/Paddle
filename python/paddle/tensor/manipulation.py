@@ -851,7 +851,7 @@ def expand(x, shape, name=None):
         if isinstance(shape, (list, tuple)):
             expand_shape = [
                 item.numpy()[0] if isinstance(item, Variable) else item
-                for item in expand_times
+                for item in shape
             ]
 
             return core.ops.expand(x, 'shape', expand_shape)
