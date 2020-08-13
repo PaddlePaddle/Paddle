@@ -88,7 +88,7 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
       ddx.data<T>(), x.data<T>(), static_cast<T>(alpha),
       ddout_actual.data<T>());
 
-  int64_t limit = out.numel();
+  int64_t limit = x.numel();
 
 #ifdef __NVCC__
   if (platform::is_gpu_place(place)) {
