@@ -15,6 +15,7 @@
 import os
 import six
 import numpy as np
+import warnings
 from collections import OrderedDict
 from .. import core
 from . import layers
@@ -66,7 +67,6 @@ class ParallelEnvArgs(object):
         self.started_port = None
         self.print_config = True
         self.selected_gpus = None
-        self.backend = None
 
 
 def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
@@ -83,85 +83,90 @@ def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
     Examples:
         
     """
-    # 1. input check
-    if not isinstance(trainer_id, six.integer_types):
-        raise TypeError(
-            "input `trainer_id` type error, expected type is integer, but received type is %s."
-            % type(trainer_id))
-    if not isinstance(trainer_num, six.integer_types):
-        raise TypeError(
-            "input `trainer_num` type error, expected type is integer, but received type is %s."
-            % type(trainer_id))
-    if not isinstance(backend, six.string_types):
-        raise TypeError(
-            "input `backend` type error, expected type is str, but received type is %s."
-            % type(trainer_id))
 
-    if trainer_id < 0:
-        raise ValueError(
-            "input `trainer_id` should be greater than 0, but received %d." %
-            trainer_id)
-    if trainer_num < 0:
-        raise ValueError(
-            "input `trainer_num` should be greater than 0, but received %d." %
-            trainer_num)
-    if trainer_id >= trainer_num:
-        raise ValueError(
-            "input `trainer_id` should be less than or equal to `trainer_num`, but `trainer_id` is %d, `trainer_num` is %d."
-            % (trainer_id, trainer_num))
-    if six.ensure_str(backend) != 'nccl':
-        raise ValueError(
-            "backend `%s` is not supported, now only supports `nccl` backend." %
-            backend)
+    # NOTE(chenweihang): if trainer_id or trainer_num is default value,
+    # users should config parallel environment by module `paddle.distributed.launch`,
+    # so here we skip the environment variables config phase
+    if trainer_id != -1 or trainer_num != -1:
+        # 1. input check
+        if not isinstance(trainer_id, six.integer_types):
+            raise TypeError(
+                "input `trainer_id` type error, expected type is integer, but received type is %s."
+                % type(trainer_id))
+        if not isinstance(trainer_num, six.integer_types):
+            raise TypeError(
+                "input `trainer_num` type error, expected type is integer, but received type is %s."
+                % type(trainer_id))
+        if not isinstance(backend, six.string_types):
+            raise TypeError(
+                "input `backend` type error, expected type is str, but received type is %s."
+                % type(trainer_id))
 
-    # 2. check and prepare environment variables
-    # The necessary environment variables include:
-    # - PADDLE_TRAINER_ID
-    # - PADDLE_TRAINERS_NUM
-    # - PADDLE_CURRENT_ENDPOINT
-    # - PADDLE_TRAINER_ENDPOINTS
+        if trainer_id < 0:
+            raise ValueError(
+                "input `trainer_id` should be greater than 0, but received %d."
+                % trainer_id)
+        if trainer_num < 0:
+            raise ValueError(
+                "input `trainer_num` should be greater than 0, but received %d."
+                % trainer_num)
+        if trainer_id >= trainer_num:
+            raise ValueError(
+                "input `trainer_id` should be less than or equal to `trainer_num`, but `trainer_id` is %d, `trainer_num` is %d."
+                % (trainer_id, trainer_num))
+        if six.ensure_str(backend) != 'nccl':
+            raise ValueError(
+                "backend `%s` is not supported, now only supports `nccl` backend."
+                % backend)
 
-    # get args from kwargs
-    args = ParallelEnvArgs()
-    args.cluster_node_ips = kwargs.get('cluster_node_ips', "127.0.0.1")
-    args.node_ip = kwargs.get('node_ip', "127.0.0.1")
-    args.use_paddlecloud = kwargs.get('use_paddlecloud', "False")
-    args.started_port = kwargs.get('started_port', None)
-    args.print_config = kwargs.get('print_config', True)
-    args.selected_gpus = ",".join(
-        [str(g) for g in [x for x in range(0, trainer_num)]])
-    args.backend = backend
+        # 2. check and prepare environment variables
+        # The necessary environment variables include:
+        # - PADDLE_TRAINER_ID
+        # - PADDLE_TRAINERS_NUM
+        # - PADDLE_CURRENT_ENDPOINT
+        # - PADDLE_TRAINER_ENDPOINTS
 
-    # reuse code of launch.py
-    cluster, pod = get_cluster_and_pod(args)
+        # get args from kwargs
+        args = ParallelEnvArgs()
+        args.cluster_node_ips = kwargs.get('cluster_node_ips', "127.0.0.1")
+        args.node_ip = kwargs.get('node_ip', "127.0.0.1")
+        args.use_paddlecloud = kwargs.get('use_paddlecloud', False)
+        args.started_port = kwargs.get('started_port', None)
+        args.print_config = kwargs.get('print_config', True)
+        args.selected_gpus = ",".join(
+            [str(g) for g in [x for x in range(0, trainer_num)]])
 
-    # remove useless env vars
-    os.environ.pop("http_proxy", None)
-    os.environ.pop("https_proxy", None)
+        # reuse code of launch.py
+        cluster, pod = get_cluster_and_pod(args)
 
-    # update env vars
-    if trainer_num != cluster.trainers_nranks():
-        raise RuntimeError(
-            "The number of trainers does not meet expectations, expected number is %d, but actual number is %d."
-            % (trainer_num, cluster.trainers_nranks()))
-    trainer = pod.get_trainer(trainer_id)
-    if trainer is None:
-        raise RuntimeError(
-            "The expected trainer is not exists, its trainer id is %d" %
-            trainer_id)
-    # why trainer.gpus? here only one device?
-    proc_env = {
-        "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in trainer.gpus]),
-        "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-        "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
-        "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-        "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
-    }
-    os.environ.update(proc_env)
+        # remove useless env vars
+        os.environ.pop("http_proxy", None)
+        os.environ.pop("https_proxy", None)
 
-    # print config
-    if args.print_config and trainer_id == 0:
-        _print_arguments(args)
+        # update env vars
+        if trainer_num != cluster.trainers_nranks():
+            raise RuntimeError(
+                "The number of trainers does not meet expectations, expected number is %d, but actual number is %d."
+                % (trainer_num, cluster.trainers_nranks()))
+        trainer = pod.get_trainer(trainer_id)
+        if trainer is None:
+            raise RuntimeError(
+                "The expected trainer is not exists, its trainer id is %d" %
+                trainer_id)
+        # why trainer.gpus? here only one device?
+        proc_env = {
+            "FLAGS_selected_gpus":
+            "%s" % ",".join([str(g) for g in trainer.gpus]),
+            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+        }
+        os.environ.update(proc_env)
+
+        # print config
+        if args.print_config and trainer_id == 0:
+            _print_arguments(args)
 
     # 3. init ParallelStrategy
     strategy = ParallelStrategy()
