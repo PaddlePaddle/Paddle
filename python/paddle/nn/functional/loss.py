@@ -74,9 +74,6 @@ __all__ = [
 
 def smooth_l1_loss(input, label, reduction='mean'):
     """
-	:alias_main: paddle.nn.functional.smooth_l1_loss
-	:alias: paddle.nn.functional.smooth_l1_loss,paddle.nn.functional.loss.smooth_l1_loss
-
     This operator is calculate smooth_l1_loss. Creates a criterion that uses a squared term if the absolute element-wise error falls below 1
     and an L1 term otherwise. In some cases it can prevent exploding gradients. Also known as the Huber loss:
 
@@ -117,28 +114,15 @@ def smooth_l1_loss(input, label, reduction='mean'):
 
             # declarative mode
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
-            input = fluid.layers.data(name="input", shape=[-1, 3], dtype="float32")
-            label = fluid.layers.data(name="label", shape=[-1, 3], dtype="float32")
-            result = paddle.nn.functioanl.smooth_l1_loss(input,label)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+
+            paddle.disable_static()
             input_data = np.random.rand(3,3).astype("float32")
             label_data = np.random.rand(3,3).astype("float32")
-            output= exe.run(feed={"input": input_data, "label": label_data},
-                            fetch_list=[result])
-            print(output)
-
-            # imperative mode
-            import paddle.fluid.dygraph as dg
-            with dg.guard(place) as g:
-                input = dg.to_variable(input_data)
-                label = dg.to_variable(label_data)
-                weight = dg.to_variable(weight_data)
-                output = paddle.nn.functioanl.smooth_l1_loss(input,label)
-                print(output.numpy())
+            input = paddle.to_variable(input_data)
+            label = paddle.to_variable(label_data)
+            output = paddle.nn.functioanl.smooth_l1_loss(input,label)
+            print(output.numpy())
     """
     fluid.data_feeder.check_variable_and_dtype(input, 'input', ['float32'],
                                                'smooth_l1_loss')

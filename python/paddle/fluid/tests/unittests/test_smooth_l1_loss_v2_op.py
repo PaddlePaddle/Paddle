@@ -104,20 +104,5 @@ class TestSmoothL1LossV2Op2(OpTest):
             no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']))
 
 
-class TestSmoothL1LossV2OpError(unittest.TestCase):
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            # The input type of accuracy_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            y1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.smooth_l1_v2, x1, y1)
-            # The input dtype of accuracy_op must be float32 or float64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
-            y2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.smooth_l1_v2, x2, y2)
-
-
 if __name__ == '__main__':
     unittest.main()
