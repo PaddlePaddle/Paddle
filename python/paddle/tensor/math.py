@@ -1099,17 +1099,15 @@ def logsumexp(x, dim=None, keepdim=False, name=None):
     return layers.log(sum_out, name)
 
 
-def inverse(input, name=None):
-    """
-	:alias_main: paddle.inverse
-	:alias: paddle.inverse,paddle.tensor.inverse,paddle.tensor.math.inverse
 
+def inverse(x, name=None):
+    """
     Takes the inverse of the square matrix. A square matrix is a matrix with
     the same number of rows and columns. The input can be a square matrix
     (2-D Tensor) or batches of square matrices.
 
     Args:
-        input (Variable): The input Variable which holds a Tensor. The last two
+        x (Variable): The input tensor. The last two
             dimensions should be equal. When the number of dimensions is
             greater than 2, it is treated as batches of square matrix. The data
             type can be float32 and float64.
@@ -1118,52 +1116,38 @@ def inverse(input, name=None):
             please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: A Tensor holds the inverse of input. The shape and data type
-            is the same as input.
+        Variable: A Tensor holds the inverse of x. The shape and data type
+                        is the same as x.
 
     Examples:
         .. code-block:: python
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
             mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
+            paddle.disable_static()
+            mat = paddle.to_variable(mat_np)
+            inv = paddle.inverse(mat)
+            print(inv) # [[0.5, 0], [0, 0.5]]
 
-            # example for static graph
-            input = fluid.data("input", shape=[2, 2], dtype="float32")
-            out = paddle.inverse(input)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            results = exe.run(feed={"input": mat_np },
-                              fetch_list=[out.name])
-            print(results[0]) # [[0.5, 0], [0, 0.5]]
-
-            # example for dynamic graph
-            with fluid.dygraph.guard():
-                mat = fluid.dygraph.to_variable(mat_np)
-                inv = paddle.inverse(mat)
-                print(inv) # [[0.5, 0], [0, 0.5]]
     """
     if in_dygraph_mode():
-        return core.ops.inverse(input)
+        return core.ops.inverse(x)
 
-    def _check_input(input):
-        check_variable_and_dtype(input, 'input',
+    def _check_input(x):
+        check_variable_and_dtype(x, 'x',
                                  ['float32', 'float64'], 'inverse')
-        if len(input.shape) < 2:
+        if len(x.shape) < 2:
             raise ValueError(
                 "The input of inverse is expected to be a Tensor whose number "
                 "of dimensions is no less than 2. But reviced: %d, "
-                "input's shape: %s." % (len(input.shape), input.shape))
-
-    _check_input(input)
-
+                "x's shape: %s." % (len(x.shape), x.shape))
+    _check_input(x)
     helper = LayerHelper('inverse', **locals())
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
-        type='inverse', inputs={'Input': [input] }, outputs={'Output': [out]})
+        type='inverse', inputs={'Input': [x] }, outputs={'Output': [out]})
     return out
 
 
@@ -1177,19 +1161,19 @@ def max(x, axis=None, keepdim=False, name=None):
             float64, int32, int64.
         axis(list|int, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
+             `x` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keepdim` is true, default
+            than the `x` unless :attr:`keepdim` is true, default
             value is False.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         Tensor, results of maximum on the specified axis of input tensor,
-        it's data type is the same as input's Tensor.
+        it's data type is the same as `x`.
 
     Examples:
         .. code-block:: python
@@ -1232,7 +1216,14 @@ def max(x, axis=None, keepdim=False, name=None):
     """
 
     if axis is not None and not isinstance(axis, list):
-        axis = [axis]
+        if isinstance(axis, tuple):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis= [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
+
     reduce_all = True if axis == None or axis == [] else False
     axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():
@@ -1265,12 +1256,12 @@ def min(x, axis=None, keepdim=False, name=None):
         x(Tensor): A tensor, the data type is float32, float64, int32, int64.
         axis(list|int, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
+            `x` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keepdim` is true, default
+            than the `x` unless :attr:`keepdim` is true, default
             value is False.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
@@ -1320,7 +1311,13 @@ def min(x, axis=None, keepdim=False, name=None):
     """
 
     if axis is not None and not isinstance(axis, list):
-        axis= [axis]
+        if isinstance(axis, tuple):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis= [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
     reduce_all = True if axis == None or axis == [] else False
     axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():
