@@ -30,6 +30,7 @@ from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers
 import logging
+from ...utils import deprecated
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
@@ -1478,6 +1479,7 @@ class Dropout(layers.Layer):
         return out
 
 
+@deprecated(since='2.0.0', update_to='paddle.nn.Embedding')
 class Embedding(layers.Layer):
     """
     :alias_main: paddle.nn.Embedding

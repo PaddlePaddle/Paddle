@@ -15,7 +15,6 @@
 # TODO: define the common classes to build a neural network  
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
-from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
 from ...fluid.dygraph import Linear  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
@@ -342,3 +341,37 @@ class Pad2D(layers.Layer):
             mode=self._mode,
             pad_value=self._pad_value,
             data_format=self._data_format)
+
+
+class Embedding(layers.Layer):
+    def __init__(self,
+                 num_embeddings,
+                 embedding_dim,
+                 padding_idx=None,
+                 is_sparse=False,
+                 weight_attr=None,
+                 name=None):
+        super(Embedding, self).__init__()
+        self._size = [num_embeddings, embedding_dim]
+        self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+            self._size[0] + padding_idx)
+        self._weight_attr = weight_attr
+        self._dtype = 'float32'
+        self._name = name
+        self._is_sparse = is_sparse
+        self._is_distributed = False
+        self._remote_prefetch = self._is_sparse
+
+        self.weight = self.create_parameter(
+            attr=self._weight_attr,
+            shape=self._size,
+            dtype=self._dtype,
+            is_bias=False)
+
+    def forward(self, input):
+        return F.embedding(
+            input,
+            weight=self.weight,
+            padding_idx=self._padding_idx,
+            is_sparse=self._is_sparse,
+            name=self._name)
