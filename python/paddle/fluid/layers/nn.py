@@ -4397,12 +4397,9 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.mean")
 def reduce_mean(input, dim=None, keep_dim=False, name=None):
     """
-    :alias_main: paddle.reduce_mean
-	:alias: paddle.reduce_mean,paddle.tensor.reduce_mean,paddle.tensor.stat.reduce_mean
-	:old_api: paddle.fluid.layers.reduce_mean
-
     Computes the mean of the input tensor's elements along the given dimension.
 
     Args:
@@ -4451,31 +4448,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
 
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
-    if in_dygraph_mode():
-        reduce_all = True if dim == None or dim == [] or len(dim) == len(
-            input.shape) else False
-        dim = dim if dim != None and dim != [] else [0]
-        return core.ops.reduce_mean(input, 'dim', dim, 'keep_dim', keep_dim,
-                                    'reduce_all', reduce_all)
-    attrs = {
-        'dim': dim if dim != None and dim != [] else [0],
-        'keep_dim': keep_dim,
-        'reduce_all': True
-        if dim == None or dim == [] or len(dim) == len(input.shape) else False
-    }
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_mean')
-    helper = LayerHelper('reduce_mean', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='reduce_mean',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs=attrs)
-    return out
+    return paddle.mean(x=input, axis=dim, keepdim=keep_dim, name=name)
 
 
 def reduce_max(input, dim=None, keep_dim=False, name=None):
@@ -12331,6 +12304,7 @@ def mean(x, name=None):
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
     """
+
     if in_dygraph_mode():
         return core.ops.mean(x)
 

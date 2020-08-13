@@ -99,7 +99,7 @@ class TestBCELoss(unittest.TestCase):
         weight_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
-        for red in ['sum', 'none']:
+        for red in ['sum', 'mean', 'none']:
             static_result = test_static(
                 place, x_np, label_np, red, weight_np=weight_np)
             dy_result = test_dygraph(

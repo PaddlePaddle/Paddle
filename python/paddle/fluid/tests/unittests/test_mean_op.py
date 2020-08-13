@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -71,6 +72,62 @@ class TestFP16MeanOp(TestMeanOp):
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place, ['X'], 'Out', max_relative_error=0.8)
+
+
+class TestMeanAPI(unittest.TestCase):
+    """
+    test paddle.tensor.stat.mean
+    """
+
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_api_static(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', self.x_shape)
+            out1 = paddle.mean(x)
+            out2 = paddle.tensor.mean(x)
+            out3 = paddle.tensor.stat.mean(x)
+            axis = np.arange(len(self.x_shape)).tolist()
+            out4 = paddle.mean(x, axis)
+            out5 = paddle.mean(x, tuple(axis))
+
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x},
+                          fetch_list=[out1, out2, out3, out4, out5])
+        out_ref = np.mean(self.x)
+        for out in res:
+            self.assertEqual(np.allclose(out, out_ref), True)
+
+    def test_api_imperative(self):
+        def test_case(x, axis=None, keepdim=False):
+            x_tensor = paddle.to_variable(x)
+            out = paddle.mean(x_tensor, axis, keepdim)
+            if isinstance(axis, list):
+                axis = tuple(axis)
+                if len(axis) == 0:
+                    axis = None
+            out_ref = np.mean(x, axis, keepdims=keepdim)
+            self.assertEqual(np.allclose(out.numpy(), out_ref), True)
+
+        paddle.disable_static(self.place)
+        test_case(self.x)
+        test_case(self.x, [])
+        test_case(self.x, -1)
+        test_case(self.x, keepdim=True)
+        test_case(self.x, 2, keepdim=True)
+        test_case(self.x, [0, 2])
+        test_case(self.x, (0, 2))
+        test_case(self.x, [0, 1, 2, 3])
+        paddle.enable_static()
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12], 'int8')
+            self.assertRaises(TypeError, paddle.mean, x)
 
 
 if __name__ == "__main__":
