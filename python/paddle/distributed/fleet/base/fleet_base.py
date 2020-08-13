@@ -15,8 +15,8 @@
 from __future__ import print_function
 import paddle
 from .strategy_compiler import StrategyCompiler
-from .meta_optimizer_factory import MetaOptimizerFactory
 from .distributed_strategy import DistributedStrategy
+from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from .util_factory import UtilFactory
 
