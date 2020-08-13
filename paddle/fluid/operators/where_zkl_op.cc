@@ -82,18 +82,23 @@ class WhereZklGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Condition"), "Input", "Condition",
                    "where_zkl");
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "where_zkl");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "where_zkl");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    "Out@GRAD", "where_zkl");
 
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output", "X",
-                   "where_zkl");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Y")), "Output", "Y",
-                   "where_zkl");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   "X@GRAD", "where_zkl");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Y")), "Output",
+                   "Y@GRAD", "where_zkl");
 
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
-    ctx->SetOutputDim(framework::GradVarName("Y"), ctx->GetInputDim("Out"));
+    ctx->SetOutputDim(framework::GradVarName("X"),
+                      ctx->GetInputDim(framework::GradVarName("Out")));
+    ctx->SetOutputDim(framework::GradVarName("Y"),
+                      ctx->GetInputDim(framework::GradVarName("Out")));
+
+    // ctx->SetOutputDim(framework::GradVarName("X"),
+    // ctx->GetInputDim("Condition"));
+    // ctx->SetOutputDim(framework::GradVarName("Y"),
+    // ctx->GetInputDim("Condition"));
   }
 
  protected:
@@ -114,14 +119,9 @@ class WhereZklOpGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("where_zkl_grad");
     retv->SetInput("Condition", this->Input("Condition"));
-    retv->SetInput("X", this->Input("X"));
-    retv->SetInput("Y", this->Input("Y"));
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    // retv->SetOutput(framework::GradVarName("Condition"),
-    // this->InputGrad("Condition"));
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
-    // retv->SetAttrMap(this->Attrs());
   }
 };
 

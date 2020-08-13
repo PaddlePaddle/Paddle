@@ -76,17 +76,16 @@ class WhereZklGPUKernel : public framework::OpKernel<T> {
 };
 
 template <class T>
-__global__ void WhereZklCUDAGradKernel(const bool* condition, const T* x,
-                                       const T* y, const T* out, T* dx, T* dy,
-                                       int64_t N) {
+__global__ void WhereZklCUDAGradKernel(const bool* condition, const T* out,
+                                       T* dx, T* dy, int64_t N) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
     if (condition[id]) {
       dx[id] = out[id];
-      dy[id] = y[id];
+      dy[id] = 0;
     } else {
       dy[id] = out[id];
-      dx[id] = x[id];
+      dx[id] = 0;
     }
 
     id += blockDim.x * gridDim.x;
@@ -107,29 +106,25 @@ class WhereZklGPUGradKernel : public framework::OpKernel<T> {
     auto stream = dev_ctx.stream();
 
     auto* condition = context.Input<Tensor>("Condition");
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Y");
     auto* out = context.Input<Tensor>(framework::GradVarName("Out"));
 
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = context.Output<Tensor>(framework::GradVarName("Y"));
 
     auto* condtion_data = condition->data<bool>();
-    auto* x_data = x->data<T>();
-    auto* y_data = y->data<T>();
     auto* out_data = out->data<T>();
 
     auto* dx_data = dx->mutable_data<T>(context.GetPlace());
     auto* dy_data = dy->mutable_data<T>(context.GetPlace());
 
-    auto x_dims = out->dims();
-    int n = static_cast<int>(framework::product(x_dims));
+    auto out_dims = out->dims();
+    int n = static_cast<int>(framework::product(out_dims));
 
     int thread_per_block = 256;
     int block_per_grid = (n + thread_per_block - 1) / thread_per_block;
 
     WhereZklCUDAGradKernel<T><<<block_per_grid, thread_per_block, 0, stream>>>(
-        condtion_data, x_data, y_data, out_data, dx_data, dy_data, n);
+        condtion_data, out_data, dx_data, dy_data, n);
   }
 };
 

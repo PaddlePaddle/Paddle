@@ -26,11 +26,11 @@ from paddle.fluid import Program, program_guard
 class TestWhereZklOp(OpTest):
     def setUp(self):
         self.op_type = "where_zkl"
-        self.dtype = np.int
+        self.dtype = np.float64
         self.init_dtype_type()
 
-        X = np.random.random((20, 1)).astype(self.dtype)
-        Y = np.random.random((20, 1)).astype(self.dtype)
+        X = np.random.random((200, 1)).astype(self.dtype)
+        Y = np.random.random((200, 1)).astype(self.dtype)
         Condition = X > 1
         out = np.where(Condition, X, Y)
 
@@ -43,19 +43,8 @@ class TestWhereZklOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    # def test_check_grad(self):
-    #     self.check_grad(['Condition', 'X', 'Y'], 'Out', in_place=False)
-
-    # def test_check_grad_normal(self):
-    #     self.check_grad(['Condition', 'X', 'Y'], 'Out')
-
-    # def test_check_grad_ingore_x(self):
-    #     self.check_grad(
-    #         ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
-
-    # def test_check_grad_ingore_y(self):
-    #     self.check_grad(
-    #         ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
+    def test_check_grad(self):
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 if __name__ == '__main__':

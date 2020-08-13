@@ -63,16 +63,12 @@ class WhereZklGradKernel : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
 
     auto* tensor_condition = context.Input<Tensor>("Condition");
-    auto* tensor_x = context.Input<Tensor>("X");
-    auto* tensor_y = context.Input<Tensor>("Y");
     auto* tensor_out = context.Input<Tensor>(framework::GradVarName("Out"));
 
     auto* tensor_dx = context.Output<Tensor>(framework::GradVarName("X"));
     auto* tensor_dy = context.Output<Tensor>(framework::GradVarName("Y"));
 
     const auto* data_condition = tensor_condition->data<bool>();
-    const auto* data_x = tensor_x->data<T>();
-    const auto* data_y = tensor_y->data<T>();
     const auto* data_out = tensor_out->data<T>();
 
     auto* data_dx =
@@ -86,10 +82,10 @@ class WhereZklGradKernel : public framework::OpKernel<T> {
     for (int i = 0; i < size; ++i) {
       if (data_condition[i]) {
         data_dx[i] = data_out[i];
-        data_dy[i] = data_y[i];
+        data_dy[i] = 0;
       } else {
         data_dy[i] = data_out[i];
-        data_dx[i] = data_x[i];
+        data_dx[i] = 0;
       }
     }
   }
