@@ -337,7 +337,7 @@ struct AllDTypeVisitor {
 template <typename Predicate, typename DevCtx>
 inline void AllImpl(Predicate predicate, const framework::Tensor& tensor,
                     const DevCtx& ctx, framework::Tensor* out) {
-  VisisDataType(tensor.type(), AllDTypeVisitor<Predicate, DevCtx>(
+  VisitDataType(tensor.type(), AllDTypeVisitor<Predicate, DevCtx>(
                                    predicate, tensor, ctx, out));
 }
 
@@ -345,7 +345,7 @@ template <typename Predicate>
 class AllOutVisitor : public boost::static_visitor<> {
  private:
   const framework::Tensor& tensor_;
-  mutable framework::Tenosr* out_;
+  mutable framework::Tensor* out_;
   Predicate predicate_;
 
  public:
@@ -357,10 +357,10 @@ class AllOutVisitor : public boost::static_visitor<> {
   void operator()(const Place& place) const {
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
     out_->Resize(tensor_.dims());
-    out_->mutabale_data<bool>(place);
+    out_->mutable_data<bool>(place);
     AllImpl(predicate_, tensor_, *ctx, out_);
   }
-}
+};
 
 template <typename Predicate>
 inline bool All(const framework::Tensor& tensor, Predicate predicate,
@@ -434,9 +434,13 @@ bool TensorIsfinite(const framework::Tensor& tensor) {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
-static inline void __global__ BothFalse(const T* cmp, T* out) {
-  // TODO(Jack Zhou): need to expand multi threads
-  out[0] = (!cmp[0]) && (!out[0]);
+static inline void __global__ BothFalse(const T* cmp, T* out, int element_num) {
+  int total_threads = blockDim.x * gridDim.x;
+  int current_index = threadIdx.x + blockIdx.x * blockDim.x;
+  while (current_index < element_num) {
+    out[current_index] = (!cmp[current_index]) && (!out[current_index]);
+    current_index += total_threads;
+  }
 }
 #endif
 
@@ -453,15 +457,21 @@ struct BothFalseVisitor : public boost::static_visitor<> {
 
   void VisitorImpl(const platform::CUDAPlace& gpu) const {
 #ifdef PADDLE_WITH_CUDA
-    // TODO(Jack Zhou): need to expand multi threads
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
-    BothFalse<bool><<<1, 1, 0, ctx->stream()>>>(in_.data<bool>(),
-                                                out_->mutable_data<bool>(gpu));
+    constexpr int MAX_BLOCK_DIM = 512;
+    int element_num = in_.numel();
+    int block_size = (element_num >= MAX_BLOCK_DIM)
+                         ? MAX_BLOCK_DIM
+                         : (1 << static_cast<int>(std::log2(element_num)));
+    int grid_size = element_num / block_size;
+    BothFalse<bool><<<grid_size, block_size, 0, ctx->stream()>>>(
+        in_.data<bool>(), out_->mutable_data<bool>(gpu), element_num);
 #endif
   }
 
   void VisitorImpl(const platform::CPUPlace& cpu) const {
-    int num = in_.numel() for (int i = 0; i < num; ++i) {
+    int num = in_.numel();
+    for (int i = 0; i < num; ++i) {
       bool lhs = !in_.data<bool>()[i];
       bool rhs = !out_->mutable_data<bool>(cpu)[i];
       out_->mutable_data<bool>(cpu)[i] = lhs && rhs;
@@ -470,7 +480,8 @@ struct BothFalseVisitor : public boost::static_visitor<> {
 
   void VisitorImpl(
       const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
-    int num = in_.numel() for (int i = 0; i < num; ++i) {
+    int num = in_.numel();
+    for (int i = 0; i < num; ++i) {
       bool lhs = !in_.data<bool>()[i];
       bool rhs = !out_->mutable_data<bool>(cpu)[i];
       out_->mutable_data<bool>(cpu)[i] = lhs && rhs;

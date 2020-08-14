@@ -66,21 +66,21 @@ Check whether each element of X is Inf or Nan, return the bool result of each
 element of X as a tensor.
 
 %s
-)DOC"),
-               GetName(), GetComments());
+)DOC",
+                               GetName(), GetComments()));
   }
 
  protected:
   virtual std::string GetName() const = 0;
-  virtual std : string GetComments() const = 0;
-}
+  virtual std::string GetComments() const = 0;
+};
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-#define REGISTER_OP_MAKER(op_type, comment)                           \
+#define REGISTER_V2OP_MAKER(op_type, comment)                         \
   namespace paddle {                                                  \
   namespace operators {                                               \
   class _##op_type##OverflowV2OpMaker                                 \
@@ -107,7 +107,7 @@ namespace ops = paddle::operators;
       ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,       \
                           ops::functor>);
 
-REGISTER_OP_MAKER(isinfv2, "isinfv2(X)");
-REGISTER_OP_MAKER(isnanv2, "isnanv2(X)");
-REGISTER_OP_MAKER(isfinitev2, "isfinitev2(X)");
+REGISTER_V2OP_MAKER(isinf_v2, "isinfv2(X)");
+REGISTER_V2OP_MAKER(isnan_v2, "isnanv2(X)");
+REGISTER_V2OP_MAKER(isfinite_v2, "isfinitev2(X)");
 FOR_EACH_KERNEL_V2FUNCTOR(REGISTER_OVERFLOW_CPU_KERNEL);

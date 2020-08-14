@@ -26,27 +26,27 @@ namespace paddle {
 namespace operators {
 
 struct InfinityV2Functor {
-  void operator()(const framework::Tensor, framework::Tensor* out) {
+  void operator()(const framework::Tensor& tensor, framework::Tensor* out) {
     framework::TensorContainsInfV2(tensor, out);
   }
 };
 
 struct NANV2Functor {
-  void operator()(const framework::Tensor, framework::Tensor* out) {
-    framework::TensorContainsNanV2(tensor, out);
+  void operator()(const framework::Tensor& tensor, framework::Tensor* out) {
+    framework::TensorContainsNANV2(tensor, out);
   }
-}
+};
 
 struct IsfiniteV2Functor {
-  void operator()(const framework::Tensor, framework::Tensor* out) {
-    framework::TensorIsfiniteV2(tensor, out)
+  void operator()(const framework::Tensor& tensor, framework::Tensor* out) {
+    framework::TensorIsfiniteV2(tensor, out);
   }
-}
+};
 
 }  // namespace operators
 }  // namespace paddle
 
 #define FOR_EACH_KERNEL_V2FUNCTOR(__macro) \
-  __macro(isinfv2, InfinityV2Functor);     \
-  __macro(isnanv2, NANV2Functor);          \
-  __macro(isfinitev2, IsfiniteV2Functor);
+  __macro(isinf_v2, InfinityV2Functor);    \
+  __macro(isnan_v2, NANV2Functor);         \
+  __macro(isfinite_v2, IsfiniteV2Functor);
