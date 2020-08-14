@@ -1551,11 +1551,10 @@ class Model(object):
 
         Examples:
         .. code-block:: python
+            import numpy as np
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
             from paddle.nn import Linear
-            import numpy as np
-            from paddle.incubate.hapi import Model, Input
 
             class MyModel(fluid.dygraph.Layer):
                 def __init__(self, classifier_activation='softmax'):
