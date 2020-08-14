@@ -28,6 +28,7 @@ import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
+from dist_fleet_ctr import TestDistCTR2x2, fake_ctr_reader
 from paddle.fleet.base.util_factory import fleet_util
 
 # Fix seed for test
@@ -35,115 +36,10 @@ fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
 
 
-def fake_ctr_reader():
-    def reader():
-        for _ in range(1000):
-            deep = np.random.random_integers(0, 1e5 - 1, size=16).tolist()
-            wide = np.random.random_integers(0, 1e5 - 1, size=8).tolist()
-            label = np.random.random_integers(0, 1, size=1).tolist()
-            yield [deep, wide, label]
-
-    return reader
-
-
-class TestDistCTR2x2(FleetDistRunnerBase):
+class TestDistGpuPsCTR2x2(TestDistCTR2x2):
     """
-    For test CTR model, using Fleet api
+    For test CTR model, using Fleet api & PS-GPU
     """
-
-    def net(self, args, batch_size=4, lr=0.01):
-        """
-        network definition
-
-        Args:
-            batch_size(int): the size of mini-batch for training
-            lr(float): learning rate of training
-        Returns:
-            avg_cost: LoDTensor of cost.
-        """
-        dnn_input_dim, lr_input_dim = int(1e5), int(10040001)
-
-        dnn_data = fluid.layers.data(
-            name="dnn_data",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        lr_data = fluid.layers.data(
-            name="lr_data",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        label = fluid.layers.data(
-            name="click",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=0,
-            append_batch_size=False)
-
-        datas = [dnn_data, lr_data, label]
-
-        if args.reader == "pyreader":
-            self.reader = fluid.io.PyReader(
-                feed_list=datas,
-                capacity=64,
-                iterable=False,
-                use_double_buffer=False)
-
-        # build dnn model
-        dnn_layer_dims = [128, 128, 64, 32, 1]
-        fluid.layers.Print(dnn_data, message="emb:dnn_data")
-        dnn_embedding = fluid.layers.embedding(
-            is_distributed=False,
-            input=dnn_data,
-            size=[dnn_input_dim, dnn_layer_dims[0]],
-            param_attr=fluid.ParamAttr(
-                name="deep_embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
-        dnn_pool = fluid.layers.sequence_pool(
-            input=dnn_embedding, pool_type="sum")
-        dnn_out = dnn_pool
-        for i, dim in enumerate(dnn_layer_dims[1:]):
-            fc = fluid.layers.fc(
-                input=dnn_out,
-                size=dim,
-                act="relu",
-                param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)),
-                name='dnn-fc-%d' % i)
-            dnn_out = fc
-
-        # build lr model
-        fluid.layers.Print(lr_data, message="emb:lr_data")
-        lr_embbding = fluid.layers.embedding(
-            is_distributed=False,
-            input=lr_data,
-            size=[lr_input_dim, 1],
-            param_attr=fluid.ParamAttr(
-                name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
-
-        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
-
-        predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
-        acc = fluid.layers.accuracy(input=predict, label=label)
-
-        auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
-                                                              label=label)
-
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
-
-        self.feeds = datas
-        self.train_file_path = ["fake1", "fake2"]
-        self.avg_cost = avg_cost
-        self.predict = predict
-
-        return avg_cost
 
     def check_model_right(self, dirname):
         model_filename = os.path.join(dirname, "__model__")
@@ -161,8 +57,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         Args:
             fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
         """
-
-        exe = fluid.Executor(fluid.CPUPlace())
+        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        place = fluid.CUDAPlace(device_id)
+        exe = fluid.Executor(place)
         fleet.init_worker()
         exe.run(fleet.startup_program)
 
@@ -170,18 +67,12 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
         self.reader.decorate_sample_list_generator(train_reader)
 
-        compiled_prog = fluid.compiler.CompiledProgram(
-            fleet.main_program).with_data_parallel(
-                loss_name=self.avg_cost.name,
-                build_strategy=self.strategy.get_build_strategy(),
-                exec_strategy=self.strategy.get_execute_strategy())
-
         for epoch_id in range(1):
             self.reader.start()
             try:
                 pass_start = time.time()
                 while True:
-                    loss_val = exe.run(program=compiled_prog,
+                    loss_val = exe.run(program=fleet.main_program,
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
                     reduce_output = fleet_util.all_reduce(
@@ -207,7 +98,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
         )
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        place = fluid.CUDAPlace(device_id)
+        exe = fluid.Executor(place)
 
         fleet.init_worker()
         exe.run(fleet.startup_program)
@@ -252,4 +145,4 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestDistCTR2x2)
+    runtime_main(TestDistGpuPsCTR2x2)
