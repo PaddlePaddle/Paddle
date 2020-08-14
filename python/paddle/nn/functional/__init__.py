@@ -129,7 +129,7 @@ from .loss import iou_similarity  #DEFINE_ALIAS
 from .loss import kl_div  #DEFINE_ALIAS
 from .loss import l1_loss  #DEFINE_ALIAS
 from .loss import log_loss  #DEFINE_ALIAS
-from .loss import margin_rank_loss  #DEFINE_ALIAS
+from .loss import margin_ranking_loss  #DEFINE_ALIAS
 from .loss import mse_loss  #DEFINE_ALIAS
 from .loss import nll_loss  #DEFINE_ALIAS
 # from .loss import nce        #DEFINE_ALIAS

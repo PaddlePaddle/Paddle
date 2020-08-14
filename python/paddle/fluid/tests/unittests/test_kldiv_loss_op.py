@@ -102,15 +102,11 @@ class TestKLDivLossDygraph(unittest.TestCase):
     def test_kl_loss_none(self):
         self.run_kl_loss('none')
 
-    def test_kl_loss_error(self):
-        self.assertRaises(ValueError, self.run_kl_loss, 'error')
+    def test_kl_loss_static_api(self):
+        input = paddle.fluid.data(name='input', shape=[5, 20])
+        label = paddle.fluid.data(name='label', shape=[5, 20])
 
-    def test_kl_loss_static(self):
-        x = paddle.fluid.data(name='x', shape=[5, 20])
-        target = paddle.fluid.data(name='target', shape=[5, 20])
-
-        kldiv_criterion = paddle.nn.KLDivLoss()
-        pred_loss = kldiv_criterion(x, target)
+        pred_loss = paddle.nn.functional.kl_div(input, label)
 
 
 if __name__ == "__main__":

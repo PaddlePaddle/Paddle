@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 from functools import partial, reduce
+from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
@@ -1619,59 +1620,55 @@ def huber_loss(input, label, delta):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.kl_div")
 @templatedoc()
 def kldiv_loss(x, target, reduction='mean', name=None):
     """
+    :alias_main: paddle.nn.functional.kldiv_loss
+	:alias: paddle.nn.functional.kldiv_loss,paddle.nn.functional.loss.kldiv_loss
+	:old_api: paddle.fluid.layers.kldiv_loss
 
     ${comment}
 
     Args:
-        x (Tensor): ${x_comment}
-        target (Tensor): ${target_comment}
-        reduction (Tensor): ${reduction_comment}
+        x (Variable): ${x_comment}
+        target (Variable): ${target_comment}
+        reduction (Variable): ${reduction_comment}
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
     Returns:
-        Tensor: The KL divergence loss. The data type is same as input tensor
+        Variable(Tensor): The KL divergence loss. The data type is same as input tensor
 
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
-            import paddle.nn.functional as F
+            import paddle.fluid as fluid
             
-            paddle.enable_imperative()
-            
-            shape = (5, 20)
-            input = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
-
             # 'batchmean' reduction, loss shape will be [N]
-            pred_loss = F.kl_div(paddle.imperative.to_variable(input),
-                                 paddle.imperative.to_variable(target), reduction='batchmean')
-            # shape=[5]
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean') # shape=[-1]
             
             # 'mean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.imperative.to_variable(input),
-                                 paddle.imperative.to_variable(target), reduction='mean')
-            # shape=[1]
-
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='mean') # shape=[1]
+            
             # 'sum' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.imperative.to_variable(input),
-                                 paddle.imperative.to_variable(target), reduction='sum')
-            # shape=[1]
-
-            # 'none' reduction, loss shape is same with input shape
-            pred_loss = F.kl_div(paddle.imperative.to_variable(input),
-                                 paddle.imperative.to_variable(target), reduction='none')
-            # shape=[5, 20]
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='sum') # shape=[1]
+            
+            # 'none' reduction, loss shape is same with X shape
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='none') # shape=[-1, 4, 2, 2]
 
     """
     helper = LayerHelper('kldiv_loss', **locals())
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'kldiv_loss')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'kldiv_loss')
     check_variable_and_dtype(target, 'target', ['float32', 'float64'],
                              'kldiv_loss')
     check_type(reduction, 'reduction', str, 'kldiv_loss')

@@ -18,7 +18,7 @@ import unittest
 import os
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fleet.base.private_helper_function import wait_server_ready
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
 
 class TestCCommInitOp(unittest.TestCase):
