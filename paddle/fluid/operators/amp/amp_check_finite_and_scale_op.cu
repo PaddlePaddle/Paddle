@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cuda.h>
+
 #include "paddle/fluid/operators/amp/amp_check_finite_and_scale_op.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -21,7 +22,7 @@ namespace operators {
 
 template <typename T>
 __global__ void AmpCheckFiniteAndScale(const T* in, const T* scale, int num,
-                                       int* found_inf, T* out) {
+                                       bool* found_inf, T* out) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (idx < num) {
@@ -44,7 +45,7 @@ class AmpCheckFiniteAndScaleKernel<platform::CUDADeviceContext, T>
     auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
 
     const T* scale_data = scale->data<T>();
-    int* found_inf_data = found_inf->mutable_data<int>(dev_ctx.GetPlace());
+    bool* found_inf_data = found_inf->mutable_data<bool>(dev_ctx.GetPlace());
     cudaMemset(found_inf_data, false, found_inf->numel() * sizeof(bool));
 
     for (size_t i = 0; i < xs.size(); ++i) {
