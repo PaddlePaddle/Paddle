@@ -69,13 +69,8 @@ class WhereZklGradKernel : public framework::OpKernel<T> {
     int size = tensor_out->numel();
 
     for (int i = 0; i < size; ++i) {
-      if (data_condition[i]) {
-        data_dx[i] = data_out[i];
-        data_dy[i] = 0;
-      } else {
-        data_dy[i] = data_out[i];
-        data_dx[i] = 0;
-      }
+      data_dx[i] = data_condition[i] ? data_out[i] : 0;
+      data_dy[i] = data_condition[i] ? 0 : data_out[i];
     }
   }
 };

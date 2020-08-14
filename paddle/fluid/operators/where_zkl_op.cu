@@ -74,13 +74,8 @@ __global__ void WhereZklCUDAGradKernel(const bool* condition, const T* out,
                                        T* dx, T* dy, int64_t N) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
-    if (condition[id]) {
-      dx[id] = out[id];
-      dy[id] = 0;
-    } else {
-      dy[id] = out[id];
-      dx[id] = 0;
-    }
+    dx[id] = condition[id] ? out[id] : 0;
+    dy[id] = condition[id] ? 0 : out[id];
 
     id += blockDim.x * gridDim.x;
   }
