@@ -72,23 +72,17 @@ add_custom_command(OUTPUT ${FLUID_CORE}
 add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE_DEPS})
 
 IF(WIN32)
-  add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+  add_custom_target(paddle_python ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python/paddle/
     COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
-    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES}
-    COMMAND ${CMAKE_COMMAND} -E rm -f ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES})
 ELSE(WIN32)
-  add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+  add_custom_target(paddle_python ALL
     COMMAND touch stub.cc
     COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
-    COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
-    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES}
-    COMMAND rm -f ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES})
 ENDIF()
-
-add_custom_target(paddle_python ALL DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
