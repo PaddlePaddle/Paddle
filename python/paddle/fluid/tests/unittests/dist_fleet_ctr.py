@@ -182,6 +182,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                     loss_val = exe.run(program=compiled_prog,
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
+                    # TODO(randomly fail)
                     #   reduce_output = fleet_util.all_reduce(
                     #       np.array(loss_val), mode="sum")
                     #   loss_all_trainer = fleet_util.all_gather(float(loss_val))
