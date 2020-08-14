@@ -1052,3 +1052,34 @@ class SplitAssignTransformer(gast.NodeTransformer):
             value_node = target
 
         return new_nodes
+
+
+# NOTE: inspect.unwrap() exits in PY3 but not in PY2.
+def unwrap(func, decorator_names=None):
+    """
+    If decorator_name is None, returns the object wrapped, otherwise returns the object
+    wrapped by the specified decorators.
+    """
+
+    def _is_wrapped(f, decorator_names=None):
+
+        if decorator_names is not None and \
+                not isinstance(decorator_names, (list, tuple)):
+            decorator_names = [decorator_names]
+
+        if not hasattr(f, '__wrapped__'):
+            return False
+
+        if decorator_names is None:
+            return True
+
+        if func._decorator_name.__name__ in decorator_names:
+            return True
+
+        return False
+
+    unwrapped_f = func
+    while (_is_wrapped(unwrapped_f, decorator_names)):
+        unwrapped_f = unwrapped_f.__wrapped__
+
+    return unwrapped_f
