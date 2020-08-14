@@ -168,7 +168,7 @@ RUN pip3 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.8 --no-cache-dir install opencv-python && \
     pip --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip --no-cache-dir install opencv-python
+    pip --no-cache-dir install opencv-python==4.2.0.32
 
 #For docstring checker
 RUN pip3 --no-cache-dir install pylint pytest astroid isort && \
