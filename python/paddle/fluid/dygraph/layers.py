@@ -283,7 +283,7 @@ class Layer(core.Layer):
     def create_parameter(self,
                          shape,
                          attr=None,
-                         dtype='float32',
+                         dtype=None,
                          is_bias=False,
                          default_initializer=None):
         """Create parameters for this layer.

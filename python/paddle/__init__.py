@@ -225,6 +225,8 @@ from .framework import ExponentialDecay  #DEFINE_ALIAS
 from .framework import InverseTimeDecay  #DEFINE_ALIAS
 from .framework import PolynomialDecay  #DEFINE_ALIAS
 from .framework import CosineDecay  #DEFINE_ALIAS
+from .framework import set_default_dtype  #DEFINE_ALIAS
+from .framework import get_default_dtype  #DEFINE_ALIAS
 
 from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.stat import mean  #DEFINE_ALIAS
