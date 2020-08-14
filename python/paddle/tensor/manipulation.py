@@ -845,18 +845,18 @@ def tile(x, repeat_times, name=None):
 
             import paddle
             import numpy as np
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             # example 1:
             np_data_1 = np.array([1, 2, 3]).astype('int32')
-            data_1 = paddle.imperative.to_variable(np_data_1)
+            data_1 = paddle..to_variable(np_data_1)
             tiled_1 = paddle.tile(data_1, repeat_times=[2, 1])
             # [[1, 2, 3], [1, 2, 3]]
 
             # example 2:
             np_repeat_times = np.array([2, 1]).astype("int32")
-            repeat_times = paddle.imperative.to_variable(np_repeat_times)
-            tiled_2 = paddle.tile(data_2, repeat_times=repeat_times)
+            repeat_times = paddle.to_variable(np_repeat_times)
+            tiled_2 = paddle.tile(data_1, repeat_times=repeat_times)
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
@@ -904,7 +904,6 @@ def tile(x, repeat_times, name=None):
 
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    print("attrs:", attrs)
     helper.append_op(
         type='tile', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
