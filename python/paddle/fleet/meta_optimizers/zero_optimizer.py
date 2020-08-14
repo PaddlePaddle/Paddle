@@ -104,14 +104,14 @@ class ZeroOptimizer(MetaOptimizerBase):
                            OP_ROLE_KEY: OpRole.Backward})
 
     def _insert_broadcast_ops(self, block):
+        ring_id = -1
         for op_idx, op in reversed(list(enumerate(block.ops))):
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 continue
             for input_name in op.desc.input_arg_names():
                 if input_name in self._param2device:
                     root_device = self._param2device[input_name]
-                    if self._param2device[
-                            input_name] == self.role_maker.worker_index():
+                    if root_device == self.role_maker.worker_index():
                         param = self._varname2param[input_name]
                     else:
                         broadcast_name = unique_name.generate(input_name +
@@ -125,20 +125,24 @@ class ZeroOptimizer(MetaOptimizerBase):
                     print("main_block insert broadcast op for %s" % param.name)
                     # TODO(mapingshuo) OP_ROLE_KEY should be forward if the param
                     # is used in forward network
-                    block._insert_op(
-                        op_idx,
-                        type='c_sync_comm_stream',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={'ring_id': 0,
-                               OP_ROLE_KEY: OpRole.Backward})
+                    ring_id = (ring_id + 1) % self._nrings
+                    if root_device != self.role_maker.worker_index():
+                        block._insert_op(
+                            op_idx,
+                            type='c_sync_comm_stream',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={
+                                'ring_id': ring_id,
+                                OP_ROLE_KEY: OpRole.Backward
+                            })
                     block._insert_op(
                         op_idx,
                         type='c_broadcast',
                         inputs={'X': param},
                         outputs={'Out': param},
                         attrs={
-                            'ring_id': 0,
+                            'ring_id': ring_id,
                             'root': root_device,
                             OP_ROLE_KEY: OpRole.Forward
                         })
@@ -148,8 +152,10 @@ class ZeroOptimizer(MetaOptimizerBase):
                             type='c_sync_calc_stream',
                             inputs={'X': param},
                             outputs={'Out': param},
-                            attrs={'ring_id': 0,
-                                   OP_ROLE_KEY: OpRole.Backward})
+                            attrs={
+                                'ring_id': ring_id,
+                                OP_ROLE_KEY: OpRole.Backward
+                            })
                         block._insert_op(
                             op_idx,
                             type="fill_constant",
@@ -161,7 +167,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                             })
 
     def _insert_allreduce_ops(self, block):
-        ring_id = 0
+        ring_id = -1
         grad = None
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_backward_op(op) and \
@@ -193,6 +199,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                     # As we search ops reversedly, we should insert c_allreduce_sum
                     # op in the same way to keep the ring_id alternate
                     print("add allreduce op for {}".format(grad.name))
+                    ring_id = (ring_id + 1) % self._nrings
                     block._insert_op(
                         offset,
                         type='c_allreduce_sum',
@@ -208,13 +215,16 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         for idx, op in enumerate(block.ops):
             if is_optimizer_op(op):
-                block._insert_op(
-                    idx + ring_id,
-                    type='c_sync_comm_stream',
-                    inputs={'X': grad},
-                    outputs={'Out': grad},
-                    attrs={'ring_id': ring_id,
-                           OP_ROLE_KEY: OpRole.Backward})
+                for ring_id in range(self._nrings):
+                    block._insert_op(
+                        idx + ring_id,
+                        type='c_sync_comm_stream',
+                        inputs={'X': grad},
+                        outputs={'Out': grad},
+                        attrs={
+                            'ring_id': ring_id,
+                            OP_ROLE_KEY: OpRole.Backward
+                        })
                 break
 
     def minimize_impl(self,
@@ -222,6 +232,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                       startup_program=None,
                       parameter_list=None,
                       no_grad_set=None):
+        self._nrings = 3
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
@@ -298,56 +309,57 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         return optimize_ops, params_grads
 
-    # def _broadcast_params(self, block):
-    #     ring_id = 0
-    #     for param in block.iter_parameters():
-    #         if param.is_distributed:
-    #             continue
+    def _broadcast_params(self, block):
+        ring_id = -1
+        for param in block.iter_parameters():
+            if param.is_distributed:
+                continue
+            ring_id = (ring_id + 1) % self._nrings
+            block.append_op(
+                type='c_broadcast',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': 0,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+        for ring_id in range(self._nrings):
+            block.append_op(
+                type='c_sync_comm_stream',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={'ring_id': ring_id,
+                       OP_ROLE_KEY: OpRole.Forward})
 
-    #         block.append_op(
-    #             type='c_broadcast',
-    #             inputs={'X': param},
-    #             outputs={'Out': param},
-    #             attrs={
-    #                 'ring_id': ring_id,
-    #                 'root': 0,
-    #                 OP_ROLE_KEY: OpRole.Forward
-    #             })
+    def minimize_impl_allreduce(self,
+                                loss,
+                                startup_program=None,
+                                parameter_list=None,
+                                no_grad_set=None):
 
-    #     block.append_op(
-    #         type='c_sync_comm_stream',
-    #         inputs={'X': param},
-    #         outputs={'Out': param},
-    #         attrs={'ring_id': ring_id,
-    #                OP_ROLE_KEY: OpRole.Forward})
+        self._nrings = 3
+        optimize_ops, params_grads = self.inner_opt.minimize(
+            loss, startup_program, parameter_list, no_grad_set)
 
-    # def minimize_impl_allreduce(self,
-    #                             loss,
-    #                             startup_program=None,
-    #                             parameter_list=None,
-    #                             no_grad_set=None):
+        if startup_program is None:
+            startup_program = default_startup_program()
 
-    #     optimize_ops, params_grads = self.inner_opt.minimize(
-    #         loss, startup_program, parameter_list, no_grad_set)
+        print("work idx: ", self.role_maker.worker_index())
+        endpoints = self.role_maker.get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker.worker_index()]
 
-    #     if startup_program is None:
-    #         startup_program = default_startup_program()
+        collective_helper = CollectiveHelper(self.role_maker, self._nrings)
+        for ring_id in range(self._nrings):
+            collective_helper._init_communicator(
+                startup_program, current_endpoint, endpoints,
+                self.role_maker.worker_index(), ring_id, '6174')
+        main_block = loss.block
+        startup_block = startup_program.global_block()
+        self._broadcast_params(startup_block)
 
-    #     print("work idx: ", self.role_maker.worker_index())
-    #     endpoints = self.role_maker.get_trainer_endpoints()
-    #     current_endpoint = endpoints[self.role_maker.worker_index()]
-
-    #     collective_helper = CollectiveHelper(self.role_maker, self._nrings)
-    #     for ring_id in range(self._nrings):
-    #         collective_helper._init_communicator(
-    #             startup_program, current_endpoint, endpoints,
-    #             self.role_maker.worker_index(), ring_id, '6174')
-    #     main_block = loss.block
-    #     startup_block = startup_program.global_block()
-    #     self._broadcast_params(startup_block)
-
-    #     self._insert_scale_loss_grad_ops(
-    #         main_block, scale=1.0 / self.role_maker.worker_num())
-    #     self._insert_allreduce_ops(main_block)
-    #     print("insert allreduce done")
-    #     return optimize_ops, params_grads
+        self._insert_scale_loss_grad_ops(
+            main_block, scale=1.0 / self.role_maker.worker_num())
+        self._insert_allreduce_ops(main_block)
+        print("insert allreduce done")
+        return optimize_ops, params_grads
