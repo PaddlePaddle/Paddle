@@ -20,11 +20,11 @@ import numpy as np
 import unittest
 
 
-def pairwise_distance(x, y, p=2.0, eps=1e-6, keepdim=False):
+def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False):
     return np.linalg.norm(x - y, ord=p, axis=1, keepdims=keepdim)
 
 
-def test_static(x_np, y_np, p=2.0, eps=1e-6, keepdim=False):
+def test_static(x_np, y_np, p=2.0, epsilon=1e-6, keepdim=False):
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
 
@@ -35,7 +35,7 @@ def test_static(x_np, y_np, p=2.0, eps=1e-6, keepdim=False):
         x = paddle.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
         y = paddle.data(name='y', shape=y_np.shape, dtype=x_np.dtype)
         dist = paddle.nn.layer.distance.PairwiseDistance(
-            p=p, eps=eps, keepdim=keepdim)
+            p=p, epsilon=epsilon, keepdim=keepdim)
         distance = dist(x, y)
         exe = paddle.static.Executor(place)
         static_ret = exe.run(prog,
@@ -46,12 +46,12 @@ def test_static(x_np, y_np, p=2.0, eps=1e-6, keepdim=False):
     return static_ret
 
 
-def test_dygraph(x_np, y_np, p=2.0, eps=1e-6, keepdim=False):
+def test_dygraph(x_np, y_np, p=2.0, epsilon=1e-6, keepdim=False):
     paddle.disable_static()
     x = paddle.to_variable(x_np)
     y = paddle.to_variable(y_np)
     dist = paddle.nn.layer.distance.PairwiseDistance(
-        p=p, eps=eps, keepdim=keepdim)
+        p=p, epsilon=epsilon, keepdim=keepdim)
     distance = dist(x, y)
     dygraph_ret = distance.numpy()
     paddle.enable_static()
