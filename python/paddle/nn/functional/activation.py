@@ -17,7 +17,6 @@ from ...fluid.layers import brelu  #DEFINE_ALIAS
 from ...fluid.layers import elu  #DEFINE_ALIAS
 from ...fluid.layers import erf  #DEFINE_ALIAS
 from ...fluid.layers import gelu  #DEFINE_ALIAS
-from ...fluid.layers import hard_shrink  #DEFINE_ALIAS
 from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
@@ -38,7 +37,7 @@ __all__ = [
     'elu',
     'erf',
     'gelu',
-    'hard_shrink',
+    'hardshrink',
     'hard_sigmoid',
     'hard_swish',
     'hsigmoid',
@@ -67,6 +66,59 @@ from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype
 import paddle
+
+
+def hardshrink(x, threshold=0.5, name=None):
+    """
+    hard shrinkage activation
+
+    .. math::
+
+        hardshrink(x)=
+            \left\{
+            \begin{aligned}
+            &x, & & if \ x > threshold \\
+            &x, & & if \ x < -threshold \\
+            &0, & & if \ others
+            \end{aligned}
+            \right.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        threshold (float, optional): The value of threshold for hardthrink. Default is 0.5
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_variable(np.array([-1, 0.3, 2.5]))
+        out = F.hardshrink(x) # [-1., 0., 2.5]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.hard_shrink(x, 'threshold', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hardshrink')
+    helper = LayerHelper('hardshrink', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='hard_shrink',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
+    return out
 
 
 def hsigmoid(input,

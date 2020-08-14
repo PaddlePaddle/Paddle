@@ -1511,7 +1511,7 @@ def array_write(x, i, array=None):
         assert i.shape == [
             1
         ], "The shape of index 'i' should be [1] in dygraph mode"
-        i = i.numpy()[0]
+        i = i.numpy().item(0)
         if array is None:
             array = create_array(x.dtype)
         assert isinstance(
@@ -1976,7 +1976,7 @@ def array_read(array, i):
         assert i.shape == [
             1
         ], "The shape of index 'i' should be [1] in dygraph mode"
-        i = i.numpy()[0]
+        i = i.numpy().item(0)
         return array[i]
 
     check_variable_and_dtype(i, 'i', ['int64'], 'array_read')

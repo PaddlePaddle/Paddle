@@ -37,7 +37,7 @@ def monkey_patch_math_varbase():
     The difference is, in dygraph mode, use auto-generated op functions for better performance.
     """
 
-    @no_grad
+    @no_grad()
     def create_tensor(value, dtype, shape):
         out = _varbase_creator(dtype=dtype)
         out = core.ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
