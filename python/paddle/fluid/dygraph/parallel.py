@@ -91,29 +91,27 @@ def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
         # 1. input check
         if not isinstance(trainer_id, six.integer_types):
             raise TypeError(
-                "input `trainer_id` type error, expected type is integer, but received type is %s."
-                % type(trainer_id))
+                "input `trainer_id` type error, expected type is integer, "
+                "but received type is %s." % type(trainer_id))
         if not isinstance(trainer_num, six.integer_types):
             raise TypeError(
-                "input `trainer_num` type error, expected type is integer, but received type is %s."
-                % type(trainer_id))
+                "input `trainer_num` type error, expected type is integer, "
+                "but received type is %s." % type(trainer_id))
         if not isinstance(backend, six.string_types):
-            raise TypeError(
-                "input `backend` type error, expected type is str, but received type is %s."
-                % type(trainer_id))
+            raise TypeError("input `backend` type error, expected type is str, "
+                            "but received type is %s." % type(trainer_id))
 
         if trainer_id < 0:
-            raise ValueError(
-                "input `trainer_id` should be greater than 0, but received %d."
-                % trainer_id)
+            raise ValueError("input `trainer_id` should be greater than 0, "
+                             "but received %d." % trainer_id)
         if trainer_num < 0:
-            raise ValueError(
-                "input `trainer_num` should be greater than 0, but received %d."
-                % trainer_num)
+            raise ValueError("input `trainer_num` should be greater than 0, "
+                             "but received %d." % trainer_num)
         if trainer_id >= trainer_num:
             raise ValueError(
-                "input `trainer_id` should be less than or equal to `trainer_num`, but `trainer_id` is %d, `trainer_num` is %d."
-                % (trainer_id, trainer_num))
+                "input `trainer_id` should be less than or equal to `trainer_num`, "
+                "but `trainer_id` is %d, `trainer_num` is %d." %
+                (trainer_id, trainer_num))
         if six.ensure_str(backend) != 'nccl':
             raise ValueError(
                 "backend `%s` is not supported, now only supports `nccl` backend."
@@ -128,10 +126,31 @@ def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
 
         # get args from kwargs
         args = ParallelEnvArgs()
-        args.cluster_node_ips = kwargs.get('cluster_node_ips', "127.0.0.1")
-        args.node_ip = kwargs.get('node_ip', "127.0.0.1")
-        args.use_paddlecloud = kwargs.get('use_paddlecloud', False)
+        args.cluster_node_ips = kwargs.get('cluster_node_ips', None)
+        args.node_ip = kwargs.get('node_ip', None)
+        if args.cluster_node_ips is not None and args.node_ip is None:
+            raise ValueError("please input current node ip, "
+                             "cannot `cluster_node_ips`.")
+        default_node_ip = os.environ.get("PADDLE_MASTER_IPADDR", None)
+        default_node_ip = "127.0.0.1" if default_node_ip else default_node_ip
+        if args.node_ip is None:
+            args.node_ip = default_node_ip
+        if args.cluster_node_ips is None:
+            args.cluster_node_ips = default_node_ip
+
+        # NOTE(chenweihang): Here should set started_port before
+        # `get_cluster_and_pod` and keep each process's started_port
+        # is same, see [ why need set default master info before run? ]
         args.started_port = kwargs.get('started_port', None)
+        if args.started_port is None:
+            default_port = os.environ.get("PADDLE_MASTER_PORT", None)
+            if default_port is None:
+                raise RuntimeError(
+                    "please input start port of parallel training by `started_port=**`."
+                )
+            args.started_port = default_port
+
+        args.use_paddlecloud = kwargs.get('use_paddlecloud', False)
         args.print_config = kwargs.get('print_config', True)
         args.selected_gpus = ",".join(
             [str(g) for g in [x for x in range(0, trainer_num)]])

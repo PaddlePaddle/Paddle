@@ -15,19 +15,32 @@
 from __future__ import print_function
 
 import multiprocessing
+import os
 import signal
 import sys
+import warnings
 
 import paddle.fluid as fluid
+from paddle.distributed.utils import find_free_ports
 
 
-def _py_version_check():
+def _support_set_start_method():
     if not sys.version_info >= (3, 4):
-        raise RuntimeError(
-            "Use `paddle.distributed.run` to start parallel training "
-            "requires python version greater than 3.4, if your python "
-            "is lower than this version, please use "
-            "`paddle.distributed.launch` instead.")
+        warnings.warn(
+            "`paddle.distributed.run` only supports setting the process"
+            " start when python version greater than 3.4, if your python"
+            " is lower than this version, only can start processes by"
+            " default method of current platform.")
+
+
+def _set_default_master_env():
+    # set default master trainer ip addr
+    os.environ['PADDLE_MASTER_IPADDR'] = '127.0.0.1'
+    # set default master trainer port
+    port_set = find_free_ports(1)
+    if port_set is None:
+        raise RuntimeError("no free port can be used to parallel training now.")
+    os.environ['PADDLE_MASTER_PORT'] = str(list(port_set)[0])
 
 
 def _func_wrapper(func, i, args, error_queue):
@@ -43,7 +56,7 @@ def _func_wrapper(func, i, args, error_queue):
 
 class MultiprocessContext(object):
     def __init__(self, processes, error_queues):
-        _py_version_check()
+        _support_set_start_method()
         self.error_queues = error_queues
         self.processes = processes
         self.sentinels = {
@@ -97,6 +110,15 @@ def launch_processes(func,
                      join=True,
                      daemon=False,
                      start_method='spawn'):
+    # NOTE(chenweihang): [ why need set default master info before run? ]
+    # when using `paddle.distributed.run` start parallel training,
+    # users need use `init_parallel_env` to config some cluster info
+    # inner subprocess, if each process find free port for itself,
+    # the started port may be different, it will cause endpoints is
+    # different in different subprocesses
+    _set_default_master_env()
+
+    # start processes
     mp = multiprocessing.get_context(start_method)
     error_queues = []
     processes = []
