@@ -24,6 +24,7 @@ import collections
 import numpy as np
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
+from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
@@ -200,7 +201,7 @@ def unwrap(func):
     decorators = []
     cur = func
     while True:
-        if isinstance(cur, PartialProgram):
+        if isinstance(cur, Translator):
             decorators.append(cur)
             # Note: if `cur` is a method, keep it as bound method of class.
             instance = cur._class_instance
@@ -213,8 +214,20 @@ def unwrap(func):
     return decorators, cur
 
 
-class PartialProgram(object):
+class Translator(object):
+    """
+    Wrapper class to Manage program conversion of decorated function.
+
+    """
+
     def __init__(self, function, input_spec=None):
+        """
+        Initializes a `Translator`.
+
+        Args:
+            function(callable): A function or method that will be converted into static program.
+            input_spec(list[TensorSpec]): list of TensorSpec to specify the `shape/dtype/name` information for each input argument, default None.
+        """
         # save the instance `self` while decorating a method of class.
         if inspect.ismethod(function):
             self._dygraph_function = getattr(function, '__func__')
@@ -226,14 +239,50 @@ class PartialProgram(object):
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
+        # TODO(Aurelius84): Remove this after we hidden this concept
+        # or move the `enable_declarative` into global flag, for example
+        # `jit.enable_declarative`.
+        self._program_trans = ProgramTranslator()
 
     def __get__(self, instance, owner):
+        """
+        Overrides this method to parse the class instance and call bound method correctly.
+
+        For example:
+            
+            '''
+            class Net(Layer):
+                def __init__(self):
+                    pass
+                
+                @declarative
+                def forward(self, x, y):
+                    return x + y
+
+            net = Net()
+            out = net(x, y)
+            '''
+        
+        In above case, `net(x, y)` will call `net.forward(x, y)` firstly that is a bound method
+        of `Net` instance. After decorated by `@declarative`, it will firstly to call `__get__`
+        to parse the class instance correctly instead of the `Translator` instance.
+        """
         self._class_instance = instance
         return self
 
     def __call__(self, *args, **kwargs):
+        """
+        Supports to call the returned instance with input `args` and `kwargs` directly.
+
+        Args:
+            *args(tuple): tuple of all input arguments from original decorated function.
+            **kwargs(dict): dict of all input keyward arguments from original decorated function. 
+
+        Return:
+            Outputs of decorated function.
+        """
         # 1. call dygraph function directly if not enable `declarative`
-        if not program_trans.enable_declarative:
+        if not self._program_trans.enable_declarative:
             return self._call_dygraph_function(*args, **kwargs)
 
         # 2. trace ops from dygraph layers and cache the generated program.
@@ -272,6 +321,13 @@ class PartialProgram(object):
     def _call_dygraph_function(self, *args, **kwargs):
         """
         Calls dygraph function directly and returns the outputs.
+
+        Args:
+            *args(tuple): tuple of all input arguments from original decorated function.
+            **kwargs(dict): dict of all input keyward arguments from original decorated function. 
+
+        Return:
+            Outputs of dygraph function.
         """
         if self._class_instance is not None:
             dygraph_function = self._dygraph_function.__get__(
@@ -290,7 +346,7 @@ class PartialProgram(object):
             **kwargs(dict) : input kwargs values.
 
         Returns:
-            Traced ConcreteProgram and executable PartialProgramLayer.
+            Traced ConcreteProgram and executable TranslatorLayer.
         """
         # 1. unify args/kwargs and replace Tensor with TensorSpec
         if len(args) != len(self._function_spec.args_name):
@@ -306,13 +362,14 @@ class PartialProgram(object):
         concrete_program, partial_program_layer = self._program_cache[cache_key]
         return concrete_program, partial_program_layer
 
-    def get_trace_count(self):
+    def get_traced_count(self):
         """
-        Returns the number of traced program for the dygraph function.
+        Returns the number of traced programs for the decorated function.
         """
         return len(self._program_cache)
 
-    def to_code(self):
+    @property
+    def code(self):
         """
         Returns the source code of transformed static function for debugging.
         """
@@ -322,13 +379,20 @@ class PartialProgram(object):
 
     @property
     def dygraph_function(self):
+        """
+        Returns the original decorated function.
+        """
         return self._dygraph_function
 
     @property
     def concrete_program(self):
+        """
+        Returns recent ConcreteProgram instance of decorated function.
+        """
         # if specific the `input_spec`, the length of program_cache will always 1,
         # else, return the last one.
         cached_program_len = len(self._program_cache)
+        # If specific `input_spec`, apply convertion from dygraph layers into static Program.
         if cached_program_len == 0:
             if len(self._function_spec.flat_input_spec) > 0:
                 input_spec = self._function_spec.input_spec
@@ -337,14 +401,49 @@ class PartialProgram(object):
             else:
                 raise ValueError("No valid transformed program for {}".format(
                     self._function_spec))
+        # If more than one programs have been cached, return the recent converted program by default.
         elif cached_program_len > 1:
             logging.warning(
-                "Current {} has more than one cache program: {}, the last traced progam will be return by default.".
+                "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".
                 format(self._function_spec, cached_program_len))
 
         cache_key, (concrete_program,
                     partial_layer) = self._program_cache.last()
         return concrete_program
+
+    @property
+    def inputs(self):
+        """
+        Returns input tensors of recent converted static program.
+        """
+        concrete_program = self.concrete_program
+        inputs = [
+            var for var in flatten(concrete_program.inputs)
+            if isinstance(var, framework.Variable)
+        ]
+        return inputs
+
+    @property
+    def outputs(self):
+        """
+        Returns output tensors of recent converted static program.
+        """
+        concrete_program = self.concrete_program
+        outputs = [
+            var for var in flatten(concrete_program.outputs)
+            if isinstance(var, framework.Variable)
+        ]
+
+        return outputs
+
+    @property
+    def main_program(self):
+        """
+        Returns recent converted static main program.
+        """
+        concrete_program = self.concrete_program
+        main_program = concrete_program.main_program
+        return main_program
 
     @property
     def program_cache(self):
@@ -374,11 +473,17 @@ def _switch_declarative_mode_guard_(is_declarative=True):
 
 
 class ConcreteProgram(object):
+
+    __slots__ = [
+        'inputs', 'outputs', 'main_program', "startup_program", "parameters",
+        "function"
+    ]
+
     def __init__(self,
                  inputs,
                  outputs,
                  parameters,
-                 func,
+                 function,
                  main_program,
                  startup_program=None):
         self.inputs = inputs
@@ -386,7 +491,7 @@ class ConcreteProgram(object):
         self.main_program = main_program
         self.startup_program = startup_program
         self.parameters = parameters
-        self.func_spec = func
+        self.function = function
 
     @staticmethod
     @switch_to_static_graph
@@ -394,6 +499,10 @@ class ConcreteProgram(object):
         """
         Builds the main_program with specialized inputs and returns outputs
         of program as fetch_list.
+
+        Args:
+            func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
+            input_spec(list[TensorSpec]): 
         """
         # Transforms dygraph function into static function and caches it.
         dygraph_function = func_spec.dygraph_function
@@ -441,7 +550,7 @@ class ConcreteProgram(object):
             inputs=inputs,
             outputs=outputs,
             parameters=all_parameters_and_buffers,
-            func=dygraph_function,
+            function=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)
 
@@ -472,7 +581,8 @@ class ProgramCache(object):
             current_tracing_count = len(self._caches)
             if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
                 logging.warning(
-                    "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".
+                    "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. "
+                    "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".
                     format(current_tracing_count, MAX_TRACED_PROGRAM_COUNT))
 
         return self._caches[item]
@@ -852,6 +962,3 @@ class ProgramTranslator(object):
 
         """
         return self._program_cache
-
-
-program_trans = ProgramTranslator()

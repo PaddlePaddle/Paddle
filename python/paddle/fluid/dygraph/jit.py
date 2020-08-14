@@ -24,7 +24,7 @@ from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrat
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.input_spec import TensorSpec
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, PartialProgram, unwrap
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, Translator, unwrap
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
@@ -128,17 +128,24 @@ def _dygraph_to_static_func_(dygraph_func):
 dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
-def make_decorate(original_func, wrapper_func):
+def make_decorator(original_func, decorator_func):
+    """
+    Makes a decorator for the original function and copy its attributes.
+
+    Args:
+        original_func(callable): the original decorated function.
+        decoretor_func(callable): the target decorator function.
+    """
     decorator_name = "declarative"
 
-    wrapper_func.__name__ = original_func.__name__
-    wrapper_func._decorator_name = decorator_name
-    wrapper_func.__wrapped__ = original_func
-    wrapper_func.__doc__ = original_func.__doc__
+    decorator_func.__name__ = original_func.__name__
+    decorator_func._decorator_name = decorator_name
+    decorator_func.__wrapped__ = original_func
+    decorator_func.__doc__ = original_func.__doc__
     if hasattr(original_func, "__module__"):
-        wrapper_func.__module__ = original_func.__module__
+        decorator_func.__module__ = original_func.__module__
 
-    return wrapper_func
+    return decorator_func
 
 
 def declarative(function=None, input_spec=None):
@@ -148,10 +155,12 @@ def declarative(function=None, input_spec=None):
     the result as a dygraph VarBase.
 
     Args:
-        dygraph_func (callable): callable imperative function.
+        function (callable): callable imperative function.
+        input_spec(list[TensorSpec]): list of TensorSpec to specific the shape/dtype/name
+            information of each input Tensor.
 
     Returns:
-        VarBase: containing the numerical result.
+        callable object wrapped from the function.
 
     Examples:
         .. code-block:: python
@@ -178,16 +187,16 @@ def declarative(function=None, input_spec=None):
 
     def _decorator_(python_func):
         _, python_func = unwrap(python_func)
-        return make_decorate(
+        return make_decorator(
             original_func=python_func,
-            wrapper_func=PartialProgram(
+            decorator_func=Translator(
                 function=python_func, input_spec=input_spec))
 
-    # for `declarative2(foo, ...)`
+    # for usage: `declarative2(foo, ...)`
     if function is not None:
         return _decorator_(function)
 
-    # for `@declarative2`
+    # for usage: `@declarative2`
     return _decorator_
 
 
@@ -330,7 +339,7 @@ class SaveLoadConfig(object):
                 # use SaveLoadconfig.output_spec
                 model_path = "simplenet.example.model.output_spec"
                 configs = fluid.dygraph.jit.SaveLoadConfig()
-                # only keep the predicted output in saved model, diccard loss
+                # only keep the predicted output in saved model, discard loss
                 configs.output_spec = [out]
 
                 fluid.dygraph.jit.save(
@@ -365,7 +374,7 @@ class SaveLoadConfig(object):
         The name of file to save the translated program of target Layer.
         Default filename is :code:`__model__` .
 
-        Exampels:
+        Examples:
             .. code-block:: python
 
                 import numpy as np
@@ -435,7 +444,7 @@ class SaveLoadConfig(object):
         The name of file to save all persistable variables in target Layer. 
         Default file name is :code:`__variables__` .
         
-        Exampels:
+        Examples:
             .. code-block:: python
 
                 import numpy as np
@@ -588,7 +597,7 @@ def save(layer, model_path, input_spec=None, configs=None):
     The default saved translated program file name is ``__model__``,
     and the default saved persistable variables file name is ``__variables__``,
     and it also saved some additional variable description information to file 
-    ``__varibales.info__``, these additional information is used in fine-tuning.
+    ``__variables.info__``, these additional information is used in fine-tuning.
 
     The saved model can be loaded by follow APIs:
       - :ref:`api_imperative_jit_load`
@@ -598,7 +607,7 @@ def save(layer, model_path, input_spec=None, configs=None):
     Args:
         layer (Layer): the Layer to be saved. The Layer should be decorated by `@declarative`.
         model_path (str): the directory to save the model.
-        input_spec (list[Varibale], optional): Describes the input of the saved model. 
+        input_spec (list[Variable], optional): Describes the input of the saved model. 
             It is the example inputs that will be passed to saved TranslatedLayer's forward
             function. If None, all input variables of the original Layer's forward function
             would be the inputs of the saved model. Default None.
@@ -712,13 +721,13 @@ def save(layer, model_path, input_spec=None, configs=None):
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
         for var in input_spec:
-            if not isinstance(var, core.VarBase):
+            if not isinstance(var, (core.VarBase, Variable)):
                 raise TypeError(
                     "The element in input_spec list should be 'Variable', but received element's type is %s."
                     % type(var))
 
     # 2. get program of declarative Layer.forward
-    if not isinstance(layer.forward, PartialProgram):
+    if not isinstance(layer.forward, Translator):
         raise RuntimeError(
             "layer.forward need to be decorated by `@declarative`.")
     concrete_program = layer.forward.concrete_program
@@ -805,7 +814,7 @@ def load(model_path, configs=None):
         For some historical reasons, if you load model saved by :ref:`api_fluid_io_save_inference_model`,
         there will be the following limitations when using it in fine-tuning:
         1. Imperative mode do not support LoDTensor. All original model's feed targets or parametars that depend on LoD are temporarily unavailable.
-        2. All saved model's feed targets need to be passed into TranslatedLayer's forwrad function.
+        2. All saved model's feed targets need to be passed into TranslatedLayer's forward function.
         3. The variable's ``stop_gradient`` information is lost and can not be recovered.
         4. The parameter's ``trainable`` information is lost and can not be recovered.
 

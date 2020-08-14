@@ -26,14 +26,14 @@ class TestTensorSpec(unittest.TestCase):
         self.assertEqual(tensor_spec.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(tensor_spec.name, None)
 
-    def test_from_variable(self):
+    def test_from_tensor(self):
         x_bool = fluid.layers.fill_constant(shape=[1], dtype='bool', value=True)
-        bool_spec = TensorSpec.from_variable(x_bool)
+        bool_spec = TensorSpec.from_tensor(x_bool)
         self.assertEqual(bool_spec.dtype, x_bool.dtype)
         self.assertEqual(bool_spec.shape, x_bool.shape)
         self.assertEqual(bool_spec.name, x_bool.name)
 
-        bool_spec2 = TensorSpec.from_variable(x_bool, name='bool_spec')
+        bool_spec2 = TensorSpec.from_tensor(x_bool, name='bool_spec')
         self.assertEqual(bool_spec2.name, bool_spec2.name)
 
     def test_from_numpy(self):

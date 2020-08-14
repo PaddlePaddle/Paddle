@@ -28,7 +28,7 @@ import numpy
 import six
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import PartialProgram
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import Translator
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
@@ -64,7 +64,7 @@ def is_paddle_func(func):
 
 def convert_call(func):
     """
-    Converts a function call which needs to be transformed to static fucntion.
+    Converts a function call which needs to be transformed to static function.
 
     Args:
         func (callable): A callable function or method to convert.
@@ -101,7 +101,7 @@ def convert_call(func):
 
     # Function in convert_call may be decorated by another `@declarative`,
     # in this case, unwraps it into a raw method or function.
-    if isinstance(func, PartialProgram):
+    if isinstance(func, Translator):
         instance = func._class_instance
         if instance is not None:
             func = func.dygraph_function.__get__(instance)
@@ -128,18 +128,17 @@ def convert_call(func):
             #      def foo(x):
             #          return x
             #
-            # `foo` will be converted into a wrapper class, suppose as `PartialProgram`.
-            # And `foo.__globals__['foo']` will still return this `PartialProgram` instead of
-            # `foo` function.
-            # So `isinstance(fn, PartialProgram)` is added here. 
-            global_funcs = set()
+            # `foo` will be converted into a wrapper class, suppose as `Translator`.
+            # And `foo.__globals__['foo']` will still return this `Translator` instead of
+            # `foo` function. So `isinstance(fn, Translator)` is added here. 
+            global_functions = set()
             for fn in func.__globals__.values():
                 if inspect.isfunction(fn):
-                    global_funcs.add(fn)
-                elif isinstance(fn, PartialProgram):
-                    global_funcs.add(fn.dygraph_function)
+                    global_functions.add(fn)
+                elif isinstance(fn, Translator):
+                    global_functions.add(fn.dygraph_function)
 
-            if func in global_funcs:
+            if func in global_functions:
                 converted_call = convert_to_static(func)
                 func_self = getattr(func, '__self__', None)
         except AttributeError:

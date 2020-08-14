@@ -29,10 +29,24 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 
 
 class TensorSpec(object):
+    """
+    Describes the base information of a Tensor.
+    """
 
     __slots__ = ['_shape', '_dtype', '_name']
 
     def __init__(self, shape, dtype='float32', name=None):
+        """
+        Args:
+            shape (list|tuple): List|Tuple of integers declaring the shape. You can
+                set "None" or -1 at a dimension to indicate the dimension can be of any
+                size. For example, it is useful to set changeable batch size as "None" or -1.
+            dtype (np.dtype|VarType|str, optional): The type of the data. Supported
+                dtype: bool, float16, float32, float64, int8, int16, int32, int64,
+                uint8. Default: float32.
+            name (str): to specific the name/alias of Tensor, see :ref:`api_guide_Name`
+                for more details.
+        """
         # replace `None` in shape  with -1
         self._shape = self._verify(shape)
         # convert dtype into united represention
@@ -43,21 +57,27 @@ class TensorSpec(object):
         self._name = name
 
     @classmethod
-    def from_variable(cls, variable, name=None):
-        if isinstance(variable, (Variable, core.VarBase)):
-            return cls(variable.shape, variable.dtype, name or variable.name)
+    def from_tensor(cls, tensor, name=None):
+        """
+        Generates a TensorSpec based the description of input tensor. 
+        """
+        if isinstance(tensor, (Variable, core.VarBase)):
+            return cls(tensor.shape, tensor.dtype, name or tensor.name)
         else:
             raise ValueError(
-                "Input `variable` should be a Variable, but received {}.".
-                format(type_name(variable)))
+                "Input `tensor` should be a Tensor, but received {}.".format(
+                    type_name(tensor)))
 
     @classmethod
     def from_numpy(cls, ndarray, name=None):
+        """
+        Generates a TensorSpec based the description of input np.ndarray. 
+        """
         return cls(ndarray.shape, ndarray.dtype, name)
 
     def batch(self, batch_size):
         """
-        Insert `batch_size` in front of the `shape`.
+        Inserts `batch_size` in front of the `shape`.
         """
         if isinstance(batch_size, (list, tuple)):
             if len(batch_size) != 1:
@@ -73,6 +93,9 @@ class TensorSpec(object):
         return TensorSpec(new_shape, self._dtype, self._name)
 
     def unbatch(self):
+        """
+        remove the first element of `shape`.
+        """
         if len(self._shape) == 0:
             raise ValueError(
                 "Not support to unbatch a variable when len(shape) == 0.")
@@ -175,12 +198,12 @@ def convert_inputs_to_tensor_spec(inputs, input_spec):
     """
     Replaces tensor in structured `inputs` by tensorSpec in `input_spec`.
     
-    args:
+    Args:
         inputs(list|dict): nested structure list or dict.
         input_spec(list|dict): same nested structure list or dict as inputs. 
 
     
-    Returns:
+    Return:
         Same structure with inputs by replacing the element with specified TensorSpec.
     """
 
@@ -202,12 +225,13 @@ def convert_inputs_to_tensor_spec(inputs, input_spec):
             input_with_spec.append(out_spec)
 
         # Note: If the rest inputs contain tensor or numpy.ndarray
-        # without specific TensorSpec, raise waring.
+        # without specific TensorSpec, raise warning.
         if len(inputs) > len(input_spec):
             for rest_input in inputs[len(input_spec):]:
                 if isinstance(rest_input, (core.VarBase, np.ndarray)):
                     logging.warning(
-                        "The inputs constain `{}` without specificing TensorSpec, its shape and dtype will be treated immutable. Please specific TensorSpec information in `@declarative` if you expect them as mutable inputs.".
+                        "The inputs constain `{}` without specificing TensorSpec, its shape and dtype will be treated immutable. "
+                        "Please specific TensorSpec information in `@declarative` if you expect them as mutable inputs.".
                         format(type_name(rest_input)))
         input_with_spec.extend(inputs[len(input_spec):])
 
@@ -231,6 +255,10 @@ def convert_inputs_to_tensor_spec(inputs, input_spec):
 
 
 class FunctionSpec(object):
+    """
+    Wrapper class for a function for class method.
+    """
+
     def __init__(self, function, input_spec=None, is_method=False):
         self._dygraph_function = function
         if input_spec is None:
@@ -255,12 +283,12 @@ class FunctionSpec(object):
             when calling it by `foo(23)`, the args is `[23]`, kwargs is `{a=1, b=2}`.
             In this function, it will return args with `[23, 1, 2]`, kwargs with `{}`
 
-        args:
-            args(tuple): tuple of input arguments value of function.
-            kwargs(dict): dict of input kwargs arguments value of function.
+        Args:
+            args(tuple): tuple of input arguments value of decorated function.
+            kwargs(dict): dict of input keyword arguments value of decorated function.
 
-        Returns:
-            New tuple of args with same length of all arguments containing default kwargs.
+        Return:
+            New arguments tuple containing default kwargs value.
         """
         if len(self._arg_names) < len(args):
             error_msg = "The decorated function `{}` requires {} arguments: {}, but received {} with {}.".format(
@@ -291,12 +319,12 @@ class FunctionSpec(object):
 
     def args_to_tensor_spec(self, args, kwargs):
         """
-        Convert input arguments into TensorSpec.
+        Converts input arguments into TensorSpec.
         
         1. If specific input_spec, use them to construct feed layers.
         2. If input_spec is None, consider all Tensor and Numpy.ndarray as feed layers
 
-        args:
+        Args:
             args(tuple): tuple of input arguments value of function containing default kwargs value.
             kwargs(dict): kwargs arguments received by **kwargs.
 
@@ -306,16 +334,22 @@ class FunctionSpec(object):
         input_with_spec = []
 
         if self._input_spec is not None:
+            # Note: Because the value type and length of `kwargs` is uncertain.
+            # So we don't support to deal this case while specificing `input_spec` currently.
             if kwargs:
                 raise ValueError(
                     "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specificed.".
                     format(self._dygraph_function.__name__, kwargs))
 
+            # Note: The length of `input_spec` can be greater than `args`,
+            # because `args` may contains non-tensor value merged form `kwargs`
+            # after `unified_args_and_kwargs`.
             if len(args) < len(self._input_spec):
                 raise ValueError(
                     "Requires len(arguments) >= len(input_spec), but received len(args):{} < len(TensorSpec): {}".
                     format(len(args), len(self._input_spec)))
 
+            # replace argument with corresponding TensorSpec.
             input_with_spec = convert_inputs_to_tensor_spec(args,
                                                             self._input_spec)
         else:
@@ -323,7 +357,7 @@ class FunctionSpec(object):
                 if isinstance(input_var, np.ndarray):
                     input_var = TensorSpec.from_numpy(input_var)
                 elif isinstance(input_var, core.VarBase):
-                    input_var = TensorSpec.from_variable(input_var)
+                    input_var = TensorSpec.from_tensor(input_var)
 
                 input_with_spec.append(input_var)
 
@@ -336,8 +370,8 @@ class FunctionSpec(object):
         """
         Constructs feed layer by inputs with TensorSpec information for main program.
 
-        args:
-            input_with_spec(tuple): input arguments by replacing value with TensorSpec.
+        Args:
+            input_with_spec(tuple): input arguments by replacing argument with TensorSpec.
             main_program(Program): main program for inserting feed layer.
         """
         flat_input_spec = flatten(input_with_spec)
@@ -347,7 +381,7 @@ class FunctionSpec(object):
         for i, var_spec in enumerate(flat_input_spec):
             if isinstance(var_spec, TensorSpec):
                 feed_layer = block.create_var(
-                    # TODO: consider more elegant way to name this
+                    # TODO(Aurelius84): consider more elegant way to name this
                     name=var_spec.name or "feed_%s" % i,
                     shape=var_spec.shape,
                     dtype=var_spec.dtype,
