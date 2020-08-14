@@ -726,12 +726,13 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if isinstance(shape, Variable):
         check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
     else:
-        check_type(shape, 'shape', [int], "fill_constant")
         for ele in shape:
-            if ele <= 0:
-                raise ValueError(
-                    "All eleement is the shape must be positive when it's a tuple or list"
-                )
+            if not isinstance(ele, Variable):
+                check_type(ele, 'shape', (int), "fill_constant")
+                if ele <= 0:
+                    raise ValueError(
+                        "All eleement is the shape must be positive when it's a tuple or list"
+                    )
 
     if out is not None:
         check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
