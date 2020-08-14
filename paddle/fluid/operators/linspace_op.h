@@ -35,8 +35,8 @@ class CPULinspaceKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
     if (num > 1) {
-      double step = static_cast<double>(stop - start) / (num - 1);
-      T value = start;
+      double step = (static_cast<double>(stop - start)) / (num - 1);
+      T value = static_cast<T>(start);
       for (int i = 0; i < num; ++i) {
         out_data[i] = value;
         value = static_cast<T>(step + value);
