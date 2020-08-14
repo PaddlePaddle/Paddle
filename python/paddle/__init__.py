@@ -232,7 +232,7 @@ from .tensor.stat import reduce_mean  #DEFINE_ALIAS
 from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 from .fluid.data import data
-from .device import cudnn_version
+from .device import get_cudnn_version
 # from .tensor.tensor import Tensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensorArray        #DEFINE_ALIAS
