@@ -20,6 +20,7 @@ from op_test import OpTest
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
+import paddle
 
 
 class TestAdamOp1(OpTest):
@@ -441,6 +442,39 @@ class TestAdamOptimizerBetaVariable(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for place in places:
             test_with_place(place, shape)
+
+
+class TestAdamOpBetasV2(unittest.TestCase):
+    def test_adam_op(self):
+        exe = fluid.Executor(place, shape)
+        train_prog = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(train_prog, startup):
+            with fluid.unique_name.guard():
+                data = fluid.data(name="data", shape=shape)
+                conv = fluid.layers.conv2d(data, 8, 3)
+                loss = fluid.layers.reduce_mean(conv)
+
+                beta1 = fluid.layers.create_global_var(
+                    shape=[1], value=0.85, dtype='float32', persistable=True)
+                beta2 = fluid.layers.create_global_var(
+                    shape=[1], value=0.95, dtype='float32', persistable=True)
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.Adam(
+                    lr=1e-5, betas=betas, weight_decay=0.01)
+                opt.minimize(loss)
+
+        exe.run(startup)
+        data_np = np.random.random(shape).astype('float32')
+        rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
+        assert rets[0] is not None
+
+    shape = [2, 3, 8, 8]
+    places = [fluid.CPUPlace()]
+    if core.is_compiled_with_cuda():
+        places.append(fluid.CUDAPlace(0))
+    for place in places:
+        test_with_place(place, shape)
 
 
 if __name__ == "__main__":

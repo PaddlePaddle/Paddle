@@ -14,7 +14,7 @@
 
 __all__ = [
     'Adadelta', 'AdadeltaOptimizer', 'Adagrad', 'AdagradOptimizer', 'Adam',
-    'Adamax', 'AdamaxOptimizer', 'AdamOptimizer', 'DecayedAdagrad',
+    'Adamax', 'DecayedAdagrad', 'AdamW'
     'DecayedAdagradOptimizer', 'DGCMomentumOptimizer', 'Dpsgd',
     'DpsgdOptimizer', 'ExponentialMovingAverage', 'Ftrl', 'FtrlOptimizer',
     'LambOptimizer', 'LarsMomentum', 'LarsMomentumOptimizer',
@@ -24,9 +24,8 @@ __all__ = [
 ]
 
 
-from ..fluid.optimizer import  SGD, Momentum, Adagrad, Adam, Adamax, Dpsgd, DecayedAdagrad, \
-            Ftrl, SGDOptimizer, MomentumOptimizer, AdagradOptimizer, \
-            AdamOptimizer, AdamaxOptimizer, DpsgdOptimizer, \
+from .optimizer import  SGD, Momentum, Adagrad, Adam, Adamax, AdamW, Dpsgd, DecayedAdagrad, \
+            Ftrl, SGDOptimizer, MomentumOptimizer, AdagradOptimizer, DpsgdOptimizer, \
             DecayedAdagradOptimizer, RMSPropOptimizer, FtrlOptimizer, Adadelta, \
             AdadeltaOptimizer, ModelAverage, LarsMomentum, \
             LarsMomentumOptimizer, DGCMomentumOptimizer, LambOptimizer, \

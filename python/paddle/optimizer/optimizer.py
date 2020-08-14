@@ -22,33 +22,34 @@ from collections import defaultdict
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
 
-from . import framework
-from . import layers
-from . import unique_name
-from .backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
-from .clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops
-from .framework import program_guard
-from .initializer import Constant
-from .layer_helper import LayerHelper
-from .layers import ops
-from .regularizer import append_regularization_ops
-from .dygraph import base as imperative_base
-from .dygraph import no_grad
-from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpochDecay
+from ..fluid import framework
+from ..fluid import layers
+from ..fluid import unique_name
+from ..fluid.backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
+from ..fluid.clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops
+from ..fluid.framework import program_guard
+from ..fluid.initializer import Constant
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.layers import ops
+from ..fluid.regularizer import append_regularization_ops
+from ..fluid.dygraph import base as imperative_base
+from ..fluid.dygraph import no_grad
+from ..fluid.dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpochDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
+from paddle.fluid.regularizer import L2Decay
 from functools import reduce
-from .wrapped_decorator import signature_safe_contextmanager
+from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
     'Ftrl', 'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer',
-    'AdamOptimizer', 'AdamaxOptimizer', 'DpsgdOptimizer',
-    'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
-    'AdadeltaOptimizer', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'LambOptimizer', 'ExponentialMovingAverage',
-    'PipelineOptimizer', 'LookaheadOptimizer', 'RecomputeOptimizer'
+    'AdamaxOptimizer', 'DpsgdOptimizer', 'DecayedAdagradOptimizer',
+    'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta', 'AdadeltaOptimizer',
+    'ModelAverage', 'LarsMomentum', 'LarsMomentumOptimizer', 'LambOptimizer',
+    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer',
+    'RecomputeOptimizer'
 ]
 
 
@@ -135,11 +136,12 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 with fluid.dygraph.guard():
                     emb = fluid.dygraph.Embedding([10, 10])
 
-                    adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
+                    adam = paddle.optimizer.Adam(0.001, params=emb.parameters())
                     state_dict = adam.state_dict()
 
         '''
@@ -163,7 +165,7 @@ class Optimizer(object):
         return state_dict
 
     @framework.dygraph_only
-    def set_dict(self, state_dict):
+    def load_state_dict(self, state_dict):
         '''
         Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
 
@@ -181,14 +183,14 @@ class Optimizer(object):
                     state_dict = emb.state_dict()
                     fluid.save_dygraph(state_dict, "paddle_dy")
 
-                    adam = fluid.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
-                                                parameter_list=emb.parameters())
+                    adam = paddle.optimizer.Adam(lr=fluid.layers.noam_decay( 100, 10000), 
+                                                params=emb.parameters())
                     state_dict = adam.state_dict()
                     fluid.save_dygraph(state_dict, "paddle_dy")
 
                     para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
 
-                    adam.set_dict(opti_state_dict)
+                    adam.load_state_dict(opti_state_dict)
 
         '''
 
@@ -313,11 +315,12 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
                         
                 with fluid.dygraph.guard():
                     linear = fluid.dygraph.nn.Linear(10, 10)
 
-                    adam = fluid.optimizer.Adam(0.1, parameter_list=linear.parameters())
+                    adam = paddle.optimizer.Adam(0.1, params=linear.parameters())
 
                     # set learning rate manually by python float value
                     lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
@@ -387,12 +390,13 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
                 # example1: LearningRateDecay is not used, return value is all the same
                 with fluid.dygraph.guard():
                     emb = fluid.dygraph.Embedding([10, 10])
-                    adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
+                    adam = paddle.optimizer.Adam(0.001, params = emb.parameters())
                     lr = adam.current_step_lr()
                     print(lr) # 0.001
 
@@ -406,8 +410,8 @@ class Optimizer(object):
                     
                     bd = [2, 4, 6, 8]
                     value = [0.2, 0.4, 0.6, 0.8, 1.0]
-                    adam = fluid.optimizer.Adam(fluid.dygraph.PiecewiseDecay(bd, value, 0),
-                                           parameter_list=linear.parameters())
+                    adam = paddle.optimizer.Adam(fluid.dygraph.PiecewiseDecay(bd, value, 0),
+                                           params=linear.parameters())
 
                     # first step: learning rate is 0.2
                     np.allclose(adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0) # True
@@ -773,8 +777,9 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
                 loss = network()
-                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 params_grads = optimizer.backward(loss)
                 # you may append operations for params_grads here
                 # ...
@@ -844,6 +849,7 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
                 with fluid.dygraph.guard():
@@ -851,8 +857,8 @@ class Optimizer(object):
                     a = fluid.dygraph.to_variable(value)
                     linear = fluid.Linear(13, 5, dtype="float32")
                     # This can be any optimizer supported by dygraph.
-                    adam = fluid.optimizer.Adam(learning_rate = 0.01, 
-                                                parameter_list = linear.parameters())
+                    adam = paddle.optimizer.Adam(lr = 0.01, 
+                                                params = linear.parameters())
                     out = linear(a)
                     out.backward()
                     adam.minimize(out)
@@ -952,7 +958,7 @@ class SGDOptimizer(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
                 sgd_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -1061,7 +1067,7 @@ class MomentumOptimizer(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                moment_optimizer = fluid.optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+                moment_optimizer = paddle.optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
                 moment_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -1195,8 +1201,8 @@ class DGCMomentumOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            optimizer = fluid.optimizer.DGCMomentumOptimizer(
+            import paddle
+            optimizer = paddle.optimizer.DGCMomentumOptimizer(
                         learning_rate=0.0001,
                         momentum=0.9,
                         rampup_step=1000,
@@ -1595,13 +1601,14 @@ class LarsMomentumOptimizer(Optimizer):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
 
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
             inp = fluid.layers.data(
                 name="inp", shape=[2, 2], append_batch_size=False)
             out = fluid.layers.fc(inp, size=3)
             out = fluid.layers.reduce_sum(out)
-            optimizer = fluid.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
+            optimizer = paddle.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(out)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -1716,13 +1723,14 @@ class AdagradOptimizer(Optimizer):
         .. code-block:: python
 
             import numpy as np
+            import paddle
             import paddle.fluid as fluid
 
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
             inp = fluid.data(name="inp", shape=[2, 2])
             out = fluid.layers.fc(inp, size=3)
             out = fluid.layers.reduce_sum(out)
-            optimizer = fluid.optimizer.AdagradOptimizer(learning_rate=0.2)
+            optimizer = paddle.optimizer.AdagradOptimizer(learning_rate=0.2)
             optimizer.minimize(out)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -1784,7 +1792,7 @@ class AdagradOptimizer(Optimizer):
         return adagrad_op
 
 
-class AdamOptimizer(Optimizer):
+class Adam(Optimizer):
     """
     The Adam optimizer uses an optimization described at the end
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
@@ -1809,24 +1817,17 @@ class AdamOptimizer(Optimizer):
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
     Args:
-        learning_rate (float|Variable, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
-        beta1 (float|Variable, optional): The exponential decay rate for the 1st moment estimates.
-            It should be a float number or a Variable with shape [1] and data type as float32.
-            The default value is 0.9.
-        beta2 (float|Variable, optional): The exponential decay rate for the 2nd moment estimates.
-            It should be a float number or a Variable with shape [1] and data type as float32.
-            The default value is 0.999.
-        epsilon (float, optional): A small float value for numerical stability.
+        lr (float|Tensor, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Tensor`` with a float type. The default value is 0.001.
+        betas (list[float]|list[Tensor], optional): The list of exponential decay rate for moment estimates.
+            The elements of list should be float numbers or Tensor with shape [1] and data type as float32. 
+            The default value is [0.9, 0.999].
+        eps (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
+        params (Iterable, optional):  Iterable of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        weight_decay (float, optional): Weight decay of L2 regularization. The default value is 0.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
@@ -1857,7 +1858,7 @@ class AdamOptimizer(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
+                adam_optimizer = paddle.optimizer.Adam(0.01)
                 adam_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -1871,7 +1872,7 @@ class AdamOptimizer(Optimizer):
 
         .. code-block:: python
 
-            # Adam with beta1/beta2 as Variable
+            # Adam with betas as list[Tensor]
             import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
@@ -1885,7 +1886,7 @@ class AdamOptimizer(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                # define beta decay variable
+                # define beta decay Tensor
                 def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate):
                     global_step = lr_scheduler._decay_step_counter()
 
@@ -1910,13 +1911,12 @@ class AdamOptimizer(Optimizer):
                     fluid.layers.assign(decayed_beta1, beta1)
                     fluid.layers.assign(decayed_beta2, beta2)
 
-                    return beta1, beta2
+                    return [beta1, beta2]
 
-                beta1, beta2 = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
-                adam_optimizer = fluid.optimizer.AdamOptimizer(
-                                                    learning_rate=0.01,
-                                                    beta1=beta1,
-                                                    beta2=beta2)
+                betas = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
+                adam_optimizer = paddle.optimizer.Adam(
+                                                    lr=0.01,
+                                                    betas=betas)
                 adam_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -1934,28 +1934,27 @@ class AdamOptimizer(Optimizer):
     _beta2_pow_acc_str = "beta2_pow_acc"
 
     def __init__(self,
-                 learning_rate=0.001,
-                 beta1=0.9,
-                 beta2=0.999,
-                 epsilon=1e-8,
-                 parameter_list=None,
-                 regularization=None,
+                 lr=0.001,
+                 betas=[0.9, 0.999],
+                 eps=1e-8,
+                 params=None,
+                 weight_decay=0.0,
                  grad_clip=None,
                  name=None,
                  lazy_mode=False):
         assert learning_rate is not None
-        assert beta1 is not None
-        assert beta2 is not None
+        assert betas is not None
         assert epsilon is not None
-        super(AdamOptimizer, self).__init__(
-            learning_rate=learning_rate,
-            parameter_list=parameter_list,
+        regularization = L2Decay(regularization_coeff=weight_decay)
+        super(Adam, self).__init__(
+            learning_rate=lr,
+            parameter_list=params,
             regularization=regularization,
             grad_clip=grad_clip,
             name=name)
         self.type = "adam"
-        self._beta1 = beta1
-        self._beta2 = beta2
+        self._beta1 = betas[0]
+        self._beta2 = betas[1]
         self._epsilon = epsilon
         self._lazy_mode = lazy_mode
 
@@ -2077,22 +2076,17 @@ class AdamaxOptimizer(Optimizer):
     it is added here for numerical stability to prevent the division by 0 error.
 
     Args:
-        learning_rate (float|Variable, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
-        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
-            The default value is 0.9.
-        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
-            The default value is 0.999.
+        lr (float|Tensor, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Tensor`` with a float type. The default value is 0.001.
+        betas (list[float]|list[Tensor], optional): The list of exponential decay rate for moment estimates.
+            The elements of list should be float numbers or Tensor with shape [1] and data type as float32. 
+            The default value is [0.9, 0.999].
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
+        parms (Iterable, optional):  Iterable of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        weight_decay (float, optional): Weight decay of L2 regularization. The default value is 0.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
@@ -2102,12 +2096,13 @@ class AdamaxOptimizer(Optimizer):
             The default value is None.
 
     **Notes**:
-        **Currently, AdamaxOptimizer doesn't support sparse parameter optimization.**
+        **Currently, Adamax doesn't support sparse parameter optimization.**
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           import numpy
 
           # First create the Executor.
@@ -2120,7 +2115,7 @@ class AdamaxOptimizer(Optimizer):
               data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
-              adam = fluid.optimizer.AdamaxOptimizer(learning_rate=0.2)
+              adam = paddle.optimizer.Adamax(lr=0.2)
               adam.minimize(loss)
 
           # Run the startup program once and only once.
@@ -2211,7 +2206,7 @@ class AdamaxOptimizer(Optimizer):
             if grad is None or param.trainable is False:
                 continue
             with param.block.program._optimized_guard(
-                [param, grad]), name_scope('adamx'):
+                [param, grad]), name_scope('adamax'):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 block.append_op(
@@ -2220,6 +2215,79 @@ class AdamaxOptimizer(Optimizer):
                     outputs={"Out": beta1_pow_acc},
                     attrs={"scale": self._beta1},
                     stop_gradient=True)
+
+
+class AdamW(optimizer):
+    """
+    The AdamW optimizer is implemented based on the AdamW Optimization 
+    in paper `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
+    it can resolves the problem of L2 regularization failure in the Adam optimizer.
+
+    .. math::
+
+        t & = t + 1
+
+        moment\_1\_out & = {\\beta}_1 * moment\_1 + (1 - {\\beta}_1) * grad
+        
+        moemnt\_2\_out & = {\\beta}_2 * moment\_2 + (1 - {\\beta}_2) * grad * grad
+
+        learning\_rate & = learning\_rate * \\
+            \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {beta}_1^t}
+
+        param\_out & = param - learning\_rate * (\\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
+
+
+    Args:
+        lr (float|Tensor, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Tensor`` with a float type. The default value is 0.001.
+        betas (list[float]|list[Tensor], optional): The list of exponential decay rate for moment estimates.
+            The elements of list should be float numbers or Tensor with shape [1] and data type as float32. 
+            The default value is [0.9, 0.999].
+        epsilon (float, optional): A small float value for numerical stability.
+            The default value is 1e-08.
+        parms (Iterable, optional):  Iterable of ``Tensor`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
+        weight_decay (float, optional): Weight decay of L2 regularization. The default value is 0.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`.
+            The default value is None.
+
+    **Notes**:
+        **Currently, AdamW doesn't support sparse parameter optimization.**
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import paddle
+          import numpy
+
+          # First create the Executor.
+          place = fluid.CPUPlace() # fluid.CUDAPlace(0)
+          exe = fluid.Executor(place)
+
+          train_program = fluid.Program()
+          startup_program = fluid.Program()
+          with fluid.program_guard(train_program, startup_program):
+              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              adam = paddle.optimizer.AdamW(lr=0.2)
+              adam.minimize(loss)
+
+          # Run the startup program once and only once.
+          exe.run(startup_program)
+
+          x = numpy.random.random(size=(10, 1)).astype('float32')
+          outs = exe.run(program=train_program,
+                        feed={'X': x},
+                         fetch_list=[loss.name])
+    """
 
 
 class DpsgdOptimizer(Optimizer):
@@ -2231,6 +2299,7 @@ class DpsgdOptimizer(Optimizer):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           import numpy
 
           # First create the Executor.
@@ -2243,7 +2312,7 @@ class DpsgdOptimizer(Optimizer):
               data = fluid.layers.data(name='X', shape=[1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
-              optimizer = fluid.optimizer.Dpsgd(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
+              optimizer = paddle.optimizer.Dpsgd(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
               optimizer.minimize(loss)
 
           # Run the startup program once and only once.
@@ -2366,11 +2435,12 @@ class DecayedAdagradOptimizer(Optimizer):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
 
             x = fluid.data( name='x', shape=[None, 10], dtype='float32' )
             trans = fluid.layers.fc( x, 100 )
             cost = fluid.layers.reduce_mean( trans )
-            optimizer = fluid.optimizer.DecayedAdagradOptimizer(learning_rate=0.2)
+            optimizer = paddle.optimizer.DecayedAdagradOptimizer(learning_rate=0.2)
             optimizer.minimize(cost)
     """
     _moment_acc_str = "moment"
@@ -2468,11 +2538,12 @@ class AdadeltaOptimizer(Optimizer):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
 
             image = fluid.data(name='image', shape=[None, 28], dtype='float32')
             fc = fluid.layers.fc(image, size=10)
             cost = fluid.layers.reduce_mean(fc)
-            optimizer = fluid.optimizer.Adadelta(
+            optimizer = paddle.optimizer.Adadelta(
                 learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
 
             # optimizer_ops is a list of optimizer operators to update parameters
@@ -2595,9 +2666,9 @@ class RMSPropOptimizer(Optimizer):
 
 
     Parameters:
-        learning_rate(float): Global learning rate.
-        rho(float): rho is :math: `\\rho` in equation, default is 0.95.
-        epsilon(float): :math: `\\epsilon` in equation is smoothing term to
+        lr(float): Global learning rate.
+        alpha(float): rho is :math: `\\rho` in equation, default is 0.95.
+        eps(float): :math: `\\epsilon` in equation is smoothing term to
             avoid division by zero, default is 1e-6.
         momentum(float): :math:`\\beta` in equation is the momentum term,
             default is 0.0.
@@ -2605,14 +2676,10 @@ class RMSPropOptimizer(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
+        params (Iterable, optional):  Iterable of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        weight_decay (float, optional): Weight decay of L2 regularization. The default value is 0.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
@@ -2621,7 +2688,7 @@ class RMSPropOptimizer(Optimizer):
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Raises:
-        ValueError: If learning_rate, rho, epsilon, momentum are None.
+        ValueError: If lr, rho, epsilon, momentum are None.
 
     Examples:
           .. code-block:: python
@@ -2639,7 +2706,7 @@ class RMSPropOptimizer(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                rms_optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
+                rms_optimizer = paddle.optimizer.RMSProp(lr=0.1)
                 rms_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -2813,7 +2880,7 @@ class FtrlOptimizer(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                ftrl_optimizer = fluid.optimizer.Ftrl(learning_rate=0.1)
+                ftrl_optimizer = paddle.optimizer.Ftrl(learning_rate=0.1)
                 ftrl_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -2893,7 +2960,7 @@ class FtrlOptimizer(Optimizer):
         return ftrl_op
 
 
-class LambOptimizer(AdamOptimizer):
+class LambOptimizer(Adam):
     """
     LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
@@ -2949,6 +3016,7 @@ class LambOptimizer(AdamOptimizer):
         .. code-block:: python
             
             import paddle.fluid as fluid 
+            import paddle
 
             data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
@@ -2957,7 +3025,7 @@ class LambOptimizer(AdamOptimizer):
             def exclude_fn(param):
                 return param.name.endswith('.b_0')
 
-            optimizer = fluid.optimizer.Lamb(learning_rate=0.002,
+            optimizer = paddle.optimizer.Lamb(learning_rate=0.002,
                                              exclude_from_weight_decay_fn=exclude_fn)
             optimizer.minimize(cost)
     """
@@ -3048,13 +3116,12 @@ class LambOptimizer(AdamOptimizer):
 #
 # import paddle.fluid as fluid
 #
-# sgd = fluid.optimizer.SGD(...)
+# sgd = paddle.optimizer.SGD(...)
 #
 # It is no need to add an `Optimizer` as the class suffix
 SGD = SGDOptimizer
 Momentum = MomentumOptimizer
 Adagrad = AdagradOptimizer
-Adam = AdamOptimizer
 Adamax = AdamaxOptimizer
 Dpsgd = DpsgdOptimizer
 DecayedAdagrad = DecayedAdagradOptimizer
@@ -3116,6 +3183,7 @@ class ModelAverage(Optimizer):
       .. code-block:: python
 
         import paddle.fluid as fluid
+        import paddle
         import numpy
 
         # First create the Executor.
@@ -3129,11 +3197,11 @@ class ModelAverage(Optimizer):
             data = fluid.data(name='X', shape=[None, 1], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
             loss = fluid.layers.mean(hidden)
-            optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+            optimizer = paddle.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
             optimizer.minimize(loss)
 
             # build ModelAverage optimizer
-            model_average = fluid.optimizer.ModelAverage(0.15,
+            model_average = paddle.optimizer.ModelAverage(0.15,
                                                          min_average_window=10000,
                                                          max_average_window=12500)
 
@@ -3279,6 +3347,7 @@ class ModelAverage(Optimizer):
           .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             import numpy
 
             # First create the Executor.
@@ -3292,11 +3361,11 @@ class ModelAverage(Optimizer):
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
                 loss = fluid.layers.mean(hidden)
-                optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+                optimizer = paddle.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
                 optimizer.minimize(loss)
 
                 # build ModelAverage optimizer
-                model_average = fluid.optimizer.ModelAverage(0.15,
+                model_average = paddle.optimizer.ModelAverage(0.15,
                                                             min_average_window=10000,
                                                             max_average_window=12500)
 
@@ -3333,6 +3402,7 @@ class ModelAverage(Optimizer):
           .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             import numpy
 
             # First create the Executor.
@@ -3346,11 +3416,11 @@ class ModelAverage(Optimizer):
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
                 loss = fluid.layers.mean(hidden)
-                optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+                optimizer = paddle.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
                 optimizer.minimize(loss)
 
                 # build ModelAverage optimizer
-                model_average = fluid.optimizer.ModelAverage(0.15,
+                model_average = paddle.optimizer.ModelAverage(0.15,
                                                             min_average_window=10000,
                                                             max_average_window=12500)
 
@@ -3439,11 +3509,11 @@ class ExponentialMovingAverage(object):
 
 	    test_program = fluid.default_main_program().clone(for_test=True)
 
-	    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+	    optimizer = paddle.optimizer.Adam(lr=0.001)
 	    optimizer.minimize(cost)
 
 	    global_steps = fluid.layers.autoincreased_step_counter()
-	    ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
+	    ema = paddle.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
 	    ema.update()
 
 	    place = fluid.CPUPlace()
@@ -3642,6 +3712,7 @@ class PipelineOptimizer(object):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             import paddle.fluid.layers as layers
 
             with fluid.device_guard("gpu:0"):
@@ -3660,8 +3731,8 @@ class PipelineOptimizer(object):
                 concat = layers.concat([emb_x, emb_y], axis=1)
                 fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
                 loss = layers.reduce_mean(fc)
-            optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-            optimizer = fluid.optimizer.PipelineOptimizer(optimizer)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+            optimizer = paddle.optimizer.PipelineOptimizer(optimizer)
             optimizer.minimize(loss)
 
             def train_reader():
@@ -4504,6 +4575,7 @@ class RecomputeOptimizer(Optimizer):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             import numpy as np
             def gen_data():
                 return {"x": np.random.random(size=(32, 32)).astype('float32'),
@@ -4519,8 +4591,8 @@ class RecomputeOptimizer(Optimizer):
             input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
             cost, fc_1, pred = mlp(input_x, input_y)
 
-            sgd = fluid.optimizer.Adam(learning_rate=0.01)
-            sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+            sgd = paddle.optimizer.Adam(lr=0.01)
+            sgd = paddle.optimizer.RecomputeOptimizer(sgd)
             sgd._set_checkpoints([fc_1, pred])
             sgd.minimize(cost)
 
@@ -4574,6 +4646,7 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
                 import paddle.compat as cpt
                 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
@@ -4588,8 +4661,8 @@ class RecomputeOptimizer(Optimizer):
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
                 
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
-                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd = paddle.optimizer.Adam(lr=0.01)
+                sgd = paddle.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 try:
                     stat_dict = {}
@@ -4614,6 +4687,7 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
                 import paddle.fluid.framework as framework
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
@@ -4629,8 +4703,8 @@ class RecomputeOptimizer(Optimizer):
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
-                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd = paddle.optimizer.Adam(lr=0.01)
+                sgd = paddle.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
@@ -4670,6 +4744,7 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
     
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
@@ -4684,8 +4759,8 @@ class RecomputeOptimizer(Optimizer):
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
     
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
-                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd = paddle.optimizer.Adam(lr=0.01)
+                sgd = paddle.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
@@ -4730,6 +4805,7 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
                 import paddle.fluid as fluid
+                import paddle
                 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
@@ -4743,8 +4819,8 @@ class RecomputeOptimizer(Optimizer):
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
                 
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
-                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd = paddle.optimizer.Adam(lr=0.01)
+                sgd = paddle.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
@@ -4819,8 +4895,8 @@ class LookaheadOptimizer(object):
 	    y = fluid.layers.fc(input=[x], size=2, act="softmax")
 	    loss = fluid.layers.cross_entropy(input=y, label=label)
 	    loss = fluid.layers.mean(x=loss)
-	    sgd = fluid.optimizer.SGD(learning_rate=0.01)
-	    optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
+	    sgd = paddle.optimizer.SGD(learning_rate=0.01)
+	    optimizer = paddle.optimizer.LookaheadOptimizer(sgd,
                                             alpha=0.5,
                                             k=5)
 	    optimizer.minimize(loss)
@@ -4969,6 +5045,7 @@ class GradientMergeOptimizer(object):
         .. code-block:: python
 
         import paddle.fluid as fluid
+        import paddle
         import numpy as np
 
         def gen_data(batch_size):
@@ -4985,8 +5062,8 @@ class GradientMergeOptimizer(object):
         input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
         input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
         cost, fc_1, pred = mlp(input_x, input_y)
-        sgd = fluid.optimizer.Adam(learning_rate=0.01)
-        sgd = fluid.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
+        sgd = paddle.optimizer.Adam(lr=0.01)
+        sgd = paddle.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
         sgd.minimize(cost)
 
         place = fluid.CPUPlace()
