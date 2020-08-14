@@ -313,7 +313,8 @@ void prefetchs(const std::vector<std::string> &id_var_names,
                      &recved_vec_map[id][0], sizeof(float) * vec_dim_1, stream);
       }
 #else
-      PADDLE_THROW("Paddle is not compiled with GPU!");
+      PADDLE_ENFORCE(true, platform::errors::PermissionDenied(
+                               "Paddle is not compiled with GPU!"));
 #endif
     }
   }
