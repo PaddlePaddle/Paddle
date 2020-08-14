@@ -29,6 +29,8 @@ set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 %PYTHON_EXECUTABLE% -m pip install virtualenv
 virtualenv Paddle_Winci
 Paddle_Winci\Scripts\activate.bat
+pip -m pip install --upgrade pip
+pip install wheel
 pip install -r %work_dir%\python\requirements.txt
 
 rem ------initialize common variable------
@@ -176,7 +178,6 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
-pip -m pip install --upgrade pip
 
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
