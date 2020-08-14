@@ -15,6 +15,7 @@
 import unittest
 import paddle
 import os
+import paddle.fluid as fluid
 
 
 class TestFleetBase(unittest.TestCase):
@@ -153,10 +154,8 @@ class TestFleetBase(unittest.TestCase):
         import paddle.distributed.fleet as fleet
         self.assertRaises(Exception, fleet.init_worker)
 
-    def test_minimize(self):
+    def _net(self):
         import paddle
-        import paddle.distributed.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32')
@@ -168,13 +167,93 @@ class TestFleetBase(unittest.TestCase):
         cost = paddle.fluid.layers.cross_entropy(
             input=prediction, label=input_y)
         avg_cost = paddle.fluid.layers.mean(x=cost)
+        return avg_cost
 
+    def test_collective_minimize(self):
+        import paddle
+        import paddle.distributed.fleet as fleet
+        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+
+        avg_cost = self._net()
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         strategy = fleet.DistributedStrategy()
         optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
+
+    def test_ps_minimize(self):
+        import paddle
+        from paddle.distributed.fleet import fleet
+        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+
+        avg_cost = self._net()
+        role = role_maker.PaddleCloudRoleMaker(is_collective=False)
+        fleet.init(role)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = False
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize(avg_cost)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        pe = fluid.ParallelExecutor(use_cuda=False, loss_name=avg_cost.name)
+        compiled_prog = fluid.compiler.CompiledProgram(
+            fluid.default_main_program())
+        self.assertRaises(
+            Exception,
+            fleet.save_inference_model,
+            dirname='/tmp/',
+            feeded_var_names=['x', 'y'],
+            target_vars=[avg_cost],
+            executor=pe)
+
+        self.assertRaises(
+            Exception,
+            fleet.save_inference_model,
+            dirname='/tmp/',
+            feeded_var_names=['x', 'y'],
+            target_vars=[avg_cost],
+            executor="exe")
+
+        self.assertRaises(
+            Exception,
+            fleet.save_inference_model,
+            dirname='/tmp/',
+            feeded_var_names=['x', 'y'],
+            target_vars=[avg_cost],
+            executor=exe,
+            main_program=compiled_prog)
+
+        self.assertRaises(
+            Exception,
+            fleet.save_persistables,
+            dirname='/tmp/',
+            feeded_var_names=['x', 'y'],
+            target_vars=[avg_cost],
+            executor=pe)
+
+        self.assertRaises(
+            Exception,
+            fleet.save_persistables,
+            dirname='/tmp/',
+            feeded_var_names=['x', 'y'],
+            target_vars=[avg_cost],
+            executor="exe")
+
+        self.assertRaises(
+            Exception,
+            fleet.save_persistables,
+            dirname='/tmp/',
+            feeded_var_names=['x', 'y'],
+            target_vars=[avg_cost],
+            executor=exe,
+            main_program=compiled_prog)
 
 
 if __name__ == "__main__":
