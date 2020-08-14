@@ -271,7 +271,6 @@ class Sigmoid(layers.Layer):
 
           import numpy as np
           import paddle
-          import paddle.fluid as fluid
 
           paddle.disable_static()
           input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
