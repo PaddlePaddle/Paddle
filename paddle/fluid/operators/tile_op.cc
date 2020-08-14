@@ -32,37 +32,51 @@ class TileOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Tile");
     auto x_dims = ctx->GetInputDim("X");
     auto repeat_times = ctx->Attrs().Get<std::vector<int>>("repeat_times");
-
     if (repeat_times.size() == 0) {
       repeat_times = std::vector<int>(x_dims.size(), -1);
     }
 
-    PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(x_dims.size()), repeat_times.size(),
-        platform::errors::InvalidArgument(
-            "The number of elements (%d) of 'repeat_times' for "
-            "Op(tile) must be equal to the number of dimensions "
-            "(%d) of the input.",
-            repeat_times.size(), static_cast<size_t>(x_dims.size())));
     PADDLE_ENFORCE_LE(
-        x_dims.size(), 6,
+        x_dims.size(), MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
-            "The number of dimensions of the input for Op(tile) "
-            "must not be greater than 6, but the value received is %d.",
-            x_dims.size()));
+            "The rank of the input 'x' for tile op "
+            "must not be greater than %d, but the value received is %d.",
+            MAX_RANK_SUPPORTED, x_dims.size()));
+    PADDLE_ENFORCE_LE(
+        repeat_times.size(), MAX_RANK_SUPPORTED,
+        platform::errors::InvalidArgument(
+            "The size of the shape of input 'repeat_times' for tile op "
+            "must not be greater than %d, but the value received is %d.",
+            MAX_RANK_SUPPORTED, repeat_times.size()));
+    PADDLE_ENFORCE_GE(
+        repeat_times.size(), 1,
+        platform::errors::InvalidArgument(
+            "The size of the shape of input 'repeat_times' for tile op "
+            "must be positive integers, but the value received is %d.",
+            repeat_times.size()));
 
-    std::vector<int64_t> out_shape(x_dims.size());
+    auto out_rank =
+        std::max(static_cast<size_t>(x_dims.size()), repeat_times.size());
+    std::vector<int64_t> out_shape(out_rank);
+    auto x_dim_vec = framework::vectorize<int>(x_dims);
+    if (x_dim_vec.size() > repeat_times.size()) {
+      auto diff = x_dim_vec.size() - repeat_times.size();
+      repeat_times.insert(repeat_times.begin(), diff, -1);
+    } else {
+      auto diff = repeat_times.size() - x_dim_vec.size();
+      x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
+    }
     for (size_t i = 0; i < repeat_times.size(); ++i) {
-      if (x_dims[i] == -1 || repeat_times[i] == -1) {
+      if (x_dim_vec[i] == -1 || repeat_times[i] == -1) {
         out_shape[i] = -1;
       } else {
         PADDLE_ENFORCE_GT(
             repeat_times[i], 0,
             platform::errors::InvalidArgument(
-                "The %uth element of 'repeat_times' for Op(tile) must be "
+                "Every element of the input 'repeat_times' for tile op must be "
                 "greater than 0, but the value given is %d.",
-                i, repeat_times[i]));
-        out_shape[i] = x_dims[i] * repeat_times[i];
+                repeat_times[i]));
+        out_shape[i] = x_dim_vec[i] * repeat_times[i];
       }
     }
 
@@ -95,13 +109,12 @@ class TileOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
-             "X is the input to be expanded.");
+             "(Tensor, default Tensor<float>). X is the input to be titled.");
     AddInput(
-        "TileTimes",
-        "(Tensor<int>), optional). If provided, repeat along specific "
-        "axis according to this given value. It has a higher priority than "
-        "repeat_times_tensor and repeat_times.")
+        "RepeatTimes",
+        "(Tensor<int>, optional). If provided, it is the number of repeat times"
+        " along specific axis. It has a higher priority than "
+        "repeat_times_tensor and the repeat_times attribute.")
         .AsDispensable();
     AddInput("repeat_times_tensor",
              "(Tensor Tensor<int>), repeat times for X."
@@ -111,12 +124,11 @@ class TileOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("Out",
               "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
-              "The rank of Output(Out) have the same with Input(X). "
               "After tiling, size of each dimension of Output(Out) is equal "
               "to size of the corresponding dimension of Input(X) multiplying "
               "the corresponding value given by Attr(repeat_times).");
     AddAttr<std::vector<int>>("repeat_times",
-                              "Repeat times number for each dimension.")
+                              "The number of repeat times for each dimension.")
         .SetDefault({});
     AddComment(R"DOC(
 Tile operator repeats the input by given times number. You should set times
@@ -157,32 +169,32 @@ class TileGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> repeat_times =
         ctx->Attrs().Get<std::vector<int>>("repeat_times");
-
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-
-    size_t start_pos = 0u;
-    if (!ctx->IsRuntime() && x_dims[0] < 0) {
-      PADDLE_ENFORCE_EQ(
-          x_dims[0], out_dims[0],
-          platform::errors::InvalidArgument(
-              "The first dimension size (%d) of Input(Out@GRAD) should be "
-              "equal to the crroresponding dimension size (%d) of Input(X)",
-              out_dims[0], x_dims[0]));
-      start_pos = 1u;
+    if (repeat_times.size() == 0) {
+      repeat_times = std::vector<int>(x_dims.size(), -1);
     }
 
-    for (size_t i = start_pos; i < repeat_times.size(); ++i) {
-      if (repeat_times[i] == -1) {
+    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto x_dim_vec = framework::vectorize<int>(x_dims);
+    if (x_dim_vec.size() > repeat_times.size()) {
+      auto diff = x_dim_vec.size() - repeat_times.size();
+      repeat_times.insert(repeat_times.begin(), diff, -1);
+    } else {
+      auto diff = repeat_times.size() - x_dim_vec.size();
+      x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
+    }
+
+    for (size_t i = 0; i < repeat_times.size(); ++i) {
+      if (repeat_times[i] == -1 || x_dim_vec[i] == -1) {
         continue;
       } else {
         if (ctx->IsRuntime()) {
           PADDLE_ENFORCE_EQ(
-              x_dims[i] * repeat_times[i], out_dims[i],
+              x_dim_vec[i] * repeat_times[i], out_dims[i],
               platform::errors::InvalidArgument(
-                  "The %uth dimension size (%d) of Input(Out@GRAD) should be "
-                  "equal to the multiplication of the crroresponding dimension "
-                  "sizes of Input(X) (%d) and repeat_times (%d).",
-                  i, out_dims[i], x_dims[i], repeat_times[i]));
+                  "The size (%d) of the dimension %d of Input(Out@GRAD) should "
+                  "be equal to the multiplication of the crroresponding "
+                  "dimension size of Input(X) (%d) and repeat_times (%d).",
+                  out_dims[i], i, x_dim_vec[i], repeat_times[i]));
         }
       }
     }
@@ -204,7 +216,7 @@ class TileGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "repeat_times_tensor") {
+    if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
@@ -219,7 +231,7 @@ class TileGradOpMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("repeat_grad");
+    op->SetType("tile_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));

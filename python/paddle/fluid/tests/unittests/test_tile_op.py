@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
@@ -43,10 +44,11 @@ class TestTileOpRank1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestTileOpRank2_Corner(TestTileOpRank1):
+# with dimension expanding
+class TestTileOpRank2Expanding(TestTileOpRank1):
     def init_data(self):
         self.ori_shape = [120]
-        self.repeat_times = [2]
+        self.repeat_times = [2, 2]
 
 
 class TestTileOpRank2(TestTileOpRank1):
@@ -59,6 +61,12 @@ class TestTileOpRank3_Corner(TestTileOpRank1):
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (1, 1, 1)
+
+
+class TestTileOpRank3_Corner2(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 10, 5)
+        self.repeat_times = (2, 2)
 
 
 class TestTileOpRank3(TestTileOpRank1):
@@ -125,7 +133,7 @@ class TestTileOpRank1_tensor(OpTest):
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype("float64"),
-            'TileTimes': np.array(self.repeat_times).astype("int32"),
+            'RepeatTimes': np.array(self.repeat_times).astype("int32"),
         }
         self.attrs = {}
         output = np.tile(self.inputs['X'], self.repeat_times)
@@ -199,12 +207,12 @@ class TestTileError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             repeat_times = [2, 2]
-            self.assertRaises(TypeError, fluid.layers.expand, x1, repeat_times)
+            self.assertRaises(TypeError, paddle.tile, x1, repeat_times)
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.expand, x2, repeat_times)
+            self.assertRaises(TypeError, paddle.tile, x2, repeat_times)
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
             x3.stop_gradient = True
-            self.assertRaises(ValueError, fluid.layers.expand, x3, repeat_times)
+            self.assertRaises(ValueError, paddle.tile, x3, repeat_times)
 
 
 # Test python API
@@ -218,9 +226,9 @@ class TestTileAPI(unittest.TestCase):
         repeat_times = fluid.layers.data(
             name="repeat_times", shape=[2], append_batch_size=False)
 
-        out_1 = fluid.layers.expand(x, repeat_times=[2, 3])
-        out_2 = fluid.layers.expand(x, repeat_times=[positive_2, 3])
-        out_3 = fluid.layers.expand(x, repeat_times=repeat_times)
+        out_1 = paddle.tile(x, repeat_times=[2, 3])
+        out_2 = paddle.tile(x, repeat_times=[positive_2, 3])
+        out_3 = paddle.tile(x, repeat_times=repeat_times)
 
         g0 = fluid.backward.calc_gradient(out_2, x)
 

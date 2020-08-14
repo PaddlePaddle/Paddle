@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
 #include <boost/preprocessor/arithmetic/div.hpp>
@@ -48,35 +49,34 @@ namespace operators {
 inline std::vector<int> get_repeat_times(
     const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("RepeatTimes")) {
-    auto* expand_tensor = ctx.Input<framework::LoDTensor>("RepeatTimes");
-    auto* expand_data = expand_tensor->data<int>();
-    framework::Tensor cpu_expand_tensor;
-    if (platform::is_gpu_place(expand_tensor->place())) {
-      TensorCopySync(*expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
-      expand_data = cpu_expand_tensor.data<int>();
+    auto* repeat_tensor = ctx.Input<framework::LoDTensor>("RepeatTimes");
+    auto* repeat_data = repeat_tensor->data<int>();
+    framework::Tensor cpu_repeat_tensor;
+    if (platform::is_gpu_place(repeat_tensor->place())) {
+      TensorCopySync(*repeat_tensor, platform::CPUPlace(), &cpu_repeat_tensor);
+      repeat_data = cpu_repeat_tensor.data<int>();
     }
-    auto vec_epxand_times =
-        std::vector<int>(expand_data, expand_data + expand_tensor->numel());
-    return vec_epxand_times;
+    auto vec_repeat_times =
+        std::vector<int>(repeat_data, repeat_data + repeat_tensor->numel());
+    return vec_repeat_times;
   }
 
-  auto list_expand_times_tensor =
+  auto list_repeat_times_tensor =
       ctx.MultiInput<framework::Tensor>("repeat_times_tensor");
-  if (list_expand_times_tensor.size() > 0) {
+  if (list_repeat_times_tensor.size() > 0) {
     // get tensor from
-    std::vector<int> vec_epxand_times;
-    for (size_t i = 0; i < list_expand_times_tensor.size(); ++i) {
-      auto tensor = list_expand_times_tensor[i];
+    std::vector<int> vec_repeat_times;
+    for (size_t i = 0; i < list_repeat_times_tensor.size(); ++i) {
+      auto tensor = list_repeat_times_tensor[i];
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_epxand_times.push_back(*temp.data<int32_t>());
+        vec_repeat_times.push_back(*temp.data<int32_t>());
       } else {
-        vec_epxand_times.push_back(*tensor->data<int32_t>());
+        vec_repeat_times.push_back(*tensor->data<int32_t>());
       }
     }
-
-    return vec_epxand_times;
+    return vec_repeat_times;
   } else {
     return ctx.Attr<std::vector<int>>("repeat_times");
   }
@@ -97,17 +97,31 @@ class TileKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1,
-        platform::errors::InvalidArgument(
-            "The number of dimensions of the input 'x' for Op(tile) "
-            "must be greater than or equal to 1, but the value received is %d.",
-            rank));
+        rank, 1, platform::errors::InvalidArgument(
+                     "The rank of the input 'x' for tile op must be a positive "
+                     "integer, but the value received is %d.",
+                     rank));
     PADDLE_ENFORCE_LE(
         rank, MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
-            "The number of dimensions of the input 'x' for Op(tile) "
+            "The rank of the input 'x' for tile op "
             "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED, rank));
+    auto repeat_times = get_repeat_times(context);
+    int repeat_times_size = repeat_times.size();
+    PADDLE_ENFORCE_GE(
+        repeat_times_size, 1,
+        platform::errors::InvalidArgument(
+            "The number of elements of the input 'repeat_times' for tile "
+            "op must be positive, but the value received is %d.",
+            repeat_times_size));
+    PADDLE_ENFORCE_LE(
+        repeat_times_size, MAX_RANK_SUPPORTED,
+        platform::errors::InvalidArgument(
+            "The number of elements of the input 'repeat_times' for tile op "
+            "must be less than or equal to %d, but the value received is %d.",
+            MAX_RANK_SUPPORTED, repeat_times_size));
+    rank = std::max(rank, repeat_times_size);
     switch (rank) { REP_TILE_TEMPLATE(MAX_RANK_SUPPORTED) }
   }
 
@@ -118,28 +132,44 @@ class TileKernel : public framework::OpKernel<T> {
 
     auto in_dims = in0->dims();
     auto repeat_times = get_repeat_times(context);
+    for (size_t i = 0; i < repeat_times.size(); ++i) {
+      PADDLE_ENFORCE_GT(
+          repeat_times[i], 0,
+          platform::errors::InvalidArgument(
+              "All elements of the input 'repeat_times' for tile op must "
+              "be positive integers, but the value received is %d.",
+              repeat_times[i]));
+    }
+    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    if (repeat_times.size() < vec_in_dims.size()) {
+      int diff = vec_in_dims.size() - repeat_times.size();
+      repeat_times.insert(repeat_times.begin(), diff, 1);
+    } else {
+      int diff = repeat_times.size() - vec_in_dims.size();
+      vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
+    }
     PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(in_dims.size()), repeat_times.size(),
+        repeat_times.size(), vec_in_dims.size(),
         platform::errors::InvalidArgument(
-            "The number of elements (%d) of 'repeat_times' for "
-            "Op(tile) must be equal to the number "
-            "of dimensions (%d) of the input.",
-            repeat_times.size(), static_cast<size_t>(in_dims.size())));
+            "The rank (%d) of the input 'x' and the rank (%d) of the input "
+            "'repeat_times' for tile op must match after promotion.",
+            vec_in_dims.size(), repeat_times.size()));
     auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       bcast_dims[i] = repeat_times[i];
     }
 
-    framework::DDim out_dims(in_dims);
+    framework::DDim new_in_dims = framework::make_ddim(vec_in_dims);
+    framework::DDim out_dims(new_in_dims);
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       out_dims[i] *= repeat_times[i];
     }
 
     out0->Resize(out_dims);
-    auto x = EigenTensor<T, Rank>::From(*in0);
+    auto x = EigenTensor<T, Rank>::From(*in0, new_in_dims);
     out0->mutable_data<T>(context.GetPlace());
-    auto y = EigenTensor<T, Rank>::From(*out0);
+    auto y = EigenTensor<T, Rank>::From(*out0, out_dims);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
     // use 32-bit index to speed up
@@ -159,6 +189,14 @@ class TileGradKernel : public framework::OpKernel<T> {
     auto* in0 = context.Input<Tensor>("X");
     auto repeat_times = get_repeat_times(context);
     auto x_dims = in0->dims();
+    auto vec_in_dims = framework::vectorize<int>(x_dims);
+    if (repeat_times.size() < vec_in_dims.size()) {
+      int diff = vec_in_dims.size() - repeat_times.size();
+      repeat_times.insert(repeat_times.begin(), diff, 1);
+    } else {
+      int diff = repeat_times.size() - vec_in_dims.size();
+      vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
+    }
     // 1. reshape_dims_vec is the broadcast parameter.
     // 2. reduce_dims_vec is the dimension parameter to compute gradients. For
     //    each dimension expanded, the gradients should be summed to original
@@ -168,7 +206,7 @@ class TileGradKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       reduce_dims_vec.push_back(reshape_dims_vec.size());
       reshape_dims_vec.push_back(repeat_times[i]);
-      reshape_dims_vec.push_back(x_dims[i]);
+      reshape_dims_vec.push_back(vec_in_dims[i]);
     }
 
     int dims = reduce_dims_vec.size();
@@ -188,16 +226,16 @@ class TileGradKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
                             out0);
     } else {
-      PADDLE_ENFORCE_GE(dims, 1, platform::errors::InvalidArgument(
-                                     "The number of dimensions of the input "
-                                     "'Out@GRAD' for Op(tile_grad)"
-                                     " must be greater than or equal to 1, but "
-                                     "the value received is %d.",
-                                     dims));
+      PADDLE_ENFORCE_GE(dims, 1,
+                        platform::errors::InvalidArgument(
+                            "Th rank of the input 'Out@GRAD' for tile_grad op "
+                            " must be greater than or equal to 1, but "
+                            "the value received is %d.",
+                            dims));
       PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
                         platform::errors::InvalidArgument(
-                            "The number of dimensions of the input 'Out@GRAD' "
-                            "for Op(tile_grad) must be less than or equal "
+                            "The rank of the input 'Out@GRAD' for tile_grad op "
+                            "must be less than or equal "
                             "to %d, but the value received is %d.",
                             MAX_RANK_SUPPORTED, dims));
       switch (dims) { REP_TILE_GRAD_TEMPLATE(MAX_RANK_SUPPORTED) }
@@ -211,16 +249,6 @@ class TileGradKernel : public framework::OpKernel<T> {
                     const std::vector<int>& reduce_dims_vec) const {
     size_t reshape_size = reshape_dims_vec.size();
     size_t reduce_size = reduce_dims_vec.size();
-    PADDLE_ENFORCE_EQ(reshape_size, reshape_dims_vec.size(),
-                      platform::errors::InvalidArgument(
-                          "Inconsistent size between template Dims (%d) and "
-                          "reshape dimensions (%d).",
-                          reshape_size, reshape_dims_vec.size()));
-    PADDLE_ENFORCE_EQ(reduce_size, reduce_dims_vec.size(),
-                      platform::errors::InvalidArgument(
-                          "Inconsistent size between template Dims (%d) and "
-                          "reduce dimensions (%d).",
-                          reduce_size, reduce_dims_vec.size()));
     auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
