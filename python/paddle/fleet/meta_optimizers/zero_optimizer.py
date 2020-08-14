@@ -103,6 +103,63 @@ class ZeroOptimizer(MetaOptimizerBase):
                     attrs={'scale': scale,
                            OP_ROLE_KEY: OpRole.Backward})
 
+    def _insert_broadcast_ops(self, block):
+        for op_idx, op in reversed(list(enumerate(block.ops))):
+            if int(op.attr('op_role')) == int(OpRole.Optimize):
+                continue
+            for input_name in op.desc.input_arg_names():
+                if input_name in self._param2device:
+                    root_device = self._param2device[input_name]
+                    if self._param2device[
+                            input_name] == self.role_maker.worker_index():
+                        param = self._varname2param[input_name]
+                    else:
+                        broadcast_name = unique_name.generate(input_name +
+                                                              "@BroadCast")
+                        op._rename_input(input_name, broadcast_name)
+                        param = block.create_var(
+                            name=broadcast_name,
+                            shape=self._varname2param[input_name].shape,
+                            dtype=self._varname2param[input_name].dtype,
+                            persistable=False)
+                    print("main_block insert broadcast op for %s" % param.name)
+                    # TODO(mapingshuo) OP_ROLE_KEY should be forward if the param
+                    # is used in forward network
+                    block._insert_op(
+                        op_idx,
+                        type='c_sync_comm_stream',
+                        inputs={'X': param},
+                        outputs={'Out': param},
+                        attrs={'ring_id': 0,
+                               OP_ROLE_KEY: OpRole.Backward})
+                    block._insert_op(
+                        op_idx,
+                        type='c_sync_calc_stream',
+                        inputs={'X': param},
+                        outputs={'Out': param},
+                        attrs={'ring_id': 0,
+                               OP_ROLE_KEY: OpRole.Backward})
+                    block._insert_op(
+                        op_idx,
+                        type='c_broadcast',
+                        inputs={'X': param},
+                        outputs={'Out': param},
+                        attrs={
+                            'ring_id': 0,
+                            'root': root_device,
+                            OP_ROLE_KEY: OpRole.Forward
+                        })
+                    if root_device != self.role_maker.worker_index():
+                        block._insert_op(
+                            op_idx,
+                            type="fill_constant",
+                            outputs={"Out": param},
+                            attrs={
+                                "shape": param.shape,
+                                "dtype": param.dtype,
+                                "value": 0.0,
+                            })
+
     def _insert_allreduce_ops(self, block):
         ring_id = 0
         grad = None
@@ -212,61 +269,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                     break
 
         # step4 add broadcast ops
-        for op_idx, op in reversed(list(enumerate(main_block.ops))):
-            if int(op.attr('op_role')) == int(OpRole.Optimize):
-                continue
-            for input_name in op.desc.input_arg_names():
-                if input_name in self._param2device:
-                    root_device = self._param2device[input_name]
-                    if self._param2device[
-                            input_name] == self.role_maker.worker_index():
-                        param = self._varname2param[input_name]
-                    else:
-                        broadcast_name = unique_name.generate(input_name +
-                                                              "@BroadCast")
-                        op._rename_input(input_name, broadcast_name)
-                        param = main_block.create_var(
-                            name=broadcast_name,
-                            shape=self._varname2param[input_name].shape,
-                            dtype=self._varname2param[input_name].dtype,
-                            persistable=False)
-                    print("main_block insert broadcast op for %s" % param.name)
-                    # TODO(mapingshuo) OP_ROLE_KEY should be forward if the param
-                    # is used in forward network
-                    main_block._insert_op(
-                        op_idx,
-                        type='c_sync_comm_stream',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={'ring_id': 0,
-                               OP_ROLE_KEY: OpRole.Backward})
-                    main_block._insert_op(
-                        op_idx,
-                        type='c_sync_calc_stream',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={'ring_id': 0,
-                               OP_ROLE_KEY: OpRole.Backward})
-                    main_block._insert_op(
-                        op_idx,
-                        type='c_broadcast',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={
-                            'ring_id': 0,
-                            'root': root_device,
-                            OP_ROLE_KEY: OpRole.Forward
-                        })
-                    if root_device != self.role_maker.worker_index():
-                        main_block._insert_op(
-                            op_idx,
-                            type="fill_constant",
-                            outputs={"Out": param},
-                            attrs={
-                                "shape": param.shape,
-                                "dtype": param.dtype,
-                                "value": 0.0,
-                            })
+        self._insert_broadcast_ops(main_block)
 
         # step5: remove Parameter from main program and startup program
         for var_name, var in main_block.vars.items():
