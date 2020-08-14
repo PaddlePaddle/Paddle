@@ -144,7 +144,6 @@ void prefetch_core(
       VLOG(3) << "don't send no-initialied variable: " << out_var_names[i];
     }
   }
-  VLOG(4) << "prefetch_core Recv Begin";
   for (size_t i = 0; i < rets.size(); i++) {
     PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
                                                "internal error in RPCClient"));
@@ -177,7 +176,6 @@ void prefetch_core(
       VLOG(3) << "ids in this section is empty";
     }
   }
-  VLOG(4) << "prefetch_core  Done";
 }
 
 void prefetch(const std::string &id_name, const std::string &out_name,
@@ -201,7 +199,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
                const framework::Scope &scope) {
   auto vec_dim_1 = 0;
   auto vec_dim_0 = 0;
-  VLOG(4) << "prefetchs Begin";
   framework::Variable *var = scope.FindVar(persistable_var_name);
 
   if (var->IsType<SelectedRows>()) {
@@ -223,7 +220,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
   std::vector<framework::LoD> ids_lods;
   TableAndEndpoints tables;
 
-  VLOG(4) << "prefetchs TensorToVector Begin";
   for (auto &id_name : id_var_names) {
     auto &id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
     std::vector<int64_t> ids;
@@ -255,7 +251,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
 
-  VLOG(4) << "prefetchs prefetch_core Begin";
   std::unordered_map<int64_t, std::vector<float>> recved_vec_map;
   prefetch_core(ids_union, tables, context, scope, is_distributed,
                 &recved_vec_map);
@@ -266,9 +261,7 @@ void prefetchs(const std::vector<std::string> &id_var_names,
     padding_idx = context.Attr<int64_t>("padding_idx");
   }
 
-  VLOG(4) << "prefetchs recv memcpy Begin, ids_group size " << ids_group.size();
   for (size_t i = 0; i < out_var_names.size(); i++) {
-    VLOG(4) << "prefetchs in Var" << id_var_names[i];
     std::vector<int64_t> ids = ids_group[i];
     auto ids_size = ids.size();
     VLOG(4) << "prefetchs in Var" << id_var_names[i] << " out Var "
@@ -298,8 +291,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
               << " ids_size: " << ids_size;
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];
-        VLOG(4) << "prefetchs recv Var " << out_var_names[i] << " id " << id
-                << " length " << recved_vec_map[id].size();
         auto stream = context.cuda_device_context().stream();
         if (padding_idx != distributed::kNoPadding && id == padding_idx) {
           platform::GpuMemsetAsync(out_d + idx * vec_dim_1, 0,
