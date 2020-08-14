@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
 #include <boost/preprocessor/arithmetic/div.hpp>
@@ -76,7 +77,6 @@ inline std::vector<int> get_expand_shape(
         vec_epxand_shape.push_back(*tensor->data<int32_t>());
       }
     }
-
     return vec_epxand_shape;
   } else {
     return ctx.Attr<std::vector<int>>("shape");
@@ -100,15 +100,30 @@ class ExpandV2Kernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rank, 1,
         platform::errors::InvalidArgument(
-            "The rank of the input 'X' for expand_v2_op must be greater than "
-            "0, but the value received is %d.",
+            "The rank of the input 'X' for expand_v2 op must be positive, "
+            "but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
         rank, MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
-            "The rank of the input 'X' for expand_v2_op must be less than "
-            "%d, but the value received is %d.",
-            MAX_RANK_SUPPORTED + 1, rank));
+            "The rank of the input 'X' for expand_v2 op must be less than "
+            "or equal to %d, but the value received is %d.",
+            MAX_RANK_SUPPORTED, rank));
+    auto expand_shape = get_expand_shape(context);
+    auto shape_size = expand_shape.size();
+    PADDLE_ENFORCE_GE(
+        shape_size, rank,
+        platform::errors::InvalidArgument(
+            "The number (%d) of elements of 'shape' for expand_v2 op must be "
+            "greater than or equal to the rank (%d) of the input 'X'.",
+            shape_size, rank));
+    PADDLE_ENFORCE_LE(
+        shape_size, MAX_RANK_SUPPORTED,
+        platform::errors::InvalidArgument(
+            "The number (%d) of elements of 'shape' for expand_v2 op must be "
+            "less than or equal to %d.",
+            shape_size, MAX_RANK_SUPPORTED));
+    rank = std::max(rank, static_cast<int>(shape_size));
     switch (rank) { REP_EXPAND_TEMPLATE(MAX_RANK_SUPPORTED) }
   }
 
@@ -119,53 +134,61 @@ class ExpandV2Kernel : public framework::OpKernel<T> {
 
     auto in_dims = in0->dims();
     auto expand_shape = get_expand_shape(context);
-    PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(in_dims.size()), expand_shape.size(),
-        platform::errors::InvalidArgument(
-            "The number of elements (%d) in 'shape' for "
-            "expand_v2_op must be equal to the rank (%d) of the input(X).",
-            expand_shape.size(), in_dims.size()));
-    std::vector<int> expand_times(in_dims.size());
-    for (decltype(in_dims.size()) i = 0; i < in_dims.size(); ++i) {
-      if (expand_shape[i] < 0) {
-        PADDLE_ENFORCE_EQ(
-            expand_shape[i], -1,
-            platform::errors::InvalidArgument(
-                "When the value in shape is negative for expand_v2_op, "
-                "only -1 is supported, but the value received is %d.",
-                expand_shape[i]));
-        expand_times[i] = 1;
-      } else {
+    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto diff = expand_shape.size() - vec_in_dims.size();
+    vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
+    std::vector<int> repeat_times(vec_in_dims.size());
+    for (size_t i = 0; i < vec_in_dims.size(); ++i) {
+      PADDLE_ENFORCE_NE(expand_shape[i], 0,
+                        platform::errors::InvalidArgument(
+                            "The expanded size cannot be zero."));
+      if (i < diff) {
         PADDLE_ENFORCE_GT(
             expand_shape[i], 0,
             platform::errors::InvalidArgument(
-                "The value in shape for expand_v2_op must be positive, "
-                "but the value received is %d.",
+                "The expanded size (%d) for non-existing dimensions must be "
+                "positive for expand_v2 op.",
                 expand_shape[i]));
+        repeat_times[i] = expand_shape[i];
+      } else if (expand_shape[i] > 0) {
+        if (vec_in_dims[i] != 1) {
+          PADDLE_ENFORCE_EQ(
+              vec_in_dims[i], expand_shape[i],
+              platform::errors::InvalidArgument(
+                  "The value (%d) of the non-singleton dimension does not match"
+                  " the corresponding value (%d) in shape for expand_v2 op.",
+                  vec_in_dims[i], expand_shape[i]));
+          repeat_times[i] = 1;
+        } else {
+          repeat_times[i] = expand_shape[i];
+        }
+      } else {
         PADDLE_ENFORCE_EQ(
-            expand_shape[i] % in_dims[i], 0,
+            expand_shape[i], -1,
             platform::errors::InvalidArgument(
-                "The value (%d) in shape for expand_v2_op must be an integer "
-                "multiple of the input(X) (%d) for dimension %d.",
-                expand_shape[i], in_dims[i], i));
-        expand_times[i] = expand_shape[i] / in_dims[i];
+                "When the value in shape is negative for expand_v2 op, "
+                "only -1 is supported, but the value received is %d.",
+                expand_shape[i]));
+        repeat_times[i] = 1;
       }
     }
+
     auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
-    for (size_t i = 0; i < expand_times.size(); ++i) {
-      bcast_dims[i] = expand_times[i];
+    for (size_t i = 0; i < repeat_times.size(); ++i) {
+      bcast_dims[i] = repeat_times[i];
     }
 
-    framework::DDim out_dims(in_dims);
-    for (size_t i = 0; i < expand_times.size(); ++i) {
-      out_dims[i] *= expand_times[i];
+    framework::DDim new_in_dims = framework::make_ddim(vec_in_dims);
+    framework::DDim out_dims(new_in_dims);
+    for (size_t i = 0; i < repeat_times.size(); ++i) {
+      out_dims[i] *= repeat_times[i];
     }
 
     out0->Resize(out_dims);
-    auto x = EigenTensor<T, Rank>::From(*in0);
+    auto x = EigenTensor<T, Rank>::From(*in0, new_in_dims);
     out0->mutable_data<T>(context.GetPlace());
-    auto y = EigenTensor<T, Rank>::From(*out0);
+    auto y = EigenTensor<T, Rank>::From(*out0, out_dims);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
     // use 32-bit index to speed up
@@ -185,31 +208,39 @@ class ExpandV2GradKernel : public framework::OpKernel<T> {
     auto* in0 = context.Input<Tensor>("X");
     auto expand_shape = get_expand_shape(context);
     auto x_dims = in0->dims();
+    auto vec_in_dims = framework::vectorize<int>(x_dims);
+    auto diff = expand_shape.size() - vec_in_dims.size();
+    vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     // 1. reshape_dims_vec is the broadcast parameter.
     // 2. reduce_dims_vec is the dimension parameter to compute gradients. For
     //    each dimension expanded, the gradients should be summed to original
     //    size.
-    std::vector<int> expand_times(x_dims.size());
-    for (decltype(x_dims.size()) i = 0; i < x_dims.size(); i++) {
+    std::vector<int> repeat_times(vec_in_dims.size());
+    for (size_t i = 0; i < vec_in_dims.size(); ++i) {
       if (expand_shape[i] < 0) {
-        expand_times[i] = 1;
+        repeat_times[i] = 1;
       } else {
-        expand_times[i] = expand_shape[i] / x_dims[i];
+        // PADDLE_ENFORCE_NE(
+        //     vec_in_dims[i], 0,
+        //     platform::errors::InvalidArgument(
+        //         "The dimension of input 'X' for expand_v2 op cannot be
+        //         zero."))
+        repeat_times[i] = expand_shape[i] / vec_in_dims[i];
       }
     }
     std::vector<int> reshape_dims_vec;
     std::vector<int> reduce_dims_vec;
-    for (size_t i = 0; i < expand_times.size(); ++i) {
+    for (size_t i = 0; i < repeat_times.size(); ++i) {
       reduce_dims_vec.push_back(reshape_dims_vec.size());
-      reshape_dims_vec.push_back(expand_times[i]);
-      reshape_dims_vec.push_back(x_dims[i]);
+      reshape_dims_vec.push_back(repeat_times[i]);
+      reshape_dims_vec.push_back(vec_in_dims[i]);
     }
 
     int dims = reduce_dims_vec.size();
 
     bool just_copy = true;
-    for (size_t i = 0; i < expand_times.size(); i++) {
-      if (expand_times[i] != 1) {
+    for (size_t i = 0; i < repeat_times.size(); i++) {
+      if (repeat_times[i] != 1) {
         just_copy = false;
         break;
       }
@@ -222,16 +253,16 @@ class ExpandV2GradKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
                             out0);
     } else {
-      PADDLE_ENFORCE_GE(dims, 1, platform::errors::InvalidArgument(
-                                     "The number of dimensions of the input "
-                                     "'Out@GRAD' for expand_v2_grad_op"
-                                     " must be greater than or equal to 1, but "
-                                     "the value received is %d.",
-                                     dims));
+      PADDLE_ENFORCE_GE(dims, 1,
+                        platform::errors::InvalidArgument(
+                            "The rank of the input 'Out@GRAD' for "
+                            "expand_v2_grad op must be greater than or "
+                            "equal to 1, but the value received is %d.",
+                            dims));
       PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
                         platform::errors::InvalidArgument(
-                            "The number of dimensions of the input 'Out@GRAD' "
-                            "for expand_v2_grad_op must be less than or equal "
+                            "The rank of the input 'Out@GRAD' for "
+                            "expand_v2_grad op must be less than or equal "
                             "to %d, but the value received is %d.",
                             MAX_RANK_SUPPORTED, dims));
       switch (dims) { REP_EXPAND_GRAD_TEMPLATE(MAX_RANK_SUPPORTED) }
@@ -245,16 +276,6 @@ class ExpandV2GradKernel : public framework::OpKernel<T> {
                       const std::vector<int>& reduce_dims_vec) const {
     size_t reshape_size = reshape_dims_vec.size();
     size_t reduce_size = reduce_dims_vec.size();
-    PADDLE_ENFORCE_EQ(reshape_size, reshape_dims_vec.size(),
-                      platform::errors::InvalidArgument(
-                          "Inconsistent size between template Dims (%d) and "
-                          "reshape dimensions (%d).",
-                          reshape_size, reshape_dims_vec.size()));
-    PADDLE_ENFORCE_EQ(reduce_size, reduce_dims_vec.size(),
-                      platform::errors::InvalidArgument(
-                          "Inconsistent size between template Dims (%d) and "
-                          "reduce dimensions (%d).",
-                          reduce_size, reduce_dims_vec.size()));
     auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());

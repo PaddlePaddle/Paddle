@@ -37,21 +37,30 @@ class ExpandV2Op : public framework::OperatorWithKernel {
       expand_shape = std::vector<int>(x_dims.size(), -1);
     }
 
-    PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(x_dims.size()), expand_shape.size(),
+    PADDLE_ENFORCE_GE(
+        expand_shape.size(), static_cast<size_t>(x_dims.size()),
         platform::errors::InvalidArgument(
             "The number of elements (%d) of 'shape' for "
-            "expand_v2 op must be equal to the number of dimensions "
+            "expand_v2 op must be greater than or equal to the rank "
             "(%d) of the input.",
             expand_shape.size(), static_cast<size_t>(x_dims.size())));
-    PADDLE_ENFORCE_LE(
-        x_dims.size(), 6,
-        platform::errors::InvalidArgument(
-            "The number of dimensions of the input for expand_v2 op "
-            "must not be greater than 6, but the value received is %d.",
-            x_dims.size()));
+    PADDLE_ENFORCE_LE(expand_shape.size(), MAX_RANK_SUPPORTED,
+                      platform::errors::InvalidArgument(
+                          "The number of elements (%d) of 'shape' for "
+                          "must not be greater than %d.",
+                          expand_shape.size(), MAX_RANK_SUPPORTED));
+    PADDLE_ENFORCE_GE(expand_shape.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "The number of elements (%d) of 'shape' for "
+                          "must be a positive integer.",
+                          expand_shape.size()));
 
-    std::vector<int64_t> out_shape(x_dims.size());
+    auto out_rank =
+        std::max(static_cast<size_t>(x_dims.size()), expand_shape.size());
+    std::vector<int64_t> out_shape(out_rank);
+    auto x_dim_vec = framework::vectorize<int>(x_dims);
+    auto diff = expand_shape.size() - x_dim_vec.size();
+    x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
     for (size_t i = 0; i < expand_shape.size(); ++i) {
       if (x_dims[i] == -1) {
         out_shape[i] = -1;
@@ -119,9 +128,9 @@ class ExpandV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("shape", "The expanded shape for each dimension.")
         .SetDefault({});
     AddComment(R"DOC(
-Expand operator tiles the input by the given shape. The rank of X
-should be in [1, 6]. Please note that size of 'shape' must be the same
-with X's rank. Following is a using case:
+Expand the input to the given shape. The rank of X
+should be in [1, 6] and size of 'shape' must be in [1, 6] also.
+Following is a using case:
 
 Input(X) is a 3-D tensor with shape [2, 3, 1]:
 
@@ -155,29 +164,26 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> expand_shape = ctx->Attrs().Get<std::vector<int>>("shape");
-
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-
-    size_t start_pos = 0u;
-    if (!ctx->IsRuntime() && x_dims[0] < 0) {
-      PADDLE_ENFORCE_EQ(
-          x_dims[0], out_dims[0],
-          platform::errors::InvalidArgument(
-              "The first dimension size (%d) of Input(Out@GRAD) should be "
-              "equal to the crroresponding dimension size (%d) of Input(X)",
-              out_dims[0], x_dims[0]));
-      start_pos = 1u;
+    if (expand_shape.size() == 0) {
+      expand_shape = std::vector<int>(x_dims.size(), -1);
     }
 
-    for (size_t i = start_pos; i < expand_shape.size(); ++i) {
-      if (expand_shape[i] > 0) {
+    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto x_dim_vec = framework::vectorize<int>(x_dims);
+    auto diff = expand_shape.size() - x_dim_vec.size();
+    x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
+
+    for (size_t i = 0; i < expand_shape.size(); ++i) {
+      if (expand_shape[i] == -1 || x_dim_vec[i] == -1) {
+        continue;
+      } else {
         if (ctx->IsRuntime()) {
           PADDLE_ENFORCE_EQ(
               expand_shape[i], out_dims[i],
               platform::errors::InvalidArgument(
-                  "The %uth dimension size (%d) of Input(Out@GRAD) should be "
-                  "equal to the crroresponding dimension sizes of shape(%d).",
-                  i, out_dims[i], expand_shape[i]));
+                  "The size (%d) of the dimension %d of Input(Out@GRAD) should "
+                  "be equal to the crroresponding dimension size of shape(%d).",
+                  out_dims[i], i, expand_shape[i]));
         }
       }
     }
@@ -199,7 +205,7 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "expand_shapes_tensor") {
+    if (var_name == "expand_shapes_tensor" || var_name == "Shape") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
