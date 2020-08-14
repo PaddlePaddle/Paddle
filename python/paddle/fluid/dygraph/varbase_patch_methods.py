@@ -50,6 +50,9 @@ def monkey_patch_varbase():
                     static_var = var_base._to_static_var()
 
         """
+
+        # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph. 
+        # It will fail. So, for propery in dygraph only, should not let it getattr(self, attr, None).
         attr_not_need_keys = ['grad']
         if isinstance(self, ParamBase):
             attr_kwargs = self.__dict__.copy()

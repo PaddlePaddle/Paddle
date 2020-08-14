@@ -852,16 +852,7 @@ void BindImperative(py::module *m_ptr) {
             }
           })
       .def_property_readonly(
-          "place",
-          [](imperative::VarBase &self) {
-            if (self.Var().IsType<framework::LoDTensor>()) {
-              return self.Var().Get<framework::LoDTensor>().place();
-            } else if (self.Var().IsType<framework::SelectedRows>()) {
-              return self.Var().Get<framework::SelectedRows>().value().place();
-            } else {
-              return paddle::platform::Place();
-            }
-          },
+          "place", [](imperative::VarBase &self) { return self.Place() },
           py::return_value_policy::copy)
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);

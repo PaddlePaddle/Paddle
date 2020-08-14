@@ -25,7 +25,7 @@ import numpy as np
 
 class TestVarBase(unittest.TestCase):
     def setUp(self):
-        self.shape = [2, 3]
+        self.shape = [512, 1234]
         self.dtype = np.float32
         self.array = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
 
