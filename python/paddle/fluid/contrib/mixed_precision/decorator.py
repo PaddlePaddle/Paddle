@@ -17,10 +17,11 @@ from ... import default_startup_program
 from ... import layers
 from ... import unique_name
 from . import fp16_utils
-from .fp16_utils import update_loss_scaling, rewrite_program
+from .fp16_utils import rewrite_program
 from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
-from .amp_nn import amp_check_finite_and_scale
+from .amp_nn import check_finite_and_unscale
+from .amp_nn import update_loss_scaling
 
 __all__ = ["decorate"]
 
@@ -68,10 +69,8 @@ class OptimizerWithMixedPrecision(object):
             persistable=True)
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
         if self._use_dynamic_loss_scaling:
-            self._incr_every_n_steps = layers.fill_constant(
-                shape=[1], dtype='int32', value=incr_every_n_steps)
-            self._decr_every_n_nan_or_inf = layers.fill_constant(
-                shape=[1], dtype='int32', value=decr_every_n_nan_or_inf)
+            self._incr_every_n_steps = incr_every_n_steps
+            self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf
             self._incr_ratio = incr_ratio
             self._decr_ratio = decr_ratio
             self._num_good_steps = layers.create_global_var(
@@ -157,15 +156,20 @@ class OptimizerWithMixedPrecision(object):
 
         grads = [g for _, g in params_grads]
         with self._train_program._optimized_guard(grads):
-            found_inf = amp_check_finite_and_scale(
+            found_inf = check_finite_and_unscale(
                 grads, self._loss_scaling, name="find_infinite_scale")
 
         if self._use_dynamic_loss_scaling:
-            update_loss_scaling(found_inf, self._loss_scaling,
-                                self._num_good_steps, self._num_bad_steps,
-                                self._incr_every_n_steps,
-                                self._decr_every_n_nan_or_inf, self._incr_ratio,
-                                self._decr_ratio)
+            self._loss_scaling, self._num_good_steps, self._num_bad_steps = update_loss_scaling(
+                found_inf,
+                self._loss_scaling,
+                self._num_good_steps,
+                self._num_bad_steps,
+                self._incr_every_n_steps,
+                self._decr_every_n_nan_or_inf,
+                self._incr_ratio,
+                self._decr_ratio,
+                name="update_loss_scaling")
 
         # apply_gradient append all ops in global block, thus we shouldn't
         # apply gradient in the switch branch.

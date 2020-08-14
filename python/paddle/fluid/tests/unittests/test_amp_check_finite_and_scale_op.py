@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 
 class TestAmpCheckFiniteAndScaleOp(OpTest):
     def setUp(self):
-        self.op_type = "amp_check_finite_and_scale"
+        self.op_type = "check_finite_and_unscale"
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
         scale = np.random.random((1)).astype(self.dtype)
@@ -40,7 +40,7 @@ class TestAmpCheckFiniteAndScaleOp(OpTest):
 
 class TestAmpCheckFiniteAndScaleOpWithNan(OpTest):
     def setUp(self):
-        self.op_type = "amp_check_finite_and_scale"
+        self.op_type = "check_finite_and_unscale"
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.nan
@@ -63,7 +63,7 @@ class TestAmpCheckFiniteAndScaleOpWithNan(OpTest):
 
 class TestAmpCheckFiniteAndScaleOpWithInf(OpTest):
     def setUp(self):
-        self.op_type = "amp_check_finite_and_scale"
+        self.op_type = "check_finite_and_unscale"
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.inf

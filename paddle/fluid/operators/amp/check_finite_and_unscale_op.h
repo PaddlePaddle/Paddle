@@ -16,15 +16,20 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/isfinite_op.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
 
+template <typename T>
+inline HOSTDEVICE T Inverse(T s) {
+  T eps = 1e-6;
+  return s <= 1e-30 ? 1.0 / (s + eps) : 1.0 / s;
+}
+
 template <typename DeviceContext, typename T>
-class AmpCheckFiniteAndScaleKernel;
+class CheckFiniteAndUnscaleKernel;
 
 }  // namespace operators
 }  // namespace paddle

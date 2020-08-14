@@ -12,32 +12,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/amp/amp_check_finite_and_scale_op.h"
-
-#include <string>
-#include <vector>
+#include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
 namespace operators {
 
-class AmpCheckFiniteAndScaleOp : public framework::OperatorWithKernel {
+class CheckFiniteAndUnscaleOp : public framework::OperatorWithKernel {
  public:
-  AmpCheckFiniteAndScaleOp(const std::string& type,
-                           const framework::VariableNameMap& inputs,
-                           const framework::VariableNameMap& outputs,
-                           const framework::AttributeMap& attrs)
+  CheckFiniteAndUnscaleOp(const std::string& type,
+                          const framework::VariableNameMap& inputs,
+                          const framework::VariableNameMap& outputs,
+                          const framework::AttributeMap& attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X",
-                   "amp_check_finite_and_unscale");
+                   "check_finite_and_unscale");
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out",
-                   "amp_check_finite_and_unscale");
+                   "check_finite_and_unscale");
     PADDLE_ENFORCE_EQ(
         ctx->Inputs("X").size(), ctx->Outputs("Out").size(),
         platform::errors::InvalidArgument(
             "The input(X) and output(Out) should have same size in "
-            "Operator(amp_check_finite_and_unscale), size of input(X) is %d "
+            "Operator(check_finite_and_unscale), size of input(X) is %d "
             "and size of output(Out) is %d.",
             ctx->Inputs("X").size(), ctx->Outputs("Out").size()));
     auto x_dims = ctx->GetInputsDim("X");
@@ -53,25 +51,25 @@ class AmpCheckFiniteAndScaleOp : public framework::OperatorWithKernel {
   }
 };
 
-class AmpCheckFiniteAndScaleOpMaker : public framework::OpProtoAndCheckerMaker {
+class CheckFiniteAndUnscaleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(
         "X",
-        "(Tensors) The input tensors of amp_check_finite_and_scale operator.")
+        "(Tensors) The input tensors of check_finite_and_unscale operator.")
         .AsDuplicable();
     AddInput("Scale",
-             "(Tensor) 1-dim tensor, the scale of amp_check_finite_and_scale "
+             "(Tensor) 1-dim tensor, the scale of check_finite_and_unscale "
              "operator.");
     AddOutput("Out",
               "(Tensors) The scaled output tensor of "
-              "amp_check_finite_and_unscale operator.")
+              "check_finite_and_unscale operator.")
         .AsDuplicable();
     AddOutput("FoundInfinite",
               "(Tensor) 1-dim tensor, contains a bool scalar, which indicates "
               "if there there is infinite or nan item in input X.");
     AddComment(R"DOC(
-amp_check_finite_and_scale operator.
+check_finite_and_unscale operator.
 Check if input X contains all finite data, if yes, scale it by input Scale.
 
 $$Out = X * scale$$
@@ -86,7 +84,7 @@ Otherwise, FoundInfinite will be 0 (False).
 };
 
 template <typename T>
-class AmpCheckFiniteAndScaleKernel<platform::CPUDeviceContext, T>
+class CheckFiniteAndUnscaleKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -106,6 +104,8 @@ class AmpCheckFiniteAndScaleKernel<platform::CPUDeviceContext, T>
 
     auto& dev = *ctx.template device_context<platform::CPUDeviceContext>()
                      .eigen_device();
+
+    T inverse_scale = Inverse<T>(*scale_data);
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
       auto* out = outs[i];
@@ -117,7 +117,7 @@ class AmpCheckFiniteAndScaleKernel<platform::CPUDeviceContext, T>
       auto eigen_out = framework::EigenVector<T>::Flatten(*out);
       auto eigen_in = framework::EigenVector<T>::Flatten(*x);
       if (!(*found_inf_data)) {
-        eigen_out.device(dev) = eigen_in / (*scale_data);
+        eigen_out.device(dev) = eigen_in * inverse_scale;
       } else {
         eigen_out.device(dev) = eigen_in * static_cast<T>(0);
       }
@@ -132,14 +132,13 @@ class AmpCheckFiniteAndScaleKernel<platform::CPUDeviceContext, T>
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    amp_check_finite_and_scale, ops::AmpCheckFiniteAndScaleOp,
-    ops::AmpCheckFiniteAndScaleOpMaker,
+    check_finite_and_unscale, ops::CheckFiniteAndUnscaleOp,
+    ops::CheckFiniteAndUnscaleOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
-    amp_check_finite_and_scale,
-    ops::AmpCheckFiniteAndScaleKernel<paddle::platform::CPUDeviceContext,
-                                      float>,
-    ops::AmpCheckFiniteAndScaleKernel<paddle::platform::CPUDeviceContext,
-                                      double>);
+    check_finite_and_unscale,
+    ops::CheckFiniteAndUnscaleKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CheckFiniteAndUnscaleKernel<paddle::platform::CPUDeviceContext,
+                                     double>);

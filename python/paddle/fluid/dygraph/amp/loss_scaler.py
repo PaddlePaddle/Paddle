@@ -214,8 +214,8 @@ class AmpScaler(object):
             param._grad_ivar() for param in optimizer._parameter_list
             if param._grad_ivar() is not None
         ]
-        core.ops.amp_check_finite_and_scale(param_grads, self._scale,
-                                            param_grads, self._found_inf)
+        core.ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
+                                          self._found_inf)
 
     def _update(self):
         """

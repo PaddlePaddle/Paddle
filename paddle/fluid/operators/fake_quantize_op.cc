@@ -586,7 +586,7 @@ class FakeQuantDequantGradOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class FakeQuantDequantGradMaker : public framework::SingleGradOpMaker<T> {
+class FakeQuantDequantGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -616,8 +616,8 @@ REGISTER_OP_CPU_KERNEL(fake_quantize_abs_max,
 REGISTER_OPERATOR(fake_quantize_dequantize_abs_max,
                   ops::FakeQuantOrWithDequantAbsMaxOp,
                   ops::FakeQuantOrWithDequantAbsMaxOpMaker,
-                  ops::FakeQuantDequantGradMaker<paddle::framework::OpDesc>,
-                  ops::FakeQuantDequantGradMaker<paddle::imperative::OpBase>);
+                  ops::FakeQuantDequantGradOpMaker<paddle::framework::OpDesc>,
+                  ops::FakeQuantDequantGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(fake_quantize_dequantize_abs_max,
                        ops::FakeQuantizeDequantizeAbsMaxKernel<CPU, float>);
 
@@ -641,8 +641,8 @@ REGISTER_OP_CPU_KERNEL(fake_quantize_moving_average_abs_max,
 REGISTER_OPERATOR(fake_quantize_dequantize_moving_average_abs_max,
                   ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
                   ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-                  ops::FakeQuantDequantGradMaker<paddle::framework::OpDesc>,
-                  ops::FakeQuantDequantGradMaker<paddle::imperative::OpBase>);
+                  ops::FakeQuantDequantGradOpMaker<paddle::framework::OpDesc>,
+                  ops::FakeQuantDequantGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     fake_quantize_dequantize_moving_average_abs_max,
     ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CPU, float>);
