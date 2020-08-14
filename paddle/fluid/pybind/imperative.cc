@@ -19,13 +19,17 @@ limitations under the License. */
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
+
 #include <memory>
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/imperative/all_reduce.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/data_loader.h"
@@ -537,8 +541,7 @@ void BindImperative(py::module *m_ptr) {
         });
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
-      m, "VarBase",
-      R"DOC()DOC")
+      m, "VarBase", R"DOC()DOC")
       .def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
            [](imperative::VarBase &self, framework::proto::VarType::Type dtype,
@@ -838,13 +841,14 @@ void BindImperative(py::module *m_ptr) {
       .def("reset", &imperative::jit::ProgramDescTracer::Reset);
 
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
-      m, "Tracer",
-      R"DOC()DOC")
+      m, "Tracer", R"DOC()DOC")
       .def("__init__",
            [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
+      .def_property("_enable_autocast", &imperative::Tracer::IsAutoCastEnabled,
+                    &imperative::Tracer::SetEnableAutoCast)
       .def_property("_train_mode", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(
@@ -874,6 +878,26 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
            py::arg("key") = "eager_tmp")
+      .def(
+          "_set_amp_op_list",
+          [](imperative::Tracer &self,
+             std::unordered_set<std::string> &allow_ops,
+             std::unordered_set<std::string> &block_ops) {
+            // NOTE(zhiqiu): The automatic conversion in pybind11 between c++
+            // STL and python set/list/dict involve a copy operation that
+            // prevents pass-by-reference semantics, so it is ok to swap.
+            // The reaseon why not directly pass
+            // std::shared_ptr<std::unordered_set<std::string>>
+            // is that pybind11 forbid shared_ptr<T> where T is not custom type.
+            imperative::AmpOperators::Instance().GetAllowOps()->swap(allow_ops);
+            imperative::AmpOperators::Instance().GetBlockOps()->swap(block_ops);
+          })
+      .def("_get_amp_op_list",
+           [](imperative::Tracer &self) {
+             return std::make_tuple(
+                 *(imperative::AmpOperators::Instance().GetAllowOps()),
+                 *(imperative::AmpOperators::Instance().GetBlockOps()));
+           })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,

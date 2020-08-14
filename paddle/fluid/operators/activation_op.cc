@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+
 #include <memory>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
 #ifdef PADDLE_WITH_CUDA
@@ -199,7 +202,7 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
-.. math:: out=\sqrt x=x^{1/2}
+.. math:: out=\\sqrt{x}=x^{1/2}
 
 **Note**:
   input value must be greater than or equal to zero.
@@ -211,7 +214,7 @@ Rsqrt Activation Operator.
 
 Please make sure input is legal in case of numeric errors.
 
-$$out = \frac{1}{\sqrt{x}}$$
+$$out = \\frac{1}{\\sqrt{x}}$$
 
 )DOC";
 
@@ -504,6 +507,9 @@ class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("threshold",
                    "The threshold value of Relu6. Default is 6.0. ")
         .SetDefault(6.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Relu6 Activation Operator.
 

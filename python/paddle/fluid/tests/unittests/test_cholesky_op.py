@@ -90,5 +90,15 @@ class TestCholeskyOp2D(TestCholeskyOp):
         self._input_shape = (64, 64)
 
 
+class TestDygraph(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        a = np.random.rand(3, 3)
+        a_t = np.transpose(a, [1, 0])
+        x_data = np.matmul(a, a_t) + 1e-03
+        x = paddle.to_variable(x_data)
+        out = paddle.cholesky(x, upper=False)
+
+
 if __name__ == "__main__":
     unittest.main()

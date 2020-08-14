@@ -25,11 +25,13 @@ import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
 from . import core
+from . import unique_name
 from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
+from .incubate.checkpoint import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -558,6 +560,9 @@ class Executor(object):
         self._default_executor = core.Executor(p)
         self._closed = False
         self.pruned_program_scope_caches = dict()
+
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_executor__")
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -1152,6 +1157,8 @@ class Executor(object):
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
+        acp._auto_checkpoint(self, program)
+
         # For backward compatibility, run directly.
         if not compiled:
             # In distributed training, the compiled program is saved in Program._graph
@@ -1300,6 +1307,12 @@ class Executor(object):
                          fetch_list=None,
                          fetch_info=None,
                          print_period=100):
+        is_heter = 0
+        if not program._fleet_opt is None:
+            if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
+                is_heter = 1
+            if program._fleet_opt("trainer", "") == "HeterXpuTrainer":
+                is_heter = 1
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -1308,6 +1321,11 @@ class Executor(object):
             fetch_info = []
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
+        if is_heter:
+            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+            from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+            fu = FleetUtil()
+            ret = fu.split_program_by_device(program)
         if not compiled:
             # TODO: Need a better way to distinguish and specify different execution mode
             if program._pipeline_opt:
@@ -1317,6 +1335,8 @@ class Executor(object):
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
                 trainer._set_thread_barrier(program._is_distributed)
             trainer._set_program(program)
+            if is_heter:
+                trainer._set_heter_info(ret)
         else:
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(
@@ -1460,8 +1480,8 @@ class Executor(object):
 
                 place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
                 exe = fluid.Executor(place)
-                x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
-                y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
+                x = fluid.data(name="x", shape=[None, 10, 10], dtype="int64")
+                y = fluid.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
                 dataset = fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
                 dataset.set_thread(1)
@@ -1475,6 +1495,60 @@ class Executor(object):
         return self._run_from_dataset(program, dataset, scope, thread, True,
                                       debug, fetch_list, fetch_info,
                                       print_period, fetch_handler)
+
+    def start_heter_trainer(self,
+                            program=None,
+                            scope=None,
+                            debug=False,
+                            fetch_list=None,
+                            fetch_info=None,
+                            print_period=100,
+                            fetch_handler=None):
+        return self._start_heter_trainer(program, scope, False, debug,
+                                         fetch_list, fetch_info, print_period,
+                                         fetch_handler)
+
+    def _start_heter_trainer(self,
+                             program=None,
+                             scope=None,
+                             is_infer=False,
+                             debug=False,
+                             fetch_list=None,
+                             fetch_info=None,
+                             print_period=100,
+                             fetch_handler=None):
+
+        scope, trainer = self._prepare_trainer(
+            program=program,
+            dataset=None,
+            scope=scope,
+            thread=1,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
+
+        trainer._set_infer(is_infer)
+        trainer._gen_trainer_desc()
+
+        self._dump_debug_info(program=program, trainer=trainer)
+
+        trainer_instance = self._default_executor.init_for_dataset(
+            program.desc, trainer._desc(), scope, None)
+
+        #if fetch_handler is not None:
+        #    scope0 = trainer_instance.get_worker_scope(0)
+        #    fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
+        #    fetch_monitor.start()
+        #    self._default_executor.run_from_dataset(trainer_instance)
+        #    fetch_monitor.stop()
+        #    self._default_executor.release_trainer(trainer_instance)
+        #else:
+
+        self._default_executor.run_from_dataset(trainer_instance)
+        #self._default_executor.release_trainer(trainer_instance)
+
+        return trainer_instance
 
     def train_from_dataset(self,
                            program=None,
@@ -1526,8 +1600,8 @@ class Executor(object):
 
               place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
               exe = fluid.Executor(place)
-              x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
-              y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
+              x = fluid.data(name="x", shape=[None, 10, 10], dtype="int64")
+              y = fluid.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
               dataset = fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
               dataset.set_thread(1)

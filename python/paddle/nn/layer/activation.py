@@ -15,6 +15,7 @@
 # TODO: define activation functions of neural network
 
 __all__ = [
+    'Hardshrink',
     #       'PReLU',
     'ReLU',
     'LeakyReLU',
@@ -28,6 +29,53 @@ from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
 from .. import functional
+
+
+class Hardshrink(layers.Layer):
+    """
+    Hardshrink Activation
+
+    .. math::
+
+        hardshrink(x)=
+            \left\{
+            \begin{aligned}
+            &x, & & if \ x > threshold \\
+            &x, & & if \ x < -threshold \\
+            &0, & & if \ others
+            \end{aligned}
+            \right.
+
+    Parameters:
+        threshold (float, optional): The value of threshold for hardthrink. Default is 0.5
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_variable(np.array([-1, 0.3, 2.5]))
+        m = paddle.nn.Hardshrink()
+        out = m(x) # [-1., 0., 2.5]
+    """
+
+    def __init__(self, threshold=0.5, name=None):
+        super(Hardshrink, self).__init__()
+        self._threshold = threshold
+        self._name = name
+
+    def forward(self, x):
+        return functional.hardshrink(x, self._threshold, self._name)
 
 
 class HSigmoid(layers.Layer):
@@ -210,9 +258,6 @@ class ReLU(layers.Layer):
 
 class LeakyReLU(layers.Layer):
     """
-	:alias_main: paddle.nn.LeakyReLU
-	:alias: paddle.nn.LeakyReLU,paddle.nn.layer.LeakyReLU,paddle.nn.layer.activation.LeakyReLU
-
     Leaky ReLU Activation.
 
     .. math:
@@ -220,36 +265,35 @@ class LeakyReLU(layers.Layer):
         out = max(x, alpha * x)
 
     Parameters:
-        alpha (float, optional): Slope of the activation function at x < 0. Default: 0.01.
-        inplace (bool, optional): If inplace is True, the input and output of 
-            ``LeakyReLU`` are the same variable. Otherwise, the input and output of
-            ``LeakyReLU`` are different variables. Default False. Note that if x is
-            more than one OPs' input, inplace must be False. Default: False.
+        alpha (float, optional): Slope of the activation function at :math:`x < 0` .
+            Default: 0.01.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
     
-    Returns:
-        None
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
     
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import paddle.nn as nn
-          import numpy as np
+        import paddle
+        import numpy as np
 
-          data = np.array([-2, 0, 1]).astype('float32')
-          lrelu = nn.LeakyReLU()
-          with fluid.dygraph.guard():
-              data = fluid.dygraph.to_variable(data)
-              res = lrelu(data)  # [-0.02, 0, 1]
+        paddle.disable_static()
+
+        lrelu = paddle.nn.LeakyReLU()
+        x = paddle.to_variable(np.array([-2, 0, 1], 'float32'))
+        out = lrelu(x)  # [-0.02, 0., 1.]
     """
 
-    def __init__(self, alpha=1e-2, inplace=False):
+    def __init__(self, alpha=1e-2, name=None):
         super(LeakyReLU, self).__init__()
         self._alpha = alpha
-        self._inplace = inplace
+        self._name = name
 
-    def forward(self, input):
-        return functional.leaky_relu(input, self._alpha, self._inplace)
+    def forward(self, x):
+        return functional.leaky_relu(x, self._alpha, self._name)
 
 
 class Sigmoid(layers.Layer):
