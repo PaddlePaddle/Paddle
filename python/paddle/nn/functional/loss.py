@@ -110,7 +110,7 @@ def margin_ranking_loss(input,
     Examples:
 
         .. code-block:: python
-、
+
             import numpy as np 
             import paddle 
             
