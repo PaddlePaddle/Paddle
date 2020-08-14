@@ -1,7 +1,7 @@
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
-  gloo_wrapper infer_io_utils)
+  gloo_wrapper infer_io_utils heter_wrapper)
 
 if (WITH_NCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
@@ -31,6 +31,7 @@ set(PYBIND_SRCS
   global_value_getter_setter.cc
   reader_py.cc
   fleet_wrapper_py.cc
+  heter_wrapper_py.cc
   gloo_wrapper_py.cc
   box_helper_py.cc
   data_set_py.cc
@@ -81,19 +82,19 @@ if(WITH_PYTHON)
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(TARGET op_function_generator
-            PRE_BUILD
+            PRE_LINK
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
           )
     else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
       add_custom_command(TARGET op_function_generator
-            PRE_BUILD
+            PRE_LINK
             COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
           )
     endif()
     if(WITH_MKLDNN)
       add_custom_command(TARGET op_function_generator
-          PRE_BUILD
+          PRE_LINK
           COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
           )
     endif()
@@ -113,14 +114,14 @@ if(WITH_PYTHON)
     )
     if(WITH_MKL)
       add_custom_command(TARGET op_function_generator
-            PRE_BUILD
+            PRE_LINK
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}
             )
     endif(WITH_MKL)
     if(WITH_MKLDNN)
       add_custom_command(TARGET op_function_generator
-          PRE_BUILD
+          PRE_LINK
           COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
           )
     endif(WITH_MKLDNN)

@@ -66,7 +66,6 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
 _current_device = None
-
 global_prog_seed = 0
 
 
@@ -1914,8 +1913,13 @@ class Operator(object):
                     "`type` to initialized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
-                op_attrs[callstack_var_name] = list(
-                    reversed(traceback.format_stack()))[1:]
+                op_attrs[callstack_var_name] = []
+                for frame in traceback.extract_stack():
+                    op_attrs[callstack_var_name].append(
+                        '  File "{}", line {}, in {}'.format(frame[0], frame[1],
+                                                             frame[2]))
+                    op_attrs[callstack_var_name].append('    {}'.format(frame[
+                        3]))
 
             self.desc.set_type(type)
             proto = OpProtoHolder.instance().get_op_proto(type)
@@ -1954,7 +1958,7 @@ class Operator(object):
                         in_proto.name)
                     if found:
                         in_args = inputs[in_proto.name]
-                        if not isinstance(in_args, list):
+                        if not isinstance(in_args, (list, tuple)):
                             in_args = [in_args]
                         if not in_proto.duplicable and len(in_args) > 1:
                             raise ValueError(
@@ -2381,11 +2385,28 @@ class Operator(object):
     def _is_optimize_op(self):
         op_maker = core.op_proto_and_checker_maker
         OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+
+        if not self.desc.has_attr(op_maker.kOpRoleAttrName()):
+            return False
+
         op_role = self.desc.attr(op_maker.kOpRoleAttrName())
         if op_role & int(OPTIMIZE):
             return True
-        else:
+
+        return False
+
+    def _is_backward_op(self):
+        op_maker = core.op_proto_and_checker_maker
+        BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
+
+        if not self.desc.has_attr(op_maker.kOpRoleAttrName()):
             return False
+
+        op_role = self.desc.attr(op_maker.kOpRoleAttrName())
+        if op_role & int(BACKWARD):
+            return True
+
+        return False
 
 
 class Block(object):
@@ -2979,7 +3000,8 @@ class Block(object):
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
-                    lod_level=v.lod_level,
+                    lod_level=v.lod_level
+                    if v.type == core.VarDesc.VarType.LOD_TENSOR else None,
                     stop_gradient=p.stop_gradient,
                     trainable=p.trainable,
                     optimize_attr=p.optimize_attr,
@@ -3936,6 +3958,13 @@ class Program(object):
 
         # appending gradients times
         self._appending_grad_times = 0
+
+        # identifier for auto checkpoint
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_program__")
+
+        # compiled program, i.e. Graph
+        self._graph = None
 
     def global_seed(self, seed=0):
         """
@@ -5146,7 +5175,7 @@ class ParamBase(core.VarBase):
             .. code-block:: python
 
                 import paddle
-                paddle.enable_imperative()
+                paddle.disable_static()
                 conv = paddle.nn.Conv2D(3, 3, 5)
                 print(conv.weight)
                 # Parameter: conv2d_0.w_0
@@ -5155,7 +5184,7 @@ class ParamBase(core.VarBase):
                 #   - layout: NCHW
                 #   - dtype: float
                 #   - data: [...] 
-                paddle.disable_imperative()
+                paddle.enable_static()
         """
         tensor = self.value().get_tensor()
         if tensor._is_initialized():

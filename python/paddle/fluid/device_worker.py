@@ -15,8 +15,6 @@
 
 from __future__ import print_function
 
-from paddle.fluid.incubate.fleet.parameter_server import version
-
 __all__ = [
     'DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section', 'DownpourSGDOPT'
 ]
@@ -104,6 +102,8 @@ class Hogwild(DeviceWorker):
         # when opt_info is None or empty dict, it should return
         if not opt_info:
             return
+
+        from paddle.fluid.incubate.fleet.parameter_server import version
 
         if version.is_transpiler() and "fleet_desc" not in opt_info:
             return
@@ -223,7 +223,8 @@ class DownpourSGD(DeviceWorker):
                     dense_table_set.add(i)
                 break
 
-        trainer_desc.device_worker_name = "DownpourWorker"
+        trainer_desc.device_worker_name = opt_info.get("worker_class",
+                                                       "DownpourWorker")
         pull_thread = trainer_desc.pull_dense_param
         pull_thread.device_num = trainer_desc.thread_num
         if opt_info.get("program_id_to_worker") is None:

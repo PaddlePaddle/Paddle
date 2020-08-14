@@ -64,6 +64,9 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
+    # `gym` is only used in unittest, it's not suitable to add in requirements.txt.
+    # Add it dynamically.
+    echo "gym" >> ${PADDLE_ROOT}/python/requirements.txt
     # Support build for all python versions, currently
     # including cp27-cp27m and cp27-cp27mu.
     PYTHON_FLAGS=""
@@ -119,6 +122,8 @@ function cmake_base() {
                 exit 1
             fi
         fi
+        # delete `gym` to avoid modifying requirements.txt in *.whl
+        sed -i .bak "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
@@ -175,6 +180,8 @@ function cmake_base() {
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
+        # delete `gym` to avoid modifying requirements.txt in *.whl
+        sed -i "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
     fi
 
     if [ "$SYSTEM" == "Darwin" ]; then
@@ -577,6 +584,10 @@ function generate_api_spec() {
     op_desc_path=${PADDLE_ROOT}/paddle/fluid/OP_DESC_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_op_desc.py > $op_desc_path
 
+    # print api and the md5 of source code of the api.
+    api_source_md5_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.source.md5
+    python ${PADDLE_ROOT}/tools/count_api_without_core_ops.py -p paddle > $api_source_md5_path
+
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
@@ -671,6 +682,13 @@ EOF
 function assert_api_spec_approvals() {
     /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh;approval_error=$?
     if [ "$approval_error" != 0 ];then
+       exit 6
+    fi
+}
+
+function assert_file_diff_approvals() {
+    /bin/bash ${PADDLE_ROOT}/tools/check_file_diff_approvals.sh;file_approval_error=$?
+    if [ "$file_approval_error" != 0 ];then
        exit 6
     fi
 }
@@ -947,6 +965,7 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
     if [ "$WITH_GPU" == "ON" ];then
         parallel_test_base_gpu
     else
@@ -1248,9 +1267,13 @@ EOF
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+    EXIT_CODE=$?
     fluid_endTime_s=`date +%s`
     echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
     ./clean.sh
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
 }
 
 function test_fluid_lib_train() {
@@ -1262,9 +1285,13 @@ EOF
     fluid_train_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/train/demo
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
+    EXIT_CODE=$?
     fluid_train_endTime_s=`date +%s`
     echo "test_fluid_lib_train Total Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
     ./clean.sh
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
 }
 
 function build_document_preview() {
@@ -1276,10 +1303,10 @@ function example() {
     pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
     cd ${PADDLE_ROOT}/tools
-    python sampcd_processor.py cpu 
-    if [ "$?" != "0" ];then
+    python sampcd_processor.py cpu;example_error=$?
+    if [ "$example_error" != "0" ];then
       echo "Code instance execution failed"
-      exit 1
+      exit 5
     fi
 }
 
@@ -1368,7 +1395,7 @@ function main() {
       test_inference)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
-        test_fluid_lib_train
+        #test_fluid_lib_train
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
@@ -1377,6 +1404,9 @@ function main() {
       assert_api_approvals)
         assert_api_spec_approvals
         ;;
+      assert_file_approvals)
+        assert_file_diff_approvals
+        ;; 
       maccheck)
         cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}

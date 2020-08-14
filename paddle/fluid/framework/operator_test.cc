@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/init.h"
 
 DECLARE_bool(enable_unused_var_check);
@@ -546,12 +547,13 @@ class GetLoDLevelTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
-                      "Input(X) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) should not be null.");
-    PADDLE_ENFORCE_GT(ctx->GetLoDLevel("X"), 0,
-                      "The LoD level Input(X) should be larger than 0.");
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "GetLoDLevelTest");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GetLoDLevelTest");
+
+    auto lod_level = ctx->GetLoDLevel("X");
+    PADDLE_ENFORCE_GT(lod_level, 0,
+                      paddle::platform::errors::InvalidArgument(
+                          "The LoD level Input(X) should be larger than 0."));
   }
 };
 
@@ -561,10 +563,8 @@ class SetLoDLevelTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
-                      "Input(X) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "SetLoDLevelTest");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SetLoDLevelTest");
     ctx->SetLoDLevel("Out", 1);
   }
 };

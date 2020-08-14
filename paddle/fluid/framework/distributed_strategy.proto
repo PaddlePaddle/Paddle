@@ -22,56 +22,110 @@ enum Mode {
   HETER = 4; // support XPU and GPU computing server
 }
 
+message RecomputeConfig { repeated string checkpoints = 1; }
+
+message AMPConfig {
+  optional float init_loss_scaling = 1 [ default = 32768.0 ];
+  optional int32 incr_every_n_steps = 2 [ default = 1000 ];
+  optional int32 decr_every_n_nan_or_inf = 3 [ default = 2 ];
+  optional float incr_ratio = 4 [ default = 2.0 ];
+  optional float decr_ratio = 5 [ default = 0.8 ];
+  optional bool use_dynamic_loss_scaling = 6 [ default = true ];
+  repeated string custom_white_list = 7;
+  repeated string custom_black_list = 8;
+  repeated string custom_black_varnames = 9;
+}
+
+message LocalSGDConfig { optional int32 k_steps = 1 [ default = 4 ]; }
+
+message GradientMergeConfig {
+  optional int32 k_steps = 1 [ default = 1 ];
+  optional bool avg = 2 [ default = true ];
+}
+
+message DGCConfig {
+  optional int32 rampup_begin_step = 1 [ default = 0 ];
+  optional int32 rampup_step = 2 [ default = 1 ];
+  repeated float sparsity = 3;
+}
+
+message LarsConfig {
+  optional float lars_coeff = 1 [ default = 0.001 ];
+  optional float lars_weight_decay = 2 [ default = 0.0005 ];
+}
+
+message LambConfig {
+  optional float lamb_weight_decay = 1 [ default = 0.01 ];
+  repeated string exclude_from_weight_decay = 2;
+}
+
+message BuildStrategy {
+  optional bool enable_sequential_execution = 1 [ default = false ];
+  optional bool fuse_elewise_add_act_ops = 2 [ default = false ];
+  optional bool fuse_bn_act_ops = 3 [ default = false ];
+  optional bool fuse_relu_depthwise_conv = 4 [ default = false ];
+  optional bool fuse_broadcast_ops = 5 [ default = false ];
+  optional bool fuse_all_optimizer_ops = 6 [ default = false ];
+  optional bool enable_inplace = 7 [ default = false ];
+  optional bool enable_backward_optimizer_op_deps = 8 [ default = true ];
+  optional bool cache_runtime_context = 9 [ default = false ];
+}
+
+message ExecutionStrategy {
+  optional int32 num_threads = 1 [ default = 1 ];
+  optional int32 num_iteration_per_drop_scope = 2 [ default = 10 ];
+  optional int32 num_iteration_per_run = 3 [ default = 1 ];
+  optional bool use_thread_barrier = 4 [ default = false ];
+}
+
+message AsyncConfig {
+  optional int32 k_steps = 1 [ default = -1 ];
+  optional int32 max_merge_var_num = 2 [ default = 1 ];
+  optional int32 send_queue_size = 3 [ default = 16 ];
+  optional bool independent_recv_thread = 4 [ default = false ];
+  optional int32 min_send_grad_num_before_recv = 5 [ default = 1 ];
+  optional int32 thread_pool_size = 6 [ default = 1 ];
+  optional int32 send_wait_times = 7 [ default = 1 ];
+  optional bool runtime_split_send_recv = 8 [ default = false ];
+}
+
+message PipelineConfig { optional int32 micro_batch = 1 [ default = 1 ]; }
+
 message DistributedStrategy {
-  optional Mode mode = 1 [ default = COLLECTIVE ]; // just for serialization
-  // collective training strategy
+  // bool options
+  optional Mode mode = 1 [ default = COLLECTIVE ];
   optional bool amp = 2 [ default = false ];
-  optional int32 amp_loss_scaling = 3 [ default = 32768 ];
-  optional bool recompute = 4 [ default = false ];
-  repeated string recompute_checkpoints = 5;
-  optional bool localsgd = 6 [ default = false ];
-  optional int32 localsgd_k_step = 7 [ default = 4 ];
-  optional bool dgc = 8 [ default = false ];
-  optional bool hierachical_allreduce = 9 [ default = false ];
-  optional int32 nccl_comm_num = 10 [ default = 1 ];
-  optional bool gradient_merge = 11 [ default = false ];
-  optional int32 gradient_merge_k_step = 12 [ default = 1 ];
-  optional bool sequential_execution = 13 [ default = false ];
-  optional bool enable_backward_optimizer_op_deps = 14 [ default = true ];
-  optional bool lars = 15 [ default = false ];
-  optional bool lamb = 16 [ default = false ];
-  optional bool fuse_elewise_add_act_ops = 17 [ default = false ];
-  optional bool fuse_bn_act_ops = 18 [ default = false ];
-  optional bool enable_auto_fusion = 19 [ default = false ];
-  optional bool fuse_relu_depthwise_conv = 20 [ default = false ];
-  optional bool enable_inplace = 21 [ default = false ];
-  optional bool fuse_all_reduce_ops = 22 [ default = false ];
-  optional int32 num_iteration_per_drop_scope = 23 [ default = 1 ];
-  optional bool sync_batch_norm = 24 [ default = false ];
-  optional bool fuse_all_optimizer_ops = 25 [ default = false ];
+  optional bool recompute = 3 [ default = false ];
+  optional bool localsgd = 4 [ default = false ];
+  optional bool dgc = 5 [ default = false ];
+  optional bool gradient_merge = 6 [ default = false ];
+  optional bool lars = 7 [ default = false ];
+  optional bool lamb = 8 [ default = false ];
+  optional bool pipeline = 9 [ default = false ];
+  optional bool elastic = 10 [ default = false ];
+  optional bool auto = 11 [ default = false ];
+  optional bool a_sync = 12 [ default = true ];
+  optional bool sync_nccl_allreduce = 13 [ default = true ];
+  optional int32 nccl_comm_num = 14 [ default = 1 ];
+  optional bool use_hierarchical_allreduce = 15 [ default = false ];
+  optional int32 hierarchical_allreduce_inter_nranks = 16 [ default = 1 ];
+  optional bool sync_batch_norm = 17 [ default = false ];
+  optional bool fuse_all_reduce_ops = 18 [ default = true ];
+  optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
+  optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
+  // optional bool enable_backward_optimizer_op_deps = 19 [ default = true ];
 
-  // pipeline training
-  optional bool pipeline = 101 [ default = false ];
-  optional int32 pipeline_micro_batch = 102;
-
-  // parameter server training
-  optional bool sync = 201 [ default = false ];
-  optional bool async = 202 [ default = true ];
-  optional int32 async_k_step = 203 [ default = -1 ];
-  optional int32 max_merge_var_num = 204 [ default = 1 ];
-  optional int32 send_queue_size = 205 [ default = 16 ];
-  optional bool independent_recv_thread = 206 [ default = false ];
-  optional int32 min_send_grad_num_before_recv = 207 [ default = 1 ];
-  optional int32 thread_pool_size = 208 [ default = 1 ];
-  optional int32 send_wait_times = 209 [ default = 1 ];
-  optional bool runtime_split_send_recv = 210 [ default = false ];
-  optional bool use_thread_barrier = 211 [ default = false ];
-
-  // elastic deep learning strategies
-  optional bool elastic = 301 [ default = false ];
-
-  // auto parallel
-  optional bool auto = 401 [ default = false ];
+  optional RecomputeConfig recompute_configs = 101;
+  optional AMPConfig amp_configs = 102;
+  optional LocalSGDConfig localsgd_configs = 103;
+  optional GradientMergeConfig gradient_merge_configs = 104;
+  optional DGCConfig dgc_configs = 105;
+  optional PipelineConfig pipeline_configs = 106;
+  optional AsyncConfig a_sync_configs = 107;
+  optional LarsConfig lars_configs = 108;
+  optional LambConfig lamb_configs = 109;
+  optional BuildStrategy build_strategy = 201;
+  optional ExecutionStrategy execution_strategy = 202;
 }
 
 message DistributedJobInfo {

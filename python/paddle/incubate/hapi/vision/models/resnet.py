@@ -21,7 +21,6 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.container import Sequential
 
-from ...model import Model
 from ...download import get_weights_path_from_url
 
 __all__ = [
@@ -166,7 +165,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return fluid.layers.relu(x)
 
 
-class ResNet(Model):
+class ResNet(fluid.dygraph.Layer):
     """ResNet model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
 
@@ -278,7 +277,9 @@ def _resnet(arch, Block, depth, pretrained, **kwargs):
                                                 model_urls[arch][1])
         assert weight_path.endswith(
             '.pdparams'), "suffix of weight must be .pdparams"
-        model.load(weight_path)
+        param, _ = fluid.load_dygraph(weight_path)
+        model.set_dict(param)
+
     return model
 
 
