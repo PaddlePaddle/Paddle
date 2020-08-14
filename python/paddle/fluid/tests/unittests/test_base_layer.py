@@ -104,6 +104,9 @@ class TestBaseLayer(unittest.TestCase):
                 net.test_param = 10
                 net.add_parameter("test_param", param)
 
+            with self.assertRaises(TypeError):
+                net.add_parameter("no_param", 10)
+
             load_param = net.create_parameter(shape=[1])
             net._loaddict_holder[load_param.name] = load_param
             net.add_parameter("load_param", load_param)
