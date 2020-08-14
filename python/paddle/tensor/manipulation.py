@@ -838,7 +838,7 @@ def expand(x, shape, name=None):
                 for item in shape
             ]
 
-            return core.ops.expand(x, 'shape', expand_shape)
+            return core.ops.expand_v2(x, 'shape', expand_shape)
 
     inputs = {"X": [x]}
     attrs = {}

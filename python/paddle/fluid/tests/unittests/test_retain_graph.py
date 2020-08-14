@@ -61,7 +61,9 @@ class TestRetainGraph(unittest.TestCase):
             elif type == 'mixed':
                 alpha = paddle.rand((real_data.shape[0], 1))
                 alpha = paddle.expand(
-                    alpha, [1, np.prod(real_data.shape) // real_data.shape[0]])
+                    alpha, 
+                    [real_data.shape[0],
+                     np.prod(real_data.shape) // real_data.shape[0])
                 alpha = paddle.reshape(alpha, real_data.shape)
                 interpolatesv = alpha * real_data + ((1 - alpha) * fake_data)
             else:
