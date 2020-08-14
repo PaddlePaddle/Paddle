@@ -1319,6 +1319,7 @@ All parameter, weight, gradient are variables in Paddle.
              std::exit(-1);
 #endif
            })
+#ifdef PADDLE_WITH_CUDA
       .def("_type", &PlaceIndex<platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CUDAPlace>)
@@ -1328,6 +1329,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_get_device_id",
            [](platform::CUDAPlace &self) -> int { return self.GetDeviceId(); })
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
+#endif
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.

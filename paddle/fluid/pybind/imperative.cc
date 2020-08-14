@@ -852,7 +852,7 @@ void BindImperative(py::module *m_ptr) {
             }
           })
       .def_property_readonly(
-          "place", [](imperative::VarBase &self) { return self.Place() },
+          "place", [](imperative::VarBase &self) { return self.Place(); },
           py::return_value_policy::copy)
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
