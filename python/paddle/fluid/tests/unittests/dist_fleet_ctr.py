@@ -93,7 +93,6 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         # build dnn model
         dnn_layer_dims = [128, 128, 64, 32, 1]
-        fluid.layers.Print(dnn_data, message="emb:dnn_data")
         dnn_embedding = fluid.layers.embedding(
             is_distributed=False,
             input=dnn_data,
@@ -116,7 +115,6 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        fluid.layers.Print(lr_data, message="emb:lr_data")
         lr_embbding = fluid.layers.embedding(
             is_distributed=False,
             input=lr_data,
