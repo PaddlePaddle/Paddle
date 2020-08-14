@@ -28,20 +28,28 @@ find ${PADDLE_ROOT}/python/ -name '*.py' \
         }' \
     | sort -t '|' -k 2 \
     | awk -F '[|/]' '{
-        if ($2 ~ /.* as .*/) {
-            split($2, arr, " as ");
-            old = arr[1];
-            new = arr[2];
-        } else {
-            old = $2;
-            new = $2;
-        } 
-        for (i = 3; i <= (NF - 1 - $NF); ++i) 
-            printf("%s.", $i);
-        printf("%s.%s\t", $1, old); 
-        for (i = 3; i <= (NF - 1); ++i) {
-            if ($i != "__init__")
-                printf("%s.", $i);
-        } 
-        printf("%s\n", new);
-    }'
+            key = "";
+            val = "";
+            if ($2 ~ /.* as .*/) {
+                split($2, arr, " as ");
+                old = arr[1];
+                new = arr[2];
+            } else {
+                old = $2;
+                new = $2;
+            }
+            for (i = 3; i <= (NF - 1 - $NF); ++i)
+                val = val""$i".";
+            val =  val""$1"."old
+            for (i = 3; i <= (NF - 1); ++i) {
+                if ($i != "__init__")
+                    key = key""$i".";
+            }
+            key = key""new;
+            dict[key] = val;
+        } END {
+            for (key in dict) {
+                newvalue = dict[key] in dict ? dict[dict[key]] : dict[key];
+                print newvalue"\t"key;
+            }
+        }'
