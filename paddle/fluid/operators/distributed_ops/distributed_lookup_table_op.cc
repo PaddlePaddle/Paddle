@@ -46,6 +46,7 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
     }
 
     auto endpoints = ctx->Attrs().Get<std::vector<std::string>>("endpoints");
+    // for fluid.embedding
     auto lookup_table_version =
         ctx->Attrs().Get<std::string>("lookup_table_version");
 
