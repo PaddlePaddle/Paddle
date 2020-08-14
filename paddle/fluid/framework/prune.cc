@@ -209,6 +209,7 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
       }
       should_run.push_back(true);
     } else {
+      should_run.push_back(false);
       // If the output of an op modifies feed vars, the op should not clip.
       // For example, in the transformer structure, the third parameter returned
       // by beam_search op is generally assigned to a feed var. Cutting the
@@ -223,12 +224,8 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
           }
         }
         if (flag) {
-          should_run.push_back(true);
-        } else {
-          should_run.push_back(false);
+          should_run.back() = true;
         }
-      } else {
-        should_run.push_back(false);
       }
     }
   }
