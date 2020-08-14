@@ -28,7 +28,7 @@ __global__ void LinspaceKernel(T start, double step, int64_t size, T* out) {
 
 template <typename T>
 __global__ void LinspaceSpecialKernel(T start, T* out) {
-  out[0] = start;
+  out[0] = static_cast<T>(start);
 }
 
 template <typename T>
