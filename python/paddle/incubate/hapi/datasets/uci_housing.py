@@ -44,7 +44,7 @@ class UCIHousing(Dataset):
             True
 
     Returns:
-        Dataset: UCI housing Dataset.
+        Dataset: instance of UCI housing dataset.
 
     Examples:
         

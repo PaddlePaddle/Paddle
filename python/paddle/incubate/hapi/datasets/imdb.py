@@ -43,6 +43,9 @@ class Imdb(Dataset):
             :attr:`data_file` unset. Default
             True
 
+    Returns:
+        Dataset: instance of IMDB dataset
+
     Examples:
 
         .. code-block:: python

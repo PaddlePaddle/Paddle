@@ -99,6 +99,9 @@ class Movielens(Dataset):
         download(bool): whether auto download cifar dataset if
             :attr:`data_file` unset. Default True.
 
+    Returns:
+        Dataset: instance of Movielens 1-M dataset
+
     Examples:
 
         .. code-block:: python
@@ -127,7 +130,7 @@ class Movielens(Dataset):
         if self.data_file is None:
             assert download, "data_file not set and auto download disabled"
             self.data_file = _check_exists_and_download(data_file, URL, MD5,
-                                                        'movielens', download)
+                                                        'sentiment', download)
 
         self.test_ratio = test_ratio
         self.rand_seed = rand_seed

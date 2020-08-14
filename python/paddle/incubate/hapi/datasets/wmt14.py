@@ -54,6 +54,9 @@ class WMT14(Dataset):
             :attr:`data_file` unset. Default
             True
 
+    Returns:
+        Dataset: instance of WMT14 dataset
+
     Examples:
 
         .. code-block:: python
@@ -81,7 +84,7 @@ class WMT14(Dataset):
         if self.data_file is None:
             assert download, "data_file not set and auto download disabled"
             self.data_file = _check_exists_and_download(
-                data_file, URL_TRAIN, MD5_TRAIN, 'conll05st', download)
+                data_file, URL_TRAIN, MD5_TRAIN, 'wmt14', download)
 
         # read dataset into memory
         assert dict_size > 0, "dict_size should be set as positive number"

@@ -40,7 +40,7 @@ MODE_FLAG_MAP = {
 
 class Cifar(Dataset):
     """
-    Implement of cifar dataset
+    Implement of cifar dataset, supported cifar10 and cifar100.
 
     Args:
         data_file(str): path to data file, can be set None if
@@ -50,6 +50,9 @@ class Cifar(Dataset):
         download(bool): whether auto download cifar dataset if
             :attr:`data_file` unset. Default
             True
+
+    Returns:
+        Dataset: instance of cifar dataset
 
     Examples:
 

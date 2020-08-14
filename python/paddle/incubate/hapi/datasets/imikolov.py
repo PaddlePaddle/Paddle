@@ -43,6 +43,9 @@ class Imikolov(Dataset):
             :attr:`data_file` unset. Default
             True
 
+    Returns:
+        Dataset: instance of imikolov dataset
+
     Examples:
 
         .. code-block:: python

@@ -47,11 +47,14 @@ class Sentiment(Dataset):
         download(bool): whether auto download cifar dataset if
             :attr:`data_file` unset. Default True.
 
+    Returns:
+        Dataset: instance of sentiment dataset
+
     Examples:
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import Imikolov
+            from paddle.incubate.hapi.datasets import Sentiment
 
             sentiment = Sentiment()
 

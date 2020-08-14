@@ -42,7 +42,7 @@ UNK_IDX = 0
 
 class Conll05st(Dataset):
     """
-    Implement of Conll05st test dataset.
+    Implement of conll05st test dataset.
 
     Note: auto downloading dataset only support test dataset for that
           only test dataset of Conll05st is public.
@@ -62,6 +62,9 @@ class Conll05st(Dataset):
         download(bool): whether auto download cifar dataset if
             :attr:`data_file` unset. Default
             True
+
+    Returns:
+        Dataset: instance of conll05st dataset
 
     Examples:
 
@@ -88,27 +91,27 @@ class Conll05st(Dataset):
         if self.data_file is None:
             assert download, "data_file not set and auto download disabled"
             self.data_file = _check_exists_and_download(
-                data_file, DATA_URL, DATA_MD5, 'Conll05st', download)
+                data_file, DATA_URL, DATA_MD5, 'conll05st', download)
 
         self.word_dict_file = word_dict_file
         if self.word_dict_file is None:
             assert download, "word_dict_file not set and auto download disabled"
             self.word_dict_file = _check_exists_and_download(
-                word_dict_file, WORDDICT_URL, WORDDICT_MD5, 'Conll05st',
+                word_dict_file, WORDDICT_URL, WORDDICT_MD5, 'conll05st',
                 download)
 
         self.verb_dict_file = verb_dict_file
         if self.verb_dict_file is None:
             assert download, "verb_dict_file not set and auto download disabled"
             self.verb_dict_file = _check_exists_and_download(
-                verb_dict_file, VERBDICT_URL, VERBDICT_MD5, 'Conll05st',
+                verb_dict_file, VERBDICT_URL, VERBDICT_MD5, 'conll05st',
                 download)
 
         self.target_dict_file = target_dict_file
         if self.target_dict_file is None:
             assert download, "target_dict_file not set and auto download disabled"
             self.target_dict_file = _check_exists_and_download(
-                target_dict_file, TRGDICT_URL, TRGDICT_MD5, 'Conll05st',
+                target_dict_file, TRGDICT_URL, TRGDICT_MD5, 'conll05st',
                 download)
 
         self.word_dict = self._load_dict(self.word_dict_file)

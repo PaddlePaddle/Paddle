@@ -32,14 +32,12 @@ SET_FILE = 'VOCdevkit/VOC2012/ImageSets/Segmentation/{}.txt'
 DATA_FILE = 'VOCdevkit/VOC2012/JPEGImages/{}.jpg'
 LABEL_FILE = 'VOCdevkit/VOC2012/SegmentationClass/{}.png'
 
-CACHE_DIR = 'voc2012'
-
 MODE_FLAG_MAP = {'train': 'trainval', 'test': 'train', 'valid': "val"}
 
 
 class VOC2012(Dataset):
     """
-    Implement of VOC2012 dataset
+    Implement of VOC2012 dataset.
 
     Args:
         data_file(str): path to data file, can be set None if
@@ -48,6 +46,9 @@ class VOC2012(Dataset):
         download(bool): whether auto download mnist dataset if
             :attr:`data_file` unset. Default
             True
+
+    Returns:
+        Dataset: instance of VOC2012 dataset
 
     Examples:
 
@@ -76,7 +77,7 @@ class VOC2012(Dataset):
         if self.data_file is None:
             assert download, "data_file not set and auto download disabled"
             self.data_file = _check_exists_and_download(
-                data_file, VOC_URL, VOC_MD5, CACHE_DIR, download)
+                data_file, VOC_URL, VOC_MD5, 'voc2012', download)
         self.transform = transform
 
         # read dataset into memory

@@ -49,14 +49,16 @@ class WMT16(Dataset):
     If you use the dataset created for your task, please cite the following paper:
     Multi30K: Multilingual English-German Image Descriptions.
 
-    @article{elliott-EtAl:2016:VL16,
-     author    = {{Elliott}, D. and {Frank}, S. and {Sima"an}, K. and {Specia}, L.},
-     title     = {Multi30K: Multilingual English-German Image Descriptions},
-     booktitle = {Proceedings of the 6th Workshop on Vision and Language},
-     year      = {2016},
-     pages     = {70--74},
-     year      = 2016
-    }
+    .. code-block:: text
+
+        @article{elliott-EtAl:2016:VL16,
+         author    = {{Elliott}, D. and {Frank}, S. and {Sima"an}, K. and {Specia}, L.},
+         title     = {Multi30K: Multilingual English-German Image Descriptions},
+         booktitle = {Proceedings of the 6th Workshop on Vision and Language},
+         year      = {2016},
+         pages     = {70--74},
+         year      = 2016
+        }
 
     Args:
         data_file(str): path to data tar file, can be set None if
@@ -68,6 +70,9 @@ class WMT16(Dataset):
         download(bool): whether auto download cifar dataset if
             :attr:`data_file` unset. Default
             True
+
+    Returns:
+        Dataset: instance of WMT16 dataset
 
     Examples:
 
