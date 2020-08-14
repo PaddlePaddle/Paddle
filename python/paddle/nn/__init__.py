@@ -18,7 +18,7 @@
 from .layer import norm
 from .functional import extension
 from .layer import common
-from .utils import weight_norm
+from .utils import weight_norm_hook
 
 from . import initializer
 
@@ -26,7 +26,7 @@ __all__ = []
 __all__ += norm.__all__
 __all__ += extension.__all__
 __all__ += common.__all__
-__all__ += weight_norm.__all__
+__all__ += weight_norm_hook.__all__
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue        #DEFINE_ALIAS
