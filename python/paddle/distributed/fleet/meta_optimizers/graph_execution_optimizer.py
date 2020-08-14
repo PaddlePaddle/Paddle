@@ -120,17 +120,19 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                     dist_strategy.nccl_comm_num
 
         exe_strategy = self.user_defined_strategy.execution_strategy
-        node_num = self.role_maker.worker_num()
+        worker_num = self.role_maker.worker_num()
+        node_num = self.role_maker.node_num()
 
         if self.role_maker._is_collective:
-            assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
+            assert worker_num >= 1, "nccl2 worker_num must >= 1, now:{}" % worker_num
 
-        if node_num <= 1:
+        if worker_num <= 1:
             # local mode
             if local_build_strategy.nccl_comm_num > 1:
                 logging.warn("set nccl_comm_num=1 since you only have 1 node.")
             local_build_strategy.nccl_comm_num = 1
 
+        if node_num <= 1:
             if local_build_strategy.use_hierarchical_allreduce:
                 logging.warn(
                     "set hierachical_allreduce=False since you only have 1 node."
