@@ -33,7 +33,7 @@ class TestGeneratorSeed(unittest.TestCase):
         """Test Generator seed."""
         gen = generator.Generator()
 
-        paddle.disable_static()
+        fluid.enable_dygraph()
 
         gen.manual_seed(12312321111)
         x = fluid.layers.uniform_random([10], dtype="float32", min=0.0, max=1.0)
@@ -92,7 +92,7 @@ class TestGeneratorSeed(unittest.TestCase):
         """Test Generator seed."""
         gen = generator.Generator()
 
-        paddle.disable_static()
+        fluid.enable_dygraph()
 
         gen.manual_seed(12312321111)
         x = paddle.randint(low=1)
