@@ -219,7 +219,7 @@ $$out = \\frac{1}{\\sqrt{x}}$$
 )DOC";
 
 UNUSED constexpr char AbsDoc[] = R"DOC(
-Abs Activation Operator.
+Abs Operator.
 
 $$out = |x|$$
 
