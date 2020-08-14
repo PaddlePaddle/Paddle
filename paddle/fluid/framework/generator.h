@@ -78,8 +78,8 @@ struct Generator {
   static std::shared_ptr<Generator> GetInstanceX() {
     if (NULL == gen_instance_) {
       gen_instance_.reset(new paddle::framework::Generator());
-      gen_instance_->is_init_py = true;
     }
+    gen_instance_->is_init_py = true;
     return gen_instance_;
   }
 
