@@ -800,10 +800,10 @@ def tile(x, repeat_times, name=None):
     be less than or equal to 6.
     If the size of the parameter ``repeat_times`` is ``d``, and the rank for ``x`` is ``r``, then the number
     of dimensions for the result is ``max(d, r)``.
-    If ``r < d``, ``x`` if first promoted to a d-dimensional tensor by inserting new axes at the begining.
+    If ``r < d``, ``x`` if first promoted to a d-dimensional tensor by inserting new axes at the beginning.
     For example, a tensor ``x`` with the shape(3,) is promoted to a 2-D tensor with the shape (1, 3) if ``d`` is 2
     and a 3-D tensor with the shape(1, 1, 3) if ``d`` is 3.
-    If ``r > d``, ``repeat_times`` is first promoted by inserting 1's at the begining.
+    If ``r > d``, ``repeat_times`` is first promoted by inserting 1's at the beginning.
     For example, if the tensor ``x`` is with a shape(4, 3, 2, 2) and ``repeat_times`` is a tuple (3, 2),
     ``repeat_times`` is first promoted to a tuple (1, 1, 3, 2).
     The following gives an using case:
