@@ -330,7 +330,7 @@ def update_role_var_grad(main_prog, params_grads):
         block._sync_with_cpp()
 
 
-def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
+def update_loss_scaling(found_inf, prev_loss_scaling, num_good_steps,
                         num_bad_steps, incr_every_n_steps,
                         decr_every_n_nan_or_inf, incr_ratio, decr_ratio):
     """
@@ -340,8 +340,8 @@ def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
     decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 
     Args:
-        is_overall_finite (Variable): A boolean variable indicates whether 
-                                     all gradients are finite.
+        found_inf (Variable): A boolean variable indicates whether 
+                                     there is infinite gradient.
         prev_loss_scaling (Variable): Previous loss scaling.
         num_good_steps (Variable): A variable accumulates good steps in which 
                                    all gradients are finite.
@@ -360,26 +360,7 @@ def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
     """
     zero_steps = layers.fill_constant(shape=[1], dtype='int32', value=0)
     with layers.Switch() as switch:
-        with switch.case(is_overall_finite):
-            should_incr_loss_scaling = layers.less_than(incr_every_n_steps,
-                                                        num_good_steps + 1)
-            with layers.Switch() as switch1:
-                with switch1.case(should_incr_loss_scaling):
-                    new_loss_scaling = prev_loss_scaling * incr_ratio
-                    loss_scaling_is_finite = layers.isfinite(new_loss_scaling)
-                    with layers.Switch() as switch2:
-                        with switch2.case(loss_scaling_is_finite):
-                            layers.assign(new_loss_scaling, prev_loss_scaling)
-                        with switch2.default():
-                            pass
-                    layers.assign(zero_steps, num_good_steps)
-                    layers.assign(zero_steps, num_bad_steps)
-
-                with switch1.default():
-                    layers.increment(num_good_steps)
-                    layers.assign(zero_steps, num_bad_steps)
-
-        with switch.default():
+        with switch.case(found_inf):
             should_decr_loss_scaling = layers.less_than(decr_every_n_nan_or_inf,
                                                         num_bad_steps + 1)
             with layers.Switch() as switch3:
@@ -402,3 +383,22 @@ def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
                 with switch3.default():
                     layers.assign(zero_steps, num_good_steps)
                     layers.increment(num_bad_steps)
+
+        with switch.default():
+            should_incr_loss_scaling = layers.less_than(incr_every_n_steps,
+                                                        num_good_steps + 1)
+            with layers.Switch() as switch1:
+                with switch1.case(should_incr_loss_scaling):
+                    new_loss_scaling = prev_loss_scaling * incr_ratio
+                    loss_scaling_is_finite = layers.isfinite(new_loss_scaling)
+                    with layers.Switch() as switch2:
+                        with switch2.case(loss_scaling_is_finite):
+                            layers.assign(new_loss_scaling, prev_loss_scaling)
+                        with switch2.default():
+                            pass
+                    layers.assign(zero_steps, num_good_steps)
+                    layers.assign(zero_steps, num_bad_steps)
+
+                with switch1.default():
+                    layers.increment(num_good_steps)
+                    layers.assign(zero_steps, num_bad_steps)

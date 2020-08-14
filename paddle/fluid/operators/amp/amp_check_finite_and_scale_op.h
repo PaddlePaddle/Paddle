@@ -23,12 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-inline HOSTDEVICE T inverse(T s) {
-  T eps = 1e-6;
-  return s <= 1e-30 ? 1.0 / (s + eps) : 1.0 / s;
-}
-
 template <typename DeviceContext, typename T>
 class AmpCheckFiniteAndScaleKernel;
 

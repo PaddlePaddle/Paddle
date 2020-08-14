@@ -115,7 +115,7 @@ class AmpCheckFiniteAndScaleKernel<platform::CPUDeviceContext, T>
         if (*is_finite_data) {
           auto eigen_out = framework::EigenVector<T>::Flatten(*out);
           auto eigen_in = framework::EigenVector<T>::Flatten(*x);
-          eigen_out.device(dev) = inverse(*scale_data) * eigen_in;
+          eigen_out.device(dev) = eigen_in / (*scale_data);
         } else {
           *found_inf_data = true;
           break;
