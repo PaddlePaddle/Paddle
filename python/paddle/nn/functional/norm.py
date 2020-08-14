@@ -54,7 +54,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         axis (int, optional): The axis on which to apply normalization. If `x` is 1-D tensor, `axis` is fixed to 0. If `axis < 0`, \
             the dimension to normalization is rank(X) + axis. -1 is the last dimension.
         epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Default is 1e-12.
-	    name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the output has the same shape and data type with `x`.
@@ -63,9 +63,9 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
         .. code-block:: python
 
+            import numpy as np
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
             paddle.disable_static()
             x = np.arange(6, dtype=np.float32).reshape(2,3)
