@@ -20,6 +20,7 @@ from . import voc2012
 from . import conll05
 from . import imdb
 from . import imikolov
+from . import movielens
 from . import sentiment
 from . import uci_housing
 from . import wmt14
@@ -33,6 +34,7 @@ from .voc2012 import *
 from .conll05 import *
 from .imdb import *
 from .imikolov import *
+from .movielens import *
 from .sentiment import *
 from .uci_housing import *
 from .wmt14 import *
@@ -46,6 +48,7 @@ __all__ = folder.__all__ \
           + conll05.__all__ \
           + imdb.__all__ \
           + imikolov.__all__ \
+          + movielens.__all__ \
           + sentiment.__all__ \
           + uci_housing.__all__ \
           + wmt14.__all__ \

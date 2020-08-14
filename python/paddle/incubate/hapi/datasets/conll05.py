@@ -14,12 +14,14 @@
 
 from __future__ import print_function
 
+import gzip
 import tarfile
 import numpy as np
 import six
 from six.moves import cPickle as pickle
 
 from paddle.io import Dataset
+import paddle.compat as cpt
 from .utils import _check_exists_and_download
 
 
@@ -89,6 +91,28 @@ class Conll05st(Dataset):
             self.data_file = _check_exists_and_download(
                 data_file, DATA_URL, DATA_MD5, 'Conll05st', download)
 
+        self.word_dict_file = word_dict_file 
+        if self.word_dict_file is None:
+            assert download, "word_dict_file not set and auto download disabled"
+            self.word_dict_file = _check_exists_and_download(
+                word_dict_file, WORDDICT_URL, WORDDICT_MD5, 'Conll05st', download)
+
+        self.verb_dict_file = verb_dict_file 
+        if self.verb_dict_file is None:
+            assert download, "verb_dict_file not set and auto download disabled"
+            self.verb_dict_file = _check_exists_and_download(
+                verb_dict_file, VERBDICT_URL, VERBDICT_MD5, 'Conll05st', download)
+
+        self.target_dict_file = target_dict_file 
+        if self.target_dict_file is None:
+            assert download, "target_dict_file not set and auto download disabled"
+            self.target_dict_file = _check_exists_and_download(
+                target_dict_file, TRGDICT_URL, TRGDICT_MD5, 'Conll05st', download)
+
+        self.word_dict = self._load_dict(self.word_dict_file)
+        self.predicate_dict = self._load_dict(self.verb_dict_file)
+        self.label_dict = self._load_label_dict(self.target_dict_file)
+
         # read dataset into memory
         self._load_anno()
 
@@ -119,16 +143,18 @@ class Conll05st(Dataset):
                 d[line.strip()] = i
         return d
 
-
     def _load_anno(self):
-        tf = tarfile.open(data_path)
-        wf = tf.extractfile(words_name)
-        pf = tf.extractfile(props_name)
+        tf = tarfile.open(self.data_file)
+        wf = tf.extractfile("conll05st-release/test.wsj/words/test.wsj.words.gz")
+        pf = tf.extractfile("conll05st-release/test.wsj/props/test.wsj.props.gz")
         self.sentences = []
         self.predicates = []
         self.labels = []
         with gzip.GzipFile(fileobj=wf) as words_file, gzip.GzipFile(
                 fileobj=pf) as props_file:
+            sentences = []
+            labels = []
+            one_seg = []
             for word, label in zip(words_file, props_file):
                 word = cpt.to_text(word.strip())
                 label = cpt.to_text(label.strip().split())
@@ -187,7 +213,7 @@ class Conll05st(Dataset):
 
     def __getitem__(self, idx):
         sentence = self.sentences[idx]
-        predicate = self.predicate[idx]
+        predicate = self.predicates[idx]
         labels = self.labels[idx]
 
         sen_len = len(sentence)
@@ -221,16 +247,16 @@ class Conll05st(Dataset):
         else:
             ctx_p2 = 'eos'
 
-        word_idx = [word_dict.get(w, UNK_IDX) for w in sentence]
+        word_idx = [self.word_dict.get(w, UNK_IDX) for w in sentence]
 
-        ctx_n2_idx = [word_dict.get(ctx_n2, UNK_IDX)] * sen_len
-        ctx_n1_idx = [word_dict.get(ctx_n1, UNK_IDX)] * sen_len
-        ctx_0_idx = [word_dict.get(ctx_0, UNK_IDX)] * sen_len
-        ctx_p1_idx = [word_dict.get(ctx_p1, UNK_IDX)] * sen_len
-        ctx_p2_idx = [word_dict.get(ctx_p2, UNK_IDX)] * sen_len
+        ctx_n2_idx = [self.word_dict.get(ctx_n2, UNK_IDX)] * sen_len
+        ctx_n1_idx = [self.word_dict.get(ctx_n1, UNK_IDX)] * sen_len
+        ctx_0_idx = [self.word_dict.get(ctx_0, UNK_IDX)] * sen_len
+        ctx_p1_idx = [self.word_dict.get(ctx_p1, UNK_IDX)] * sen_len
+        ctx_p2_idx = [self.word_dict.get(ctx_p2, UNK_IDX)] * sen_len
 
-        pred_idx = [predicate_dict.get(predicate)] * sen_len
-        label_idx = [label_dict.get(w) for w in labels]
+        pred_idx = [self.predicate_dict.get(predicate)] * sen_len
+        label_idx = [self.label_dict.get(w) for w in labels]
 
         return (np.array(word_idx),
                 np.array(ctx_n2_idx),
@@ -243,16 +269,13 @@ class Conll05st(Dataset):
                 np.array(label_idx))
 
     def __len__(self):
-        return len(self.sentence_data)
+        return len(self.sentences)
 
     def get_dict(self):
         """
         Get the word, verb and label dictionary of Wikipedia corpus.
         """
-        word_dict = load_dict(self.word_dict_file)
-        verb_dict = load_dict(self.verb_dict_file)
-        label_dict = load_label_dict(self.target_dict_file)
-        return word_dict, verb_dict, label_dict
+        return self.word_dict, self.predicate_dict, self.label_dict
 
     def get_embedding(self):
         return self.emb_file

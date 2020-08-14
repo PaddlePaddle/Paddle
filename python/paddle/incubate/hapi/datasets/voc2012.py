@@ -96,8 +96,8 @@ class VOC2012(Dataset):
 
         for line in sets:
             line = line.strip()
-            data = DATA_FILE.format(line.deocde("utf8"))
-            label = LABEL_FILE.format(line.deocde("utf8"))
+            data = DATA_FILE.format(line)
+            label = LABEL_FILE.format(line)
             self.data.append(data)
             self.labels.append(label)
 

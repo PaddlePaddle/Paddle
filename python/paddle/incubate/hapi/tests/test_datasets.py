@@ -221,7 +221,7 @@ class TestVOC2012Train(unittest.TestCase):
         idx = np.random.randint(0, 2913)
         image, label = voc2012[idx]
         self.assertTrue(len(image.shape) == 3)
-        self.assertTrue(len(label.shape) == 3)
+        self.assertTrue(len(label.shape) == 2)
 
 
 class TestVOC2012Valid(unittest.TestCase):
@@ -234,7 +234,7 @@ class TestVOC2012Valid(unittest.TestCase):
         idx = np.random.randint(0, 1449)
         image, label = voc2012[idx]
         self.assertTrue(len(image.shape) == 3)
-        self.assertTrue(len(label.shape) == 3)
+        self.assertTrue(len(label.shape) == 2)
 
 
 class TestVOC2012Test(unittest.TestCase):
@@ -247,7 +247,7 @@ class TestVOC2012Test(unittest.TestCase):
         idx = np.random.randint(0, 1464)
         image, label = voc2012[idx]
         self.assertTrue(len(image.shape) == 3)
-        self.assertTrue(len(label.shape) == 3)
+        self.assertTrue(len(label.shape) == 2)
 
 
 class TestConll05st(unittest.TestCase):
@@ -314,6 +314,40 @@ class TestImikolovTest(unittest.TestCase):
         idx = np.random.randint(0, 82430)
         data  = imikolov[idx]
         self.assertTrue(len(data) == 2)
+
+
+class TestMovielensTrain(unittest.TestCase):
+    def test_main(self):
+        movielens = Movielens(mode='train')
+        # movielens dataset random split train/test
+        # not check dataset length here
+
+        # traversal whole dataset may cost a
+        # long time, randomly check 1 sample
+        idx = np.random.randint(0, 900000)
+        data  = movielens[idx]
+        self.assertTrue(len(data) == 8)
+        for i, d in enumerate(data):
+            self.assertTrue(len(d.shape) == 1)
+            if i not in [5, 6]:
+                self.assertTrue(d.shape[0] == 1)
+
+
+class TestMovielensTest(unittest.TestCase):
+    def test_main(self):
+        movielens = Movielens(mode='test')
+        # movielens dataset random split train/test
+        # not check dataset length here
+
+        # traversal whole dataset may cost a
+        # long time, randomly check 1 sample
+        idx = np.random.randint(0, 100000)
+        data  = movielens[idx]
+        self.assertTrue(len(data) == 8)
+        for i, d in enumerate(data):
+            self.assertTrue(len(d.shape) == 1)
+            if i not in [5, 6]:
+                self.assertTrue(d.shape[0] == 1)
 
 
 class TestSentimentTrain(unittest.TestCase):

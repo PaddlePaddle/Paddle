@@ -1,0 +1,6 @@
+grep: warning: GREP_OPTIONS is deprecated; please use an alias or script
+..
+----------------------------------------------------------------------
+Ran 2 tests in 19.803s
+
+OK

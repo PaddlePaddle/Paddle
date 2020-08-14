@@ -82,34 +82,33 @@ class Cifar(Dataset):
         self.transform = transform
 
         # read dataset into memory
-        self._load_anno()
+        self._load_data()
 
-    def _load_anno(self):
-        self.data = None
-        self.labels = []
+    def _load_data(self):
+        self.data = []
         with tarfile.open(self.data_file, mode='r') as f:
             names = (each_item.name for each_item in f
                      if self.flag in each_item.name)
+
             for name in names:
                 if six.PY2:
                     batch = pickle.load(f.extractfile(name))
                 else:
                     batch = pickle.load(
                         f.extractfile(name), encoding='bytes')
-                batch_data = batch[six.b('data')]
-                batch_labels = batch.get(
-                    six.b('labels'), batch.get(six.b('fine_labels'), None))
-                assert batch_labels is not None
-                self.data = np.concatenate(self.data, batch_data) if self.data is not None else batch_data
-                self.labels.extend(batch_labels)
 
+                data = batch[six.b('data')]
+                labels = batch.get(
+                    six.b('labels'), batch.get(six.b('fine_labels'), None))
+                assert labels is not None
+                for sample, label in six.moves.zip(data, labels):
+                    self.data.append((sample, label))
 
     def __getitem__(self, idx):
-        data = self.data[idx]
-        label = self.labels[idx]
+        image, label = self.data[idx]
         if self.transform is not None:
-            data = self.transform(data)
-        return data, label
+            image = self.transform(image)
+        return image, label
 
     def __len__(self):
         return len(self.data)
