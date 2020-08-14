@@ -188,7 +188,7 @@ class Optimizer(object):
 
                     para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
 
-                    adam.set_dict(opti_state_dict)
+                    adam.load_state_dict(opti_state_dict)
 
         '''
 
@@ -1804,29 +1804,22 @@ class AdamOptimizer(Optimizer):
         learning\_rate & = learning\_rate * \\
                           \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {\\beta}_1^t}
 
-        param\_out & = param - learning\_rate * \\frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
+        param\_out & = param - learning\_rate * \frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
 
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
     Args:
-        learning_rate (float|Variable, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
-        beta1 (float|Variable, optional): The exponential decay rate for the 1st moment estimates.
-            It should be a float number or a Variable with shape [1] and data type as float32.
-            The default value is 0.9.
-        beta2 (float|Variable, optional): The exponential decay rate for the 2nd moment estimates.
-            It should be a float number or a Variable with shape [1] and data type as float32.
-            The default value is 0.999.
-        epsilon (float, optional): A small float value for numerical stability.
+        lr (float|Tensor, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Tensor`` with a float type. The default value is 0.001.
+        betas (list[float]|list[Tensor], optional): The list of exponential decay rate for moment estimates.
+            The elements of list should be float numbers or Tensor with shape [1] and data type as float32. 
+            The default value is [0.9, 0.999].
+        eps (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
+        params (Iterable, optional):  Iterable of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        weight_decay (float, optional): Weight decay of L2 regularization. The default value is 0.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
@@ -1857,7 +1850,7 @@ class AdamOptimizer(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
+                adam_optimizer = fluid.optimizer.Adam(0.01)
                 adam_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -1871,7 +1864,7 @@ class AdamOptimizer(Optimizer):
 
         .. code-block:: python
 
-            # Adam with beta1/beta2 as Variable
+            # Adam with betas as list[Tensor]
             import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
@@ -1885,7 +1878,7 @@ class AdamOptimizer(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                # define beta decay variable
+                # define beta decay Tensor
                 def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate):
                     global_step = lr_scheduler._decay_step_counter()
 
@@ -1910,13 +1903,12 @@ class AdamOptimizer(Optimizer):
                     fluid.layers.assign(decayed_beta1, beta1)
                     fluid.layers.assign(decayed_beta2, beta2)
 
-                    return beta1, beta2
+                    return [beta1, beta2]
 
-                beta1, beta2 = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
-                adam_optimizer = fluid.optimizer.AdamOptimizer(
-                                                    learning_rate=0.01,
-                                                    beta1=beta1,
-                                                    beta2=beta2)
+                betas = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
+                adam_optimizer = fluid.optimizer.Adam(
+                                                    lr=0.01,
+                                                    betas=betas)
                 adam_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -2077,22 +2069,17 @@ class AdamaxOptimizer(Optimizer):
     it is added here for numerical stability to prevent the division by 0 error.
 
     Args:
-        learning_rate (float|Variable, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
-        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
-            The default value is 0.9.
-        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
-            The default value is 0.999.
+        lr (float|Tensor, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Tensor`` with a float type. The default value is 0.001.
+        betas (list[float]|list[Tensor], optional): The list of exponential decay rate for moment estimates.
+            The elements of list should be float numbers or Tensor with shape [1] and data type as float32. 
+            The default value is [0.9, 0.999].
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
+        parms (Iterable, optional):  Iterable of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        weight_decay (float, optional): Weight decay of L2 regularization. The default value is 0.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
@@ -2102,7 +2089,7 @@ class AdamaxOptimizer(Optimizer):
             The default value is None.
 
     **Notes**:
-        **Currently, AdamaxOptimizer doesn't support sparse parameter optimization.**
+        **Currently, Adamax doesn't support sparse parameter optimization.**
 
     Examples:
         .. code-block:: python
@@ -2120,7 +2107,7 @@ class AdamaxOptimizer(Optimizer):
               data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
-              adam = fluid.optimizer.AdamaxOptimizer(learning_rate=0.2)
+              adam = fluid.optimizer.Adamax(lr=0.2)
               adam.minimize(loss)
 
           # Run the startup program once and only once.
@@ -2220,6 +2207,77 @@ class AdamaxOptimizer(Optimizer):
                     outputs={"Out": beta1_pow_acc},
                     attrs={"scale": self._beta1},
                     stop_gradient=True)
+
+class AdmaW(optimizer):
+    """
+    The AdamaW optimizer is implemented based on the AdamaW Optimization 
+    in paper `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
+    it can resolves the problem of L2 regularization failure in the Adam optimizer.
+
+    .. math::
+
+        t & = t + 1
+
+        moment\_1\_out & = {\\beta}_1 * moment\_1 + (1 - {\\beta}_1) * grad
+        
+        moemnt\_2\_out & = {\\beta}_2 * moment\_2 + (1 - {\\beta}_2) * grad * grad
+
+        learning\_rate & = learning\_rate * \
+            \frac{\sqrt{1 - {\\beta}_2^t}}{1 - {beta}_1^t}
+
+        param\_out & = param - learning\_rate * (\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
+
+
+    Args:
+        lr (float|Tensor, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Tensor`` with a float type. The default value is 0.001.
+        betas (list[float]|list[Tensor], optional): The list of exponential decay rate for moment estimates.
+            The elements of list should be float numbers or Tensor with shape [1] and data type as float32. 
+            The default value is [0.9, 0.999].
+        epsilon (float, optional): A small float value for numerical stability.
+            The default value is 1e-08.
+        parms (Iterable, optional):  Iterable of ``Tensor`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
+        weight_decay (float, optional): Weight decay of L2 regularization. The default value is 0.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`.
+            The default value is None.
+
+    **Notes**:
+        **Currently, Adamax doesn't support sparse parameter optimization.**
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+
+          # First create the Executor.
+          place = fluid.CPUPlace() # fluid.CUDAPlace(0)
+          exe = fluid.Executor(place)
+
+          train_program = fluid.Program()
+          startup_program = fluid.Program()
+          with fluid.program_guard(train_program, startup_program):
+              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              adam = fluid.optimizer.AdamW(lr=0.2)
+              adam.minimize(loss)
+
+          # Run the startup program once and only once.
+          exe.run(startup_program)
+
+          x = numpy.random.random(size=(10, 1)).astype('float32')
+          outs = exe.run(program=train_program,
+                        feed={'X': x},
+                         fetch_list=[loss.name])
+    """
 
 
 class DpsgdOptimizer(Optimizer):
@@ -2595,9 +2653,9 @@ class RMSPropOptimizer(Optimizer):
 
 
     Parameters:
-        learning_rate(float): Global learning rate.
-        rho(float): rho is :math: `\\rho` in equation, default is 0.95.
-        epsilon(float): :math: `\\epsilon` in equation is smoothing term to
+        lr(float): Global learning rate.
+        alpha(float): rho is :math: `\\rho` in equation, default is 0.95.
+        eps(float): :math: `\\epsilon` in equation is smoothing term to
             avoid division by zero, default is 1e-6.
         momentum(float): :math:`\\beta` in equation is the momentum term,
             default is 0.0.
@@ -2605,14 +2663,10 @@ class RMSPropOptimizer(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
+        params (Iterable, optional):  Iterable of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        weight_decay (float, optional): Weight decay of L2 regularization. The default value is 0.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
@@ -2621,7 +2675,7 @@ class RMSPropOptimizer(Optimizer):
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Raises:
-        ValueError: If learning_rate, rho, epsilon, momentum are None.
+        ValueError: If lr, rho, epsilon, momentum are None.
 
     Examples:
           .. code-block:: python
@@ -2639,7 +2693,7 @@ class RMSPropOptimizer(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                rms_optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
+                rms_optimizer = fluid.optimizer.RMSProp(lr=0.1)
                 rms_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
