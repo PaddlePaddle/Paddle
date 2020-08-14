@@ -3186,10 +3186,6 @@ class TreeConv(layers.Layer):
 
 class SyncBatchNorm(layers.Layer):
     """
-    :alias_main: paddle.nn.SyncBatchNorm
-	:alias: paddle.nn.SyncBatchNorm,paddle.nn.layer.SyncBatchNorm,paddle.nn.layer.norm.SyncBatchNorm
-	:old_api: paddle.fluid.dygraph.SyncBatchNorm
-
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
     be used as a normalizer function for other operations, such as conv2d and fully connected 
@@ -3259,19 +3255,18 @@ class SyncBatchNorm(layers.Layer):
     Examples:
         .. code-block:: python
 
+          import paddle
           import paddle.nn as nn
-          import paddle.fluid as fluid
-          from paddle.fluid.dygraph import to_variable
           import numpy as np
 
           x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          with fluid.dygraph.guard():
-              x = to_variable(x)
-              if fluid.is_compiled_with_cuda():
-                  sync_batch_norm = nn.SyncBatchNorm(2)
-                  hidden1 = sync_batch_norm(x)
-                  print(hidden1.numpy())
-                  # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
+          paddle.disable_static()
+          x = paddle.to_variable(x)
+          if paddle.fluid.is_compiled_with_cuda():
+              sync_batch_norm = nn.SyncBatchNorm(2)
+              hidden1 = sync_batch_norm(x)
+              print(hidden1.numpy())
+              # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
     """
 
     def __init__(self,
