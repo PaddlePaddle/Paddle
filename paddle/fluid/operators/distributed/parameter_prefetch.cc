@@ -224,7 +224,7 @@ void prefetchs(const std::vector<std::string> &id_var_names,
   std::vector<framework::LoD> ids_lods;
   TableAndEndpoints tables;
 
-  VLOG(4) << "prefetchs std::copy_n Begin";
+  VLOG(4) << "prefetchs TensorToVector Begin";
   for (auto &id_name : id_var_names) {
     auto &id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
     std::vector<int64_t> ids;
@@ -267,8 +267,7 @@ void prefetchs(const std::vector<std::string> &id_var_names,
     padding_idx = context.Attr<int64_t>("padding_idx");
   }
 
-  VLOG(4) << "prefetchs recv memcpy Begin";
-  VLOG(4) << "prefetchs ids_group size " << ids_group.size();
+  VLOG(4) << "prefetchs recv memcpy Begin, ids_group size " << ids_group.size();
   for (size_t i = 0; i < out_var_names.size(); i++) {
     VLOG(4) << "prefetchs in Var" << id_var_names[i];
     std::vector<int64_t> ids = ids_group[i];
@@ -296,21 +295,24 @@ void prefetchs(const std::vector<std::string> &id_var_names,
       }
     } else {
 #ifdef PADDLE_WITH_CUDA
-      VLOG(4) << "prefetchs recv Var " << out_var_names[i]
-              << " memcpy in gpu place";
-      VLOG(4) << "prefetchs recv Var " << out_var_names[i]
+      VLOG(4) << "prefetchs in gpu place recv Var " << out_var_names[i]
               << " ids_size: " << ids_size;
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];
         VLOG(4) << "prefetchs recv Var " << out_var_names[i] << " id " << id
                 << " length " << recved_vec_map[id].size();
-        auto &cpu_place =
+        auto stream = context.cuda_device_context().stream();
+        if (padding_idx != distributed::kNoPadding && id == padding_idx) {
+          platform::GpuMemsetAsync(out_d + idx * vec_dim_1, 0,
+                                   sizeof(float) * vec_dim_1, stream);
+        } else {
+          auto &cpu_place =
             BOOST_GET_CONST(platform::CPUPlace,
                             paddle::platform::CPUDeviceContext().GetPlace());
-        auto &gpu_place = BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
-        auto stream = context.cuda_device_context().stream();
-        memory::Copy(gpu_place, out_d + idx * vec_dim_1, cpu_place,
-                     &recved_vec_map[id][0], sizeof(float) * vec_dim_1, stream);
+          auto &gpu_place = BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
+          memory::Copy(gpu_place, out_d + idx * vec_dim_1, cpu_place,
+                      &recved_vec_map[id][0], sizeof(float) * vec_dim_1, stream);
+        }
       }
 #else
       PADDLE_ENFORCE(true, platform::errors::PermissionDenied(
