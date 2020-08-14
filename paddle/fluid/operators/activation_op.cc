@@ -242,6 +242,9 @@ $$out = \\left \\lfloor x \\right \\rfloor$$
 UNUSED constexpr char CosDoc[] = R"DOC(
 Cosine Operator. Computes cosine of x element-wise.
 
+Input range is `(-inf, inf)` and output range is `[-1,1]`.
+Return `nan` if input is out of boundary.
+
 $$out = cos(x)$$
 
 )DOC";
