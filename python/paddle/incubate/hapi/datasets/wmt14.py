@@ -25,7 +25,7 @@ from .utils import _check_exists_and_download
 __all__ = ['WMT14']
 
 URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
-                        'cslm_joint_paper/data/dev+test.tgz')
+                'cslm_joint_paper/data/dev+test.tgz')
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
 # this is a small set of data for test. The original data is too large and
 # will be add later.
@@ -89,31 +89,31 @@ class WMT14(Dataset):
         self._load_data()
 
     def _load_data(self):
-	def __to_dict(fd, size):
-	    out_dict = dict()
-	    for line_count, line in enumerate(fd):
-		if line_count < size:
-		    out_dict[cpt.to_text(line.strip())] = line_count
-		else:
-		    break
-	    return out_dict
+        def __to_dict(fd, size):
+            out_dict = dict()
+            for line_count, line in enumerate(fd):
+                if line_count < size:
+                    out_dict[cpt.to_text(line.strip())] = line_count
+                else:
+                    break
+            return out_dict
 
         self.src_ids = []
         self.trg_ids = []
         self.trg_ids_next = []
-	with tarfile.open(self.data_file, mode='r') as f:
-	    names = [
-		each_item.name for each_item in f
-		if each_item.name.endswith("src.dict")
-	    ]
-	    assert len(names) == 1
-	    self.src_dict = __to_dict(f.extractfile(names[0]), self.dict_size)
-	    names = [
-		each_item.name for each_item in f
-		if each_item.name.endswith("trg.dict")
-	    ]
-	    assert len(names) == 1
-	    self.trg_dict = __to_dict(f.extractfile(names[0]), self.dict_size)
+        with tarfile.open(self.data_file, mode='r') as f:
+            names = [
+                each_item.name for each_item in f
+                if each_item.name.endswith("src.dict")
+            ]
+            assert len(names) == 1
+            self.src_dict = __to_dict(f.extractfile(names[0]), self.dict_size)
+            names = [
+                each_item.name for each_item in f
+                if each_item.name.endswith("trg.dict")
+            ]
+            assert len(names) == 1
+            self.trg_dict = __to_dict(f.extractfile(names[0]), self.dict_size)
 
             file_name = "{}/{}".format(self.mode, self.mode)
             names = [
@@ -148,16 +148,14 @@ class WMT14(Dataset):
                     self.trg_ids_next.append(trg_ids_next)
 
     def __getitem__(self, idx):
-        return (np.array(self.src_ids[idx]),
-                np.array(self.trg_ids[idx]),
+        return (np.array(self.src_ids[idx]), np.array(self.trg_ids[idx]),
                 np.array(self.trg_ids_next[idx]))
 
     def __len__(self):
         return len(self.src_ids)
 
     def get_dict(self, reverse=False):
-	if reverse:
-	    src_dict = {v: k for k, v in six.iteritems(src_dict)}
-	    trg_dict = {v: k for k, v in six.iteritems(trg_dict)}
-	return src_dict, trg_dict
-
+        if reverse:
+            src_dict = {v: k for k, v in six.iteritems(src_dict)}
+            trg_dict = {v: k for k, v in six.iteritems(trg_dict)}
+        return src_dict, trg_dict

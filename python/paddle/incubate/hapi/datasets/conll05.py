@@ -24,7 +24,6 @@ from paddle.io import Dataset
 import paddle.compat as cpt
 from .utils import _check_exists_and_download
 
-
 __all__ = ['Conll05st']
 
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/conll05st-tests.tar.gz'
@@ -91,23 +90,26 @@ class Conll05st(Dataset):
             self.data_file = _check_exists_and_download(
                 data_file, DATA_URL, DATA_MD5, 'Conll05st', download)
 
-        self.word_dict_file = word_dict_file 
+        self.word_dict_file = word_dict_file
         if self.word_dict_file is None:
             assert download, "word_dict_file not set and auto download disabled"
             self.word_dict_file = _check_exists_and_download(
-                word_dict_file, WORDDICT_URL, WORDDICT_MD5, 'Conll05st', download)
+                word_dict_file, WORDDICT_URL, WORDDICT_MD5, 'Conll05st',
+                download)
 
-        self.verb_dict_file = verb_dict_file 
+        self.verb_dict_file = verb_dict_file
         if self.verb_dict_file is None:
             assert download, "verb_dict_file not set and auto download disabled"
             self.verb_dict_file = _check_exists_and_download(
-                verb_dict_file, VERBDICT_URL, VERBDICT_MD5, 'Conll05st', download)
+                verb_dict_file, VERBDICT_URL, VERBDICT_MD5, 'Conll05st',
+                download)
 
-        self.target_dict_file = target_dict_file 
+        self.target_dict_file = target_dict_file
         if self.target_dict_file is None:
             assert download, "target_dict_file not set and auto download disabled"
             self.target_dict_file = _check_exists_and_download(
-                target_dict_file, TRGDICT_URL, TRGDICT_MD5, 'Conll05st', download)
+                target_dict_file, TRGDICT_URL, TRGDICT_MD5, 'Conll05st',
+                download)
 
         self.word_dict = self._load_dict(self.word_dict_file)
         self.predicate_dict = self._load_dict(self.verb_dict_file)
@@ -135,7 +137,6 @@ class Conll05st(Dataset):
             d["O"] = index
         return d
 
-
     def _load_dict(self, filename):
         d = dict()
         with open(filename, 'r') as f:
@@ -145,8 +146,10 @@ class Conll05st(Dataset):
 
     def _load_anno(self):
         tf = tarfile.open(self.data_file)
-        wf = tf.extractfile("conll05st-release/test.wsj/words/test.wsj.words.gz")
-        pf = tf.extractfile("conll05st-release/test.wsj/props/test.wsj.props.gz")
+        wf = tf.extractfile(
+            "conll05st-release/test.wsj/words/test.wsj.words.gz")
+        pf = tf.extractfile(
+            "conll05st-release/test.wsj/props/test.wsj.props.gz")
         self.sentences = []
         self.predicates = []
         self.labels = []
@@ -210,7 +213,6 @@ class Conll05st(Dataset):
         wf.close()
         tf.close()
 
-
     def __getitem__(self, idx):
         sentence = self.sentences[idx]
         predicate = self.predicates[idx]
@@ -258,15 +260,9 @@ class Conll05st(Dataset):
         pred_idx = [self.predicate_dict.get(predicate)] * sen_len
         label_idx = [self.label_dict.get(w) for w in labels]
 
-        return (np.array(word_idx),
-                np.array(ctx_n2_idx),
-                np.array(ctx_n1_idx),
-                np.array(ctx_0_idx),
-                np.array(ctx_p1_idx),
-                np.array(ctx_p2_idx),
-                np.array(pred_idx),
-                np.array(mark),
-                np.array(label_idx))
+        return (np.array(word_idx), np.array(ctx_n2_idx), np.array(ctx_n1_idx),
+                np.array(ctx_0_idx), np.array(ctx_p1_idx), np.array(ctx_p2_idx),
+                np.array(pred_idx), np.array(mark), np.array(label_idx))
 
     def __len__(self):
         return len(self.sentences)

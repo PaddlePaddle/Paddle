@@ -103,55 +103,57 @@ class WMT16(Dataset):
         self.lang = lang
         assert src_dict_size > 0, "dict_size should be set as positive number"
         assert trg_dict_size > 0, "dict_size should be set as positive number"
-	self.src_dict_size = min(src_dict_size, (TOTAL_EN_WORDS if lang == "en" else
-					    TOTAL_DE_WORDS))
-	self.trg_dict_size = min(trg_dict_size, (TOTAL_DE_WORDS if lang == "en" else
-					    TOTAL_EN_WORDS))
+        self.src_dict_size = min(src_dict_size, (TOTAL_EN_WORDS if lang == "en"
+                                                 else TOTAL_DE_WORDS))
+        self.trg_dict_size = min(trg_dict_size, (TOTAL_DE_WORDS if lang == "en"
+                                                 else TOTAL_EN_WORDS))
 
         # load source and target word dict
         self.src_dict = self._load_dict(lang, src_dict_size)
-        self.trg_dict = self._load_dict("de" if lang == "en" else "en", trg_dict_size)
+        self.trg_dict = self._load_dict("de" if lang == "en" else "en",
+                                        trg_dict_size)
 
         # load data
         self.data = self._load_data()
 
     def _load_dict(self, lang, dict_size, reverse=False):
-	dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
-				 "wmt16/%s_%d.dict" % (lang, dict_size))
-	if not os.path.exists(dict_path) or (
-		len(open(dict_path, "rb").readlines()) != dict_size):
-	    self._build_dict(dict_path, dict_size, lang)
+        dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
+                                 "wmt16/%s_%d.dict" % (lang, dict_size))
+        if not os.path.exists(dict_path) or (
+                len(open(dict_path, "rb").readlines()) != dict_size):
+            self._build_dict(dict_path, dict_size, lang)
 
-	word_dict = {}
-	with open(dict_path, "rb") as fdict:
-	    for idx, line in enumerate(fdict):
-		if reverse:
-		    word_dict[idx] = cpt.to_text(line.strip())
-		else:
-		    word_dict[cpt.to_text(line.strip())] = idx
+        word_dict = {}
+        with open(dict_path, "rb") as fdict:
+            for idx, line in enumerate(fdict):
+                if reverse:
+                    word_dict[idx] = cpt.to_text(line.strip())
+                else:
+                    word_dict[cpt.to_text(line.strip())] = idx
         return word_dict
 
     def _build_dict(self, dict_path, dict_size, lang):
-	word_dict = defaultdict(int)
-	with tarfile.open(self.data_file, mode="r") as f:
-	    for line in f.extractfile("wmt16/train"):
-		line = cpt.to_text(line)
-		line_split = line.strip().split("\t")
-		if len(line_split) != 2: continue
-		sen = line_split[0] if self.lang == "en" else line_split[1]
-		for w in sen.split():
-		    word_dict[w] += 1
+        word_dict = defaultdict(int)
+        with tarfile.open(self.data_file, mode="r") as f:
+            for line in f.extractfile("wmt16/train"):
+                line = cpt.to_text(line)
+                line_split = line.strip().split("\t")
+                if len(line_split) != 2: continue
+                sen = line_split[0] if self.lang == "en" else line_split[1]
+                for w in sen.split():
+                    word_dict[w] += 1
 
-	with open(dict_path, "wb") as fout:
-	    fout.write(
-		cpt.to_bytes("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)))
-	    for idx, word in enumerate(
-		    sorted(
-			six.iteritems(word_dict), key=lambda x: x[1],
-			reverse=True)):
-		if idx + 3 == dict_size: break
-		fout.write(cpt.to_bytes(word[0]))
-		fout.write(cpt.to_bytes('\n'))
+        with open(dict_path, "wb") as fout:
+            fout.write(
+                cpt.to_bytes("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)))
+            for idx, word in enumerate(
+                    sorted(
+                        six.iteritems(word_dict),
+                        key=lambda x: x[1],
+                        reverse=True)):
+                if idx + 3 == dict_size: break
+                fout.write(cpt.to_bytes(word[0]))
+                fout.write(cpt.to_bytes('\n'))
 
     def _load_data(self):
         # the index for start mark, end mark, and unk are the same in source
@@ -189,15 +191,14 @@ class WMT16(Dataset):
                 self.trg_ids_next.append(trg_ids_next)
 
     def __getitem__(self, idx):
-        return (np.array(self.src_ids[idx]),
-                np.array(self.trg_ids[idx]),
+        return (np.array(self.src_ids[idx]), np.array(self.trg_ids[idx]),
                 np.array(self.trg_ids_next[idx]))
 
     def __len__(self):
         return len(self.src_ids)
 
     def get_dict(self, lang, reverse=False):
-	"""
+        """
 	return the word dictionary for the specified language.
 
 	Args:
@@ -215,10 +216,9 @@ class WMT16(Dataset):
 
         dict_size = self.src_dict_size if lang == self.lang else self.trg_dict_size
 
-	dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
-				 "wmt16/%s_%d.dict" % (lang, dict_size))
-	assert os.path.exists(dict_path), "Word dictionary does not exist. "
-	"Please invoke paddle.dataset.wmt16.train/test/validation first "
-	"to build the dictionary."
-	return _load_dict(lang, dict_size)
-
+        dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
+                                 "wmt16/%s_%d.dict" % (lang, dict_size))
+        assert os.path.exists(dict_path), "Word dictionary does not exist. "
+        "Please invoke paddle.dataset.wmt16.train/test/validation first "
+        "to build the dictionary."
+        return _load_dict(lang, dict_size)

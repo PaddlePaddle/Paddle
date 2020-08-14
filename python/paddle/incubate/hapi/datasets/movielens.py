@@ -48,10 +48,8 @@ class MovieInfo(object):
         """
         Get information from a movie.
         """
-        return [
-            [self.index], [categories_dict[c] for c in self.categories],
-            [movie_title_dict[w.lower()] for w in self.title.split()]
-        ]
+        return [[self.index], [categories_dict[c] for c in self.categories],
+                [movie_title_dict[w.lower()] for w in self.title.split()]]
 
     def __str__(self):
         return "<MovieInfo id(%d), title(%s), categories(%s)>" % (
@@ -76,7 +74,8 @@ class UserInfo(object):
         """
         Get information from a user.
         """
-        return [[self.index], [0 if self.is_male else 1], [self.age], [self.job_id]]
+        return [[self.index], [0 if self.is_male else 1], [self.age],
+                [self.job_id]]
 
     def __str__(self):
         return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
@@ -114,7 +113,12 @@ class Movielens(Dataset):
 
     """
 
-    def __init__(self, data_file=None, mode='train', test_ratio=0.1, rand_seed=0, download=True):
+    def __init__(self,
+                 data_file=None,
+                 mode='train',
+                 test_ratio=0.1,
+                 rand_seed=0,
+                 download=True):
         assert mode.lower() in ['train', 'test'], \
             "mode should be 'train', 'test', but got {}".format(mode)
         self.mode = mode.lower()
@@ -122,8 +126,8 @@ class Movielens(Dataset):
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file not set and auto download disabled"
-            self.data_file = _check_exists_and_download(
-                data_file, URL, MD5, 'movielens', download)
+            self.data_file = _check_exists_and_download(data_file, URL, MD5,
+                                                        'movielens', download)
 
         self.test_ratio = test_ratio
         self.rand_seed = rand_seed
@@ -152,7 +156,7 @@ class Movielens(Dataset):
                             categories_set.add(c)
                         title = pattern.match(title).group(1)
                         self.movie_info[int(movie_id)] = MovieInfo(
-                                index=movie_id, categories=categories, title=title)
+                            index=movie_id, categories=categories, title=title)
                         for w in title.split():
                             title_word_set.add(w.lower())
 
@@ -168,22 +172,22 @@ class Movielens(Dataset):
                         uid, gender, age, job, _ = line.strip().split("::")
                         self.user_info[int(uid)] = UserInfo(
                             index=uid, gender=gender, age=age, job_id=job)
-    
+
     def _load_data(self):
         self.data = []
         is_test = self.mode == 'test'
-	with zipfile.ZipFile(self.data_file) as package:
-	    with package.open('ml-1m/ratings.dat') as rating:
-		for line in rating:
-		    line = cpt.to_text(line, encoding='latin')
-		    if (np.random.random() < self.test_ratio) == is_test:
-			uid, mov_id, rating, _ = line.strip().split("::")
-			uid = int(uid)
-			mov_id = int(mov_id)
-			rating = float(rating) * 2 - 5.0
+        with zipfile.ZipFile(self.data_file) as package:
+            with package.open('ml-1m/ratings.dat') as rating:
+                for line in rating:
+                    line = cpt.to_text(line, encoding='latin')
+                    if (np.random.random() < self.test_ratio) == is_test:
+                        uid, mov_id, rating, _ = line.strip().split("::")
+                        uid = int(uid)
+                        mov_id = int(mov_id)
+                        rating = float(rating) * 2 - 5.0
 
-			mov = self.movie_info[mov_id]
-			usr = self.user_info[uid]
+                        mov = self.movie_info[mov_id]
+                        usr = self.user_info[uid]
                         self.data.append(usr.value() + \
                                          mov.value(self.categories_dict, self.movie_title_dict) + \
                                          [[rating]])
@@ -191,7 +195,6 @@ class Movielens(Dataset):
     def __getitem__(self, idx):
         data = self.data[idx]
         return tuple([np.array(d) for d in data])
-    
+
     def __len__(self):
         return len(self.data)
-

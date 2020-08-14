@@ -300,7 +300,7 @@ class TestImikolovTrain(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 929589)
-        data  = imikolov[idx]
+        data = imikolov[idx]
         self.assertTrue(len(data) == 2)
 
 
@@ -312,7 +312,7 @@ class TestImikolovTest(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 82430)
-        data  = imikolov[idx]
+        data = imikolov[idx]
         self.assertTrue(len(data) == 2)
 
 
@@ -325,7 +325,7 @@ class TestMovielensTrain(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 900000)
-        data  = movielens[idx]
+        data = movielens[idx]
         self.assertTrue(len(data) == 8)
         for i, d in enumerate(data):
             self.assertTrue(len(d.shape) == 1)
@@ -342,7 +342,7 @@ class TestMovielensTest(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 100000)
-        data  = movielens[idx]
+        data = movielens[idx]
         self.assertTrue(len(data) == 8)
         for i, d in enumerate(data):
             self.assertTrue(len(d.shape) == 1)
@@ -358,7 +358,7 @@ class TestSentimentTrain(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1600)
-        data  = sentiment[idx]
+        data = sentiment[idx]
         self.assertTrue(len(data) == 2)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(int(data[1]) in [0, 1])
@@ -372,7 +372,7 @@ class TestSentimentTest(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 400)
-        data  = sentiment[idx]
+        data = sentiment[idx]
         self.assertTrue(len(data) == 2)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(int(data[1]) in [0, 1])
@@ -386,7 +386,7 @@ class TestUCIHousingTrain(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 404)
-        data  = uci_housing[idx]
+        data = uci_housing[idx]
         self.assertTrue(len(data) == 2)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(data[0].shape[0] == 13)
@@ -402,7 +402,7 @@ class TestUCIHousingTest(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 102)
-        data  = uci_housing[idx]
+        data = uci_housing[idx]
         self.assertTrue(len(data) == 2)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(data[0].shape[0] == 13)
@@ -418,7 +418,7 @@ class TestWMT14Train(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 191155)
-        data  = wmt14[idx]
+        data = wmt14[idx]
         self.assertTrue(len(data) == 3)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(len(data[1].shape) == 1)
@@ -433,7 +433,7 @@ class TestWMT14Test(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 5957)
-        data  = wmt14[idx]
+        data = wmt14[idx]
         self.assertTrue(len(data) == 3)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(len(data[1].shape) == 1)
@@ -448,7 +448,7 @@ class TestWMT14Gen(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 3001)
-        data  = wmt14[idx]
+        data = wmt14[idx]
         self.assertTrue(len(data) == 3)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(len(data[1].shape) == 1)
@@ -457,13 +457,14 @@ class TestWMT14Gen(unittest.TestCase):
 
 class TestWMT16Train(unittest.TestCase):
     def test_main(self):
-        wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50, lang='en')
+        wmt16 = WMT16(
+            mode='train', src_dict_size=50, trg_dict_size=50, lang='en')
         self.assertTrue(len(wmt16) == 29000)
 
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 29000)
-        data  = wmt16[idx]
+        data = wmt16[idx]
         self.assertTrue(len(data) == 3)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(len(data[1].shape) == 1)
@@ -472,13 +473,14 @@ class TestWMT16Train(unittest.TestCase):
 
 class TestWMT16Test(unittest.TestCase):
     def test_main(self):
-        wmt16 = WMT16(mode='test', src_dict_size=50, trg_dict_size=50, lang='en')
+        wmt16 = WMT16(
+            mode='test', src_dict_size=50, trg_dict_size=50, lang='en')
         self.assertTrue(len(wmt16) == 1000)
 
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1000)
-        data  = wmt16[idx]
+        data = wmt16[idx]
         self.assertTrue(len(data) == 3)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(len(data[1].shape) == 1)
@@ -493,7 +495,7 @@ class TestWMT16Val(unittest.TestCase):
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1014)
-        data  = wmt16[idx]
+        data = wmt16[idx]
         self.assertTrue(len(data) == 3)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(len(data[1].shape) == 1)

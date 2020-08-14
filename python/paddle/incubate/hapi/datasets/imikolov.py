@@ -22,7 +22,6 @@ import collections
 from paddle.io import Dataset
 from .utils import _check_exists_and_download
 
-
 __all__ = ['Imikolov']
 
 URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
@@ -79,8 +78,8 @@ class Imikolov(Dataset):
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file not set and auto download disabled"
-            self.data_file = _check_exists_and_download(
-                data_file, URL, MD5, 'imikolov', download)
+            self.data_file = _check_exists_and_download(data_file, URL, MD5,
+                                                        'imikolov', download)
 
         # Build a word dictionary from the corpus
         self.word_idx = self._build_work_dict(min_word_freq)
@@ -89,38 +88,38 @@ class Imikolov(Dataset):
         self._load_anno()
 
     def word_count(self, f, word_freq=None):
-	if word_freq is None:
-	    word_freq = collections.defaultdict(int)
+        if word_freq is None:
+            word_freq = collections.defaultdict(int)
 
-	for l in f:
-	    for w in l.strip().split():
-		word_freq[w] += 1
-	    word_freq['<s>'] += 1
-	    word_freq['<e>'] += 1
+        for l in f:
+            for w in l.strip().split():
+                word_freq[w] += 1
+            word_freq['<s>'] += 1
+            word_freq['<e>'] += 1
 
-	return word_freq
+        return word_freq
 
     def _build_work_dict(self, cutoff):
-	train_filename = './simple-examples/data/ptb.train.txt'
-	test_filename = './simple-examples/data/ptb.valid.txt'
-	with tarfile.open(self.data_file) as tf:
-	    trainf = tf.extractfile(train_filename)
-	    testf = tf.extractfile(test_filename)
-	    word_freq = self.word_count(testf, self.word_count(trainf))
-	    if '<unk>' in word_freq:
-		# remove <unk> for now, since we will set it as last index
-		del word_freq['<unk>']
+        train_filename = './simple-examples/data/ptb.train.txt'
+        test_filename = './simple-examples/data/ptb.valid.txt'
+        with tarfile.open(self.data_file) as tf:
+            trainf = tf.extractfile(train_filename)
+            testf = tf.extractfile(test_filename)
+            word_freq = self.word_count(testf, self.word_count(trainf))
+            if '<unk>' in word_freq:
+                # remove <unk> for now, since we will set it as last index
+                del word_freq['<unk>']
 
-	    word_freq = [
-		x for x in six.iteritems(word_freq) if x[1] > self.min_word_freq
-	    ]
+            word_freq = [
+                x for x in six.iteritems(word_freq) if x[1] > self.min_word_freq
+            ]
 
-	    word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
-	    words, _ = list(zip(*word_freq_sorted))
-	    word_idx = dict(list(zip(words, six.moves.range(len(words)))))
-	    word_idx['<unk>'] = len(words)
+            word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
+            words, _ = list(zip(*word_freq_sorted))
+            word_idx = dict(list(zip(words, six.moves.range(len(words)))))
+            word_idx['<unk>'] = len(words)
 
-	return word_idx
+        return word_idx
 
     def _load_anno(self):
         self.data = []
@@ -142,14 +141,14 @@ class Imikolov(Dataset):
                     l = [word_idx.get(w, UNK) for w in l]
                     src_seq = [self.word_idx['<s>']] + l
                     trg_seq = l + [self.word_idx['<e>']]
-                    if self.window_size > 0 and len(src_seq) > self.window_size: continue
+                    if self.window_size > 0 and len(src_seq) > self.window_size:
+                        continue
                     self.data.append((src_seq, trg_seq))
                 else:
                     assert False, 'Unknow data type'
 
     def __getitem__(self, idx):
         return tuple([np.array(d) for d in self.data[idx]])
-    
+
     def __len__(self):
         return len(self.data)
-

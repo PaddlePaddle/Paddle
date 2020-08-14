@@ -60,10 +60,7 @@ class UCIHousing(Dataset):
 
     """
 
-    def __init__(self,
-                 data_file=None,
-                 mode='train',
-                 download=True):
+    def __init__(self, data_file=None, mode='train', download=True):
         assert mode.lower() in ['train', 'test'], \
                 "mode should be 'train' or 'test', but got {}".format(mode)
         self.mode = mode.lower()
@@ -71,20 +68,20 @@ class UCIHousing(Dataset):
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file not set and auto download disabled"
-            self.data_file = _check_exists_and_download(
-                data_file, URL, MD5, 'uci_housing', download)
+            self.data_file = _check_exists_and_download(data_file, URL, MD5,
+                                                        'uci_housing', download)
 
         # read dataset into memory
         self._load_data()
 
     def _load_data(self, feature_num=14, ratio=0.8):
-	data = np.fromfile(self.data_file, sep=' ')
-	data = data.reshape(data.shape[0] // feature_num, feature_num)
-	maximums, minimums, avgs = data.max(axis=0), data.min(axis=0), data.sum(
-	    axis=0) / data.shape[0]
-	for i in six.moves.range(feature_num - 1):
-	    data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
-	offset = int(data.shape[0] * ratio)
+        data = np.fromfile(self.data_file, sep=' ')
+        data = data.reshape(data.shape[0] // feature_num, feature_num)
+        maximums, minimums, avgs = data.max(axis=0), data.min(axis=0), data.sum(
+            axis=0) / data.shape[0]
+        for i in six.moves.range(feature_num - 1):
+            data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
+        offset = int(data.shape[0] * ratio)
         if self.mode == 'train':
             self.data = data[:offset]
         elif self.mode == 'test':

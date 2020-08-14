@@ -22,7 +22,6 @@ from six.moves import cPickle as pickle
 from paddle.io import Dataset
 from .utils import _check_exists_and_download
 
-
 __all__ = ['Cifar']
 
 URL_PREFIX = 'https://dataset.bj.bcebos.com/cifar/'
@@ -31,7 +30,12 @@ CIFAR10_MD5 = 'c58f30108f718f92721af3b95e74349a'
 CIFAR100_URL = URL_PREFIX + 'cifar-100-python.tar.gz'
 CIFAR100_MD5 = 'eb9058c3a382ffc7106e4002c42a8d85'
 
-MODE_FLAG_MAP = {'train10': 'data_batch', 'test10': 'test_batch', 'train100': 'train', 'test100': 'test'}
+MODE_FLAG_MAP = {
+    'train10': 'data_batch',
+    'test10': 'test_batch',
+    'train100': 'train',
+    'test100': 'test'
+}
 
 
 class Cifar(Dataset):
@@ -74,8 +78,10 @@ class Cifar(Dataset):
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file not set and auto download disabled"
-            data_url = CIFAR10_URL if self.mode in ['train10', 'test10'] else CIFAR100_URL
-            data_md5 = CIFAR10_MD5 if self.mode in ['train10', 'test10'] else CIFAR100_MD5
+            data_url = CIFAR10_URL if self.mode in ['train10', 'test10'
+                                                    ] else CIFAR100_URL
+            data_md5 = CIFAR10_MD5 if self.mode in ['train10', 'test10'
+                                                    ] else CIFAR100_MD5
             self.data_file = _check_exists_and_download(
                 data_file, data_url, data_md5, 'cifar', download)
 
@@ -94,8 +100,7 @@ class Cifar(Dataset):
                 if six.PY2:
                     batch = pickle.load(f.extractfile(name))
                 else:
-                    batch = pickle.load(
-                        f.extractfile(name), encoding='bytes')
+                    batch = pickle.load(f.extractfile(name), encoding='bytes')
 
                 data = batch[six.b('data')]
                 labels = batch.get(

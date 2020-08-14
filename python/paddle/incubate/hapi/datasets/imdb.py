@@ -24,7 +24,6 @@ import collections
 from paddle.io import Dataset
 from .utils import _check_exists_and_download
 
-
 __all__ = ['Imdb']
 
 URL = 'https://dataset.bj.bcebos.com/imdb%2FaclImdb_v1.tar.gz'
@@ -58,11 +57,7 @@ class Imdb(Dataset):
 
     """
 
-    def __init__(self,
-                 data_file=None,
-                 mode='train',
-                 cutoff=150,
-                 download=True):
+    def __init__(self, data_file=None, mode='train', cutoff=150, download=True):
         assert mode.lower() in ['train', 'test'], \
             "mode should be 'train', 'test', but got {}".format(mode)
         self.mode = mode.lower()
@@ -70,8 +65,8 @@ class Imdb(Dataset):
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file not set and auto download disabled"
-            self.data_file = _check_exists_and_download(
-                data_file, URL, MD5, 'imdb', download)
+            self.data_file = _check_exists_and_download(data_file, URL, MD5,
+                                                        'imdb', download)
 
         # Build a word dictionary from the corpus
         self.word_idx = self._build_work_dict(cutoff)
@@ -102,11 +97,12 @@ class Imdb(Dataset):
             while tf != None:
                 if bool(pattern.match(tf.name)):
                     # newline and punctuations removal and ad-hoc tokenization.
-                    data.append(tarf.extractfile(tf).read().rstrip(six.b(
-                        "\n\r")).translate(
-                            None, six.b(string.punctuation)).lower().split())
+                    data.append(
+                        tarf.extractfile(tf).read().rstrip(six.b("\n\r"))
+                        .translate(None, six.b(string.punctuation)).lower(
+                        ).split())
                 tf = tarf.next()
-        
+
         return data
 
     def _load_anno(self):
@@ -126,7 +122,6 @@ class Imdb(Dataset):
 
     def __getitem__(self, idx):
         return (np.array(self.docs[idx]), np.array([self.labels[idx]]))
-    
+
     def __len__(self):
         return len(self.docs)
-
