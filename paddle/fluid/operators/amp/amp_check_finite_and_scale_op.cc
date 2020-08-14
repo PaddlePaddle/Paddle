@@ -112,14 +112,14 @@ class AmpCheckFiniteAndScaleKernel<platform::CPUDeviceContext, T>
       out->mutable_data<T>(dev_ctx.GetPlace());
       if (!(*found_inf_data)) {
         framework::TensorIsfinite(*x, &is_finite);
-        if (*is_finite_data) {
-          auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-          auto eigen_in = framework::EigenVector<T>::Flatten(*x);
-          eigen_out.device(dev) = eigen_in / (*scale_data);
-        } else {
-          *found_inf_data = true;
-          break;
-        }
+        *found_inf_data = !(*is_finite_data);
+      }
+      auto eigen_out = framework::EigenVector<T>::Flatten(*out);
+      auto eigen_in = framework::EigenVector<T>::Flatten(*x);
+      if (!(*found_inf_data)) {
+        eigen_out.device(dev) = eigen_in / (*scale_data);
+      } else {
+        eigen_out.device(dev) = eigen_in * static_cast<T>(0);
       }
     }
     return;

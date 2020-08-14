@@ -27,9 +27,9 @@ __global__ void AmpCheckFiniteAndScale(const T* in, const T* scale, int num,
 
   if (idx < num) {
     if (!isfinite(in[idx])) {
-      *found_inf = 1;
+      *found_inf = true;
     }
-    out[idx] = *found_inf ? in[idx] : in[idx] / scale[0];
+    out[idx] = *found_inf ? static_cast<T>(0) : in[idx] / scale[0];
   }
 }
 

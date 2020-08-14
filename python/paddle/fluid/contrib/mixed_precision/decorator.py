@@ -167,11 +167,6 @@ class OptimizerWithMixedPrecision(object):
                                 self._decr_every_n_nan_or_inf, self._incr_ratio,
                                 self._decr_ratio)
 
-            with layers.Switch() as switch:
-                with switch.case(found_inf):
-                    for _, g in params_grads:
-                        layers.assign(layers.zeros_like(g), g)
-
         # apply_gradient append all ops in global block, thus we shouldn't
         # apply gradient in the switch branch.
         optimize_ops = self._optimizer.apply_gradients(params_grads)
