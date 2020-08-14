@@ -50,6 +50,10 @@ class TestGeneratorSeed(unittest.TestCase):
         x1_np = x1.numpy()
         x2_np = x2.numpy()
         x3_np = x3.numpy()
+        print("x {}".format(x_np))
+        print("x1: {}".format(x1_np))
+        print("x2: {}".format(x2_np))
+        print("x3: {}".format(x3_np))
         self.assertTrue(np.allclose(x1_np, x2_np))
         self.assertTrue(np.allclose(x_np, x3_np))
 

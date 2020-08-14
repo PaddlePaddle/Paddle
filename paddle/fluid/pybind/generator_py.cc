@@ -35,9 +35,9 @@ void BindGenerator(py::module* m) {
       *m, "Generator")
       .def(py::init([]() { return framework::Generator::GetInstanceX(); }))
       .def("get_state", &framework::Generator::GetState,
-           py::return_value_policy::copy)
+           py::return_value_policy::move)
       .def("set_state", &framework::Generator::SetState,
-           py::return_value_policy::copy)
+           py::return_value_policy::move)
       .def("manual_seed", &framework::Generator::SetCurrentSeed)
       .def("seed", &framework::Generator::Seed)
       .def("initial_seed", &framework::Generator::GetCurrentSeed);
