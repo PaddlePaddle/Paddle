@@ -134,13 +134,6 @@ class ZeroOptimizer(MetaOptimizerBase):
                                OP_ROLE_KEY: OpRole.Backward})
                     block._insert_op(
                         op_idx,
-                        type='c_sync_calc_stream',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={'ring_id': 0,
-                               OP_ROLE_KEY: OpRole.Backward})
-                    block._insert_op(
-                        op_idx,
                         type='c_broadcast',
                         inputs={'X': param},
                         outputs={'Out': param},
@@ -150,6 +143,13 @@ class ZeroOptimizer(MetaOptimizerBase):
                             OP_ROLE_KEY: OpRole.Forward
                         })
                     if root_device != self.role_maker.worker_index():
+                        block._insert_op(
+                            op_idx,
+                            type='c_sync_calc_stream',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={'ring_id': 0,
+                                   OP_ROLE_KEY: OpRole.Backward})
                         block._insert_op(
                             op_idx,
                             type="fill_constant",
