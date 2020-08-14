@@ -37,7 +37,6 @@ __all__ = [
     #       'create_random_int_lodtensor',
     'crop_tensor',
     'diag',
-    'eye',
     'fill_constant',
     #       'get_tensor_from_selected_rows',
     'linspace',
@@ -84,7 +83,7 @@ def full_like(x, fill_value, dtype=None, name=None):
           import paddle
           import numpy as np
           
-          paddle.enable_imperative()  # Now we are in imperative mode 
+          paddle.disable_static()  # Now we are in imperative mode 
           input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
           output = paddle.full_like(input, 2.0)
           # [[2. 2. 2.]
@@ -144,7 +143,7 @@ def ones(shape, dtype=None, name=None):
         .. code-block:: python
 
           import paddle 
-          paddle.enable_imperative()
+          paddle.disable_static()
           
           # default dtype for ones OP
           data1 = paddle.ones(shape=[3, 2]) 
@@ -200,9 +199,9 @@ def ones_like(x, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
-        x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
+        x = paddle.to_variable(np.array([1,2,3], dtype='float32'))
         out1 = paddle.zeros_like(x) # [1., 1., 1.]
         out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
 
@@ -237,7 +236,7 @@ def zeros(shape, dtype=None, name=None):
 
           import paddle
           
-          paddle.enable_imperative()  # Now we are in imperative mode
+          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.zeros(shape=[3, 2], dtype='float32') 
           # [[0. 0.]
           #  [0. 0.]
@@ -248,7 +247,7 @@ def zeros(shape, dtype=None, name=None):
           
           # shape is a Tensor
           shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
-          data3 = paddle.ones(shape=shape, dtype='int32') 
+          data3 = paddle.zeros(shape=shape, dtype='int32') 
           # [[0 0]
           #  [0 0]]
     """
@@ -290,9 +289,9 @@ def zeros_like(x, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
-        x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
+        x = paddle.to_variable(np.array([1,2,3], dtype='float32'))
         out1 = paddle.zeros_like(x) # [0., 0., 0.]
         out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
 
@@ -329,7 +328,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
           
           import paddle
 
-          paddle.enable_imperative()  # Now we are in imperative mode
+          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.eye(3, dtype='int32')
           # [[1 0 0]
           #  [0 1 0]
@@ -383,7 +382,7 @@ def full(shape, fill_value, dtype=None, name=None):
 
           import paddle
 
-          paddle.enable_imperative()  # Now we are in imperative mode
+          paddle.disable_static()  # Now we are in imperative mode
           data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
           #[[0]
           # [0]]
@@ -460,7 +459,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         out1 = paddle.arange(5)
         # [0, 1, 2, 3, 4]
@@ -472,7 +471,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         out3 = paddle.arange(4.999, dtype='float32')
         # [0., 1., 2., 3., 4.]
 
-        start_var = paddle.imperative.to_variable(np.array([3]))
+        start_var = paddle.to_variable(np.array([3]))
         out4 = paddle.arange(start_var, 7)
         # [3, 4, 5, 6]
              
@@ -562,9 +561,9 @@ def tril(x, diagonal=0, name=None):
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
-            x = paddle.imperative.to_variable(data)
+            x = paddle.to_variable(data)
             
             tril1 = paddle.tensor.tril(x)
             # array([[ 1,  0,  0,  0],
@@ -633,10 +632,10 @@ def triu(x, diagonal=0, name=None):
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             # example 1, default diagonal
-            x = paddle.imperative.to_variable(data)
+            x = paddle.to_variable(data)
             triu1 = paddle.tensor.triu(x)
             # array([[ 1,  2,  3,  4],
             #        [ 0,  6,  7,  8],
@@ -710,12 +709,12 @@ def meshgrid(*args, **kwargs):
           import paddle
           import numpy as np
           
-          paddle.enable_imperative()
+          paddle.disable_static()
 
           input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
           input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          tensor_3 = paddle.imperative.to_variable(input_3)
-          tensor_4 = paddle.imperative.to_variable(input_4)
+          tensor_3 = paddle.to_variable(input_3)
+          tensor_4 = paddle.to_variable(input_4)
           grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
           #the shape of grid_x is (100, 200)

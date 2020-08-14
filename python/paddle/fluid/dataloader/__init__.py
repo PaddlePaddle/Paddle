@@ -20,5 +20,9 @@ from .dataset import *
 from . import batch_sampler
 from .batch_sampler import *
 
+from . import dataloader_iter
+from .dataloader_iter import *
+
 __all__ = dataset.__all__ \
-        + batch_sampler.__all__
+        + batch_sampler.__all__ \
+        + dataloader_iter.__all__

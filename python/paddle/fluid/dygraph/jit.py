@@ -176,7 +176,17 @@ def _declarative_(dygraph_func):
             error_data = getattr(e, ERROR_DATA, None)
             if error_data:
                 new_exception = error_data.create_exception()
-                raise new_exception
+                if six.PY3:
+                    # NOTE(liym27):
+                    # 1. Why `raise new_exception from None`?
+                    #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
+                    #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
+                    #   caught exception.
+                    # 2. Use exec to bypass syntax error checking in Python 2.
+
+                    six.exec_("raise new_exception from None")
+                else:
+                    raise new_exception
             else:
                 raise
 
@@ -691,11 +701,11 @@ def save(layer, model_path, input_spec=None, configs=None):
     prog_translator = ProgramTranslator()
     if not prog_translator.enable:
         raise RuntimeError(
-            "The paddle.imperative.jit.save doesn't work when setting ProgramTranslator.enable=False."
+            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable=False."
         )
     if not isinstance(layer, Layer):
         raise TypeError(
-            "The input layer of paddle.imperative.jit.save should be 'Layer', but received layer type is %s."
+            "The input layer of paddle.jit.save should be 'Layer', but received layer type is %s."
             % type(layer))
 
     if configs is None:

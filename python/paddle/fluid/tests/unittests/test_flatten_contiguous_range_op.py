@@ -191,8 +191,8 @@ class TestFlattenPython(unittest.TestCase):
         self.assertRaises(ValueError, test_InputError)
 
         def test_Negative():
-            paddle.enable_imperative()
-            img = paddle.imperative.to_variable(x)
+            paddle.disable_static()
+            img = paddle.to_variable(x)
             out = paddle.flatten(img, start_axis=-2, stop_axis=-1)
             return out.numpy().shape
 
