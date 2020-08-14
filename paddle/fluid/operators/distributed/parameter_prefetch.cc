@@ -149,7 +149,6 @@ void prefetch_core(
     PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
                                                "internal error in RPCClient"));
   }
-  VLOG(4) << "prefetch_core Recv Done";
 
   for (size_t o_idx = 0; o_idx < out_var_names.size(); ++o_idx) {
     auto &ids_in_this_section = origin_ids[o_idx];
@@ -307,11 +306,13 @@ void prefetchs(const std::vector<std::string> &id_var_names,
                                    sizeof(float) * vec_dim_1, stream);
         } else {
           auto &cpu_place =
-            BOOST_GET_CONST(platform::CPUPlace,
-                            paddle::platform::CPUDeviceContext().GetPlace());
-          auto &gpu_place = BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
+              BOOST_GET_CONST(platform::CPUPlace,
+                              paddle::platform::CPUDeviceContext().GetPlace());
+          auto &gpu_place =
+              BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
           memory::Copy(gpu_place, out_d + idx * vec_dim_1, cpu_place,
-                      &recved_vec_map[id][0], sizeof(float) * vec_dim_1, stream);
+                       &recved_vec_map[id][0], sizeof(float) * vec_dim_1,
+                       stream);
         }
       }
 #else
