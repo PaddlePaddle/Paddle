@@ -25,13 +25,19 @@ __all__ = [
     #            'is_compiled_with_cuda'
 ]
 
+_cudnn_version = None
+
 
 def get_cudnn_version():
     """
     This funciton return the version of cudnn.
     """
-    cudnn_version = core.cudnn_version()
-    if cudnn_version < 0:
-        return None
+    global _cudnn_version
+    if _cudnn_version is None:
+        cudnn_version = core.cudnn_version()
+        if cudnn_version < 0:
+            return None
+        else:
+            return cudnn_version
     else:
-        return cudnn_version
+        return _cudnn_version
