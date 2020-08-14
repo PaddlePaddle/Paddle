@@ -2198,7 +2198,7 @@ class AdamaxOptimizer(Optimizer):
             if grad is None or param.trainable is False:
                 continue
             with param.block.program._optimized_guard(
-                [param, grad]), name_scope('adamx'):
+                [param, grad]), name_scope('adamax'):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 block.append_op(
@@ -2208,9 +2208,9 @@ class AdamaxOptimizer(Optimizer):
                     attrs={"scale": self._beta1},
                     stop_gradient=True)
 
-class AdmaW(optimizer):
+class AdamW(optimizer):
     """
-    The AdamaW optimizer is implemented based on the AdamaW Optimization 
+    The AdamW optimizer is implemented based on the AdamW Optimization 
     in paper `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
     it can resolves the problem of L2 regularization failure in the Adam optimizer.
 
@@ -2249,7 +2249,7 @@ class AdmaW(optimizer):
             The default value is None.
 
     **Notes**:
-        **Currently, Adamax doesn't support sparse parameter optimization.**
+        **Currently, AdamW doesn't support sparse parameter optimization.**
 
     Examples:
         .. code-block:: python
