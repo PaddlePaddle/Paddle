@@ -195,6 +195,12 @@ function cmake_base() {
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     grpc_flag=${WITH_GRPC:-${distibuted_flag}}
 
+    if [ "$SYSTEM" == "Darwin" ]; then
+        gloo_flag="OFF"
+    else
+        gloo_flag=${distibuted_flag}
+    fi
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -219,6 +225,7 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
+	    -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DLITE_GIT_TAG=develop
     ========================================
@@ -249,6 +256,7 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
+	    -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
@@ -686,6 +694,13 @@ function assert_api_spec_approvals() {
     fi
 }
 
+function assert_file_diff_approvals() {
+    /bin/bash ${PADDLE_ROOT}/tools/check_file_diff_approvals.sh;file_approval_error=$?
+    if [ "$file_approval_error" != 0 ];then
+       exit 6
+    fi
+}
+
 
 function check_coverage() {
     /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
@@ -958,6 +973,7 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
     if [ "$WITH_GPU" == "ON" ];then
         parallel_test_base_gpu
     else
@@ -1259,9 +1275,13 @@ EOF
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+    EXIT_CODE=$?
     fluid_endTime_s=`date +%s`
     echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
     ./clean.sh
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
 }
 
 function test_fluid_lib_train() {
@@ -1273,9 +1293,13 @@ EOF
     fluid_train_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/train/demo
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
+    EXIT_CODE=$?
     fluid_train_endTime_s=`date +%s`
     echo "test_fluid_lib_train Total Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
     ./clean.sh
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
 }
 
 function build_document_preview() {
@@ -1379,7 +1403,7 @@ function main() {
       test_inference)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
-        test_fluid_lib_train
+        #test_fluid_lib_train
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
@@ -1388,6 +1412,9 @@ function main() {
       assert_api_approvals)
         assert_api_spec_approvals
         ;;
+      assert_file_approvals)
+        assert_file_diff_approvals
+        ;; 
       maccheck)
         cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
