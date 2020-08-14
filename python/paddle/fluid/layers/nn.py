@@ -11204,6 +11204,7 @@ def rank(input):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.numel")
 def size(input):
     """
     **Size Layer**

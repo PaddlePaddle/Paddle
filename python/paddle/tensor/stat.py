@@ -16,14 +16,16 @@
 from ..fluid.layers import mean  #DEFINE_ALIAS
 from ..fluid.layers import reduce_mean  #DEFINE_ALIAS
 
-__all__ = ['mean', 'reduce_mean', 'std', 'var']
+__all__ = ['mean', 'reduce_mean', 'std', 'var', 'numel']
 
 import numpy as np
+from ..fluid.framework import Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import in_dygraph_mode
 from ..fluid import layers
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.layers import core
 
 
 def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
@@ -162,3 +164,42 @@ def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
         return out
     else:
         return tmp
+
+
+def numel(x, name=None):
+    """
+    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static mode
+    or a scalar value in imperative mode
+
+    Args:
+        input (Variable): The input variable.
+
+    Returns:
+        Variable: The number of elements for the input variable.
+    
+    Raises:
+        TypeError: If ``x`` is not a Variable.
+
+
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        
+        paddle.disable_static()
+        numel = paddle.numel(x)
+
+
+    """
+    if in_dygraph_mode():
+        out_tensor = core.ops.size(x)
+        out = out_tensor.numpy().item(0)
+        return out
+
+    if not isinstance(x, Variable):
+        raise TypeError("x must be a Tensor in numel")
+    helper = LayerHelper('numel', **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.INT64)
+    helper.append_op(type='size', inputs={'Input': x}, outputs={'Out': out})
+    return out
