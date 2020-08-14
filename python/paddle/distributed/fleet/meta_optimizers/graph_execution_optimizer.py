@@ -119,6 +119,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         local_build_strategy.nccl_comm_num = \
                     dist_strategy.nccl_comm_num
 
+        if self.user_defined_strategy.recompute == True:
+            logging.warn(
+                "set enable_sequential_execution=True since you have enable the recompute strategy"
+            )
+            local_build_strategy.enable_sequential_execution = True
+
         exe_strategy = self.user_defined_strategy.execution_strategy
         worker_num = self.role_maker.worker_num()
         node_num = self.role_maker.node_num()
