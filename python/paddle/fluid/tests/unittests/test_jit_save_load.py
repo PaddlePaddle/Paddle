@@ -204,80 +204,6 @@ class TestJitSaveLoad(unittest.TestCase):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
 
 
-class TestJitSaveLoadConfig(unittest.TestCase):
-    def setUp(self):
-        # enable dygraph mode
-        fluid.enable_dygraph()
-        # config seed
-        fluid.default_main_program().random_seed = SEED
-
-    def basic_save_load(self, layer, model_path, configs):
-        # 1. train & save
-        example_inputs, train_layer, _ = train(layer)
-        fluid.dygraph.jit.save(
-            layer=train_layer,
-            model_path=model_path,
-            input_spec=example_inputs,
-            configs=configs)
-        # 2. load 
-        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
-        train_layer.eval()
-        # 3. inference & compare
-        x = fluid.dygraph.to_variable(
-            np.random.random((1, 784)).astype('float32'))
-        self.assertTrue(
-            np.array_equal(train_layer(x).numpy(), infer_layer(x).numpy()))
-
-    def test_model_filename(self):
-        layer = LinearNet(784, 1)
-        model_path = "model.save_load_config.output_spec"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.model_filename = "__simplenet__"
-        self.basic_save_load(layer, model_path, configs)
-
-    def test_params_filename(self):
-        layer = LinearNet(784, 1)
-        model_path = "model.save_load_config.params_filename"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.params_filename = "__params__"
-        self.basic_save_load(layer, model_path, configs)
-
-    def test_separate_params(self):
-        layer = LinearNet(784, 1)
-        model_path = "model.save_load_config.separate_params"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.separate_params = True
-        self.basic_save_load(layer, model_path, configs)
-
-    def test_output_spec(self):
-        train_layer = LinearNetReturnLoss(8, 8)
-        adam = fluid.optimizer.AdamOptimizer(
-            learning_rate=0.1, parameter_list=train_layer.parameters())
-        x = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32'))
-        for i in range(10):
-            out, loss = train_layer(x)
-            loss.backward()
-            adam.minimize(loss)
-            train_layer.clear_gradients()
-
-        model_path = "model.save_load_config.output_spec"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.output_spec = [out]
-        fluid.dygraph.jit.save(
-            layer=train_layer,
-            model_path=model_path,
-            input_spec=[x],
-            configs=configs)
-
-        train_layer.eval()
-        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
-        x = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32'))
-        self.assertTrue(
-            np.array_equal(train_layer(x)[0].numpy(), infer_layer(x).numpy()))
-
-
 class LinearNetMultiInput(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super(LinearNetMultiInput, self).__init__()
@@ -362,6 +288,80 @@ class TestSaveLoadWithTensorSpec(unittest.TestCase):
 
         # 4. assert pred_x == pred_xx
         self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
+
+
+class TestJitSaveLoadConfig(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        fluid.enable_dygraph()
+        # config seed
+        fluid.default_main_program().random_seed = SEED
+
+    def basic_save_load(self, layer, model_path, configs):
+        # 1. train & save
+        example_inputs, train_layer, _ = train(layer)
+        fluid.dygraph.jit.save(
+            layer=train_layer,
+            model_path=model_path,
+            input_spec=example_inputs,
+            configs=configs)
+        # 2. load 
+        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        train_layer.eval()
+        # 3. inference & compare
+        x = fluid.dygraph.to_variable(
+            np.random.random((1, 784)).astype('float32'))
+        self.assertTrue(
+            np.array_equal(train_layer(x).numpy(), infer_layer(x).numpy()))
+
+    def test_model_filename(self):
+        layer = LinearNet(784, 1)
+        model_path = "model.save_load_config.output_spec"
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        configs.model_filename = "__simplenet__"
+        self.basic_save_load(layer, model_path, configs)
+
+    def test_params_filename(self):
+        layer = LinearNet(784, 1)
+        model_path = "model.save_load_config.params_filename"
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        configs.params_filename = "__params__"
+        self.basic_save_load(layer, model_path, configs)
+
+    def test_separate_params(self):
+        layer = LinearNet(784, 1)
+        model_path = "model.save_load_config.separate_params"
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        configs.separate_params = True
+        self.basic_save_load(layer, model_path, configs)
+
+    def test_output_spec(self):
+        train_layer = LinearNetReturnLoss(8, 8)
+        adam = fluid.optimizer.AdamOptimizer(
+            learning_rate=0.1, parameter_list=train_layer.parameters())
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        for i in range(10):
+            out, loss = train_layer(x)
+            loss.backward()
+            adam.minimize(loss)
+            train_layer.clear_gradients()
+
+        model_path = "model.save_load_config.output_spec"
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        configs.output_spec = [out]
+        fluid.dygraph.jit.save(
+            layer=train_layer,
+            model_path=model_path,
+            input_spec=[x],
+            configs=configs)
+
+        train_layer.eval()
+        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        self.assertTrue(
+            np.array_equal(train_layer(x)[0].numpy(), infer_layer(x).numpy()))
 
 
 if __name__ == '__main__':
