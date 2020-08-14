@@ -290,7 +290,7 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.execution_strategy = exe_strategy
 
     def test_unknown_strategy(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         with self.assertRaises(TypeError):
             strategy.unknown_key = 'UNK'
 
