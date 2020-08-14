@@ -220,11 +220,6 @@ class ExpandV2GradKernel : public framework::OpKernel<T> {
       if (expand_shape[i] < 0) {
         repeat_times[i] = 1;
       } else {
-        // PADDLE_ENFORCE_NE(
-        //     vec_in_dims[i], 0,
-        //     platform::errors::InvalidArgument(
-        //         "The dimension of input 'X' for expand_v2 op cannot be
-        //         zero."))
         repeat_times[i] = expand_shape[i] / vec_in_dims[i];
       }
     }
