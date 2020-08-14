@@ -19,8 +19,6 @@ import paddle.fluid.core as core
 import paddle
 from .. import functional as F
 
-from ...fluid import core
-
 __all__ = [
     #       'NCELoss',
     'CrossEntropyLoss',
