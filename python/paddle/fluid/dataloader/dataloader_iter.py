@@ -359,6 +359,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._outstanding_capacity = 2 * max(self._num_workers,
                                              len(self._places))
 
+        # see _try_put_indices
+        self._thread_lock = threading.Lock()
+
         # init workers and indices queues and put 2 indices in each indices queue
         self._init_workers()
         for _ in range(self._outstanding_capacity):
@@ -423,9 +426,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._blocking_queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_buffer_reader, True,
             self._pin_memory)
-
-        # see _try_put_indices
-        self._thread_lock = theading.Lock()
 
         self._thread_done_event = threading.Event()
         self._thread = threading.Thread(target=self._thread_loop)
@@ -671,7 +671,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             # for threading save, for _try_put_indices is only a slight function
             # which is not in data reading pipeline, this lock almost no influence
             # on performance
-            with self.thread_lock:
+            with self._thread_lock:
                 indices = next(self._sampler_iter)
         except StopIteration:
             return
