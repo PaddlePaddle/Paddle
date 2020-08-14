@@ -145,9 +145,8 @@ class TestFleetBase(unittest.TestCase):
         import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        strategy = fleet.DistributedStrategy()
         optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer = fleet.distributed_optimizer(optimizer)
 
     def test_minimize(self):
         import paddle
