@@ -144,12 +144,12 @@ void prefetch_core(
       VLOG(3) << "don't send no-initialied variable: " << out_var_names[i];
     }
   }
-  VLOG(4)<<"prefetch_core Recv Begin";
+  VLOG(4) << "prefetch_core Recv Begin";
   for (size_t i = 0; i < rets.size(); i++) {
     PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
                                                "internal error in RPCClient"));
   }
-  VLOG(4)<<"prefetch_core Recv Done";
+  VLOG(4) << "prefetch_core Recv Done";
 
   for (size_t o_idx = 0; o_idx < out_var_names.size(); ++o_idx) {
     auto &ids_in_this_section = origin_ids[o_idx];
@@ -168,16 +168,17 @@ void prefetch_core(
       for (int64_t i = 0; i < dims[0]; ++i) {
         auto origin_id = ids_in_this_section[i];
         std::vector<float> vecs(row_numel);
-        
+
         std::copy_n(out_var_data + i * row_numel, row_numel, vecs.begin());
         (*recved_vec_map)[origin_id] = vecs;
-        VLOG(4)<<"prefetch_core Recv id "<< origin_id<< " val[0] "<< vecs[0];
+        VLOG(4) << "prefetch_core Recv id " << origin_id << " val[0] "
+                << vecs[0];
       }
     } else {
       VLOG(3) << "ids in this section is empty";
     }
   }
-  VLOG(4)<<"prefetch_core  Done";
+  VLOG(4) << "prefetch_core  Done";
 }
 
 void prefetch(const std::string &id_name, const std::string &out_name,
@@ -201,7 +202,7 @@ void prefetchs(const std::vector<std::string> &id_var_names,
                const framework::Scope &scope) {
   auto vec_dim_1 = 0;
   auto vec_dim_0 = 0;
-  VLOG(4)<<"prefetchs Begin";
+  VLOG(4) << "prefetchs Begin";
   framework::Variable *var = scope.FindVar(persistable_var_name);
 
   if (var->IsType<SelectedRows>()) {
@@ -223,9 +224,9 @@ void prefetchs(const std::vector<std::string> &id_var_names,
   std::vector<framework::LoD> ids_lods;
   TableAndEndpoints tables;
 
-  VLOG(4)<<"prefetchs std::copy_n Begin";
+  VLOG(4) << "prefetchs std::copy_n Begin";
   for (auto &id_name : id_var_names) {
-    auto& id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
+    auto &id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
     std::vector<int64_t> ids;
     TensorToVector(id_tensor, context.device_context(), &ids);
     VLOG(4) << "Parameter Prefetch: size(): " << ids.size() << " ids[0] "
@@ -233,7 +234,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
     ids_union.insert(ids_union.end(), ids.begin(), ids.end());
     ids_group.push_back(ids);
     ids_lods.push_back(id_tensor.lod());
-    // }
   }
 
   std::unordered_set<int64_t> s(ids_union.begin(), ids_union.end());
@@ -256,7 +256,7 @@ void prefetchs(const std::vector<std::string> &id_var_names,
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
 
-  VLOG(4)<<"prefetchs prefetch_core Begin";
+  VLOG(4) << "prefetchs prefetch_core Begin";
   std::unordered_map<int64_t, std::vector<float>> recved_vec_map;
   prefetch_core(ids_union, tables, context, scope, is_distributed,
                 &recved_vec_map);
@@ -267,23 +267,26 @@ void prefetchs(const std::vector<std::string> &id_var_names,
     padding_idx = context.Attr<int64_t>("padding_idx");
   }
 
-  VLOG(4)<<"prefetchs recv memcpy Begin";
-  VLOG(4)<<"prefetchs ids_group size "<< ids_group.size();
+  VLOG(4) << "prefetchs recv memcpy Begin";
+  VLOG(4) << "prefetchs ids_group size " << ids_group.size();
   for (size_t i = 0; i < out_var_names.size(); i++) {
-    VLOG(4)<<"prefetchs in Var"<<id_var_names[i];
-    std::vector<int64_t> ids =ids_group[i];
+    VLOG(4) << "prefetchs in Var" << id_var_names[i];
+    std::vector<int64_t> ids = ids_group[i];
     auto ids_size = ids.size();
-    VLOG(4)<<"prefetchs in Var"<< id_var_names[i]<< " out Var " << out_var_names[i] << " id_length "<< ids_size ;
+    VLOG(4) << "prefetchs in Var" << id_var_names[i] << " out Var "
+            << out_var_names[i] << " id_length " << ids_size;
     auto *out_t =
         scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
     out_t->set_lod(ids_lods[i]);
-    out_t->Resize(framework::make_ddim({static_cast<int64_t>(ids_size), vec_dim_1}));
+    out_t->Resize(
+        framework::make_ddim({static_cast<int64_t>(ids_size), vec_dim_1}));
     auto *out_d = out_t->mutable_data<float>(place);
 
-    if(platform::is_cpu_place(out_t->place())){
+    if (platform::is_cpu_place(out_t->place())) {
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];
-        VLOG(4)<<"prefetchs recv Var "<<out_var_names[i]<<" memcpy in cpu place";
+        VLOG(4) << "prefetchs recv Var " << out_var_names[i]
+                << " memcpy in cpu place";
         if (padding_idx != distributed::kNoPadding && id == padding_idx) {
           memset(out_d + idx * vec_dim_1, 0, sizeof(float) * vec_dim_1);
         } else {
@@ -291,26 +294,28 @@ void prefetchs(const std::vector<std::string> &id_var_names,
                       out_d + idx * vec_dim_1);
         }
       }
-    }
-#ifdef PADDLE_WITH_CUDA 
-    else {
-      VLOG(4)<<"prefetchs recv Var "<<out_var_names[i]<<" memcpy in gpu place";
-      VLOG(4)<<"prefetchs recv Var "<<out_var_names[i]<<" ids_size: "<< ids_size;
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      VLOG(4) << "prefetchs recv Var " << out_var_names[i]
+              << " memcpy in gpu place";
+      VLOG(4) << "prefetchs recv Var " << out_var_names[i]
+              << " ids_size: " << ids_size;
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];
-        VLOG(4)<<"prefetchs recv Var "<<out_var_names[i]<<" id "<< id << " length "<< recved_vec_map[id].size();
-        auto& cpu_place =
-              BOOST_GET_CONST(platform::CPUPlace,
-                              paddle::platform::CPUDeviceContext().GetPlace());
-        auto& gpu_place =
-            BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
+        VLOG(4) << "prefetchs recv Var " << out_var_names[i] << " id " << id
+                << " length " << recved_vec_map[id].size();
+        auto &cpu_place =
+            BOOST_GET_CONST(platform::CPUPlace,
+                            paddle::platform::CPUDeviceContext().GetPlace());
+        auto &gpu_place = BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
         auto stream = context.cuda_device_context().stream();
         memory::Copy(gpu_place, out_d + idx * vec_dim_1, cpu_place,
-                      &recved_vec_map[id][0], sizeof(float) * vec_dim_1,
-                      stream);
+                     &recved_vec_map[id][0], sizeof(float) * vec_dim_1, stream);
       }
-    }
+#else
+      PADDLE_THROW("Paddle is not compiled with GPU!");
 #endif
+    }
   }
 }
 
