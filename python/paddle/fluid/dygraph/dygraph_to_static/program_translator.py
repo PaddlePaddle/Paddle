@@ -43,6 +43,8 @@ from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data, ERRO
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
 
+# For each traced function, we set `max_traced_program_count` = 5 to consider caching performance.
+# Once exceed the threshold, raise warning to users to make sure the conversion is as expected.
 MAX_TRACED_PROGRAM_COUNT = 5
 
 
@@ -138,13 +140,32 @@ class CacheKey(object):
     Cached key for ProgramCache.
     """
 
+    __slot__ = ['function_spec', 'input_with_spec', 'class_instance']
+
     def __init__(self, function_spec, input_with_spec, class_instance):
+        """
+        Initializes a cache key.
+
+        Args:
+            functions_spec(FunctionSpec): a FunctionSpec instance of decorated function.
+            input_with_spec(list[TensorSpec]): actual inputs with some arguments replaced by TensorSpec.
+            class_instance(object): a instance of class `Layer`.
+        """
         self.function_spec = function_spec
         self.input_with_spec = input_with_spec
         self.class_instance = class_instance
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
+        """
+        Generated a CacheKey instance by given inputs.
+
+        Args:
+            functions_spec(FunctionSpec): a FunctionSpec instance of decorated function.
+            args(tuple): tuple of actual inputs arguments.
+            kwargs(dict): dict of actual inputs keyword arguments.
+            class_instance(object): a instance of class `Layer`.
+        """
         # 1. filter `self` in args
         if args and isinstance(args[0], layers.Layer):
             args = args[1:]
@@ -172,7 +193,10 @@ class CacheKey(object):
 
 def _make_hashable(x):
     """
-    Make input `x` hashable.
+    Makes input `x` hashable.
+
+    `inputs_with_spec` may contain some unhashable object, such as `dict/list/np.ndarray`.
+    Apply hash function using their values.
     """
     if isinstance(x, (tuple, list)):
         return tuple(map(_make_hashable, x))

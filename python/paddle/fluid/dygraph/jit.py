@@ -192,11 +192,11 @@ def declarative(function=None, input_spec=None):
             decorator_func=Translator(
                 function=python_func, input_spec=input_spec))
 
-    # for usage: `declarative2(foo, ...)`
+    # for usage: `declarative(foo, ...)`
     if function is not None:
         return _decorator_(function)
 
-    # for usage: `@declarative2`
+    # for usage: `@declarative`
     return _decorator_
 
 

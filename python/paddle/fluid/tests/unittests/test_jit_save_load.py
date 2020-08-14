@@ -331,43 +331,38 @@ class TestSaveLoadWithTensorSpec(unittest.TestCase):
 
         model_path = "model.multi_inout.output_spec1"
         configs = fluid.dygraph.jit.SaveLoadConfig()
-        # check inputs and outputs
+        # 1. check inputs and outputs
         self.assertTrue(len(net.forward.inputs) == 2)
         input_x = net.forward.inputs[0]
         input_y = net.forward.inputs[1]
         self.assertTrue(input_x.shape == (-1, 8))
         self.assertTrue(input_y.shape == (-1, 8))
 
-        # 1. prune loss
+        # 2. prune loss
         configs.output_spec = net.forward.outputs[:2]
         fluid.dygraph.jit.save(net, model_path, configs=configs)
 
-        # # 2. load to infer
+        # 3. load to infer
         infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
         x = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32'))
         y = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32'))
-        # predict
+        # 4. predict
         pred_x, pred_y = infer_layer(x, y)
 
-        # 3. prune y and loss
+        # 1. prune y and loss
         model_path = "model.multi_inout.output_spec2"
         configs.output_spec = net.forward.outputs[:1]
         fluid.dygraph.jit.save(net, model_path, [input_x], configs)
-        # 4. load again
+        # 2. load again
         infer_layer2 = fluid.dygraph.jit.load(model_path, configs=configs)
-        # predict
+        # 3. predict
         pred_xx = infer_layer2(x)
 
-        # assert pred_x == pred_xx
+        # 4. assert pred_x == pred_xx
         self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
 
 
 if __name__ == '__main__':
-    # unittest.main()
-    suite = unittest.TestSuite()
-    # suite.addTest(TestSaveLoadWithTensorSpec('test_with_input_spec'))
-    suite.addTest(TestSaveLoadWithTensorSpec('test_multi_in_out'))
-    runner = unittest.TextTestRunner()
-    runner.run(suite)
+    unittest.main()

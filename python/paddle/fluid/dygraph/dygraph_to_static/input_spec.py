@@ -71,7 +71,7 @@ class TensorSpec(object):
     @classmethod
     def from_numpy(cls, ndarray, name=None):
         """
-        Generates a TensorSpec based the description of input np.ndarray. 
+        Generates a TensorSpec based on the description of input np.ndarray. 
         """
         return cls(ndarray.shape, ndarray.dtype, name)
 
@@ -109,8 +109,8 @@ class TensorSpec(object):
                 format(type_name(shape)))
         if len(shape) == 0:
             raise ValueError(
-                "`shape` in TensorSpec should contains at least 1 element, but received empty shape."
-            )
+                "`shape` in TensorSpec should contain at least 1 element, but received {}.".
+                format(shape))
 
         for i, ele in enumerate(shape):
             if ele is not None:
@@ -196,7 +196,7 @@ def get_buffers(layer_instance, include_sublayer=True):
 
 def convert_inputs_to_tensor_spec(inputs, input_spec):
     """
-    Replaces tensor in structured `inputs` by tensorSpec in `input_spec`.
+    Replaces tensor in structured `inputs` by TensorSpec in `input_spec`.
     
     Args:
         inputs(list|dict): nested structure list or dict.
@@ -209,8 +209,8 @@ def convert_inputs_to_tensor_spec(inputs, input_spec):
 
     def check_type_and_len(input, spec, check_length=False):
         if type(input) is not type(spec):
-            raise TypeError('type(inputs) should be {}, but received {}.'.
-                            format(type(spec), type(input)))
+            raise TypeError('type(input) should be {}, but received {}.'.format(
+                type(spec), type(input)))
         if check_length and len(input) < len(spec):
             raise ValueError(
                 'Requires len(inputs) >= len(input_spec), but received len(inputs):{} < len(input_spec):{}'.
@@ -381,7 +381,7 @@ class FunctionSpec(object):
         for i, var_spec in enumerate(flat_input_spec):
             if isinstance(var_spec, TensorSpec):
                 feed_layer = block.create_var(
-                    # TODO(Aurelius84): consider more elegant way to name this
+                    # TODO(Aurelius84): consider a more elegant way to name this
                     name=var_spec.name or "feed_%s" % i,
                     shape=var_spec.shape,
                     dtype=var_spec.dtype,
