@@ -486,44 +486,43 @@ def _save_distributed_persistables(executor, dirname, main_program):
         block = prog.global_block()
 
         # recv optimize vars from pserver
-        with device_guard("cpu"):
-            for name, remote_params in remote_params_map.items():
-                origin = remote_params[0].origin
-                is_slice = remote_params[0].is_slice
+        for name, remote_params in remote_params_map.items():
+            origin = remote_params[0].origin
+            is_slice = remote_params[0].is_slice
 
-                slices = [None] * len(remote_params)
-                slice_varnames = [None] * len(remote_params)
-                remote_varnames = [None] * len(remote_params)
-                endpoints = [None] * len(remote_params)
+            slices = [None] * len(remote_params)
+            slice_varnames = [None] * len(remote_params)
+            remote_varnames = [None] * len(remote_params)
+            endpoints = [None] * len(remote_params)
 
-                for idx, optimizer in enumerate(remote_params):
-                    block_id = optimizer.block_id
-                    slice = optimizer.slice
-                    endpoint = optimizer.endpoint
+            for idx, optimizer in enumerate(remote_params):
+                block_id = optimizer.block_id
+                slice = optimizer.slice
+                endpoint = optimizer.endpoint
 
-                    index = block_id if is_slice else idx
-                    slices[index] = slice
-                    slice_varnames[index] = "{}.slice.{}".format(slice.name,
-                                                                 idx)
-                    remote_varnames[index] = slice.name
-                    endpoints[index] = endpoint
+                index = block_id if is_slice else idx
+                slices[index] = slice
+                slice_varnames[index] = "{}.slice.{}".format(slice.name,
+                                                                idx)
+                remote_varnames[index] = slice.name
+                endpoints[index] = endpoint
 
-                slice_shapes = []
-                for slice in slices:
-                    tmp = [str(dim) for dim in slice.shape]
-                    slice_shapes.append(",".join(tmp))
+            slice_shapes = []
+            for slice in slices:
+                tmp = [str(dim) for dim in slice.shape]
+                slice_shapes.append(",".join(tmp))
 
-                block.append_op(
-                    type='recv_save',
-                    attrs={
-                        "trainer_id": 0,
-                        "shape": origin.shape,
-                        "slice_shapes": slice_shapes,
-                        "slice_varnames": slice_varnames,
-                        "remote_varnames": remote_varnames,
-                        "endpoints": endpoints,
-                        "file_path": os.path.join(dirname, origin.name)
-                    })
+            block.append_op(
+                type='recv_save',
+                attrs={
+                    "trainer_id": 0,
+                    "shape": origin.shape,
+                    "slice_shapes": slice_shapes,
+                    "slice_varnames": slice_varnames,
+                    "remote_varnames": remote_varnames,
+                    "endpoints": endpoints,
+                    "file_path": os.path.join(dirname, origin.name)
+                })
 
         executor.run(prog)
 
@@ -655,8 +654,12 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             # "./my_paddle_model"
     """
     if main_program and main_program._is_distributed:
+        # Todo(MrChengmo): support recv&save GPU-Kernel for ps-gpu model save.
+        save_executor = executor
+        if not isinstance(executor.place, fluid.CPUPlace):
+            save_executor = fluid.Executor(fluid.CPUPlace())
         return _save_distributed_persistables(
-            executor, dirname=dirname, main_program=main_program)
+            save_executor, dirname=dirname, main_program=main_program)
     else:
         return save_vars(
             executor,
