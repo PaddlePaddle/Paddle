@@ -13,12 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/where_zkl_op.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace plat = paddle::platform;
+
+namespace platform = paddle::platform;
 
 namespace paddle {
 namespace operators {
@@ -28,19 +27,18 @@ __global__ void WhereZklCUDAKernel(const bool* condition, const T* x,
                                    const T* y, T* out, int64_t N) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
-    if (condition[id]) {
+    if (condition[id])
       out[id] = x[id];
-    } else {
+    else
       out[id] = y[id];
-    }
 
     id += blockDim.x * gridDim.x;
   }
 }
 
 template <typename T>
-// class WhereZklGPUKernel<platform::CUDADeviceContext, T>
-class WhereZklGPUKernel : public framework::OpKernel<T> {
+class WhereZklKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(context.GetPlace()), true,
@@ -61,11 +59,7 @@ class WhereZklGPUKernel : public framework::OpKernel<T> {
     auto* y_data = y->data<T>();
     auto* out_data = out->mutable_data<T>(context.GetPlace());
 
-    // int n = static_cast<int>(x_data->size());
-    // int n = 4;
-
-    auto x_dims = x->dims();
-    int n = static_cast<int>(framework::product(x_dims));
+    int n = x->numel();
 
     int thread_per_block = 256;
     int block_per_grid = (n + thread_per_block - 1) / thread_per_block;
@@ -93,8 +87,8 @@ __global__ void WhereZklCUDAGradKernel(const bool* condition, const T* out,
 }
 
 template <typename T>
-// class WhereZklGPUGradKernel<platform::CUDADeviceContext, T>
-class WhereZklGPUGradKernel : public framework::OpKernel<T> {
+class WhereZklGradKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(context.GetPlace()), true,
@@ -117,8 +111,7 @@ class WhereZklGPUGradKernel : public framework::OpKernel<T> {
     auto* dx_data = dx->mutable_data<T>(context.GetPlace());
     auto* dy_data = dy->mutable_data<T>(context.GetPlace());
 
-    auto out_dims = out->dims();
-    int n = static_cast<int>(framework::product(out_dims));
+    int n = out->numel();
 
     int thread_per_block = 256;
     int block_per_grid = (n + thread_per_block - 1) / thread_per_block;
@@ -134,32 +127,23 @@ class WhereZklGPUGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-// REGISTER_OP_CUDA_KERNEL(
-//    where_zkl,
-//    paddle::operators::WhereZklGPUKernel<paddle::platform::CUDADeviceContext,
-//    float>,
-//    paddle::operators::WhereZklGPUKernel<paddle::platform::CUDADeviceContext,
-//    double>,
-//    paddle::operators::WhereZklGPUKernel<paddle::platform::CUDADeviceContext,
-//    uint8_t>,
-//    paddle::operators::WhereZklGPUKernel<paddle::platform::CUDADeviceContext,
-//    int8_t>,
-//    paddle::operators::WhereZklGPUKernel<paddle::platform::CUDADeviceContext,
-//    int16_t>,
-//    paddle::operators::WhereZklGPUKernel<paddle::platform::CUDADeviceContext,
-//    int>,
-//    paddle::operators::WhereZklGPUKernel<paddle::platform::CUDADeviceContext,
-//    int64_t>,
-//    paddle::operators::WhereZklGPUKernel<paddle::platform::CUDADeviceContext,
-//    plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    where_zkl,
+    paddle::operators::WhereZklKernel<paddle::platform::CUDADeviceContext,
+                                      float>,
+    paddle::operators::WhereZklKernel<paddle::platform::CUDADeviceContext,
+                                      double>,
+    paddle::operators::WhereZklKernel<paddle::platform::CUDADeviceContext, int>,
+    paddle::operators::WhereZklKernel<paddle::platform::CUDADeviceContext,
+                                      int64_t>);
 
-REGISTER_OP_CUDA_KERNEL(where_zkl, paddle::operators::WhereZklGPUKernel<float>,
-                        paddle::operators::WhereZklGPUKernel<double>,
-                        paddle::operators::WhereZklGPUKernel<int>,
-                        paddle::operators::WhereZklGPUKernel<int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(where_zkl_grad,
-                        paddle::operators::WhereZklGPUGradKernel<float>,
-                        paddle::operators::WhereZklGPUGradKernel<double>,
-                        paddle::operators::WhereZklGPUGradKernel<int>,
-                        paddle::operators::WhereZklGPUGradKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(
+    where_zkl_grad,
+    paddle::operators::WhereZklGradKernel<paddle::platform::CUDADeviceContext,
+                                          float>,
+    paddle::operators::WhereZklGradKernel<paddle::platform::CUDADeviceContext,
+                                          double>,
+    paddle::operators::WhereZklGradKernel<paddle::platform::CUDADeviceContext,
+                                          int>,
+    paddle::operators::WhereZklGradKernel<paddle::platform::CUDADeviceContext,
+                                          int64_t>);

@@ -14,9 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/where_zkl_op.h"
 
-#include <memory>
-#include <string>
-
 namespace paddle {
 namespace operators {
 
@@ -31,8 +28,25 @@ class WhereZklOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "where_zkl");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "where_zkl");
 
+    auto condition_dims = ctx->GetInputDim("Condition");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+
+    VLOG(3) << "where_zkl operator condition.shape=" << condition_dims
+            << " x.shape=" << x_dims << " y.shape=" << y_dims;
+
+    // PADDLE_ENFORCE_EQ(
+    //     x_dims.size(), 1,
+    //     platform::errors::InvalidArgument("X should be 1-D."));
+    PADDLE_ENFORCE_EQ(condition_dims.size(), x_dims.size(),
+                      platform::errors::InvalidArgument(
+                          "Condition and X should have the same shape size."));
+    PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
+                      platform::errors::InvalidArgument(
+                          "X and Y should have the same shape size."));
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    // ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
@@ -48,14 +62,19 @@ class WhereZklOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Condition",
-             "(Tensor) The condition input tensor of where operator.");
-    AddInput("X", "(Tensor) The first input tensor of where operator.");
-    AddInput("Y", "(Tensor) The second input tensor of where operator.");
-    AddOutput("Out", "(Tensor) The output tensor of where operator.");
+             "(Tensor) A bool tensor of where_zkl operator."
+             "When Condition is true, the value of out is X, otherwise is Y");
+    AddInput("X",
+             "(Tensor) The input tensor of where_zkl operator."
+             "When Condition is true, the value of out is X, otherwise is Y");
+    AddInput("Y",
+             "(Tensor) The input tensor of where_zkl operator."
+             "When Condition is true, the value of out is X, otherwise is Y");
+    AddOutput("Out", "(Tensor) The output tensor of where_zkl operator.");
     AddComment(R"DOC(
 **Where operator**
 
-According condition(i) decide Out[i] = X[i] or Y[i].
+According Condition(i) decide Out[i] = X[i] or Y[i].
 
 if condition(i)=True:
 
@@ -67,13 +86,6 @@ $$Out[i] = Y[i]$$
 )DOC");
   }
 };
-
-// class WhereZklOpVarTypeInference : public framework::VarTypeInference {
-//  public:
-//   void operator()(framework::InferVarTypeContext *ctx) const override {
-//     ctx->SyncTypeAndDataType("X", "Out");
-//   }
-// };
 
 class WhereZklGradOp : public framework::OperatorWithKernel {
  public:
@@ -94,11 +106,6 @@ class WhereZklGradOp : public framework::OperatorWithKernel {
                       ctx->GetInputDim(framework::GradVarName("Out")));
     ctx->SetOutputDim(framework::GradVarName("Y"),
                       ctx->GetInputDim(framework::GradVarName("Out")));
-
-    // ctx->SetOutputDim(framework::GradVarName("X"),
-    // ctx->GetInputDim("Condition"));
-    // ctx->SetOutputDim(framework::GradVarName("Y"),
-    // ctx->GetInputDim("Condition"));
   }
 
  protected:
@@ -125,17 +132,11 @@ class WhereZklOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-// DECLARE_INPLACE_OP_INFERER(WhereZklOpInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-// REGISTER_OPERATOR(where_zkl, ops::WhereZklOp, ops::WhereZklOpMaker,
-//                   ops::WhereZklOpGradMaker<paddle::framework::OpDesc>,
-//                   ops::WhereZklOpGradMaker<paddle::imperative::OpBase>,
-//                   ops::WhereZklOpVarTypeInference,
-//                   ops::WhereZklOpInplaceInferer);
 REGISTER_OPERATOR(where_zkl, ops::WhereZklOp, ops::WhereZklOpMaker,
                   ops::WhereZklOpGradMaker<paddle::framework::OpDesc>,
                   ops::WhereZklOpGradMaker<paddle::imperative::OpBase>);
@@ -146,20 +147,15 @@ REGISTER_OPERATOR(where_zkl, ops::WhereZklOp, ops::WhereZklOpMaker,
 
 REGISTER_OPERATOR(where_zkl_grad, ops::WhereZklGradOp);
 
-// REGISTER_OP_CPU_KERNEL(
-//     where_zkl, ops::WhereZklKernel<paddle::platform::CPUDeviceContext,
-//     float>,
-//     ops::WhereZklKernel<paddle::platform::CPUDeviceContext, double>,
-//     ops::WhereZklKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-//     ops::WhereZklKernel<paddle::platform::CPUDeviceContext, int8_t>,
-//     ops::WhereZklKernel<paddle::platform::CPUDeviceContext, int16_t>,
-//     ops::WhereZklKernel<paddle::platform::CPUDeviceContext, int>,
-//     ops::WhereZklKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(where_zkl, ops::WhereZklKernel<float>,
-                       ops::WhereZklKernel<double>, ops::WhereZklKernel<int>,
-                       ops::WhereZklKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    where_zkl, ops::WhereZklKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::WhereZklKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::WhereZklKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::WhereZklKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
-REGISTER_OP_CPU_KERNEL(where_zkl_grad, ops::WhereZklGradKernel<float>,
-                       ops::WhereZklGradKernel<double>,
-                       ops::WhereZklGradKernel<int>,
-                       ops::WhereZklGradKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    where_zkl_grad,
+    ops::WhereZklGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::WhereZklGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::WhereZklGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::WhereZklGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

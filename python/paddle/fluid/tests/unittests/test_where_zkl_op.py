@@ -27,15 +27,11 @@ class TestWhereZklOp(OpTest):
     def setUp(self):
         self.op_type = "where_zkl"
         self.dtype = np.float64
+        self.init_config()
         self.init_dtype_type()
 
-        X = np.random.random((200, 1)).astype(self.dtype)
-        Y = np.random.random((200, 1)).astype(self.dtype)
-        Condition = X > 1
-        out = np.where(Condition, X, Y)
-
-        self.inputs = {'Condition': Condition, 'X': X, 'Y': Y}
-        self.outputs = {'Out': out}
+        self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
+        self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
     def init_dtype_type(self):
         pass
@@ -45,6 +41,25 @@ class TestWhereZklOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
+
+    def init_config(self):
+        self.x = np.random.uniform(-100, 100, (200)).astype(self.dtype)
+        self.y = np.random.uniform(-100, 100, (200)).astype(self.dtype)
+        self.cond = np.zeros((200)).astype("bool")
+
+
+class TestWhereZklOp2(TestWhereZklOp):
+    def init_config(self):
+        self.x = np.random.uniform(-100, 100, (200)).astype(self.dtype)
+        self.y = np.random.uniform(-100, 100, (200)).astype(self.dtype)
+        self.cond = np.ones((200)).astype("bool")
+
+
+class TestWhereZklOp3(TestWhereZklOp):
+    def init_config(self):
+        self.x = np.random.uniform(-100, 100, (200)).astype(self.dtype)
+        self.y = np.random.uniform(-100, 100, (200)).astype(self.dtype)
+        self.cond = np.array(np.random.choice([True, False], size=(200)))
 
 
 if __name__ == '__main__':

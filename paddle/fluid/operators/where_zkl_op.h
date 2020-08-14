@@ -22,15 +22,10 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-// template <typename DeviceContext, typename T>
-template <typename T>
+template <typename DeviceContext, typename T>
 class WhereZklKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(context.GetPlace()), true,
-        platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
-
     const Tensor* tensor_condition = context.Input<Tensor>("Condition");
     const Tensor* tensor_x = context.Input<Tensor>("X");
     const Tensor* tensor_y = context.Input<Tensor>("Y");
@@ -42,8 +37,7 @@ class WhereZklKernel : public framework::OpKernel<T> {
     auto* data_out =
         tensor_out->mutable_data<T>(tensor_x->dims(), context.GetPlace());
 
-    auto x_dims = tensor_x->dims();
-    int size = static_cast<int>(framework::product(x_dims));
+    int size = tensor_x->numel();
 
     for (int i = 0; i < size; ++i) {
       if (data_condition[i])
@@ -54,14 +48,10 @@ class WhereZklKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class WhereZklGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(context.GetPlace()), true,
-        platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
-
     auto* tensor_condition = context.Input<Tensor>("Condition");
     auto* tensor_out = context.Input<Tensor>(framework::GradVarName("Out"));
 
@@ -76,8 +66,7 @@ class WhereZklGradKernel : public framework::OpKernel<T> {
     auto* data_dy =
         tensor_dy->mutable_data<T>(tensor_out->dims(), context.GetPlace());
 
-    auto x_dims = tensor_out->dims();
-    int size = static_cast<int>(framework::product(x_dims));
+    int size = tensor_out->numel();
 
     for (int i = 0; i < size; ++i) {
       if (data_condition[i]) {
