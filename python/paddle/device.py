@@ -30,7 +30,21 @@ _cudnn_version = None
 
 def get_cudnn_version():
     """
-    This funciton return the version of cudnn.
+    This funciton return the version of cudnn. the retuen value is int which represents the 
+    cudnn version. For example, if it return 7600, it represents the version of cudnn is 7.6.
+    
+    Returns:
+        int: A int value which represents the cudnn version. If cudnn version is not installed, it return None.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+
+            cudnn_version = get_cudnn_version()
+
+
+
     """
     global _cudnn_version
     if _cudnn_version is None:
