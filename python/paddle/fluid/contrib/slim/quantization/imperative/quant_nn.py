@@ -322,6 +322,8 @@ class QuantizedLinear(layers.Layer):
                  moving_rate=0.9,
                  weight_quantize_type='abs_max',
                  activation_quantize_type='abs_max'):
+        if weight_quantize_type == 'channel_wise_abs_max':
+            weight_quantize_type = 'abs_max'
         super(QuantizedLinear, self).__init__()
         # For Linear
         self._act = getattr(layer, '_act')

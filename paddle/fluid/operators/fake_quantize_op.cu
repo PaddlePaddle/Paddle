@@ -325,8 +325,49 @@ struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext,
-                                               float>;
+template <typename T>
+__global__ void ChannelClipAndQuantDequantKernel(const T* in, const T* scale,
+                                                 const int bin_cnt, const int n,
+                                                 const int c, T* out) {
+  int tid = threadIdx.x;
+
+  int channel_size = n / c;
+  const T* in_c = in + blockIdx.x * channel_size;
+  T* out_c = out + blockIdx.x * channel_size;
+
+  T s = scale[blockIdx.x];
+  T inv_s = inverse(s);
+
+  for (int i = tid; i < channel_size; i += blockDim.x) {
+    T x = in_c[i];
+    T v = x > s ? s : x;
+    v = v < -s ? -s : v;
+    v = bin_cnt * inv_s * v;
+    out_c[i] = round(v) * s / bin_cnt;
+  }
+}
+
+template <typename T>
+struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& ctx,
+                  const framework::Tensor& in, const framework::Tensor& scale,
+                  const int bin_cnt, const int channel,
+                  framework::Tensor* out) {
+    int num = in.numel();
+    int block = 1024;
+    int grid = channel;
+
+    const T* in_data = in.data<T>();
+    const T* scale_data = scale.data<T>();
+    T* out_data = out->mutable_data<T>(ctx.GetPlace());
+
+    ChannelClipAndQuantDequantKernel<T><<<grid, block, 0, ctx.stream()>>>(
+        in_data, scale_data, bin_cnt, num, channel, out_data);
+  }
+};
+
+template struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext,
+                                                   float>;
 
 }  // namespace operators
 }  // namespace paddle
@@ -351,3 +392,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CUDA, float>);
 REGISTER_OP_CUDA_KERNEL(fake_quantize_dequantize_grad,
                         ops::FakeQuantDequantGradKernel<CUDA, float>);
+REGISTER_OP_CUDA_KERNEL(
+    fake_channel_wise_quantize_dequantize_abs_max,
+    ops::FakeChannelWiseQuantizeDequantizeAbsMaxKernel<CUDA, float>);
