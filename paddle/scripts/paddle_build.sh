@@ -927,12 +927,13 @@ set +x
                 do
                     
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                    failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
                     read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' )
                     echo "========================================="
                     echo "This is $[$exec_times+1] re-run"
                     echo "========================================="
                     echo "The following unittest will be re-run:"
-                    echo "${failed_test_lists}"
+                    echo "${failed_test_lists_ult}"
                         
                     for line in ${retry_unittests[@]} ;
                         do
