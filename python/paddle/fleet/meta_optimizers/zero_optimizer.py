@@ -14,7 +14,7 @@
 
 from .common import OpRole, OP_ROLE_KEY, CollectiveHelper, is_update_op
 from .meta_optimizer_base import MetaOptimizerBase
-from paddle.fluid import unique_name
+from paddle.fluid import unique_name, core
 
 import math
 import re
@@ -38,6 +38,9 @@ class ZeroOptimizer(MetaOptimizerBase):
         self._varname2grad = {}
         # self._nrings(int) is for nccl communicate
         self._nrings = 1
+        op_maker = core.op_proto_and_checker_maker
+        self.op_role_key = op_maker.kOpRoleAttrName()
+        self.op_role_var_key = op_maker.kOpRoleVarAttrName()
 
     def _can_apply(self):
         return self.user_defined_strategy.zero
@@ -85,6 +88,149 @@ class ZeroOptimizer(MetaOptimizerBase):
             if base_name in self._param2device:
                 return self._param2device[base_name]
         return -1
+
+    def _is_optimizer_op(self, op):
+        return self.op_role_key in op.attr_names and \
+                int(op.all_attrs()[self.op_role_key]) & int(OpRole.Optimize)
+
+    def _is_loss_grad_op(self, op):
+        if self.op_role_key not in op.attr_names:
+            return False
+        op_role = int(op.all_attrs()[self.op_role_key])
+        return op_role & int(OpRole.Backward) and op_role & int(OpRole.Loss)
+
+    def _is_backward_op(self, op):
+        return self.op_role_key in op.attr_names and \
+                int(op.all_attrs()[self.op_role_key]) & int(OpRole.Backward)
+
+    def _broadcast_params(self, block):
+        ring_id = 0
+        for param in block.iter_parameters():
+            if param.is_distributed:
+                continue
+
+            block.append_op(
+                type='c_broadcast',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': 0,
+                    self.op_role_key: OpRole.Forward
+                })
+
+        block.append_op(
+            type='c_sync_comm_stream',
+            inputs={'X': param},
+            outputs={'Out': param},
+            attrs={'ring_id': ring_id,
+                   self.op_role_key: OpRole.Forward})
+
+    def _insert_scale_loss_grad_ops(self, block, scale=1.0):
+        '''
+        In order to keep the learning rate consistent in different numbers of
+        training workers, we scale the loss grad by the number of workers
+        '''
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if self._is_loss_grad_op(op):
+                loss_grad_var = block.vars[op.output_arg_names[0]]
+                block._insert_op(
+                    idx + 1,
+                    type='scale',
+                    inputs={'X': loss_grad_var},
+                    outputs={'Out': loss_grad_var},
+                    attrs={'scale': scale,
+                           self.op_role_key: OpRole.Backward})
+
+    def _insert_allreduce_ops(self, block):
+        ring_id = 0
+        grad = None
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if self._is_backward_op(op) and \
+                    self.op_role_var_key in op.attr_names:
+                op_role_var = op.all_attrs()[self.op_role_var_key]
+
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0
+
+                offset = idx
+                for i in range(0, len(op_role_var), 2):
+                    # param = block.vars[op_role_var[i]]
+                    grad = block.vars[op_role_var[i + 1]]
+                    # TODO(mapingshuo): what is is_distributed
+                    # if param.is_distributed:
+                    #     continue
+
+                    if offset == idx:
+                        offset += 1
+                        block._insert_op(
+                            offset,
+                            type='c_sync_calc_stream',
+                            inputs={'X': grad},
+                            outputs={'Out': grad},
+                            attrs={self.op_role_key: OpRole.Backward})
+                        offset += 1
+
+                    # As we search ops reversedly, we should insert c_allreduce_sum
+                    # op in the same way to keep the ring_id alternate
+                    print("add allreduce op for {}".format(grad.name))
+                    block._insert_op(
+                        offset,
+                        type='c_allreduce_sum',
+                        inputs={'X': grad},
+                        outputs={'Out': grad},
+                        attrs={
+                            'ring_id': ring_id,
+                            self.op_role_key: OpRole.Backward
+                        })
+
+        if grad is None:
+            return
+
+        for idx, op in enumerate(block.ops):
+            if self._is_optimizer_op(op):
+                block._insert_op(
+                    idx + ring_id,
+                    type='c_sync_comm_stream',
+                    inputs={'X': grad},
+                    outputs={'Out': grad},
+                    attrs={
+                        'ring_id': ring_id,
+                        self.op_role_key: OpRole.Backward
+                    })
+                break
+
+    def minimize_impl_allreduce(self,
+                                loss,
+                                startup_program=None,
+                                parameter_list=None,
+                                no_grad_set=None):
+
+        optimize_ops, params_grads = self.inner_opt.minimize(
+            loss, startup_program, parameter_list, no_grad_set)
+
+        if startup_program is None:
+            startup_program = default_startup_program()
+
+        print("work idx: ", self.role_maker.worker_index())
+        endpoints = self.role_maker.get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker.worker_index()]
+
+        collective_helper = CollectiveHelper(self.role_maker, self._nrings)
+        for ring_id in range(self._nrings):
+            collective_helper._init_communicator(
+                startup_program, current_endpoint, endpoints,
+                self.role_maker.worker_index(), ring_id, '6174')
+        main_block = loss.block
+        startup_block = startup_program.global_block()
+        self._broadcast_params(startup_block)
+
+        self._insert_scale_loss_grad_ops(
+            main_block, scale=1.0 / self.role_maker.worker_num())
+        self._insert_allreduce_ops(main_block)
+        print("insert allreduce done")
+        return optimize_ops, params_grads
 
     def minimize_impl(self,
                       loss,
@@ -157,9 +303,18 @@ class ZeroOptimizer(MetaOptimizerBase):
                             dtype=self._varname2param[input_name].dtype,
                             persistable=False)
                     print("main_block insert broadcast op for %s" % param.name)
+                    # TODO(mapingshuo) OP_ROLE_KEY should be forward if the param
+                    # is used in forward network
                     main_block._insert_op(
                         op_idx,
                         type='c_sync_comm_stream',
+                        inputs={'X': param},
+                        outputs={'Out': param},
+                        attrs={'ring_id': 0,
+                               OP_ROLE_KEY: OpRole.Backward})
+                    main_block._insert_op(
+                        op_idx,
+                        type='c_sync_calc_stream',
                         inputs={'X': param},
                         outputs={'Out': param},
                         attrs={'ring_id': 0,
@@ -205,38 +360,42 @@ class ZeroOptimizer(MetaOptimizerBase):
             startup_block._remove_var(var_name)
 
         # step6: insert reduce_sum for grad
-        for idx, op in reversed(list(enumerate(main_block.ops))):
-            is_grad_op = False
-            for out_name in op.desc.output_arg_names():
-                if out_name in self._varname2grad.keys():
-                    is_grad_op = True
-                    grad = self._varname2grad[out_name]
-                    break
-            if not is_grad_op:
-                continue
-
-            main_block._insert_op(
-                idx + 1,
-                type='c_allreduce_sum',
-                inputs={'X': [grad]},
-                outputs={'Out': [grad]},
-                attrs={'ring_id': 0,
-                       OP_ROLE_KEY: OpRole.Backward})
-            main_block._insert_op(
-                idx + 2,
-                type='c_sync_comm_stream',
-                inputs={'X': grad},
-                outputs={'Out': grad},
-                attrs={'ring_id': 0,
-                       OP_ROLE_KEY: OpRole.Backward})
-            main_block._insert_op(
-                idx + 3,
-                type='scale',
-                inputs={'X': [grad]},
-                outputs={'Out': [grad]},
-                attrs={
-                    'scale': 1.0 / self.role_maker.worker_num(),
-                    OP_ROLE_KEY: OpRole.Backward
-                })
+        self._insert_scale_loss_grad_ops(
+            main_block, scale=1.0 / self.role_maker.worker_num())
+        self._insert_allreduce_ops(main_block)
+        print("insert allreduce done")
+        # for idx, op in reversed(list(enumerate(main_block.ops))):
+        #     is_grad_op = False
+        #     for out_name in op.desc.output_arg_names():
+        #         if out_name in self._varname2grad.keys():
+        #             is_grad_op = True
+        #             grad = self._varname2grad[out_name]
+        #             break
+        #     if not is_grad_op:
+        #         continue
+        #     print("add allreduce op for {}".format(grad.name))
+        #     main_block._insert_op(
+        #         idx + 1,
+        #         type='c_allreduce_sum',
+        #         inputs={'X': [grad]},
+        #         outputs={'Out': [grad]},
+        #         attrs={'ring_id': 0,
+        #                OP_ROLE_KEY: OpRole.Backward})
+        #     main_block._insert_op(
+        #         idx + 2,
+        #         type='c_sync_comm_stream',
+        #         inputs={'X': grad},
+        #         outputs={'Out': grad},
+        #         attrs={'ring_id': 0,
+        #                OP_ROLE_KEY: OpRole.Backward})
+        #     main_block._insert_op(
+        #         idx + 3,
+        #         type='scale',
+        #         inputs={'X': [grad]},
+        #         outputs={'Out': [grad]},
+        #         attrs={
+        #             'scale': 1.0 / self.role_maker.worker_num(),
+        #             OP_ROLE_KEY: OpRole.Backward
+        #         })
 
         return optimize_ops, params_grads
