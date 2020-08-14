@@ -22,6 +22,7 @@
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -281,11 +282,14 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     opt_input_shape = {};
   }
 
-  if (min_input_shape.size() > 0 && TRT_VERSION > 6000) {
+  if (min_input_shape.size() > 0 &&
+      TRT_VERSION != tensorrt::GetInferLibVersion()) {
     LOG_FIRST_N(WARNING, 1)
-        << "The Paddle lib links the " << TRT_VERSION << " version TensorRT, "
-        << "make sure the runtime TensorRT you are using is no less than this "
-           "version, otherwise, there might be Segfault!";
+        << "This Paddle lib was built with TensorRT " << TRT_VERSION
+        << ", but this system is using TensorRT "
+        << tensorrt::GetInferLibVersion()
+        << ". It is recommended to use a consistent TensorRT version. "
+           "Otherwise, there might be Segfault!";
   }
 
   // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not
