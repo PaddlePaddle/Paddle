@@ -351,7 +351,7 @@ class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of asin operator");
     AddOutput("Out", "Output of asin operator");
     AddComment(R"DOC(
-Arcsine Activation Operator.
+Arcsine Operator.
 
 $$out = \sin^{-1}(x)$$
 
