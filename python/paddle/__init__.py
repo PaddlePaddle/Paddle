@@ -123,6 +123,7 @@ from .tensor.manipulation import unstack  #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
 from .tensor.manipulation import unbind  #DEFINE_ALIAS
 from .tensor.manipulation import roll  #DEFINE_ALIAS
+from .tensor.manipulation import chunk  #DEFINE_ALIAS
 from .tensor.math import abs  #DEFINE_ALIAS
 from .tensor.math import acos  #DEFINE_ALIAS
 from .tensor.math import asin  #DEFINE_ALIAS

@@ -99,6 +99,7 @@ from .manipulation import unstack  #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 from .manipulation import unbind  #DEFINE_ALIAS
 from .manipulation import roll  #DEFINE_ALIAS
+from .manipulation import chunk  #DEFINE_ALIAS
 from .math import abs  #DEFINE_ALIAS
 from .math import acos  #DEFINE_ALIAS
 from .math import asin  #DEFINE_ALIAS

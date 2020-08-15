@@ -57,6 +57,7 @@ __all__ = [
     'shard_index',
     'slice',
     'split',
+    'chunk'
     'squeeze',
     'stack',
     'strided_slice',
@@ -789,7 +790,7 @@ def unbind(input, axis=0):
     return outs
 
 
-def chunk(x, chunks, dim=0, name=None):
+def chunk(x, chunks, axis=0, name=None):
     """
     Split the input tensor into multiple sub-Tensors.
     
