@@ -66,7 +66,7 @@ class CheckFiniteAndUnscaleKernel<platform::CUDADeviceContext, T>
       T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
 
       int num = x->numel();
-      int block = 512;
+      int block = 1024;
       int grid = (num + block - 1) / block;
       VLOG(3) << "launch kernel";
       CheckFiniteAndUnscale<T><<<grid, block, 0, dev_ctx.stream()>>>(

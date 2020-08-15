@@ -49,7 +49,7 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "PrevLossScaling"),
-        platform::CPUPlace());
+        ctx.device_context());
   }
 };
 
@@ -105,22 +105,34 @@ decr_every_n_nan_or_inf steps and each step some gradients are infinite.
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(UpdateLossScalingOpInplaceInferer,
-                           {"PrevLossScaling", "LossScaling"},
-                           {"InGoodSteps", "OutGoodSteps"},
-                           {"InBadSteps", "OutBadSteps"});
+template <typename T>
+class UpdateLossScalingFunctor<platform::CPUDeviceContext, T> {
+ public:
+  void operator()(const platform::CPUDeviceContext& ctx,
+                  const bool* found_inf_v, const T* pre_loss_scaling_v,
+                  const int* good_in_v, const int* bad_in_v,
+                  const int incr_every_n_steps,
+                  const int decr_every_n_nan_or_inf, const float incr_ratio,
+                  const float decr_ratio, T* updated_loss_scaling_v,
+                  int* good_out_v, int* bad_out_v) {
+    Update<T>(found_inf_v, pre_loss_scaling_v, good_in_v, bad_in_v,
+              incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio,
+              decr_ratio, updated_loss_scaling_v, good_out_v, bad_out_v);
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
     update_loss_scaling, ops::UpdateLossScalingOp,
     ops::UpdateLossScalingOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::UpdateLossScalingOpInplaceInferer);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(update_loss_scaling, ops::UpdateLossScalingKernel<float>,
-                       ops::UpdateLossScalingKernel<double>);
+REGISTER_OP_CPU_KERNEL(update_loss_scaling,
+                       ops::UpdateLossScalingKernel<CPU, float>,
+                       ops::UpdateLossScalingKernel<CPU, double>);

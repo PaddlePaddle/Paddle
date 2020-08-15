@@ -93,12 +93,6 @@ def update_loss_scaling(found_inf,
                              ['float32', 'float64'], "update_loss_scaling")
 
     helper = LayerHelper("update_loss_scaling", **locals())
-    loss_scaling = helper.create_variable_for_type_inference(
-        dtype=prev_loss_scaling.dtype)
-    out_good_steps = helper.create_variable_for_type_inference(
-        dtype=num_good_steps.dtype)
-    out_bad_steps = helper.create_variable_for_type_inference(
-        dtype=num_bad_steps.dtype)
 
     inputs = {
         'FoundInfinite': found_inf,
@@ -108,9 +102,9 @@ def update_loss_scaling(found_inf,
     }
 
     outputs = {
-        'LossScaling': loss_scaling,
-        'OutGoodSteps': out_good_steps,
-        'OutBadSteps': out_bad_steps
+        'LossScaling': prev_loss_scaling,
+        'OutGoodSteps': num_good_steps,
+        'OutBadSteps': num_bad_steps
     }
 
     attrs = {
@@ -121,9 +115,6 @@ def update_loss_scaling(found_inf,
     }
 
     helper.append_op(
-        type='check_finite_and_unscale',
-        inputs=inputs,
-        outputs=outputs,
-        attrs=attrs)
+        type='update_loss_scaling', inputs=inputs, outputs=outputs, attrs=attrs)
 
-    return loss_scaling, out_good_steps, out_bad_steps
+    return prev_loss_scaling, num_good_steps, num_bad_steps

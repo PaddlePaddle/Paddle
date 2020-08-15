@@ -18,7 +18,7 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 
 
-class TestAmpCheckFiniteAndScaleOp(OpTest):
+class TestCheckFiniteAndUnscaleOp(OpTest):
     def setUp(self):
         self.op_type = "check_finite_and_unscale"
         self.init_dtype()
@@ -38,7 +38,7 @@ class TestAmpCheckFiniteAndScaleOp(OpTest):
         self.check_output()
 
 
-class TestAmpCheckFiniteAndScaleOpWithNan(OpTest):
+class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
     def setUp(self):
         self.op_type = "check_finite_and_unscale"
         self.init_dtype()
@@ -61,7 +61,7 @@ class TestAmpCheckFiniteAndScaleOpWithNan(OpTest):
         self.check_output(no_check_set=['Out'])
 
 
-class TestAmpCheckFiniteAndScaleOpWithInf(OpTest):
+class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
     def setUp(self):
         self.op_type = "check_finite_and_unscale"
         self.init_dtype()

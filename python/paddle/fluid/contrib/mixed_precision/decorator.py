@@ -160,7 +160,7 @@ class OptimizerWithMixedPrecision(object):
                 grads, self._loss_scaling, name="find_infinite_scale")
 
         if self._use_dynamic_loss_scaling:
-            self._loss_scaling, self._num_good_steps, self._num_bad_steps = update_loss_scaling(
+            update_loss_scaling(
                 found_inf,
                 self._loss_scaling,
                 self._num_good_steps,
