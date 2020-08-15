@@ -15,6 +15,7 @@
 # TODO: define activation functions of neural network
 
 __all__ = [
+    'Hardshrink',
     #       'PReLU',
     'ReLU',
     'LeakyReLU',
@@ -28,6 +29,53 @@ from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
 from .. import functional
+
+
+class Hardshrink(layers.Layer):
+    """
+    Hardshrink Activation
+
+    .. math::
+
+        hardshrink(x)=
+            \left\{
+            \begin{aligned}
+            &x, & & if \ x > threshold \\
+            &x, & & if \ x < -threshold \\
+            &0, & & if \ others
+            \end{aligned}
+            \right.
+
+    Parameters:
+        threshold (float, optional): The value of threshold for hardthrink. Default is 0.5
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_variable(np.array([-1, 0.3, 2.5]))
+        m = paddle.nn.Hardshrink()
+        out = m(x) # [-1., 0., 2.5]
+    """
+
+    def __init__(self, threshold=0.5, name=None):
+        super(Hardshrink, self).__init__()
+        self._threshold = threshold
+        self._name = name
+
+    def forward(self, x):
+        return functional.hardshrink(x, self._threshold, self._name)
 
 
 class HSigmoid(layers.Layer):
