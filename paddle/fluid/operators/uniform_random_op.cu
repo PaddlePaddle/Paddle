@@ -90,7 +90,7 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     if (framework::Generator::GetInstance()->is_init_py) {
       seed = static_cast<unsigned int>(
-          framework::Generator::GetInstance()->GetCurrentSeed())
+          framework::Generator::GetInstance()->GetCurrentSeed());
     } else {
       if (seed == 0) {
         std::random_device rd;
