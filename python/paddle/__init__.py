@@ -31,13 +31,15 @@ import paddle.reader
 import paddle.dataset
 import paddle.batch
 batch = batch.batch
+import paddle.framework
+from .framework import VarBase as Tensor
+from .framework import ComplexVariable as ComplexTensor
 import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
 import paddle.tensor
 import paddle.nn
 import paddle.distributed.fleet
-import paddle.framework
 import paddle.optimizer
 import paddle.metric
 import paddle.incubate.complex as complex
@@ -48,9 +50,7 @@ from .tensor.random import randperm
 
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
-from .tensor.creation import create_tensor  #DEFINE_ALIAS
-# from .tensor.creation import create_lod_tensor        #DEFINE_ALIAS
-# from .tensor.creation import create_random_int_lodtensor        #DEFINE_ALIAS
+from .tensor.creation import to_tensor  #DEFINE_ALIAS
 from .tensor.creation import crop_tensor  #DEFINE_ALIAS
 from .tensor.creation import diag  #DEFINE_ALIAS
 from .tensor.creation import eye  #DEFINE_ALIAS
@@ -231,7 +231,6 @@ from .tensor.stat import reduce_mean  #DEFINE_ALIAS
 from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 from .fluid.data import data
-# from .tensor.tensor import Tensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensorArray        #DEFINE_ALIAS
 
