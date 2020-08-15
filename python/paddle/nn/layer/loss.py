@@ -13,7 +13,9 @@
 # limitations under the License.
 
 # TODO: define loss functions of neural network  
+import numpy as np
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle
 from .. import functional as F
 
@@ -23,7 +25,8 @@ __all__ = [
     'MSELoss',
     'L1Loss',
     'NLLLoss',
-    'BCELoss'
+    'BCELoss',
+    'MarginRankingLoss'
 ]
 
 
@@ -569,3 +572,72 @@ class NLLLoss(fluid.dygraph.Layer):
             ignore_index=self._ignore_index,
             reduction=self._reduction,
             name=self._name)
+
+
+class MarginRankingLoss(fluid.dygraph.Layer):
+    """
+
+    This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
+    The MarginRankingLoss layer calculates the margin rank loss between the input, other and target 
+    , use the math function as follows.
+
+    .. math:: 
+        margin\_rank\_loss = max(0, -target * (input - other) + margin)
+
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
+
+    .. math::
+        Out = MEAN(margin\_rank\_loss)
+
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
+
+    .. math::
+        Out = SUM(margin\_rank\_loss)
+
+    If :attr:`reduction` set to ``'none'``, just return the origin ``margin_rank_loss``.
+
+    Parameters:
+        margin (float, optional): The margin value to add, default value is 0;
+        reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape: 
+        input: N-D Tensor, the shape is [N, *], N is batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
+        other: N-D Tensor, `other` have the same shape and dtype as `input`.
+        target: N-D Tensor, target have the same shape and dtype as `input`.
+        out: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
+
+    Returns:
+        A callable object of MarginRankingLoss.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np 
+            import paddle 
+            
+            paddle.disable_static()
+             
+            input = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype("float32"))
+            other = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype("float32"))
+            target = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype("float32"))
+            margin_rank_loss = paddle.nn.MarginRankingLoss()
+            loss = margin_rank_loss(input, other, target) 
+            print(loss.numpy()) # [0.75]
+    """
+
+    def __init__(self, margin=0.0, reduction='mean', name=None):
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction)
+        super(MarginRankingLoss, self).__init__()
+        self.margin = margin
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input, other, target):
+        out = paddle.nn.functional.margin_ranking_loss(
+            input, other, target, self.margin, self.reduction, self.name)
+        return out

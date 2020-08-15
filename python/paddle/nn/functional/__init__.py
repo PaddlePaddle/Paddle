@@ -29,7 +29,7 @@ from .activation import brelu  #DEFINE_ALIAS
 from .activation import elu  #DEFINE_ALIAS
 from .activation import erf  #DEFINE_ALIAS
 from .activation import gelu  #DEFINE_ALIAS
-from .activation import hard_shrink  #DEFINE_ALIAS
+from .activation import hardshrink  #DEFINE_ALIAS
 from .activation import hard_sigmoid  #DEFINE_ALIAS
 from .activation import hard_swish  #DEFINE_ALIAS
 from .activation import hsigmoid  #DEFINE_ALIAS
@@ -129,7 +129,7 @@ from .loss import iou_similarity  #DEFINE_ALIAS
 from .loss import kldiv_loss  #DEFINE_ALIAS
 from .loss import l1_loss  #DEFINE_ALIAS
 from .loss import log_loss  #DEFINE_ALIAS
-from .loss import margin_rank_loss  #DEFINE_ALIAS
+from .loss import margin_ranking_loss  #DEFINE_ALIAS
 from .loss import mse_loss  #DEFINE_ALIAS
 from .loss import nll_loss  #DEFINE_ALIAS
 # from .loss import nce        #DEFINE_ALIAS
