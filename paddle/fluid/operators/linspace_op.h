@@ -38,8 +38,7 @@ class CPULinspaceKernel : public framework::OpKernel<T> {
       double step = (static_cast<double>(stop - start)) / (num - 1);
       double value = static_cast<double>(start);
       for (int i = 0; i < num; ++i) {
-        out_data[i] = static_cast<T>(value);
-        value = static_cast<double>(step + value);
+        out_data[i] = static_cast<T>(start + step * num);
       }
     } else {
       out_data[0] = static_cast<T>(start);
