@@ -51,6 +51,7 @@ from .decode import beam_search_decode  #DEFINE_ALIAS
 from .decode import gather_tree  #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
+from .layer.activation import Hardshrink
 # from .layer.activation import PReLU        #DEFINE_ALIAS
 from .layer.activation import ReLU  #DEFINE_ALIAS
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
@@ -85,6 +86,7 @@ from .layer.loss import MSELoss  #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer.loss import NLLLoss  #DEFINE_ALIAS
 from .layer.loss import BCELoss  #DEFINE_ALIAS
+from .layer.loss import MarginRankingLoss  #DEFINE_ALIAS
 from .layer.norm import BatchNorm  #DEFINE_ALIAS
 from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
@@ -93,6 +95,7 @@ from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
+from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
 
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS

@@ -4397,12 +4397,9 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.mean")
 def reduce_mean(input, dim=None, keep_dim=False, name=None):
     """
-    :alias_main: paddle.reduce_mean
-	:alias: paddle.reduce_mean,paddle.tensor.reduce_mean,paddle.tensor.stat.reduce_mean
-	:old_api: paddle.fluid.layers.reduce_mean
-
     Computes the mean of the input tensor's elements along the given dimension.
 
     Args:
@@ -4451,31 +4448,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
 
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
-    if in_dygraph_mode():
-        reduce_all = True if dim == None or dim == [] or len(dim) == len(
-            input.shape) else False
-        dim = dim if dim != None and dim != [] else [0]
-        return core.ops.reduce_mean(input, 'dim', dim, 'keep_dim', keep_dim,
-                                    'reduce_all', reduce_all)
-    attrs = {
-        'dim': dim if dim != None and dim != [] else [0],
-        'keep_dim': keep_dim,
-        'reduce_all': True
-        if dim == None or dim == [] or len(dim) == len(input.shape) else False
-    }
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_mean')
-    helper = LayerHelper('reduce_mean', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='reduce_mean',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs=attrs)
-    return out
+    return paddle.mean(x=input, axis=dim, keepdim=keep_dim, name=name)
 
 
 def reduce_max(input, dim=None, keep_dim=False, name=None):
@@ -4868,7 +4841,7 @@ def split(input, num_or_sections, dim=-1, name=None):
 
         if isinstance(dim, Variable):
             dim = dim.numpy()
-            dim = dim[0]
+            dim = dim.item(0)
         dim = (len(input.shape) + dim) if dim < 0 else dim
         attrs += ('axis', dim)
 
@@ -5912,7 +5885,7 @@ def one_hot(input, depth, allow_out_of_range=False):
             depth = depth.numpy()
             assert depth.shape == (
                 1, ), "depth of type Variable should have shape [1]"
-            depth = depth[0]
+            depth = depth.item(0)
         out = core.ops.one_hot(input, 'depth', depth, 'allow_out_of_range',
                                allow_out_of_range)
         out.stop_gradient = True
@@ -6094,7 +6067,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             )
         if isinstance(shape, (list, tuple)):
             shape = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
             out, _ = core.ops.reshape2(x, 'shape', shape)
@@ -10121,12 +10094,12 @@ def unstack(x, axis=0, num=None):
     raised.
 
     Args:
-        x (Variable): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
+        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
         axis (int): The axis along which the input is unstacked.
         num (int|None): The number of output variables.
 
     Returns:
-        list(Variable): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
+        list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
 
     Raises:
         ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
@@ -10135,7 +10108,7 @@ def unstack(x, axis=0, num=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
+            x = fluid.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
             y = fluid.layers.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
@@ -10222,7 +10195,7 @@ def expand(x, expand_times, name=None):
     if in_dygraph_mode():
         if isinstance(expand_times, (list, tuple)):
             expand_times = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in expand_times
             ]
 
@@ -10833,11 +10806,11 @@ def slice(input, axes, starts, ends):
         if isinstance(starts, (list, tuple)) and isinstance(ends,
                                                             (list, tuple)):
             starts = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in starts
             ]
             ends = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in ends
             ]
 
@@ -12331,6 +12304,7 @@ def mean(x, name=None):
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
     """
+
     if in_dygraph_mode():
         return core.ops.mean(x)
 
