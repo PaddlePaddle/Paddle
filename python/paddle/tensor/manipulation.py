@@ -24,7 +24,6 @@ import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
 from ..fluid.layers import expand  #DEFINE_ALIAS
-from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import reshape  #DEFINE_ALIAS
 from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
@@ -787,3 +786,47 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
+
+
+def expand_as(x, target_tensor, name=None):
+    """
+    :alias_main: paddle.expand_as
+    :alias: paddle.expand_as,paddle.tensor.expand_as,paddle.tensor.manipulation.expand_as
+    Expand the input tensor to the shape of the ``target_tensor``.
+    Both ranks of ``x`` and ``target_tensor`` should be less than or equal to 6, and the rank of ``target_tensor`` must be greater than or equal to the rank of ``x``. The size of the dimension to expand must be 1. 
+    Args:
+        x (Tensor): The input Tensor with rank in [1, 6]. The data type is bool, float32, float64, int64 or int32.
+        target_tensor (Tensor): The shape of target_tensor gives the shape to expand.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+    Returns:
+        Tensor: A Tensor with the same shape as target_tensor. The data type is the same as ``x``.
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle
+            paddle.disable_static()
+            np_data_1 = np.array([1, 2, 3]).astype=('int32)
+            np_target = np.array([[1, 2, 3], [4, 5, 6]]).astype=('int32)
+            data_1 = paddle.to_variable(np_data_1)
+            target_tensor = paddle.to_variable(np_target)
+            expanded_1 = paddle.expand_as(data_1, target_tensor)
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    inputs = {"X": [x], "target_tensor": [target_tensor]}
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
+    check_variable_and_dtype(target_tensor, 'target_tensor',
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
+                             'expand_as')
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
+        raise ValueError(
+            "When the data type of input 'x' for expand_as is bool, "
+            "you must set its stop_gradient to be False by "
+            " some_var.stop_gradient = False, supporting "
+            "some_var as the input.")
+
+    helper = LayerHelper('expand_as', input=x, **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type='expand_as_v2', inputs=inputs, outputs={'Out': out})
+    return out
