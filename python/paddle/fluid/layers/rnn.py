@@ -125,7 +125,8 @@ class RNNCell(object):
         else:
             integer_types = (int, )
         check_variable_and_dtype(batch_ref, 'batch_ref',
-                                 ['float32', 'float64'], 'RNNCell')
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'RNNCell')
         check_type(shape, 'shape', (list, tuple, type(None), integer_types),
                    'RNNCell')
         if isinstance(shape, (list, tuple)):
