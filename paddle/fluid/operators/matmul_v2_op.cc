@@ -111,14 +111,63 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class MatMulV2OpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* context) const override {
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul_v2");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul_v2");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "matmul_v2");
+    auto x_dims = context->GetInputDim("X");
+    auto y_dims = context->GetInputDim("Y");
+
+    auto x_grad_name = framework::GradVarName("X");
+    auto y_grad_name = framework::GradVarName("Y");
+
+    if (context->HasOutput(x_grad_name)) {
+      context->SetOutputDim(x_grad_name, x_dims);
+    }
+    if (context->HasOutput(y_grad_name)) {
+      context->SetOutputDim(y_grad_name, y_dims);
+    }
+  }
+};
+
+template <typename T>
+class MatMulV2GradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("matmul_v2_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    matmul_v2, ops::MatMulV2Op, ops::MatMulV2OpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(matmul_v2, ops::MatMulV2Op, ops::MatMulV2OpMaker,
+                  ops::MatMulV2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad);
+
 REGISTER_OP_CPU_KERNEL(
     matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CPU_KERNEL(
+    matmul_v2_grad,
+    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, double>);

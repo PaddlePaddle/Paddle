@@ -20,3 +20,7 @@ namespace plf = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(matmul_v2,
                         ops::MatMulV2Kernel<plf::CUDADeviceContext, float>,
                         ops::MatMulV2Kernel<plf::CUDADeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
+    matmul_v2_grad, ops::GatherNdGradOpKernel<plf::CUDADeviceContext, float>,
+    ops::GatherNdGradOpKernel<plf::CUDADeviceContext, double>);
