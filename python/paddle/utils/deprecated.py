@@ -19,6 +19,14 @@ import warnings
 import functools
 import paddle
 
+# NOTE(zhiqiu): Since python 3.2, DeprecationWarning is ignored by default,
+# and since python 3.7, it is once again shown by default when triggered directly by code in __main__.
+# See details: https://docs.python.org/3/library/warnings.html#default-warning-filter
+# The following line set DeprecationWarning to show once, which is expected to work in python 3.2 -> 3.6
+# However, doing this could introduce one samll side effect, i.e., the DeprecationWarning which is not issued by @deprecated.
+# The side effect is acceptable, and we will find better way to do this if we could.
+warnings.simplefilter('default', DeprecationWarning)
+
 
 def deprecated(update_to="", since="", reason=""):
     """Decorate a function to signify its deprecation.
@@ -54,7 +62,7 @@ def deprecated(update_to="", since="", reason=""):
                 "paddle."
             ), 'Argument update_to must start with "paddle.", your value is "{}"'.format(
                 update_to)
-            msg += ' Use "{}" instead.'.format(_update_to)
+            msg += ' Please use "{}" instead.'.format(_update_to)
         if len(_reason) > 0:
             msg += "\n reason: {}".format(_reason)
 
@@ -70,11 +78,8 @@ def deprecated(update_to="", since="", reason=""):
             v_since = [int(i) for i in _since.split(".")]
             v_since += [0] * (4 - len(v_since))
             if paddle.__version__ == "0.0.0" or _since == "" or v_current >= v_since:
-                warnings.simplefilter('always',
-                                      DeprecationWarning)  # turn off filter
                 warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
-                warnings.simplefilter('default',
-                                      DeprecationWarning)  # reset filter
+
             return func(*args, **kwargs)
 
         return wrapper
