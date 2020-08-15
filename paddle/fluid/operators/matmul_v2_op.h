@@ -122,9 +122,6 @@ void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
     Out->Resize(framework::make_ddim(out_dims));
     Out->mutable_data<T>(ctx.GetPlace());
     if (trans_y) {
-      VLOG(0) << "haha";
-    }
-    if (trans_y) {
       const int M = Y->numel() / N;
       VLOG(0) << "MatMul's case 2";
       blas.GEMV(false, M, N, 1., y_data, x_data, 0., Out->data<T>());
