@@ -4866,7 +4866,7 @@ def split(input, num_or_sections, dim=-1, name=None):
 
     check_variable_and_dtype(
         input, 'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'in64'], 'split')
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'split')
     check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
     check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):
