@@ -1324,6 +1324,8 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
            })
 #ifdef PADDLE_WITH_CUDA
+      .def("get_device_id",
+           [](const platform::CUDAPlace &self) { return self.GetDeviceId(); })
       .def("_type", &PlaceIndex<platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CUDAPlace>)
