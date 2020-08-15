@@ -245,11 +245,11 @@ Examples:
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
         np_x = np.array([2, 3, 4]).astype('float64')
         np_y = np.array([1, 5, 2]).astype('float64')
-        x = paddle.imperative.to_variable(np_x)
-        y = paddle.imperative.to_variable(np_y)
+        x = paddle.to_variable(np_x)
+        y = paddle.to_variable(np_y)
         z = paddle.add(x, y)
         np_z = z.numpy()
         print(np_z)  # [3., 8., 6. ]
