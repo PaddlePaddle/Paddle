@@ -481,7 +481,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         return "lo"
 
     def __start_kv_server(self, http_server_d, size_d):
-        from paddle.fleet.utils import KVServer
+        from paddle.distributed.fleet.utils import KVServer
         http_server = KVServer(int(self._http_ip_port[1]), size_d)
         http_server.start()
         wait_seconds = 5

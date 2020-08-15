@@ -628,5 +628,24 @@ class API_TestSumOp(unittest.TestCase):
         self.assertEqual((np_z == z_expected).all(), True)
 
 
+class API_TestReduceMeanOp(unittest.TestCase):
+    def test_static(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = fluid.data("x", shape=[10, 10], dtype="float32")
+            out = fluid.layers.reduce_mean(input=x, dim=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            x_np = np.random.rand(10, 10).astype(np.float32)
+            res = exe.run(feed={"x": x_np}, fetch_list=[out])
+        self.assertEqual(np.allclose(res[0], np.mean(x_np, axis=1)), True)
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            x_np = np.random.rand(10, 10).astype(np.float32)
+            x = fluid.dygraph.to_variable(x_np)
+            out = fluid.layers.reduce_mean(input=x, dim=1)
+        self.assertEqual(np.allclose(out.numpy(), np.mean(x_np, axis=1)), True)
+
+
 if __name__ == '__main__':
     unittest.main()

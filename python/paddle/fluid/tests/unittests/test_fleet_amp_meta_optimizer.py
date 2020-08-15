@@ -23,7 +23,7 @@ class TestFleetAMPOptimizer(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
 
     def test_amp_optimizer(self):
-        import paddle.fleet as fleet
+        import paddle.distributed.fleet as fleet
         import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -38,7 +38,7 @@ class TestFleetAMPOptimizer(unittest.TestCase):
             input=prediction, label=input_y)
         avg_cost = paddle.fluid.layers.mean(x=cost)
 
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.amp = True
         strategy.amp_configs = {
             "init_loss_scaling": 32768,
