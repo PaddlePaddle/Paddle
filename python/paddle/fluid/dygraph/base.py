@@ -560,6 +560,8 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             Can be 'bool' , 'float16' , 'float32' , 'float64' , 'int8' , 'int16' , 
             'int32' , 'int64' , 'uint8' . Default: None.
 
+
+
     Returns:
         Variable or ComplexVariable: If ``value`` is a tuple/list/numpy\.ndarray object, 
             return ``Tensor`` created from the corresponding numpy\.ndarray object, which has 
