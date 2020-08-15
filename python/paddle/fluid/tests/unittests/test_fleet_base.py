@@ -151,7 +151,7 @@ class TestFleetBase(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
     def test_exception(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed.fleet import fleet
         self.assertRaises(Exception, fleet.init_worker)
 
     def _net(self):
