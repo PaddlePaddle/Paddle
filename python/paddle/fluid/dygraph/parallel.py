@@ -148,10 +148,10 @@ def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
                 raise RuntimeError(
                     "please input start port of parallel training by `started_port=**`."
                 )
-            args.started_port = default_port
+            args.started_port = int(default_port)
 
         args.use_paddlecloud = kwargs.get('use_paddlecloud', False)
-        args.print_config = kwargs.get('print_config', True)
+        args.print_config = kwargs.get('print_config', False)
         args.selected_gpus = ",".join(
             [str(g) for g in [x for x in range(0, trainer_num)]])
 
