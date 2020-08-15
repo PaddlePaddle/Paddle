@@ -67,6 +67,7 @@ __all__ = [
     'flip',
     'unbind',
     'roll',
+    'tile',
 ]
 
 
