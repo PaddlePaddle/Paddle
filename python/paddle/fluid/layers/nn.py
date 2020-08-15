@@ -12049,8 +12049,8 @@ def logical_and(x, y, out=None, name=None):
             paddle.disable_static()
             x_data = np.array([True, True, False, False], dtype=np.bool)
             y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_variable(x_data)
-            y = paddle.to_variable(y_data)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
             res = paddle.logical_and(x, y)
             print(res.numpy()) # [True False False False]
     """
