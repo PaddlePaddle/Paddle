@@ -23,6 +23,20 @@ from paddle.incubate.hapi.datasets import *
 from paddle.incubate.hapi.datasets.utils import _check_exists_and_download
 
 
+class TestCifarTrain10(unittest.TestCase):
+     def test_main(self):
+         cifar = Cifar(mode='train10')
+         self.assertTrue(len(cifar) == 50000)
+
+          # traversal whole dataset may cost a
+         # long time, randomly check 1 sample
+         idx = np.random.randint(0, 50000)
+         data, label = cifar[idx]
+         self.assertTrue(len(data.shape) == 1)
+         self.assertTrue(data.shape[0] == 3072)
+         self.assertTrue(0 <= int(label) <= 9)
+
+
 class TestCifarTest10(unittest.TestCase):
     def test_main(self):
         cifar = Cifar(mode='test10')

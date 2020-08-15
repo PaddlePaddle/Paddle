@@ -19,18 +19,21 @@ import tempfile
 import shutil
 import cv2
 
-from paddle.incubate.hapi.datasets import *
+from paddle.incubate.hapi.datasets import voc2012, VOC2012
 from paddle.incubate.hapi.datasets.utils import _check_exists_and_download
 
+# VOC2012 is too large for unittest to download, stub a small dataset here
+voc2012.VOC_URL = 'https://paddlemodels.bj.bcebos.com/voc2012_stub/VOCtrainval_11-May-2012.tar'
+voc2012.VOC_MD5 = '34cb1fe5bdc139a5454b25b16118fff8'
 
 class TestVOC2012Train(unittest.TestCase):
     def test_main(self):
         voc2012 = VOC2012(mode='train')
-        self.assertTrue(len(voc2012) == 2913)
+        self.assertTrue(len(voc2012) == 3)
 
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
-        idx = np.random.randint(0, 2913)
+        idx = np.random.randint(0, 3)
         image, label = voc2012[idx]
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(len(label.shape) == 2)
@@ -39,11 +42,11 @@ class TestVOC2012Train(unittest.TestCase):
 class TestVOC2012Valid(unittest.TestCase):
     def test_main(self):
         voc2012 = VOC2012(mode='valid')
-        self.assertTrue(len(voc2012) == 1449)
+        self.assertTrue(len(voc2012) == 1)
 
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
-        idx = np.random.randint(0, 1449)
+        idx = np.random.randint(0, 1)
         image, label = voc2012[idx]
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(len(label.shape) == 2)
@@ -52,11 +55,11 @@ class TestVOC2012Valid(unittest.TestCase):
 class TestVOC2012Test(unittest.TestCase):
     def test_main(self):
         voc2012 = VOC2012(mode='test')
-        self.assertTrue(len(voc2012) == 1464)
+        self.assertTrue(len(voc2012) == 2)
 
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
-        idx = np.random.randint(0, 1464)
+        idx = np.random.randint(0, 1)
         image, label = voc2012[idx]
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(len(label.shape) == 2)
