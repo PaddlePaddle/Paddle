@@ -30,12 +30,10 @@ class Generator(object):
         if self.device == "CPU":
             self.generator = core.Generator()
             self.generator.manual_seed(seed_in)
-        elif self.device == "CUDA":
-            self.generator = core.Generator()
-            self.generator.manual_seed(seed_in)
         else:
-            raise ValueError("generator class %s does not exist" %
-                             generator_class)
+            raise ValueError(
+                "generator class with device %s does not exist, currently only support generator with device 'CPU' "
+                % device)
 
     def get_state(self):
         return self.generator.get_state()
@@ -51,3 +49,12 @@ class Generator(object):
 
     def initial_seed(self):
         return self.generator.initial_seed()
+
+    def random(self):
+        return self.generator.random()
+
+    def get_cpu_engine(self):
+        return self.generator.get_cpu_engine()
+
+    def set_cpu_engine(self, cpu_engine):
+        self.generator.set_cpu_engine(cpu_engine)

@@ -31,6 +31,7 @@ namespace paddle {
 namespace pybind {
 void BindGenerator(py::module* m) {
   py::class_<framework::GeneratorState>(*m, "GeneratorState", "");
+  py::class_<std::mt19937_64>(*m, "mt19937_64", "");
   py::class_<framework::Generator, std::shared_ptr<framework::Generator>>(
       *m, "Generator")
       .def(py::init([]() { return framework::Generator::GetInstanceX(); }),
@@ -40,7 +41,11 @@ void BindGenerator(py::module* m) {
       .def("set_state", &framework::Generator::SetState)
       .def("manual_seed", &framework::Generator::SetCurrentSeed)
       .def("seed", &framework::Generator::Seed)
-      .def("initial_seed", &framework::Generator::GetCurrentSeed);
+      .def("initial_seed", &framework::Generator::GetCurrentSeed)
+      .def("random", &framework::Generator::Random64)
+      .def("get_cpu_engine", &framework::Generator::GetCPUEngine,
+           py::return_value_policy::move)
+      .def("set_cpu_engine", &framework::Generator::SetCPUEngine);
 }  // end Generator
 }  // end namespace pybind
 }  // end namespace paddle
