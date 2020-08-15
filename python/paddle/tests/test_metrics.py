@@ -149,7 +149,8 @@ class TestAccuracyStatic(TestAccuracyDynamic):
             acc.update(*state_ret)
             res_m = acc.accumulate()
             res_f = accuracy(pred, label, self.topk)
-            assert np.all(np.isclose(np.array(res_m, dtype='float64'), np.array(res_f, dtype='float64'), rtol=1e-3)), \
+            assert np.all(np.isclose(np.array(res_m, dtype='float64'),
+                          np.array(res_f, dtype='float64'), rtol=1e-3)), \
                     "Accuracy precision error: {} != {}".format(res_m, res_f)
             acc.reset()
             assert np.sum(acc.total) == 0
@@ -162,6 +163,80 @@ class TestAccuracyStaticMultiTopk(TestAccuracyStatic):
         self.class_num = 10
         self.sample_num = 1000
         self.name = "accuracy"
+
+
+class TestPrecision(unittest.TestCase):
+    def test_1d(self):
+        paddle.enable_imperative()
+
+        x = np.array([0.1, 0.5, 0.6, 0.7])
+        y = np.array([1, 0, 1, 1])
+
+        m = paddle.metric.Recall()
+        m.update(x, y)
+        r = m.accumulate()
+        self.assertAlmostEqual(r, 2. / 3.)
+
+        x = np.array([0.1, 0.5, 0.6, 0.7, 0.2])
+        y = np.array([1, 0, 1, 1, 1])
+        m.update(x, y)
+        r = m.accumulate()
+        self.assertAlmostEqual(r, 4. / 7.)
+
+        paddle.disable_imperative()
+
+    def test_2d(self):
+        paddle.enable_imperative()
+
+        x = np.array([0.1, 0.5, 0.6, 0.7]).reshape(-1, 1)
+        y = np.array([1, 0, 1, 1]).reshape(-1, 1)
+
+        m = paddle.metric.Recall()
+        m.update(x, y)
+        r = m.accumulate()
+        self.assertAlmostEqual(r, 2. / 3.)
+
+        x = np.array([0.1, 0.5, 0.6, 0.7, 0.2]).reshape(-1, 1)
+        y = np.array([1, 0, 1, 1, 1]).reshape(-1, 1)
+        m.update(x, y)
+        r = m.accumulate()
+        self.assertAlmostEqual(r, 4. / 7.)
+
+        paddle.disable_imperative()
+
+
+class TestRecall(unittest.TestCase):
+    def test_1d(self):
+        paddle.enable_imperative()
+
+        x = np.array([0.1, 0.5, 0.6, 0.7])
+        y = np.array([1, 0, 1, 1])
+
+        m = paddle.metric.Recall()
+        m.update(x, y)
+        r = m.accumulate()
+        self.assertAlmostEqual(r, 2. / 3.)
+
+        x = np.array([0.1, 0.5, 0.6, 0.7])
+        y = np.array([1, 0, 0, 1])
+        m.update(x, y)
+        r = m.accumulate()
+        self.assertAlmostEqual(r, 3. / 5.)
+
+        paddle.disable_imperative()
+
+
+class TestAuc(unittest.TestCase):
+    def test_auc(self):
+        paddle.enable_imperative()
+        x = np.array([[0.78, 0.22], [0.62, 0.38], [0.55, 0.45], [0.30, 0.70],
+                      [0.14, 0.86], [0.59, 0.41], [0.91, 0.08], [0.16, 0.84]])
+        y = np.array([[0], [1], [1], [0], [1], [0], [0], [1]])
+        m = paddle.metric.Auc()
+        m.update(x, y)
+        r = m.accumulate()
+        self.assertAlmostEqual(r, 0.8125)
+        paddle.disable_imperative()
 
 
 if __name__ == '__main__':

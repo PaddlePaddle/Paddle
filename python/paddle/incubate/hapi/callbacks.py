@@ -305,7 +305,7 @@ class ProgBarLogger(Callback):
 
             optim = fluid.optimizer.Adam(0.001)
             model.prepare(optimizer=optim,
-                        loss_function=paddle.nn.CrossEntropyLoss(),
+                        loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
 
             callback = hapi.callbacks.ProgBarLogger(log_freq=10)
@@ -441,7 +441,7 @@ class ModelCheckpoint(Callback):
 
             optim = fluid.optimizer.Adam(0.001)
             model.prepare(optimizer=optim,
-                        loss_function=paddle.nn.CrossEntropyLoss(),
+                        loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
 
             callback = hapi.callbacks.ModelCheckpoint(save_dir='./temp')

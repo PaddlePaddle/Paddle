@@ -18,9 +18,14 @@ from __future__ import print_function
 
 import six
 import abc
+import numpy as np
 import paddle.fluid as fluid
 
-__all__ = ['Metric', 'Accuracy']
+__all__ = ['Metric', 'Accuracy', 'Precision', 'Recall', 'Auc']
+
+
+def _is_numpy_(var):
+    return isinstance(var, (np.ndarray, np.generic))
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -211,7 +216,7 @@ class Accuracy(Metric):
             learning_rate=0.001, parameter_list=model.parameters())
         model.prepare(
             optim,
-            loss_function=paddle.nn.CrossEntropyLoss(),
+            loss=paddle.nn.CrossEntropyLoss(),
             metrics=paddle.metric.Accuracy())
 
         model.fit(train_dataset, batch_size=64)
@@ -293,5 +298,443 @@ class Accuracy(Metric):
     def name(self):
         """
         Return name of metric instance.
+        """
+        return self._name
+
+
+class Precision(Metric):
+    """
+    Precision (also called positive predictive value) is the fraction of
+    relevant instances among the retrieved instances. Refer to
+    https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers
+
+    Noted that this class manages the precision score only for binary
+    classification task.
+
+    Args:
+        name (str, optional): String name of the metric instance.
+            Default is `precision`.
+
+    Example by standalone:
+        
+        .. code-block:: python
+
+        import numpy as np
+        import paddle
+
+        paddle.enable_imperative()
+        
+        x = [0.1, 0.5, 0.6, 0.7]
+        y = [0, 1, 1, 1]
+
+        m = paddle.metric.Precision()
+        m.update(x, y)
+        res = m.accumulate()
+        print(res)
+
+
+    Example with Model API:
+        
+        .. code-block:: python
+
+        import numpy as np
+        
+        import paddle
+        import paddle.nn as nn
+        import paddle.incubate.hapi as hapi
+        
+        class Data(paddle.io.Dataset):
+            def __init__(self):
+                super(Data, self).__init__()
+                self.n = 1024
+                self.x = np.random.randn(self.n, 10).astype('float32')
+                self.y = np.random.randint(2, size=(self.n, 1)).astype('int64')
+        
+            def __getitem__(self, idx):
+                return self.x[idx], self.y[idx]
+        
+            def __len__(self):
+                return self.n
+  
+        paddle.enable_imperative()
+        model = hapi.Model(nn.Sequential(
+            nn.Linear(10, 1),
+            nn.Sigmoid()
+        ))
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.001, parameter_list=model.parameters())
+        model.prepare(
+            optim,
+            loss=nn.BCELoss(),
+            metrics=paddle.metric.Precision())
+        
+        data = Data()
+        model.fit(data, batch_size=16)
+    """
+
+    def __init__(self, name='precision', *args, **kwargs):
+        super(Precision, self).__init__(*args, **kwargs)
+        self.tp = 0  # true positive
+        self.fp = 0  # false positive
+        self._name = name
+
+    def update(self, preds, labels):
+        """
+        Update the states based on the current mini-batch prediction results.
+
+        Args:
+            preds (numpy.ndarray): The prediction result, usually the output
+                of two-class sigmoid function. It should be a vector (column
+                vector or row vector) with data type: 'float64' or 'float32'.
+            labels (numpy.ndarray): The ground truth (labels),
+                the shape should keep the same as preds.
+                The data type is 'int32' or 'int64'.
+        """
+        if isinstance(preds, fluid.core.VarBase):
+            preds = preds.numpy()
+        elif not _is_numpy_(preds):
+            raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
+
+        if isinstance(labels, fluid.core.VarBase):
+            labels = preds.numpy()
+        elif not _is_numpy_(labels):
+            raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
+
+        sample_num = labels.shape[0]
+        preds = np.rint(preds).astype("int32")
+
+        for i in range(sample_num):
+            pred = preds[i]
+            label = labels[i]
+            if pred == 1:
+                if pred == label:
+                    self.tp += 1
+                else:
+                    self.fp += 1
+
+    def reset(self):
+        """
+        Resets all of the metric state.
+        """
+        self.tp = 0
+        self.fp = 0
+
+    def accumulate(self):
+        """
+        Calculate the final precision.
+
+        Returns:
+            A scaler float: results of the calculated precision.
+        """
+        ap = self.tp + self.fp
+        return float(self.tp) / ap if ap != 0 else .0
+
+    def name(self):
+        """
+        Returns metric name
+        """
+        return self._name
+
+
+class Recall(Metric):
+    """
+    Recall (also known as sensitivity) is the fraction of
+    relevant instances that have been retrieved over the
+    total amount of relevant instances
+
+    Refer to:
+    https://en.wikipedia.org/wiki/Precision_and_recall
+
+    Noted that this class manages the recall score only for
+    binary classification task.
+
+    Args:
+        name (str, optional): String name of the metric instance.
+            Default is `precision`.
+
+    Example by standalone:
+        
+        .. code-block:: python
+
+        import numpy as np
+        import paddle
+
+        paddle.enable_imperative()
+        
+        x = [0.1, 0.5, 0.6, 0.7]
+        y = [1, 0, 1, 1]
+
+        m = paddle.metric.Recall()
+        m.update(x, y)
+        res = m.accumulate()
+        print(res)
+
+
+    Example with Model API:
+        
+        .. code-block:: python
+
+        import numpy as np
+        
+        import paddle
+        import paddle.nn as nn
+        import paddle.incubate.hapi as hapi
+        
+        paddle.enable_imperative()
+
+        class Data(paddle.io.Dataset):
+            def __init__(self):
+                super(Data, self).__init__()
+                self.n = 1024
+                self.x = np.random.randn(self.n, 10).astype('float32')
+                self.y = np.random.randint(2, size=(self.n, 1)).astype('int64')
+        
+            def __getitem__(self, idx):
+                return self.x[idx], self.y[idx]
+        
+            def __len__(self):
+                return self.n
+        
+        model = hapi.Model(nn.Sequential(
+            nn.Linear(10, 1),
+            nn.Sigmoid()
+        ))
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.001, parameter_list=model.parameters())
+        model.prepare(
+            optim,
+            loss=nn.BCELoss(),
+            metrics=paddle.metric.Recall())
+        
+        data = Data()
+        model.fit(data, batch_size=16)
+    """
+
+    def __init__(self, name='recall', *args, **kwargs):
+        super(Recall, self).__init__(*args, **kwargs)
+        self.tp = 0  # true positive
+        self.fn = 0  # false negative
+        self._name = name
+
+    def update(self, preds, labels):
+        """
+        Update the states based on the current mini-batch prediction results.
+
+        Args:
+            preds(numpy.array): prediction results of current mini-batch,
+                the output of two-class sigmoid function.
+                Shape: [batch_size, 1]. Dtype: 'float64' or 'float32'.
+            labels(numpy.array): ground truth (labels) of current mini-batch,
+                the shape should keep the same as preds.
+                Shape: [batch_size, 1], Dtype: 'int32' or 'int64'.
+        """
+        if isinstance(preds, fluid.core.VarBase):
+            preds = preds.numpy()
+        elif not _is_numpy_(preds):
+            raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
+
+        if isinstance(labels, fluid.core.VarBase):
+            labels = preds.numpy()
+        elif not _is_numpy_(labels):
+            raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
+
+        sample_num = labels.shape[0]
+        preds = np.rint(preds).astype("int32")
+
+        for i in range(sample_num):
+            pred = preds[i]
+            label = labels[i]
+            if label == 1:
+                if pred == label:
+                    self.tp += 1
+                else:
+                    self.fn += 1
+
+    def accumulate(self):
+        """
+        Calculate the final recall.
+
+        Returns:
+            A scaler float: results of the calculated Recall.
+        """
+        recall = self.tp + self.fn
+        return float(self.tp) / recall if recall != 0 else .0
+
+    def reset(self):
+        """
+        Resets all of the metric state.
+        """
+        self.tp = 0
+        self.fn = 0
+
+    def name(self):
+        """
+        Returns metric name
+        """
+        return self._name
+
+
+class Auc(Metric):
+    """
+    The auc metric is for binary classification.
+    Refer to https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve.
+    Please notice that the auc metric is implemented with python, which may be a little bit slow.
+    If you concern the speed, please use the fluid.layers.auc instead.
+
+    The `auc` function creates four local variables, `true_positives`,
+    `true_negatives`, `false_positives` and `false_negatives` that are used to
+    compute the AUC. To discretize the AUC curve, a linearly spaced set of
+    thresholds is used to compute pairs of recall and precision values. The area
+    under the ROC-curve is therefore computed using the height of the recall
+    values by the false positive rate, while the area under the PR-curve is the
+    computed using the height of the precision values by the recall.
+
+    Args:
+        name (str, optional): String name of the metric instance. Default
+            is `acc`.
+        curve (str): Specifies the mode of the curve to be computed,
+            'ROC' or 'PR' for the Precision-Recall-curve. Default is 'ROC'.
+
+    "NOTE: only implement the ROC curve type via Python now."
+
+    Example by standalone:
+        .. code-block:: python
+
+        import numpy as np
+        import paddle
+
+        m = fluid.metrics.Auc()
+        
+        n = 8
+        class0_preds = np.random.random(size = (n, 1))
+        class1_preds = 1 - class0_preds
+        
+        preds = np.concatenate((class0_preds, class1_preds), axis=1)
+        labels = np.random.randint(2, size = (n, 1))
+        
+        m.update(preds=preds, labels=labels)
+        res = m.accumulate()
+
+
+    Example with Model API:
+        
+        .. code-block:: python
+
+        import numpy as np
+        import paddle
+        import paddle.nn as nn
+        import paddle.incubate.hapi as hapi
+        
+        paddle.enable_imperative()
+
+        class Data(paddle.io.Dataset):
+            def __init__(self):
+                super(Data, self).__init__()
+                self.n = 1024
+                self.x = np.random.randn(self.n, 10).astype('float32')
+                self.y = np.random.randint(2, size=(self.n, 1)).astype('int64')
+        
+            def __getitem__(self, idx):
+                return self.x[idx], self.y[idx]
+        
+            def __len__(self):
+                return self.n
+        
+        model = hapi.Model(nn.Sequential(
+            nn.Linear(10, 2, act='softmax'),
+        ))
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.001, parameter_list=model.parameters())
+        
+        def loss(x, y):
+            return fluid.layers.cross_entropy(x, y)
+        
+        model.prepare(
+            optim,
+            loss=loss,
+            metrics=paddle.metric.Auc())
+        data = Data()
+        model.fit(data, batch_size=16)
+    """
+
+    def __init__(self,
+                 curve='ROC',
+                 num_thresholds=4095,
+                 name='auc',
+                 *args,
+                 **kwargs):
+        super(Auc, self).__init__(*args, **kwargs)
+        self._curve = curve
+        self._num_thresholds = num_thresholds
+
+        _num_pred_buckets = num_thresholds + 1
+        self._stat_pos = np.zeros(_num_pred_buckets)
+        self._stat_neg = np.zeros(_num_pred_buckets)
+        self._name = name
+
+    def update(self, preds, labels):
+        """
+        Update the auc curve with the given predictions and labels.
+
+        Args:
+            preds (numpy.array): An numpy array in the shape of
+                (batch_size, 2), preds[i][j] denotes the probability of
+                classifying the instance i into the class j.
+            labels (numpy.array): an numpy array in the shape of
+                (batch_size, 1), labels[i] is either o or 1,
+                representing the label of the instance i.
+        """
+        if not _is_numpy_(labels):
+            raise ValueError("The 'labels' must be a numpy ndarray.")
+        if not _is_numpy_(preds):
+            raise ValueError("The 'predictions' must be a numpy ndarray.")
+
+        for i, lbl in enumerate(labels):
+            value = preds[i, 1]
+            bin_idx = int(value * self._num_thresholds)
+            assert bin_idx <= self._num_thresholds
+            if lbl:
+                self._stat_pos[bin_idx] += 1.0
+            else:
+                self._stat_neg[bin_idx] += 1.0
+
+    @staticmethod
+    def trapezoid_area(x1, x2, y1, y2):
+        return abs(x1 - x2) * (y1 + y2) / 2.0
+
+    def accumulate(self):
+        """
+        Return the area (a float score) under auc curve
+
+        Return:
+            float: the area under auc curve
+        """
+        tot_pos = 0.0
+        tot_neg = 0.0
+        auc = 0.0
+
+        idx = self._num_thresholds
+        while idx >= 0:
+            tot_pos_prev = tot_pos
+            tot_neg_prev = tot_neg
+            tot_pos += self._stat_pos[idx]
+            tot_neg += self._stat_neg[idx]
+            auc += self.trapezoid_area(tot_neg, tot_neg_prev, tot_pos,
+                                       tot_pos_prev)
+            idx -= 1
+
+        return auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0
+
+    def reset(self):
+        """
+        Reset states and result
+        """
+        _num_pred_buckets = self._num_thresholds + 1
+        self._stat_pos = np.zeros(_num_pred_buckets)
+        self._stat_neg = np.zeros(_num_pred_buckets)
+
+    def name(self):
+        """
+        Returns metric name
         """
         return self._name

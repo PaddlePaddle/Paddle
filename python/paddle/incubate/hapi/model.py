@@ -393,8 +393,8 @@ class StaticGraphAdapter(object):
             self._label_vars[mode] = labels
             outputs = to_list(self.model.network.forward(*inputs))
 
-            if mode != 'test' and self.model._loss_function:
-                losses = self.model._loss_function(*(outputs + labels))
+            if mode != 'test' and self.model._loss:
+                losses = self.model._loss(*(outputs + labels))
 
             if self._nranks > 1 and mode != 'train':
                 outputs = [_all_gather(o, self._nranks) for o in outputs]
@@ -509,7 +509,7 @@ class DynamicGraphAdapter(object):
 
         if self._nranks > 1:
             outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
-            losses = self.model._loss_function(*(to_list(outputs) + labels))
+            losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
             final_loss = self.ddp_model.scale_loss(final_loss)
@@ -518,7 +518,7 @@ class DynamicGraphAdapter(object):
         else:
             outputs = self.model.network.forward(
                 * [to_variable(x) for x in inputs])
-            losses = self.model._loss_function(*(to_list(outputs) + labels))
+            losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
@@ -542,8 +542,8 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
-        if self.model._loss_function:
-            losses = self.model._loss_function(*(to_list(outputs) + labels))
+        if self.model._loss:
+            losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
 
         if self._nranks > 1:
@@ -575,9 +575,9 @@ class DynamicGraphAdapter(object):
             m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
-        if self.model._loss_function and len(metrics):
+        if self.model._loss and len(metrics):
             return [to_numpy(l) for l in losses], metrics
-        elif self.model._loss_function:
+        elif self.model._loss:
             return [to_numpy(l) for l in losses]
         else:
             return metrics
@@ -679,7 +679,7 @@ class Model(object):
             inputs must be set. For dynamic graph, it could be None.
         labels (Input|list|None): `labels`, entry points of network,
             could be a Input layer or lits of Input layers, or None.
-            For static graph, if labels is required in loss_function,
+            For static graph, if labels is required in loss,
             labels must be set. Otherwise, it could be None.
 
 
@@ -724,7 +724,7 @@ class Model(object):
         self.network = network
         self._inputs = None
         self._labels = None
-        self._loss_function = None
+        self._loss = None
         self._loss_weights = None
         self._optimizer = None
         self._optimizer = None
@@ -884,7 +884,7 @@ class Model(object):
               model = hapi.Model(MyNet())
               model.prepare()
               data = np.random.random(size=(4,784)).astype(np.float32)
-              out = model.eval_batch([data])
+              out = model.test_batch([data])
               print(out)
         """
         return self._adapter.test_batch(inputs)
@@ -1059,7 +1059,7 @@ class Model(object):
         """
         return self._adapter.parameters()
 
-    def prepare(self, optimizer=None, loss_function=None, metrics=None):
+    def prepare(self, optimizer=None, loss=None, metrics=None):
         """
         Configures the model before runing.
 
@@ -1067,7 +1067,7 @@ class Model(object):
             optimizer (Optimizer|None): Optimizer must be set in training
                 and should be a Optimizer instance. It can be None in eval
                 and test mode.
-            loss_function (Loss|callable function|None): Loss function can
+            loss (Loss|callable function|None): Loss function can
                 be a `fluid.dygraph.Layer` instance or any callable function
                 taken the predicted values and ground truth values as input.
                 It can be None when there is no loss.
@@ -1099,12 +1099,11 @@ class Model(object):
                 _parallel_context_initialized = True
 
         self._optimizer = optimizer
-        if loss_function:
-            if not isinstance(loss_function, fluid.dygraph.Layer) or \
-               not callable(loss_function):
-                raise TypeError("'loss_function' must be sub classes of \
-                    `fluid.dygraph.Layer` or any callable function.")
-        self._loss_function = loss_function
+        if loss is not None:
+            if not isinstance(loss, fluid.dygraph.Layer) and not callable(loss):
+                raise TypeError("'loss' must be sub classes of " \
+                    "`fluid.dygraph.Layer` or any callable function.")
+        self._loss = loss
 
         metrics = metrics or []
         for metric in to_list(metrics):
@@ -1602,9 +1601,9 @@ class Model(object):
             if mode != 'test':
                 outs = getattr(self, mode + '_batch')(data[:len(self._inputs)],
                                                       data[len(self._inputs):])
-                if self._metrics and self._loss_function:
+                if self._metrics and self._loss:
                     metrics = [[l[0] for l in outs[0]]]
-                elif self._loss_function:
+                elif self._loss:
                     metrics = [[l[0] for l in outs]]
                 else:
                     metrics = []
@@ -1645,7 +1644,7 @@ class Model(object):
             metric.reset()
 
     def _metrics_name(self):
-        metrics_name = ['loss'] if self._loss_function else []
+        metrics_name = ['loss'] if self._loss else []
         for m in self._metrics:
             metrics_name.extend(to_list(m.name()))
         return metrics_name
