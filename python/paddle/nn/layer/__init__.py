@@ -20,6 +20,7 @@ from . import conv
 from . import extension
 from . import activation
 from . import norm
+from . import rnn
 
 from .activation import *
 from .loss import *
@@ -67,6 +68,3 @@ from .norm import GroupNorm  #DEFINE_ALIAS
 from .norm import LayerNorm  #DEFINE_ALIAS
 from .norm import SpectralNorm  #DEFINE_ALIAS
 from .norm import InstanceNorm  #DEFINE_ALIAS
-# from .rnn import RNNCell        #DEFINE_ALIAS
-# from .rnn import GRUCell        #DEFINE_ALIAS
-# from .rnn import LSTMCell        #DEFINE_ALIAS
