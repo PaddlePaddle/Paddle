@@ -32,19 +32,19 @@ from . import random
 from .random import manual_seed
 
 from ..fluid.framework import Variable  #DEFINE_ALIAS
+from ..fluid.framework import ComplexVariable  #DEFINE_ALIAS
 from ..fluid.param_attr import ParamAttr  #DEFINE_ALIAS
 from ..fluid.layers.tensor import create_global_var  #DEFINE_ALIAS
 from ..fluid.layers.tensor import create_parameter  #DEFINE_ALIAS
 from ..fluid.core import CPUPlace  #DEFINE_ALIAS
 from ..fluid.core import CUDAPlace  #DEFINE_ALIAS
 from ..fluid.core import CUDAPinnedPlace  #DEFINE_ALIAS
+from ..fluid.core import VarBase  #DEFINE_ALIAS
 
 from paddle.fluid import core  #DEFINE_ALIAS
 from ..fluid.dygraph.base import no_grad  #DEFINE_ALIAS
 from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
 from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
-from ..fluid.dygraph.checkpoint import load_dygraph  #DEFINE_ALIAS
-from ..fluid.dygraph.checkpoint import save_dygraph  #DEFINE_ALIAS
 from ..fluid.dygraph.checkpoint import load_dygraph as load  #DEFINE_ALIAS
 from ..fluid.dygraph.checkpoint import save_dygraph as save  #DEFINE_ALIAS
 from ..fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
