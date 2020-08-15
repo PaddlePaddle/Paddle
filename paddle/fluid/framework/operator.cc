@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/operator.h"
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
@@ -20,13 +22,13 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
@@ -602,6 +604,29 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   std::vector<std::string> Outputs(const std::string& name) const override {
     return op_.Outputs(name);
+  }
+
+  std::string GetInputNameByIdx(size_t idx) const override {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
+    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
+                      platform::errors::OutOfRange(
+                          "The index should be less than the size of inputs of "
+                          "operator %s, but got index is %d and size is %d",
+                          op_.Type(), idx, op_proto->inputs().size()));
+    return op_proto->inputs()[idx].name();
+  }
+
+  std::string GetOutputNameByIdx(size_t idx) const override {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
+    PADDLE_ENFORCE_LT(
+        idx, op_proto->outputs().size(),
+        platform::errors::OutOfRange(
+            "The index should be less than the size of outputs of "
+            "operator %s, but got index is %d and size is %d",
+            op_.Type(), idx, op_proto->outputs().size()));
+    return op_proto->outputs()[idx].name();
   }
 
   void ShareDim(const std::string& in, const std::string& out, size_t i = 0,

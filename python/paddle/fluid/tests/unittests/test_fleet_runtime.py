@@ -19,16 +19,17 @@ import os
 
 class TestFleetRuntime(unittest.TestCase):
     def test_fleet_runtime_base(self):
-        import paddle.fleet.runtime
-        base = paddle.fleet.runtime.runtime_base.RuntimeBase()
+        import paddle.distributed.fleet.runtime
+        base = paddle.distributed.fleet.runtime.runtime_base.RuntimeBase()
         base._run_worker()
         base._init_server()
         base._run_server()
         base._stop_worker()
 
     def test_fleet_collective_runtime(self):
-        import paddle.fleet.runtime
-        collective_runtime = paddle.fleet.runtime.CollectiveRuntime()
+        import paddle.distributed.fleet.runtime
+        collective_runtime = paddle.distributed.fleet.runtime.CollectiveRuntime(
+        )
         collective_runtime._init_worker()
         collective_runtime._run_worker()
         collective_runtime._init_worker()
