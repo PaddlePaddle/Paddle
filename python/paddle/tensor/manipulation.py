@@ -867,7 +867,6 @@ def expand(x, shape, name=None):
     if isinstance(shape, Variable):
         shape.stop_gradient = True
         inputs['Shape'] = shape
-        attrs['shape'] = [-1]
     elif isinstance(shape, (list, tuple)):
         attrs['shape'] = get_attr_expand_shape(shape)
         if utils._contain_var(shape):

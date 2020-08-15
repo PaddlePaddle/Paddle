@@ -45,7 +45,6 @@ class TestExpandV2OpRank1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-"""
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
     def init_data(self):
         self.ori_shape = [120]
@@ -55,8 +54,8 @@ class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
 
 class TestExpandV2OpRank2(TestExpandV2OpRank1):
     def init_data(self):
-        self.ori_shape = [1, 14]
-        self.shape = [12, 14]
+        self.ori_shape = [1, 140]
+        self.shape = [12, 140]
         self.expand_times = [12, 1]
 
 
@@ -207,11 +206,14 @@ class TestExpandV2API(unittest.TestCase):
 
         positive_2 = fluid.layers.fill_constant([1], "int32", 12)
         expand_shape = fluid.layers.data(
-            name="expand_shape", shape=[2], append_batch_size=False, dtype="int32")
+            name="expand_shape",
+            shape=[2],
+            append_batch_size=False,
+            dtype="int32")
 
-        out_1 = paddle.tensor.expand(x, shape=[12, 14])
-        out_2 = paddle.tensor.expand(x, shape=[positive_2, 14])
-        out_3 = paddle.tensor.expand(x, shape=expand_shape)
+        out_1 = paddle.expand(x, shape=[12, 14])
+        out_2 = paddle.expand(x, shape=[positive_2, 14])
+        out_3 = paddle.expand(x, shape=expand_shape)
 
         g0 = fluid.backward.calc_gradient(out_2, x)
 
@@ -226,7 +228,7 @@ class TestExpandV2API(unittest.TestCase):
         assert np.array_equal(res_1, np.tile(input, (1, 1)))
         assert np.array_equal(res_2, np.tile(input, (1, 1)))
         assert np.array_equal(res_3, np.tile(input, (1, 1)))
-"""
+
 
 if __name__ == "__main__":
     unittest.main()
