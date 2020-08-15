@@ -68,6 +68,7 @@ __all__ = [
     'flip',
     'unbind',
     'roll',
+    'tile',
 ]
 
 
@@ -787,3 +788,122 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
+
+
+def tile(x, repeat_times, name=None):
+    """
+    :alias_main: paddle.tile
+	:alias: paddle.tile,paddle.tensor.tile,paddle.tensor.manipulation.tile
+
+    Construct a new tensor by repeating ``x`` the number of times given by the parameter ``repeat_times``.
+    The rank of ``x`` should be less than or equal to 6, and the size of the shape of ``repeat_times`` should
+    be less than or equal to 6.
+    If the size of the parameter ``repeat_times`` is ``d``, and the rank for ``x`` is ``r``, then the number
+    of dimensions for the result is ``max(d, r)``.
+    If ``r < d``, ``x`` if first promoted to a d-dimensional tensor by inserting new axes at the beginning.
+    For example, a tensor ``x`` with the shape(3,) is promoted to a 2-D tensor with the shape (1, 3) if ``d`` is 2
+    and a 3-D tensor with the shape(1, 1, 3) if ``d`` is 3.
+    If ``r > d``, ``repeat_times`` is first promoted by inserting 1's at the beginning.
+    For example, if the tensor ``x`` is with a shape(4, 3, 2, 2) and ``repeat_times`` is a tuple (3, 2),
+    ``repeat_times`` is first promoted to a tuple (1, 1, 3, 2).
+    The following gives an using case:
+
+
+    .. code-block:: text
+
+        Input(x) is a 3-D tensor of shape (2, 3, 1):
+
+                [
+                   [[1], [2], [3]],
+                   [[4], [5], [6]]
+                ]
+
+        Attr(repeat_times):  [1, 2, 2]
+
+        Output(out) is a 3-D tensor of shape (2, 6, 2):
+
+                [
+                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
+                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
+                ]
+
+    Args:
+        x (Tensor): The input tensor, its data type should be bool, float32, float64, int32. The rank of ``x`` should be in [1, 6].
+        repeat_times (Tensor|tuple|list): The number of repeating times for each dimension of the input ``x``. If repeat_times is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If repeat_times is Tensor, it should be an 1-D Tensor. The size of its shape should be in [1, 6].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        N-D Tensor. The data type is the same as ``x``. After tiling, each dimension of the output is equal to the corresponding dimension of ``x`` multiplying the corresponding value given by ``repeat_times`` .
+
+    Raises:
+        TypeError: The type of ``repeat_times`` must be list, tuple or Tensor.
+        ValueError: The elements of ``repeat_times`` cannot be negative.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+
+            # example 1:
+            np_data_1 = np.array([1, 2, 3]).astype('int32')
+            data_1 = paddle..to_variable(np_data_1)
+            tiled_1 = paddle.tile(data_1, repeat_times=[2, 1])
+            # [[1, 2, 3], [1, 2, 3]]
+
+            # example 2:
+            np_repeat_times = np.array([2, 1]).astype("int32")
+            repeat_times = paddle.to_variable(np_repeat_times)
+            tiled_2 = paddle.tile(data_1, repeat_times=repeat_times)
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    if in_dygraph_mode():
+        if isinstance(repeat_times, (list, tuple)):
+            repeat_times = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in repeat_times
+            ]
+
+            return core.ops.tile(x, 'repeat_times', repeat_times)
+
+    inputs = {"X": [x]}
+    attrs = {}
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
+    check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
+        raise ValueError(
+            "When the date type is bool for the input 'x' of tile op, you "
+            "must set its stop_gradient to be False by "
+            "some_var.stop_gradient == True supporting some_var is the input.")
+
+    helper = LayerHelper('tile', input=x, **locals())
+
+    def get_attr_repeat_times(list_repeat_times):
+        attrs_repeat_times = []
+        for idx, times in enumerate(list_repeat_times):
+            if isinstance(times, Variable):
+                attrs_repeat_times.append(-1)
+            else:
+                attrs_repeat_times.append(times)
+                assert times > 0, (
+                    "Every element given in repeat_times must be positive.")
+        return attrs_repeat_times
+
+    if isinstance(repeat_times, Variable):
+        repeat_times.stop_gradient = True
+        inputs['RepeatTimes'] = repeat_times
+        attrs['repeat_times'] = [-1] * len(repeat_times.shape)
+    elif isinstance(repeat_times, (list, tuple)):
+        attrs['repeat_times'] = get_attr_repeat_times(repeat_times)
+        if utils._contain_var(repeat_times):
+            inputs['repeat_times_tensor'] = utils._convert_to_tensor_list(
+                repeat_times)
+
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='tile', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
