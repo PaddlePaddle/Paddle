@@ -15,10 +15,6 @@ limitations under the License. */
 #include <paddle/fluid/platform/device_context.h>
 #include "paddle/fluid/operators/where_zkl_op.h"
 
-namespace plat = paddle::platform;
-
-namespace platform = paddle::platform;
-
 namespace paddle {
 namespace operators {
 
@@ -41,10 +37,6 @@ class WhereZklKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(context.GetPlace()), true,
-                      platform::errors::PreconditionNotMet(
-                          "This kernel only runs on GPU device."));
-
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
     auto stream = dev_ctx.stream();
@@ -86,10 +78,6 @@ class WhereZklGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(context.GetPlace()), true,
-                      platform::errors::PreconditionNotMet(
-                          "This kernel only runs on GPU device."));
-
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
     auto stream = dev_ctx.stream();
@@ -118,9 +106,6 @@ class WhereZklGradKernel<platform::CUDADeviceContext, T>
 
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     where_zkl,

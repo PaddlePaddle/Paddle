@@ -39,12 +39,8 @@ class WhereZklKernel : public framework::OpKernel<T> {
 
     int size = tensor_x->numel();
 
-    for (int i = 0; i < size; ++i) {
-      if (data_condition[i])
-        data_out[i] = data_x[i];
-      else
-        data_out[i] = data_y[i];
-    }
+    for (int i = 0; i < size; ++i)
+      data_out[i] = data_condition[i] ? data_x[i] : data_y[i];
   }
 };
 
