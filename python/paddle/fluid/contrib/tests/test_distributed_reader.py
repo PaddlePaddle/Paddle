@@ -37,8 +37,8 @@ class TestDistributedReader(unittest.TestCase):
         assert data == 1
 
         #Note: windows python3 don't have unsetenv
-        del os.environ('PADDLE_TRAINER_ID')
-        del os.environ('PADDLE_TRAINERS_NUM')
+        del os.environ['PADDLE_TRAINER_ID']
+        del os.environ['PADDLE_TRAINERS_NUM']
 
 
 if __name__ == '__main__':
