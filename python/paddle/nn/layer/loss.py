@@ -612,26 +612,26 @@ class KLDivLoss(fluid.dygraph.Layer):
 
             # 'batchmean' reduction, loss shape will be [N]
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
-            pred_loss = kldiv_criterion(paddle.imperative.to_variable(x),
-                                        paddle.imperative.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
             # shape=[5]
             
             # 'mean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
-            pred_loss = kldiv_criterion(paddle.imperative.to_variable(x),
-                                        paddle.imperative.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='sum')
-            pred_loss = kldiv_criterion(paddle.imperative.to_variable(x),
-                                        paddle.imperative.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
             # shape=[1]
 
             # 'none' reduction, loss shape is same with X shape
             kldiv_criterion = nn.KLDivLoss(reduction='none')
-            pred_loss = kldiv_criterion(paddle.imperative.to_variable(x),
-                                        paddle.imperative.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
             # shape=[5, 20]
     """
 
