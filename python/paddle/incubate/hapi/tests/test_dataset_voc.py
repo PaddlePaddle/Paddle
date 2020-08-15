@@ -26,6 +26,7 @@ from paddle.incubate.hapi.datasets.utils import _check_exists_and_download
 voc2012.VOC_URL = 'https://paddlemodels.bj.bcebos.com/voc2012_stub/VOCtrainval_11-May-2012.tar'
 voc2012.VOC_MD5 = '34cb1fe5bdc139a5454b25b16118fff8'
 
+
 class TestVOC2012Train(unittest.TestCase):
     def test_main(self):
         voc2012 = VOC2012(mode='train')
