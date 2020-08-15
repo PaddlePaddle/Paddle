@@ -376,9 +376,9 @@ class LogSoftmax(layers.Layer):
                         [[1.0, -2.0, -3.0, 4.0],
                         [-5.0, 6.0, 7.0, -8.0],
                         [6.0, 7.0, 8.0, 9.0]]], 'float32')
-        log_softnmax = paddle.nn.LogSoftmax()
+        m = paddle.nn.LogSoftmax()
         x = paddle.to_variable(x)
-        out = log_softnmax(x)
+        out = m(x)
         # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
         #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
         #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
