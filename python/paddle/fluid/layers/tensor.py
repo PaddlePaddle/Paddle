@@ -317,7 +317,7 @@ def concat(input, axis=0, name=None):
     if in_dygraph_mode():
         if isinstance(axis, Variable):
             axis = axis.numpy()
-            axis = axis[0]
+            axis = axis.item(0)
         return core.ops.concat(input, 'axis', axis)
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
@@ -699,9 +699,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
         if isinstance(value, Variable):
             if dtype in ['int64', 'int32']:
-                attrs['str_value'] = str(int(value.numpy()))
+                attrs['str_value'] = str(int(value.numpy().item(0)))
             else:
-                attrs['str_value'] = str(float(value.numpy()))
+                attrs['str_value'] = str(float(value.numpy().item(0)))
 
         core.ops.fill_constant(out, 'value',
                                float(value), 'force_cpu', force_cpu, 'dtype',
