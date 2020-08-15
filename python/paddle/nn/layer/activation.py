@@ -288,9 +288,9 @@ class LeakyReLU(layers.Layer):
 
         paddle.disable_static()
 
-        lrelu = paddle.nn.LeakyReLU()
+        m = paddle.nn.LeakyReLU()
         x = paddle.to_variable(np.array([-2, 0, 1], 'float32'))
-        out = lrelu(x)  # [-0.02, 0., 1.]
+        out = m(x)  # [-0.02, 0., 1.]
     """
 
     def __init__(self, negative_slope=0.01, name=None):
