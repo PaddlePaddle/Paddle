@@ -75,7 +75,7 @@ class Hardshrink(layers.Layer):
         self._name = name
 
     def forward(self, x):
-        return functional.hardshrink(x, self._threshold, self._name)
+        return F.hardshrink(x, self._threshold, self._name)
 
 
 class HSigmoid(layers.Layer):
