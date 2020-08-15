@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/dot_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
@@ -86,6 +87,10 @@ void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
   const T* y_data = Y->data<T>();
 
   if (x_ndim == 1 && y_ndim == 1) {
+    PADDLE_ENFORCE_EQ(X->numel(), Y->numel(),
+                      platform::errors::InvalidArgument(
+                          "X's numbers is not equal to Y's numbers,"
+                          "when X/Y dims =1"));
     VLOG(0) << "MatMul's case 1";
     Out->Resize({1});
     Out->mutable_data<T>(ctx.GetPlace());
@@ -294,6 +299,65 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     bool trans_y = ctx.Attr<bool>("trans_y");
 
     MatMulFunction<DeviceContext, T>(X, Y, Out, trans_x, trans_y, ctx);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class MatMulV2GradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* X = ctx.Input<Tensor>("X");
+    auto* Y = ctx.Input<Tensor>("Y");
+    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    bool trans_x = ctx.Attr<bool>("trans_x");
+    bool trans_y = ctx.Attr<bool>("trans_y");
+    // get dims
+    const std::vector<std::int64_t> x_dims = vectorize(X->dims());
+    const std::vector<std::int64_t> y_dims = vectorize(Y->dims());
+    const int x_ndim = x_dims.size();
+    const int y_ndim = y_dims.size();
+
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    if (dx) dx->mutable_data<T>(ctx.GetPlace());
+    if (dy) dy->mutable_data<T>(ctx.GetPlace());
+
+    // x's or y's dim = 1
+    if (x_ndim == 1 && y_ndim == 1) {
+      if (dOut->numel() == 1) {
+        DotFunction<DeviceContext, T>(X, Y, dOut, dx, dy, ctx);
+        return;
+      }
+    }
+
+    if (trans_x) {
+      if (trans_y) {
+        // X'Y'
+        // dA = Y'G', dB = G'X'
+        if (dx) MatMulFunction<DeviceContext, T>(Y, dOut, dx, true, true, ctx);
+        if (dy) MatMulFunction<DeviceContext, T>(dOut, X, dy, true, true, ctx);
+      } else {
+        // X'Y:
+        // dX = YG', dY = XG
+        if (dx) MatMulFunction<DeviceContext, T>(Y, dOut, dx, false, true, ctx);
+        if (dy)
+          MatMulFunction<DeviceContext, T>(X, dOut, dy, false, false, ctx);
+      }
+    } else {
+      if (trans_y) {
+        // XY':
+        // dX = GY, dY = G'X
+        if (dx)
+          MatMulFunction<DeviceContext, T>(dOut, Y, dx, false, false, ctx);
+        if (dy) MatMulFunction<DeviceContext, T>(dOut, X, dy, true, false, ctx);
+      } else {
+        // XY:
+        // dX = GY', dY = X'G
+        if (dx) MatMulFunction<DeviceContext, T>(dOut, Y, dx, false, true, ctx);
+        if (dy) MatMulFunction<DeviceContext, T>(X, dOut, dy, true, false, ctx);
+      }
+    }
+    // reduce sum to get grad ReduceKernelFunctor
   }
 };
 
