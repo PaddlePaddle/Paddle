@@ -56,6 +56,7 @@ from .layer.activation import Hardshrink
 from .layer.activation import ReLU  #DEFINE_ALIAS
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
+from .layer.activation import LogSigmoid
 # from .layer.activation import Softmax        #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import HSigmoid  #DEFINE_ALIAS

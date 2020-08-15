@@ -21,6 +21,7 @@ __all__ = [
     'LeakyReLU',
     'Sigmoid',
     #       'Softmax',
+    'LogSigmoid',
     'LogSoftmax',
     'HSigmoid'
 ]
@@ -339,6 +340,44 @@ class Sigmoid(layers.Layer):
 
     def forward(self, input):
         return functional.sigmoid(input, self._inplace)
+
+
+class LogSigmoid(layers.Layer):
+    """
+    LogSigmoid Activation.
+    
+    .. math:
+
+        logsigmoid(x) = \log \frac{1}{1 + e^{-x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, or float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_variable(np.array([1.0, 2.0, 3.0, 4.0]))
+        m = paddle.nn.LogSigmoid()
+        out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+    """
+
+    def __init__(self, name=None):
+        super(LogSigmoid, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return functional.logsigmoid(x, self._name)
 
 
 class LogSoftmax(layers.Layer):

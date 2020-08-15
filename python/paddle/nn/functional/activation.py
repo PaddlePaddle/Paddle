@@ -20,7 +20,6 @@ from ...fluid.layers import gelu  #DEFINE_ALIAS
 from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
-from ...fluid.layers import logsigmoid  #DEFINE_ALIAS
 from ...fluid.layers import maxout  #DEFINE_ALIAS
 from ...fluid.layers import relu6  #DEFINE_ALIAS
 from ...fluid.layers import selu  #DEFINE_ALIAS
@@ -355,6 +354,46 @@ def sigmoid(input, inplace=False, name=None):
     helper.append_op(
         type='sigmoid', inputs={'X': [input]}, outputs={'Out': outputs})
     return outputs
+
+
+def logsigmoid(x, name=None):
+    """
+    logsigmoid activation.
+
+    .. math:
+
+        logsigmoid(x) = \log \frac{1}{1 + e^{-x}}
+    
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, or float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_variable(np.array([1.0, 2.0, 3.0, 4.0]))
+        out = F.logsigmoid(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.logsigmoid(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'logsigmoid')
+    helper = LayerHelper("logsigmoid", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='logsigmoid', inputs={'X': x}, outputs={'Out': out})
+    return out
 
 
 def softmax(x, axis=-1, name=None):
