@@ -682,6 +682,7 @@ class TestLeakyRelu(TestActivation):
         self.init_dtype()
         alpha = self.get_alpha()
 
+        np.random.seed(10)
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.05
