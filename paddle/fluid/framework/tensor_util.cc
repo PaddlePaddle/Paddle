@@ -494,11 +494,13 @@ struct BothFalseVisitor : public boost::static_visitor<> {
 #ifdef PADDLE_WITH_CUDA
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
     constexpr int MAX_BLOCK_DIM = 512;
+    constexpr int MAX_GRID_DIM = 65535;
     int element_num = in_.numel();
     int block_size = (element_num >= MAX_BLOCK_DIM)
                          ? MAX_BLOCK_DIM
                          : (1 << static_cast<int>(std::log2(element_num)));
     int grid_size = element_num / block_size;
+    grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
     BothFalse<bool><<<grid_size, block_size, 0, ctx->stream()>>>(
         in_.data<bool>(), out_->mutable_data<bool>(gpu), element_num);
 #endif

@@ -154,6 +154,9 @@ from .math import addmm  #DEFINE_ALIAS
 from .math import clamp  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
 from .math import kron  #DEFINE_ALIAS
+from .math import isfinite  #DEFINE_ALIAS
+from .math import isinf  #DEFINE_ALIAS
+from .math import isnan  #DEFINE_ALIAS
 # from .random import gaussin        #DEFINE_ALIAS
 # from .random import uniform        #DEFINE_ALIAS
 from .random import shuffle  #DEFINE_ALIAS
