@@ -16,7 +16,7 @@
 __all__ = [
     'Dataset',
     'IterableDataset',
-    'TensorDataset'
+    'TensorDataset',
     'BatchSampler',
     #            'Transform',
     'DataLoader',
