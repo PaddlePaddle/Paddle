@@ -52,9 +52,12 @@ def get_cudnn_version():
 
     """
     global _cudnn_version
-    if _cudnn_version is None and core.is_compiled_with_cuda():
-        cudnn_version = core.cudnn_version()
-        if cudnn_version < 0:
+    if not core.is_compiled_with_cuda():
+        return None
+    if _cudnn_version is None:
+        cudnn_version = int(core.cudnn_version())
+        _cudnn_version = cudnn_version
+        if _cudnn_version < 0:
             return None
         else:
             return cudnn_version
