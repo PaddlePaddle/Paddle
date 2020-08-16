@@ -28,7 +28,8 @@ class PixelShuffle(layers.Layer):
     PixelShuffle Layer    
 
     This operator rearranges elements in a tensor of shape [N, C, H, W]
-    to a tensor of shape [N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor].
+    to a tensor of shape [N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor],
+    or from shape [N, H, W, C] to [N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2].
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/upscale_factor.
     Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
@@ -40,8 +41,8 @@ class PixelShuffle(layers.Layer):
         upscale_factor(int): factor to increase spatial resolution.
 
     Shape:
-        - x: 4-D tensor with shape: (N, C, H, W).
-        - out: 4-D tensor with shape: (N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor).
+        - x: 4-D tensor with shape: (N, C, H, W) or (N, H, W, C).
+        - out: 4-D tensor with shape: (N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor) or (N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2).
 
 
     Examples:
@@ -51,20 +52,31 @@ class PixelShuffle(layers.Layer):
             import paddle.nn as nn
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            place = fluid.CPUPlace()
-            x_var = paddle.imperative.to_variable(x)
+            x_var = paddle.to_variable(x)
             pixel_shuffle = nn.PixelShuffle(3)
-            y_var = pixel_shuffle(x_var)
-            y_np = y_var.numpy()
-            print(y_np.shape) # (2, 1, 12, 12)
+            out_var = pixel_shuffle(x_var)
+            out = out_var.numpy()
+            print(out.shape) 
+            # (2, 1, 12, 12)
 
     """
 
-    def __init__(self, upscale_factor):
+    def __init__(self, upscale_factor, data_format="NCHW", name=None):
         super(PixelShuffle, self).__init__()
+
+        if not isinstance(upscale_factor, int):
+            raise TypeError("upscale factor must be int type")
+
+        if data_format not in ["NCHW", "NHWC"]:
+            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
+                             "But recevie data format: {}".format(data_format))
+
         self._upscale_factor = upscale_factor
+        self._data_format = data_dormat
+        self._name = name
 
     def forward(self, x):
-        return functional.pixel_shuffle(x, self._upscale_factor)
+        return functional.pixel_shuffle(x, self._upscale_factor,
+                                        self._data_format, self._name)

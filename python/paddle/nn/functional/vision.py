@@ -56,13 +56,14 @@ __all__ = [
 ]
 
 
-def pixel_shuffle(x, upscale_factor, name=None):
+def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     """
         :alias_main: paddle.nn.functional.pixel_shuffle
         :alias: paddle.nn.functional.pixel_shuffle,paddle.nn.functional.vision.pixel_shuffle
     
     This operator rearranges elements in a tensor of shape [N, C, H, W]
-    to a tensor of shape [N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor].
+    to a tensor of shape [N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor],
+    or from shape [N, H, W, C] to [N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2].
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/upscale_factor.
     Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
@@ -89,17 +90,19 @@ def pixel_shuffle(x, upscale_factor, name=None):
             import numpy as np
 
             x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            place = fluid.CPUPlace()
-            paddle.enable_imperative()
+            paddle.disable_static()
 
-            x_var = paddle.imperative.to_variable(x)
-            y_var = F.pixel_shuffle(x_var, 3)
-            y_np = y_var.numpy()
-            print(y_np.shape) # (2, 1, 12, 12)
+            x_var = paddle.to_variable(x)
+            out_var = F.pixel_shuffle(x_var, 3)
+            out = out_var.numpy()
+            print(out.shape) 
+            # (2, 1, 12, 12)
 
     """
+    if not fluid.framework.in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'pixel_shuffle')
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_shuffle')
     helper = LayerHelper("pixel_shuffle", **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -107,9 +110,14 @@ def pixel_shuffle(x, upscale_factor, name=None):
     if not isinstance(upscale_factor, int):
         raise TypeError("upscale factor must be int type")
 
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'."
+                         "But recevie Attr(data_format): {} ".format(
+                             data_format))
     helper.append_op(
         type="pixel_shuffle",
         inputs={"X": x},
         outputs={"Out": out},
-        attrs={"upscale_factor": upscale_factor})
+        attrs={"upscale_factor": upscale_factor,
+               "data_format": data_format})
     return out

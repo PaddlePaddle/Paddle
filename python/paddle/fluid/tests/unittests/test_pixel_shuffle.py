@@ -19,30 +19,54 @@ import numpy as np
 from op_test import OpTest
 
 
-def pixel_shuffle_np(x, up_factor):
-    n, c, h, w = x.shape
-    new_shape = (n, c // (up_factor * up_factor), up_factor, up_factor, h, w)
-    # reshape to (num,output_channel,upscale_factor,upscale_factor,h,w)
-    npresult = np.reshape(x, new_shape)
-    # transpose to (num,output_channel,h,upscale_factor,w,upscale_factor)
-    npresult = npresult.transpose(0, 1, 4, 2, 5, 3)
-    oshape = [n, c // (up_factor * up_factor), h * up_factor, w * up_factor]
-    npresult = np.reshape(npresult, oshape)
-    return npresult
+def pixel_shuffle_np(x, up_factor, data_format="NCHW"):
+    if data_format == "NCHW":
+        n, c, h, w = x.shape
+        new_shape = (n, c // (up_factor * up_factor), up_factor, up_factor, h,
+                     w)
+        # reshape to (num,output_channel,upscale_factor,upscale_factor,h,w)
+        npresult = np.reshape(x, new_shape)
+        # transpose to (num,output_channel,h,upscale_factor,w,upscale_factor)
+        npresult = npresult.transpose(0, 1, 4, 2, 5, 3)
+        oshape = [n, c // (up_factor * up_factor), h * up_factor, w * up_factor]
+        npresult = np.reshape(npresult, oshape)
+        return npresult
+    else:
+        n, h, w, c = x.shape
+
+        new_shape = (n, h, w, c // (up_factor * up_factor), up_factor,
+                     up_factor)
+        # reshape to (num,h,w,output_channel,upscale_factor,upscale_factor)
+        npresult = np.reshape(x, new_shape)
+        # transpose to (num,h,upscale_factor,w,upscale_factor,output_channel)
+        npresult = npresult.transpose(0, 1, 4, 2, 5, 3)
+        oshape = [n, h * up_factor, w * up_factor, c // (up_factor * up_factor)]
+        npresult = np.reshape(npresult, oshape)
+        return npresult
 
 
 class TestPixelShuffle(OpTest):
     def setUp(self):
         self.op_type = "pixel_shuffle"
+        self.init_data_format()
         n, c, h, w = 2, 9, 4, 4
+
+        if self.format == "NCHW":
+            shape = [n, c, h, w]
+        if self.format == "NHWC":
+            shape = [n, h, w, c]
+
         up_factor = 3
-        shape = [n, c, h, w]
+
         x = np.random.random(shape).astype("float64")
-        npresult = pixel_shuffle_np(x, up_factor)
+        npresult = pixel_shuffle_np(x, up_factor, self.format)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
-        self.attrs = {'upscale_factor': up_factor}
+        self.attrs = {'upscale_factor': up_factor, "data_format": self.format}
+
+    def init_data_format(self):
+        self.format = "NCHW"
 
     def test_check_output(self):
         self.check_output()
@@ -51,14 +75,20 @@ class TestPixelShuffle(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestChannelLast(TestPixelShuffle):
+    def init_data_format(self):
+        self.format = "NHWC"
+
+
 class TestPixelShuffleDygraph(unittest.TestCase):
     def run_pixel_shuffle(self, up_factor):
         x = np.random.rand(2, 9, 4, 4).astype(np.float32)
 
         npresult = pixel_shuffle_np(x, np_factor)
-        with paddle.imperative.guard():
-            pixel_shuffle = paddle.nn.PixelShuffle(up_factor)
-            result = pixel_shuffle(paddle.imperative.to_variable(x))
+
+        paddle.disable_static()
+        pixel_shuffle = paddle.nn.PixelShuffle(up_factor)
+        result = pixel_shuffle(paddle.to_variable(x))
 
         self.assertTrue(np.allclose(result.numpy(), npresult))
 
