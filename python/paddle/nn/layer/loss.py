@@ -26,6 +26,7 @@ __all__ = [
     'L1Loss',
     'NLLLoss',
     'BCELoss',
+    'KLDivLoss',
     'MarginRankingLoss'
 ]
 
@@ -572,6 +573,75 @@ class NLLLoss(fluid.dygraph.Layer):
             ignore_index=self._ignore_index,
             reduction=self._reduction,
             name=self._name)
+
+
+class KLDivLoss(fluid.dygraph.Layer):
+    """
+    This interface calculates the Kullback-Leibler divergence loss
+    between Input(X) and Input(Target). Notes that Input(X) is the
+    log-probability and Input(Target) is the probability.
+
+    KL divergence loss is calculated as follows:
+
+    $$l(x, y) = y * (\log(y) - x)$$
+
+    Parameters:
+        reduction (str, optional): Indicate how to average the loss, 
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            Default is ``'mean'``.
+
+    Shape:
+      - input: (N, *) where * means, any number of additional dimensions.
+      - label: (N, *), same shape as input
+      - output: tensor with shape: (1) by default.
+
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            import paddle.nn as nn
+            
+            paddle.enable_imperative()
+
+            shape = (5, 20)
+            x = np.random.uniform(-10, 10, shape).astype('float32')
+            target = np.random.uniform(-10, 10, shape).astype('float32')
+
+            # 'batchmean' reduction, loss shape will be [N]
+            kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[5]
+            
+            # 'mean' reduction, loss shape will be [1]
+            kldiv_criterion = nn.KLDivLoss(reduction='mean')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[1]
+
+            # 'sum' reduction, loss shape will be [1]
+            kldiv_criterion = nn.KLDivLoss(reduction='sum')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[1]
+
+            # 'none' reduction, loss shape is same with X shape
+            kldiv_criterion = nn.KLDivLoss(reduction='none')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[5, 20]
+    """
+
+    def __init__(self, reduction='mean'):
+        super(KLDivLoss, self).__init__()
+        self.reduction = reduction
+
+    def forward(self, input, label):
+        out = paddle.nn.functional.kl_div(input, label, self.reduction)
+        return out
 
 
 class MarginRankingLoss(fluid.dygraph.Layer):
