@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the common classes to build a neural network  
+# TODO: define the common classes to build a neural network
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
@@ -23,7 +23,7 @@ from .. import functional as F
 
 __all__ = [
     'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
-    'Pad2D'
+    'Pad2D', 'AvgPool2d', 'MaxPool2d', 'AvgPool3d', 'MaxPool3d'
 ]
 
 
@@ -43,9 +43,9 @@ class UpSample(layers.Layer):
         'nearest' : Nearest neighbor interpolation
         'bicubic' : Bicubic interpolation
 
-    Linear interpolation is the method of using a line connecting two known quantities 
-    to determine the value of an unknown quantity between the two known quantities. 
-    
+    Linear interpolation is the method of using a line connecting two known quantities
+    to determine the value of an unknown quantity between the two known quantities.
+
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
     direction) on input tensor.
@@ -55,7 +55,7 @@ class UpSample(layers.Layer):
     W-direction in this op) on a rectilinear 2D grid. The key idea is
     to perform linear interpolation first in one direction, and then
     again in the other direction.
-    
+
     Bicubic interpolation is an extension of cubic interpolation for interpolating
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
@@ -102,7 +102,7 @@ class UpSample(layers.Layer):
               output: (N,C,H_out,W_out) where:
               H_out = round(H_{in} * scale_{factor})
               W_out = round(W_{in} * scale_{factor})
-        
+
         Bilinear interpolation:
           if:
               align_corners = False , align_mode = 0
@@ -149,25 +149,25 @@ class UpSample(layers.Layer):
 
     https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
-    
+
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-    
+
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
-    
+
     For details of bicubic interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bicubic_interpolation
-    
+
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
-    
+
     Parameters:
         input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
-             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
         scale_factor (float|Variable|None): The multiplier for the input height or width. At
@@ -265,8 +265,8 @@ class Pad2D(layers.Layer):
     than height-1. And the width dimension has the same condition.
 
     Parameters:
-        paddings (int | List[int32]): The padding size. If padding is a int, uses the same 
-            padding in all boundaries, if padding is a List, it must contain four integers, 
+        paddings (int | List[int32]): The padding size. If padding is a int, uses the same
+            padding in all boundaries, if padding is a List, it must contain four integers,
             (padding_top, padding_bottom, padding_left, padding_right).
             Default is [0, 0, 0, 0].
         mode (str): Three modes: 'constant' (default), 'reflect', 'edge' .
@@ -279,7 +279,7 @@ class Pad2D(layers.Layer):
                            the input data.
                            Default is  "NCHW"
 
-    Returns: 
+    Returns:
         None
 
     Examples:
@@ -342,3 +342,374 @@ class Pad2D(layers.Layer):
             mode=self._mode,
             pad_value=self._pad_value,
             data_format=self._data_format)
+
+
+class AvgPool2d(layers.Layer):
+    """
+    This operation applies 2D average pooling over input features based on the input,
+    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
+    in NCHW format, where N is batch size, C is the number of channels,
+    H is the height of the feature, and W is the width of the feature.
+
+    Example:
+      Input:
+           X shape: $(N, C, H_{in}, W_{in})$
+      Attr:
+           kernel_size: ksize
+
+      Output:
+           Out shape: $(N, C, H_{out}, W_{out})$
+           $$
+           out(N_i, C_j, h, w)  = \frac{1}{ksize[0] * ksize[1]} \sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
+                               input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)
+           $$
+
+    Args:
+        input (Variable): The input tensor of pooling operator which is a 4-D tensor with
+                          shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
+                          `"NHWC"`, where `N` is batch size, `C` is the number of channels,
+                          `H` is the height of the feature, and `W` is the width of the
+                          feature. The data type if float32 or float64.
+        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be a square of an int.
+        stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
+            it must contain two integers, (pool_stride_Height, pool_stride_Width).
+            Otherwise, the pool stride size will be a square of an int.
+        padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
+            it could be in three forms: `[pad_height, pad_width]` or
+            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when `data_format` is `"NCHW"`,
+            `pool_padding` can be in the form `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NHWC"`, `pool_padding` can be in the form
+            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            Otherwise, the pool padding size will be a square of an int.
+        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+        count_include_pad (bool): Whether to exclude padding points in average pooling
+                          mode, default is `true`.
+    Returns:
+        Variable: The output tensor of pooling result. The data type is same as input tensor.
+    Raises:
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
+        ValueError: If `padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
+        ShapeError: If the input is not a 4-D or 5-D Tensor.
+        ShapeError: If the dimension of input minus the size of `kernel_stride` is not 2.
+        ShapeError: If the size of `kernel_size` and `pool_stride` is not equal.
+        ShapeError: If the output's shape calculated is not greater than 0.
+    Examples:
+        .. code-block:: python
+          import paddle
+          import paddle.nn.functional as F
+          import numpy as np
+          paddle.disable_static()
+
+          # max pool2d
+          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+          output = F.avg_pool2d(input,
+                                kernel_size=2,
+                                stride=2, padding=0)
+          # output.shape [1, 3, 16, 16]
+
+    """
+
+    def __init__(self,
+                 kernel_size,
+                 stride=1,
+                 padding=0,
+                 ceil_mode=False,
+                 count_include_pad=True,
+                 name=None):
+        super(AvgPool2d, self).__init__()
+        self.ksize = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.ceil_mode = ceil_mode
+        self.count_include_pad = count_include_pad
+        self.name = name
+
+    def forward(self, inputs):
+        return F.avg_pool2d(
+            inputs,
+            kernel_size=self.ksize,
+            stride=self.stride,
+            padding=self.padding,
+            ceil_mode=self.ceil_mode,
+            count_include_pad=self.count_include_pad,
+            name=self.name)
+
+
+class MaxPool2d(layers.Layer):
+    """
+    This operation applies 2D max pooling over input feature based on the input,
+    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
+    in NCHW format, where N is batch size, C is the number of channels,
+    H is the height of the feature, and W is the width of the feature.
+
+    Example:
+      Input:
+           X shape: $(N, C, H_{in}, W_{in})$
+      Attr:
+           kernel_size: ksize
+
+      Output:
+           Out shape: $(N, C, H_{out}, W_{out})$
+           $$
+           out(N_i, C_j, h, w) ={} & \max_{m=0, \ldots, ksize[0] -1} \max_{n=0, \ldots, ksize[1]-1} \\
+                                    & \text{input}(N_i, C_j, \text{stride[0]} \times h + m,
+                                                   \text{stride[1]} \times w + n)
+           $$
+
+    Args:
+        input (Variable): The input tensor of pooling operator which is a 4-D tensor with
+                          shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
+                          `"NHWC"`, where `N` is batch size, `C` is the number of channels,
+                          `H` is the height of the feature, and `W` is the width of the
+                          feature. The data type if float32 or float64.
+        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be a square of an int.
+        stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
+            it must contain two integers, (pool_stride_Height, pool_stride_Width).
+            Otherwise, the pool stride size will be a square of an int.
+        padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
+            it could be in three forms: `[pad_height, pad_width]` or
+            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when `data_format` is `"NCHW"`,
+            `pool_padding` can be in the form `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NHWC"`, `pool_padding` can be in the form
+            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            Otherwise, the pool padding size will be a square of an int.
+        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+        return_indices (bool): Whether to return the max indices along with the outputs.
+    Returns:
+        Variable: The output tensor of pooling result. The data type is same as input tensor.
+    Raises:
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
+        ValueError: If `padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
+        ShapeError: If the input is not a 4-D or 5-D Tensor.
+        ShapeError: If the dimension of input minus the size of `stride` is not 2.
+        ShapeError: If the size of `pool_size` and `stride` is not equal.
+        ShapeError: If the output's shape calculated is not greater than 0.
+    Examples:
+        .. code-block:: python
+          import paddle
+          import paddle.nn.functional as F
+          import numpy as np
+          paddle.disable_static()
+
+          # max pool2d
+          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+          output = F.max_pool2d(input,
+                                kernel_size=2,
+                                stride=2, padding=0)
+          # output.shape [1, 3, 16, 16]
+
+          # for return_indices=True
+          output, max_indices = F.max_pool2d(input,
+                                             kernel_size=2,
+                                             stride=2,
+                                             padding=0,
+                                             return_indices=True)
+          # output.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
+    """
+
+    def __init__(self,
+                 kernel_size=-1,
+                 stride=1,
+                 padding=0,
+                 ceil_mode=False,
+                 return_indices=False,
+                 name=None):
+        super(MaxPool2d, self).__init__()
+        self.ksize = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.ceil_mode = ceil_mode
+        self.return_indices = return_indices
+        self.name = name
+
+    def forward(self, input):
+        return F.max_pool2d(
+            input=input,
+            kernel_size=self.ksize,
+            stride=self.stride,
+            padding=self.padding,
+            return_indices=self.return_indices,
+            name=self.name)
+
+
+class MaxPool3d(layers.Layer):
+    """
+    This operation applies 3D max pooling over input features based on the input,
+    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
+    in NCDHW format, where N is batch size, C is the number of channels,
+    H is the height of the feature,  D is the depth of the feature, and W is the width of the feature.
+
+    Args:
+        input (Variable): The input tensor of pooling operator, which is a 5-D tensor with
+                          shape [N, C, D, H, W], where `N` is batch size, `C` is
+                          the number of channels, `D` is the depth of the feature,
+                          `H` is the height of the feature, and `W` is the width
+                          of the feature.
+        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size
+            is a tuple or list, it must contain three integers,
+            (pool_size_Depth, pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be the cube of an int.
+        stride (string|int|list|tuple)): The pool padding. If `pool_padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If pool stride size is a tuple or list,
+            it must contain three integers, `[stride_Depth, stride_Height, stride_Width]`.
+            Otherwise, the pool stride size will be a cube of an int.
+        padding (int|list|tuple): The pool padding size. If pool padding size is a tuple or list,
+            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
+            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
+            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+        ceil_mode (bool): ${ceil_mode_comment}
+        count_include_pad (bool): Whether to exclude padding points in average pooling
+                          mode, default is True.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Variable: The output tensor of pooling result. The data type is same as input tensor.
+    Raises:
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
+        ValueError: If `padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
+        ShapeError: If the input is not a 4-D or 5-D Tensor.
+        ShapeError: If the dimension of input minus the size of `pool_stride` is not 2.
+        ShapeError: If the size of `kernel_size` and `stride` is not equal.
+        ShapeError: If the output's shape calculated is not greater than 0.
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
+          import paddle
+          data = fluid.data(name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
+          # avg pool3d
+          pool3d = paddle.nn.functional.avg_pool3d(
+                                            input = data,
+                                            kernel_size = 2,
+                                            stride = 2,
+                                            padding=0)
+          # pool3d.shape: [None, 3, 16, 16, 16]
+    """
+
+    def __init__(self,
+                 kernel_size,
+                 stride,
+                 padding,
+                 ceil_mode=False,
+                 return_indices=False,
+                 name=None):
+        super(MaxPool3d, self).__init__()
+        self.ksize = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.ceil_mode = ceil_mode
+        self.return_indices = return_indices
+        self.name = name
+
+    def forward(self, input):
+        return F.max_pool3d(
+            input=input,
+            kernel_size=self.ksize,
+            stride=self.stride,
+            padding=self.padding,
+            return_indices=self.return_indices,
+            name=self.name)
+
+
+class AvgPool3d(layers.Layer):
+    """
+    This operation applies 3D max pooling over input features based on the input,
+    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
+    in NCDHW format, where N is batch size, C is the number of channels,
+    H is the height of the feature,  D is the depth of the feature, and W is the width of the feature.
+
+    Args:
+        input (Variable): The input tensor of pooling operator, which is a 5-D tensor with
+                          shape [N, C, D, H, W], where `N` is batch size, `C` is
+                          the number of channels, `D` is the depth of the feature,
+                          `H` is the height of the feature, and `W` is the width
+                          of the feature.
+        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size
+            is a tuple or list, it must contain three integers,
+            (pool_size_Depth, pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be the cube of an int.
+        stride (string|int|list|tuple)): The pool padding. If `pool_padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If pool stride size is a tuple or list,
+            it must contain three integers, `[stride_Depth, stride_Height, stride_Width]`.
+            Otherwise, the pool stride size will be a cube of an int.
+        padding (int|list|tuple): The pool padding size. If pool padding size is a tuple or list,
+            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
+            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
+            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+        ceil_mode (bool): ${ceil_mode_comment}
+        count_include_pad (bool): Whether to exclude padding points in average pooling
+                          mode, default is True.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Variable: The output tensor of pooling result. The data type is same as input tensor.
+    Raises:
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
+        ValueError: If `padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
+        ShapeError: If the input is not a 4-D or 5-D Tensor.
+        ShapeError: If the dimension of input minus the size of `pool_stride` is not 2.
+        ShapeError: If the size of `kernel_size` and `stride` is not equal.
+        ShapeError: If the output's shape calculated is not greater than 0.
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
+          import paddle
+          data = fluid.data(name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
+          # avg pool3d
+          pool3d = paddle.nn.functional.avg_pool3d(
+                                            input = data,
+                                            kernel_size = 2,
+                                            stride = 2,
+                                            padding=0)
+          # pool3d.shape: [None, 3, 16, 16, 16]
+    """
+
+    def __init__(self,
+                 kernel_size,
+                 stride,
+                 padding=0,
+                 ceil_mode=False,
+                 count_include_pad=True,
+                 name=None):
+        super(AvgPool3d, self).__init__()
+        self.ksize = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.ceil_mode = ceil_mode
+        self.count_include_pad = count_include_pad
+        self.name = name
+
+    def forward(self, inputs):
+        return F.avg_pool3d(
+            inputs,
+            kernel_size=self.ksize,
+            stride=self.stride,
+            padding=self.padding,
+            ceil_mode=self.ceil_mode,
+            count_include_pad=self.count_include_pad,
+            name=self.name)
