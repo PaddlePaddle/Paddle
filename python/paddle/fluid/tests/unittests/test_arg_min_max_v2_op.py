@@ -246,6 +246,22 @@ def create_test_case(op_type):
             result_data = op(data_tensor, axis=-1, keepdim=True, dtype="int32")
             self.assertTrue(result_data.numpy().dtype == np.int32)
 
+            # case for dim 4, 5, 6, for test case coverage
+            input_data = np.random.rand(5, 5, 5, 5)
+            excepted_data = self.numpy_op(input_data, axis=0)
+            result_data = op(paddle.to_variable(input_data), axis=0)
+            self.assertTrue((result_data.numpy() == excepted_data).all(), True)
+
+            input_data = np.random.rand(4, 4, 4, 4, 4)
+            excepted_data = self.numpy_op(input_data, axis=0)
+            result_data = op(paddle.to_variable(input_data), axis=0)
+            self.assertTrue((result_data.numpy() == excepted_data).all(), True)
+
+            input_data = np.random.rand(3, 3, 3, 3, 3, 3)
+            excepted_data = self.numpy_op(input_data, axis=0)
+            result_data = op(paddle.to_variable(input_data), axis=0)
+            self.assertTrue((result_data.numpy() == excepted_data).all(), True)
+
         def test_case(self):
             for place in self.places:
                 self.run_static(place)
