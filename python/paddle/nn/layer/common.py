@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the common classes to build a neural network  
+# TODO: define the common classes to build a neural network
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
@@ -23,8 +23,7 @@ from .. import functional as F
 
 __all__ = [
     'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
-    'Pad2D'
-    'AvgPool1D', 'MaxPool1D', 'AdaptiveAvgPool1D', 'AdaptiveMaxPool1D'
+    'Pad2D', 'AvgPool1d', 'MaxPool1d', 'AdaptiveAvgPool1d', 'AdaptiveMaxPool1d'
 ]
 
 
@@ -44,9 +43,9 @@ class UpSample(layers.Layer):
         'nearest' : Nearest neighbor interpolation
         'bicubic' : Bicubic interpolation
 
-    Linear interpolation is the method of using a line connecting two known quantities 
-    to determine the value of an unknown quantity between the two known quantities. 
-    
+    Linear interpolation is the method of using a line connecting two known quantities
+    to determine the value of an unknown quantity between the two known quantities.
+
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
     direction) on input tensor.
@@ -56,7 +55,7 @@ class UpSample(layers.Layer):
     W-direction in this op) on a rectilinear 2D grid. The key idea is
     to perform linear interpolation first in one direction, and then
     again in the other direction.
-    
+
     Bicubic interpolation is an extension of cubic interpolation for interpolating
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
@@ -103,7 +102,7 @@ class UpSample(layers.Layer):
               output: (N,C,H_out,W_out) where:
               H_out = round(H_{in} * scale_{factor})
               W_out = round(W_{in} * scale_{factor})
-        
+
         Bilinear interpolation:
           if:
               align_corners = False , align_mode = 0
@@ -150,25 +149,25 @@ class UpSample(layers.Layer):
 
     https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
-    
+
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-    
+
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
-    
+
     For details of bicubic interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bicubic_interpolation
-    
+
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
-    
+
     Parameters:
         input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
-             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
         scale_factor (float|Variable|None): The multiplier for the input height or width. At
@@ -266,8 +265,8 @@ class Pad2D(layers.Layer):
     than height-1. And the width dimension has the same condition.
 
     Parameters:
-        paddings (int | List[int32]): The padding size. If padding is a int, uses the same 
-            padding in all boundaries, if padding is a List, it must contain four integers, 
+        paddings (int | List[int32]): The padding size. If padding is a int, uses the same
+            padding in all boundaries, if padding is a List, it must contain four integers,
             (padding_top, padding_bottom, padding_left, padding_right).
             Default is [0, 0, 0, 0].
         mode (str): Three modes: 'constant' (default), 'reflect', 'edge' .
@@ -280,7 +279,7 @@ class Pad2D(layers.Layer):
                            the input data.
                            Default is  "NCHW"
 
-    Returns: 
+    Returns:
         None
 
     Examples:
@@ -345,7 +344,7 @@ class Pad2D(layers.Layer):
             data_format=self._data_format)
 
 
-class AvgPool1D(layers.Layer):
+class AvgPool1d(layers.Layer):
     """
     This operation applies a 1D average pooling over an input signal composed
     of several input planes, based on the input, output_size, return_indices parameters.
@@ -412,9 +411,13 @@ class AvgPool1D(layers.Layer):
               # [2L, 3L, 16L]
     """
 
-    def __init__(self, kernel_size, stride, padding, ceil_mode,
-                 count_include_pad):
-        super(AvgPool1D, self).__init__()
+    def __init__(self,
+                 kernel_size,
+                 stride=1,
+                 padding=0,
+                 ceil_mode=False,
+                 count_include_pad=True):
+        super(AvgPool1d, self).__init__()
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
@@ -427,7 +430,7 @@ class AvgPool1D(layers.Layer):
         return out
 
 
-class MaxPool1D(layers.Layer):
+class MaxPool1d(layers.Layer):
     """
     Applies a 1D max pooling over an input signal composed of several input planes based
     on the input, output_size, return_indices parameters.
@@ -503,11 +506,11 @@ class MaxPool1D(layers.Layer):
 
     def __init__(self,
                  kernel_size,
-                 stride,
-                 padding,
-                 ceil_mode,
+                 stride=1,
+                 padding=0,
+                 ceil_mode=False,
                  return_indices=False):
-        super(MaxPool1D, self).__init__()
+        super(MaxPool1d, self).__init__()
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
@@ -520,7 +523,7 @@ class MaxPool1D(layers.Layer):
         return out
 
 
-class AdaptiveAvgPool1D(layers.Layer):
+class AdaptiveAvgPool1d(layers.Layer):
     """
 
     This operation applies a 1D adaptive average pooling over an input signal composed
@@ -586,14 +589,14 @@ class AdaptiveAvgPool1D(layers.Layer):
     """
 
     def __init__(self, output_size):
-        super(AdaptiveAvgPool1D, self).__init__()
+        super(AdaptiveAvgPool1d, self).__init__()
         self.output_size = output_size
 
     def forward(self, input):
         return F.adaptive_avg_pool1d(input, self.output_size)
 
 
-class AdaptiveMaxPool1D(layers.Layer):
+class AdaptiveMaxPool1d(layers.Layer):
     """
 
     This operation applies a 1D adaptive max pooling over an input signal composed
@@ -670,7 +673,7 @@ class AdaptiveMaxPool1D(layers.Layer):
     """
 
     def __init__(self, output_size, return_indices=False):
-        super(AdaptiveMaxPool1D, self).__init__()
+        super(AdaptiveMaxPool1d, self).__init__()
         self.output_size = output_size
         self.return_indices = return_indices
 

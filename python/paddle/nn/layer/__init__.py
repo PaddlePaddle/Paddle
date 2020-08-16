@@ -27,6 +27,7 @@ from .conv import *
 from .extension import *
 from .activation import *
 from .norm import *
+from .common import *
 # from .activation import PReLU        #DEFINE_ALIAS
 from .activation import ReLU  #DEFINE_ALIAS
 from .activation import LeakyReLU  #DEFINE_ALIAS
@@ -41,6 +42,10 @@ from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
 from .common import Flatten  #DEFINE_ALIAS
 from .common import UpSample  #DEFINE_ALIAS
+from .common import AvgPool1D  #DEFINE_ALIAS
+from .common import MaxPool1D  #DEFINE_ALIAS
+from .common import AdaptiveAvgPool1D  #DEFINE_ALIAS
+from .common import AdaptiveMaxPool1D  #DEFINE_ALIAS
 from .conv import Conv2D  #DEFINE_ALIAS
 from .conv import Conv2DTranspose  #DEFINE_ALIAS
 from .conv import Conv3D  #DEFINE_ALIAS

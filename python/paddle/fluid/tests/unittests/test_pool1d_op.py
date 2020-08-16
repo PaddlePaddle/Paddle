@@ -38,7 +38,7 @@ def max_pool1D_forward_naive(x,
                              paddings,
                              global_pool=0,
                              ceil_mode=False,
-                             exclusive=True,
+                             exclusive=False,
                              adaptive=False,
                              data_type=np.float64):
     N, C, L = x.shape
@@ -105,164 +105,117 @@ def avg_pool1D_forward_naive(x,
     return out
 
 
-def pool1D_forward_naive(x,
-                         ksize,
-                         strides,
-                         paddings,
-                         global_pool=0,
-                         ceil_mode=False,
-                         exclusive=True,
-                         adaptive=False,
-                         data_format='NCHW',
-                         pool_type="max",
-                         padding_algorithm="EXPLICIT"):
-    def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
-        padding = []
-        for input_size, filter_size, stride_size in zip(input_shape, pool_size,
-                                                        pool_stride):
-            out_size = int((input_size + stride_size - 1) / stride_size)
-            pad_sum = np.max((
-                (out_size - 1) * stride_size + filter_size - input_size, 0))
-            pad_0 = int(pad_sum / 2)
-            pad_1 = int(pad_sum - pad_0)
-            padding.append(pad_0)
-            padding.append(pad_1)
-        return padding
+class TestPool1d_API(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
 
-    if isinstance(padding_algorithm, str):
-        padding_algorithm = padding_algorithm.upper()
-        if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
-            raise ValueError("Unknown Attr(padding_algorithm): '%s'. "
-                             "It can only be 'SAME' or 'VALID'." %
-                             str(padding_algorithm))
+    def check_avg_static_results(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
+            result = F.avg_pool1d(
+                input=input, kernel_size=2, stride=2, padding=0)
 
-        if padding_algorithm == "VALID":
-            paddings = [0, 0]
-            if ceil_mode != False:
-                raise ValueError(
-                    "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode)"
-                    " must be False. "
-                    "Received ceil_mode: True.")
-        elif padding_algorithm == "SAME":
-            input_data_shape = [x.shape[-1]]
-            paddings = _get_padding_with_SAME(input_data_shape, ksize, strides)
+            input_np = np.random.random([2, 3, 32]).astype("float32")
+            result_np = avg_pool1D_forward_naive(
+                input_np, ksize=[2], strides=[2], paddings=[0], ceil_mode=False)
 
-    assert len(paddings) == 2 or len(paddings) == 1
-    is_sys = True if len(paddings) == 1 else False
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": input_np},
+                              fetch_list=[result])
+            self.assertTrue(np.allclose(fetches[0], result_np))
 
-    N = x.shape[0]
-    C, L = [x.shape[1], x.shape[2]]
+    def check_avg_dygraph_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result = F.avg_pool1d(input, kernel_size=2, stride=2, padding=0)
 
-    if global_pool == 1:
-        ksize = [L]
-        paddings = [0 for _ in range(len(paddings))]
+            result_np = avg_pool1D_forward_naive(
+                input_np, ksize=[2], strides=[2], paddings=[0])
 
-    pad_l_left = paddings[0] if is_sys else paddings[0]
-    pad_l_right = paddings[1] if is_sys else paddings[1]
+            self.assertTrue(np.allclose(result.numpy(), result_np))
 
-    if adaptive:
-        L_out = ksize[0]
-    else:
-        L_out = (L - ksize[0] + pad_l_left + pad_l_right + strides[0] - 1) // strides[0] + 1 \
-            if ceil_mode else (L - ksize[0] + pad_l_left + pad_l_right) // strides[0] + 1
+            avg_pool1d_dg = paddle.nn.layer.AvgPool1d(
+                kernel_size=2, stride=2, padding=0)
+            result = avg_pool1d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
 
-    out = np.zeros((N, C, L_out))
-    for i in range(L_out):
-        if adaptive:
-            in_l_start = adaptive_start_index(i, L, ksize[0])
-            in_l_end = adaptive_end_index(i, L, ksize[0])
-        else:
-            in_l_start = np.max((i * strides[0] - pad_l_left, 0))
-            in_l_end = np.min((i * strides[0] + ksize[0] - pad_l_right, L))
+    def check_max_static_results(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
+            result = F.max_pool1d(
+                input=input, kernel_size=2, stride=2, padding=0)
 
-        x_masked = x[:, :, in_l_start:in_l_end]
-        if pool_type == 'avg':
-            field_size = ((in_l_end - in_l_start) * (in_l_end - in_l_start)) \
-                if (exclusive or adaptive) else (ksize[0])
-            out[:, :, i] = np.sum(x_masked, axis=(2)) / field_size
-        elif pool_type == 'max':
-            out[:, :, i] = np.max(x_masked, axis=(2))
+            input_np = np.random.random([2, 3, 32]).astype("float32")
+            result_np = max_pool1D_forward_naive(
+                input_np, ksize=[2], strides=[2], paddings=[0])
 
-    return out
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": input_np},
+                              fetch_list=[result])
+            self.assertTrue(np.allclose(fetches[0], result_np))
 
+    def check_max_dygraph_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result = F.max_pool1d(input, kernel_size=2, stride=2, padding=0)
 
-def test_np_pd_pool1d():
-    data = np.random.random((2, 4, 32)).astype('float32')
-    with fluid.dygraph.guard():
-        datapd = fluid.dygraph.to_variable(data)
+            result_np = max_pool1D_forward_naive(
+                input_np, ksize=[2], strides=[2], paddings=[0])
 
-        res_pd = F.avg_pool1d(
-            datapd, kernel_size=3, stride=2, padding=1, ceil_mode=False)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
 
-        res_np = pool1D_forward_naive(
-            data,
-            ksize=[3],
-            paddings=[1, 1],
-            strides=[2],
-            ceil_mode=False,
-            pool_type='avg',
-            exclusive=False)
+            max_pool1d_dg = paddle.nn.layer.MaxPool1d(
+                kernel_size=2, stride=2, padding=0)
+            result = max_pool1d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
 
-    np.testing.assert_allclose(res_np, res_pd.numpy())
+    def check_adaptive_max_dygraph_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result = F.adaptive_max_pool1d(input, output_size=16)
 
+            result_np = max_pool1D_forward_naive(
+                input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
 
-def test_np_pd_avg_pool1d():
-    data = np.random.random((2, 4, 32)).astype('float32')
-    with fluid.dygraph.guard():
-        datapd = fluid.dygraph.to_variable(data)
+            ada_max_pool1d_dg = paddle.nn.layer.AdaptiveMaxPool1d(
+                output_size=16)
+            result = ada_max_pool1d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
 
-        res_pd = F.avg_pool1d(
-            datapd, kernel_size=3, stride=2, padding=1, ceil_mode=True)
+    def check_adaptive_avg_dygraph_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result = F.adaptive_avg_pool1d(input, output_size=16)
+            result_np = avg_pool1D_forward_naive(
+                input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True)
 
-        res_np = avg_pool1D_forward_naive(
-            data, ksize=[3], paddings=[1], strides=[2], ceil_mode=True)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
 
-    np.testing.assert_allclose(res_np, res_pd.numpy())
+            ada_max_pool1d_dg = paddle.nn.layer.AdaptiveAvgPool1d(
+                output_size=16)
+            result = ada_max_pool1d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
 
+    def test_pool1d(self):
+        for place in self.places:
 
-def test_np_pd_max_pool1d():
-    data = np.random.random((2, 4, 32)).astype('float32')
-    with fluid.dygraph.guard():
-        datapd = fluid.dygraph.to_variable(data)
-
-        res_pd = F.max_pool1d(
-            datapd, kernel_size=3, stride=2, padding=0, ceil_mode=False)
-
-        res_np = max_pool1D_forward_naive(
-            data, ksize=[3], paddings=[0], strides=[2], ceil_mode=False)
-
-    np.testing.assert_allclose(res_np, res_pd.numpy())
-
-
-def test_np_pd_adaptive_avg_pool1d():
-    data = np.random.random((1, 2, 16)).astype('float32')
-    with fluid.dygraph.guard():
-        datapd = fluid.dygraph.to_variable(data)
-
-        res_pd = F.adaptive_avg_pool1d(datapd, 6)
-
-        res_np = avg_pool1D_forward_naive(
-            data, ksize=[6], adaptive=True, paddings=[0], strides=[0])
-
-    np.testing.assert_allclose(res_np, res_pd.numpy())
-
-
-def test_np_pd_adaptive_max_pool1d():
-    data = np.random.random((1, 2, 16)).astype('float32')
-    with fluid.dygraph.guard():
-        datapd = fluid.dygraph.to_variable(data)
-
-        res_pd = F.adaptive_max_pool1d(datapd, 6)
-
-        res_np = max_pool1D_forward_naive(
-            data, ksize=[6], adaptive=True, paddings=[0], strides=[0])
-
-    np.testing.assert_allclose(res_np, res_pd.numpy())
+            self.check_max_dygraph_results(place)
+            self.check_avg_dygraph_results(place)
+            self.check_max_static_results(place)
+            self.check_avg_static_results(place)
+            self.check_adaptive_max_dygraph_results(place)
+            self.check_adaptive_avg_dygraph_results(place)
 
 
 if __name__ == '__main__':
-    test_np_pd_pool1d()
-    test_np_pd_avg_pool1d()
-    test_np_pd_max_pool1d()
-    test_np_pd_adaptive_avg_pool1d()
-    test_np_pd_adaptive_max_pool1d()
+    unittest.main()
