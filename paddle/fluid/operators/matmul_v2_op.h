@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/dot_op.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 namespace paddle {
 namespace operators {
@@ -325,39 +326,84 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     // x's or y's dim = 1
     if (x_ndim == 1 && y_ndim == 1) {
       if (dOut->numel() == 1) {
-        DotFunction<DeviceContext, T>(X, Y, dOut, dx, dy, ctx);
+        DotGradFunction<DeviceContext, T>(X, Y, dOut, dx, dy, ctx);
         return;
       }
     }
 
+    // FIXME
+    assert(x_ndim >= 2 && y_ndim >= 2);
+    // the normal case
+    Tensor dx_help, dy_help;
     if (trans_x) {
       if (trans_y) {
         // X'Y'
         // dA = Y'G', dB = G'X'
-        if (dx) MatMulFunction<DeviceContext, T>(Y, dOut, dx, true, true, ctx);
-        if (dy) MatMulFunction<DeviceContext, T>(dOut, X, dy, true, true, ctx);
+        if (dx)
+          MatMulFunction<DeviceContext, T>(Y, dOut, &dx_help, true, true, ctx);
+        if (dy)
+          MatMulFunction<DeviceContext, T>(dOut, X, &dy_help, true, true, ctx);
       } else {
         // X'Y:
         // dX = YG', dY = XG
-        if (dx) MatMulFunction<DeviceContext, T>(Y, dOut, dx, false, true, ctx);
+        if (dx)
+          MatMulFunction<DeviceContext, T>(Y, dOut, &dx_help, false, true, ctx);
         if (dy)
-          MatMulFunction<DeviceContext, T>(X, dOut, dy, false, false, ctx);
+          MatMulFunction<DeviceContext, T>(X, dOut, &dy_help, false, false,
+                                           ctx);
       }
     } else {
       if (trans_y) {
         // XY':
         // dX = GY, dY = G'X
         if (dx)
-          MatMulFunction<DeviceContext, T>(dOut, Y, dx, false, false, ctx);
-        if (dy) MatMulFunction<DeviceContext, T>(dOut, X, dy, true, false, ctx);
+          MatMulFunction<DeviceContext, T>(dOut, Y, &dx_help, false, false,
+                                           ctx);
+        if (dy)
+          MatMulFunction<DeviceContext, T>(dOut, X, &dy_help, true, false, ctx);
       } else {
         // XY:
         // dX = GY', dY = X'G
-        if (dx) MatMulFunction<DeviceContext, T>(dOut, Y, dx, false, true, ctx);
-        if (dy) MatMulFunction<DeviceContext, T>(X, dOut, dy, true, false, ctx);
+        if (dx)
+          MatMulFunction<DeviceContext, T>(dOut, Y, &dx_help, false, true, ctx);
+        if (dy)
+          MatMulFunction<DeviceContext, T>(X, dOut, &dy_help, true, false, ctx);
       }
     }
-    // reduce sum to get grad ReduceKernelFunctor
+
+    // cal the broadcast message
+    // get help dims
+    const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
+    const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
+    const int dx_help_ndim = x_help_dims.size();
+    const int dy_help_ndim = y_help_dims.size();
+
+    assert(dx_help_ndim == dy_help_ndim);
+    // get reduce dim
+    std::vector<std::int64_t> dx_reduce_dims;
+    std::vector<std::int64_t> dy_reduce_dims;
+    for (std::int64_t idx = dx_help_ndim - 1 - 2; idx >= 0; idx--) {
+      if (x_help_dims) }
+    // ComputeReudceSumBinaryOpDims();
+
+    const int ndim = std::max(x_ndim, y_ndim);
+    std::vector<std::int64_t> x_broadcast_dims(ndim);
+    std::vector<std::int64_t> y_broadcast_dims(ndim);
+    std::vector<std::int64_t> out_broadcast_dims(ndim);
+    ComputeBroadcastBinaryOpDims(x_ndim - 2, x_dims.data(), y_ndim - 2,
+                                 y_dims.data(), x_broadcast_dims.data(),
+                                 y_broadcast_dims.data(),
+                                 out_broadcast_dims.data());
+
+    // reduce sum to get grad by ReduceKernelFunctor
+    // if (dx) {
+    // }
+    // ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
+    //     dx, output, dims, keep_dim, reduce_all, context)
+
+    // y->mutable_data<T>(ctx.GetPlace());
+    // auto y_e = framework::EigenVector<T>::Flatten(*y);
+    // auto y_arr = y_e.reshape(shape);
   }
 };
 

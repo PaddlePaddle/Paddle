@@ -83,6 +83,9 @@ class TestMatMulV2Op(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
 
 class TestMatMuklOp2(TestMatMulV2Op):
     """

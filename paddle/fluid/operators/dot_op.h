@@ -27,10 +27,10 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
-void DotFunction(const Tensor* tensor_x, const Tensor* tensor_y,
-                 const Tensor* tensor_dout, Tensor* tensor_dx,
-                 Tensor* tensor_dy,
-                 const paddle::framework::ExecutionContext& ctx) {
+void DotGradFunction(const Tensor* tensor_x, const Tensor* tensor_y,
+                     const Tensor* tensor_dout, Tensor* tensor_dx,
+                     Tensor* tensor_dy,
+                     const paddle::framework::ExecutionContext& ctx) {
 #ifdef __NVCC__
   if (1 == tensor_dout->dims().size()) {
     auto dout = framework::EigenVector<T>::Flatten(*tensor_dout);
@@ -165,8 +165,8 @@ class DotGradKernel : public framework::OpKernel<T> {
     if (tensor_dx) tensor_dx->mutable_data<T>(ctx.GetPlace());
     if (tensor_dy) tensor_dy->mutable_data<T>(ctx.GetPlace());
 
-    DotFunction<DeviceContext, T>(tensor_x, tensor_y, tensor_dout, tensor_dx,
-                                  tensor_dy, ctx);
+    DotGradFunction<DeviceContext, T>(tensor_x, tensor_y, tensor_dout,
+                                      tensor_dx, tensor_dy, ctx);
   }
 };
 
