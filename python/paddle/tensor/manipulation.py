@@ -998,5 +998,81 @@ def expand(x, shape, name=None):
         type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
-
 broadcast_to = expand
+
+def reshape(x, shape, name=None):
+    """
+    :alias_main: paddle.reshape
+	:alias: paddle.reshape,paddle.tensor.reshape,paddle.tensor.manipulation.reshape
+
+    This operator changes the shape of ``x`` without changing its data.
+
+    Some tricks exist when specifying the target shape.
+
+    1. -1 means the value of this dimension is inferred from the total element
+    number of x and remaining dimensions. Thus one and only one dimension can
+    be set -1.
+
+    2. 0 means the actual dimension value is going to be copied from the
+    corresponding dimension of x. The index of 0s in shape can not exceed
+    the dimension of x.
+
+    Here are some examples to explain it.
+
+    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    is [6, 8], the reshape operator will transform x into a 2-D tensor with
+    shape [6, 8] and leaving x's data unchanged.
+
+    2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    specified is [2, 3, -1, 2], the reshape operator will transform x into a
+    4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this
+    case, one dimension of the target shape is set to -1, the value of this
+    dimension is inferred from the total element number of x and remaining
+    dimensions.
+
+    3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor
+    with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case,
+    besides -1, 0 means the actual dimension value is going to be copied from
+    the corresponding dimension of x.
+
+    Args:
+        x(Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        shape(list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
+                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
+                        If ``shape`` is an Tensor, it should be an 1-D Tensor .
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.
+                            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor: A reshaped Tensor with the same data type as ``x``.
+
+    Raises:
+        ValueError: If more than one elements of ``shape`` is -1.
+        ValueError: If the element of ``shape`` is 0, the corresponding dimension should be less than or equal to the dimension of ``x``.
+        ValueError: If the elements in ``shape`` is negative except -1.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            paddle.disable_static()
+
+            data = np.random.random([2, 4, 6]).astype("float32")
+            x = paddle.imperative.to_variable(data)
+
+            positive_four = paddle.fill_constant([1], "int32", 4)
+
+            out_1 = paddle.reshape(x, [-1, 0, 3, 2])
+            # the shape of out_1 is [2,4,3,2].
+
+            out_2 = paddle.reshape(x, shape=[positive_four, 12])
+            # the shape of out_2 is [4, 12].
+
+            shape_tensor = paddle.imperative.to_variable(np.array([8, 6]).astype("int32"))
+            out_3 = paddle.reshape(x, shape=shape_tensor)
+            # the shape of out_2 is [8, 6].
+    """
+    return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)
