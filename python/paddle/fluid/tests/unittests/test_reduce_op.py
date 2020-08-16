@@ -583,7 +583,7 @@ class API_TestSumOp(unittest.TestCase):
     def test_1(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.data("data", shape=[10, 10], dtype="float32")
-            result_sum = paddle.sum(input=data, dim=1, dtype="float64")
+            result_sum = paddle.sum(x=data, axis=1, dtype="float64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input_data = np.random.rand(10, 10).astype(np.float32)
@@ -593,7 +593,7 @@ class API_TestSumOp(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.data("data", shape=[10, 10], dtype="int32")
-            result_sum = paddle.sum(input=data, dim=1, dtype="int64")
+            result_sum = paddle.sum(x=data, axis=1, dtype="int64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
@@ -603,7 +603,7 @@ class API_TestSumOp(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.data("data", shape=[10, 10], dtype="int32")
-            result_sum = paddle.sum(input=data, dim=1)
+            result_sum = paddle.sum(x=data, axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
@@ -612,7 +612,7 @@ class API_TestSumOp(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.data("data", shape=[10, 10], dtype="int32")
-            result_sum = paddle.sum(input=data, dim=1)
+            result_sum = paddle.sum(x=data, axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
@@ -622,7 +622,7 @@ class API_TestSumOp(unittest.TestCase):
         with fluid.dygraph.guard():
             np_x = np.array([10, 10]).astype('float64')
             x = fluid.dygraph.to_variable(np_x)
-            z = paddle.sum(x, dim=0)
+            z = paddle.sum(x, axis=0)
             np_z = z.numpy()
             z_expected = np.array(np.sum(np_x, axis=0))
         self.assertEqual((np_z == z_expected).all(), True)
