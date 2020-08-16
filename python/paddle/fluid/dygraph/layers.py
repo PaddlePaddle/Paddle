@@ -691,7 +691,7 @@ class Layer(core.Layer):
         """
         if '_parameters' not in self.__dict__:
             raise RuntimeError(
-                "super(YourLayer, self).__init__() should be called first.")
+                "super(YourLayer, self).__init__() should be called firstly.")
         elif not isinstance(name, six.string_types):
             raise TypeError(
                 "The name of parameter should be a string, but received {}.".
