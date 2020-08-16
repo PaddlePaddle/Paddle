@@ -60,6 +60,10 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place), src_ptr,
                  size);
+  } else if (platform::is_cpu_place(src_place) &&  // NOLINT
+             platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
   } else if (platform::is_gpu_place(src_place) &&  // NOLINT
              platform::is_cpu_place(dst_place)) {
     auto src_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
@@ -82,6 +86,28 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
+  } else if (platform::is_gpu_place(src_place) &&  // NOLINT
+             platform::is_cuda_pinned_place(dst_place)) {
+    auto src_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
+    auto dst_cuda_pinned_place =
+        BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place);
+    auto ctx_place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Device context place mismatch. When copying Tensor "
+                          "data from GPU memory to CUDA Pinned memory, current "
+                          "device context place should be GPU."));
+    auto ctx_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx_place);
+    PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place,
+                      platform::errors::PreconditionNotMet(
+                          "The source GPU device and current device context do "
+                          "not match. The source GPU device number is %d, but "
+                          "device context GPU number is %d.",
+                          src_gpu_place.device, ctx_gpu_place.device));
+    auto stream =
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    memory::Copy(dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size,
+                 stream);
   } else if (platform::is_cuda_pinned_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
     auto src_cuda_pinned_place =
@@ -180,6 +206,15 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place), src_ptr,
                  size);
+  } else if (platform::is_cpu_place(src_place) &&  // NOLINT
+             platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
+  } else if (platform::is_gpu_place(src_place) &&  // NOLINT
+             platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CUDAPlace, src_place), src_ptr, size,
+                 nullptr);
   } else if (platform::is_gpu_place(src_place) &&  // NOLINT
              platform::is_cpu_place(dst_place)) {
     auto src_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
