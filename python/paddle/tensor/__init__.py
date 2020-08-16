@@ -22,9 +22,7 @@ from __future__ import print_function
 from .random import randperm
 from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
-from .creation import create_tensor  #DEFINE_ALIAS
-# from .creation import create_lod_tensor        #DEFINE_ALIAS
-# from .creation import create_random_int_lodtensor        #DEFINE_ALIAS
+from .creation import to_tensor  #DEFINE_ALIAS
 from .creation import crop_tensor  #DEFINE_ALIAS
 from .creation import diag  #DEFINE_ALIAS
 from .creation import eye  #DEFINE_ALIAS
@@ -77,6 +75,7 @@ from .manipulation import cast  #DEFINE_ALIAS
 from .manipulation import concat  #DEFINE_ALIAS
 from .manipulation import expand  #DEFINE_ALIAS
 from .manipulation import expand_as  #DEFINE_ALIAS
+from .manipulation import tile  #DEFINE_ALIAS
 from .manipulation import flatten  #DEFINE_ALIAS
 from .manipulation import gather  #DEFINE_ALIAS
 from .manipulation import gather_nd  #DEFINE_ALIAS
@@ -110,8 +109,6 @@ from .math import cumsum  #DEFINE_ALIAS
 from .math import elementwise_add  #DEFINE_ALIAS
 from .math import elementwise_div  #DEFINE_ALIAS
 from .math import elementwise_floordiv  #DEFINE_ALIAS
-from .math import elementwise_max  #DEFINE_ALIAS
-from .math import elementwise_min  #DEFINE_ALIAS
 from .math import elementwise_mod  #DEFINE_ALIAS
 from .math import elementwise_pow  #DEFINE_ALIAS
 from .math import elementwise_sub  #DEFINE_ALIAS
@@ -140,7 +137,9 @@ from .math import sums  #DEFINE_ALIAS
 from .math import tanh  #DEFINE_ALIAS
 from .math import elementwise_sum  #DEFINE_ALIAS
 from .math import max  #DEFINE_ALIAS
+from .math import maximum  #DEFINE_ALIAS
 from .math import min  #DEFINE_ALIAS
+from .math import minimum  #DEFINE_ALIAS
 from .math import mm  #DEFINE_ALIAS
 from .math import div  #DEFINE_ALIAS
 from .math import multiply  #DEFINE_ALIAS
