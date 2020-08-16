@@ -1740,6 +1740,27 @@ def cumsum(x, axis=None, dtype=None, name=None):
     return _cum_sum_(**kwargs)
 
 def isfinite(x, name=None):
+    """
+    Check whether every element of tensor is finite number or not.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64, int32.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            cpu = paddle.CPUPlace()
+            paddle.disable_static(cpu)
+            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            x = paddle.to_variable(x_np)
+            out = paddle.tensor.isinf(x)
+            print(out.numpy())  # [False  True  True False  True False False]
+    """
     if in_dygraph_mode():
         return core.ops.isfinite_v2(x)
     check_type(x, 'x', (Variable), 'is_finite')
@@ -1750,6 +1771,27 @@ def isfinite(x, name=None):
     return out
 
 def isinf(x, name=None):
+    """
+    Check whether every element of tensor is `+/-INF` or not.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64, int32.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            cpu = paddle.CPUPlace()
+            paddle.disable_static(cpu)
+            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            x = paddle.to_variable(x_np)
+            out = paddle.tensor.isinf(x)
+            print(out.numpy())  # [ True False False  True False False False]
+    """
     if in_dygraph_mode():
         return core.ops.isinf_v2(x)
     check_type(x, 'x', (Variable), 'is_inf')
@@ -1760,6 +1802,27 @@ def isinf(x, name=None):
     return out
 
 def isnan(x, name=None):
+    """
+    Check whether every element of tensor is `NaN` or not.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64, int32.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            cpu = paddle.CPUPlace()
+            paddle.disable_static(cpu)
+            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            x = paddle.to_variable(x_np)
+            out = paddle.tensor.isinf(x)
+            print(out.numpy())  # [False False False False False  True  True]
+    """
     if in_dygraph_mode():
         return core.ops.isnan_v2(x)
     check_type(x, 'x', (Variable), 'is_nan')
