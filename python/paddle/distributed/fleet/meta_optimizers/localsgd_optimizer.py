@@ -90,7 +90,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         self.init_snapshot_vars(startup_program, p2s)
 
         p2s = self.create_snapshot_vars(main_block.program)
-        with program_guard(main_block.program):
+        with program_guard(main_block.program, startup_program):
             step = layers.autoincreased_step_counter(begin=0)
             k_steps = layers.create_global_var(
                 name="k_steps",
