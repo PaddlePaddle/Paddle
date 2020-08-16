@@ -381,7 +381,7 @@ const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   auto it = inputs_.find(name);
   PADDLE_ENFORCE_NE(
       it, inputs_.end(),
-      platform::errors::NotFound("Input %s cannot be found in Operator %s.",
+      platform::errors::NotFound("Input %s cannot be found in operator %s.",
                                  name, Type()));
   return it->second;
 }
@@ -404,7 +404,7 @@ const std::vector<std::string> &OpDesc::Output(const std::string &name) const {
   auto it = outputs_.find(name);
   PADDLE_ENFORCE_NE(
       it, outputs_.end(),
-      platform::errors::NotFound("Output %s cannot be found in Operator %s.",
+      platform::errors::NotFound("Output %s cannot be found in operator %s.",
                                  name, Type()));
   return it->second;
 }
