@@ -511,31 +511,27 @@ __global__ void Pad3DGradCircularNDHWC(const int out_size, T* d_in_data,
   }
 }
 
-static inline void GetPaddings(int* paddings,
-                               const framework::ExecutionContext& context) {
+static inline std::vector<int> GetPaddings(
+    const framework::ExecutionContext& context) {
+  std::vector<int> paddings(6);
   auto* paddings_data = context.Input<Tensor>("Paddings");
   if (paddings_data) {
     Tensor pads;
     framework::TensorCopySync(*paddings_data, platform::CPUPlace(), &pads);
     auto pads_data = pads.data<int>();
-    paddings[0] = pads_data[0];
-    paddings[1] = pads_data[1];
-    paddings[2] = pads_data[2];
-    paddings[3] = pads_data[3];
-    paddings[4] = pads_data[4];
-    paddings[5] = pads_data[5];
+    std::memcpy(paddings.data(), pads_data, paddings.size() * sizeof(int));
   } else {
     auto pads = context.Attr<std::vector<int>>("paddings");
-    std::copy(pads.begin(), pads.end(), paddings);
+    std::copy(pads.begin(), pads.end(), paddings.data());
   }
+  return paddings;
 }
 
 template <typename T>
 class Pad3dCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    int pads[6];
-    GetPaddings(pads, context);
+    std::vector<int> pads = GetPaddings(context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     T value = static_cast<T>(context.Attr<float>("value"));
@@ -686,8 +682,7 @@ template <typename T>
 class Pad3dGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    int pads[6];
-    GetPaddings(pads, context);
+    std::vector<int> pads = GetPaddings(context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));

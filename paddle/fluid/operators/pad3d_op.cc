@@ -25,428 +25,410 @@ namespace operators {
 using framework::Tensor;
 
 template <typename T>
-void Pad3DConstNCDHW(const T* in_data, const int num, const int channels,
-                     const int in_depth, const int in_height,
-                     const int in_width, const int out_depth,
-                     const int out_height, const int out_width,
-                     const int pad_front, const int pad_top, const int pad_left,
-                     T value, T* out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int c = 0; c < channels; ++c) {
-      for (int out_d = 0; out_d < out_depth; ++out_d) {
-        for (int out_h = 0; out_h < out_height; ++out_h) {
-          for (int out_w = 0; out_w < out_width; ++out_w) {
-            int in_d = out_d - pad_front;
-            int in_h = out_h - pad_top;
-            int in_w = out_w - pad_left;
-            out_data[out_d * out_height * out_width + out_h * out_width +
-                     out_w] =
-                (in_d < 0 || in_h < 0 || in_w < 0 || in_d >= in_depth ||
-                 in_h >= in_height || in_w >= in_width)
-                    ? value
-                    : in_data[in_d * in_height * in_width + in_h * in_width +
-                              in_w];
-          }
-        }
-      }
-      in_data += in_depth * in_height * in_width;
-      out_data += out_depth * out_height * out_width;
-    }
-  }
+void ConstPad3DFuncNCDHW(const T* in_data, T* out_data, const int in_depth,
+                         const int in_height, const int in_width,
+                         const int out_depth, const int out_height,
+                         const int out_width, const int pad_front,
+                         const int pad_top, const int pad_left, const int out_d,
+                         const int out_h, const int out_w, const T value) {
+  int in_d = out_d - pad_front;
+  int in_h = out_h - pad_top;
+  int in_w = out_w - pad_left;
+  out_data[out_d * out_height * out_width + out_h * out_width + out_w] =
+      (in_d < 0 || in_h < 0 || in_w < 0 || in_d >= in_depth ||
+       in_h >= in_height || in_w >= in_width)
+          ? value
+          : in_data[in_d * in_height * in_width + in_h * in_width + in_w];
 }
 
 template <typename T>
-void Pad3DConstNDHWC(const T* in_data, const int num, const int channels,
-                     const int in_depth, const int in_height,
-                     const int in_width, const int out_depth,
-                     const int out_height, const int out_width,
-                     const int pad_front, const int pad_top, const int pad_left,
-                     T value, T* out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int out_d = 0; out_d < out_depth; ++out_d) {
-      for (int out_h = 0; out_h < out_height; ++out_h) {
-        for (int out_w = 0; out_w < out_width; ++out_w) {
-          int in_d = out_d - pad_front;
-          int in_h = out_h - pad_top;
-          int in_w = out_w - pad_left;
-          const int out_index =
-              (out_d * out_height * out_width + out_h * out_width + out_w) *
-              channels;
-          if (in_d < 0 || in_h < 0 || in_w < 0 || in_d >= in_depth ||
-              in_h >= in_height || in_w >= in_width) {
-            for (int c = 0; c < channels; ++c) {
-              out_data[out_index + c] = value;
-            }
-          } else {
-            const int in_index =
-                (in_d * in_height * in_width + in_h * in_width + in_w) *
-                channels;
-            for (int c = 0; c < channels; ++c) {
-              out_data[out_index + c] = in_data[in_index + c];
-            }
-          }
-        }
-      }
-    }
-    in_data += in_depth * in_height * in_width * channels;
-    out_data += out_depth * out_height * out_width * channels;
-  }
-}
-
-template <typename T>
-void Pad3DReflectNCDHW(const T* in_data, const int num, const int channels,
-                       const int in_depth, const int in_height,
-                       const int in_width, const int out_depth,
-                       const int out_height, const int out_width,
-                       const int pad_front, const int pad_top,
-                       const int pad_left, T* out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int c = 0; c < channels; ++c) {
-      for (int out_d = 0; out_d < out_depth; ++out_d) {
-        for (int out_h = 0; out_h < out_height; ++out_h) {
-          for (int out_w = 0; out_w < out_width; ++out_w) {
-            int in_d = out_d - pad_front;
-            int in_h = out_h - pad_top;
-            int in_w = out_w - pad_left;
-
-            in_d = std::max(in_d, -in_d);  // reflect by 0
-            in_d =
-                std::min(in_d, 2 * in_depth - in_d - 2);  // reflect by in_depth
-            in_h = std::max(in_h, -in_h);                 // reflect by 0
-            in_h = std::min(in_h,
-                            2 * in_height - in_h - 2);  // reflect by in_height
-            in_w = std::max(in_w, -in_w);               // reflect by 0
-            in_w =
-                std::min(in_w, 2 * in_width - in_w - 2);  // reflect by in_width
-
-            out_data[out_d * out_height * out_width + out_h * out_width +
-                     out_w] =
-                in_data[in_d * in_height * in_width + in_h * in_width + in_w];
-          }
-        }
-      }
-      in_data += in_depth * in_height * in_width;
-      out_data += out_depth * out_height * out_width;
-    }
-  }
-}
-
-template <typename T>
-void Pad3DReflectNDHWC(const T* in_data, const int num, const int channels,
-                       const int in_depth, const int in_height,
-                       const int in_width, const int out_depth,
-                       const int out_height, const int out_width,
-                       const int pad_front, const int pad_top,
-                       const int pad_left, T* out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int out_d = 0; out_d < out_depth; ++out_d) {
-      for (int out_h = 0; out_h < out_height; ++out_h) {
-        for (int out_w = 0; out_w < out_width; ++out_w) {
-          int in_d = out_d - pad_front;
-          int in_h = out_h - pad_top;
-          int in_w = out_w - pad_left;
-
-          in_d = std::max(in_d, -in_d);
-          in_d = std::min(in_d, 2 * in_depth - in_d - 2);
-          in_h = std::max(in_h, -in_h);
-          in_h = std::min(in_h, 2 * in_height - in_h - 2);
-          in_w = std::max(in_w, -in_w);
-          in_w = std::min(in_w, 2 * in_width - in_w - 2);
-
-          const int out_index =
-              (out_d * out_height * out_width + out_h * out_width + out_w) *
-              channels;
-          const int in_index =
-              (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
-          for (int c = 0; c < channels; ++c) {
-            out_data[out_index + c] = in_data[in_index + c];
-          }
-        }
-      }
-    }
-    in_data += in_depth * in_height * in_width * channels;
-    out_data += out_depth * out_height * out_width * channels;
-  }
-}
-
-template <typename T>
-void Pad3DReplicateNCDHW(const T* in_data, const int num, const int channels,
+void ConstPad3DFuncNDHWC(const T* in_data, T* out_data, const int channels,
                          const int in_depth, const int in_height,
                          const int in_width, const int out_depth,
                          const int out_height, const int out_width,
                          const int pad_front, const int pad_top,
-                         const int pad_left, T* out_data) {
-  for (int n = 0; n < num; ++n) {
+                         const int pad_left, const int out_d, const int out_h,
+                         const int out_w, const T value) {
+  int in_d = out_d - pad_front;
+  int in_h = out_h - pad_top;
+  int in_w = out_w - pad_left;
+  const int out_index =
+      (out_d * out_height * out_width + out_h * out_width + out_w) * channels;
+  if (in_d < 0 || in_h < 0 || in_w < 0 || in_d >= in_depth ||
+      in_h >= in_height || in_w >= in_width) {
     for (int c = 0; c < channels; ++c) {
-      for (int out_d = 0; out_d < out_depth; ++out_d) {
-        for (int out_h = 0; out_h < out_height; ++out_h) {
-          for (int out_w = 0; out_w < out_width; ++out_w) {
-            int in_d = std::min(in_depth - 1, std::max(out_d - pad_front, 0));
-            int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
-            int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
-
-            out_data[out_d * out_height * out_width + out_h * out_width +
-                     out_w] =
-                in_data[in_d * in_height * in_width + in_h * in_width + in_w];
-          }
-        }
-      }
-      in_data += in_depth * in_height * in_width;
-      out_data += out_depth * out_height * out_width;
+      out_data[out_index + c] = value;
     }
-  }
-}
-
-template <typename T>
-void Pad3DReplicateNDHWC(const T* in_data, const int num, const int channels,
-                         const int in_depth, const int in_height,
-                         const int in_width, const int out_depth,
-                         const int out_height, const int out_width,
-                         const int pad_front, const int pad_top,
-                         const int pad_left, T* out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int out_d = 0; out_d < out_depth; ++out_d) {
-      for (int out_h = 0; out_h < out_height; ++out_h) {
-        for (int out_w = 0; out_w < out_width; ++out_w) {
-          int in_d = std::min(in_depth - 1, std::max(out_d - pad_front, 0));
-          int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
-          int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
-
-          const int out_index =
-              (out_d * out_height * out_width + out_h * out_width + out_w) *
-              channels;
-          const int in_index =
-              (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
-          for (int c = 0; c < channels; ++c) {
-            out_data[out_index + c] = in_data[in_index + c];
-          }
-        }
-      }
-    }
-    in_data += in_depth * in_height * in_width * channels;
-    out_data += out_depth * out_height * out_width * channels;
-  }
-}
-
-template <typename T>
-void Pad3DCircularNCDHW(const T* in_data, const int num, const int channels,
-                        const int in_depth, const int in_height,
-                        const int in_width, const int out_depth,
-                        const int out_height, const int out_width,
-                        const int pad_front, const int pad_top,
-                        const int pad_left, T* out_data) {
-  for (int n = 0; n < num; ++n) {
+  } else {
+    const int in_index =
+        (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
     for (int c = 0; c < channels; ++c) {
-      for (int out_d = 0; out_d < out_depth; ++out_d) {
-        for (int out_h = 0; out_h < out_height; ++out_h) {
-          for (int out_w = 0; out_w < out_width; ++out_w) {
-            int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
-            int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
-            int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
-
-            out_data[out_d * out_height * out_width + out_h * out_width +
-                     out_w] =
-                in_data[in_d * in_height * in_width + in_h * in_width + in_w];
-          }
-        }
-      }
-      in_data += in_depth * in_height * in_width;
-      out_data += out_depth * out_height * out_width;
+      out_data[out_index + c] = in_data[in_index + c];
     }
   }
 }
 
 template <typename T>
-void Pad3DCircularNDHWC(const T* in_data, const int num, const int channels,
-                        const int in_depth, const int in_height,
-                        const int in_width, const int out_depth,
-                        const int out_height, const int out_width,
-                        const int pad_front, const int pad_top,
-                        const int pad_left, T* out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int out_d = 0; out_d < out_depth; ++out_d) {
-      for (int out_h = 0; out_h < out_height; ++out_h) {
-        for (int out_w = 0; out_w < out_width; ++out_w) {
-          int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
-          int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
-          int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
+void ReflectPad3DFuncNCDHW(const T* in_data, T* out_data, const int in_depth,
+                           const int in_height, const int in_width,
+                           const int out_depth, const int out_height,
+                           const int out_width, const int pad_front,
+                           const int pad_top, const int pad_left,
+                           const int out_d, const int out_h, const int out_w,
+                           const T value) {
+  int in_d = out_d - pad_front;
+  int in_h = out_h - pad_top;
+  int in_w = out_w - pad_left;
 
-          const int out_index =
-              (out_d * out_height * out_width + out_h * out_width + out_w) *
-              channels;
-          const int in_index =
-              (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
-          for (int c = 0; c < channels; ++c) {
-            out_data[out_index + c] = in_data[in_index + c];
-          }
-        }
-      }
-    }
-    in_data += in_depth * in_height * in_width * channels;
-    out_data += out_depth * out_height * out_width * channels;
-  }
+  in_d = std::max(in_d, -in_d);                     // reflect by 0
+  in_d = std::min(in_d, 2 * in_depth - in_d - 2);   // reflect by in_depth
+  in_h = std::max(in_h, -in_h);                     // reflect by 0
+  in_h = std::min(in_h, 2 * in_height - in_h - 2);  // reflect by in_height
+  in_w = std::max(in_w, -in_w);                     // reflect by 0
+  in_w = std::min(in_w, 2 * in_width - in_w - 2);   // reflect by in_width
+
+  out_data[out_d * out_height * out_width + out_h * out_width + out_w] =
+      in_data[in_d * in_height * in_width + in_h * in_width + in_w];
 }
 
 template <typename T>
-void Pad3DGradConstNCDHW(T* d_in_data, const int num, const int channels,
-                         const int in_depth, const int in_height,
-                         const int in_width, const int out_depth,
-                         const int out_height, const int out_width,
-                         const int pad_front, const int pad_top,
-                         const int pad_left, const T* d_out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int c = 0; c < channels; ++c) {
-      for (int out_d = 0; out_d < out_depth; ++out_d) {
-        for (int out_h = 0; out_h < out_height; ++out_h) {
-          for (int out_w = 0; out_w < out_width; ++out_w) {
-            int in_d = out_d - pad_front;
-            int in_h = out_h - pad_top;
-            int in_w = out_w - pad_left;
-            if (!(in_d < 0 || in_h < 0 || in_w < 0 || in_d >= in_depth ||
-                  in_h >= in_height || in_w >= in_width)) {
-              d_in_data[in_d * in_height * in_width + in_h * in_width + in_w] =
-                  d_out_data[out_d * out_height * out_width +
-                             out_h * out_width + out_w];
-            }
-          }
-        }
-      }
-      d_in_data += in_depth * in_height * in_width;
-      d_out_data += out_depth * out_height * out_width;
-    }
-  }
-}
-
-template <typename T>
-void Pad3DGradConstNDHWC(T* d_in_data, const int num, const int channels,
-                         const int in_depth, const int in_height,
-                         const int in_width, const int out_depth,
-                         const int out_height, const int out_width,
-                         const int pad_front, const int pad_top,
-                         const int pad_left, const T* d_out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int out_d = 0; out_d < out_depth; ++out_d) {
-      for (int out_h = 0; out_h < out_height; ++out_h) {
-        for (int out_w = 0; out_w < out_width; ++out_w) {
-          int in_d = out_d - pad_front;
-          int in_h = out_h - pad_top;
-          int in_w = out_w - pad_left;
-
-          const int out_index =
-              (out_d * out_height * out_width + out_h * out_width + out_w) *
-              channels;
-          if (!(in_d < 0 || in_h < 0 || in_w < 0 || in_d >= in_depth ||
-                in_h >= in_height || in_w >= in_width)) {
-            const int in_index =
-                (in_d * in_height * in_width + in_h * in_width + in_w) *
-                channels;
-            for (int c = 0; c < channels; ++c) {
-              d_in_data[in_index + c] = d_out_data[out_index + c];
-            }
-          }
-        }
-      }
-    }
-    d_in_data += in_depth * in_height * in_width * channels;
-    d_out_data += out_depth * out_height * out_width * channels;
-  }
-}
-
-template <typename T>
-void Pad3DGradReflectNCDHW(T* d_in_data, const int num, const int channels,
+void ReflectPad3DFuncNDHWC(const T* in_data, T* out_data, const int channels,
                            const int in_depth, const int in_height,
                            const int in_width, const int out_depth,
                            const int out_height, const int out_width,
                            const int pad_front, const int pad_top,
-                           const int pad_left, const T* d_out_data) {
+                           const int pad_left, const int out_d, const int out_h,
+                           const int out_w, const T value) {
+  int in_d = out_d - pad_front;
+  int in_h = out_h - pad_top;
+  int in_w = out_w - pad_left;
+
+  in_d = std::max(in_d, -in_d);
+  in_d = std::min(in_d, 2 * in_depth - in_d - 2);
+  in_h = std::max(in_h, -in_h);
+  in_h = std::min(in_h, 2 * in_height - in_h - 2);
+  in_w = std::max(in_w, -in_w);
+  in_w = std::min(in_w, 2 * in_width - in_w - 2);
+
+  const int out_index =
+      (out_d * out_height * out_width + out_h * out_width + out_w) * channels;
+  const int in_index =
+      (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
+  for (int c = 0; c < channels; ++c) {
+    out_data[out_index + c] = in_data[in_index + c];
+  }
+}
+
+template <typename T>
+void ReplicatePad3DFuncNCDHW(const T* in_data, T* out_data, const int in_depth,
+                             const int in_height, const int in_width,
+                             const int out_depth, const int out_height,
+                             const int out_width, const int pad_front,
+                             const int pad_top, const int pad_left,
+                             const int out_d, const int out_h, const int out_w,
+                             const T value) {
+  int in_d = std::min(in_depth - 1, std::max(out_d - pad_front, 0));
+  int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
+  int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
+
+  out_data[out_d * out_height * out_width + out_h * out_width + out_w] =
+      in_data[in_d * in_height * in_width + in_h * in_width + in_w];
+}
+
+template <typename T>
+void ReplicatePad3DFuncNDHWC(const T* in_data, T* out_data, const int channels,
+                             const int in_depth, const int in_height,
+                             const int in_width, const int out_depth,
+                             const int out_height, const int out_width,
+                             const int pad_front, const int pad_top,
+                             const int pad_left, const int out_d,
+                             const int out_h, const int out_w, const T value) {
+  int in_d = std::min(in_depth - 1, std::max(out_d - pad_front, 0));
+  int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
+  int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
+
+  const int out_index =
+      (out_d * out_height * out_width + out_h * out_width + out_w) * channels;
+  const int in_index =
+      (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
+  for (int c = 0; c < channels; ++c) {
+    out_data[out_index + c] = in_data[in_index + c];
+  }
+}
+
+template <typename T>
+void CircularPad3DFuncNCDHW(const T* in_data, T* out_data, const int in_depth,
+                            const int in_height, const int in_width,
+                            const int out_depth, const int out_height,
+                            const int out_width, const int pad_front,
+                            const int pad_top, const int pad_left,
+                            const int out_d, const int out_h, const int out_w,
+                            const T value) {
+  int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
+  int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
+  int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
+
+  out_data[out_d * out_height * out_width + out_h * out_width + out_w] =
+      in_data[in_d * in_height * in_width + in_h * in_width + in_w];
+}
+
+template <typename T>
+void CircularPad3DFuncNDHWC(const T* in_data, T* out_data, const int channels,
+                            const int in_depth, const int in_height,
+                            const int in_width, const int out_depth,
+                            const int out_height, const int out_width,
+                            const int pad_front, const int pad_top,
+                            const int pad_left, const int out_d,
+                            const int out_h, const int out_w, const T value) {
+  int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
+  int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
+  int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
+
+  const int out_index =
+      (out_d * out_height * out_width + out_h * out_width + out_w) * channels;
+  const int in_index =
+      (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
+  for (int c = 0; c < channels; ++c) {
+    out_data[out_index + c] = in_data[in_index + c];
+  }
+}
+
+template <typename T>
+void Pad3DNCDHW(const T* in_data, const int num, const int channels,
+                const int in_depth, const int in_height, const int in_width,
+                const int out_depth, const int out_height, const int out_width,
+                const int pad_front, const int pad_top, const int pad_left,
+                T value, T* out_data,
+                void (*pad_func)(const T*, T*, const int, const int, const int,
+                                 const int, const int, const int, const int,
+                                 const int, const int, const int, const int,
+                                 const int, const T)) {
   for (int n = 0; n < num; ++n) {
     for (int c = 0; c < channels; ++c) {
       for (int out_d = 0; out_d < out_depth; ++out_d) {
         for (int out_h = 0; out_h < out_height; ++out_h) {
           for (int out_w = 0; out_w < out_width; ++out_w) {
-            int in_d = out_d - pad_front;
-            int in_h = out_h - pad_top;
-            int in_w = out_w - pad_left;
-
-            in_d = std::max(in_d, -in_d);  // reflect by 0
-            in_d =
-                std::min(in_d, 2 * in_depth - in_d - 2);  // reflect by in_depth
-            in_h = std::max(in_h, -in_h);                 // reflect by 0
-            in_h = std::min(in_h,
-                            2 * in_height - in_h - 2);  // reflect by in_height
-            in_w = std::max(in_w, -in_w);               // reflect by 0
-            in_w =
-                std::min(in_w, 2 * in_width - in_w - 2);  // reflect by in_width
-
-            d_in_data[in_d * in_height * in_width + in_h * in_width + in_w] +=
-                d_out_data[out_d * out_height * out_width + out_h * out_width +
-                           out_w];
+            pad_func(in_data, out_data, in_depth, in_height, in_width,
+                     out_depth, out_height, out_width, pad_front, pad_top,
+                     pad_left, out_d, out_h, out_w, value);
           }
         }
       }
-      d_in_data += in_depth * in_height * in_width;
-      d_out_data += out_depth * out_height * out_width;
+      in_data += in_depth * in_height * in_width;
+      out_data += out_depth * out_height * out_width;
     }
   }
 }
 
 template <typename T>
-void Pad3DGradReflectNDHWC(T* d_in_data, const int num, const int channels,
+void Pad3DNDHWC(const T* in_data, const int num, const int channels,
+                const int in_depth, const int in_height, const int in_width,
+                const int out_depth, const int out_height, const int out_width,
+                const int pad_front, const int pad_top, const int pad_left,
+                T value, T* out_data,
+                void (*pad_func)(const T*, T*, const int, const int, const int,
+                                 const int, const int, const int, const int,
+                                 const int, const int, const int, const int,
+                                 const int, const int, const T)) {
+  for (int n = 0; n < num; ++n) {
+    for (int out_d = 0; out_d < out_depth; ++out_d) {
+      for (int out_h = 0; out_h < out_height; ++out_h) {
+        for (int out_w = 0; out_w < out_width; ++out_w) {
+          pad_func(in_data, out_data, channels, in_depth, in_height, in_width,
+                   out_depth, out_height, out_width, pad_front, pad_top,
+                   pad_left, out_d, out_h, out_w, value);
+        }
+      }
+    }
+    in_data += in_depth * in_height * in_width * channels;
+    out_data += out_depth * out_height * out_width * channels;
+  }
+}
+
+template <typename T>
+void ConstPad3DGradNCDHW(T* d_in_data, const T* d_out_data, const int in_depth,
+                         const int in_height, const int in_width,
+                         const int out_depth, const int out_height,
+                         const int out_width, const int pad_front,
+                         const int pad_top, const int pad_left, const int out_d,
+                         const int out_h, const int out_w) {
+  int in_d = out_d - pad_front;
+  int in_h = out_h - pad_top;
+  int in_w = out_w - pad_left;
+  if (!(in_d < 0 || in_h < 0 || in_w < 0 || in_d >= in_depth ||
+        in_h >= in_height || in_w >= in_width)) {
+    d_in_data[in_d * in_height * in_width + in_h * in_width + in_w] =
+        d_out_data[out_d * out_height * out_width + out_h * out_width + out_w];
+  }
+}
+
+template <typename T>
+void ConstPad3DGradNDHWC(T* d_in_data, const T* d_out_data, const int channels,
+                         const int in_depth, const int in_height,
+                         const int in_width, const int out_depth,
+                         const int out_height, const int out_width,
+                         const int pad_front, const int pad_top,
+                         const int pad_left, const int out_d, const int out_h,
+                         const int out_w) {
+  int in_d = out_d - pad_front;
+  int in_h = out_h - pad_top;
+  int in_w = out_w - pad_left;
+
+  const int out_index =
+      (out_d * out_height * out_width + out_h * out_width + out_w) * channels;
+  if (!(in_d < 0 || in_h < 0 || in_w < 0 || in_d >= in_depth ||
+        in_h >= in_height || in_w >= in_width)) {
+    const int in_index =
+        (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
+    for (int c = 0; c < channels; ++c) {
+      d_in_data[in_index + c] = d_out_data[out_index + c];
+    }
+  }
+}
+
+template <typename T>
+void ReflectPad3DGradNCDHW(T* d_in_data, const T* d_out_data,
                            const int in_depth, const int in_height,
                            const int in_width, const int out_depth,
                            const int out_height, const int out_width,
                            const int pad_front, const int pad_top,
-                           const int pad_left, const T* d_out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int out_d = 0; out_d < out_depth; ++out_d) {
-      for (int out_h = 0; out_h < out_height; ++out_h) {
-        for (int out_w = 0; out_w < out_width; ++out_w) {
-          int in_d = out_d - pad_front;
-          int in_h = out_h - pad_top;
-          int in_w = out_w - pad_left;
+                           const int pad_left, const int out_d, const int out_h,
+                           const int out_w) {
+  int in_d = out_d - pad_front;
+  int in_h = out_h - pad_top;
+  int in_w = out_w - pad_left;
 
-          in_d = std::max(in_d, -in_d);
-          in_d = std::min(in_d, 2 * in_depth - in_d - 2);
-          in_h = std::max(in_h, -in_h);
-          in_h = std::min(in_h, 2 * in_height - in_h - 2);
-          in_w = std::max(in_w, -in_w);
-          in_w = std::min(in_w, 2 * in_width - in_w - 2);
+  in_d = std::max(in_d, -in_d);                     // reflect by 0
+  in_d = std::min(in_d, 2 * in_depth - in_d - 2);   // reflect by in_depth
+  in_h = std::max(in_h, -in_h);                     // reflect by 0
+  in_h = std::min(in_h, 2 * in_height - in_h - 2);  // reflect by in_height
+  in_w = std::max(in_w, -in_w);                     // reflect by 0
+  in_w = std::min(in_w, 2 * in_width - in_w - 2);   // reflect by in_width
 
-          const int out_index =
-              (out_d * out_height * out_width + out_h * out_width + out_w) *
-              channels;
-          const int in_index =
-              (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
-          for (int c = 0; c < channels; ++c) {
-            d_in_data[in_index + c] += d_out_data[out_index + c];
-          }
-        }
-      }
-    }
-    d_in_data += in_depth * in_height * in_width * channels;
-    d_out_data += out_depth * out_height * out_width * channels;
+  d_in_data[in_d * in_height * in_width + in_h * in_width + in_w] +=
+      d_out_data[out_d * out_height * out_width + out_h * out_width + out_w];
+}
+
+template <typename T>
+void ReflectPad3DGradNDHWC(T* d_in_data, const T* d_out_data,
+                           const int channels, const int in_depth,
+                           const int in_height, const int in_width,
+                           const int out_depth, const int out_height,
+                           const int out_width, const int pad_front,
+                           const int pad_top, const int pad_left,
+                           const int out_d, const int out_h, const int out_w) {
+  int in_d = out_d - pad_front;
+  int in_h = out_h - pad_top;
+  int in_w = out_w - pad_left;
+
+  in_d = std::max(in_d, -in_d);
+  in_d = std::min(in_d, 2 * in_depth - in_d - 2);
+  in_h = std::max(in_h, -in_h);
+  in_h = std::min(in_h, 2 * in_height - in_h - 2);
+  in_w = std::max(in_w, -in_w);
+  in_w = std::min(in_w, 2 * in_width - in_w - 2);
+
+  const int out_index =
+      (out_d * out_height * out_width + out_h * out_width + out_w) * channels;
+  const int in_index =
+      (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
+  for (int c = 0; c < channels; ++c) {
+    d_in_data[in_index + c] += d_out_data[out_index + c];
   }
 }
 
 template <typename T>
-void Pad3DGradReplicateNCDHW(T* d_in_data, const int num, const int channels,
+void ReplicatePad3DGradNCDHW(T* d_in_data, const T* d_out_data,
                              const int in_depth, const int in_height,
                              const int in_width, const int out_depth,
                              const int out_height, const int out_width,
                              const int pad_front, const int pad_top,
-                             const int pad_left, const T* d_out_data) {
+                             const int pad_left, const int out_d,
+                             const int out_h, const int out_w) {
+  int in_d = std::min(in_depth - 1, std::max(out_d - pad_front, 0));
+  int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
+  int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
+
+  d_in_data[in_d * in_height * in_width + in_h * in_width + in_w] +=
+      d_out_data[out_d * out_height * out_width + out_h * out_width + out_w];
+}
+
+template <typename T>
+void ReplicatePad3DGradNDHWC(T* d_in_data, const T* d_out_data,
+                             const int channels, const int in_depth,
+                             const int in_height, const int in_width,
+                             const int out_depth, const int out_height,
+                             const int out_width, const int pad_front,
+                             const int pad_top, const int pad_left,
+                             const int out_d, const int out_h,
+                             const int out_w) {
+  int in_d = std::min(in_depth - 1, std::max(out_d - pad_front, 0));
+  int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
+  int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
+
+  const int out_index =
+      (out_d * out_height * out_width + out_h * out_width + out_w) * channels;
+  const int in_index =
+      (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
+  for (int c = 0; c < channels; ++c) {
+    d_in_data[in_index + c] += d_out_data[out_index + c];
+  }
+}
+
+template <typename T>
+void CircularPad3DGradNCDHW(T* d_in_data, const T* d_out_data,
+                            const int in_depth, const int in_height,
+                            const int in_width, const int out_depth,
+                            const int out_height, const int out_width,
+                            const int pad_front, const int pad_top,
+                            const int pad_left, const int out_d,
+                            const int out_h, const int out_w) {
+  int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
+  int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
+  int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
+  d_in_data[in_d * in_height * in_width + in_h * in_width + in_w] +=
+      d_out_data[out_d * out_height * out_width + out_h * out_width + out_w];
+}
+
+template <typename T>
+void CircularPad3DGradNDHWC(T* d_in_data, const T* d_out_data,
+                            const int channels, const int in_depth,
+                            const int in_height, const int in_width,
+                            const int out_depth, const int out_height,
+                            const int out_width, const int pad_front,
+                            const int pad_top, const int pad_left,
+                            const int out_d, const int out_h, const int out_w) {
+  int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
+  int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
+  int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
+
+  const int out_index =
+      (out_d * out_height * out_width + out_h * out_width + out_w) * channels;
+  const int in_index =
+      (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
+  for (int c = 0; c < channels; ++c) {
+    d_in_data[in_index + c] += d_out_data[out_index + c];
+  }
+}
+
+template <typename T>
+void Pad3DGradNCDHW(T* d_in_data, const int num, const int channels,
+                    const int in_depth, const int in_height, const int in_width,
+                    const int out_depth, const int out_height,
+                    const int out_width, const int pad_front, const int pad_top,
+                    const int pad_left, const T* d_out_data,
+                    void (*pad_func)(T*, const T*, const int, const int,
+                                     const int, const int, const int, const int,
+                                     const int, const int, const int, const int,
+                                     const int, const int)) {
   for (int n = 0; n < num; ++n) {
     for (int c = 0; c < channels; ++c) {
       for (int out_d = 0; out_d < out_depth; ++out_d) {
         for (int out_h = 0; out_h < out_height; ++out_h) {
           for (int out_w = 0; out_w < out_width; ++out_w) {
-            int in_d = std::min(in_depth - 1, std::max(out_d - pad_front, 0));
-            int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
-            int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
-
-            d_in_data[in_d * in_height * in_width + in_h * in_width + in_w] +=
-                d_out_data[out_d * out_height * out_width + out_h * out_width +
-                           out_w];
+            pad_func(d_in_data, d_out_data, in_depth, in_height, in_width,
+                     out_depth, out_height, out_width, pad_front, pad_top,
+                     pad_left, out_d, out_h, out_w);
           }
         }
       }
@@ -457,28 +439,22 @@ void Pad3DGradReplicateNCDHW(T* d_in_data, const int num, const int channels,
 }
 
 template <typename T>
-void Pad3DGradReplicateNDHWC(T* d_in_data, const int num, const int channels,
-                             const int in_depth, const int in_height,
-                             const int in_width, const int out_depth,
-                             const int out_height, const int out_width,
-                             const int pad_front, const int pad_top,
-                             const int pad_left, const T* d_out_data) {
+void Pad3DGradNDHWC(T* d_in_data, const int num, const int channels,
+                    const int in_depth, const int in_height, const int in_width,
+                    const int out_depth, const int out_height,
+                    const int out_width, const int pad_front, const int pad_top,
+                    const int pad_left, const T* d_out_data,
+                    void (*pad_func)(T*, const T*, const int, const int,
+                                     const int, const int, const int, const int,
+                                     const int, const int, const int, const int,
+                                     const int, const int, const int)) {
   for (int n = 0; n < num; ++n) {
     for (int out_d = 0; out_d < out_depth; ++out_d) {
       for (int out_h = 0; out_h < out_height; ++out_h) {
         for (int out_w = 0; out_w < out_width; ++out_w) {
-          int in_d = std::min(in_depth - 1, std::max(out_d - pad_front, 0));
-          int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
-          int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
-
-          const int out_index =
-              (out_d * out_height * out_width + out_h * out_width + out_w) *
-              channels;
-          const int in_index =
-              (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
-          for (int c = 0; c < channels; ++c) {
-            d_in_data[in_index + c] += d_out_data[out_index + c];
-          }
+          pad_func(d_in_data, d_out_data, channels, in_depth, in_height,
+                   in_width, out_depth, out_height, out_width, pad_front,
+                   pad_top, pad_left, out_d, out_h, out_w);
         }
       }
     }
@@ -487,87 +463,25 @@ void Pad3DGradReplicateNDHWC(T* d_in_data, const int num, const int channels,
   }
 }
 
-template <typename T>
-void Pad3DGradCircularNCDHW(T* d_in_data, const int num, const int channels,
-                            const int in_depth, const int in_height,
-                            const int in_width, const int out_depth,
-                            const int out_height, const int out_width,
-                            const int pad_front, const int pad_top,
-                            const int pad_left, const T* d_out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int c = 0; c < channels; ++c) {
-      for (int out_d = 0; out_d < out_depth; ++out_d) {
-        for (int out_h = 0; out_h < out_height; ++out_h) {
-          for (int out_w = 0; out_w < out_width; ++out_w) {
-            int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
-            int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
-            int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
-            d_in_data[in_d * in_height * in_width + in_h * in_width + in_w] +=
-                d_out_data[out_d * out_height * out_width + out_h * out_width +
-                           out_w];
-          }
-        }
-      }
-      d_in_data += in_depth * in_height * in_width;
-      d_out_data += out_depth * out_height * out_width;
-    }
-  }
-}
-
-template <typename T>
-void Pad3DGradCircularNDHWC(T* d_in_data, const int num, const int channels,
-                            const int in_depth, const int in_height,
-                            const int in_width, const int out_depth,
-                            const int out_height, const int out_width,
-                            const int pad_front, const int pad_top,
-                            const int pad_left, const T* d_out_data) {
-  for (int n = 0; n < num; ++n) {
-    for (int out_d = 0; out_d < out_depth; ++out_d) {
-      for (int out_h = 0; out_h < out_height; ++out_h) {
-        for (int out_w = 0; out_w < out_width; ++out_w) {
-          int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
-          int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
-          int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
-
-          const int out_index =
-              (out_d * out_height * out_width + out_h * out_width + out_w) *
-              channels;
-          const int in_index =
-              (in_d * in_height * in_width + in_h * in_width + in_w) * channels;
-          for (int c = 0; c < channels; ++c) {
-            d_in_data[in_index + c] += d_out_data[out_index + c];
-          }
-        }
-      }
-    }
-    d_in_data += in_depth * in_height * in_width * channels;
-    d_out_data += out_depth * out_height * out_width * channels;
-  }
-}
-
-static inline void GetPaddings(int* paddings,
-                               const framework::ExecutionContext& context) {
+static inline std::vector<int> GetPaddings(
+    const framework::ExecutionContext& context) {
+  std::vector<int> paddings(6);
   auto* paddings_t = context.Input<Tensor>("Paddings");
   if (paddings_t) {
     auto paddings_data = paddings_t->data<int>();
-    paddings[0] = paddings_data[0];
-    paddings[1] = paddings_data[1];
-    paddings[2] = paddings_data[2];
-    paddings[3] = paddings_data[3];
-    paddings[4] = paddings_data[4];
-    paddings[5] = paddings_data[5];
+    std::memcpy(paddings.data(), paddings_data, paddings.size() * sizeof(int));
   } else {
     auto pads = context.Attr<std::vector<int>>("paddings");
-    std::copy(pads.begin(), pads.end(), paddings);
+    std::copy(pads.begin(), pads.end(), paddings.data());
   }
+  return paddings;
 }
 
 template <typename T>
 class Pad3dCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    int pads[6];
-    GetPaddings(pads, context);
+    std::vector<int> pads = GetPaddings(context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     T value = static_cast<T>(context.Attr<float>("value"));
@@ -658,41 +572,33 @@ class Pad3dCPUKernel : public framework::OpKernel<T> {
     const int pad_front = pads[4];
     const int num = in_dims[0];
     if (data_format == "NCDHW") {
-      if (mode == "reflect") {
-        Pad3DReflectNCDHW(in_data, num, channels, in_depth, in_height, in_width,
-                          out_depth, out_height, out_width, pad_front, pad_top,
-                          pad_left, out_data);
-      } else if (mode == "replicate") {
-        Pad3DReplicateNCDHW(in_data, num, channels, in_depth, in_height,
-                            in_width, out_depth, out_height, out_width,
-                            pad_front, pad_top, pad_left, out_data);
-      } else if (mode == "circular") {
-        Pad3DCircularNCDHW(in_data, num, channels, in_depth, in_height,
-                           in_width, out_depth, out_height, out_width,
-                           pad_front, pad_top, pad_left, out_data);
-      } else if (mode == "constant") {
-        Pad3DConstNCDHW(in_data, num, channels, in_depth, in_height, in_width,
-                        out_depth, out_height, out_width, pad_front, pad_top,
-                        pad_left, value, out_data);
-      }
+      std::map<std::string,
+               void (*)(const T*, T*, const int, const int, const int,
+                        const int, const int, const int, const int, const int,
+                        const int, const int, const int, const int, const T)>
+          func_map;
+
+      func_map["reflect"] = ReflectPad3DFuncNCDHW;
+      func_map["replicate"] = ReplicatePad3DFuncNCDHW;
+      func_map["circular"] = CircularPad3DFuncNCDHW;
+      func_map["constant"] = ConstPad3DFuncNCDHW;
+      Pad3DNCDHW(in_data, num, channels, in_depth, in_height, in_width,
+                 out_depth, out_height, out_width, pad_front, pad_top, pad_left,
+                 value, out_data, func_map[mode]);
     } else {
-      if (mode == "reflect") {
-        Pad3DReflectNDHWC(in_data, num, channels, in_depth, in_height, in_width,
-                          out_depth, out_height, out_width, pad_front, pad_top,
-                          pad_left, out_data);
-      } else if (mode == "replicate") {
-        Pad3DReplicateNDHWC(in_data, num, channels, in_depth, in_height,
-                            in_width, out_depth, out_height, out_width,
-                            pad_front, pad_top, pad_left, out_data);
-      } else if (mode == "circular") {
-        Pad3DCircularNDHWC(in_data, num, channels, in_depth, in_height,
-                           in_width, out_depth, out_height, out_width,
-                           pad_front, pad_top, pad_left, out_data);
-      } else {
-        Pad3DConstNDHWC(in_data, num, channels, in_depth, in_height, in_width,
-                        out_depth, out_height, out_width, pad_front, pad_top,
-                        pad_left, value, out_data);
-      }
+      std::map<std::string, void (*)(const T*, T*, const int, const int,
+                                     const int, const int, const int, const int,
+                                     const int, const int, const int, const int,
+                                     const int, const int, const int, const T)>
+          func_map;
+
+      func_map["reflect"] = ReflectPad3DFuncNDHWC;
+      func_map["replicate"] = ReplicatePad3DFuncNDHWC;
+      func_map["circular"] = CircularPad3DFuncNDHWC;
+      func_map["constant"] = ConstPad3DFuncNDHWC;
+      Pad3DNDHWC(in_data, num, channels, in_depth, in_height, in_width,
+                 out_depth, out_height, out_width, pad_front, pad_top, pad_left,
+                 value, out_data, func_map[mode]);
     }
   }
 };
@@ -701,8 +607,7 @@ template <typename T>
 class Pad3dGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    int pads[6];
-    GetPaddings(pads, context);
+    std::vector<int> pads = GetPaddings(context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
@@ -726,23 +631,21 @@ class Pad3dGradCPUKernel : public framework::OpKernel<T> {
       const int out_depth = d_out_dims[2];
       const int out_height = d_out_dims[3];
       const int out_width = d_out_dims[4];
-      if (mode == "reflect") {
-        Pad3DGradReflectNCDHW(d_in_data, num, channels, in_depth, in_height,
-                              in_width, out_depth, out_height, out_width,
-                              pad_front, pad_top, pad_left, d_out_data);
-      } else if (mode == "replicate") {
-        Pad3DGradReplicateNCDHW(d_in_data, num, channels, in_depth, in_height,
-                                in_width, out_depth, out_height, out_width,
-                                pad_front, pad_top, pad_left, d_out_data);
-      } else if (mode == "circular") {
-        Pad3DGradCircularNCDHW(d_in_data, num, channels, in_depth, in_height,
-                               in_width, out_depth, out_height, out_width,
-                               pad_front, pad_top, pad_left, d_out_data);
-      } else {
-        Pad3DGradConstNCDHW(d_in_data, num, channels, in_depth, in_height,
-                            in_width, out_depth, out_height, out_width,
-                            pad_front, pad_top, pad_left, d_out_data);
-      }
+
+      std::map<std::string,
+               void (*)(T*, const T*, const int, const int, const int,
+                        const int, const int, const int, const int, const int,
+                        const int, const int, const int, const int)>
+          func_map;
+
+      func_map["reflect"] = ReflectPad3DGradNCDHW;
+      func_map["replicate"] = ReplicatePad3DGradNCDHW;
+      func_map["circular"] = CircularPad3DGradNCDHW;
+      func_map["constant"] = ConstPad3DGradNCDHW;
+
+      Pad3DGradNCDHW(d_in_data, num, channels, in_depth, in_height, in_width,
+                     out_depth, out_height, out_width, pad_front, pad_top,
+                     pad_left, d_out_data, func_map[mode]);
     } else {
       const int channels = d_in_dims[4];
       const int in_depth = d_in_dims[1];
@@ -751,23 +654,21 @@ class Pad3dGradCPUKernel : public framework::OpKernel<T> {
       const int out_depth = d_out_dims[1];
       const int out_height = d_out_dims[2];
       const int out_width = d_out_dims[3];
-      if (mode == "reflect") {
-        Pad3DGradReflectNDHWC(d_in_data, num, channels, in_depth, in_height,
-                              in_width, out_depth, out_height, out_width,
-                              pad_front, pad_top, pad_left, d_out_data);
-      } else if (mode == "replicate") {
-        Pad3DGradReplicateNDHWC(d_in_data, num, channels, in_depth, in_height,
-                                in_width, out_depth, out_height, out_width,
-                                pad_front, pad_top, pad_left, d_out_data);
-      } else if (mode == "circular") {
-        Pad3DGradCircularNDHWC(d_in_data, num, channels, in_depth, in_height,
-                               in_width, out_depth, out_height, out_width,
-                               pad_front, pad_top, pad_left, d_out_data);
-      } else {
-        Pad3DGradConstNDHWC(d_in_data, num, channels, in_depth, in_height,
-                            in_width, out_depth, out_height, out_width,
-                            pad_front, pad_top, pad_left, d_out_data);
-      }
+
+      std::map<std::string,
+               void (*)(T*, const T*, const int, const int, const int,
+                        const int, const int, const int, const int, const int,
+                        const int, const int, const int, const int, const int)>
+          func_map;
+
+      func_map["reflect"] = ReflectPad3DGradNDHWC;
+      func_map["replicate"] = ReplicatePad3DGradNDHWC;
+      func_map["circular"] = CircularPad3DGradNDHWC;
+      func_map["constant"] = ConstPad3DGradNDHWC;
+
+      Pad3DGradNDHWC(d_in_data, num, channels, in_depth, in_height, in_width,
+                     out_depth, out_height, out_width, pad_front, pad_top,
+                     pad_left, d_out_data, func_map[mode]);
     }
   }
 };

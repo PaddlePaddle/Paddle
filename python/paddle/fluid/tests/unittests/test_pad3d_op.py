@@ -201,7 +201,7 @@ class TestPad3dDygraph(unittest.TestCase):
         place = paddle.CPUPlace()
         with dg.guard(place) as g:
             input = dg.to_variable(input_data)
-            output = F.pad(input=input, pad=pad, mode=mode, value=value)
+            output = F.pad(x=input, pad=pad, mode=mode, value=value)
             self.assertTrue(np.allclose(output.numpy(), np_out))
 
 
@@ -248,7 +248,7 @@ class TestPadAPI(unittest.TestCase):
             value = 100
             input_data = np.random.rand(*input_shape).astype(np.float32)
             x = paddle.data(name="x", shape=input_shape)
-            result = F.pad(input=x, pad=pad, value=value, mode='constant')
+            result = F.pad(x=x, pad=pad, value=value, mode='constant')
             exe = Executor(place)
             fetches = exe.run(default_main_program(),
                               feed={"x": input_data},
@@ -272,7 +272,7 @@ class TestPadAPI(unittest.TestCase):
             np_out = self._get_numpy_out(input_data, pad, mode, value)
             with dg.guard(place) as g:
                 input = dg.to_variable(input_data)
-                output = F.pad(input=input, pad=pad, mode=mode, value=value)
+                output = F.pad(x=input, pad=pad, mode=mode, value=value)
                 self.assertTrue(np.allclose(output.numpy(), np_out))
 
 
@@ -345,7 +345,7 @@ class TestPad3dOpError(unittest.TestCase):
         def test_variable():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
-            F.pad(input=data, paddings=[1, 1, 1, 1, 1, 1])
+            F.pad(x=data, paddings=[1, 1, 1, 1, 1, 1])
 
         def test_reflect_1():
             input_shape = (1, 2, 3, 4, 5)

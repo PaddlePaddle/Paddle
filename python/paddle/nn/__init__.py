@@ -65,6 +65,13 @@ from .layer.common import Pad  #DEFINE_ALIAS
 from .layer.common import ReflectionPad1d  #DEFINE_ALIAS
 from .layer.common import ReplicationPad1d  #DEFINE_ALIAS
 from .layer.common import ConstantPad1d  #DEFINE_ALIAS
+from .layer.common import ReflectionPad2d  #DEFINE_ALIAS
+from .layer.common import ReplicationPad2d  #DEFINE_ALIAS
+from .layer.common import ConstantPad2d  #DEFINE_ALIAS
+from .layer.common import ZeroPad2d  #DEFINE_ALIAS
+from .layer.common import ReplicationPad3d  #DEFINE_ALIAS
+from .layer.common import ConstantPad3d  #DEFINE_ALIAS
+from .layer.common import CosineSimilarity  #DEFINE_ALIAS
 from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import Flatten  #DEFINE_ALIAS
