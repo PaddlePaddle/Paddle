@@ -71,13 +71,8 @@ if(WITH_PYTHON)
   set(tmp_impl_file ${impl_file}.tmp)
 
   if(WIN32)
-    add_custom_command(TARGET op_function_generator
-          POST_BUILD
-          COMMAND "${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator"
-              "${tmp_impl_file}"
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
-          COMMENT "copy_if_different ${impl_file}"
-          VERBATIM
+    add_custom_command(TARGET op_function_generator POST_BUILD
+          COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator ${impl_file}
     )
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)

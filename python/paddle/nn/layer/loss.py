@@ -26,8 +26,9 @@ __all__ = [
     'L1Loss',
     'NLLLoss',
     'BCELoss',
+    'KLDivLoss',
+    'MarginRankingLoss',
     'SmoothL1Loss',
-    'MarginRankingLoss'
 ]
 
 
@@ -575,68 +576,72 @@ class NLLLoss(fluid.dygraph.Layer):
             name=self._name)
 
 
-class SmoothL1Loss(fluid.dygraph.Layer):
+class KLDivLoss(fluid.dygraph.Layer):
     """
-    This operator is calculate smooth_l1_loss. Creates a criterion that uses a squared term if the absolute element-wise error falls below 1
-    and an L1 term otherwise. In some cases it can prevent exploding gradients. Also known as the Huber loss:
+    This interface calculates the Kullback-Leibler divergence loss
+    between Input(X) and Input(Target). Notes that Input(X) is the
+    log-probability and Input(Target) is the probability.
 
-    .. math::
+    KL divergence loss is calculated as follows:
 
-         loss(x,y)=\\frac{1}{n}\\sum_{i}z_i
-
-
-    where z_i is given by:
-
-    .. math::
-
-         \\mathop{z_i}=\\left\\{\\begin{array}{rcl}
-        0.5(x_i - y_i)^2 & & {if |x_i - y_i| > 1} \\\\
-        |x_i - y_i| - 0.5 & & {otherwise}
-        \\end{array} \\right.
+    $$l(x, y) = y * (\log(y) - x)$$
 
     Parameters:
-        reduction (str, optional): Indicate how to average the loss by batch_size,
+        reduction (str, optional): Indicate how to average the loss, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
-            If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
             Default is ``'mean'``.
 
-    Call Parameters:
-        input (Tensor): Input tensor, the data type is float32. Shape is
-            (N, C), where C is number of classes, and if shape is more than 2D, this
-            is (N, C, D1, D2,..., Dk), k >= 1.
-        label (Tensor): Label tensor, the data type is float32. The shape of label
-            is the same as the shape of input.
-
-    Returns:
-        The tensor variable storing the smooth_l1_loss of input and label.
-
-    Return type: Tensor.
+    Shape:
+      - input: (N, *) where * means, any number of additional dimensions.
+      - label: (N, *), same shape as input
+      - output: tensor with shape: (1) by default.
 
     Examples:
         .. code-block:: python
 
-            # declarative mode
             import paddle
             import numpy as np
+            import paddle.nn as nn
+            
+            paddle.enable_imperative()
 
-            paddle.disable_static()
-            input_data = np.random.rand(3,3).astype("float32")
-            label_data = np.random.rand(3,3).astype("float32")
-            input = paddle.to_variable(input_data)
-            label = paddle.to_variable(label_data)
-            loss = paddle.nn.SmoothL1Loss()
-            output = loss(input, label)
-            print(output.numpy())
+            shape = (5, 20)
+            x = np.random.uniform(-10, 10, shape).astype('float32')
+            target = np.random.uniform(-10, 10, shape).astype('float32')
+
+            # 'batchmean' reduction, loss shape will be [N]
+            kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[5]
+            
+            # 'mean' reduction, loss shape will be [1]
+            kldiv_criterion = nn.KLDivLoss(reduction='mean')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[1]
+
+            # 'sum' reduction, loss shape will be [1]
+            kldiv_criterion = nn.KLDivLoss(reduction='sum')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[1]
+
+            # 'none' reduction, loss shape is same with X shape
+            kldiv_criterion = nn.KLDivLoss(reduction='none')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[5, 20]
     """
 
     def __init__(self, reduction='mean'):
-        super(SmoothL1Loss, self).__init__()
+        super(KLDivLoss, self).__init__()
         self.reduction = reduction
 
     def forward(self, input, label):
-        return F.smooth_l1_loss(input, label, reduction=self.reduction)
+        out = paddle.nn.functional.kl_div(input, label, self.reduction)
+        return out
 
 
 class MarginRankingLoss(fluid.dygraph.Layer):
@@ -695,7 +700,7 @@ class MarginRankingLoss(fluid.dygraph.Layer):
     def __init__(self, margin=0.0, reduction='mean', name=None):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
-                "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
+                "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
                 "received %s, which is not allowed." % reduction)
         super(MarginRankingLoss, self).__init__()
         self.margin = margin
@@ -706,3 +711,66 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         out = paddle.nn.functional.margin_ranking_loss(
             input, other, target, self.margin, self.reduction, self.name)
         return out
+
+
+class SmoothL1Loss(fluid.dygraph.Layer):
+    """
+    This operator is calculate smooth_l1_loss. Creates a criterion that uses a squared
+    term if the absolute element-wise error falls below 1 and an L1 term otherwise.
+    In some cases it can prevent exploding gradients. Also known as the Huber loss:
+
+    .. math::
+
+         loss(x,y)=\\frac{1}{n}\\sum_{i}z_i
+
+    where z_i is given by:
+
+    .. math::
+
+         \\mathop{z_i}=\\left\\{\\begin{array}{rcl}
+        0.5(x_i - y_i)^2 & & {if |x_i - y_i| > 1} \\\\
+        |x_i - y_i| - 0.5 & & {otherwise}
+        \\end{array} \\right.
+
+    Parameters:
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
+            Default is ``'mean'``.
+
+    Call Parameters:
+        input (Tensor): Input tensor, the data type is float32. Shape is
+            (N, C), where C is number of classes, and if shape is more than 2D, this
+            is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor, the data type is float32. The shape of label
+            is the same as the shape of input.
+
+    Returns:
+        The tensor variable storing the smooth_l1_loss of input and label.
+
+    Return type: Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            # declarative mode
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            input_data = np.random.rand(3,3).astype("float32")
+            label_data = np.random.rand(3,3).astype("float32")
+            input = paddle.to_variable(input_data)
+            label = paddle.to_variable(label_data)
+            loss = paddle.nn.SmoothL1Loss()
+            output = loss(input, label)
+            print(output.numpy())
+    """
+
+    def __init__(self, reduction='mean'):
+        super(SmoothL1Loss, self).__init__()
+        self.reduction = reduction
+
+    def forward(self, input, label):
+        return F.smooth_l1_loss(input, label, reduction=self.reduction)
