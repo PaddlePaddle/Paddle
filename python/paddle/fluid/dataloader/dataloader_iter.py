@@ -80,10 +80,13 @@ def default_collate_fn(batch):
                 slots.append([item])
             else:
                 slots[i].append(item)
+
     if isinstance(slots[0][0], np.ndarray):
         return [np.stack(slot, axis=0) for slot in slots]
     elif isinstance(slots[0][0], paddle.Tensor):
         return [layers.stack(slot, axis=0) for slot in slots]
+    else:
+        raise RuntimeError("Unknown data type {}".format(type(slots[0][0])))
 
 
 class _DatasetKind(object):
