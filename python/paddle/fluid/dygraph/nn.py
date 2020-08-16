@@ -20,6 +20,7 @@ from ..layers import utils
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
+from .base import no_grad
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..param_attr import ParamAttr
@@ -3237,9 +3238,9 @@ class SyncBatchNorm(layers.Layer):
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
-        eps(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
+        epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        scale_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
+        weight_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with Xavier. Default: None.
@@ -3272,43 +3273,57 @@ class SyncBatchNorm(layers.Layer):
 
     def __init__(self,
                  num_features,
-                 eps=1e-05,
+                 epsilon=1e-05,
                  momentum=0.9,
                  track_running_stats=True,
-                 scale_attr=None,
+                 weight_attr=None,
                  bias_attr=None,
+                 data_format='NCHW',
                  name=None):
         super(SyncBatchNorm, self).__init__()
-        self._scale_attr = scale_attr
+        self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._num_features = num_features
+        self._data_layout = data_format
+        self._momentum = momentum
+        self._epsilon = epsilon
+        self._track_running_stats = track_running_stats
 
-        assert bias_attr is not False, "bias_attr should not be False in batch_norm."
+        param_shape = [self._num_features]
 
-        self._dtype = "float32"
+        ### TODO(lvmengsi): remove create param when weight_attr=False in python when BatchNorm kernel support
+        if weight_attr == False:
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=param_shape,
+                default_initializer=Constant(1.0))
+            self.weight.stop_gradient = True
 
-        param_shape = [num_features]
+            self.bias = self.create_parameter(
+                attr=self._bias_attr,
+                shape=param_shape,
+                default_initializer=Constant(0.0),
+                is_bias=True)
+            self.bias.stop_gradient = True
 
-        # create parameter
-        self.weight = self.create_parameter(
-            attr=self._scale_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            default_initializer=Constant(1.0))
-        self.weight.stop_gradient = self._scale_attr != None and self._scale_attr.learning_rate == 0.
+        else:
+            # create parameter
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=param_shape,
+                default_initializer=Constant(1.0))
+            self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
 
-        self.bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            is_bias=True)
-        self.bias.stop_gradient = self._scale_attr != None and self._scale_attr.learning_rate == 0.
+            self.bias = self.create_parameter(
+                attr=self._bias_attr, shape=param_shape, is_bias=True)
+            self.bias.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
 
         self._mean = self.create_parameter(
             attr=ParamAttr(
                 name=None,
                 initializer=Constant(0.0),
                 trainable=False,
-                do_model_average=False),
+                do_model_average=True),
             shape=param_shape,
             dtype=self._dtype)
         self._mean.stop_gradient = True
@@ -3318,15 +3333,10 @@ class SyncBatchNorm(layers.Layer):
                 name=None,
                 initializer=Constant(1.0),
                 trainable=False,
-                do_model_average=False),
+                do_model_average=True),
             shape=param_shape,
             dtype=self._dtype)
         self._variance.stop_gradient = True
-
-        self._data_layout = 'NCHW'
-        self._momentum = momentum
-        self._eps = eps
-        self._track_running_stats = track_running_stats
 
     def forward(self, input):
         # create output
@@ -3337,7 +3347,7 @@ class SyncBatchNorm(layers.Layer):
 
         ### train mode: use mini-batch stats, eval mode: use global stats
         if in_dygraph_mode():
-            attrs = ("momentum", self._momentum, "epsilon", self._eps,
+            attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
                      self._data_layout, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", not self.training,
@@ -3353,7 +3363,7 @@ class SyncBatchNorm(layers.Layer):
 
         attrs = {
             "momentum": self._momentum,
-            "epsilon": self._eps,
+            "epsilon": self._epsilon,
             "is_test": not self.training,
             "data_layout": self._data_layout,
             "use_mkldnn": False,
@@ -3388,6 +3398,48 @@ class SyncBatchNorm(layers.Layer):
         self._helper.append_op(
             type="sync_batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
         return sync_batch_norm_out
+
+    ### TODO: remove comment after BatchNorm merged.
+    #@classmethod
+    #def convert_sync_batchnorm(cls, layer):
+    #    """
+    #    Helper function to convert :class: `paddle.nn.BatchNorm` in the model to :class: `paddle.nn.SyncBatchNorm` layers.
+
+    #    Parameters:
+    #        layer(paddle.fluid.dygraph.Layer): layer containing one or more `BatchNorm` layers.
+
+    #    Returns:
+    #        A new SyncBatchNorm layer object if origin layer is BatchNorm Layer.
+
+    #    Examples:
+
+    #        .. code-block:: python
+    #            import paddle
+    #            import paddle.nn as nn
+
+    #            paddle.disable_static()
+    #            model = nn.Sequential(nn.Conv2D(3, 5, 3), nn.BatchNorm(5))
+    #            sync_model = nn.SyncBatchNorm.convert(model)
+
+    #    """
+    #    layer_output = layer
+    #    if isinstance(layer, BatchNorm):
+    #        layer_output = SyncBatchNorm(layer._num_features,
+    #                             layer._epsilon, layer._momentum,
+    #                             layer._weight_attr, layer._bias_attr
+    #                             layer._data_layout)
+
+    #        if layer._weight_attr != False and layer._bias_attr != False:
+    #            with no_grad():
+    #                layer_output.weight = layer.weight
+    #                layer_output.bias = layer.bias
+    #        layer_output._mean = layer._mean
+    #        layer_output._variance = layer._variance
+
+    #    for name, sublayer in layer.named_sublayer():
+    #        layer_output.add_sublayer(name, cls.convert_sync_batchnorm(sublayer))
+    #    del layer
+    #    return layer_output
 
 
 class Flatten(layers.Layer):
