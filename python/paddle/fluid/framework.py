@@ -64,7 +64,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_dygraph_current_expected_place_ = None
+_global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 
@@ -247,7 +247,26 @@ def _dygraph_tracer():
 
 
 def _current_expected_place():
-    return _dygraph_current_expected_place_
+    global _global_expected_place_
+    if _global_expected_place_ is None:
+        if core.is_compiled_with_cuda():
+            _global_expected_place_ = core.CUDAPlace(0)
+        else:
+            _global_expected_place_ = core.CPUPlace()
+
+    return _global_expected_place_
+
+
+def _set_dygraph_tracer_expected_place(place):
+    global _dygraph_tracer_
+    if _dygraph_tracer_ is not None:
+        _dygraph_tracer_._expected_place = place
+
+
+def _set_expected_place(place):
+    global _global_expected_place_
+    _global_expected_place_ = place
+    _set_dygraph_tracer_expected_place(place)
 
 
 # TODO(zhiqiu): remove this function.
@@ -5417,14 +5436,14 @@ def _dygraph_guard(tracer):
 
 @signature_safe_contextmanager
 def _dygraph_place_guard(place):
-    global _dygraph_current_expected_place_
-    tmp_place = _dygraph_current_expected_place_
-    _dygraph_current_expected_place_ = place
+    global _global_expected_place_
+    tmp_place = _global_expected_place_
+    _global_expected_place_ = place
 
     try:
         yield
     finally:
-        _dygraph_current_expected_place_ = tmp_place
+        _global_expected_place_ = tmp_place
 
 
 def load_op_library(lib_filename):
