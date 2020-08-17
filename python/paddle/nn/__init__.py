@@ -51,9 +51,11 @@ from .decode import beam_search_decode  #DEFINE_ALIAS
 from .decode import gather_tree  #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
+from .layer.activation import ELU
+from .layer.activation import GELU
 from .layer.activation import Hardshrink
 # from .layer.activation import PReLU        #DEFINE_ALIAS
-from .layer.activation import ReLU  #DEFINE_ALIAS
+from .layer.activation import ReLU
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
 from .layer.activation import LogSigmoid
