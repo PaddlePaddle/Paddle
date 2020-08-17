@@ -17,7 +17,8 @@ from ...fluid.layers import pool2d  #DEFINE_ALIAS
 from ...fluid.layers import pool3d  #DEFINE_ALIAS
 from ...fluid.layers import adaptive_pool2d  #DEFINE_ALIAS
 from ...fluid.layers import adaptive_pool3d  #DEFINE_ALIAS
-
+from ...fluid import core
+from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid.layers import utils, LayerHelper
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 
@@ -93,13 +94,14 @@ def update_padding3d(padding, data_format):
     return padding
 
 
-def max_pool2d(input,
-               kernel_size=-1,
-               stride=1,
+def max_pool2d(x,
+               kernel_size,
+               stride=None,
                padding=0,
                ceil_mode=False,
                return_indices=False,
-               name=None):
+               name=None,
+               data_format="NCHW"):
     """
     This operation applies 2D max pooling over input feature based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
@@ -121,7 +123,7 @@ def max_pool2d(input,
            $$
 
     Args:
-        input (Variable): The input tensor of pooling operator which is a 4-D tensor with
+        x (Variable): The input tensor of pooling operator which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
                           `"NHWC"`, where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
@@ -145,6 +147,10 @@ def max_pool2d(input,
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
         return_indices (bool): Whether to return the max indices along with the outputs.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_height, input_width]`.
+
     Returns:
         Variable: The output tensor of pooling result. The data type is same as input tensor.
     Raises:
@@ -177,13 +183,18 @@ def max_pool2d(input,
                                              return_indices=True)
           # output.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'conv2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
-    stride = utils.convert_to_list(stride, 2, 'pool_stride')
+    if stride is None:
+        stride = kernel_size
+    else:
+        stride = utils.convert_to_list(stride, 2, 'pool_stride')
 
-    data_format = "NCHW"
-
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
+            "Attr(data_format): %s." % str(data_format))
     padding_algorithm = "EXPLICIT"
     if isinstance(padding, str):
         padding = padding.upper()
@@ -204,6 +215,13 @@ def max_pool2d(input,
 
     padding = update_padding2d(padding, data_format)
 
+    if in_dygraph_mode():
+        return core.ops.max_pool2d_with_index(
+            x, 'ksize', kernel_size, 'global_pooling', False, 'strides', stride,
+            'paddings', padding, 'padding_algorithm', padding_algorithm,
+            'use_cudnn', True, 'ceil_mode', ceil_mode, 'use_mkldnn', False,
+            'exclusive', True, 'data_format', data_format)
+
     op_type = 'max_pool2d_with_index'
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
@@ -213,7 +231,7 @@ def max_pool2d(input,
 
     helper.append_op(
         type=op_type,
-        inputs={"X": input},
+        inputs={"X": x},
         outputs=outputs,
         attrs={
             "pooling_type": 'max',
@@ -232,13 +250,14 @@ def max_pool2d(input,
     return (pool_out, mask) if return_indices else pool_out
 
 
-def avg_pool2d(input,
-               kernel_size=-1,
-               stride=1,
+def avg_pool2d(x,
+               kernel_size,
+               stride=None,
                padding=0,
                ceil_mode=False,
                count_include_pad=True,
-               name=None):
+               name=None,
+               data_format="NCHW"):
     """
     This operation applies 2D average pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
@@ -259,7 +278,7 @@ def avg_pool2d(input,
            $$
 
     Args:
-        input (Variable): The input tensor of pooling operator which is a 4-D tensor with
+        x (Variable): The input tensor of pooling operator which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
                           `"NHWC"`, where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
@@ -284,6 +303,10 @@ def avg_pool2d(input,
                              None by default.
         count_include_pad (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_height, input_width]`.
+
     Returns:
         Variable: The output tensor of pooling result. The data type is same as input tensor.
     Raises:
@@ -309,10 +332,13 @@ def avg_pool2d(input,
           # output.shape [1, 3, 16, 16]
 
     """
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'conv2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
-    stride = utils.convert_to_list(stride, 2, 'pool_stride')
+    if stride is None:
+        stride = kernel_size
+    else:
+        stride = utils.convert_to_list(stride, 2, 'pool_stride')
 
     padding_algorithm = "EXPLICIT"
     if isinstance(padding, str):
@@ -332,8 +358,19 @@ def avg_pool2d(input,
             padding_algorithm = "SAME"
             padding = [0, 0]
 
-    data_format = "NCHW"
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
+            "Attr(data_format): %s." % str(data_format))
     pool_padding = update_padding2d(padding, data_format)
+
+    if in_dygraph_mode():
+        return core.ops.pool2d(
+            x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
+            False, 'padding_algorithm', padding_algorithm, 'strides', stride,
+            'paddings', pool_padding, 'use_cudnn', True, 'ceil_mode', ceil_mode,
+            'use_mkldnn', False, 'exclusive', not count_include_pad,
+            'data_format', data_format)
 
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
@@ -342,7 +379,7 @@ def avg_pool2d(input,
 
     helper.append_op(
         type=op_type,
-        inputs={"X": input},
+        inputs={"X": x},
         outputs={"Out": pool_out},
         attrs={
             "pooling_type": "avg",
@@ -361,13 +398,14 @@ def avg_pool2d(input,
     return pool_out
 
 
-def max_pool3d(input,
-               kernel_size=-1,
-               stride=1,
+def max_pool3d(x,
+               kernel_size,
+               stride=None,
                padding=0,
                ceil_mode=False,
                return_indices=False,
-               name=None):
+               name=None,
+               data_format="NCDHW"):
     """
     This operation applies 3D max pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
@@ -389,7 +427,7 @@ def max_pool3d(input,
            $$
 
     Args:
-        input (Variable): The input tensor of pooling operator, which is a 5-D tensor with
+        x (Variable): The input tensor of pooling operator, which is a 5-D tensor with
                           shape [N, C, D, H, W]. The format of
                           input tensor is `"NCDHW"` or `"NDHWC"`, where `N` is batch size, `C` is
                           the number of channels, `D` is the depth of the feature,
@@ -415,6 +453,10 @@ def max_pool3d(input,
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
         return_indices (bool): Whether to return the max indices along with the outputs.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
+                        The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_depth, input_height, input_width]`.
+
     Returns:
         Variable: The output tensor of pooling result. The data type is same as input tensor.
     Raises:
@@ -444,7 +486,7 @@ def max_pool3d(input,
           data = fluid.data(name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
 
           # max pool3d
-          output, max_indices = paddle.nn.functional.max_pool3d(input = data,
+          output, max_indices = paddle.nn.functional.max_pool3d(data,
                                         kernel_size = 2,
                                         stride = 2,
                                         padding=0,
@@ -452,10 +494,13 @@ def max_pool3d(input,
           # output.shape [None, 3, 16, 16, 16], max_indices.shape [None, 3, 16, 16, 16],
 
     """
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'conv2d')
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
-    stride = utils.convert_to_list(stride, 3, 'pool_stride')
+    if kernel_size is None:
+        stride = kernel_size
+    else:
+        stride = utils.convert_to_list(stride, 3, 'pool_stride')
 
     padding_algorithm = "EXPLICIT"
     if isinstance(padding, str):
@@ -475,10 +520,20 @@ def max_pool3d(input,
             padding_algorithm = "SAME"
             padding = [0, 0, 0]
 
-    data_format = "NCDHW"
+    if data_format not in ["NCDHW", "NDHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
+            "Attr(data_format): %s" % str(data_format))
     padding = update_padding3d(padding, data_format)
 
-    op_type = "pool3d"
+    if in_dygraph_mode():
+        return core.ops.max_pool3d_with_index(
+            x, 'pooling_type', 'max', 'ksize', kernel_size, 'strides', stride,
+            'paddings', padding, 'global_pooling', False, 'padding_algorithm',
+            padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
+            'use_mkldnn', False, 'exclusive', True, 'data_format', data_format)
+
+    op_type = "max_pool3d_with_index"
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -487,7 +542,7 @@ def max_pool3d(input,
 
     helper.append_op(
         type=op_type,
-        inputs={"X": input},
+        inputs={"X": x},
         outputs=outputs,
         attrs={
             "pooling_type": 'max',
@@ -506,13 +561,14 @@ def max_pool3d(input,
     return (pool_out, mask) if return_indices else pool_out
 
 
-def avg_pool3d(input,
-               kernel_size=-1,
-               stride=1,
+def avg_pool3d(x,
+               kernel_size,
+               stride=None,
                padding=0,
                ceil_mode=False,
                count_include_pad=False,
-               name=None):
+               name=None,
+               data_format="NCDHW"):
     """
     This operation applies 3D max pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
@@ -546,6 +602,10 @@ def avg_pool3d(input,
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
+                        The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_depth, input_height, input_width]`.
+
 
     Returns:
         Variable: The output tensor of pooling result. The data type is same as input tensor.
@@ -570,10 +630,13 @@ def avg_pool3d(input,
                                             padding=0)
           # pool3d.shape: [None, 3, 16, 16, 16]
     """
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'conv2d')
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
-    stride = utils.convert_to_list(stride, 3, 'pool_stride')
+    if stride is None:
+        stride = kernel_size
+    else:
+        stride = utils.convert_to_list(stride, 3, 'pool_stride')
 
     padding_algorithm = "EXPLICIT"
     if isinstance(padding, str):
@@ -593,8 +656,19 @@ def avg_pool3d(input,
             padding_algorithm = "SAME"
             padding = [0, 0, 0]
 
-    data_format = "NCDHW"
+    if data_format not in ["NCDHW", "NDHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
+            "Attr(data_format): %s" % str(data_format))
     padding = update_padding3d(padding, data_format)
+
+    if in_dygraph_mode():
+        return core.ops.pool3d(
+            x, 'pooling_type', 'avg', 'ksize', kernel_size, 'strides', stride,
+            'paddings', padding, 'global_pooling', False, 'padding_algorithm',
+            padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
+            'use_mkldnn', False, 'exclusive', not count_include_pad,
+            'data_format', data_format)
 
     op_type = "pool3d"
     helper = LayerHelper(op_type, **locals())
@@ -604,7 +678,7 @@ def avg_pool3d(input,
 
     helper.append_op(
         type=op_type,
-        inputs={"X": input},
+        inputs={"X": x},
         outputs=outputs,
         attrs={
             "pooling_type": 'avg',

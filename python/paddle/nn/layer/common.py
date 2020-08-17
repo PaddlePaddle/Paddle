@@ -365,17 +365,12 @@ class AvgPool2d(layers.Layer):
            $$
 
     Args:
-        input (Variable): The input tensor of pooling operator which is a 4-D tensor with
-                          shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
-                          `"NHWC"`, where `N` is batch size, `C` is the number of channels,
-                          `H` is the height of the feature, and `W` is the width of the
-                          feature. The data type if float32 or float64.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
         stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width).
-            Otherwise, the pool stride size will be a square of an int.
+            Otherwise, the pool stride size will be a square of an int. Default: kernel_size.
         padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
             it could be in three forms: `[pad_height, pad_width]` or
@@ -390,8 +385,11 @@ class AvgPool2d(layers.Layer):
                              None by default.
         count_include_pad (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
-    Returns:
-        Variable: The output tensor of pooling result. The data type is same as input tensor.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_height, input_width]`.
+
+    Returns: None.
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
@@ -403,26 +401,27 @@ class AvgPool2d(layers.Layer):
     Examples:
         .. code-block:: python
           import paddle
-          import paddle.nn.functional as F
+          import paddle.nn as nn
           import numpy as np
           paddle.disable_static()
 
           # max pool2d
           input = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
-          output = F.avg_pool2d(input,
-                                kernel_size=2,
+          Pool2d = nn.AvgPool2d(kernel_size=2,
                                 stride=2, padding=0)
+          output = Poo2d(input)
           # output.shape [1, 3, 16, 16]
 
     """
 
     def __init__(self,
                  kernel_size,
-                 stride=1,
+                 stride=None,
                  padding=0,
                  ceil_mode=False,
                  count_include_pad=True,
-                 name=None):
+                 name=None,
+                 data_format="NCHW"):
         super(AvgPool2d, self).__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -430,16 +429,18 @@ class AvgPool2d(layers.Layer):
         self.ceil_mode = ceil_mode
         self.count_include_pad = count_include_pad
         self.name = name
+        self.data_format = data_format
 
-    def forward(self, inputs):
+    def forward(self, x):
         return F.avg_pool2d(
-            inputs,
+            x,
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
             ceil_mode=self.ceil_mode,
             count_include_pad=self.count_include_pad,
-            name=self.name)
+            name=self.name,
+            data_format=self.data_format)
 
 
 class MaxPool2d(layers.Layer):
@@ -464,17 +465,12 @@ class MaxPool2d(layers.Layer):
            $$
 
     Args:
-        input (Variable): The input tensor of pooling operator which is a 4-D tensor with
-                          shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
-                          `"NHWC"`, where `N` is batch size, `C` is the number of channels,
-                          `H` is the height of the feature, and `W` is the width of the
-                          feature. The data type if float32 or float64.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
         stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width).
-            Otherwise, the pool stride size will be a square of an int.
+            Otherwise, the pool stride size will be a square of an int. Default: kernel_size.
         padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
             it could be in three forms: `[pad_height, pad_width]` or
@@ -488,8 +484,11 @@ class MaxPool2d(layers.Layer):
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
         return_indices (bool): Whether to return the max indices along with the outputs.
-    Returns:
-        Variable: The output tensor of pooling result. The data type is same as input tensor.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_height, input_width]`.
+
+    Returns: None
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
@@ -501,33 +500,31 @@ class MaxPool2d(layers.Layer):
     Examples:
         .. code-block:: python
           import paddle
-          import paddle.nn.functional as F
+          import paddle.nn as nn
           import numpy as np
           paddle.disable_static()
 
           # max pool2d
           input = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
-          output = F.max_pool2d(input,
-                                kernel_size=2,
-                                stride=2, padding=0)
+          MaxPool2d = nn.MaxPool2d(kernel_size=2,
+                                   stride=2, padding=0)
+          output = MaxPool2d(input)
           # output.shape [1, 3, 16, 16]
 
           # for return_indices=True
-          output, max_indices = F.max_pool2d(input,
-                                             kernel_size=2,
-                                             stride=2,
-                                             padding=0,
-                                             return_indices=True)
+          MaxPool2d = nn.MaxPool2d(kernel_size=2,stride=2, padding=0, return_indices=True)
+          output, max_indices = MaxPool2d(input)
           # output.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
 
     def __init__(self,
-                 kernel_size=-1,
-                 stride=1,
+                 kernel_size,
+                 stride=None,
                  padding=0,
                  ceil_mode=False,
                  return_indices=False,
-                 name=None):
+                 name=None,
+                 data_format="NCHW"):
         super(MaxPool2d, self).__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -535,15 +532,17 @@ class MaxPool2d(layers.Layer):
         self.ceil_mode = ceil_mode
         self.return_indices = return_indices
         self.name = name
+        self.data_format = data_format
 
-    def forward(self, input):
+    def forward(self, x):
         return F.max_pool2d(
-            input=input,
+            x,
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
             return_indices=self.return_indices,
-            name=self.name)
+            name=self.name,
+            data_format=self.data_format)
 
 
 class MaxPool3d(layers.Layer):
@@ -554,11 +553,6 @@ class MaxPool3d(layers.Layer):
     H is the height of the feature,  D is the depth of the feature, and W is the width of the feature.
 
     Args:
-        input (Variable): The input tensor of pooling operator, which is a 5-D tensor with
-                          shape [N, C, D, H, W], where `N` is batch size, `C` is
-                          the number of channels, `D` is the depth of the feature,
-                          `H` is the height of the feature, and `W` is the width
-                          of the feature.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size
             is a tuple or list, it must contain three integers,
             (pool_size_Depth, pool_size_Height, pool_size_Width).
@@ -566,7 +560,7 @@ class MaxPool3d(layers.Layer):
         stride (string|int|list|tuple)): The pool padding. If `pool_padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If pool stride size is a tuple or list,
             it must contain three integers, `[stride_Depth, stride_Height, stride_Width]`.
-            Otherwise, the pool stride size will be a cube of an int.
+            Otherwise, the pool stride size will be a cube of an int. Default kernel_size.
         padding (int|list|tuple): The pool padding size. If pool padding size is a tuple or list,
             it could be in three forms: `[pad_depth, pad_height, pad_width]` or
             `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
@@ -580,9 +574,12 @@ class MaxPool3d(layers.Layer):
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_height, input_width]`.
 
-    Returns:
-        Variable: The output tensor of pooling result. The data type is same as input tensor.
+
+    Returns:None.
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
@@ -593,16 +590,22 @@ class MaxPool3d(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
           import paddle
-          data = fluid.data(name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
-          # avg pool3d
-          pool3d = paddle.nn.functional.avg_pool3d(
-                                            input = data,
-                                            kernel_size = 2,
-                                            stride = 2,
-                                            padding=0)
-          # pool3d.shape: [None, 3, 16, 16, 16]
+          import paddle.nn as nn
+          import numpy as np
+          paddle.disable_static()
+
+          # max pool3d
+          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
+          MaxPool3d = nn.MaxPool3d(kernel_size=2,
+                                   stride=2, padding=0)
+          output = MaxPool3d(input)
+          # output.shape [1, 2, 3, 16, 16]
+
+          # for return_indices=True
+          MaxPool3d = nn.MaxPool3d(kernel_size=2,stride=2, padding=0, return_indices=True)
+          output, max_indices = MaxPool3d(input)
+          # output.shape [1, 2, 3, 16, 16], max_indices.shape [1, 2, 3, 16, 16],
     """
 
     def __init__(self,
@@ -611,7 +614,8 @@ class MaxPool3d(layers.Layer):
                  padding,
                  ceil_mode=False,
                  return_indices=False,
-                 name=None):
+                 name=None,
+                 data_format="NCHW"):
         super(MaxPool3d, self).__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -619,15 +623,17 @@ class MaxPool3d(layers.Layer):
         self.ceil_mode = ceil_mode
         self.return_indices = return_indices
         self.name = name
+        self.data_format = data_format
 
-    def forward(self, input):
+    def forward(self, x):
         return F.max_pool3d(
-            input=input,
+            x,
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
             return_indices=self.return_indices,
-            name=self.name)
+            name=self.name,
+            data_format=self.data_format)
 
 
 class AvgPool3d(layers.Layer):
@@ -638,11 +644,6 @@ class AvgPool3d(layers.Layer):
     H is the height of the feature,  D is the depth of the feature, and W is the width of the feature.
 
     Args:
-        input (Variable): The input tensor of pooling operator, which is a 5-D tensor with
-                          shape [N, C, D, H, W], where `N` is batch size, `C` is
-                          the number of channels, `D` is the depth of the feature,
-                          `H` is the height of the feature, and `W` is the width
-                          of the feature.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size
             is a tuple or list, it must contain three integers,
             (pool_size_Depth, pool_size_Height, pool_size_Width).
@@ -664,9 +665,11 @@ class AvgPool3d(layers.Layer):
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_height, input_width]`.
 
-    Returns:
-        Variable: The output tensor of pooling result. The data type is same as input tensor.
+    Returns: None.
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
@@ -677,16 +680,18 @@ class AvgPool3d(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
           import paddle
-          data = fluid.data(name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
+          import paddle.nn as nn
+          import numpy as np
+          paddle.disable_static()
+
           # avg pool3d
-          pool3d = paddle.nn.functional.avg_pool3d(
-                                            input = data,
-                                            kernel_size = 2,
-                                            stride = 2,
-                                            padding=0)
-          # pool3d.shape: [None, 3, 16, 16, 16]
+          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
+          AvgPool3d = nn.AvgPool3d(kernel_size=2,
+                                   stride=2, padding=0)
+          output = AvgPool3d(input)
+          # output.shape [1, 2, 3, 16, 16]
+
     """
 
     def __init__(self,
@@ -695,7 +700,8 @@ class AvgPool3d(layers.Layer):
                  padding=0,
                  ceil_mode=False,
                  count_include_pad=True,
-                 name=None):
+                 name=None,
+                 data_format="NCHW"):
         super(AvgPool3d, self).__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -703,13 +709,15 @@ class AvgPool3d(layers.Layer):
         self.ceil_mode = ceil_mode
         self.count_include_pad = count_include_pad
         self.name = name
+        self.data_format = data_format
 
-    def forward(self, inputs):
+    def forward(self, x):
         return F.avg_pool3d(
-            inputs,
+            x,
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
             ceil_mode=self.ceil_mode,
             count_include_pad=self.count_include_pad,
-            name=self.name)
+            name=self.name,
+            data_format=self.data_format)

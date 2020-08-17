@@ -33,7 +33,7 @@ class TestPool2d_API(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32")
-            result = avg_pool2d(input=input, kernel_size=2, stride=2, padding=0)
+            result = avg_pool2d(input, kernel_size=2, stride=2, padding=0)
 
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
             result_np = pool2D_forward_naive(
@@ -61,7 +61,6 @@ class TestPool2d_API(unittest.TestCase):
                 strides=[2, 2],
                 paddings=[0, 0],
                 pool_type='avg')
-
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
             avg_pool2d_dg = paddle.nn.layer.AvgPool2d(
@@ -73,7 +72,7 @@ class TestPool2d_API(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32")
-            result = max_pool2d(input=input, kernel_size=2, stride=2, padding=0)
+            result = max_pool2d(input, kernel_size=2, stride=2, padding=0)
 
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
             result_np = pool2D_forward_naive(
@@ -93,7 +92,8 @@ class TestPool2d_API(unittest.TestCase):
         with fluid.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
-            result = max_pool2d(input, kernel_size=2, stride=2, padding=0)
+            result = max_pool2d(
+                input, kernel_size=2, stride=2, padding=0, return_indices=False)
 
             result_np = pool2D_forward_naive(
                 input_np,
@@ -101,13 +101,12 @@ class TestPool2d_API(unittest.TestCase):
                 strides=[2, 2],
                 paddings=[0, 0],
                 pool_type='max')
-
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            self.assertTrue(np.allclose(result[0].numpy(), result_np))
 
             max_pool2d_dg = paddle.nn.layer.MaxPool2d(
                 kernel_size=2, stride=2, padding=0)
             result = max_pool2d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            self.assertTrue(np.allclose(result[0].numpy(), result_np))
 
     def test_pool2d(self):
         for place in self.places:
