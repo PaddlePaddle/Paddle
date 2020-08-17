@@ -385,7 +385,7 @@ class ReflectionPad1d(layers.Layer):
             pad = [1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
             my_pad = nn.ReflectionPad1d(padding=pad)
-            data = paddle.to_variable(data)
+            data = paddle.to_tensor(data)
             result = my_pad(data)
             print(result.numpy())
             # [[[2. 1. 2. 3. 2. 1.]
@@ -444,7 +444,7 @@ class ReplicationPad1d(layers.Layer):
             pad = [1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
             my_pad = nn.ReplicationPad1d(padding=pad)
-            data = paddle.to_variable(data)
+            data = paddle.to_tensor(data)
             result = my_pad(data)
             print(result.numpy())
             # [[[1. 1. 2. 3. 3. 3.]
@@ -505,7 +505,7 @@ class ConstantPad1d(layers.Layer):
             pad = [1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
             my_pad = nn.ConstantPad1d(padding=pad)
-            data = paddle.to_variable(data)
+            data = paddle.to_tensor(data)
             result = my_pad(data)
             print(result.numpy())
             # [[[0. 1. 2. 3. 0. 0.]
@@ -568,7 +568,7 @@ class ConstantPad2d(layers.Layer):
             pad = [1, 0, 1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
             my_pad = nn.ConstantPad2d(padding=pad)
-            data = paddle.to_variable(data)
+            data = paddle.to_tensor(data)
             result = my_pad(data)
             print(result.numpy())
             # [[[[0. 0. 0. 0.]
@@ -632,7 +632,7 @@ class ZeroPad2d(layers.Layer):
             pad = [1, 0, 1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
             my_pad = nn.ZeroPad2d(padding=pad)
-            data = paddle.to_variable(data)
+            data = paddle.to_tensor(data)
             result = my_pad(data)
             print(result.numpy())
             # [[[[0. 0. 0. 0.]
@@ -694,7 +694,7 @@ class ReplicationPad2d(layers.Layer):
             pad = [1, 0, 1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
             my_pad = nn.ReplicationPad2d(padding=pad)
-            data = paddle.to_variable(data)
+            data = paddle.to_tensor(data)
             result = my_pad(data)
             print(result.numpy())
             # [[[[1. 1. 2. 3.]
@@ -756,7 +756,7 @@ class ReflectionPad2d(layers.Layer):
             pad = [1, 0, 1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
             my_pad = nn.ReflectionPad2d(padding=pad)
-            data = paddle.to_variable(data)
+            data = paddle.to_tensor(data)
             result = my_pad(data)
             print(result.numpy())
             # [[[[ 5.  4.  5.  6.]
@@ -822,7 +822,7 @@ class ConstantPad3d(layers.Layer):
             pad = [1, 0, 1, 2, 0, 0]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
             my_pad = nn.ConstantPad3d(padding=pad)
-            data = paddle.to_variable(data)
+            data = paddle.to_tensor(data)
             result = my_pad(data)
             print(result.numpy())
             # [[[[[0. 0. 0. 0.]
@@ -886,7 +886,7 @@ class ReplicationPad3d(layers.Layer):
             pad = [1, 0, 1, 2, 0, 0]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
             my_pad = nn.ReplicationPad3d(padding=pad)
-            data = paddle.to_variable(data)
+            data = paddle.to_tensor(data)
             result = my_pad(data)
             print(result.numpy())
             # [[[[[1. 1. 2. 3.]
@@ -948,8 +948,8 @@ class CosineSimilarity(layers.Layer):
             np.random.seed(0)
             x1 = np.random.rand(2,3)
             x2 = np.random.rand(2,3)
-            x1 = paddle.to_variable(x1)
-            x2 = paddle.to_variable(x2)
+            x1 = paddle.to_tensor(x1)
+            x2 = paddle.to_tensor(x2)
 
             cos_sim_func = nn.CosineSimilarity(dim=0)
             result = cos_sim_func(x1, x2)

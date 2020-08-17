@@ -286,7 +286,7 @@ class TestPadAPI(unittest.TestCase):
         value = 100
         input_data = np.random.rand(*input_shape).astype(np.float32)
         np_out = self._get_numpy_out(input_data, pad, mode, value)
-        tensor_data = paddle.to_variable(input_data)
+        tensor_data = paddle.to_tensor(input_data)
 
         y = F.pad(tensor_data, pad=pad, mode=mode, value=value)
         self.assertTrue(np.allclose(y.numpy(), np_out))
@@ -338,7 +338,7 @@ class TestPad1dAPI(unittest.TestCase):
             pad_replication = nn.ReplicationPad1d(padding=pad)
             pad_constant = nn.ConstantPad1d(padding=pad, value=value)
 
-            data = paddle.to_variable(input_data)
+            data = paddle.to_tensor(input_data)
 
             output = pad_reflection(data)
             np_out = self._get_numpy_out(
@@ -405,7 +405,7 @@ class TestPad2dAPI(unittest.TestCase):
             pad_constant = nn.ConstantPad2d(padding=pad, value=value)
             pad_zero = nn.ZeroPad2d(padding=pad)
 
-            data = paddle.to_variable(input_data)
+            data = paddle.to_tensor(input_data)
 
             output = pad_reflection(data)
             np_out = self._get_numpy_out(
@@ -477,7 +477,7 @@ class TestPad3dAPI(unittest.TestCase):
             pad_replication = nn.ReplicationPad3d(padding=pad)
             pad_constant = nn.ConstantPad3d(padding=pad, value=value)
 
-            data = paddle.to_variable(input_data)
+            data = paddle.to_tensor(input_data)
 
             output = pad_replication(data)
             np_out = self._get_numpy_out(
