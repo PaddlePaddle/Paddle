@@ -43,16 +43,13 @@ class LogsumexpGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(LogsumexpGradNoNeedBufferVarsInferer, "X");
-
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OPERATOR(logsumexp, ops::ReduceOp, ops::LogsumexpOpMaker,
                   ops::LogsumexpGradOpMaker<paddle::framework::OpDesc>,
                   ops::LogsumexpGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(logsumexp_grad, ops::ReduceGradOp,
-                  ops::LogsumexpGradNoNeedBufferVarsInferer);
+REGISTER_OPERATOR(logsumexp_grad, ops::ReduceGradOp);
 
 REGISTER_OP_CPU_KERNEL(logsumexp,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
