@@ -107,7 +107,7 @@ class TestExpandAPI(unittest.TestCase):
             append_batch_size=False,
             dtype="float32")
 
-        out_1 = paddle.expand_as(x, target_tensor=y)
+        out_1 = paddle.expand_as(x, y=y)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1 = exe.run(fluid.default_main_program(),

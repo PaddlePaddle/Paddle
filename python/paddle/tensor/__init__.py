@@ -74,6 +74,7 @@ from .logic import equal_all  #DEFINE_ALIAS
 from .manipulation import cast  #DEFINE_ALIAS
 from .manipulation import concat  #DEFINE_ALIAS
 from .manipulation import expand  #DEFINE_ALIAS
+from .manipulation import broadcast_to  #DEFINE_ALIAS
 from .manipulation import expand_as  #DEFINE_ALIAS
 from .manipulation import tile  #DEFINE_ALIAS
 from .manipulation import flatten  #DEFINE_ALIAS

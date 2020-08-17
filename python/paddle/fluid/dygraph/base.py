@@ -26,13 +26,8 @@ import objgraph
 from ..data_feeder import convert_dtype
 
 __all__ = [
-    'no_grad',
-    'grad',
-    'guard',
-    'enable_dygraph',
-    'disable_dygraph',
-    'enabled',
-    'to_variable',
+    'no_grad', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph', 'enabled',
+    'to_variable'
 ]
 
 
@@ -285,12 +280,11 @@ def guard(place=None):
     tracer = Tracer()
     VarBase = core.VarBase
 
-    if place is None:
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-    tracer._expected_place = place
+    if place is not None:
+        expected_place = place
+    else:
+        expected_place = framework._current_expected_place()
+    tracer._expected_place = expected_place
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
