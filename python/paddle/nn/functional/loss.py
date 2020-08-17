@@ -122,6 +122,10 @@ def margin_ranking_loss(input,
             loss = paddle.nn.functional.margin_ranking_loss(input, other, label) 
             print(loss.numpy()) # [0.75]
     """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
+            "received %s, which is not allowed." % reduction)
     if fluid.framework.in_dygraph_mode():
         out = core.ops.elementwise_sub(other, input)
         out = core.ops.elementwise_mul(out, label)
