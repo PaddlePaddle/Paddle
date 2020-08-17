@@ -536,7 +536,6 @@ EOF
         # Recovery proxy to avoid failure in later steps
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
-        
         if [[ "$EXCODE_MAC" != "0" ]]; then
             exit 8;
         fi
