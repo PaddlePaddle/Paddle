@@ -2003,10 +2003,16 @@ class Operator(object):
                             % (out_proto.name, len(out_args)))
                     out_arg_names = []
                     for arg in out_args:
-                        out_arg_names.append(cpt.to_text(arg.name))
+                        if isinstance(arg, six.string_types):
+                            out_arg_names.append(arg)
+                        else:
+                            out_arg_names.append(cpt.to_text(arg.name))
                         # TODO(minqiyang): could we remove variable's op in static mode?
                         if not in_dygraph_mode():
-                            arg.op = self
+                            if isinstance(arg, six.string_types):
+                                block.var(arg).op = self
+                            else:
+                                arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
             if op_attrs is not None:

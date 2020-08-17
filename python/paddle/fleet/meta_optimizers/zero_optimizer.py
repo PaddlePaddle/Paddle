@@ -39,6 +39,7 @@ class ZeroOptimizer(MetaOptimizerBase):
         self._varname2grad = {}
         # self._nrings(int) is for nccl communicate
         self._nrings = 1
+        self._fuse_broadcast_num = 10
 
     def _can_apply(self):
         return self.user_defined_strategy.zero
@@ -103,68 +104,103 @@ class ZeroOptimizer(MetaOptimizerBase):
                     attrs={'scale': scale,
                            OP_ROLE_KEY: OpRole.Backward})
 
-    def _insert_broadcast_ops(self, block):
+    def _insert_broadcast_ops(self, block, fuse_broadcast=False):
         ring_id = -1
+        program = block.program
+        broadcast_cache = []
+        broadcast_count = 0
         for op_idx, op in reversed(list(enumerate(block.ops))):
+            if broadcast_count >= self._fuse_broadcast_num:
+                assert (len(broadcast_cache) > 0)
+                insert_idx = op_idx
+                for attr in broadcast_cache:
+                    block._insert_op(insert_idx, **attr)
+                    insert_idx += 1
+                broadcast_cache = []
+                broadcast_count = 0
+
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 continue
             for input_name in op.desc.input_arg_names():
-                if input_name in self._param2device:
-                    root_device = self._param2device[input_name]
-                    if root_device == self.role_maker.worker_index():
-                        param = self._varname2param[input_name]
-                    else:
-                        broadcast_name = unique_name.generate(input_name +
-                                                              "@BroadCast")
-                        op._rename_input(input_name, broadcast_name)
-                        param = block.create_var(
-                            name=broadcast_name,
-                            shape=self._varname2param[input_name].shape,
-                            dtype=self._varname2param[input_name].dtype,
-                            persistable=False)
-                    print("main_block insert broadcast op for %s" % param.name)
-                    # TODO(mapingshuo) OP_ROLE_KEY should be forward if the param
-                    # is used in forward network
-                    ring_id = (ring_id + 1) % self._nrings
-                    if root_device != self.role_maker.worker_index():
-                        block._insert_op(
-                            op_idx,
-                            type='c_sync_comm_stream',
-                            inputs={'X': param},
-                            outputs={'Out': param},
-                            attrs={
-                                'ring_id': ring_id,
-                                OP_ROLE_KEY: OpRole.Backward
-                            })
-                    block._insert_op(
-                        op_idx,
-                        type='c_broadcast',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={
+                if input_name not in self._param2device:
+                    continue
+                root_device = self._param2device[input_name]
+                if root_device == self.role_maker.worker_index():
+                    param = self._varname2param[input_name]
+                else:
+                    broadcast_name = unique_name.generate(input_name +
+                                                          "@BroadCast")
+                    op._rename_input(input_name, broadcast_name)
+                    param = block.create_var(
+                        name=broadcast_name,
+                        shape=self._varname2param[input_name].shape,
+                        dtype=self._varname2param[input_name].dtype,
+                        persistable=False)
+                print("main_block insert broadcast op for %s" % param.name)
+                # TODO(mapingshuo) OP_ROLE_KEY should be forward if the param
+                # is used in forward network
+                ring_id = (ring_id + 1) % self._nrings
+                broadcast_count += 1
+                if root_device != self.role_maker.worker_index():
+                    broadcast_cache.insert(0, {
+                        "type": 'c_sync_comm_stream',
+                        "inputs": {
+                            'X': param.name
+                        },
+                        "outputs": {
+                            'Out': param.name
+                        },
+                        "attrs": {
                             'ring_id': ring_id,
-                            'root': root_device,
-                            OP_ROLE_KEY: OpRole.Forward
-                        })
-                    if root_device != self.role_maker.worker_index():
-                        block._insert_op(
-                            op_idx,
-                            type='c_sync_calc_stream',
-                            inputs={'X': param},
-                            outputs={'Out': param},
-                            attrs={
-                                'ring_id': ring_id,
-                                OP_ROLE_KEY: OpRole.Backward
-                            })
-                        block._insert_op(
-                            op_idx,
-                            type="fill_constant",
-                            outputs={"Out": param},
-                            attrs={
-                                "shape": param.shape,
-                                "dtype": param.dtype,
-                                "value": 0.0,
-                            })
+                            OP_ROLE_KEY: OpRole.Backward
+                        }
+                    })
+                broadcast_cache.insert(0, {
+                    "type": 'c_broadcast',
+                    "inputs": {
+                        'X': param.name
+                    },
+                    "outputs": {
+                        'Out': param.name
+                    },
+                    "attrs": {
+                        'ring_id': ring_id,
+                        'root': root_device,
+                        OP_ROLE_KEY: OpRole.Forward
+                    }
+                })
+                if root_device != self.role_maker.worker_index():
+                    broadcast_cache.insert(0, {
+                        "type": 'c_sync_calc_stream',
+                        "inputs": {
+                            'X': param.name
+                        },
+                        "outputs": {
+                            'Out': param.name
+                        },
+                        "attrs": {
+                            'ring_id': ring_id,
+                            OP_ROLE_KEY: OpRole.Backward
+                        }
+                    })
+                    broadcast_cache.insert(0, {
+                        "type": "fill_constant",
+                        "outputs": {
+                            "Out": param.name
+                        },
+                        "attrs": {
+                            "shape": param.shape,
+                            "dtype": param.dtype,
+                            "value": 0.0,
+                        }
+                    })
+
+        if broadcast_count > 0:
+            assert (len(broadcast_cache) > 0)
+            insert_idx = 0
+            for attr in broadcast_cache:
+                block._insert_op(insert_idx, **attr)
+                insert_idx += 1
 
     def _insert_allreduce_ops(self, block):
         ring_id = -1
