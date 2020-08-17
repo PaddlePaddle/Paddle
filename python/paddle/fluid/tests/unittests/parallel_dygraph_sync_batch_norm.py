@@ -54,9 +54,27 @@ class TestLayer(fluid.dygraph.Layer):
 
         self._sync_batch_norm = SyncBatchNorm(num_filters)
 
+        self._conv2 = Conv2D(
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=filter_size,
+            stride=stride,
+            padding=(filter_size - 1) // 2,
+            groups=groups,
+            act=None,
+            bias_attr=False)
+
+        self._sync_batch_norm2 = SyncBatchNorm(
+            num_filters,
+            weight_attr=False,
+            bias_attr=False,
+            track_running_stats=False)
+
     def forward(self, inputs):
         y = self._conv(inputs)
         y = self._sync_batch_norm(y)
+        y = self._conv2(y)
+        y = self._sync_batch_norm2(y)
 
         return y
 
