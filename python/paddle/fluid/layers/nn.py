@@ -3743,12 +3743,10 @@ def conv1d_transpose(input,
     """
     :api_attr: Static Graph
 
-    The convolution2D transpose layer calculates the output based on the input,
-    filter, and dilations, strides, paddings. Input(Input) and output(Output)
-    are in NCHW or NHWC format. Where N is batch size, C is the number of channels,
-    H is the height of the feature, and W is the width of the feature.
-    Parameters(dilations, strides, paddings) are two elements. These two elements
-    represent height and width, respectively. The details of convolution transpose
+    The convolution1D transpose layer calculates the output based on the input,
+    filter, and dilation, stride, padding. Input(Input) and output(Output)
+    are in NCL format where N is batch size, C is the number of channels,
+    L is the length of the feature. The details of convolution transpose
     layer, please refer to the following explanation and references
     `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
     If bias attribution and activation type are provided, bias is added to
@@ -3763,80 +3761,69 @@ def conv1d_transpose(input,
 
     Where:
 
-    * :math:`X`: Input value, a 4-D Tensor with NCHW or NHWC format.
-    * :math:`W`: Filter value, a 4-D Tensor with MCHW format.
+    * :math:`X`: Input value, a 3-D Tensor with NCL format.
+    * :math:`W`: Filter value, a 3-D Tensor with MCL format.
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
-    * :math:`Out`: Output value, a 4-D Tensor with data format 'NCHW' or 'NHWC', the shape of :math:`Out` and :math:`X` may be different.
+    * :math:`Out`: Output value, a 3-D Tensor with data format 'NCL', the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
         - Input:
 
-          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
+          Input shape: :math:`(N, C_{in}, L_{in})`
 
-          Filter shape: :math:`(C_{in}, C_{out}, H_f, W_f)`
+          Filter shape: :math:`(C_{in}, C_{out}, L_f)`
 
         - Output:
 
-          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
+          Output shape: :math:`(N, C_{out}, L_{out})`
 
         Where
 
         .. math::
 
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
-           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
+           L^\prime_{out} &= (L_{in} - 1) * stride - pad_top - pad_bottom + dilation * (L_f - 1) + 1 \\\\
+           L_{out} &\in [ L^\prime_{out}, L^\prime_{out} + stride ]
 
     Note:
-          The conv2d_transpose can be seen as the backward of the conv2d. For conv2d,
-          when stride > 1, conv2d maps multiple input shape to the same output shape,
+          The conv1d_transpose can be seen as the backward of the conv1d. For conv1d,
+          when stride > 1, conv1d maps multiple input shape to the same output shape,
           so for conv2d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
-          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`,
-          conv2d_transpose can compute the kernel size automatically.
+          If output_size is None, :math:`L_{out} = L^\prime_{out}`;
+          else, the :math:`L_{out}` of the output size must between :math:`L^\prime_{out}`
+          and :math:`L^\prime_{out} + stride`. conv2d_transpose can compute the kernel size automatically.
 
     Args:
-        input(Variable): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
+        input(Variable): 3-D Tensor with [N, C, L] format,
                          its data type is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple, optional): The output image size. If output size is a
-            tuple, it must contain two integers, (image_height, image_width). None if use
+            tuple, it must contain one integer, (feature_length). None if use
             filter_size, padding, and stride to calculate output_size.
             If output_size and filter_size are specified at the same time, They
             should follow the formula above. Default: None. output_size and filter_size
             should not be None at the same time.
         filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_height, filter_size_width).
-            Otherwise, filter_size_height = filter_size_width = filter_size. None if
+            it must contain one integers, (filter_size). None if
             use output size to calculate filter_size. Default: None. filter_size and
             output_size should not be None at the same time.
         stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
-            If stride is a tuple, it must contain two integers, (stride_height, stride_width).
-            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
+            If stride is a tuple, it must contain one integer, (stride_size).
+            Default: stride = 1.
         padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
              `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a
              string, either 'VALID' or 'SAME' supported, which is the padding algorithm.
              If `padding` is a tuple or list, it could be in three forms:
-             `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and
-            when `data_format` is `'NCHW'`,
-            `padding` can be in the form `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `'NHWC'`, `padding` can be in the form
-            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-            Default: padding = 0.
+             `[pad]` or `[pad_top, pad_bottom]`, and `[[0,0], [0,0], [pad_height_top, pad_height_bottom],
+             [pad_width_left, pad_width_right]]`. Default: padding = 0.
         dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
-            If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width).
-            Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
+            If dilation is a tuple, it must contain one integers, (dilation_size).
+            Default: dilation = 1.
         filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_height, filter_size_width).
-            Otherwise, filter_size_height = filter_size_width = filter_size. None if
+            it must contain one integers, (filter_size). None if
             use output size to calculate filter_size. Default: None.
         groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
@@ -3860,29 +3847,23 @@ def conv1d_transpose(input,
         name(str, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv2d_transpose, whose
-        data type is the same with input and shape is (num_batches, channels, out_h,
-        out_w) or (num_batches, out_h, out_w, channels). If act is None, the tensor variable
-        storing the transposed convolution result, and if act is not None, the
-        tensor variable storing transposed convolution and non-linearity activation
-        result.
+        A Variable holding Tensor representing the conv1d_transpose, whose
+        data type is the same with input and shape is (num_batches, channels, length).
+        If act is None, the tensor variable storing the transposed convolution result,
+        and if act is not None, the tensor variable storing transposed convolution and
+        non-linearity activation result.
 
     Raises:
         ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
             or the element corresponding to the input's channel is not 0.
         ValueError: If `output_size` and filter_size are None at the same time.
-        ShapeError: If the input is not 4-D Tensor.
+        ShapeError: If the input is not 3-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 1.
         ShapeError: If the number of input channels is not equal to filter's channels.
         ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
@@ -3890,8 +3871,8 @@ def conv1d_transpose(input,
        .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-          conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
+          data = fluid.data(name='data', shape=[None, 3, 32], dtype='float32')
+          conv2d_transpose = fluid.layers.conv1d_transpose(input=data, num_filters=2, filter_size=3)
     """
     assert param_attr is not False, "param_attr should not be False in conv1d_transpose."
 
