@@ -31,6 +31,8 @@ __all__ += [
 
 from . import random
 from .random import manual_seed
+from .framework import get_default_dtype
+from .framework import set_default_dtype
 
 from ..fluid.framework import Variable  #DEFINE_ALIAS
 from ..fluid.param_attr import ParamAttr  #DEFINE_ALIAS
