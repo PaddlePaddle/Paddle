@@ -277,7 +277,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([-2, 0, 1]))
+        x = paddle.to_tensor(np.array([-2, 0, 1]))
         out = F.leaky_relu(x) # [-0.02, 0., 1.]
     """
     if in_dygraph_mode():
@@ -512,7 +512,7 @@ def softmax(x, axis=-1, name=None):
                       [[1.0, 2.0, 3.0, 4.0],
                        [5.0, 6.0, 7.0, 8.0],
                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
-        x = paddle.to_variable(x)
+        x = paddle.to_tensor(x)
         out = F.softmax(x)
         # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
