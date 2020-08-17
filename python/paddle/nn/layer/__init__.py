@@ -20,6 +20,7 @@ from . import conv
 from . import extension
 from . import activation
 from . import norm
+from . import distance
 
 from .activation import *
 from .loss import *
@@ -71,6 +72,8 @@ from .loss import MSELoss  #DEFINE_ALIAS
 from .loss import L1Loss  #DEFINE_ALIAS
 from .loss import NLLLoss  #DEFINE_ALIAS
 from .loss import BCELoss  #DEFINE_ALIAS
+from .loss import KLDivLoss  #DEFINE_ALIAS
+from .loss import MarginRankingLoss  #DEFINE_ALIAS
 from .norm import BatchNorm  #DEFINE_ALIAS
 from .norm import GroupNorm  #DEFINE_ALIAS
 from .norm import LayerNorm  #DEFINE_ALIAS
@@ -79,3 +82,4 @@ from .norm import InstanceNorm  #DEFINE_ALIAS
 # from .rnn import RNNCell        #DEFINE_ALIAS
 # from .rnn import GRUCell        #DEFINE_ALIAS
 # from .rnn import LSTMCell        #DEFINE_ALIAS
+from .distance import PairwiseDistance  #DEFINE_ALIAS

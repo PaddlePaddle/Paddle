@@ -266,7 +266,7 @@ inline std::string GetErrorSumaryString(StrType&& what, const char* file,
   std::ostringstream sout;
   sout << "\n----------------------\nError Message "
           "Summary:\n----------------------\n";
-  sout << string::Sprintf("%s at (%s:%d)", std::forward<StrType>(what), file,
+  sout << string::Sprintf("%s (at %s:%d)", std::forward<StrType>(what), file,
                           line)
        << std::endl;
   return sout.str();
