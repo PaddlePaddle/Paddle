@@ -25,12 +25,12 @@ from ...fluid import one_hot  #DEFINE_ALIAS
 from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
 from ...fluid.layers import assign  #DEFINE_ALIAS
-from ...fluid.layers import squeeze
-from ...fluid.layers import unsqueeze
-from ...fluid.layers import elementwise_mul
-from ...tensor import clamp
-from ...tensor import sum
-from ...tensor import sqrt
+from ...fluid.layers import squeeze  #DEFINE_ALIAS
+from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
+from ...fluid.layers import elementwise_mul  #DEFINE_ALIAS
+from ...tensor import clamp  #DEFINE_ALIAS
+from ...tensor import sum  #DEFINE_ALIAS
+from ...tensor import sqrt  #DEFINE_ALIAS
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
 from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
@@ -455,12 +455,7 @@ def interpolate(input,
     return out
 
 
-def pad(x,
-        pad=[0, 0, 0, 0],
-        mode='constant',
-        value=0,
-        data_format="NCHW",
-        name=None):
+def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     """
     Pad tensor according to 'pad' and 'mode'.
     If mode is 'reflect', pad[0] and pad[1] must be no greater
@@ -472,7 +467,7 @@ def pad(x,
             of input will be padded. 1. If input dimension is 3, then the pad has the form (pad_left,
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
-            (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back). Default is [0, 0, 0, 0].
+            (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
             
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
@@ -560,6 +555,9 @@ def pad(x,
             "mode should be one of constant, reflect, replicate, circular, but got {}.".format(mode)
 
     data_format = data_format.upper()
+    assert data_format in ["NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC"], \
+        "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], " \
+        "but got {}".format(data_format)
 
     x_dim = len(x.shape)
 
@@ -587,10 +585,6 @@ def pad(x,
                 pad = concat([pad, zeros((2, ), dtype="int32")], axis=0)
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axes=unsqueezed_dim)
-        else:
-            raise ValueError, "data_format should be in one of "
-            "[NCL, NCHW, NCDHW, NLC, NHWC, NDHWC] but got {}".format(
-                data_format)
     else:
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
@@ -612,10 +606,6 @@ def pad(x,
                 pad = pad + [0, 0]
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axes=unsqueezed_dim)
-        else:
-            raise ValueError, "data_format should be in one of "
-            "[NCL, NCHW, NCDHW, NLC, NHWC, NDHWC] but got {}".format(
-                data_format)
 
     if in_dygraph_mode():
         if isinstance(pad, Variable):

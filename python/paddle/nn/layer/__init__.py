@@ -37,7 +37,6 @@ from .activation import HSigmoid  #DEFINE_ALIAS
 from .common import BilinearTensorProduct  #DEFINE_ALIAS
 from .common import Pool2D  #DEFINE_ALIAS
 from .common import Pad2D  #DEFINE_ALIAS
-from .common import Pad  #DEFINE_ALIAS
 from .common import ReflectionPad1d  #DEFINE_ALIAS
 from .common import ReplicationPad1d  #DEFINE_ALIAS
 from .common import ConstantPad1d  #DEFINE_ALIAS
@@ -47,7 +46,7 @@ from .common import ConstantPad2d  #DEFINE_ALIAS
 from .common import ZeroPad2d  #DEFINE_ALIAS
 from .common import ReplicationPad3d  #DEFINE_ALIAS
 from .common import ConstantPad3d  #DEFINE_ALIAS
-from .common import CosineSimilarity
+from .common import CosineSimilarity  #DEFINE_ALIAS
 from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
 from .common import Flatten  #DEFINE_ALIAS
