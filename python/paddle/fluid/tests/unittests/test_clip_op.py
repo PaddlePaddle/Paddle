@@ -145,13 +145,28 @@ class TestClipAPI(unittest.TestCase):
         self.assertTrue(np.allclose(res5, data.clip(min=0.2)))
         self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
 
+    def test_clip_dygraph(self):
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        paddle.disable_static(place)
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('float32')
+        images = paddle.to_variable(data, dtype='float32')
 
-class TestClipError(unittest.TestCase):
+        out_1 = paddle.clip(images, min=0.2, max=0.8)
+        out_2 = paddle.clip(images, min=0.2, max=0.9)
+
+        self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
+        self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
+
     def test_errors(self):
+        paddle.enable_static()
         x1 = fluid.data(name='x1', shape=[1], dtype="int16")
         x2 = fluid.data(name='x2', shape=[1], dtype="int8")
+        x3 = fluid.data(name='x3', shape=[1], dtype="float32")
         self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
         self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
+        self.assertRaises(Exception, paddle.clip, x=x3)
 
 
 if __name__ == '__main__':
