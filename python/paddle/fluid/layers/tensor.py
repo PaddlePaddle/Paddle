@@ -1435,9 +1435,9 @@ def linspace(start, stop, num, dtype=None, name=None):
     This OP return fixed number of evenly spaced values within a given interval.
 
     Args:
-        start(float|Tensor): The input :attr:`start` is start variable of range. It is a scalar, \
+        start(int|float|Tensor): The input :attr:`start` is start variable of range. It is a scalar, \
             or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
-        stop(float|Tensor): The input :attr:`stop` is start variable of range. It is a scalar, \
+        stop(int|float|Tensor): The input :attr:`stop` is start variable of range. It is a scalar, \
             or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
         num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int scalar, \
             or a Tensor of shape [1] with data type int32 or int64.
@@ -1480,10 +1480,16 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     helper = LayerHelper("linspace", **locals())
 
-    check_dtype(start.dtype, 'start', ['int32', 'int64', 'float32', 'float64'],
-                'linspace')
-    check_dtype(stop.dtype, 'stop', ['int32', 'int64', 'float32', 'float64'],
-                'linspace')
+    if isinstance(start, Variable):
+        check_dtype(start.dtype, 'start',
+                    ['int32', 'int64', 'float32', 'float64'], 'linspace')
+    else:
+        check_type(start, 'start', (int, float), 'linspace')
+    if isinstance(stop, Variable):
+        check_dtype(stop.dtype, 'stop',
+                    ['int32', 'int64', 'float32', 'float64'], 'linspace')
+    else:
+        check_type(stop, 'end', (int, float), 'linspace')
     check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
                 'linspace')
     check_type(num, 'num', (int), 'linspace')
