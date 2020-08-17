@@ -23,7 +23,7 @@ from .. import functional as F
 
 __all__ = [
     'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
-    'Pad2D', 'AdaptiveAvgPool2d'
+    'Pad2D', 'AdaptiveAvgPool2d', 'AdaptiveAvgPool3d'
 ]
 
 
@@ -404,7 +404,7 @@ class AdaptiveAvgPool2d(layers.Layer):
           import paddle
           paddle.disable_static()
           input_data = np.random.rand(2, 3, 32, 32)
-          x = paddle.to_variable(input_data)
+          x = paddle.to_tensor(input_data)
           adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(output_size=3)
           pool_out = adaptive_avg_pool(x = x)
     """
@@ -417,6 +417,91 @@ class AdaptiveAvgPool2d(layers.Layer):
 
     def forward(self, x):
         return F.adaptive_avg_pool2d(
+            x,
+            output_size=self._output_size,
+            data_format=self._data_format,
+            name=self._name)
+
+
+class AdaptiveAvgPool3d(layers.Layer):
+    """
+
+    This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
+    of the output tensor are determined by the parameter output_size.
+
+    For avg adaptive pool3d:
+
+    ..  math::
+
+      dstart &= floor(i * D_{in} / D_{out})
+
+      dend &= ceil((i + 1) * D_{in} / D_{out})
+
+      hstart &= floor(j * H_{in} / H_{out})
+
+      hend &= ceil((j + 1) * H_{in} / H_{out})
+
+      wstart &= floor(k * W_{in} / W_{out})
+
+      wend &= ceil((k + 1) * W_{in} / W_{out})
+
+      Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+
+
+    Parameters:
+        output_size (int|list|tuple|None): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain three integers, (output_size_Length, output_size_Height, output_size_Width).
+            Any parameter in output_size can be None, which means the same as the original input tensor.
+        data_format (string) – The data format of the input and output data. An optional string
+            from: “NCDHW”, “NDHWC”. The default is “NCDHW”. When it is “NCDHW”, the data is stored in
+            the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+    Shape:
+        x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
+                          The data type can be float16, float32, float64, int32 or int64.
+
+    Returns:
+        A callable object of AdaptiveAvgPool3d.
+
+    Examples:
+        .. code-block:: python
+
+          # adaptive avg pool3d
+          # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
+          # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
+          # of input data into l * m * n grids averagely and performs poolings in each
+          # grid to get output.
+          # adaptive avg pool performs calculations as follow:
+          #
+          #     for i in range(l):
+          #         for j in range(m):
+          #             for k in range(n):
+          #                 dstart = floor(i * D / l)
+          #                 dend = ceil((i + 1) * D / l)
+          #                 hstart = floor(j * H / m)
+          #                 hend = ceil((j + 1) * H / m)
+          #                 wstart = floor(k * W / n)
+          #                 wend = ceil((k + 1) * W / n)
+          #                 output[:, :, i, j, k] =
+          #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
+          import paddle
+          paddle.disable_static()
+          input_data = np.random.rand(2, 3, 8, 32, 32)
+          x = paddle.to_tensor(input_data)
+          adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3d(output_size=3)
+          pool_out = adaptive_avg_pool(x = x)
+    """
+
+    def __init__(self, output_size, data_format="NCDHW", name=None):
+        super(AdaptiveAvgPool3d, self).__init__()
+        self._output_size = output_size
+        self._data_format = data_format
+        self._name = name
+
+    def forward(self, x):
+        return F.adaptive_avg_pool3d(
             x,
             output_size=self._output_size,
             data_format=self._data_format,

@@ -23,11 +23,8 @@ from ...fluid.layers import utils
 from ...fluid.layer_helper import LayerHelper
 
 __all__ = [
-    'pool2d',
-    'pool3d',
-    'adaptive_pool2d',
-    'adaptive_pool3d',
-    'adaptive_avg_pool2d',  #'adaptive_avg_pool3d'
+    'pool2d', 'pool3d', 'adaptive_pool2d', 'adaptive_pool3d',
+    'adaptive_avg_pool2d', 'adaptive_avg_pool3d'
 ]
 
 
@@ -92,7 +89,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
           import paddle
           paddle.disable_static()
           input_data = np.random.rand(2, 3, 32, 32)
-          x = paddle.to_variable(input_data)
+          x = paddle.to_tensor(input_data)
           pool_out = paddle.nn.functional.adaptive_avg_pool2d(
                             x = x,
                             output_size=[3, 3])
@@ -145,123 +142,123 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     return pool_out
 
 
-# def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
-#     """
+def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
+    """
 
-#     This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
-#     of the output tensor are determined by the parameter output_size.
+    This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
+    of the output tensor are determined by the parameter output_size.
 
-#     For avg adaptive pool3d:
+    For avg adaptive pool3d:
 
-#     ..  math::
+    ..  math::
 
-#       dstart &= floor(i * D_{in} / D_{out})
+      dstart &= floor(i * D_{in} / D_{out})
 
-#       dend &= ceil((i + 1) * D_{in} / D_{out})
+      dend &= ceil((i + 1) * D_{in} / D_{out})
 
-#       hstart &= floor(j * H_{in} / H_{out})
+      hstart &= floor(j * H_{in} / H_{out})
 
-#       hend &= ceil((j + 1) * H_{in} / H_{out})
+      hend &= ceil((j + 1) * H_{in} / H_{out})
 
-#       wstart &= floor(k * W_{in} / W_{out})
+      wstart &= floor(k * W_{in} / W_{out})
 
-#       wend &= ceil((k + 1) * W_{in} / W_{out})
+      wend &= ceil((k + 1) * W_{in} / W_{out})
 
-#       Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+      Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
-#     Args:
-#         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
-#                           The data type can be float16, float32, float64, int32 or int64.
-#         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-#             it must contain three integers, (output_size_Length, output_size_Height, output_size_Width).
-#             Any parameter in output_size can be None, which means the same as the original input tensor.
-#         data_format (string) – The data format of the input and output data. An optional string
-#             from: “NCDHW”, “NDHWC”. The default is “NCDHW”. When it is “NCDHW”, the data is stored in
-#             the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-#         name(str, optional): For detailed information, please refer
-#                              to :ref:`api_guide_Name`. Usually name is no need to set and
-#                              None by default.
+    Args:
+        x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
+                          The data type can be float16, float32, float64, int32 or int64.
+        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain three integers, (output_size_Length, output_size_Height, output_size_Width).
+            Any parameter in output_size can be None, which means the same as the original input tensor.
+        data_format (string) – The data format of the input and output data. An optional string
+            from: “NCDHW”, “NDHWC”. The default is “NCDHW”. When it is “NCDHW”, the data is stored in
+            the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
-#     Returns:
-#         Tensor: The output tensor of avg adaptive pool3d result. The data type is same
-#                   as input tensor.
+    Returns:
+        Tensor: The output tensor of avg adaptive pool3d result. The data type is same
+                  as input tensor.
 
-#     Raises:
-#         ValueError: If `data_format` is not "NCDHW" or "NDHWC".
+    Raises:
+        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
 
-#     Examples:
-#         .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-#           # adaptive avg pool3d
-#           # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
-#           # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
-#           # of input data into l * m * n grids averagely and performs poolings in each
-#           # grid to get output.
-#           # adaptive avg pool performs calculations as follow:
-#           #
-#           #     for i in range(l):
-#           #         for j in range(m):
-#           #             for k in range(n):
-#           #                 dstart = floor(i * D / l)
-#           #                 dend = ceil((i + 1) * D / l)
-#           #                 hstart = floor(j * H / m)
-#           #                 hend = ceil((j + 1) * H / m)
-#           #                 wstart = floor(k * W / n)
-#           #                 wend = ceil((k + 1) * W / n)
-#           #                 output[:, :, i, j, k] =
-#           #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
-#           import paddle
-#           paddle.disable_static()
-#           input_data = np.random.rand(2, 3, 8, 32, 32)
-#           x = paddle.to_variable(input_data)
-#           pool_out = paddle.nn.functional.adaptive_avg_pool3d(
-#                             x = x,
-#                             output_size=[3, 3, 3])
-#     """
-#     if not paddle.fluid.framework.in_dygraph_mode():
-#         check_variable_and_dtype(
-#             x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
-#             'adaptive_avg_pool3d')
-#     check_type(data_format, 'data_format', str, 'adaptive_avg_pool3d')
+          # adaptive avg pool3d
+          # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
+          # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
+          # of input data into l * m * n grids averagely and performs poolings in each
+          # grid to get output.
+          # adaptive avg pool performs calculations as follow:
+          #
+          #     for i in range(l):
+          #         for j in range(m):
+          #             for k in range(n):
+          #                 dstart = floor(i * D / l)
+          #                 dend = ceil((i + 1) * D / l)
+          #                 hstart = floor(j * H / m)
+          #                 hend = ceil((j + 1) * H / m)
+          #                 wstart = floor(k * W / n)
+          #                 wend = ceil((k + 1) * W / n)
+          #                 output[:, :, i, j, k] =
+          #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
+          import paddle
+          paddle.disable_static()
+          input_data = np.random.rand(2, 3, 8, 32, 32)
+          x = paddle.to_tensor(input_data)
+          pool_out = paddle.nn.functional.adaptive_avg_pool3d(
+                            x = x,
+                            output_size=[3, 3, 3])
+    """
+    if not paddle.fluid.framework.in_dygraph_mode():
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'adaptive_avg_pool3d')
+    check_type(data_format, 'data_format', str, 'adaptive_avg_pool3d')
 
-#     if data_format not in ["NCDHW", "NDHWC"]:
-#         raise ValueError(
-#             "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
-#             "Attr(data_format): %s." % str(data_format))
+    if data_format not in ["NCDHW", "NDHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
+            "Attr(data_format): %s." % str(data_format))
 
-#     if data_format == "NCDHW":
-#         in_l, in_h, in_w = x.shape[2:5]
-#     else:
-#         in_l, in_h, in_w = x.shape[1:4]
+    if data_format == "NCDHW":
+        in_l, in_h, in_w = x.shape[2:5]
+    else:
+        in_l, in_h, in_w = x.shape[1:4]
 
-#     if isinstance(output_size, int):
-#         output_size = utils.convert_to_list(output_size, 3, 'output_size')
-#     elif output_size == None:
-#         output_size = [in_l, in_h, in_w]
-#     else:
-#         if output_size[0] == None:
-#             output_size[0] = in_l
-#         if output_size[1] == None:
-#             output_size[1] = in_h
-#         if output_size[2] == None:
-#             output_size[2] = in_w
+    if isinstance(output_size, int):
+        output_size = utils.convert_to_list(output_size, 3, 'output_size')
+    elif output_size == None:
+        output_size = [in_l, in_h, in_w]
+    else:
+        if output_size[0] == None:
+            output_size[0] = in_l
+        if output_size[1] == None:
+            output_size[1] = in_h
+        if output_size[2] == None:
+            output_size[2] = in_w
 
-#     l_type = 'pool3d'
+    l_type = 'pool3d'
 
-#     helper = LayerHelper(l_type, **locals())
-#     dtype = helper.input_dtype()
-#     pool_out = helper.create_variable_for_type_inference(dtype)
-#     outputs = {"Out": pool_out}
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_variable_for_type_inference(dtype)
+    outputs = {"Out": pool_out}
 
-#     helper.append_op(
-#         type=l_type,
-#         inputs={"X": x},
-#         outputs=outputs,
-#         attrs={
-#             "pooling_type": "avg",
-#             "ksize": output_size,
-#             "adaptive": True,
-#             "data_format": data_format,
-#         })
+    helper.append_op(
+        type=l_type,
+        inputs={"X": x},
+        outputs=outputs,
+        attrs={
+            "pooling_type": "avg",
+            "ksize": output_size,
+            "adaptive": True,
+            "data_format": data_format,
+        })
 
-#     return pool_out
+    return pool_out
