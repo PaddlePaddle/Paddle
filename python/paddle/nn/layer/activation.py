@@ -299,7 +299,7 @@ class LeakyReLU(layers.Layer):
         self._name = name
 
     def forward(self, x):
-        return F.leaky_relu(x, self._alpha, self._name)
+        return F.leaky_relu(x, self._negative_slope, self._name)
 
 
 class Sigmoid(layers.Layer):

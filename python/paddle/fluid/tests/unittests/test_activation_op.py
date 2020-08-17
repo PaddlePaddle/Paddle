@@ -675,7 +675,7 @@ def ref_leaky_relu(x, alpha=0.01):
 
 class TestLeakyRelu(TestActivation):
     def get_alpha(self):
-        return 0.01
+        return 0.02
 
     def setUp(self):
         self.op_type = "leaky_relu"
