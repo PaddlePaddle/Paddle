@@ -17,33 +17,20 @@ from __future__ import print_function, division
 import multiprocessing
 import os
 import signal
-import six
 import sys
 import warnings
 
 import paddle.fluid as fluid
 from paddle.distributed.utils import find_free_ports
 
-# SimpleQueue is different in py2 and py3
-if six.PY2:
-    import multiprocessing.queues as queues_py2
 
-
-def _support_set_start_method():
+def _py_supported_check():
     if not sys.version_info >= (3, 4):
-        warnings.warn(
-            "`paddle.distributed.run` only supports setting the process"
-            " start when python version greater than 3.4, if your python"
-            " is lower than this version, only can start processes by"
-            " default method of current platform.")
-        return False
-    return True
-
-
-def _support_connection_wait():
-    if not sys.version_info >= (3, 3):
-        return False
-    return True
+        raise RuntimeError(
+            "Use `paddle.distributed.run` to start parallel training "
+            "requires python version greater than 3.4, if your python "
+            "is lower than this version, please use "
+            "`paddle.distributed.launch` instead.")
 
 
 def _set_default_master_env():
@@ -69,25 +56,15 @@ def _func_wrapper(func, i, args, error_queue):
 
 class MultiprocessContext(object):
     def __init__(self, processes, error_queues):
+        _py_supported_check()
         self.error_queues = error_queues
         self.processes = processes
-        # NOTE(chenweihang): multiprocessing.connection.wait is a new feature
-        # supported from python3.3, which can provide more fine-grained support 
-        # for multi-subprocess exit monitoring.
-        self.use_connection_wait = _support_connection_wait()
-        if self.use_connection_wait:
-            self.sentinels = {
-                process.sentinel: index
-                for index, process in enumerate(processes)
-            }
+        self.sentinels = {
+            process.sentinel: index
+            for index, process in enumerate(processes)
+        }
 
     def join(self, timeout=None):
-        if self.use_connection_wait:
-            return self._join_with_conn_wait(timeout)
-        else:
-            return self._join_without_conn_wait(timeout)
-
-    def _join_with_conn_wait(self, timeout=None):
         if len(self.sentinels) == 0:
             return True
 
@@ -106,45 +83,14 @@ class MultiprocessContext(object):
         if error_index is None:
             return len(self.sentinels) == 0
 
-        self._join_and_throw_exception(error_index)
-
-    # NOTE(chenweihng): This method is not as efficient as connection.wait.
-    # Beccause if process has already stopped, p.join() will return immediately.
-    # If process hasn't stopped, it will block until the process end, and 
-    # as the same time, the other process may have been end, which makes it 
-    # impossible for us to accurately capture the first failed process.
-    # Here we avoid process block by setting timeout, but if the other process
-    # exit before the timeout end, we will also encounter the previois problem,
-    # but maybe there is no better way here. When we fully migrated to python3, 
-    # this problem disappeared
-    def _join_without_conn_wait(self, timeout=None):
-        finished_processes = []
-        error_index = None
-        timeout = timeout // len(self.processes) if timeout else 1
-        for index, process in enumerate(self.processes):
-            # try to join selected process
-            process.join(timeout=timeout)
-            # This will be None if the process has not yet terminated
-            if process.exitcode is not None:
-                # exit with exception
-                if process.exitcode == 0:
-                    finished_processes.append(index)
-                else:
-                    error_index = index
-                    finished_processes.append(index)
-                    break
-
-        if error_index is None:
-            return len(finished_processes) == len(self.processes)
-
-        self._join_and_throw_exception(error_index)
-
-    def _join_and_throw_exception(self, error_index):
         for process in self.processes:
             if process.is_alive():
                 process.terminate()
             process.join()
 
+        self._throw_exception(error_index)
+
+    def _throw_exception(self, error_index):
         if self.error_queues[error_index].empty():
             exitcode = self.processes[error_index].exitcode
             if exitcode < 0:
@@ -163,12 +109,23 @@ class MultiprocessContext(object):
         raise Exception(msg)
 
 
+# NOTE(chenweihang): [ why default start method is spawn? ]
+# The CUDA runtime does not support the fork start method, 
+# either the spawn or forkserver start method are required 
+# to use CUDA in subprocesses.
 def launch_processes(func,
                      args=(),
                      nprocs=1,
                      join=True,
                      daemon=False,
                      start_method='spawn'):
+    # NOTE(chenweihang): [ why only supports python3.4+? ]
+    # Python has only supported setting the child process startup method
+    # since 3.4. The previous version can only use the default startup 
+    # method, while the default startup method of Unix is fork, which 
+    # cannot support CUDA runtime multi-process
+    _py_supported_check()
+
     # NOTE(chenweihang): [ why need set default master info before run? ]
     # when using `paddle.distributed.run` start parallel training,
     # users need use `init_parallel_env` to config some cluster info
@@ -178,18 +135,12 @@ def launch_processes(func,
     _set_default_master_env()
 
     # start processes
-    if _support_set_start_method():
-        mp = multiprocessing.get_context(start_method)
-    else:
-        mp = multiprocessing
+    mp = multiprocessing.get_context(start_method)
 
     error_queues = []
     processes = []
     for i in range(nprocs):
-        if six.PY2:
-            error_queue = queues_py2.SimpleQueue()
-        else:
-            error_queue = mp.SimpleQueue()
+        error_queue = mp.SimpleQueue()
         process = mp.Process(
             target=_func_wrapper, args=(func, i, args, error_queue))
         process.daemon = daemon
