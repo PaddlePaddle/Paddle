@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <random>
-#include "paddle/fluid/framework/generator.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -31,12 +31,6 @@ class CPUGaussianRandomKernel : public framework::OpKernel<T> {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
-
-    /*
-    auto gen_ptr = framework::Generator::GetInstance();
-    std::mt19937_64& engine = gen_ptr->GetCPUEngine();
-    */
-
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
