@@ -23,7 +23,7 @@ from .. import functional as F
 
 __all__ = [
     'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
-    'Pad2D'
+    'Pad2D', 'AlphaDropout'
 ]
 
 
@@ -342,3 +342,60 @@ class Pad2D(layers.Layer):
             mode=self._mode,
             pad_value=self._pad_value,
             data_format=self._data_format)
+
+
+class AlphaDropout(layers.Layer):
+    """
+        :alias_main: paddle.nn.AlphaDropout
+        :alias: paddle.nn.AlphaDropout,paddle.nn.layer.AlphaDropout,paddle.nn.layer.common.AlphaDropout
+
+    AlphaDropout Layer.
+    This interface is used to construct a callable object of the `AlphaDropout` class.
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
+    zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
+    standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
+    activations to the negative saturation value.
+
+    For more information, please refer to:
+    [Self-Normalizing Neural Networks](https://arxiv.org/abs/1706.02515)
+    `paddle.nn.functional.alpha_dropout`
+
+    In dygraph mode, please use ``eval()`` to indicate whether it is in test phrase or not.
+
+    Parameters:
+        p (float, optional): Probability of setting units to zero. Default: 0.5
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
+
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
+    Examples:
+        .. code-block:: python
+            import paddle
+            from paddle.fluid.dygraph.base import to_variable
+            import numpy as np
+
+            paddle.enable_imperative()
+            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
+            x = to_variable(x)
+            m = paddle.nn.AlphaDropout(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, name=None):
+        super(AlphaDropout, self).__init__()
+        self.p = p
+        self.training = _dygraph_tracer()._train_mode
+        self.name = name
+
+    def forward(self, input):
+        out = F.alpha_dropout(
+            input, p=self.p, training=self.training, name=self.name)
+        return out

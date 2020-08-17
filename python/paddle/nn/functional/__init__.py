@@ -51,6 +51,7 @@ from .activation import tanh_shrink  #DEFINE_ALIAS
 from .activation import thresholded_relu  #DEFINE_ALIAS
 from .activation import log_softmax  #DEFINE_ALIAS
 from .common import dropout  #DEFINE_ALIAS
+from .common import alpha_dropout  #DEFINE_ALIAS
 # from .common import embedding        #DEFINE_ALIAS
 # from .common import fc  #DEFINE_ALIAS
 from .common import label_smooth  #DEFINE_ALIAS

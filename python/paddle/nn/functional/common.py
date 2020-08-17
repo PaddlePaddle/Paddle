@@ -28,8 +28,11 @@ from ...fluid.layers import assign  #DEFINE_ALIAS
 #from ...fluid.layers import fc  #DEFINE_ALIAS
 from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
 
+import paddle
+
 __all__ = [
     'dropout',
+    'alpha_dropout',
     #       'embedding',
     #       'fc',
     'label_smooth',
@@ -446,3 +449,75 @@ def interpolate(input,
         outputs={"Out": out},
         attrs=attrs)
     return out
+
+
+def alpha_dropout(x, p=0.5, training=True, name=None):
+    """
+    :alias_main: paddle.nn.functional.alpha_dropout
+	:alias: paddle.nn.functional.alpha_dropout,paddle.nn.functional.common.alpha_dropout
+
+    alpha_dropout function.
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
+    zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
+    standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
+    activations to the negative saturation value.
+
+    Args:
+        x (Tensor): The input tensor. The data type is float32 or float64.
+        p (float): Probability of setting units to zero. Default 0.5.
+        training (bool): A flag indicating whether it is in train phrase or not. Default True.
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
+    Returns:
+        A Tensor representing the dropout, has same shape and data type with `x`.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            from paddle.fluid.dygraph.base import to_variable
+
+            paddle.enable_imperative()
+            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
+            x = to_variable(x)
+            y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
+            y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False) #test
+            print(x.numpy())
+            print(y_train.numpy())
+            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
+            print(y_test.numpy())
+    """
+    assert isinstance(p, (float, int)), "p argument should be a number"
+    assert 0 <= p <= 1, "p argument should between 0 and 1"
+
+    if training:
+        #get transformation params
+        alpha = 1.6732632423543772848170429916717
+        scale = 1.0507009873554804934193349852946
+        alpha_p = -alpha * scale
+        a = ((1 - p) * (1 + p * alpha_p**2))**-0.5
+        b = -a * alpha_p * p
+
+        dtype = x.dtype
+        input_shape = x.shape
+
+        #get mask
+        random_tensor = layers.uniform_random(
+            input_shape, dtype='float32', min=0., max=1.0)
+        p = layers.fill_constant(shape=[1], dtype='float32', value=p)
+        keep_mask = layers.greater_equal(random_tensor, p)
+        keep_mask = layers.cast(keep_mask, dtype)
+        drop_mask = layers.elementwise_sub(
+            layers.fill_constant(
+                shape=input_shape, dtype=dtype, value=1.),
+            keep_mask)
+
+        #apply mask
+        alpha_p = layers.fill_constant(shape=[1], dtype=dtype, value=alpha_p)
+        a = layers.fill_constant(shape=[1], dtype=dtype, value=a)
+        b = layers.fill_constant(shape=[1], dtype=dtype, value=b)
+        y = layers.elementwise_add(
+            paddle.multiply(x, keep_mask), paddle.multiply(alpha_p, drop_mask))
+        res = layers.elementwise_add(paddle.multiply(a, y), b, name=name)
+        return res
+    else:  # test
+        return x
