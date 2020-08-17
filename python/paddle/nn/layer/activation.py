@@ -40,7 +40,7 @@ class ELU(layers.Layer):
 
     ..  math::
     
-        elu(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
+        ELU(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
@@ -61,8 +61,9 @@ class ELU(layers.Layer):
 
         x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
         m = paddle.nn.ELU(0.2)
-        out = m(x) # [[-0.12642411  6.        ]
-                   #  [ 1.          15.6      ]]
+        out = m(x) 
+        # [[-0.12642411  6.        ]
+        #  [ 1.          15.6      ]]
     """
 
     def __init__(self, alpha=1.0, name=None):
@@ -82,13 +83,13 @@ class GELU(layers.Layer):
 
     ..  math::
 
-        gelu(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+        GELU(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
 
     else
 
     ..  math::
 
-        gelu(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
+        GELU(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
 
     Parameters:
         approximate (bool, optional): Wether to enable approximation. Default is False.
@@ -107,11 +108,18 @@ class GELU(layers.Layer):
 
         paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([[ 0.87165993, -1.0541513 , -0.37214822],
-                                         [ 0.15647964,  0.32496083,  0.33045998]]))
+        data = np.random.randn(2, 3).astype("float32")
+        x = paddle.to_tensor(data)
+
         m = paddle.nn.GELU()
-        out = m(x) # [[ 0.70456535, -0.15380788, -0.13207214],
-                   #  [ 0.08796856,  0.20387867,  0.2080159 ]]
+        out = m(x)
+
+        data
+        # array([[ 0.87165993, -1.0541513 , -0.37214822],
+        #         [ 0.15647964,  0.32496083,  0.33045998]], dtype=float32)
+        out
+        # array([[ 0.70456535, -0.15380788, -0.13207214],
+        #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
     """
 
     def __init__(self, approximate=False, name=None):
@@ -312,7 +320,7 @@ class ReLU(layers.Layer):
 
     .. math:
 
-        out = max(x, 0)
+        ReLU(x) = max(x, 0)
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -332,7 +340,7 @@ class ReLU(layers.Layer):
 
         x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
         m = paddle.nn.ReLU()
-        out = m(x) # [0, 0, 1]
+        out = m(x) # [0., 0., 1.]
     """
 
     def __init__(self, name=None):
@@ -429,7 +437,7 @@ class LogSigmoid(layers.Layer):
     
     .. math:
 
-        logsigmoid(x) = \log \frac{1}{1 + e^{-x}}
+        LogSigmoid(x) = \log \frac{1}{1 + e^{-x}}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, or float64.

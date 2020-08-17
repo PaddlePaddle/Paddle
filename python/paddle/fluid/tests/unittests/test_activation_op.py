@@ -138,8 +138,8 @@ class TestLogSigmoidAPI(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [11, 17])
             out1 = F.logsigmoid(x)
-            logsigmoid = paddle.nn.LogSigmoid()
-            out2 = logsigmoid(x)
+            m = paddle.nn.LogSigmoid()
+            out2 = m(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
@@ -150,21 +150,12 @@ class TestLogSigmoidAPI(unittest.TestCase):
         paddle.disable_static(self.place)
         x = paddle.to_variable(self.x_np)
         out1 = F.logsigmoid(x)
-        logsigmoid = paddle.nn.LogSigmoid()
-        out2 = logsigmoid(x)
+        m = paddle.nn.LogSigmoid()
+        out2 = m(x)
         out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [11, 17])
-            out = fluid.layers.logsigmoid(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -715,8 +706,8 @@ class TestReluAPI(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [10, 12])
             out1 = F.relu(x)
-            relu = paddle.nn.ReLU()
-            out2 = relu(x)
+            m = paddle.nn.ReLU()
+            out2 = m(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = np.maximum(self.x_np, 0)
@@ -727,21 +718,12 @@ class TestReluAPI(unittest.TestCase):
         paddle.disable_static(self.place)
         x = paddle.to_variable(self.x_np)
         out1 = F.relu(x)
-        relu = paddle.nn.ReLU()
-        out2 = relu(x)
+        m = paddle.nn.ReLU()
+        out2 = m(x)
         out_ref = np.maximum(self.x_np, 0)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [10, 12])
-            out = fluid.layers.relu(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = np.maximum(self.x_np, 0)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -788,7 +770,7 @@ class TestLeakyReluOpError(unittest.TestCase):
             fluid.layers.leaky_relu(x_fp16)
 
 
-def ref_gelu(x, approximate):
+def gelu(x, approximate):
     if approximate:
         y_ref = 0.5 * x * (1.0 + np.tanh(
             np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
@@ -803,7 +785,7 @@ class TestGeluApproximate(TestActivation):
         self.init_dtype()
         approximate = True
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        out = ref_gelu(x, approximate)
+        out = gelu(x, approximate)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
@@ -821,7 +803,7 @@ class TestGelu(TestActivation):
         self.init_dtype()
         approximate = False
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        out = ref_gelu(x, approximate)
+        out = gelu(x, approximate)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
@@ -844,11 +826,11 @@ class TestGELUAPI(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [11, 17])
             out1 = F.gelu(x)
-            gelu = paddle.nn.GELU()
-            out2 = gelu(x)
+            m = paddle.nn.GELU()
+            out2 = m(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-        out_ref = ref_gelu(self.x_np, False)
+        out_ref = gelu(self.x_np, False)
         for r in res:
             self.assertEqual(np.allclose(out_ref, r), True)
 
@@ -856,28 +838,19 @@ class TestGELUAPI(unittest.TestCase):
         paddle.disable_static(self.place)
         x = paddle.to_variable(self.x_np)
         out1 = F.gelu(x)
-        gelu = paddle.nn.GELU()
-        out2 = gelu(x)
-        out_ref = ref_gelu(self.x_np, False)
+        m = paddle.nn.GELU()
+        out2 = m(x)
+        out_ref = gelu(self.x_np, False)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
 
         out1 = F.gelu(x, True)
-        gelu = paddle.nn.GELU(True)
-        out2 = gelu(x)
-        out_ref = ref_gelu(self.x_np, True)
+        m = paddle.nn.GELU(True)
+        out2 = m(x)
+        out_ref = gelu(self.x_np, True)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [11, 17])
-            out = fluid.layers.gelu(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_gelu(self.x_np, False)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -1040,7 +1013,7 @@ class TestSoftReluOpError(unittest.TestCase):
             fluid.layers.soft_relu(x_fp16)
 
 
-def ref_elu(x, alpha):
+def elu(x, alpha):
     out_ref = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
     return out_ref.astype(x.dtype)
 
@@ -1052,7 +1025,7 @@ class TestELU(TestActivation):
 
         x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
         alpha = 1.
-        out = ref_elu(x, alpha)
+        out = elu(x, alpha)
         # Note: unlike other Relu extensions, point 0 on standard ELU function (i.e. alpha = 1)
         # is differentiable, so we can skip modifications like x[np.abs(x) < 0.005] = 0.02 here
         self.inputs = {'X': x}
@@ -1076,11 +1049,11 @@ class TestELUAPI(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [10, 12])
             out1 = F.elu(x)
-            elu = paddle.nn.ELU()
-            out2 = elu(x)
+            m = paddle.nn.ELU()
+            out2 = m(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-        out_ref = ref_elu(self.x_np, 1.0)
+        out_ref = elu(self.x_np, 1.0)
         for r in res:
             self.assertEqual(np.allclose(out_ref, r), True)
 
@@ -1088,28 +1061,19 @@ class TestELUAPI(unittest.TestCase):
         paddle.disable_static(self.place)
         x = paddle.to_variable(self.x_np)
         out1 = F.elu(x)
-        elu = paddle.nn.ELU()
-        out2 = elu(x)
-        out_ref = ref_elu(self.x_np, 1.0)
+        m = paddle.nn.ELU()
+        out2 = m(x)
+        out_ref = elu(self.x_np, 1.0)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
 
         out1 = F.elu(x, 0.2)
-        elu = paddle.nn.ELU(0.2)
-        out2 = elu(x)
-        out_ref = ref_elu(self.x_np, 0.2)
+        m = paddle.nn.ELU(0.2)
+        out2 = m(x)
+        out_ref = elu(self.x_np, 0.2)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [10, 12])
-            out = fluid.layers.elu(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_elu(self.x_np, 1.0)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):

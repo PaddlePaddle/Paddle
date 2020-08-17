@@ -141,10 +141,17 @@ def gelu(x, approximate=False, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([[ 0.87165993, -1.0541513 , -0.37214822],
-                                         [ 0.15647964,  0.32496083,  0.33045998]]))
-        out = F.gelu(x) # [[ 0.70456535, -0.15380788, -0.13207214],
-                        #  [ 0.08796856,  0.20387867,  0.2080159 ]]
+        data = np.random.randn(2, 3).astype("float32")
+        x = paddle.to_tensor(data)
+
+        out = F.gelu(x)
+
+        data
+        # array([[ 0.87165993, -1.0541513 , -0.37214822],
+        #         [ 0.15647964,  0.32496083,  0.33045998]], dtype=float32)
+        out
+        # array([[ 0.70456535, -0.15380788, -0.13207214],
+        #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
     """
 
     if in_dygraph_mode():
