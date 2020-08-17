@@ -145,7 +145,7 @@ def argmax(x, axis=None, dtype=None, keepdim=False, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
+        Tensor or scalar, return the scalar if the axis is ``None``, otherwise will the tensor; return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
 
     Examples:
         .. code-block:: python
@@ -230,7 +230,7 @@ def argmin(x, axis=None, dtype=None, keepdim=False, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
+        Tensor or scalar, return the scalar if the axis is ``None``, otherwise will the tensor; return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
 
     Examples:
         .. code-block:: python
