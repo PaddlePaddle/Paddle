@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import paddle
+from paddle.fluid import compiler
 from .strategy_compiler import StrategyCompiler
 from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
@@ -335,8 +336,18 @@ class Fleet(object):
         params_grads = []
 
         if self.is_single_run():
-            meta_optimizer, graph_optimizer = None, None
+            if self._runtime_handle is None:
+                self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
+            compiled_program = compiler.CompiledProgram(
+                self.origin_main_program).with_data_parallel(
+                    loss_name=loss.name, share_vars_from=None)
+            loss.block.program._graph = compiled_program
+            return self.user_defined_optimizer.minimize(
+                loss,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set)
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss,
