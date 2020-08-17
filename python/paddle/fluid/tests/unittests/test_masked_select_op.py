@@ -93,8 +93,8 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
 class TestMaskedSelectError(unittest.TestCase):
     def test_error(self):
-        with fluid.program_guard(paddle.static.Program(),
-                                 paddle.static.Program()):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
 
             shape = [8, 9, 6]
             x = paddle.data(shape=shape, dtype='float32', name='x')
