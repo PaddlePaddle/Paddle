@@ -152,7 +152,13 @@ class DynamicList(list):
     A class casts python list to LoDTensorArray dynamically at run time.
     '''
 
-    def __init__(self, iterable):
+    def __init__(self, iterable=None):
+        if iterable == None:
+            self.private_type = Variable
+            self.private_array = create_array("float32")
+            self.private_size = 0
+            return
+
         self.private_type = self._get_same_type(iterable)
         # self.private_array is LoDTensorArray if all types are LoDTensor
         # else python list
@@ -207,6 +213,15 @@ class DynamicList(list):
                 super(DynamicList, self).__init__(tmp_list)
         else:
             super(DynamicList, self).__setitem__(i, elem)
+
+    def __iter__(self):
+        if self.private_type == Variable:
+            for i in range(self.private_size):
+                idx = fill_constant(shape=[1], dtype='int64', value=i)
+                yield array_read(self.private_array, idx)
+        else:
+            for i in super(DynamicList, self).__iter__():
+                yield i
 
     def append(self, elem):
         if self.private_type == Variable:

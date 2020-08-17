@@ -232,8 +232,7 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
 
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
-            #test_list_append_in_while_loop,
-            test_list_pop_in_while_loop
+            test_list_append_in_while_loop, test_list_pop_in_while_loop
         ]
 
     def train(self, to_static=False):

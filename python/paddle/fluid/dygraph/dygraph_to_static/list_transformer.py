@@ -87,7 +87,7 @@ def convert_list_pop(target, idx=None):
     return result
 
 
-class ListTransformer(gast.NodeTransformer):
+class ListTransformerComp(gast.NodeTransformer):
     """
     This class transforms python list used in control flow into Static Graph Ast.
     """
@@ -122,14 +122,14 @@ class ListTransformer(gast.NodeTransformer):
                     for kw in node.keywords:
                         if kw.arg == tensor_array_api_parameter:
                             kw.value = gast.parse(
-                                "fluid.dygraph.dygraph_to_static.variable_trans_func.dynamic_list_as_tensor_array({})".
-                                format(ast_to_source_code(kw.value))).body[
+                                "fluid.dygraph.dygraph_to_static.variable_trans_func.dynamic_list_as_tensor_array({})"
+                                .format(ast_to_source_code(kw.value))).body[
                                     0].value
                             return node
                     if len(node.args) > 0:
                         node.args[0] = gast.parse(
-                            "fluid.dygraph.dygraph_to_static.variable_trans_func.dynamic_list_as_tensor_array({})".
-                            format(ast_to_source_code(node.args[0]))).body[
+                            "fluid.dygraph.dygraph_to_static.variable_trans_func.dynamic_list_as_tensor_array({})"
+                            .format(ast_to_source_code(node.args[0]))).body[
                                 0].value
                         return node
         return node
@@ -149,7 +149,7 @@ class ListTransformer(gast.NodeTransformer):
         return dynamic_list_node
 
 
-class ListTransformerComp(gast.NodeTransformer):
+class ListTransformer(gast.NodeTransformer):
     """
     This class transforms python list used in control flow into Static Graph Ast.
     """
@@ -176,10 +176,37 @@ class ListTransformerComp(gast.NodeTransformer):
         self.replace_list_with_tensor_array(self.root)
 
     def visit_Call(self, node):
-        if isinstance(node.func, gast.Attribute):
-            func_name = node.func.attr
-            if func_name == "pop":
-                node = self._replace_list_pop(node)
+        #if isinstance(node.func, gast.Attribute):
+        #    func_name = node.func.attr
+        #    if func_name == "pop":
+        #        node = self._replace_list_pop(node)
+        node = self._change_dynamic_list_for_tensor_array_api(node)
+        return node
+
+    def _change_dynamic_list_for_tensor_array_api(self, node):
+        # {api: parameters} have to change dynamic_list to tensor array for
+        # some APIs.
+        # TODO: Ugly code because we have to update API/parameters during
+        # Paddle development, had better to find a better way.
+        assert isinstance(
+            node, gast.
+            Call), "Input non gast.Call node for changing dynamic_list for APIs"
+        tensor_array_api_parameter = {"stack": "x", "concat": "input"}
+        func_name = ast_to_source_code(node.func).strip()
+        for api in tensor_array_api_parameter:
+            if func_name.endswith(api):
+                parameter = tensor_array_api_parameter[api]
+                for kw in node.keywords:
+                    if kw.arg == tensor_array_api_parameter:
+                        kw.value = gast.parse(
+                            "fluid.dygraph.dygraph_to_static.variable_trans_func.dynamic_list_as_tensor_array({})"
+                            .format(ast_to_source_code(kw.value))).body[0].value
+                        return node
+                if len(node.args) > 0:
+                    node.args[0] = gast.parse(
+                        "fluid.dygraph.dygraph_to_static.variable_trans_func.dynamic_list_as_tensor_array({})"
+                        .format(ast_to_source_code(node.args[0]))).body[0].value
+                    return node
         return node
 
     def visit_Assign(self, node):
@@ -217,13 +244,17 @@ class ListTransformerComp(gast.NodeTransformer):
         for child_node in gast.walk(node):
             if isinstance(child_node, gast.Assign):
                 if self._need_to_create_tensor_array(child_node):
-                    child_node.value = self._create_tensor_array()
+                    #child_node.value = self._create_tensor_array()
+                    dynamic_list_node = gast.parse(
+                        "fluid.dygraph.dygraph_to_static.variable_trans_func.DynamicList()"
+                    ).body[0].value
+                    child_node.value = dynamic_list_node
 
     def _transform_list_append_in_control_flow(self, node):
         for child_node in gast.walk(node):
             if self._need_to_array_write_node(child_node):
-                child_node.value = \
-                    self._to_array_write_node(child_node.value)
+                pass
+                #child_node.value = self._to_array_write_node(child_node.value)
 
     def _need_to_array_write_node(self, node):
         if isinstance(node, gast.Expr):
@@ -241,6 +272,8 @@ class ListTransformerComp(gast.NodeTransformer):
         return False
 
     def _transform_slice_to_tensor_write(self, node):
+        pass
+        """
         assert isinstance(node, gast.Assign)
         target_node = node.targets[0]
         target_name = target_node.value.id
@@ -257,6 +290,7 @@ class ListTransformerComp(gast.NodeTransformer):
                 .format(target_name, value_code, i, target_name)
             assign_node = gast.parse(assign_code).body[0]
         return assign_node
+        """
 
     def _is_list_append_tensor(self, node):
         """
