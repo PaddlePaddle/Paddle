@@ -355,8 +355,7 @@ class FleetTranspiler(Fleet):
             else:
                 if strategy.runtime_split_send_recv:
                     if strategy.geo_sgd_mode:
-                        _strategy = GeoStrategy(
-                            strategy.geo_sgd_need_push_nums)
+                        _strategy = GeoStrategy(strategy.geo_sgd_need_push_nums)
                     elif strategy.half_async:
                         _strategy = HalfAsyncStrategy()
                     else:
@@ -593,7 +592,7 @@ class FleetTranspiler(Fleet):
                 block.append_op(
                     type='recv_save',
                     attrs={
-                        "trainer_id": self._role_maker.worker_id(),
+                        "trainer_id": self._role_maker.worker_index(),
                         "shape": var.shape,
                         "slice_shapes":
                         [",".join([str(i) for i in var.shape])],
@@ -798,8 +797,8 @@ class ParameterServerOptimizer(DistributedOptimizer):
                 _main = heter_worker.split_heter_worker_ops_pass(
                     _main, compiled_config)
             else:
-                _main = heter_worker.split_trainer_ops_pass(
-                    _main, compiled_config)
+                _main = heter_worker.split_trainer_ops_pass(_main,
+                                                            compiled_config)
 
             # for startup
             _startup = heter_worker.delete_startup_useless_ops_var_pass(
