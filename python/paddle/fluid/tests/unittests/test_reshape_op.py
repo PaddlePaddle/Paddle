@@ -232,6 +232,7 @@ class TestReshapeAPI(unittest.TestCase):
         self.fill_constant = paddle.fill_constant
         self.data = paddle.data
         self.reshape = paddle.reshape
+        self.to_tensor = paddle.to_tensor
 
     def _set_fluid_api(self):
         self.fill_constant = fluid.layers.fill_constant
@@ -282,18 +283,19 @@ class TestReshapeAPI(unittest.TestCase):
         self._test_api()
 
     def test_imperative(self):
+        self._set_paddle_api()
         input = np.random.random([2, 25]).astype("float32")
         shape = [2, 5, 5]
         with paddle.imperative.guard():
-            x = paddle.to_tensor(input)
-            positive_five = paddle.fill_constant([1], "int32", 5)
+            x = self.to_tensor(input)
+            positive_five = self.fill_constant([1], "int32", 5)
 
-            out_1 = paddle.reshape(x, shape)
+            out_1 = self.reshape(x, shape)
 
-            out_2 = paddle.reshape(x, shape=[positive_five, 10])
+            out_2 = self.reshape(x, shape=[positive_five, 10])
 
-            shape_tensor = paddle.to_tensor(np.array([2, 5, 5]).astype("int32"))
-            out_3 = paddle.reshape(x, shape=shape_tensor)
+            shape_tensor = self.to_tensor(np.array([2, 5, 5]).astype("int32"))
+            out_3 = self.reshape(x, shape=shape_tensor)
 
         assert np.array_equal(out_1.numpy(), input.reshape(shape))
         assert np.array_equal(out_2.numpy(), input.reshape([5, 10]))
