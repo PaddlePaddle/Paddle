@@ -122,9 +122,9 @@ __all__ = [
         'clamp',
         'trace',
         'kron',
-        'is_finite',
-        'is_inf',
-        'is_nan'
+        'isfinite',
+        'isinf',
+        'isnan'
 ]
 # yapf: enable.
 
@@ -1741,7 +1741,8 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
 def isfinite(x, name=None):
     """
-    Check whether every element of tensor is finite number or not.
+	    :alias: paddle.tensor.math.isfinite
+    Return whether every element of input tensor is finite number or not.
 
     Args:
         x (Tensor): The input tensor, it's data type should be float32, float64, int32.
@@ -1752,13 +1753,14 @@ def isfinite(x, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
             cpu = paddle.CPUPlace()
             paddle.disable_static(cpu)
             x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             x = paddle.to_variable(x_np)
-            out = paddle.tensor.isinf(x)
+            out = paddle.tensor.isfinite(x)
             print(out.numpy())  # [False  True  True False  True False False]
     """
     if in_dygraph_mode():
@@ -1772,7 +1774,8 @@ def isfinite(x, name=None):
 
 def isinf(x, name=None):
     """
-    Check whether every element of tensor is `+/-INF` or not.
+      :alias: paddle.tensor.math.isinf
+    Return whether every element of input tensor is `+/-INF` or not.
 
     Args:
         x (Tensor): The input tensor, it's data type should be float32, float64, int32.
@@ -1783,6 +1786,7 @@ def isinf(x, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
             cpu = paddle.CPUPlace()
@@ -1803,7 +1807,8 @@ def isinf(x, name=None):
 
 def isnan(x, name=None):
     """
-    Check whether every element of tensor is `NaN` or not.
+      :alias: paddle.tensor.math.isnan
+    Return whether every element of input tensor is `NaN` or not.
 
     Args:
         x (Tensor): The input tensor, it's data type should be float32, float64, int32.
@@ -1814,6 +1819,7 @@ def isnan(x, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
             cpu = paddle.CPUPlace()
