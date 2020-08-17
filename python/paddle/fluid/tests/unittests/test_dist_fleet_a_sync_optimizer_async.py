@@ -33,7 +33,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
     def test_a_sync_optimizer_trainer(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"
-        import paddle.fleet as fleet
+        import paddle.distributed.fleet as fleet
 
         main_program = paddle.fluid.Program()
         startup_program = paddle.fluid.Program()
@@ -53,7 +53,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
             input=prediction, label=input_y)
         avg_cost = paddle.fluid.layers.mean(x=cost)
 
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
@@ -78,7 +78,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
     def test_a_sync_optimizer_pserver(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"
-        import paddle.fleet as fleet
+        import paddle.distributed.fleet as fleet
 
         main_program = paddle.fluid.Program()
         startup_program = paddle.fluid.Program()
@@ -98,7 +98,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
             input=prediction, label=input_y)
         avg_cost = paddle.fluid.layers.mean(x=cost)
 
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)

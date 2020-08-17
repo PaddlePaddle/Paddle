@@ -17,10 +17,10 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 
-paddle.enable_imperative()
+paddle.disable_static()
 SEED = 2020
 np.random.seed(SEED)
-fluid.default_main_program().random_seed = SEED
+paddle.manual_seed(SEED)
 
 
 class Generator(fluid.dygraph.Layer):
@@ -60,8 +60,10 @@ class TestRetainGraph(unittest.TestCase):
                 interpolatesv = fake_data
             elif type == 'mixed':
                 alpha = paddle.rand((real_data.shape[0], 1))
-                alpha = paddle.expand(
-                    alpha, [1, np.prod(real_data.shape) // real_data.shape[0]])
+                alpha = paddle.expand(alpha, [
+                    real_data.shape[0],
+                    np.prod(real_data.shape) // real_data.shape[0]
+                ])
                 alpha = paddle.reshape(alpha, real_data.shape)
                 interpolatesv = alpha * real_data + ((1 - alpha) * fake_data)
             else:
@@ -73,7 +75,7 @@ class TestRetainGraph(unittest.TestCase):
 
             outs = paddle.fill_constant(disc_interpolates.shape,
                                         disc_interpolates.dtype, 1.0)
-            gradients = paddle.imperative.grad(
+            gradients = paddle.grad(
                 outputs=disc_interpolates,
                 inputs=fake_AB,
                 grad_outputs=outs,
@@ -90,7 +92,7 @@ class TestRetainGraph(unittest.TestCase):
         else:
             return 0.0, None
 
-    def test_retain(self):
+    def run_retain(self, need_retain):
         g = Generator()
         d = Discriminator()
 
@@ -103,8 +105,8 @@ class TestRetainGraph(unittest.TestCase):
         A = np.random.rand(2, 3, 32, 32).astype('float32')
         B = np.random.rand(2, 3, 32, 32).astype('float32')
 
-        realA = paddle.imperative.to_variable(A)
-        realB = paddle.imperative.to_variable(B)
+        realA = paddle.to_variable(A)
+        realB = paddle.to_variable(B)
         fakeB = g(realA)
 
         optim_d.clear_gradients()
@@ -117,7 +119,7 @@ class TestRetainGraph(unittest.TestCase):
             d, realA, fakeB, lambda_gp=10.0)
         loss_d = gan_criterion(G_pred_fake, false_target) + G_gradient_penalty
 
-        loss_d.backward(retain_graph=True)
+        loss_d.backward(retain_graph=need_retain)
         optim_d.minimize(loss_d)
 
         optim_g.clear_gradients()
@@ -129,6 +131,11 @@ class TestRetainGraph(unittest.TestCase):
 
         loss_g.backward()
         optim_g.minimize(loss_g)
+
+    def test_retain(self):
+        self.run_retain(need_retain=True)
+        self.assertRaises(
+            fluid.core.EnforceNotMet, self.run_retain, need_retain=False)
 
 
 if __name__ == '__main__':
