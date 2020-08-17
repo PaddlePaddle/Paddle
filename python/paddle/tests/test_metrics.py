@@ -48,7 +48,7 @@ def convert_to_one_hot(y, C):
 
 class TestAccuracy(unittest.TestCase):
     def test_acc(self):
-        paddle.enable_imperative()
+        fluid.enable_dygrap()
 
         x = paddle.imperative.to_variable(
             np.array([[0.1, 0.2, 0.3, 0.4], [0.1, 0.4, 0.3, 0.2],
@@ -78,7 +78,7 @@ class TestAccuracy(unittest.TestCase):
         m.reset()
         self.assertEqual(m.total[0], 0.0)
         self.assertEqual(m.count[0], 0.0)
-        paddle.disable_imperative()
+        fluid.disable_imperative()
 
 
 class TestAccuracyDynamic(unittest.TestCase):
@@ -129,6 +129,8 @@ class TestAccuracyStatic(TestAccuracyDynamic):
     def test_main(self):
         main_prog = fluid.Program()
         startup_prog = fluid.Program()
+        main_prog.random_seed = 1024
+        startup_prog.random_seed = 1024
         with fluid.program_guard(main_prog, startup_prog):
             pred = fluid.data(
                 name='pred', shape=[None, self.class_num], dtype='float32')
@@ -161,13 +163,13 @@ class TestAccuracyStaticMultiTopk(TestAccuracyStatic):
     def setUp(self):
         self.topk = (1, 5)
         self.class_num = 10
-        self.sample_num = 1000
+        self.sample_num = 100
         self.name = "accuracy"
 
 
 class TestPrecision(unittest.TestCase):
     def test_1d(self):
-        paddle.enable_imperative()
+        fluid.enable_dygrap()
 
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
@@ -183,10 +185,10 @@ class TestPrecision(unittest.TestCase):
         r = m.accumulate()
         self.assertAlmostEqual(r, 4. / 7.)
 
-        paddle.disable_imperative()
+        fluid.disable_imperative()
 
     def test_2d(self):
-        paddle.enable_imperative()
+        fluid.enable_dygrap()
 
         x = np.array([0.1, 0.5, 0.6, 0.7]).reshape(-1, 1)
         y = np.array([1, 0, 1, 1]).reshape(-1, 1)
@@ -202,12 +204,12 @@ class TestPrecision(unittest.TestCase):
         r = m.accumulate()
         self.assertAlmostEqual(r, 4. / 7.)
 
-        paddle.disable_imperative()
+        fluid.disable_imperative()
 
 
 class TestRecall(unittest.TestCase):
     def test_1d(self):
-        paddle.enable_imperative()
+        fluid.enable_dygrap()
 
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
@@ -223,12 +225,12 @@ class TestRecall(unittest.TestCase):
         r = m.accumulate()
         self.assertAlmostEqual(r, 3. / 5.)
 
-        paddle.disable_imperative()
+        fluid.disable_imperative()
 
 
 class TestAuc(unittest.TestCase):
     def test_auc(self):
-        paddle.enable_imperative()
+        fluid.enable_dygrap()
         x = np.array([[0.78, 0.22], [0.62, 0.38], [0.55, 0.45], [0.30, 0.70],
                       [0.14, 0.86], [0.59, 0.41], [0.91, 0.08], [0.16, 0.84]])
         y = np.array([[0], [1], [1], [0], [1], [0], [0], [1]])
@@ -236,7 +238,7 @@ class TestAuc(unittest.TestCase):
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 0.8125)
-        paddle.disable_imperative()
+        fluid.disable_imperative()
 
 
 if __name__ == '__main__':
