@@ -139,15 +139,13 @@ class LayerObjectHelper(LayerHelperBase):
     def append_activation(self,
                           input_var,
                           act=None,
-                          use_cudnn=None,
-                          use_mkldnn=None):
+                          use_cudnn=None):
         """Append activation
 
             Args:
                 input_var: the input variable. The len(input_var.shape) is
                 larger or equal than 2.
                 act: activation type
-                use_mkldnn: if use mkldnn
                 use_cudnn: if use cudnn
 
         Return the Variable of after append activation
@@ -163,6 +161,7 @@ class LayerObjectHelper(LayerHelperBase):
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
+        use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
         if (use_mkldnn is not None) and use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')

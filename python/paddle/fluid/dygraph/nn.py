@@ -39,15 +39,6 @@ __all__ = [
 ]
 
 
-def CheckUseMkldnnWithFlag(use_mkldnn):
-    """
-    This method checks if both use_mkldnn attribute and FLAGS_use_mkldnn are true.
-    """
-    if not isinstance(use_mkldnn, bool):
-        raise ValueError("use_mkldnn should be True or False")
-    return use_mkldnn and core.globals()["FLAGS_use_mkldnn"]
-
-
 class Conv2D(layers.Layer):
     """
     This interface is used to construct a callable object of the ``Conv2D`` class.
@@ -134,8 +125,6 @@ class Conv2D(layers.Layer):
             is not set, the bias is initialized zero. Default: None.
         use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
-        use_mkldnn (bool, optional): Use mkldnn kernel or not, it is valid only when built with mkldnn
-            and FLAGS_use_mkldnn is true. Default: True.
         act (str, optional): Activation type, if it is set to None, activation is not appended.
             Default: None.
         dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
@@ -150,7 +139,6 @@ class Conv2D(layers.Layer):
     
     Raises:
         ValueError: if ``use_cudnn`` is not a bool value.
-        ValueError: If ``use_mkldnn`` is not a bool value.
 
     Examples:
         .. code-block:: python
@@ -179,7 +167,6 @@ class Conv2D(layers.Layer):
                  param_attr=None,
                  bias_attr=None,
                  use_cudnn=True,
-                 use_mkldnn=True,
                  act=None,
                  dtype='float32'):
         assert param_attr is not False, "param_attr should not be False here."
@@ -193,7 +180,7 @@ class Conv2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
-        self._use_mkldnn = CheckUseMkldnnWithFlag(use_mkldnn)
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
         self._filter_size = filter_size
         self._num_filters = num_filters
         self._param_attr = param_attr
@@ -786,8 +773,6 @@ class Pool2D(layers.Layer):
         global_pooling (bool, optional): Whether to use the global pooling. If global_pooling = true,
             kernel size and paddings will be ignored. Default: False.
         use_cudnn (bool, optional): Only used in cudnn kernel, need install cudnn. Default: True.
-        use_mkldnn (bool, optional): Use mkldnn kernel or not, it is valid only when built with mkldnn
-            and FLAGS_use_mkldnn is true. Default: True.
         ceil_mode (bool, optional): Whether to use the ceil function to calculate output height and width.
             False is the default. If it is set to False, the floor function will be used. Default: False.
         exclusive (bool, optional): Whether to exclude padding points in average pooling mode. Default: True.
@@ -803,7 +788,6 @@ class Pool2D(layers.Layer):
         ValueError: If ``pool_type`` is not "max" nor "avg".
         ValueError: If ``global_pooling`` is False and ``pool_size`` is -1.
         ValueError: If ``use_cudnn`` is not a bool value.
-        ValueError: If ``use_mkldnn`` is not a bool value.
         ValueError: If ``data_format`` is not "NCHW" nor "NHWC".
 
     Examples:
@@ -831,7 +815,6 @@ class Pool2D(layers.Layer):
                  pool_padding=0,
                  global_pooling=False,
                  use_cudnn=True,
-                 use_mkldnn=True,
                  ceil_mode=False,
                  exclusive=True,
                  data_format="NCHW"):
@@ -850,7 +833,7 @@ class Pool2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
 
-        self._use_mkldnn = CheckUseMkldnnWithFlag(use_mkldnn)
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
 
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
@@ -940,8 +923,6 @@ class Linear(layers.Layer):
             If it is set to None, the bias is initialized zero. Default: None.
         act(str, optional): Activation to be applied to the output of this layer. Default: None.
         dtype(str, optional): Dtype used for weight, it can be "float32" or "float64". Default: "float32".
-        use_mkldnn (bool, optional): Use mkldnn kernel or not, it is valid only when built with mkldnn
-            and FLAGS_use_mkldnn is true. Default: True.
 
     Attributes:
         **weight** (Parameter): the learnable weights of this layer.
@@ -950,9 +931,6 @@ class Linear(layers.Layer):
 
     Returns:
         None
-
-    Raises:
-        ValueError: If ``use_mkldnn`` is not a bool value.
 
     Examples:
         .. code-block:: python
@@ -975,8 +953,7 @@ class Linear(layers.Layer):
                  param_attr=None,
                  bias_attr=None,
                  act=None,
-                 dtype="float32",
-                 use_mkldnn=True):
+                 dtype="float32"):
         super(Linear, self).__init__()
         self._act = act
         self._dtype = dtype
@@ -988,7 +965,7 @@ class Linear(layers.Layer):
         self.bias = self.create_parameter(
             shape=[output_dim], attr=bias_attr, dtype=dtype, is_bias=True)
 
-        self._use_mkldnn = CheckUseMkldnnWithFlag(use_mkldnn)
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
 
     def forward(self, input):
         if in_dygraph_mode():
@@ -1253,12 +1230,6 @@ class BatchNorm(layers.Layer):
         trainable_statistics(bool, optional): Whether to calculate mean and var in eval mode. In eval mode, when
             setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
             Default: False.
-        use_mkldnn (bool, optional): Use mkldnn kernel or not, it is valid only when built with mkldnn
-            and FLAGS_use_mkldnn is true. Default: True.
-
-
-    Raises:
-        ValueError: If ``use_mkldnn`` is not a bool value.
 
     Returns:
         None
@@ -1292,13 +1263,12 @@ class BatchNorm(layers.Layer):
                  moving_variance_name=None,
                  do_model_average_for_mean_and_var=True,
                  use_global_stats=False,
-                 trainable_statistics=False,
-                 use_mkldnn=True):
+                 trainable_statistics=False):
         super(BatchNorm, self).__init__()
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self._use_mkldnn = CheckUseMkldnnWithFlag(use_mkldnn)
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
