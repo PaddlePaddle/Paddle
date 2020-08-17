@@ -42,7 +42,7 @@ UNK_MARK = "<unk>"
 
 class WMT16(Dataset):
     """
-    Implement of `WMT16 <http://www.statmt.org/wmt16/>`_ test dataset.
+    Implementation of `WMT16 <http://www.statmt.org/wmt16/>`_ test dataset.
     ACL2016 Multimodal Machine Translation. Please see this website for more
     details: http://www.statmt.org/wmt16/multimodal-task.html#task1
 

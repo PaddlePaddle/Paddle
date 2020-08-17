@@ -39,7 +39,7 @@ MODE_FLAG_MAP = {'train': 'trainval', 'test': 'train', 'valid': "val"}
 
 class VOC2012(Dataset):
     """
-    Implement of `VOC2012 <http://host.robots.ox.ac.uk/pascal/VOC/voc2012/>`_ dataset
+    Implementation of `VOC2012 <http://host.robots.ox.ac.uk/pascal/VOC/voc2012/>`_ dataset
 
     Args:
         data_file(str): path to data file, can be set None if

@@ -40,7 +40,7 @@ UNK_IDX = 2
 
 class WMT14(Dataset):
     """
-    Implement of `WMT14 <http://www.statmt.org/wmt14/>`_ test dataset.
+    Implementation of `WMT14 <http://www.statmt.org/wmt14/>`_ test dataset.
     The original WMT14 dataset is too large and a small set of data for set is
     provided. This module will download dataset from
     http://paddlepaddle.bj.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz

@@ -41,7 +41,8 @@ MODE_FLAG_MAP = {'train': 'tstid', 'test': 'trnid', 'valid': 'valid'}
 
 class Flowers(Dataset):
     """
-    Implement of flowers dataset
+    Implementation of `Flowers <https://www.robots.ox.ac.uk/~vgg/data/flowers/>`_
+    dataset
 
     Args:
         data_file(str): path to data file, can be set None if
@@ -52,9 +53,8 @@ class Flowers(Dataset):
             None if :attr:`download` is True. Default None
         mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
         transform(callable): transform to perform on image, None for on transform.
-        download(bool): whether auto download flower dataset if
-            :attr:`data_file`/:attr:`label_file`/:attr:`setid_file` unset. Default
-            True
+        download(bool): whether to download dataset automatically if
+            :attr:`data_file` is not set. Default True
 
     Examples:
         
@@ -83,19 +83,19 @@ class Flowers(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file not set and auto download disabled"
+            assert download, "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(
                 data_file, DATA_URL, DATA_MD5, 'flowers', download)
 
         self.label_file = label_file
         if self.label_file is None:
-            assert download, "label_file not set and auto download disabled"
+            assert download, "label_file is not set and downloading automatically is disabled"
             self.label_file = _check_exists_and_download(
                 label_file, LABEL_URL, LABEL_MD5, 'flowers', download)
 
         self.setid_file = setid_file
         if self.setid_file is None:
-            assert download, "setid_file not set and auto download disabled"
+            assert download, "setid_file is not set and downloading automatically is disabled"
             self.setid_file = _check_exists_and_download(
                 setid_file, SETID_URL, SETID_MD5, 'flowers', download)
 
