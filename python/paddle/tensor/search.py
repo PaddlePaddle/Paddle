@@ -628,14 +628,15 @@ def masked_select(x, mask, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.masked_selected(x, mask)
+        return core.ops.masked_select(x, mask)
 
     helper = LayerHelper("masked_select", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'paddle.tensor.search.mask_select')
-    check_variable_and_dtype(mask, 'x', ['bool'],
-                             'paddle.tensor.search.index_sample')
+    check_variable_and_dtype(mask, 'mask', ['bool'],
+                             'paddle.tensor.search.masked_select')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='masked_select', inputs={'X': x,
                                       'Mask': mask}, outputs={'Y': out})
+    return out
