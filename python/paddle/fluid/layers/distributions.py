@@ -24,13 +24,18 @@ import warnings
 
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
-__all__ = ['Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag']
+__all__ = [
+    'Distribution', 'Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag'
+]
 
 
 class Distribution(object):
     """
     Distribution is the abstract base class for probability distributions.
     """
+
+    def __init__(self):
+        super(Distribution, self).__init__()
 
     def sample(self):
         """Sampling from the distribution."""
@@ -46,6 +51,10 @@ class Distribution(object):
 
     def log_prob(self, value):
         """Log probability density/mass function."""
+        raise NotImplementedError
+
+    def probs(self, value):
+        """Probability density/mass function."""
         raise NotImplementedError
 
     def _validate_args(self, *args):
@@ -176,7 +185,7 @@ class Uniform(Distribution):
           # [-0.6931472] with shape: [1]
     """
 
-    def __init__(self, low, high):
+    def __init__(self, low, high, name=None):
         check_type(low, 'low', (float, np.ndarray, tensor.Variable, list),
                    'Uniform')
         check_type(high, 'high', (float, np.ndarray, tensor.Variable, list),
@@ -184,6 +193,7 @@ class Uniform(Distribution):
 
         self.all_arg_is_float = False
         self.batch_size_unknown = False
+        self.name = name if name is not None else 'Uniform'
         if self._validate_args(low, high):
             self.batch_size_unknown = True
             self.low = low
@@ -207,6 +217,7 @@ class Uniform(Distribution):
         check_type(shape, 'shape', (list), 'sample')
         check_type(seed, 'seed', (int), 'sample')
 
+        name = self.name + '_sample'
         batch_shape = list((self.low + self.high).shape)
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
@@ -241,11 +252,25 @@ class Uniform(Distribution):
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                  'log_prob')
 
+        name = self.name + '_log_prob'
         lb_bool = control_flow.less_than(self.low, value)
         ub_bool = control_flow.less_than(value, self.high)
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
         return nn.log(lb * ub) - nn.log(self.high - self.low)
+
+    def probs(self, value):
+        """Probability density/mass function.
+
+        Args:
+          value (Variable): The input tensor.
+
+        Returns:
+          Variable: probability.The data type is same with value.
+
+        """
+        name = self.name + '_probs'
+        return ops.exp(self.log_prob(value))
 
     def entropy(self):
         """Shannon entropy in nats.
@@ -254,6 +279,7 @@ class Uniform(Distribution):
           Variable: Shannon entropy of uniform distribution.The data type is float32.
 
         """
+        name = self.name + '_entropy'
         return nn.log(self.high - self.low)
 
 
@@ -319,7 +345,7 @@ class Normal(Distribution):
           # [0.34939718] with shape: [1]
     """
 
-    def __init__(self, loc, scale):
+    def __init__(self, loc, scale, name=None):
         check_type(loc, 'loc', (float, np.ndarray, tensor.Variable, list),
                    'Normal')
         check_type(scale, 'scale', (float, np.ndarray, tensor.Variable, list),
@@ -327,6 +353,7 @@ class Normal(Distribution):
 
         self.batch_size_unknown = False
         self.all_arg_is_float = False
+        self.name = name if name is not None else 'Normal'
         if self._validate_args(loc, scale):
             self.batch_size_unknown = True
             self.loc = loc
@@ -352,6 +379,7 @@ class Normal(Distribution):
         check_type(seed, 'seed', (int), 'sample')
 
         batch_shape = list((self.loc + self.scale).shape)
+        name = self.name + '_sample'
 
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
@@ -378,6 +406,7 @@ class Normal(Distribution):
           Variable: Shannon entropy of normal distribution.The data type is float32.
 
         """
+        name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
         zero_tmp = tensor.fill_constant_batch_size_like(
             self.loc + self.scale, batch_shape, self.loc.dtype, 0.)
@@ -397,10 +426,24 @@ class Normal(Distribution):
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                  'log_prob')
 
+        name = self.name + '_log_prob'
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
         return -1. * ((value - self.loc) * (value - self.loc)) / (
             2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
+
+    def probs(self, value):
+        """Probability density/mass function.
+
+        Args:
+          value (Variable): The input tensor.
+
+        Returns:
+          Variable: probability.The data type is same with value.
+
+        """
+        name = self.name + '_probs'
+        return ops.exp(self.log_prob(value))
 
     def kl_divergence(self, other):
         """The KL-divergence between two normal distributions.
@@ -415,6 +458,7 @@ class Normal(Distribution):
 
         check_type(other, 'other', Normal, 'kl_divergence')
 
+        name = self.name + '_kl_divergence'
         var_ratio = self.scale / other.scale
         var_ratio = (var_ratio * var_ratio)
         t1 = (self.loc - other.loc) / other.scale

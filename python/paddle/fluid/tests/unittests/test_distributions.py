@@ -16,7 +16,8 @@ import numpy as np
 import unittest
 from paddle import fluid
 from paddle.fluid import layers
-from paddle.fluid.layers.distributions import *
+from paddle.distribution import *
+from paddle.fluid.layers.distributions import Categorical, MultivariateNormalDiag
 import math
 
 
@@ -41,6 +42,10 @@ class DistributionNumpy():
         """Log probability density/mass function."""
         raise NotImplementedError
 
+    def probs(self, value):
+        """Probability density/mass function."""
+        raise NotImplementedError
+
 
 class UniformNumpy(DistributionNumpy):
     def __init__(self, low, high):
@@ -56,6 +61,9 @@ class UniformNumpy(DistributionNumpy):
         lb = np.less(self.low, value).astype('float32')
         ub = np.less(value, self.high).astype('float32')
         return np.log(lb * ub) - np.log(self.high - self.low)
+
+    def probs(self, value):
+        return np.exp(self.log_prob(value))
 
     def entropy(self):
         return np.log(self.high - self.low)
@@ -75,6 +83,9 @@ class NormalNumpy(DistributionNumpy):
         log_scale = np.log(self.scale)
         return -((value - self.loc) * (value - self.loc)) / (
             2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
+
+    def probs(self, value):
+        return np.exp(self.log_prob(value))
 
     def entropy(self):
         return 0.5 + 0.5 * np.log(np.array(2. * math.pi).astype(
@@ -204,6 +215,10 @@ class DistributionTest(unittest.TestCase):
             lp_np = normal_np.log_prob(values)
             lp_variable = normal_variable.log_prob(values)
 
+            p_float_np_broadcast = normal_float_np_broadcast.probs(values)
+            p_np = normal_np.probs(values)
+            p_variable = normal_variable.probs(values)
+
             kl_float = normal_float.kl_divergence(other_normal_float)
             kl_float_np_broadcast = normal_float_np_broadcast.kl_divergence(
                 other_normal_float_np_broadcast)
@@ -214,7 +229,8 @@ class DistributionTest(unittest.TestCase):
             sample_float, sample_float_np_broadcast, sample_np, sample_variable,
             entropy_float, entropy_float_np_broadcast, entropy_np,
             entropy_variable, lp_float_np_broadcast, lp_np, lp_variable,
-            kl_float, kl_float_np_broadcast, kl_np, kl_variable
+            p_float_np_broadcast, p_np, p_variable, kl_float,
+            kl_float_np_broadcast, kl_np, kl_variable
         ]
         feed_vars = {
             'loc': loc_np,
@@ -279,6 +295,8 @@ class DistributionTest(unittest.TestCase):
         gt_lp_float_np_broadcast = np_normal_float_np_broadcast.log_prob(
             values_np)
         gt_lp = np_normal.log_prob(values_np)
+        gt_p_float_np_broadcast = np_normal_float_np_broadcast.probs(values_np)
+        gt_p = np_normal.probs(values_np)
         gt_kl_float = np_normal_float.kl_divergence(np_other_normal_float)
         gt_kl_float_np_broadcast = np_normal_float_np_broadcast.kl_divergence(
             np_other_normal_float_np_broadcast)
@@ -289,7 +307,8 @@ class DistributionTest(unittest.TestCase):
             output_sample_np, output_sample_variable, output_entropy_float,
             output_entropy_float_np_broadcast, output_entropy_np,
             output_entropy_variable, output_lp_float_np_broadcast, output_lp_np,
-            output_lp_variable, output_kl_float, output_kl_float_np_broadcast,
+            output_lp_variable, output_p_float_np_broadcast, output_p_np,
+            output_p_variable, output_kl_float, output_kl_float_np_broadcast,
             output_kl_np, output_kl_variable
         ] = self.executor.run(program=test_program,
                               feed=feed_vars,
@@ -339,6 +358,15 @@ class DistributionTest(unittest.TestCase):
         np.testing.assert_allclose(
             output_lp_variable, gt_lp, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
+            output_p_float_np_broadcast,
+            gt_p_float_np_broadcast,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_p_np, gt_p, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
+            output_p_variable, gt_p, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
             output_kl_float, gt_kl_float, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
             output_kl_float_np_broadcast,
@@ -378,10 +406,15 @@ class DistributionTest(unittest.TestCase):
             lp_np = uniform_np.log_prob(values)
             lp_variable = uniform_variable.log_prob(values)
 
+            p_float_np_broadcast = uniform_float_np_broadcast.probs(values)
+            p_np = uniform_np.probs(values)
+            p_variable = uniform_variable.probs(values)
+
         fetch_list = [
             sample_float, sample_float_np_broadcast, sample_np, sample_variable,
             entropy_float, entropy_float_np_broadcast, entropy_np,
-            entropy_variable, lp_float_np_broadcast, lp_np, lp_variable
+            entropy_variable, lp_float_np_broadcast, lp_np, lp_variable,
+            p_float_np_broadcast, p_np, p_variable
         ]
         feed_vars = {'low': low_np, 'high': high_np, 'values': values_np}
         return feed_vars, fetch_list
@@ -416,6 +449,8 @@ class DistributionTest(unittest.TestCase):
         gt_lp_float_np_broadcast = np_uniform_float_np_broadcast.log_prob(
             values_np)
         gt_lp = np_uniform.log_prob(values_np)
+        gt_p_float_np_broadcast = np_uniform_float_np_broadcast.probs(values_np)
+        gt_p = np_uniform.probs(values_np)
 
         # result calculated by paddle
         [
@@ -423,7 +458,8 @@ class DistributionTest(unittest.TestCase):
             output_sample_np, output_sample_variable, output_entropy_float,
             output_entropy_float_np_broadcast, output_entropy_np,
             output_entropy_variable, output_lp_float_np_broadcast, output_lp_np,
-            output_lp_variable
+            output_lp_variable, output_p_float_np_broadcast, output_p_np,
+            output_p_variable
         ] = self.executor.run(program=test_program,
                               feed=feed_vars,
                               fetch_list=fetch_list)
@@ -471,6 +507,15 @@ class DistributionTest(unittest.TestCase):
             output_lp_np, gt_lp, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
             output_lp_variable, gt_lp, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
+            output_p_float_np_broadcast,
+            gt_p_float_np_broadcast,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_p_np, gt_p, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
+            output_p_variable, gt_p, rtol=tolerance, atol=tolerance)
 
     def test_categorical_distribution(self,
                                       batch_size=2,
