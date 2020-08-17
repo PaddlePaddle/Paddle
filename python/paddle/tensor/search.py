@@ -24,18 +24,8 @@ from ..fluid.layers import has_nan  #DEFINE_ALIAS
 from ..fluid.layers import topk  #DEFINE_ALIAS
 
 __all__ = [
-    'argmax',
-    'argmin',
-    'argsort',
-    'has_inf',
-    'has_nan',
-    #       'masked_select',
-    'topk',
-    'where',
-    'index_select',
-    'nonzero',
-    'sort',
-    'index_sample'
+    'argmax', 'argmin', 'argsort', 'has_inf', 'has_nan', 'masked_select',
+    'topk', 'where', 'index_select', 'nonzero', 'sort', 'index_sample'
 ]
 
 from paddle.common_ops_import import *
@@ -629,3 +619,23 @@ def index_sample(x, index):
                 'Index': index},
         outputs={'Out': out})
     return out
+
+
+def masked_select(x, mask, name=None):
+    """
+
+
+    """
+
+    if in_dygraph_mode():
+        return core.ops.masked_selected(x, mask)
+
+    helper = LayerHelper("masked_select", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.search.mask_select')
+    check_variable_and_dtype(mask, 'x', ['bool'],
+                             'paddle.tensor.search.index_sample')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='masked_select', inputs={'X': x,
+                                      'Mask': mask}, outputs={'Y': out})

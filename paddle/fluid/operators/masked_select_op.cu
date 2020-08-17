@@ -47,6 +47,19 @@ __global__ void SelectWithPrefixMask(const int32_t* mask_prefix_sum,
 }
 
 template <typename T>
+__global__ void SelectGradWithPrefixMask(const int32_t* mask_prefix_sum,
+                                         const bool* mask, const T* input,
+                                         T* out, int size) {
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (; idx < size; idx += blockDim.x * gridDim.x) {
+    if (mask[idx]) {
+      int index = mask_prefix_sum[idx];
+      out[idx] = input[index];
+    }
+  }
+}
+
+template <typename T>
 void MaskSelectCompute(Tensor* input, Tensor* mask, Tensor* out,
                        const framework::ExecutionContext& ctx) {}
 
@@ -110,19 +123,44 @@ template <typename DeviceContext, typename T>
 class MaskedSelectGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    /*
-       auto out =
-       context.Output<framework::Tensor>(framework::GradVarName("X"));
-       auto mask = context.Input<framework::Tensor>("Mask");
-       auto input =
-       context.Input<framework::Tensor>(framework::GradVarName("Y"));
+    auto input = ctx.Input<framework::Tensor>(framework::GradVarName("Y"));
+    auto mask = ctx.Input<framework::Tensor>("Mask");
+    auto out = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* mask_data = mask->data<bool>();
+    auto input_data = input->data<T>();
 
-       out->Resize(mask->dims());
-       auto* mask_data = mask->data<bool>();
-       auto* input_data = input->data<T>();
-       auto* out_data = out->mutable_data<T>(context.GetPlace());
-       int mask_size = mask->numel();
-     */
+    auto input_size = input->numel();
+    auto mask_size = mask->numel();
+    auto mask_dim = mask->dims();
+
+    auto out_size = mask_size;
+    Tensor mask_array;
+    Tensor mask_prefix_sum;
+    mask_array.Resize(mask_dim);
+    mask_prefix_sum.Resize(mask_dim);
+
+    int32_t* mask_array_data = mask_array.mutable_data<int32_t>(ctx.GetPlace());
+    int32_t* mask_prefix_sum_data =
+        mask_prefix_sum.mutable_data<int32_t>(ctx.GetPlace());
+    int threads = 512;
+    int grid = (mask_size + threads - 1) / threads;
+    auto stream = ctx.cuda_device_context().stream();
+    SetMaskArray<<<grid, threads, 0, stream>>>(mask_data, mask_array_data,
+                                               mask_size);
+
+    framework::DDim out_dim{out_size};
+    out->Resize(out_dim);
+    auto out_data = out->mutable_data<T>(ctx.GetPlace());
+
+    thrust::device_ptr<int32_t> mask_array_dev_ptr =
+        thrust::device_pointer_cast(mask_array_data);
+    thrust::device_vector<int32_t> mask_array_vec(
+        mask_array_dev_ptr, mask_array_dev_ptr + mask_size);
+    thrust::inclusive_scan(thrust::device, mask_array_vec.begin(),
+                           mask_array_vec.end(), mask_prefix_sum_data);
+
+    SelectGradWithPrefixMask<T><<<grid, threads, 0, stream>>>(
+        mask_prefix_sum_data, mask_data, input_data, out_data, mask_size);
   }
 };
 }  // namespace operators

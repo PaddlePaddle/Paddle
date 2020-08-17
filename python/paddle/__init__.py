@@ -229,6 +229,7 @@ from .tensor.stat import mean  #DEFINE_ALIAS
 from .tensor.stat import reduce_mean  #DEFINE_ALIAS
 from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
+from .tensor.stat import masked_select  #DEFINE_ALIAS
 from .fluid.data import data
 # from .tensor.tensor import Tensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS
