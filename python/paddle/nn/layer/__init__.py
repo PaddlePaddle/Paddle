@@ -42,10 +42,10 @@ from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
 from .common import Flatten  #DEFINE_ALIAS
 from .common import UpSample  #DEFINE_ALIAS
-from .common import AvgPool1D  #DEFINE_ALIAS
-from .common import MaxPool1D  #DEFINE_ALIAS
-from .common import AdaptiveAvgPool1D  #DEFINE_ALIAS
-from .common import AdaptiveMaxPool1D  #DEFINE_ALIAS
+from .common import AvgPool1d  #DEFINE_ALIAS
+from .common import MaxPool1d  #DEFINE_ALIAS
+from .common import AdaptiveAvgPool1d  #DEFINE_ALIAS
+from .common import AdaptiveMaxPool1d  #DEFINE_ALIAS
 from .conv import Conv2D  #DEFINE_ALIAS
 from .conv import Conv2DTranspose  #DEFINE_ALIAS
 from .conv import Conv3D  #DEFINE_ALIAS
