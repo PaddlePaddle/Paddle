@@ -53,7 +53,7 @@ class Metric(object):
                        |                      ||
                 outputs & labels              ||
                        |                      ||    tensor data
-             {Metric.compute}                 ||
+                {Metric.compute}              ||
                        |                      ||
               metric states(tensor)           ||
                        |                      ||
