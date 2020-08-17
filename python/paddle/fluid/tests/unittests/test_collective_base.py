@@ -241,6 +241,9 @@ class TestDistBase(unittest.TestCase):
             need_result = input2
             self.assertTrue(np.allclose(tr0_out, need_result))
             self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "reduce":
+            need_result = input1 + input2
+            self.assertTrue(np.allclose(tr1_out, need_result))
         elif col_type == "allreduce":
             need_result = input1 + input2
             self.assertTrue(
