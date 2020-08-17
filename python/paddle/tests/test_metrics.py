@@ -48,12 +48,12 @@ def convert_to_one_hot(y, C):
 
 class TestAccuracy(unittest.TestCase):
     def test_acc(self):
-        fluid.enable_dygrap()
+        fluid.enable_dygraph()
 
-        x = paddle.imperative.to_variable(
+        x = paddle.to_variable(
             np.array([[0.1, 0.2, 0.3, 0.4], [0.1, 0.4, 0.3, 0.2],
                       [0.1, 0.2, 0.4, 0.3], [0.1, 0.2, 0.3, 0.4]]))
-        y = paddle.imperative.to_variable(np.array([[0], [1], [2], [3]]))
+        y = paddle.to_variable(np.array([[0], [1], [2], [3]]))
 
         m = paddle.metric.Accuracy(name='my_acc')
 
@@ -65,10 +65,10 @@ class TestAccuracy(unittest.TestCase):
         self.assertEqual(m.update(correct), 0.75)
         self.assertEqual(m.accumulate(), 0.75)
 
-        x = paddle.imperative.to_variable(
+        x = paddle.to_variable(
             np.array([[0.1, 0.2, 0.3, 0.4], [0.1, 0.3, 0.4, 0.2],
                       [0.1, 0.2, 0.4, 0.3], [0.1, 0.2, 0.3, 0.4]]))
-        y = paddle.imperative.to_variable(np.array([[0], [1], [2], [3]]))
+        y = paddle.to_variable(np.array([[0], [1], [2], [3]]))
         correct = m.compute(x, y)
         # check results
         self.assertEqual(m.update(correct), 0.5)
@@ -151,8 +151,7 @@ class TestAccuracyStatic(TestAccuracyDynamic):
             acc.update(*state_ret)
             res_m = acc.accumulate()
             res_f = accuracy(pred, label, self.topk)
-            assert np.all(np.isclose(np.array(res_m, dtype='float64'),
-                          np.array(res_f, dtype='float64'), rtol=1e-3)), \
+            assert np.all(np.isclose(np.array(res_m), np.array(res_f), rtol=1e-3)), \
                     "Accuracy precision error: {} != {}".format(res_m, res_f)
             acc.reset()
             assert np.sum(acc.total) == 0
@@ -169,7 +168,7 @@ class TestAccuracyStaticMultiTopk(TestAccuracyStatic):
 
 class TestPrecision(unittest.TestCase):
     def test_1d(self):
-        fluid.enable_dygrap()
+        fluid.enable_dygraph()
 
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
@@ -188,7 +187,7 @@ class TestPrecision(unittest.TestCase):
         fluid.disable_imperative()
 
     def test_2d(self):
-        fluid.enable_dygrap()
+        fluid.enable_dygraph()
 
         x = np.array([0.1, 0.5, 0.6, 0.7]).reshape(-1, 1)
         y = np.array([1, 0, 1, 1]).reshape(-1, 1)
@@ -209,7 +208,7 @@ class TestPrecision(unittest.TestCase):
 
 class TestRecall(unittest.TestCase):
     def test_1d(self):
-        fluid.enable_dygrap()
+        fluid.enable_dygraph()
 
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
@@ -230,7 +229,7 @@ class TestRecall(unittest.TestCase):
 
 class TestAuc(unittest.TestCase):
     def test_auc(self):
-        fluid.enable_dygrap()
+        fluid.enable_dygraph()
         x = np.array([[0.78, 0.22], [0.62, 0.38], [0.55, 0.45], [0.30, 0.70],
                       [0.14, 0.86], [0.59, 0.41], [0.91, 0.08], [0.16, 0.84]])
         y = np.array([[0], [1], [1], [0], [1], [0], [0], [1]])

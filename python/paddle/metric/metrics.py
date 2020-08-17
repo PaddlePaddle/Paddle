@@ -183,20 +183,19 @@ class Accuracy(Metric):
         import numpy as np
         import paddle
 
-        paddle.enable_imperative()
-        
-        x = paddle.imperative.to_variable(np.array([
+        paddle.disable_static()
+        x = paddle.to_variable(np.array([
             [0.1, 0.2, 0.3, 0.4],
             [0.1, 0.4, 0.3, 0.2],
             [0.1, 0.2, 0.4, 0.3],
             [0.1, 0.2, 0.3, 0.4]]))
-        y = paddle.imperative.to_variable(np.array([[0], [1], [2], [3]]))
+        y = paddle.to_variable(np.array([[0], [1], [2], [3]]))
 
         m = paddle.metric.Accuracy()
         correct = m.compute(x, y)
         m.update(correct)
         res = m.accumulate()
-        print(res)
+        print(res) # 0.75
 
 
     Example with Model API:
@@ -207,8 +206,7 @@ class Accuracy(Metric):
         import paddle.fluid as fluid
         import paddle.incubate.hapi as hapi
 
-        fluid.enable_dygraph()
-
+        paddle.disable_static()
         train_dataset = hapi.datasets.MNIST(mode='train')
 
         model = hapi.Model(hapi.vision.LeNet(classifier_activation=None))
@@ -322,15 +320,13 @@ class Precision(Metric):
         import numpy as np
         import paddle
 
-        paddle.enable_imperative()
-        
-        x = [0.1, 0.5, 0.6, 0.7]
-        y = [0, 1, 1, 1]
+        x = np.array([0.1, 0.5, 0.6, 0.7])
+        y = np.array([0, 1, 1, 1])
 
         m = paddle.metric.Precision()
         m.update(x, y)
         res = m.accumulate()
-        print(res)
+        print(res) # 1.0
 
 
     Example with Model API:
@@ -348,7 +344,7 @@ class Precision(Metric):
                 super(Data, self).__init__()
                 self.n = 1024
                 self.x = np.random.randn(self.n, 10).astype('float32')
-                self.y = np.random.randint(2, size=(self.n, 1)).astype('int64')
+                self.y = np.random.randint(2, size=(self.n, 1)).astype('float32')
         
             def __getitem__(self, idx):
                 return self.x[idx], self.y[idx]
@@ -356,7 +352,7 @@ class Precision(Metric):
             def __len__(self):
                 return self.n
   
-        paddle.enable_imperative()
+        paddle.disable_static()
         model = hapi.Model(nn.Sequential(
             nn.Linear(10, 1),
             nn.Sigmoid()
@@ -459,15 +455,13 @@ class Recall(Metric):
         import numpy as np
         import paddle
 
-        paddle.enable_imperative()
-        
-        x = [0.1, 0.5, 0.6, 0.7]
-        y = [1, 0, 1, 1]
+        x = np.array([0.1, 0.5, 0.6, 0.7])
+        y = np.array([1, 0, 1, 1])
 
         m = paddle.metric.Recall()
         m.update(x, y)
         res = m.accumulate()
-        print(res)
+        print(res) # 2.0 / 3.0
 
 
     Example with Model API:
@@ -480,14 +474,12 @@ class Recall(Metric):
         import paddle.nn as nn
         import paddle.incubate.hapi as hapi
         
-        paddle.enable_imperative()
-
         class Data(paddle.io.Dataset):
             def __init__(self):
                 super(Data, self).__init__()
                 self.n = 1024
                 self.x = np.random.randn(self.n, 10).astype('float32')
-                self.y = np.random.randint(2, size=(self.n, 1)).astype('int64')
+                self.y = np.random.randint(2, size=(self.n, 1)).astype('float32')
         
             def __getitem__(self, idx):
                 return self.x[idx], self.y[idx]
@@ -495,6 +487,7 @@ class Recall(Metric):
             def __len__(self):
                 return self.n
         
+        paddle.disable_static()
         model = hapi.Model(nn.Sequential(
             nn.Linear(10, 1),
             nn.Sigmoid()
@@ -603,7 +596,7 @@ class Auc(Metric):
         import numpy as np
         import paddle
 
-        m = fluid.metrics.Auc()
+        m = paddle.metric.Auc()
         
         n = 8
         class0_preds = np.random.random(size = (n, 1))
@@ -622,11 +615,10 @@ class Auc(Metric):
 
         import numpy as np
         import paddle
+        import paddle.fluid as fluid
         import paddle.nn as nn
         import paddle.incubate.hapi as hapi
         
-        paddle.enable_imperative()
-
         class Data(paddle.io.Dataset):
             def __init__(self):
                 super(Data, self).__init__()
@@ -640,6 +632,7 @@ class Auc(Metric):
             def __len__(self):
                 return self.n
         
+        paddle.disable_static()
         model = hapi.Model(nn.Sequential(
             nn.Linear(10, 2, act='softmax'),
         ))
