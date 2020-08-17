@@ -85,34 +85,28 @@ struct CudnnRNNCache {
 
     x_desc_ = new cudnnTensorDescriptor_t[seq_length_];
     y_desc_ = new cudnnTensorDescriptor_t[seq_length_];
-    std::vector<int> dims;
-    std::vector<int> strides;
+    std::vector<int> dims = {batch_size_, input_size_, 1};
+    std::vector<int> strides = {input_size_, 1, 1};
 
-    std::vector<int> dims_y;
-    std::vector<int> strides_y;
+    std::vector<int> dims_y = {batch_size_, hidden_size_ * numDirections, 1};
+    std::vector<int> strides_y = {hidden_size_ * numDirections, 1, 1};
 
     for (size_t i = 0; i < seq_length_; ++i) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&x_desc_[i]));
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&y_desc_[i]));
-      dims = {batch_size_, input_size_, 1};
-      strides = {input_size_, 1, 1};
 
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           x_desc_[i], cudnn_type, 3, dims.data(), strides.data()));
-
-      dims_y = {batch_size_, hidden_size_ * numDirections, 1};
-      strides_y = {hidden_size_ * numDirections, 1, 1};
 
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           y_desc_[i], cudnn_type, 3, dims_y.data(), strides_y.data()));
     }
 
-    std::vector<int> dims_hx;
-    std::vector<int> strides_hx;
-    dims_hx = {num_layers_ * numDirections, batch_size_, hidden_size_};
-    strides_hx = {hidden_size_ * batch_size_, hidden_size_, 1};
+    std::vector<int> dims_hx = {num_layers_ * numDirections, batch_size_,
+                                hidden_size_};
+    std::vector<int> strides_hx = {hidden_size_ * batch_size_, hidden_size_, 1};
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&hx_desc_));
@@ -156,12 +150,13 @@ struct CudnnRNNCache {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
       dropout_state_->Resize({static_cast<int64_t>(state_size)});
-      auto *dropout_state_data = dropout_state_->mutable_data<uint8_t>(place);
+      uint8_t *dropout_state_data =
+          dropout_state_->mutable_data<uint8_t>(place);
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetDropoutDescriptor(
           dropout_desc_, handle, dropout_prob_, dropout_state_data, state_size,
           seed_));
     } else {
-      auto *dropout_state_data = dropout_state_->data<uint8_t>();
+      uint8_t *dropout_state_data = dropout_state_->data<uint8_t>();
       auto dropout_state_dims = dropout_state_->dims();
       state_size = dropout_state_dims[0];
       PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -198,6 +193,7 @@ struct CudnnRNNCache {
         weights_size_, cudnn_size * weight_numel,
         platform::errors::InvalidArgument(
             "The cudnn lstm and setting weight size should be same."));
+
     int dim_w[3];
     dim_w[0] = weights_size_ / cudnn_size;
     dim_w[1] = 1;

@@ -27,9 +27,7 @@ SIGMOID_THRESHOLD_MAX = 13.0
 EXP_MAX_INPUT = 40.0
 
 
-def lstm_naive(
-        input,
-        w, ):
+def lstm_naive(input, w):
     seq_len, batch_size, hidden_size = input.shape
 
     offset = 0
@@ -119,9 +117,10 @@ def lstm_naive(
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp(OpTest):
+    # TODO(GaoWei8):when input dtype is fp64, precision threshold should be removed.
     def setUp(self):
         self.op_type = "cudnn_lstm"
-        self.dtype = np.float32
+        self.dtype = np.float64
 
         seq_length = 20
         batch_size = 5
@@ -140,8 +139,8 @@ class TestCUDNNLstmOp(OpTest):
 
         output, last_hidden, last_cell = lstm_naive(input, flat_w)
 
-        init_h = np.zeros((1, batch_size, hidden_size), dtype=np.float32)
-        init_c = np.zeros((1, batch_size, hidden_size), dtype=np.float32)
+        init_h = np.zeros((1, batch_size, hidden_size), dtype=np.float64)
+        init_c = np.zeros((1, batch_size, hidden_size), dtype=np.float64)
         state_out = np.ndarray((300)).astype("uint8")
 
         self.inputs = {
@@ -169,14 +168,15 @@ class TestCUDNNLstmOp(OpTest):
         # depend on the scope structure
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, atol=1e-5, no_check_set=['Reserve', 'StateOut'])
+            place, no_check_set=['Reserve', 'StateOut'])
 
     def test_grad_with_place(self):
         # depend on the scope structure
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place,
-                                   set(['Input', 'W', 'InitH', 'InitC']),
-                                   ['Out', 'LastH', 'LastC'])
+        self.check_grad_with_place(
+            place,
+            set(['Input', 'W', 'InitH', 'InitC']), ['Out', 'LastH', 'LastC'],
+            max_relative_error=1e-4)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -191,11 +191,11 @@ class TestCUDNNlstmAPI(unittest.TestCase):
         input = fluid.data(
             name='input',
             shape=[seq_len, batch_size, hidden_size],
-            dtype='float32')
+            dtype='float64')
         init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      'float32', 0.0)
+                                      'float64', 0.0)
         init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      'float32', 0.0)
+                                      'float64', 0.0)
         rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
                                               hidden_size, num_layers,
                                               dropout_prob)
@@ -203,7 +203,7 @@ class TestCUDNNlstmAPI(unittest.TestCase):
         exe.run(fluid.default_startup_program())
         input_i = np.random.uniform(
             low=-0.1, high=0.1, size=(seq_len, batch_size,
-                                      hidden_size)).astype("float32")
+                                      hidden_size)).astype("float64")
         out = exe.run(fluid.default_main_program(),
                       feed={'input': input_i},
                       fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])

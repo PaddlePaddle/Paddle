@@ -2212,6 +2212,7 @@ def lstm(input,
         input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, 3-D Tensor of shape :math:`[batch\_size, seq\_len, input\_dim]` . Data type is float32 or float64
         init_h( :ref:`api_guide_Variable_en` ): The initial hidden state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
                        If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+        max_len (int): This parameter has no effect and will be discarded.
         init_c( :ref:`api_guide_Variable_en` ): The initial cell state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
                        If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
         hidden_size (int): hidden size of the LSTM.
@@ -2328,7 +2329,6 @@ def lstm(input,
             'StateOut': state_out,
         },
         attrs={
-            'max_len': max_len,
             'is_bidirec': is_bidirec,
             'input_size': input_size,
             'hidden_size': hidden_size,
