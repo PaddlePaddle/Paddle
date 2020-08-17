@@ -502,8 +502,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
                 index = block_id if is_slice else idx
                 slices[index] = slice
-                slice_varnames[index] = "{}.slice.{}".format(slice.name,
-                                                                idx)
+                slice_varnames[index] = "{}.slice.{}".format(slice.name, idx)
                 remote_varnames[index] = slice.name
                 endpoints[index] = endpoint
 
@@ -654,7 +653,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             # "./my_paddle_model"
     """
     if main_program and main_program._is_distributed:
-        # Todo(MrChengmo): support recv&save GPU-Kernel for ps-gpu model save.
+        # Todo(MrChengmo): support recv&save GPU-Kernel for ps-gpu model save
         save_executor = executor
         if not isinstance(executor.place, fluid.CPUPlace):
             save_executor = fluid.Executor(fluid.CPUPlace())
