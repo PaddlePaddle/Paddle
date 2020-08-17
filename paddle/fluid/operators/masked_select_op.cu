@@ -61,10 +61,6 @@ __global__ void SelectGradWithPrefixMask(const int32_t* mask_prefix_sum,
   }
 }
 
-template <typename T>
-void MaskSelectCompute(Tensor* input, Tensor* mask, Tensor* out,
-                       const framework::ExecutionContext& ctx) {}
-
 template <typename DeviceContext, typename T>
 class MaskedSelectCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -91,6 +87,10 @@ class MaskedSelectCUDAKernel : public framework::OpKernel<T> {
     thrust::device_vector<T> mask_vec(mask_dev_ptr, mask_dev_ptr + mask_size);
     auto out_size = thrust::count(mask_vec.begin(), mask_vec.end(), true);
 
+    framework::DDim out_dim{out_size};
+    out->Resize(out_dim);
+    auto out_data = out->mutable_data<T>(ctx.GetPlace());
+
     Tensor mask_array;
     Tensor mask_prefix_sum;
     mask_array.Resize(mask_dim);
@@ -104,10 +104,6 @@ class MaskedSelectCUDAKernel : public framework::OpKernel<T> {
     auto stream = ctx.cuda_device_context().stream();
     SetMaskArray<<<grid, threads, 0, stream>>>(mask_data, mask_array_data,
                                                mask_size);
-
-    framework::DDim out_dim{out_size};
-    out->Resize(out_dim);
-    auto out_data = out->mutable_data<T>(ctx.GetPlace());
 
     thrust::device_ptr<int32_t> mask_array_dev_ptr =
         thrust::device_pointer_cast(mask_array_data);
@@ -136,6 +132,9 @@ class MaskedSelectGradCUDAKernel : public framework::OpKernel<T> {
     auto mask_dim = mask->dims();
 
     auto out_size = mask_size;
+    out->Resize(mask_dim);
+    auto out_data = out->mutable_data<T>(ctx.GetPlace());
+
     Tensor mask_array;
     Tensor mask_prefix_sum;
     mask_array.Resize(mask_dim);
@@ -149,9 +148,6 @@ class MaskedSelectGradCUDAKernel : public framework::OpKernel<T> {
     auto stream = ctx.cuda_device_context().stream();
     SetMaskArray<<<grid, threads, 0, stream>>>(mask_data, mask_array_data,
                                                mask_size);
-
-    out->Resize(mask_dim);
-    auto out_data = out->mutable_data<T>(ctx.GetPlace());
 
     thrust::device_ptr<int32_t> mask_array_dev_ptr =
         thrust::device_pointer_cast(mask_array_data);
