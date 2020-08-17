@@ -105,48 +105,74 @@ class ZeroOptimizer(MetaOptimizerBase):
                            OP_ROLE_KEY: OpRole.Backward})
 
     def _insert_broadcast_ops(self, block, fuse_broadcast=False):
-        def _insert_cache(insert_idx, cache):
+        def _insert_cache(cache,
+                          prepend_comm_sync=False,
+                          append_comm_sync=False):
+            insert_idx = cache["insert_idx"]
+            dummy_var_name = cache["dummy_var_name"]
             assert (len(cache["broadcast"]) > 0)
-            if len(cache["fill_constant"]) > 0:
-                for attr in cache["fill_constant"]:
-                    block._insert_op(insert_idx, **attr)
-                    insert_idx += 1
-                    # TODO(mapingshuo) remove dummy var
-                    dummy_var_name = attr["outputs"]["Out"]
 
+            if prepend_comm_sync:
                 for r in range(self._nrings):
                     block._insert_op(
                         insert_idx,
-                        type='c_sync_calc_stream',
+                        type='c_sync_comm_stream',
                         inputs={'X': dummy_var_name},
                         outputs={'Out': dummy_var_name},
                         attrs={'ring_id': r,
                                OP_ROLE_KEY: OpRole.Backward})
                     insert_idx += 1
 
+            if len(cache["fill_constant"]) > 0:
+                for attr in cache["fill_constant"]:
+                    block._insert_op(insert_idx, **attr)
+                    insert_idx += 1
+                    # TODO(mapingshuo) remove dummy var
+
+                block._insert_op(
+                    insert_idx,
+                    type='c_sync_calc_stream',
+                    inputs={'X': dummy_var_name},
+                    outputs={'Out': dummy_var_name},
+                    attrs={OP_ROLE_KEY: OpRole.Backward})
+                insert_idx += 1
+
             for attr in cache["broadcast"]:
                 block._insert_op(insert_idx, **attr)
                 insert_idx += 1
                 # TODO(mapingshuo) remove dummy var
-                dummy_var_name = attr["outputs"]["Out"]
 
-            for r in range(self._nrings):
-                block._insert_op(
-                    insert_idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': dummy_var_name},
-                    outputs={'Out': dummy_var_name},
-                    attrs={'ring_id': r,
-                           OP_ROLE_KEY: OpRole.Backward})
-                insert_idx += 1
+            if append_comm_sync:
+                for r in range(self._nrings):
+                    block._insert_op(
+                        insert_idx,
+                        type='c_sync_comm_stream',
+                        inputs={'X': dummy_var_name},
+                        outputs={'Out': dummy_var_name},
+                        attrs={'ring_id': r,
+                               OP_ROLE_KEY: OpRole.Backward})
+                    insert_idx += 1
+
+            return insert_idx - cache["insert_idx"]
 
         ring_id = -1
-        broadcast_cache = {"fill_constant": [], "broadcast": []}
+        broadcast_caches = []
+        cache = {
+            "fill_constant": [],
+            "broadcast": [],
+            "insert_idx": 0,
+            "dummy_var_name": ""
+        }
         for op_idx, op in reversed(list(enumerate(block.ops))):
-            if len(broadcast_cache["broadcast"]) >= self._fuse_broadcast_num:
-                assert (len(broadcast_cache["broadcast"]) > 0)
-                _insert_cache(op_idx, broadcast_cache)
-                broadcast_cache = {"fill_constant": [], "broadcast": []}
+            if len(cache["broadcast"]) >= self._fuse_broadcast_num:
+                cache["insert_idx"] = op_idx
+                broadcast_caches.insert(0, cache)
+                cache = {
+                    "fill_constant": [],
+                    "broadcast": [],
+                    "insert_idx": 0,
+                    "dummy_var_name": ""
+                }
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 continue
             for input_name in op.desc.input_arg_names():
@@ -168,7 +194,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                 # TODO(mapingshuo) OP_ROLE_KEY should be forward if the param
                 # is used in forward network
                 ring_id = (ring_id + 1) % self._nrings
-                broadcast_cache["broadcast"].insert(0, {
+                cache["broadcast"].insert(0, {
                     "type": 'c_broadcast',
                     "inputs": {
                         'X': param.name
@@ -182,8 +208,9 @@ class ZeroOptimizer(MetaOptimizerBase):
                         OP_ROLE_KEY: OpRole.Forward
                     }
                 })
+                cache["dummy_var_name"] = param.name
                 if root_device != self.role_maker.worker_index():
-                    broadcast_cache["fill_constant"].insert(0, {
+                    cache["fill_constant"].insert(0, {
                         "type": "fill_constant",
                         "outputs": {
                             "Out": param.name
@@ -194,9 +221,30 @@ class ZeroOptimizer(MetaOptimizerBase):
                             "value": 0.0,
                         }
                     })
-        if len(broadcast_cache["broadcast"]) > 0:
-            assert (len(broadcast_cache["broadcast"]) > 0)
-            _insert_cache(0, broadcast_cache)
+        if len(cache["broadcast"]) > 0:
+            cache["insert_idx"] = 0
+            broadcast_caches.insert(0, cache)
+
+        print("insert_idx: ", [x["insert_idx"] for x in broadcast_caches])
+        move_ahead = 1
+        for idx, cache in reversed(list(enumerate(broadcast_caches))):
+            if idx < move_ahead:
+                cache["insert_idx"] = 0
+            else:
+                cache["insert_idx"] = broadcast_caches[idx - move_ahead][
+                    "insert_idx"]
+        print("insert_idx: ", [x["insert_idx"] for x in broadcast_caches])
+
+        inserted_op_num = 0
+        for idx, cache in enumerate(broadcast_caches):
+            prepend_comm_sync = True if idx != 0 else False
+            append_comm_sync = False if idx != len(
+                broadcast_caches) - 1 else True
+            cache["insert_idx"] += inserted_op_num
+            inserted_op_num += _insert_cache(
+                cache,
+                prepend_comm_sync=prepend_comm_sync,
+                append_comm_sync=append_comm_sync)
         return
 
     def _insert_allreduce_ops(self, block):
