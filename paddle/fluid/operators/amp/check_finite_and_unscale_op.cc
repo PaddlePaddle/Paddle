@@ -72,7 +72,7 @@ class CheckFiniteAndUnscaleOpMaker : public framework::OpProtoAndCheckerMaker {
 check_finite_and_unscale operator.
 Check if input X contains all finite data, if yes, scale it by input Scale.
 
-$$Out = X * scale$$
+$$Out = X / scale$$
 
 If any tensor in X contains Inf or Nan, the Out will generate a indicator.
 FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of 

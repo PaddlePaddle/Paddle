@@ -109,15 +109,16 @@ template <typename T>
 class UpdateLossScalingFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& ctx,
-                  const bool* found_inf_v, const T* pre_loss_scaling_v,
-                  const int* good_in_v, const int* bad_in_v,
+                  const bool* found_inf_data, const T* pre_loss_scaling_data,
+                  const int* good_in_data, const int* bad_in_data,
                   const int incr_every_n_steps,
                   const int decr_every_n_nan_or_inf, const float incr_ratio,
-                  const float decr_ratio, T* updated_loss_scaling_v,
-                  int* good_out_v, int* bad_out_v) {
-    Update<T>(found_inf_v, pre_loss_scaling_v, good_in_v, bad_in_v,
+                  const float decr_ratio, T* updated_loss_scaling_data,
+                  int* good_out_data, int* bad_out_data) {
+    Update<T>(found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
               incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio,
-              decr_ratio, updated_loss_scaling_v, good_out_v, bad_out_v);
+              decr_ratio, updated_loss_scaling_data, good_out_data,
+              bad_out_data);
   }
 };
 
