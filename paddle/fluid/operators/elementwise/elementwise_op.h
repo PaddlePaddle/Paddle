@@ -19,9 +19,11 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 #ifdef PADDLE_WITH_MKLDNN
