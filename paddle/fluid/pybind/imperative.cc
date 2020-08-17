@@ -78,11 +78,15 @@ static void InitTensorForVarBase(imperative::VarBase *self,
                                  const py::array &array,
                                  const platform::Place place,
                                  bool persistable = false,
-                                 bool zero_copy = false,
-                                 std::string name = "") {
+                                 bool zero_copy = false, std::string name = "",
+                                 int stop_gradient = -1) {
   if (name == "") {
-    name = imperative::GetCurrentTracer()->GenerateUniqueName("generated_var");
+    name =
+        imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor");
   }
+  VLOG(5) << "Init Tensor as: / name: " << name
+          << " / persistable: " << persistable << " / zero_copy: " << zero_copy
+          << " / stop_gradient: " << stop_gradient;
   new (self) imperative::VarBase(name);
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   if (platform::is_cpu_place(place)) {
@@ -99,6 +103,9 @@ static void InitTensorForVarBase(imperative::VarBase *self,
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
   }
+  if (stop_gradient != -1) {
+    self->SetOverridedStopGradient(stop_gradient);
+  }
   self->SetPersistable(persistable);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor->type());
@@ -106,12 +113,11 @@ static void InitTensorForVarBase(imperative::VarBase *self,
 
 static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
                                            const py::kwargs &kwargs) {
-  VLOG(4) << "Init VarBase";
+  VLOG(4) << "Init VarBase from kwargs: ";
   PADDLE_ENFORCE_EQ(
       kwargs.contains("value"), true,
       platform::errors::NotFound(
           "The kwargs used to create Varbase misses argument: value"));
-
   auto persistable = kwargs.contains("persistable")
                          ? kwargs["persistable"].cast<bool>()
                          : false;
@@ -120,10 +126,14 @@ static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
   auto zero_copy =
       kwargs.contains("zero_copy") ? kwargs["zero_copy"].cast<bool>() : false;
   auto name = kwargs.contains("name") ? kwargs["name"].cast<std::string>() : "";
+  auto stop_gradient = kwargs.contains("stop_gradient")
+                           ? kwargs["stop_gradient"].cast<int>()
+                           : -1;
   auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
   auto place = kwargs.contains("place") ? PyObjectToPlace(kwargs["place"])
                                         : default_place;
-  InitTensorForVarBase(self, array, place, persistable, zero_copy, name);
+  InitTensorForVarBase(self, array, place, persistable, zero_copy, name,
+                       stop_gradient);
 }
 
 template <typename P>
@@ -131,15 +141,24 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
                                         const py::array &array, const P &place,
                                         bool persistable = false,
                                         bool zero_copy = false,
-                                        std::string name = "") {
-  VLOG(4) << "Init VarBase";
-  // 0: self, 1: value, 2: place, 3: persistable, 4: zero_copy, 5: name
+                                        std::string name = "",
+                                        int stop_gradient = -1) {
+  VLOG(4) << "Init VarBase from Arg: ";
+  // 0: self, 1: value, 2: place, 3: persistable, 4: zero_copy, 5: name , 6:
+  // stop_gradient
   if (name == "") {
-    name = imperative::GetCurrentTracer()->GenerateUniqueName("generated_var");
+    name =
+        imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor");
   }
+  VLOG(5) << "Init Tensor as: / name: " << name
+          << " / persistable: " << persistable << " / zero_copy: " << zero_copy
+          << " / stop_gradient: " << stop_gradient;
   new (self) imperative::VarBase(name);
   self->SetPersistable(persistable);
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  if (stop_gradient != -1) {
+    self->SetOverridedStopGradient(stop_gradient);
+  }
   SetTensorFromPyArray<P>(tensor, array, place, zero_copy);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor->type());
@@ -147,7 +166,7 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
 
 static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
                                                const py::array &array) {
-  VLOG(4) << "Init VarBase";
+  VLOG(4) << "Init VarBase from numpy: ";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
   InitTensorForVarBase(self, array, place);
 }
@@ -157,7 +176,7 @@ static void InitVarBaseFromTensorWithArgDefault(
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
   new (self) imperative::VarBase(
-      imperative::GetCurrentTracer()->GenerateUniqueName("generated_var"));
+      imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor"));
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor.type());
@@ -551,7 +570,7 @@ void BindImperative(py::module *m_ptr) {
              std::string act_name = "";
              if (!name.ptr() || name.ptr() == Py_None) {
                act_name = imperative::GetCurrentTracer()->GenerateUniqueName(
-                   "generated_var");
+                   "generated_tensor");
              } else {
                act_name = name.cast<std::string>();
              }
@@ -567,13 +586,16 @@ void BindImperative(py::module *m_ptr) {
            })
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CPUPlace>,
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
-           py::arg("zero_copy") = false, py::arg("name") = "")
+           py::arg("zero_copy") = false, py::arg("name") = "",
+           py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CUDAPlace>,
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
-           py::arg("zero_copy") = false, py::arg("name") = "")
+           py::arg("zero_copy") = false, py::arg("name") = "",
+           py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CUDAPinnedPlace>,
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
-           py::arg("zero_copy") = false, py::arg("name") = "")
+           py::arg("zero_copy") = false, py::arg("name") = "",
+           py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
@@ -797,6 +819,11 @@ void BindImperative(py::module *m_ptr) {
               bool blocking) { return self.NewVarBase(place, blocking); },
            py::return_value_policy::copy)
       .def("_copy_to",
+           [](const imperative::VarBase &self,
+              const platform::CUDAPinnedPlace &place,
+              bool blocking) { return self.NewVarBase(place, blocking); },
+           py::return_value_policy::copy)
+      .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CUDAPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },
            py::return_value_policy::copy)
@@ -824,6 +851,9 @@ void BindImperative(py::module *m_ptr) {
               return std::vector<int>();
             }
           })
+      .def_property_readonly(
+          "place", [](imperative::VarBase &self) { return self.Place(); },
+          py::return_value_policy::copy)
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
 
