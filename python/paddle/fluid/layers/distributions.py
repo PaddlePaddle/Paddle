@@ -148,6 +148,7 @@ class Uniform(Distribution):
     Args:
         low(float|list|numpy.ndarray|Variable): The lower boundary of uniform distribution.The data type is float32
         high(float|list|numpy.ndarray|Variable): The higher boundary of uniform distribution.The data type is float32
+        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
@@ -307,6 +308,7 @@ class Normal(Distribution):
     Args:
         loc(float|list|numpy.ndarray|Variable): The mean of normal distribution.The data type is float32.
         scale(float|list|numpy.ndarray|Variable): The std of normal distribution.The data type is float32.
+        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
