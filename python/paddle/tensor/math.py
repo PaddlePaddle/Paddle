@@ -589,10 +589,19 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
     if axis is not None and not isinstance(axis, (list, tuple)):
         axis = [axis]
+
+    if not axis:
+        reduce_all_flag = True
+    else:
+        if len(axis) == len(x.shape):
+            reduce_all_flag = True
+        else:
+            reduce_all_flag = False
+
     attrs = {
-        'dim': axis if axis != None and axis != [] else [0],
+        'dim': axis if axis != None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
-        'reduce_all': True if axis == None or axis == [] else False,
+        'reduce_all': reduce_all_flag
     }
     dtype_flag = False
     if dtype is not None:
@@ -610,16 +619,15 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                 format(dtype))
 
     if in_dygraph_mode():
-        reduce_all = True if axis == None or axis == [] else False
         axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return core.ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all, 'in_dtype',
+                                       'reduce_all', reduce_all_flag, 'in_dtype',
                                        x.dtype, 'out_dtype',
                                        convert_np_dtype_to_dtype_(dtype))
         else:
             return core.ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all)
+                                       'reduce_all', reduce_all_flag)
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sum')
     check_type(axis, 'axis', (int, list, tuple), 'sum')
