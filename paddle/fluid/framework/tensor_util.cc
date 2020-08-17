@@ -364,7 +364,7 @@ struct AllDTypeVisitor {
   template <typename T>
   void apply() const {
     auto t = EigenVector<T>::Flatten(tensor_);
-    auto o = EigenVector<bool>::From(*out_);
+    auto o = EigenVector<bool>::Flatten(*out_);
     o.device(*ctx_.eigen_device()) = predicate_(t);
   }
 };
@@ -470,12 +470,7 @@ bool TensorIsfinite(const framework::Tensor& tensor) {
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
 static inline void __global__ BothFalse(const T* cmp, T* out, int element_num) {
-  int total_threads = blockDim.x * gridDim.x;
-  int current_index = threadIdx.x + blockIdx.x * blockDim.x;
-  while (current_index < element_num) {
-    out[current_index] = (!cmp[current_index]) && (!out[current_index]);
-    current_index += total_threads;
-  }
+  CUDA_KERNEL_LOOP(i, element_num) { out[i] = (!cmp[i]) && (!out[i]); }
 }
 #endif
 
