@@ -1745,7 +1745,7 @@ def isfinite(x, name=None):
     Return whether every element of input tensor is finite number or not.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64, int32.
+        x (Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1766,7 +1766,7 @@ def isfinite(x, name=None):
     if in_dygraph_mode():
         return core.ops.isfinite_v2(x)
     check_type(x, 'x', (Variable), 'is_finite')
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32'], 'is_finite')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'], 'is_finite')
     helper = LayerHelper("isfinite_v2", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isfinite_v2", inputs={"X": x}, outputs={"Out": out})
@@ -1778,7 +1778,7 @@ def isinf(x, name=None):
     Return whether every element of input tensor is `+/-INF` or not.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64, int32.
+        x (Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1799,7 +1799,7 @@ def isinf(x, name=None):
     if in_dygraph_mode():
         return core.ops.isinf_v2(x)
     check_type(x, 'x', (Variable), 'is_inf')
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32'], 'is_inf')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'], 'is_inf')
     helper = LayerHelper("isinf_v2", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
@@ -1811,7 +1811,7 @@ def isnan(x, name=None):
     Return whether every element of input tensor is `NaN` or not.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64, int32.
+        x (Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1832,7 +1832,7 @@ def isnan(x, name=None):
     if in_dygraph_mode():
         return core.ops.isnan_v2(x)
     check_type(x, 'x', (Variable), 'is_nan')
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32'], 'is_nan')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'], 'is_nan')
     helper = LayerHelper("isnan_v2", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
