@@ -963,7 +963,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         paddle.disable_static()
 
         x = np.array([[-1.5, 0., 2.], [3., 1.2, -2.4]])
-        x = paddle.to_variable(x)
+        x = paddle.to_tensor(x)
         out1 = paddle.logsumexp(x) # [3.4691226]
         out2 = paddle.logsumexp(x, 1) # [2.15317821, 3.15684602]
 
