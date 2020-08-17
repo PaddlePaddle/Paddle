@@ -17,11 +17,13 @@ import six
 import numpy as np
 import warnings
 from collections import OrderedDict
-from .. import core
-from . import layers
-from . import parallel_helper
-from .. import framework
-from . import to_variable, no_grad
+
+from paddle import compat as cpt
+from paddle.fluid import core
+from paddle.fluid import framework
+from paddle.fluid.dygraph import layers
+from paddle.fluid.dygraph import parallel_helper
+from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.distributed.launch import get_cluster_and_pod, _print_arguments
 
 __all__ = [
@@ -112,7 +114,7 @@ def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
                 "input `trainer_id` should be less than or equal to `trainer_num`, "
                 "but `trainer_id` is %d, `trainer_num` is %d." %
                 (trainer_id, trainer_num))
-        if six.ensure_str(backend) != 'nccl':
+        if cpt.to_text(backend) != 'nccl':
             raise ValueError(
                 "backend `%s` is not supported, now only supports `nccl` backend."
                 % backend)
@@ -189,7 +191,7 @@ def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
 
     # 3. init ParallelStrategy
     strategy = ParallelStrategy()
-    if six.ensure_str(backend) == 'nccl':
+    if cpt.to_text(backend) == 'nccl':
         strategy.nranks = ParallelEnv().nranks
         strategy.local_rank = ParallelEnv().local_rank
         strategy.trainer_endpoints = ParallelEnv().trainer_endpoints

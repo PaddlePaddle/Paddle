@@ -44,9 +44,8 @@ import time
 import six
 import copy
 from argparse import ArgumentParser, REMAINDER
-import paddle
-from paddle import fluid
 
+from paddle.fluid import core
 from paddle.distributed.utils import *
 from paddle.distributed import cloud_utils
 
@@ -167,7 +166,7 @@ def get_cluster_from_args(args, selected_gpus):
 
 def get_gpus(selected_gpus):
     if selected_gpus is None:
-        gpus_num = fluid.core.get_cuda_device_count()
+        gpus_num = core.get_cuda_device_count()
         selected_gpus = [str(x) for x in range(0, gpus_num)]
     else:
         cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")

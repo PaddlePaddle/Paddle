@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from __future__ import print_function, division
 
 import multiprocessing
 import os
 import signal
+import six
 import sys
 import warnings
 
 import paddle.fluid as fluid
 from paddle.distributed.utils import find_free_ports
+
+# SimpleQueue is different in py2 and py3
+if six.PY2:
+    import multiprocessing.queues as queues_py2
 
 
 def _support_set_start_method():
@@ -115,9 +120,10 @@ class MultiprocessContext(object):
     def _join_without_conn_wait(self, timeout=None):
         finished_processes = []
         error_index = None
-        for index, proccess in enumerate(self.processes):
+        timeout = timeout // len(self.processes) if timeout else 1
+        for index, process in enumerate(self.processes):
             # try to join selected process
-            proccess.join(timeout=1)
+            process.join(timeout=timeout)
             # This will be None if the process has not yet terminated
             if process.exitcode is not None:
                 # exit with exception
@@ -125,11 +131,11 @@ class MultiprocessContext(object):
                     finished_processes.append(index)
                 else:
                     error_index = index
-                    failed_processes.append(index)
+                    finished_processes.append(index)
                     break
 
         if error_index is None:
-            return len(finished_processes) == 0
+            return len(finished_processes) == len(self.processes)
 
         self._join_and_throw_exception(error_index)
 
@@ -146,11 +152,13 @@ class MultiprocessContext(object):
                 raise Exception("Process %d terminated with signal %s." %
                                 (error_index, name))
             else:
-                raise Exception("Process %d terminated with exit code %s." & (
+                raise Exception("Process %d terminated with exit code %d." & (
                     error_index, exitcode))
 
         original_trace = self.error_queues[error_index].get()
-        msg = "\n\n-- Procces %d terminated with the following error:\n" % error_index
+        msg = "\n\n----------------------------------------------\n" \
+              "Procces %d terminated with the following error:\n" \
+              "----------------------------------------------\n\n" % error_index
         msg += original_trace
         raise Exception(msg)
 
@@ -178,11 +186,13 @@ def launch_processes(func,
     error_queues = []
     processes = []
     for i in range(nprocs):
-        error_queue = mp.SimpleQueue()
+        if six.PY2:
+            error_queue = queues_py2.SimpleQueue()
+        else:
+            error_queue = mp.SimpleQueue()
         process = mp.Process(
-            target=_func_wrapper,
-            args=(func, i, args, error_queue),
-            daemon=daemon)
+            target=_func_wrapper, args=(func, i, args, error_queue))
+        process.daemon = daemon
         process.start()
         error_queues.append(error_queue)
         processes.append(process)
