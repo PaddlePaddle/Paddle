@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import sys
+import subprocess
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -470,6 +472,58 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
                 fluid.layers.uniform_random_batch_size_like(x2, 'int32')
 
             self.assertRaises(TypeError, test_dtype)
+
+
+class TestUniformRandomAlias(unittest.TestCase):
+    def get_import_command(self, module):
+        paths = module.split('.')
+        if len(paths) == 1:
+            return 'import {}'.format(module)
+        package = '.'.join(paths[:-1])
+        func = paths[-1]
+        cmd = 'from {} import {}'.format(package, func)
+        return cmd
+
+    def test_new_alias(self):
+        new_alias = [
+            'paddle.tensor.random.uniform', 'paddle.tensor.uniform',
+            'paddle.uniform'
+        ]
+        import_file = 'run_import_uniform_modules.py'
+        with open(import_file, "w") as wb:
+            for module in new_alias:
+                run_cmd = self.get_import_command(module)
+                wb.write("{}\n".format(run_cmd))
+
+        _python = sys.executable
+
+        ps_cmd = "{} {}".format(_python, import_file)
+        ps_proc = subprocess.Popen(
+            ps_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        stdout, stderr = ps_proc.communicate()
+
+        assert "Error" not in str(stderr), "Error: Can't" \
+            " import Module {}".format(module)
+
+    def test_old_alias(self):
+        old_alias_cmd = 'from paddle.tensor.random import uniform_random'
+        import_file = 'run_import_uniform_random.py'
+        with open(import_file, "w") as wb:
+            wb.write("{}\n".format(old_alias_cmd))
+
+        _python = sys.executable
+
+        ps_cmd = "{} {}".format(_python, import_file)
+        ps_proc = subprocess.Popen(
+            ps_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        stdout, stderr = ps_proc.communicate()
+
+        assert "Error" in str(stderr), "Error: paddle.tensor.random." \
+            "uniform_random should not be imported"
 
 
 if __name__ == "__main__":

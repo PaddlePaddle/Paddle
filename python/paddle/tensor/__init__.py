@@ -157,9 +157,14 @@ from .math import addmm  #DEFINE_ALIAS
 from .math import clamp  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
 from .math import kron  #DEFINE_ALIAS
+<<<<<<< c67ae00e37909f66f1909bd2a7afe385c8b92e5a
 from .math import prod  #DEFINE_ALIAS
 # from .random import gaussin        #DEFINE_ALIAS
 # from .random import uniform        #DEFINE_ALIAS
+=======
+# from .random import gaussian        #DEFINE_ALIAS
+from .random import uniform  #DEFINE_ALIAS
+>>>>>>> rename uniform_random API as uniform
 from .random import shuffle  #DEFINE_ALIAS
 from .random import randn  #DEFINE_ALIAS
 from .random import rand  #DEFINE_ALIAS
