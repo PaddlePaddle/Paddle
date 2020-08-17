@@ -120,9 +120,6 @@ class TestAdaptiveAvgPool3dAPI(unittest.TestCase):
         self.res_5_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[None, 3, None], pool_type="avg")
 
-        self.res_6_np = adaptive_pool3d_forward(
-            x=self.x_np, output_size=None, pool_type="avg")
-
     def test_static_graph(self):
         for use_cuda in ([False, True]
                          if core.is_compiled_with_cuda() else [False]):
@@ -144,14 +141,11 @@ class TestAdaptiveAvgPool3dAPI(unittest.TestCase):
             out_5 = paddle.nn.functional.adaptive_avg_pool3d(
                 x=x, output_size=[None, 3, None])
 
-            out_6 = paddle.nn.functional.adaptive_avg_pool3d(
-                x=x, output_size=None)
-
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5, res_6] = exe.run(
+            [res_1, res_2, res_3, res_4, res_5] = exe.run(
                 fluid.default_main_program(),
                 feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6])
+                fetch_list=[out_1, out_2, out_3, out_4, out_5])
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -162,8 +156,6 @@ class TestAdaptiveAvgPool3dAPI(unittest.TestCase):
             assert np.allclose(res_4, self.res_4_np)
 
             assert np.allclose(res_5, self.res_5_np)
-
-            assert np.allclose(res_6, self.res_6_np)
 
     def test_dynamic_graph(self):
         for use_cuda in ([False, True]
@@ -186,9 +178,6 @@ class TestAdaptiveAvgPool3dAPI(unittest.TestCase):
             out_5 = paddle.nn.functional.adaptive_avg_pool3d(
                 x=x, output_size=[None, 3, None])
 
-            out_6 = paddle.nn.functional.adaptive_avg_pool3d(
-                x=x, output_size=None)
-
             assert np.allclose(out_1.numpy(), self.res_1_np)
 
             assert np.allclose(out_2.numpy(), self.res_2_np)
@@ -198,8 +187,6 @@ class TestAdaptiveAvgPool3dAPI(unittest.TestCase):
             assert np.allclose(out_4.numpy(), self.res_4_np)
 
             assert np.allclose(out_5.numpy(), self.res_5_np)
-
-            assert np.allclose(out_6.numpy(), self.res_6_np)
 
 
 class TestAdaptiveAvgPool3dClassAPI(unittest.TestCase):
@@ -223,9 +210,6 @@ class TestAdaptiveAvgPool3dClassAPI(unittest.TestCase):
         self.res_5_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[None, 3, None], pool_type="avg")
 
-        self.res_6_np = adaptive_pool3d_forward(
-            x=self.x_np, output_size=None, pool_type="avg")
-
     def test_static_graph(self):
         for use_cuda in ([False, True]
                          if core.is_compiled_with_cuda() else [False]):
@@ -252,14 +236,11 @@ class TestAdaptiveAvgPool3dClassAPI(unittest.TestCase):
                 output_size=[None, 3, None])
             out_5 = adaptive_avg_pool(x=x)
 
-            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3d(output_size=None)
-            out_6 = adaptive_avg_pool(x=x)
-
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5, res_6] = exe.run(
+            [res_1, res_2, res_3, res_4, res_5] = exe.run(
                 fluid.default_main_program(),
                 feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6])
+                fetch_list=[out_1, out_2, out_3, out_4, out_5])
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -270,8 +251,6 @@ class TestAdaptiveAvgPool3dClassAPI(unittest.TestCase):
             assert np.allclose(res_4, self.res_4_np)
 
             assert np.allclose(res_5, self.res_5_np)
-
-            assert np.allclose(res_6, self.res_6_np)
 
     def test_dynamic_graph(self):
         for use_cuda in ([False, True]
@@ -299,9 +278,6 @@ class TestAdaptiveAvgPool3dClassAPI(unittest.TestCase):
                 output_size=[None, 3, None])
             out_5 = adaptive_avg_pool(x=x)
 
-            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3d(output_size=None)
-            out_6 = adaptive_avg_pool(x=x)
-
             assert np.allclose(out_1.numpy(), self.res_1_np)
 
             assert np.allclose(out_2.numpy(), self.res_2_np)
@@ -311,8 +287,6 @@ class TestAdaptiveAvgPool3dClassAPI(unittest.TestCase):
             assert np.allclose(out_4.numpy(), self.res_4_np)
 
             assert np.allclose(out_5.numpy(), self.res_5_np)
-
-            assert np.allclose(out_6.numpy(), self.res_6_np)
 
 
 if __name__ == '__main__':

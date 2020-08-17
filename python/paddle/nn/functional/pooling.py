@@ -52,8 +52,8 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
                           The data type can be float16, float32, float64, int32 or int64.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain two integers, (output_size_Height, output_size_Width). Any parameter
-            in output_size can be None, which means the same as the original input tensor.
+            it must contain two element, (H, W). H and W can be either a int, or None which means
+            the size will be the same as that of the input.
         data_format (string) – The data format of the input and output data. An optional string
             from: “NCHW”, “NDHW”. The default is “NCHW”. When it is “NCHW”, the data is stored in
             the order of: [batch_size, input_channels, input_height, input_width].
@@ -112,8 +112,6 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
     if isinstance(output_size, int):
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
-    elif output_size == None:
-        output_size = [in_h, in_w]
     else:
         if output_size[0] == None:
             output_size[0] = in_h
@@ -170,8 +168,8 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
                           The data type can be float16, float32, float64, int32 or int64.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain three integers, (output_size_Length, output_size_Height, output_size_Width).
-            Any parameter in output_size can be None, which means the same as the original input tensor.
+            it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means
+            the size will be the same as that of the input.
         data_format (string) – The data format of the input and output data. An optional string
             from: “NCDHW”, “NDHWC”. The default is “NCDHW”. When it is “NCDHW”, the data is stored in
             the order of: [batch_size, input_channels, input_depth, input_height, input_width].
@@ -233,8 +231,6 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
 
     if isinstance(output_size, int):
         output_size = utils.convert_to_list(output_size, 3, 'output_size')
-    elif output_size == None:
-        output_size = [in_l, in_h, in_w]
     else:
         if output_size[0] == None:
             output_size[0] = in_l
