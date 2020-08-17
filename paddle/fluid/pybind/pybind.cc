@@ -341,6 +341,10 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
+#ifdef PADDLE_WITH_CUDA
+  m.def("cudnn_version", &platform::CudnnVersion);
+#endif
+
   m.def("from_dlpack", [](py::capsule *dltensor) {
     DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
         PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
