@@ -24,9 +24,6 @@ __all__ = ['one_hot']
 
 def one_hot(x, num_classes, name=None):
     """
-    :alias_main: paddle.nn.functional.one_hot
-	:alias: paddle.nn.functional.one_hot,paddle.nn.functional.common.one_hot
-	:old_api: paddle.fluid.one_hot
 
     The operator converts each id in the input 'x' to an one-hot vector with a
     num_classes length. The value in the vector dimension corresponding to the id
