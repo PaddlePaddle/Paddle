@@ -23,7 +23,7 @@ from .. import functional as F
 
 __all__ = [
     'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
-    'Pad2D'
+    'Pad2D', 'AdaptiveAvgPool2d'
 ]
 
 
@@ -342,3 +342,82 @@ class Pad2D(layers.Layer):
             mode=self._mode,
             pad_value=self._pad_value,
             data_format=self._data_format)
+
+
+class AdaptiveAvgPool2d(layers.Layer):
+    """
+
+    This operation applies 2D adaptive avg pooling on input tensor. The h and w dimensions
+    of the output tensor are determined by the parameter output_size.
+
+    For avg adaptive pool2d:
+
+    ..  math::
+
+       hstart &= floor(i * H_{in} / H_{out})
+
+       hend &= ceil((i + 1) * H_{in} / H_{out})
+
+       wstart &= floor(j * W_{in} / W_{out})
+
+       wend &= ceil((j + 1) * W_{in} / W_{out})
+
+       Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+
+
+    Parameters:
+        output_size (int|list|tuple|None): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (output_size_Height, output_size_Width). Any parameter
+            in output_size can be None, which means the same as the original input tensor.
+        data_format (string) – The data format of the input and output data. An optional string
+            from: “NCHW”, “NDHW”. The default is “NCHW”. When it is “NCHW”, the data is stored in
+            the order of: [batch_size, input_channels, input_height, input_width].
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Shape:
+        x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
+                          The data type can be float16, float32, float64, int32 or int64.
+
+    Returns:
+        A callable object of AdaptiveAvgPool2d.
+
+    Examples:
+        .. code-block:: python
+
+          # adaptive avg pool2d
+          # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
+          # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
+          # of input data into m * n grids averagely and performs poolings in each
+          # grid to get output.
+          # adaptive avg pool performs calculations as follow:
+          #
+          #     for i in range(m):
+          #         for j in range(n):
+          #             hstart = floor(i * H / m)
+          #             hend = ceil((i + 1) * H / m)
+          #             wstart = floor(i * W / n)
+          #             wend = ceil((i + 1) * W / n)
+          #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
+          #
+          import paddle
+          paddle.disable_static()
+          input_data = np.random.rand(2, 3, 32, 32)
+          x = paddle.to_variable(input_data)
+          adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(output_size=3)
+          pool_out = adaptive_avg_pool(x = x)
+    """
+
+    def __init__(self, output_size, data_format="NCHW", name=None):
+        super(AdaptiveAvgPool2d, self).__init__()
+        self._output_size = output_size
+        self._data_format = data_format
+        self._name = name
+
+    def forward(self, x):
+        return F.adaptive_avg_pool2d(
+            x,
+            output_size=self._output_size,
+            data_format=self._data_format,
+            name=self._name)
