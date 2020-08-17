@@ -27,14 +27,12 @@ import types
 import numpy
 import six
 
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import Translator
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticLayer
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 
 DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
-program_translator = ProgramTranslator()
 
 
 def is_builtin(func):
@@ -101,7 +99,7 @@ def convert_call(func):
 
     # Function in convert_call may be decorated by another `@declarative`,
     # in this case, unwraps it into a raw method or function.
-    if isinstance(func, Translator):
+    if isinstance(func, StaticLayer):
         instance = func._class_instance
         if instance is not None:
             func = func.dygraph_function.__get__(instance)
@@ -128,14 +126,14 @@ def convert_call(func):
             #      def foo(x):
             #          return x
             #
-            # `foo` will be converted into a wrapper class, suppose as `Translator`.
-            # And `foo.__globals__['foo']` will still return this `Translator` instead of
-            # `foo` function. So `isinstance(fn, Translator)` is added here. 
+            # `foo` will be converted into a wrapper class, suppose as `StaticLayer`.
+            # And `foo.__globals__['foo']` will still return this `StaticLayer` instead of
+            # `foo` function. So `isinstance(fn, StaticLayer)` is added here. 
             global_functions = set()
             for fn in func.__globals__.values():
                 if inspect.isfunction(fn):
                     global_functions.add(fn)
-                elif isinstance(fn, Translator):
+                elif isinstance(fn, StaticLayer):
                     global_functions.add(fn.dygraph_function)
 
             if func in global_functions:

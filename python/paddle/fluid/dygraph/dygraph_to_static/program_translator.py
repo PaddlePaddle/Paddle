@@ -225,7 +225,7 @@ def unwrap(func):
     decorators = []
     cur = func
     while True:
-        if isinstance(cur, Translator):
+        if isinstance(cur, StaticLayer):
             decorators.append(cur)
             # Note: if `cur` is a method, keep it as bound method of class.
             instance = cur._class_instance
@@ -238,7 +238,7 @@ def unwrap(func):
     return decorators, cur
 
 
-class Translator(object):
+class StaticLayer(object):
     """
     Wrapper class to Manage program conversion of decorated function.
 
@@ -246,7 +246,7 @@ class Translator(object):
 
     def __init__(self, function, input_spec=None):
         """
-        Initializes a `Translator`.
+        Initializes a `StaticLayer`.
 
         Args:
             function(callable): A function or method that will be converted into static program.
@@ -263,9 +263,7 @@ class Translator(object):
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
-        # TODO(Aurelius84): Remove this after we hidden this concept
-        # or move the `enable_declarative` into global flag, for example
-        # `jit.enable_declarative`.
+        # Note: Hold a reference to ProgramTranslator for switching `enable_declarative`.
         self._program_trans = ProgramTranslator()
 
     def __get__(self, instance, owner):
@@ -289,7 +287,7 @@ class Translator(object):
         
         In above case, `net(x, y)` will call `net.forward(x, y)` firstly that is a bound method
         of `Net` instance. After decorated by `@declarative`, it will firstly to call `__get__`
-        to parse the class instance correctly instead of the `Translator` instance.
+        to parse the class instance correctly instead of the `StaticLayer` instance.
         """
         self._class_instance = instance
         return self
@@ -370,7 +368,7 @@ class Translator(object):
             **kwargs(dict) : input kwargs values.
 
         Returns:
-            Traced ConcreteProgram and executable TranslatorLayer.
+            Traced ConcreteProgram and executable translated Layer.
         """
         # 1. unify args/kwargs and replace Tensor with TensorSpec
         if len(args) != len(self._function_spec.args_name):
@@ -472,6 +470,10 @@ class Translator(object):
     @property
     def program_cache(self):
         return self._program_cache
+
+    @property
+    def function_spec(self):
+        return self._function_spec
 
 
 # Flag that indicates whether running code under `@declarative`
