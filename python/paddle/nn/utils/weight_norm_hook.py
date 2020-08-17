@@ -174,7 +174,6 @@ def weight_norm(layer, name='weight', dim=0):
         .. code-block:: python
 
           import numpy as np
-          import paddle.fluid as fluid
           from paddle.nn import Conv2D
           from paddle.nn.utils import weight_norm
 
