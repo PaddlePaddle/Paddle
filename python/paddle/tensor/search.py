@@ -645,20 +645,20 @@ def masked_select(x, mask, name=None):
 
             import paddle
             import numpy as np
-
+            
             paddle.disable_static()
             data = np.array([[1.0, 2.0, 3.0, 4.0],
                                 [5.0, 6.0, 7.0, 8.0],
                                 [9.0, 10.0, 11.0, 12.0]]).astype('float32')
-
-            mask_data = np.array([[True, False, False],
-                            [True, True, False],
-                            [True, False, False]]).astype('bool')
+            
+            mask_data = np.array([[True, False, False, False],
+                            [True, True, False, False],
+                            [True, False, False, False]]).astype('bool')
             x = paddle.to_tensor(data)
-            mask = paddle.to_tensor(mask)
-            out = paddle.masked_selected(x, mask)
+            mask = paddle.to_tensor(mask_data)
+            out = paddle.masked_select(x, mask)
             print(out.numpy())
-            #[1.0, 5.0, 6.0, 9.0]
+            #[1.0 5.0 6.0 9.0]
     """
 
     if in_dygraph_mode():
