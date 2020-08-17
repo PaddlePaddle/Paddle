@@ -27,7 +27,7 @@ class TestFleetRecomputeMetaOptimizer(unittest.TestCase):
 
     def test_recompute_optimizer(self):
         import paddle.distributed.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+        import paddle.distributed.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         input_x = paddle.fluid.layers.data(
