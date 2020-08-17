@@ -202,14 +202,14 @@ TEST(Prune, recurrrent_op_2) {
         block);
 
   EXPECT_TRUE(sub_block != nullptr);
-  AddOp("rnn_memory_helper", {{"input", {"x"}}}, {{"output", {"y", "a"}}},
+  AddOp("rnn_memory_helper", {{"input", {"x"}}}, {{"output", {"a"}}},
         f::AttributeMap{}, sub_block);
 
   f::proto::ProgramDesc *pdesc = program.Proto();
   pdesc->mutable_blocks(0)->mutable_ops(1)->set_is_target(true);
 
   f::proto::ProgramDesc pruned;
-  std::set<std::string> feed_var_names = {"a"};
+  std::set<std::string> feed_var_names = {"x", "a"};
 
   f::Prune(*pdesc, feed_var_names, &pruned);
   EXPECT_EQ(pruned.blocks_size(), 2);
