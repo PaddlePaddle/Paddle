@@ -63,11 +63,11 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     }
   }
 
-  flag_multitask_ = false;
+  flag_partial_push_ = false;
   for (auto& m : param_.program_config(0).multitask_condtable_map()) {
     cond2table_map_[m.key()] = m.value();
     condvalue_set_.insert(m.value());
-    flag_multitask_ = true;
+    flag_partial_push_ = true;
   }
 
   skip_ops_.resize(param_.skip_ops_size());
@@ -881,15 +881,18 @@ void DownpourWorker::TrainFiles() {
 #endif
 
     if (need_to_push_dense_) {
-      if (flag_multitask_) {
+      if (flag_partial_push_) {
         Variable* var = (*thread_scope_).FindVar("cond_tag");
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
+        // check type in python code
         int64_t* cond_value_batch = tensor->data<int64_t>();
+
         for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
              ++i) {
           uint64_t tid = static_cast<uint64_t>(
               param_.program_config(0).push_dense_table_id(i));
           if (condvalue_set_.find(tid) != condvalue_set_.end()) {
+            // common dense table must push dense
             if (cond2table_map_[cond_value_batch[0]] != tid) {
               // can't push dense
               continue;
@@ -951,27 +954,11 @@ void DownpourWorker::TrainFiles() {
       }
     }
 
-    if (need_to_push_dense_ && flag_multitask_ == false) {
+    if (need_to_push_dense_) {
       for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
            ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
-        pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
-      }
-    }
-    if (need_to_push_dense_ && flag_multitask_ == true) {
-      Variable* var = (*thread_scope_).FindVar("cond_tag");
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      int64_t* cond_value_batch = tensor->data<int64_t>();
-      for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
-           ++i) {
-        uint64_t tid = static_cast<uint64_t>(
-            param_.program_config(0).push_dense_table_id(i));
-        if (condvalue_set_.find(tid) != condvalue_set_.end()) {
-          if (cond2table_map_[cond_value_batch[0]] != tid) {
-            continue;
-          }
-        }
         pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
       }
     }

@@ -158,7 +158,7 @@ message ProgramConfig {
   repeated int32 push_dense_table_id = 3;
   repeated int32 pull_sparse_table_id = 4;
   repeated int32 pull_dense_table_id = 5;
-  repeated CondTableMap multitask_condtable_map = 10;
+  repeated CondTableMap partial_pushdense_condtable_map = 10;
 }
 
 message PullDenseWorkerParameter {

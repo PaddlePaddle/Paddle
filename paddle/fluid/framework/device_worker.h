@@ -302,7 +302,7 @@ class DownpourWorker : public HogwildWorker {
   // multitask
   std::map<int32_t, uint64_t> cond2table_map_;
   std::set<uint64_t> condvalue_set_;
-  bool flag_multitask_;
+  bool flag_partial_push_;
 
  private:
   // std::vector<std::string> dump_param_;

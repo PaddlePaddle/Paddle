@@ -168,7 +168,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         return ret_list
 
     def _if_last_block(self, op, _equal_dict):
-
+        # for conditional_block op 
         cond_str = op.input('Cond')[0]
         bool_test = False
         if cond_str.startswith('equal'):
@@ -184,6 +184,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
     def _generte_cond_para_map(self, op, _fill_value_dict, _equal_fill_dict,
                                _now_program, _all_params):
+        # generate cond value to parameter map recursively
         cond_str = op.input('Cond')[0]
         vars_ = op.input('Input')
 
@@ -321,6 +322,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                                no_grad_set),
                 key=lambda x: x[0].name)
 
+            # has condition_block op means multi-task 
             flag_multi_task = self._has_conditional_block(loss)
             if flag_multi_task:
                 self._cond_params = dict()
@@ -335,6 +337,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 fill_value_dict = dict()
                 equal_fill_dict = dict()
                 for op in ops_:
+                    # conditional_block op must has fill_constant and equal op
                     if op.type == 'fill_constant':
                         fill_value_dict[op.output('Out')[0]] = op.attr('value')
                     if op.type == 'equal':
