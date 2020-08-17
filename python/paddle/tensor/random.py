@@ -21,19 +21,15 @@ from ..fluid.framework import device_guard, in_dygraph_mode, _varbase_creator, V
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..fluid.layers import utils, uniform_random, gaussian_random
+from ..fluid.layers import utils
 from ..fluid.layers.tensor import fill_constant
+from ..fluid.layers import uniform_random as uniform  #DEFINE_ALIAS
+from ..fluid.layers import gaussian_random as normal  #DEFINE_ALIAS
 
 from ..fluid.io import shuffle  #DEFINE_ALIAS
 
 __all__ = [
-    #       'gaussin',
-    #       'uniform',
-    'shuffle',
-    'randn',
-    'rand',
-    'randint',
-    'randperm'
+    'normal', 'uniform', 'shuffle', 'randn', 'rand', 'randint', 'randperm'
 ]
 
 
@@ -215,8 +211,7 @@ def randn(shape, dtype=None, name=None):
     if dtype is None:
         dtype = 'float32'
 
-    out = gaussian_random(
-        shape=shape, mean=0.0, std=1.0, seed=0, dtype=dtype, name=name)
+    out = normal(shape=shape, mean=0.0, std=1.0, seed=0, dtype=dtype, name=name)
     out.stop_gradient = True
     return out
 
@@ -352,6 +347,9 @@ def rand(shape, dtype=None, name=None):
     if dtype is None:
         dtype = 'float32'
 
-    out = uniform_random(shape, dtype, min=0.0, max=1.0, name=name)
+    out = uniform(shape, dtype, min=0.0, max=1.0, name=name)
     out.stop_gradient = True
     return out
+
+
+standard_normal = randn
