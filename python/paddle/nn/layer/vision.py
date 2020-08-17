@@ -74,7 +74,7 @@ class PixelShuffle(layers.Layer):
                              "But recevie data format: {}".format(data_format))
 
         self._upscale_factor = upscale_factor
-        self._data_format = data_dormat
+        self._data_format = data_format
         self._name = name
 
     def forward(self, x):

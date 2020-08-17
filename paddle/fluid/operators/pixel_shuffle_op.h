@@ -50,7 +50,7 @@ class PixelShuffleOpKernel : public framework::OpKernel<T> {
     if (!channel_last) {
       o.Resize({in_dims[0], o_dims[1], in_dims[2], factor, in_dims[3], factor});
     } else {
-      o.Resize({in_dims[0], in_dims[1], factor, in_dims[2], factor, o_dim[3]});
+      o.Resize({in_dims[0], in_dims[1], factor, in_dims[2], factor, o_dims[3]});
     }
     math::Transpose<DeviceContext, T, 6> trans;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -70,7 +70,7 @@ class PixelShuffleGradOpKernel : public framework::OpKernel<T> {
     int factor = ctx.Attr<int>("upscale_factor");
 
     std::string data_format = ctx.Attr<std::string>("data_format");
-    bool channel_fast = (data_format == "NHWC");
+    bool channel_last = (data_format == "NHWC");
 
     auto do_dims = dout->dims();
     auto dx_dims = dx->dims();

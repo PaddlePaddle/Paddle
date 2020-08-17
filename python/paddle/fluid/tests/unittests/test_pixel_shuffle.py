@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
 def pixel_shuffle_np(x, up_factor, data_format="NCHW"):
@@ -84,7 +85,7 @@ class TestPixelShuffleDygraph(unittest.TestCase):
     def run_pixel_shuffle(self, up_factor):
         x = np.random.rand(2, 9, 4, 4).astype(np.float32)
 
-        npresult = pixel_shuffle_np(x, np_factor)
+        npresult = pixel_shuffle_np(x, up_factor)
 
         paddle.disable_static()
         pixel_shuffle = paddle.nn.PixelShuffle(up_factor)

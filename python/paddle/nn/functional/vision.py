@@ -14,6 +14,7 @@
 
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
+from ...fluid.framework import in_dygraph_mode
 
 __all__ = [
     #'affine_channel',
@@ -99,7 +100,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
             # (2, 1, 12, 12)
 
     """
-    if not fluid.framework.in_dygraph_mode():
+    if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'pixel_shuffle')
 

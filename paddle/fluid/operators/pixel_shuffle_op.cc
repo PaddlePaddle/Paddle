@@ -37,7 +37,7 @@ class PixelShuffleOp : public framework::OperatorWithKernel {
     auto upscale_factor = ctx->Attrs().Get<int>("upscale_factor");
 
     const std::string data_format =
-        ctx->Attrs().Get < std : string > ("data_format");
+        ctx->Attrs().Get<std::string>("data_format");
     const bool channel_last = (data_format == "NHWC");
 
     if (!channel_last) {
@@ -148,10 +148,10 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
     auto upscale_factor = ctx->Attrs().Get<int>("upscale_factor");
 
     const std::string data_format =
-        ctx->Attrs().Get < std : string > ("data_format");
-    const bool channel_last = (data_format == "NHWC")
+        ctx->Attrs().Get<std::string>("data_format");
+    const bool channel_last = (data_format == "NHWC");
 
-        auto dx_dims = do_dims;
+    auto dx_dims = do_dims;
     dx_dims[0] = do_dims[0];
 
     if (!channel_last) {
