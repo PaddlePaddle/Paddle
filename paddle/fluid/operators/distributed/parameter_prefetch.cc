@@ -169,8 +169,6 @@ void prefetch_core(
 
         std::copy_n(out_var_data + i * row_numel, row_numel, vecs.begin());
         (*recved_vec_map)[origin_id] = vecs;
-        VLOG(4) << "prefetch_core Recv id " << origin_id << " val[0] "
-                << vecs[0];
       }
     } else {
       VLOG(3) << "ids in this section is empty";
@@ -224,8 +222,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
     auto &id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
     std::vector<int64_t> ids;
     TensorToVector(id_tensor, context.device_context(), &ids);
-    VLOG(4) << "Parameter Prefetch: size(): " << ids.size() << " ids[0] "
-            << ids[0];
     ids_union.insert(ids_union.end(), ids.begin(), ids.end());
     ids_group.push_back(ids);
     ids_lods.push_back(id_tensor.lod());
@@ -264,8 +260,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
   for (size_t i = 0; i < out_var_names.size(); i++) {
     std::vector<int64_t> ids = ids_group[i];
     auto ids_size = ids.size();
-    VLOG(4) << "prefetchs in Var" << id_var_names[i] << " out Var "
-            << out_var_names[i] << " id_length " << ids_size;
     auto *out_t =
         scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
     out_t->set_lod(ids_lods[i]);
@@ -276,8 +270,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
     if (platform::is_cpu_place(out_t->place())) {
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];
-        VLOG(4) << "prefetchs recv Var " << out_var_names[i]
-                << " memcpy in cpu place";
         if (padding_idx != distributed::kNoPadding && id == padding_idx) {
           memset(out_d + idx * vec_dim_1, 0, sizeof(float) * vec_dim_1);
         } else {
@@ -287,8 +279,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
       }
     } else {
 #ifdef PADDLE_WITH_CUDA
-      VLOG(4) << "prefetchs in gpu place recv Var " << out_var_names[i]
-              << " ids_size: " << ids_size;
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];
         auto stream = context.cuda_device_context().stream();

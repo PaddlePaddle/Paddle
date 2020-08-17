@@ -289,7 +289,7 @@ class TestFleetBase(unittest.TestCase):
 
         if tr1_ret != 0:
             print(
-                "========================Error lotr1_errg begin==========================="
+                "========================Error tr1_err begin==========================="
             )
             os.system("cat {}".format(tempfile.gettempdir() + "/tr1_err.log"))
             print(

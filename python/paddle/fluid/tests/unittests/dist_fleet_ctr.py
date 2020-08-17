@@ -61,7 +61,6 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         Returns:
             avg_cost: LoDTensor of cost.
         """
-        #Todo: Check this shape for dataset train
         dnn_input_dim, lr_input_dim = int(1e5), int(1e5)
 
         dnn_data = fluid.layers.data(
