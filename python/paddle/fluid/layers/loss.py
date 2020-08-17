@@ -1560,6 +1560,7 @@ def huber_loss(input, label, delta):
     """
     This operator computes the Huber loss between input and label.
     Huber loss is commonly used in regression tasks. Compared to square_error_cost, Huber loss is more robust and less sensitivity to outliers.
+    Because huber_loss and smooth_l1_loss  are similar, we recommend you to use `paddle.nn.functional.smooth_l1_loss`.
 
     When the absolute difference between input and label is greater than delta, the linear error is calculated:
 

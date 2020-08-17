@@ -72,10 +72,12 @@ __all__ = [
 ]
 
 
-def smooth_l1_loss(input, label, reduction='mean'):
+def smooth_l1_loss(input, label, reduction='mean', name=None):
     """
-    This operator is calculate smooth_l1_loss. Creates a criterion that uses a squared term if the absolute element-wise error falls below 1
-    and an L1 term otherwise. In some cases it can prevent exploding gradients. Also known as the Huber loss:
+    This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
+    term if the absolute element-wise error falls below 1 and an L1 term otherwise.
+    In some cases it can prevent exploding gradients and it is more robust and less
+    sensitivity to outliers. Also known as the Huber loss:
 
     .. math::
 
@@ -103,6 +105,8 @@ def smooth_l1_loss(input, label, reduction='mean'):
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is
+            None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         The tensor variable storing the smooth_l1_loss of input and label.
@@ -112,15 +116,14 @@ def smooth_l1_loss(input, label, reduction='mean'):
     Examples:
         .. code-block:: python
 
-            # declarative mode
             import paddle
             import numpy as np
 
             paddle.disable_static()
             input_data = np.random.rand(3,3).astype("float32")
             label_data = np.random.rand(3,3).astype("float32")
-            input = paddle.to_variable(input_data)
-            label = paddle.to_variable(label_data)
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
             output = paddle.nn.functioanl.smooth_l1_loss(input,label)
             print(output.numpy())
     """
