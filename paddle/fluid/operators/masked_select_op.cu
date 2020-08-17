@@ -55,6 +55,8 @@ __global__ void SelectGradWithPrefixMask(const int32_t* mask_prefix_sum,
     if (mask[idx]) {
       int index = mask_prefix_sum[idx];
       out[idx] = input[index];
+    } else {
+      out[idx] = 0;
     }
   }
 }
@@ -111,7 +113,7 @@ class MaskedSelectCUDAKernel : public framework::OpKernel<T> {
         thrust::device_pointer_cast(mask_array_data);
     thrust::device_vector<int32_t> mask_array_vec(
         mask_array_dev_ptr, mask_array_dev_ptr + mask_size);
-    thrust::inclusive_scan(thrust::device, mask_array_vec.begin(),
+    thrust::exclusive_scan(thrust::device, mask_array_vec.begin(),
                            mask_array_vec.end(), mask_prefix_sum_data);
 
     SelectWithPrefixMask<T><<<grid, threads, 0, stream>>>(
@@ -148,15 +150,14 @@ class MaskedSelectGradCUDAKernel : public framework::OpKernel<T> {
     SetMaskArray<<<grid, threads, 0, stream>>>(mask_data, mask_array_data,
                                                mask_size);
 
-    framework::DDim out_dim{out_size};
-    out->Resize(out_dim);
+    out->Resize(mask_dim);
     auto out_data = out->mutable_data<T>(ctx.GetPlace());
 
     thrust::device_ptr<int32_t> mask_array_dev_ptr =
         thrust::device_pointer_cast(mask_array_data);
     thrust::device_vector<int32_t> mask_array_vec(
         mask_array_dev_ptr, mask_array_dev_ptr + mask_size);
-    thrust::inclusive_scan(thrust::device, mask_array_vec.begin(),
+    thrust::exclusive_scan(thrust::device, mask_array_vec.begin(),
                            mask_array_vec.end(), mask_prefix_sum_data);
 
     SelectGradWithPrefixMask<T><<<grid, threads, 0, stream>>>(

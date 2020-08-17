@@ -49,7 +49,7 @@ class MaskedSelectOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Size Operator.
 
-Return a new 1-D tensor which indexes the indexed tensor according
+Return a new 0-D tensor which indexes the indexed tensor according
 the mask which is a tensor withe data type bool.
 )DOC");
   }
@@ -83,8 +83,9 @@ class MaskedSelectGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("masked_select_grad");
     op->SetInput("X", this->Input("X"));
-    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("Input"));
+    op->SetInput("Mask", this->Input("Mask"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
 

@@ -191,7 +191,7 @@ from .tensor.search import argmin  #DEFINE_ALIAS
 from .tensor.search import argsort  #DEFINE_ALIAS
 from .tensor.search import has_inf  #DEFINE_ALIAS
 from .tensor.search import has_nan  #DEFINE_ALIAS
-# from .tensor.search import masked_select        #DEFINE_ALIAS
+from .tensor.search import masked_select  #DEFINE_ALIAS
 from .tensor.search import topk  #DEFINE_ALIAS
 from .tensor.search import where  #DEFINE_ALIAS
 from .tensor.search import index_select  #DEFINE_ALIAS
@@ -229,7 +229,6 @@ from .tensor.stat import mean  #DEFINE_ALIAS
 from .tensor.stat import reduce_mean  #DEFINE_ALIAS
 from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
-from .tensor.stat import masked_select  #DEFINE_ALIAS
 from .fluid.data import data
 # from .tensor.tensor import Tensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS

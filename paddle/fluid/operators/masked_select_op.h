@@ -81,6 +81,8 @@ class MaskedSelectGradKernel : public framework::OpKernel<T> {
       if (mask_data[i]) {
         out_data[i] = input_data[index];
         index++;
+      } else {
+        out_data[i] = 0;
       }
     }
   }
