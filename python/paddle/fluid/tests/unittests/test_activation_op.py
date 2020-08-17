@@ -327,21 +327,77 @@ class TestCoshOpError(unittest.TestCase):
             fluid.layers.cosh(x_fp16)
 
 
-class TestTanhShrink(TestActivation):
+def ref_tanhshrink(x):
+    out = x - np.tanh(x)
+    return out
+
+
+class TestTanhshrink(TestActivation):
     def setUp(self):
         self.op_type = "tanh_shrink"
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [10, 17]).astype(self.dtype)
-        out = x - np.tanh(x)
+        out = ref_tanhshrink(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestTanhshrinkAPI(unittest.TestCase):
+    # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink
+    def setUp(self):
+        self.x_np = np.random.uniform(0.1, 1, [10, 17]).astype('float32')
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 17])
+            out1 = F.tanhshrink(x)
+            tanhshrink = paddle.nn.Tanhshrink()
+            out2 = tanhshrink(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_tanhshrink(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.tanhshrink(x)
+        tanhshrink = paddle.nn.Tanhshrink()
+        out2 = tanhshrink(x)
+        out_ref = ref_tanhshrink(self.x_np)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', [10, 17])
+            out = fluid.layers.tanh_shrink(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_tanhshrink(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.tanhshrink, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.tanhshrink, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.tanhshrink(x_fp16)
 
 
 def ref_hardshrink(x, threshold):
@@ -1429,7 +1485,7 @@ create_test_act_fp16_class(TestActivation)
 create_test_act_fp16_class(TestSigmoid)
 create_test_act_fp16_class(TestLogSigmoid)
 create_test_act_fp16_class(TestTanh)
-create_test_act_fp16_class(TestTanhShrink)
+create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftShrink)
 create_test_act_fp16_class(TestSqrt)

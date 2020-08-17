@@ -29,7 +29,6 @@ from ...fluid.layers import softshrink  #DEFINE_ALIAS
 from ...fluid.layers import softsign  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid  #DEFINE_ALIAS
-from ...fluid.layers import tanh_shrink  #DEFINE_ALIAS
 from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
 
 __all__ = [
@@ -455,6 +454,39 @@ def softmax(x, axis=-1, name=None):
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
     """
     return paddle.fluid.layers.softmax(input=x, axis=axis, name=name)
+
+
+def tanhshrink(x, name=None):
+    """
+    tanhshrink activation
+
+    .. math::
+
+        \text{tanhshrink}(x) = x - \text{tanh}(x)
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        out = F.tanhshrink(x) # [-0.02005104, -0.00262468, 0.00033201, 0.00868739]
+
+    """
+    return paddle.fluid.layers.tanh_shrink(x=x, name=name)
 
 
 def log_softmax(input, axis=None, dtype=None, name=None):

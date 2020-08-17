@@ -22,6 +22,7 @@ __all__ = [
     'LeakyReLU',
     'Sigmoid',
     #       'Softmax',
+    'Tanhshrink',
     'LogSoftmax',
     'HSigmoid'
 ]
@@ -373,6 +374,44 @@ class Sigmoid(layers.Layer):
 
     def forward(self, x):
         return F.sigmoid(x, self.name)
+
+
+class Tanhshrink(layers.Layer):
+    """
+    Tanhshrink Activation
+
+    .. math::
+
+        \text{Tanhshrink}(x) = x - \text{Tanh}(x)
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        m = paddle.nn.Tanhshrink()
+        out = m(x) # [-0.02005104, -0.00262468, 0.00033201, 0.00868739]
+    """
+
+    def __init__(self, name=None):
+        super(Tanhshrink, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.tanhshrink(x, self._name)
 
 
 class LogSoftmax(layers.Layer):
