@@ -157,10 +157,10 @@ class RoleMakerBase(object):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
-    def __init__(self, is_collective=False, init_gloo=True, **kwargs):
+    def __init__(self, is_collective=False, **kwargs):
         super(PaddleCloudRoleMaker, self).__init__()
         self._is_collective = is_collective
-        self._init_gloo = init_gloo
+        self._init_gloo = False  #default no init gloo 
         self._kwargs = kwargs
 
         self._role_is_generated = False
@@ -196,30 +196,35 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._prefix = os.getenv("SYS_JOB_ID", "")
 
     def _barrier(self, comm_world):
-        if comm_world:
+        if isinstance(comm_world, fluid.core.Gloo):
             comm_world.barrier()
+        else:
+            print("warning: must init Gloo before using _barrier() function")
 
     def _all_gather(self, comm_world, input):
-        if comm_world:
+        if isinstance(comm_world, fluid.core.Gloo):
             self._barrier(comm_world)
             output = comm_world.all_gather(input)
             return output
         else:
+            print("warning: must init Gloo before using _all_gather() function")
             return None
 
     def _all_reduce(self, comm_world, input, mode="sum"):
-        if not comm_world:
+        if isinstance(comm_world, fluid.core.Gloo):
+
+            input = np.array(input)
+
+            input_shape = input.shape
+            input_list = input.reshape(-1).tolist()
+
+            self._barrier(comm_world)
+            ans = comm_world.all_reduce(input_list, mode)
+            output = np.array(ans).reshape(input_shape)
+            return output
+        else:
+            print("warning: must init Gloo before using _all_reduce() function")
             return None
-
-        input = np.array(input)
-
-        input_shape = input.shape
-        input_list = input.reshape(-1).tolist()
-
-        self._barrier(comm_world)
-        ans = comm_world.all_reduce(input_list, mode)
-        output = np.array(ans).reshape(input_shape)
-        return output
 
     def is_worker(self):
         """
@@ -440,6 +445,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             if not self._is_collective:
                 self._ps_env()
+                if "PADDLE_GLOO_FLAG" in os.environ:
+                    self._init_gloo = bool(os.environ["PADDLE_GLOO_FLAG"])
                 if self._init_gloo:
                     self._init_gloo_env()
             else:
