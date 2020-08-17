@@ -131,10 +131,12 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
     Args:
         mean (float|Tensor, optional): The mean of the output Tensor's normal distribution.
             If ``mean`` is float, all elements of the output Tensor shared the same mean.
-            If ``mean`` is a Tensor, it has per-element means. Default is 0.0
+            If ``mean`` is a Tensor(data type supports float32, float64), it has per-element means.
+            Default is 0.0
         std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
-            If ``mean`` is float, all elements of the output Tensor shared the same standard deviation.
-            If ``mean`` is a Tensor, it has per-element standard deviations. Defaule is 1.0
+            If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
+            If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
+            Defaule is 1.0
         shape (list|tuple|Tensor, optional): The shape of the output Tensor. If ``shape``
             is a list or tuple, the elements of it should be integers or Tensors
             (with the shape [1], and the data type int32 or int64). If ``shape``
