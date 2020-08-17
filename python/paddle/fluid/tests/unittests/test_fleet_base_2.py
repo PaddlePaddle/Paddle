@@ -28,7 +28,7 @@ class TestFleetBase(unittest.TestCase):
 
     def test_ps_minimize(self):
         import paddle
-        from paddle.distributed.fleet import fleet
+        import paddle.distributed.fleet as fleet
         import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
         os.environ["TRAINING_ROLE"] = "PSERVER"
