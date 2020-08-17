@@ -219,7 +219,7 @@ def create_test_case(op_type):
         def run_dygraph(self, place):
             paddle.disable_static()
             op = eval("paddle.%s" % (op_type))
-            data_tensor = paddle.to_variable(self.input_data)
+            data_tensor = paddle.to_tensor(self.input_data)
 
             #case 1 
             result_data = op(data_tensor)
@@ -249,17 +249,17 @@ def create_test_case(op_type):
             # case for dim 4, 5, 6, for test case coverage
             input_data = np.random.rand(5, 5, 5, 5)
             excepted_data = self.numpy_op(input_data, axis=0)
-            result_data = op(paddle.to_variable(input_data), axis=0)
+            result_data = op(paddle.to_tensor(input_data), axis=0)
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
             input_data = np.random.rand(4, 4, 4, 4, 4)
             excepted_data = self.numpy_op(input_data, axis=0)
-            result_data = op(paddle.to_variable(input_data), axis=0)
+            result_data = op(paddle.to_tensor(input_data), axis=0)
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
             input_data = np.random.rand(3, 3, 3, 3, 3, 3)
             excepted_data = self.numpy_op(input_data, axis=0)
-            result_data = op(paddle.to_variable(input_data), axis=0)
+            result_data = op(paddle.to_tensor(input_data), axis=0)
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
         def test_case(self):
