@@ -51,14 +51,12 @@ from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
 from ..fluid.layers import round    #DEFINE_ALIAS
 from ..fluid.layers import rsqrt    #DEFINE_ALIAS
 from ..fluid.layers import scale    #DEFINE_ALIAS
-from ..fluid.layers import sign    #DEFINE_ALIAS
 from ..fluid.layers import square    #DEFINE_ALIAS
 from ..fluid.layers import stanh    #DEFINE_ALIAS
 from ..fluid.layers import atan    #DEFINE_ALIAS
 from ..fluid.layers import erf    #DEFINE_ALIAS
 from ..fluid.layers import sqrt    #DEFINE_ALIAS
 from ..fluid.layers import sin    #DEFINE_ALIAS
-from ..fluid.layers import tanh    #DEFINE_ALIAS
 
 from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
@@ -104,7 +102,6 @@ __all__ = [
         'stanh',
         'sum',
         'sums',
-        'tanh',
         'elementwise_sum',
         'max',
         'maximum',
@@ -1715,3 +1712,39 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             x = layers.cast(x, dtype)
 
     return layers.reduce_prod(input=x, dim=axis, keep_dim=keepdim, name=name)
+
+
+def sign(x, name=None):
+    """
+    This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
+
+    Args:
+        x(Tensor): The input tensor. The data type can be float16, float32 or float64.
+        name (str, optional): The default value is None. Normally there is no need for user to
+            set this property. For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+
+          import numpy as np
+          import paddle
+
+          data = np.array([3.0, 0.0, -2.0, 1.7], dtype='float32')
+          paddle.disable_static()
+          x = paddle.to_tensor(data)
+          out = paddle.tensor.math.sign(x=x)
+          print(out)  # [1.0, 0.0, -1.0, 1.0]
+    """
+    if in_dygraph_mode():
+        return core.ops.sign(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'sign')
+    helper = LayerHelper("sign", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
+
+    return out

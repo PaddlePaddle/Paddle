@@ -13988,10 +13988,6 @@ def where(condition):
 
 def sign(x):
     """
-    :alias_main: paddle.sign
-	:alias: paddle.sign,paddle.tensor.sign,paddle.tensor.math.sign
-	:old_api: paddle.fluid.layers.sign
-
     This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:

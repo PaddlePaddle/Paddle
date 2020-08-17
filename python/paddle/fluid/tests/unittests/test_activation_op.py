@@ -90,6 +90,30 @@ class TestParameter(object):
             self.assertEqual(z, z_expected)
 
 
+class TestAPI(object):
+    def setUp(self):
+        self.api = "paddle.nn.functional"
+
+    def test_out_name(self):
+        with fluid.program_guard(fluid.Program()):
+            np_x = np.array([0.1])
+            data = fluid.layers.data(name="X", shape=[1])
+            out = eval("{}.{}(data, name='Y')".format(self.api, self.op_type))
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(feed={"X": np_x}, fetch_list=[out])
+            expected = eval("np.%s(np_x)" % self.op_type)
+            self.assertEqual(result, expected)
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([0.1])
+            x = paddle.to_tensor(np_x)
+            z = eval("{}.{}(x).numpy()".format(self.api, self.op_type))
+            z_expected = eval("np.%s(np_x)" % self.op_type)
+            self.assertEqual(z, z_expected)
+
+
 class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
@@ -169,9 +193,10 @@ class TestLogSigmoidAPI(unittest.TestCase):
             F.logsigmoid(x_fp16)
 
 
-class TestTanh(TestActivation, TestParameter):
+class TestTanh(TestActivation, TestAPI):
     def setUp(self):
         self.op_type = "tanh"
+        self.api = "paddle.nn.functional"
         self.init_dtype()
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.tanh(x)
