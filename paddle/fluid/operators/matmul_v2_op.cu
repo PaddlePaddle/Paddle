@@ -22,5 +22,5 @@ REGISTER_OP_CUDA_KERNEL(matmul_v2,
                         ops::MatMulV2Kernel<plf::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
-    matmul_v2_grad, ops::GatherNdGradOpKernel<plf::CUDADeviceContext, float>,
-    ops::GatherNdGradOpKernel<plf::CUDADeviceContext, double>);
+    matmul_v2_grad, ops::MatMulV2GradKernel<plf::CUDADeviceContext, float>,
+    ops::MatMulV2GradKernel<plf::CUDADeviceContext, double>);

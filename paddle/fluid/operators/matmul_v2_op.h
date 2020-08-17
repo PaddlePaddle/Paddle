@@ -22,17 +22,49 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/dot_op.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+// #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
+
+#ifdef __NVCC__
+#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#endif
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-void ComputeBroadcastBinaryOpDims(const int A_ndim, const std::int64_t* A_dims,
-                                  const int B_ndim, const std::int64_t* B_dims,
-                                  std::int64_t* A_broadcast_dims,
-                                  std::int64_t* B_broadcast_dims,
-                                  std::int64_t* C_broadcast_dims) {
+
+template <typename T>
+struct IdentityFunctor {
+  HOSTDEVICE explicit inline IdentityFunctor() {}
+
+  HOSTDEVICE inline T operator()(const T& x) const { return x; }
+};
+
+template <typename DeviceContext, typename T>
+void ReduceSumForMatmulGrad(const Tensor* input, Tensor* output,
+                            const std::vector<int>& reduce_dims,
+                            const paddle::framework::ExecutionContext& ctx) {
+  if (reduce_dims.empty()) {
+    framework::TensorCopySync(*input, ctx.GetPlace(), output);
+    return;
+  }
+#ifdef __NVCC__
+  auto stream = ctx.cuda_device_context().stream();
+  TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
+      *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
+      IdentityFunctor<T>(), stream);
+#else
+  ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
+      input, output, reduce_dims, true, false, ctx)
+      .template apply<T>();
+#endif
+}
+
+static void ComputeBroadcastBinaryOpDims(
+    const int A_ndim, const std::int64_t* A_dims, const int B_ndim,
+    const std::int64_t* B_dims, std::int64_t* A_broadcast_dims,
+    std::int64_t* B_broadcast_dims, std::int64_t* C_broadcast_dims) {
   const int ndim = std::max(A_ndim, B_ndim);
   std::fill(A_broadcast_dims, A_broadcast_dims + ndim - A_ndim, 1);
   std::fill(B_broadcast_dims, B_broadcast_dims + ndim - B_ndim, 1);
@@ -51,8 +83,8 @@ void ComputeBroadcastBinaryOpDims(const int A_ndim, const std::int64_t* A_dims,
   }
 }
 
-int64_t GetIndexFromDims(const int n, const int64_t* dims,
-                         const int64_t* index) {
+static int64_t GetIndexMessage(const int n, const int64_t* dims,
+                               const int64_t* index) {
   int64_t sum = 0;
   for (int i = 0; i < n; ++i) {
     if (dims[i] > 1) {
@@ -62,7 +94,8 @@ int64_t GetIndexFromDims(const int n, const int64_t* dims,
   return sum;
 }
 
-void IncreaseIndexInDims(const int ndim, const int64_t* dims, int64_t* index) {
+static void IncreaseIndexInDims(const int ndim, const int64_t* dims,
+                                int64_t* index) {
   for (int i = ndim - 1; i >= 0; --i) {
     ++index[i];
     if (index[i] >= dims[i]) {
@@ -92,7 +125,7 @@ void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
                       platform::errors::InvalidArgument(
                           "X's numbers is not equal to Y's numbers,"
                           "when X/Y dims =1"));
-    VLOG(0) << "MatMul's case 1";
+    VLOG(3) << "MatMul's case 1";
     Out->Resize({1});
     Out->mutable_data<T>(ctx.GetPlace());
     auto out_eigen = framework::EigenScalar<T>::From(*Out);
@@ -129,16 +162,16 @@ void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
     Out->mutable_data<T>(ctx.GetPlace());
     if (trans_y) {
       const int M = Y->numel() / N;
-      VLOG(0) << "MatMul's case 2";
+      VLOG(3) << "MatMul's case 2";
       blas.GEMV(false, M, N, 1., y_data, x_data, 0., Out->data<T>());
     } else {
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y->numel() / (M * N);
       if (batch_size == 1) {
-        VLOG(0) << "MatMul's case 3";
+        VLOG(3) << "MatMul's case 3";
         blas.GEMV(true, N, M, 1., y_data, x_data, 0., Out->data<T>());
       } else {
-        VLOG(0) << "MatMul's case 4";
+        VLOG(3) << "MatMul's case 4";
         blas.BatchedGEMM(CblasTrans, CblasNoTrans, M, 1, N, 1.0f, y_data,
                          x_data, 0, Out->data<T>(), batch_size, M * N, 0);
       }
@@ -171,16 +204,16 @@ void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
       const int M = x_dims[x_ndim - 1];
       const int batch_size = X->numel() / (M * N);
       if (batch_size == 1) {
-        VLOG(0) << "MatMul's case 5";
+        VLOG(3) << "MatMul's case 5";
         blas.GEMV(true, N, M, 1.0f, x_data, y_data, 0.0f, Out->data<T>());
       } else {
-        VLOG(0) << "MatMul's case 6";
+        VLOG(3) << "MatMul's case 6";
         blas.BatchedGEMM(CblasTrans, CblasNoTrans, M, 1, N, 1.0f, x_data,
                          y_data, 0, Out->data<T>(), batch_size, M * N, 0);
       }
     } else {
       const int M = X->numel() / N;
-      VLOG(0) << "MatMul's case 7";
+      VLOG(3) << "MatMul's case 7";
       blas.GEMV(false, M, N, 1.0f, x_data, y_data, 0.0f, Out->data<T>());
     }
     return;
@@ -232,17 +265,17 @@ void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
   }
 
   if (x_batch_size == 1 && y_batch_size == 1) {
-    VLOG(0) << "MatMul's case 8";
+    VLOG(3) << "MatMul's case 8";
     blas.GEMM(trans_x ? CblasTrans : CblasNoTrans,
               trans_y ? CblasTrans : CblasNoTrans, M, N, K, 1.0f, x_data,
               y_data, 0.0f, Out->data<T>());
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
-      VLOG(0) << "MatMul's case 9";
+      VLOG(3) << "MatMul's case 9";
       blas.GEMV(false, y_batch_size * N, K, 1.0f, y_data, x_data, 0.0f,
                 Out->data<T>());
     } else {
-      VLOG(0) << "MatMul's case 10";
+      VLOG(3) << "MatMul's case 10";
       blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                        trans_y ? CblasTrans : CblasNoTrans, M, N, K, 1.0f,
                        x_data, y_data, 0, Out->data<T>(), out_batch_size, 0,
@@ -250,18 +283,18 @@ void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
-      VLOG(0) << "MatMul's case 11";
+      VLOG(3) << "MatMul's case 11";
       blas.GEMM(CblasNoTrans, trans_y ? CblasTrans : CblasNoTrans,
                 x_batch_size * M, N, K, 1.0f, x_data, y_data, 0.0f,
                 Out->data<T>());
     } else {
-      VLOG(0) << "MatMul's case 12";
+      VLOG(3) << "MatMul's case 12";
       blas.BatchedGEMM(CblasTrans, trans_y ? CblasTrans : CblasNoTrans, M, N, K,
                        1.0f, x_data, y_data, 0, Out->data<T>(), out_batch_size,
                        M * K, 0);
     }
   } else if (!is_broadcast_dims) {
-    VLOG(0) << "MatMul's case 13";
+    VLOG(3) << "MatMul's case 13";
     blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                      trans_y ? CblasTrans : CblasNoTrans, M, N, K, 1.0f, x_data,
                      y_data, 0, Out->data<T>(), out_batch_size, M * K, K * N);
@@ -272,16 +305,16 @@ void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
     std::vector<std::int64_t> index(batch_dim);
     for (std::int64_t i = 0; i < out_batch_size; ++i) {
       const std::int64_t x_index =
-          GetIndexFromDims(batch_dim, x_broadcast_dims.data(), index.data());
+          GetIndexMessage(batch_dim, x_broadcast_dims.data(), index.data());
       const std::int64_t y_index =
-          GetIndexFromDims(batch_dim, y_broadcast_dims.data(), index.data());
+          GetIndexMessage(batch_dim, y_broadcast_dims.data(), index.data());
 
       x_ptr[i] = x_data + x_index * M * K;
       y_ptr[i] = y_data + y_index * K * N;
       out_ptr[i] = Out->data<T>() + i * M * N;
       IncreaseIndexInDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
-    VLOG(0) << "MatMul's case 14";
+    VLOG(3) << "MatMul's case 14";
     blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                      trans_y ? CblasTrans : CblasNoTrans, M, N, K, 1.0f,
                      x_ptr.data(), y_ptr.data(), 0.0f, out_ptr.data(),
@@ -298,7 +331,6 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     auto* Out = ctx.Output<Tensor>("Out");
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
-
     MatMulFunction<DeviceContext, T>(X, Y, Out, trans_x, trans_y, ctx);
   }
 };
@@ -312,19 +344,25 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
+
     // get dims
     const std::vector<std::int64_t> x_dims = vectorize(X->dims());
     const std::vector<std::int64_t> y_dims = vectorize(Y->dims());
+    const std::vector<std::int64_t> dout_dims = vectorize(dOut->dims());
     const int x_ndim = x_dims.size();
     const int y_ndim = y_dims.size();
+    const int ndim = dout_dims.size();
 
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    if (dx) dx->mutable_data<T>(ctx.GetPlace());
-    if (dy) dy->mutable_data<T>(ctx.GetPlace());
+
+    // if (dx) dx->mutable_data<T>(ctx.GetPlace());
+    // if (dy) dy->mutable_data<T>(ctx.GetPlace());
 
     // x's or y's dim = 1
     if (x_ndim == 1 && y_ndim == 1) {
+      if (dx) dx->mutable_data<T>(ctx.GetPlace());
+      if (dy) dy->mutable_data<T>(ctx.GetPlace());
       if (dOut->numel() == 1) {
         DotGradFunction<DeviceContext, T>(X, Y, dOut, dx, dy, ctx);
         return;
@@ -335,6 +373,7 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     assert(x_ndim >= 2 && y_ndim >= 2);
     // the normal case
     Tensor dx_help, dy_help;
+
     if (trans_x) {
       if (trans_y) {
         // X'Y'
@@ -371,39 +410,73 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
       }
     }
 
-    // cal the broadcast message
     // get help dims
+    assert(dx_help_ndim == dy_help_ndim);
     const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
     const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
-    const int dx_help_ndim = x_help_dims.size();
-    const int dy_help_ndim = y_help_dims.size();
 
-    assert(dx_help_ndim == dy_help_ndim);
+    std::vector<std::int64_t> dx_broadcast_dims(ndim);
+    std::vector<std::int64_t> dy_broadcast_dims(ndim);
+
+    std::fill(dx_broadcast_dims.data(),
+              dx_broadcast_dims.data() + ndim - x_ndim, 1);
+    std::fill(dy_broadcast_dims.data(),
+              dy_broadcast_dims.data() + ndim - y_ndim, 1);
+    std::copy(x_dims.data(), x_dims.data() + x_ndim,
+              dx_broadcast_dims.data() + ndim - x_ndim);
+    std::copy(y_dims.data(), y_dims.data() + y_ndim,
+              dy_broadcast_dims.data() + ndim - y_ndim);
+
+    // dx_dims [1, 1, 3]
+    // dx_help_dims [4, 2 ,1, 3]
+    // dx_broadcast_dims [1, 1, 1, 3]
+    // dx_reduce_dims [0, 1]
     // get reduce dim
-    std::vector<std::int64_t> dx_reduce_dims;
-    std::vector<std::int64_t> dy_reduce_dims;
-    for (std::int64_t idx = dx_help_ndim - 1 - 2; idx >= 0; idx--) {
-      if (x_help_dims) }
-    // ComputeReudceSumBinaryOpDims();
 
-    const int ndim = std::max(x_ndim, y_ndim);
-    std::vector<std::int64_t> x_broadcast_dims(ndim);
-    std::vector<std::int64_t> y_broadcast_dims(ndim);
-    std::vector<std::int64_t> out_broadcast_dims(ndim);
-    ComputeBroadcastBinaryOpDims(x_ndim - 2, x_dims.data(), y_ndim - 2,
-                                 y_dims.data(), x_broadcast_dims.data(),
-                                 y_broadcast_dims.data(),
-                                 out_broadcast_dims.data());
+    std::vector<int> dx_reduce_dims;
+    std::vector<int> dy_reduce_dims;
+    for (int idx = 0; idx <= ndim - 3; idx++) {
+      if (dx_help_dims[idx] != 1 && dx_broadcast_dims[idx] == 1) {
+        dx_reduce_dims.push_back(idx);
+      }
+      if (dy_help_dims[idx] != 1 && dy_broadcast_dims[idx] == 1) {
+        dy_reduce_dims.push_back(idx);
+      }
+    }
 
-    // reduce sum to get grad by ReduceKernelFunctor
-    // if (dx) {
+    // T* vlog_x = dx_help.data<T>();
+    // T* vlog_y = dy_help.data<T>();
+    // VLOG(0) << "x data:";
+    // for (int i =0; i < dx_help.numel(); ++i){
+    //     VLOG(0) << vlog_x[i];
     // }
-    // ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
-    //     dx, output, dims, keep_dim, reduce_all, context)
+    // VLOG(0) << "y data:";
 
-    // y->mutable_data<T>(ctx.GetPlace());
-    // auto y_e = framework::EigenVector<T>::Flatten(*y);
-    // auto y_arr = y_e.reshape(shape);
+    // for (int i =0; i < dy_help.numel(); ++i){
+    //     VLOG(0) << vlog_y[i];
+    // }
+
+    // VLOG(0) << "dx_reduce_dims";
+    // for(auto ele : dx_reduce_dims){
+    //   VLOG(0) << ele;
+    // }
+
+    // VLOG(0) << "dy_reduce_dims";
+    // for(auto ele : dy_reduce_dims){
+    //   VLOG(0) << ele;
+    // }
+
+    // reduce sum to get grad by ReduceSum
+    if (dx) {
+      ReduceSumForMatmulGrad<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
+                                               ctx);
+      dx->Resize(X->dims());
+    }
+    if (dy) {
+      ReduceSumForMatmulGrad<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
+                                               ctx);
+      dy->Resize(Y->dims());
+    }
   }
 };
 
