@@ -18,6 +18,7 @@ __all__ = [
     'Hardshrink',
     #       'PReLU',
     'ReLU',
+    'ReLU6',
     'LeakyReLU',
     'Sigmoid',
     #       'Softmax',
@@ -254,6 +255,44 @@ class ReLU(layers.Layer):
 
     def forward(self, input):
         return F.relu(input, self._inplace)
+
+
+class ReLU6(layers.Layer):
+    """
+    ReLU6 Activation
+
+    .. math::
+
+        \text{ReLU6}(x) = \min(\max(0,x), 6)
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
+        m = paddle.nn.ReLU6()
+        out = m(x) # [0, 0.3, 6]
+    """
+
+    def __init__(self, name=None):
+        super(ReLU6, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.relu6(x, self._name)
 
 
 class LeakyReLU(layers.Layer):

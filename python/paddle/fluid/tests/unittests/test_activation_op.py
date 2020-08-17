@@ -784,20 +784,24 @@ class TestBReluOpError(unittest.TestCase):
             fluid.layers.brelu(x_fp16)
 
 
-class TestRelu6(TestActivation):
+def ref_relu6(x, threshold=6.0):
+    out = np.copy(x)
+    out[np.abs(x) < 0.005] = 0.02
+    out[np.abs(x - threshold) < 0.005] = threshold + 0.02
+    out = np.minimum(np.maximum(x, 0), threshold)
+    return out
+
+
+class TestReLU6(TestActivation):
     def setUp(self):
         self.op_type = "relu6"
         self.init_dtype()
 
         x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
-        threshold = 6.0
-        # The same with TestAbs
-        x[np.abs(x) < 0.005] = 0.02
-        x[np.abs(x - threshold) < 0.005] = threshold + 0.02
-        out = np.minimum(np.maximum(x, 0), threshold)
+        out = ref_relu6(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {'threshold': threshold}
+        self.inputs = {'X': x}
+        self.attrs = {'threshold': 6.0}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
@@ -806,17 +810,55 @@ class TestRelu6(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestRelu6OpError(unittest.TestCase):
+class TestReLU6API(unittest.TestCase):
+    # test paddle.nn.ReLU6, paddle.nn.functional.relu6
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 10, [10, 12]).astype('float32')
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12])
+            out1 = F.relu6(x)
+            relu6 = paddle.nn.ReLU6()
+            out2 = relu6(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_relu6(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.relu6(x)
+        relu6 = paddle.nn.ReLU6()
+        out2 = relu6(x)
+        out_ref = ref_relu6(self.x_np)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', [10, 12])
+            out = fluid.layers.relu6(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_relu6(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
     def test_errors(self):
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.relu6, 1)
+            self.assertRaises(TypeError, F.relu6, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.relu6, x_int32)
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.relu6, x_int32)
             # support the input dtype is float16
-            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.relu6(x_fp16)
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.relu6(x_fp16)
 
 
 class TestHardSwish(TestActivation):
@@ -1349,7 +1391,7 @@ def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
 
 
 create_test_act_cudnn_class(TestRelu)
-create_test_act_cudnn_class(TestRelu6)
+create_test_act_cudnn_class(TestReLU6)
 create_test_act_cudnn_class(TestSigmoid)
 create_test_act_cudnn_class(TestTanh)
 
@@ -1405,7 +1447,7 @@ create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu)
 create_test_act_fp16_class(TestGelu)
 create_test_act_fp16_class(TestBRelu)
-create_test_act_fp16_class(TestRelu6)
+create_test_act_fp16_class(TestReLU6)
 create_test_act_fp16_class(TestSoftRelu)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestReciprocal)
