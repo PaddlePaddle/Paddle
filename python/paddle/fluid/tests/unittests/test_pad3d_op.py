@@ -166,7 +166,7 @@ class TestPadAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
-    def check_static_result(self, place):
+    def check_static_result_1(self, place):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             input_shape = (1, 2, 3, 4, 5)
@@ -175,7 +175,7 @@ class TestPadAPI(unittest.TestCase):
             value = 100
             input_data = np.random.rand(*input_shape).astype(np.float32)
             x = paddle.data(name="x", shape=input_shape)
-            result = F.pad(x=x, pad=pad, value=value, mode='constant')
+            result = F.pad(x=x, pad=pad, value=value, mode=mode)
             exe = Executor(place)
             fetches = exe.run(default_main_program(),
                               feed={"x": input_data},
@@ -184,7 +184,63 @@ class TestPadAPI(unittest.TestCase):
             np_out = self._get_numpy_out(input_data, pad, mode, value)
             self.assertTrue(np.allclose(fetches[0], np_out))
 
-    def _get_numpy_out(self, input_data, pad, mode, value, data_format="NCDHW"):
+    def check_static_result_2(self, place):
+        paddle.enable_static()
+        with program_guard(Program(), Program()):
+            input_shape = (2, 3, 4, 5, 6)
+            pad = [1, 2, 1, 1, 1, 2]
+            mode = "reflect"
+            input_data = np.random.rand(*input_shape).astype(np.float32)
+            x = paddle.data(name="x", shape=input_shape)
+            result = F.pad(x=x, pad=pad, mode=mode)
+            exe = Executor(place)
+            fetches = exe.run(default_main_program(),
+                              feed={"x": input_data},
+                              fetch_list=[result])
+
+            np_out = self._get_numpy_out(input_data, pad, mode)
+            self.assertTrue(np.allclose(fetches[0], np_out))
+
+    def check_static_result_3(self, place):
+        paddle.enable_static()
+        with program_guard(Program(), Program()):
+            input_shape = (2, 3, 4, 5, 6)
+            pad = [1, 2, 1, 1, 3, 4]
+            mode = "replicate"
+            input_data = np.random.rand(*input_shape).astype(np.float32)
+            x = paddle.data(name="x", shape=input_shape)
+            result = F.pad(x=x, pad=pad, mode=mode)
+            exe = Executor(place)
+            fetches = exe.run(default_main_program(),
+                              feed={"x": input_data},
+                              fetch_list=[result])
+
+            np_out = self._get_numpy_out(input_data, pad, mode)
+            self.assertTrue(np.allclose(fetches[0], np_out))
+
+    def check_static_result_4(self, place):
+        paddle.enable_static()
+        with program_guard(Program(), Program()):
+            input_shape = (2, 3, 4, 5, 6)
+            pad = [1, 2, 1, 1, 3, 4]
+            mode = "circular"
+            input_data = np.random.rand(*input_shape).astype(np.float32)
+            x = paddle.data(name="x", shape=input_shape)
+            result = F.pad(x=x, pad=pad, mode=mode)
+            exe = Executor(place)
+            fetches = exe.run(default_main_program(),
+                              feed={"x": input_data},
+                              fetch_list=[result])
+
+            np_out = self._get_numpy_out(input_data, pad, mode)
+            self.assertTrue(np.allclose(fetches[0], np_out))
+
+    def _get_numpy_out(self,
+                       input_data,
+                       pad,
+                       mode,
+                       value=0,
+                       data_format="NCDHW"):
         if data_format == "NCDHW":
             pad = [
                 (0, 0),
@@ -215,7 +271,10 @@ class TestPadAPI(unittest.TestCase):
 
     def test_static(self):
         for place in self.places:
-            self.check_static_result(place=place)
+            self.check_static_result_1(place=place)
+            self.check_static_result_2(place=place)
+            self.check_static_result_3(place=place)
+            self.check_static_result_4(place=place)
 
     def test_dygraph(self):
 
