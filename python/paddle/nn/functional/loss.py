@@ -41,6 +41,7 @@ from ...fluid.layers import edit_distance  #DEFINE_ALIAS
 from ...fluid.layers import huber_loss  #DEFINE_ALIAS
 from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layer_helper import LayerHelper
+from ...fluid.framework import in_dygraph_mode
 from ...fluid.framework import Variable
 
 __all__ = [
@@ -73,16 +74,16 @@ __all__ = [
 
 def margin_ranking_loss(input,
                         other,
-                        target,
+                        label,
                         margin=0.0,
                         reduction='mean',
                         name=None):
     """
 
-    This op the calcluate the the margin rank loss between the input x, y and target, use the math function as follows. 
+    This op the calcluate the the margin rank loss between the input, other and label, use the math function as follows. 
 
     .. math:: 
-        margin\_rank\_loss = max(0, -target * (input - other) + margin)
+        margin\_rank\_loss = max(0, -label * (input - other) + margin)
 
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
 
@@ -99,7 +100,7 @@ def margin_ranking_loss(input,
     Parameters:
         input(Tensor): the first input tensor, it's data type should be float32, float64.
         other(Tensor): the second input tensor, it's data type should be float32, float64.
-        target(Tensor): the target value corresponding to input, it's data type should be float32, float64. 
+        label(Tensor): the label value corresponding to input, it's data type should be float32, float64. 
         margin (float, optional): The margin value to add, default value is 0;
         reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -115,15 +116,15 @@ def margin_ranking_loss(input,
             
             paddle.disable_static()
              
-            x = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype('float32'))
-            y = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype('float32'))
-            target = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype('float32'))
-            loss = paddle.nn.functional.margin_ranking_loss(x, y, target) 
+            input = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype('float32'))
+            other = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype('float32'))
+            label = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype('float32'))
+            loss = paddle.nn.functional.margin_ranking_loss(input, other, label) 
             print(loss.numpy()) # [0.75]
     """
     if fluid.framework.in_dygraph_mode():
         out = core.ops.elementwise_sub(other, input)
-        out = core.ops.elementwise_mul(out, target)
+        out = core.ops.elementwise_mul(out, label)
         if margin != 0.0:
             margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
             out = core.ops.elementwise_add(out, margin)
@@ -140,10 +141,10 @@ def margin_ranking_loss(input,
     fluid.data_feeder.check_variable_and_dtype(
         other, 'other', ['float32', 'float64'], 'margin_rank_loss')
     fluid.data_feeder.check_variable_and_dtype(
-        target, 'target', ['float32', 'float64'], 'margin_rank_loss')
+        label, 'label', ['float32', 'float64'], 'margin_rank_loss')
 
     out = paddle.elementwise_sub(other, input)
-    out = paddle.multiply(out, target)
+    out = paddle.multiply(out, label)
 
     if margin != 0.0:
         margin_var = out.block.create_var(dtype=out.dtype)
