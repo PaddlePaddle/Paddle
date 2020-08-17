@@ -42,7 +42,7 @@ class RecomputeOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.recompute = False
-        dist_strategy.recompute_configs = {"checkpoints": []}
+        dist_strategy.recompute_configs = {}
 
     def backward(self,
                  loss,
