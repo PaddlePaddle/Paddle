@@ -285,15 +285,14 @@ class TestReshapeAPI(unittest.TestCase):
         input = np.random.random([2, 25]).astype("float32")
         shape = [2, 5, 5]
         with paddle.imperative.guard():
-            x = paddle.imperative.to_variable(input)
+            x = paddle.to_tensor(input)
             positive_five = paddle.fill_constant([1], "int32", 5)
 
             out_1 = paddle.reshape(x, shape)
 
             out_2 = paddle.reshape(x, shape=[positive_five, 10])
 
-            shape_tensor = paddle.imperative.to_variable(
-                np.array([2, 5, 5]).astype("int32"))
+            shape_tensor = paddle.to_tensor(np.array([2, 5, 5]).astype("int32"))
             out_3 = paddle.reshape(x, shape=shape_tensor)
 
         assert np.array_equal(out_1.numpy(), input.reshape(shape))

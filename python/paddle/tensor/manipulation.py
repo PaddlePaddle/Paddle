@@ -1061,7 +1061,7 @@ def reshape(x, shape, name=None):
             paddle.disable_static()
 
             data = np.random.random([2, 4, 6]).astype("float32")
-            x = paddle.imperative.to_variable(data)
+            x = paddle.to_tensor(data)
 
             positive_four = paddle.fill_constant([1], "int32", 4)
 
@@ -1071,7 +1071,7 @@ def reshape(x, shape, name=None):
             out_2 = paddle.reshape(x, shape=[positive_four, 12])
             # the shape of out_2 is [4, 12].
 
-            shape_tensor = paddle.imperative.to_variable(np.array([8, 6]).astype("int32"))
+            shape_tensor = paddle.to_tensor(np.array([8, 6]).astype("int32"))
             out_3 = paddle.reshape(x, shape=shape_tensor)
             # the shape of out_2 is [8, 6].
     """
