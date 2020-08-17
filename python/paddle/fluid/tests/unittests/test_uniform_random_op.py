@@ -19,6 +19,7 @@ import subprocess
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
@@ -474,56 +475,26 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_dtype)
 
 
-class TestUniformRandomAlias(unittest.TestCase):
-    def get_import_command(self, module):
-        paths = module.split('.')
-        if len(paths) == 1:
-            return 'import {}'.format(module)
-        package = '.'.join(paths[:-1])
-        func = paths[-1]
-        cmd = 'from {} import {}'.format(package, func)
-        return cmd
+class TestUniformAlias(unittest.TestCase):
+    def test_alias(self):
+        paddle.disable_static()
 
-    def test_new_alias(self):
-        new_alias = [
-            'paddle.tensor.random.uniform', 'paddle.tensor.uniform',
-            'paddle.uniform'
-        ]
-        import_file = 'run_import_uniform_modules.py'
-        with open(import_file, "w") as wb:
-            for module in new_alias:
-                run_cmd = self.get_import_command(module)
-                wb.write("{}\n".format(run_cmd))
+        def test_paddle_uniform():
+            paddle.uniform([2, 3], min=-5.0, max=5.0)
 
-        _python = sys.executable
+        self.assertRaises(TypeError, test_paddle_uniform)
 
-        ps_cmd = "{} {}".format(_python, import_file)
-        ps_proc = subprocess.Popen(
-            ps_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        stdout, stderr = ps_proc.communicate()
+        def test_paddle_tensor_uniform():
+            paddle.tensor.uniform([2, 3], min=-5.0, max=5.0)
 
-        assert "Error" not in str(stderr), "Error: Can't" \
-            " import Module {}".format(module)
+        self.assertRaises(TypeError, test_paddle_tensor_uniform)
 
-    def test_old_alias(self):
-        old_alias_cmd = 'from paddle.tensor.random import uniform_random'
-        import_file = 'run_import_uniform_random.py'
-        with open(import_file, "w") as wb:
-            wb.write("{}\n".format(old_alias_cmd))
+        def test_paddle_tensor_random_uniform():
+            paddle.tensor.random.uniform([2, 3], min=-5.0, max=5.0)
 
-        _python = sys.executable
+        self.assertRaises(TypeError, test_paddle_tensor_random_uniform)
 
-        ps_cmd = "{} {}".format(_python, import_file)
-        ps_proc = subprocess.Popen(
-            ps_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        stdout, stderr = ps_proc.communicate()
-
-        assert "Error" in str(stderr), "Error: paddle.tensor.random." \
-            "uniform_random should not be imported"
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
