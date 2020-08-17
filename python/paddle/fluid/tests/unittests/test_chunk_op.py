@@ -22,7 +22,7 @@ from paddle import fluid
 import paddle
 
 
-class TestCunkOpError(unittest.TestCase):
+class TestChunkOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The type of axis in chunk_op should be int or Variable.
@@ -54,7 +54,7 @@ class TestCunkOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_axis_type_tensor)
 
 
-class API_TestSplit(unittest.TestCase):
+class API_TestChunk(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = paddle.data('data1', shape=[4, 6, 6], dtype='float64')
@@ -73,7 +73,7 @@ class API_TestSplit(unittest.TestCase):
             self.assertTrue(np.allclose(ex_x2, r2))
 
 
-class API_TestSplit2(unittest.TestCase):
+class API_TestChunk1(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = paddle.data('data1', shape=[4, 6, 6], dtype='float64')
@@ -89,7 +89,7 @@ class API_TestSplit2(unittest.TestCase):
             self.assertTrue(np.allclose(ex_x2, r2))
 
 
-class API_TestDygraphSplit(unittest.TestCase):
+class API_TestDygraphChunk(unittest.TestCase):
     def test_out1(self):
         with fluid.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
