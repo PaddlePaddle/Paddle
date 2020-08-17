@@ -11,18 +11,134 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <thrust/device_ptr.h>
+#include <thrust/device_vector.h>
+#include <thrust/reverse.h>
+#include <thrust/scan.h>
 #include "paddle/fluid/operators/masked_select_op.h"
+namespace paddle {
+namespace operators {
 
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using DDim = framework::DDim;
+
+__global__ void SetMaskArray(const bool* mask, int32_t* mask_array, int size) {
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (; idx < size; idx += blockDim.x * gridDim.x) {
+    if (mask[idx])
+      mask_array[idx] = 1;
+    else
+      mask_array[idx] = 0;
+  }
+}
+
+template <typename T>
+__global__ void SelectWithPrefixMask(const int32_t* mask_prefix_sum,
+                                     const bool* mask, const T* input, T* out,
+                                     int size) {
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (; idx < size; idx += blockDim.x * gridDim.x) {
+    if (mask[idx]) {
+      int index = mask_prefix_sum[idx];
+      out[index] = input[idx];
+    }
+  }
+}
+
+template <typename T>
+void MaskSelectCompute(Tensor* input, Tensor* mask, Tensor* out,
+                       const framework::ExecutionContext& ctx) {}
+
+template <typename DeviceContext, typename T>
+class MaskedSelectCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const {
+    auto input = ctx.Input<framework::Tensor>("X");
+    auto mask = ctx.Input<framework::Tensor>("Mask");
+    auto out = ctx.Output<framework::Tensor>("Y");
+    auto* mask_data = mask->data<bool>();
+    auto input_data = input->data<T>();
+
+    auto input_size = input->numel();
+    auto mask_size = mask->numel();
+    auto mask_dim = mask->dims();
+    PADDLE_ENFORCE_EQ(input_size, mask_size,
+                      platform::errors::InvalidArgument(
+                          "The size of input and mask in OP(masked_selected) "
+                          "must be equal, but got input size:%ld, mask size: "
+                          "%ld. Please check input "
+                          "value.",
+                          input_size, mask_size));
+
+    thrust::device_ptr<const bool> mask_dev_ptr =
+        thrust::device_pointer_cast(mask_data);
+    thrust::device_vector<T> mask_vec(mask_dev_ptr, mask_dev_ptr + mask_size);
+    auto out_size = thrust::count(mask_vec.begin(), mask_vec.end(), true);
+
+    Tensor mask_array;
+    Tensor mask_prefix_sum;
+    mask_array.Resize(mask_dim);
+    mask_prefix_sum.Resize(mask_dim);
+
+    int32_t* mask_array_data = mask_array.mutable_data<int32_t>(ctx.GetPlace());
+    int32_t* mask_prefix_sum_data =
+        mask_prefix_sum.mutable_data<int32_t>(ctx.GetPlace());
+    int threads = 512;
+    int grid = (mask_size + threads - 1) / threads;
+    auto stream = ctx.cuda_device_context().stream();
+    SetMaskArray<<<grid, threads, 0, stream>>>(mask_data, mask_array_data,
+                                               mask_size);
+
+    framework::DDim out_dim{out_size};
+    out->Resize(out_dim);
+    auto out_data = out->mutable_data<T>(ctx.GetPlace());
+
+    thrust::device_ptr<int32_t> mask_array_dev_ptr =
+        thrust::device_pointer_cast(mask_array_data);
+    thrust::device_vector<int32_t> mask_array_vec(
+        mask_array_dev_ptr, mask_array_dev_ptr + mask_size);
+    thrust::inclusive_scan(thrust::device, mask_array_vec.begin(),
+                           mask_array_vec.end(), mask_prefix_sum_data);
+
+    SelectWithPrefixMask<T><<<grid, threads, 0, stream>>>(
+        mask_prefix_sum_data, mask_data, input_data, out_data, mask_size);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class MaskedSelectGradCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const {
+    /*
+       auto out =
+       context.Output<framework::Tensor>(framework::GradVarName("X"));
+       auto mask = context.Input<framework::Tensor>("Mask");
+       auto input =
+       context.Input<framework::Tensor>(framework::GradVarName("Y"));
+
+       out->Resize(mask->dims());
+       auto* mask_data = mask->data<bool>();
+       auto* input_data = input->data<T>();
+       auto* out_data = out->mutable_data<T>(context.GetPlace());
+       int mask_size = mask->numel();
+     */
+  }
+};
+}  // namespace operators
+}  // namespace paddle
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     masked_select,
-    ops::MaskedSelectKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MaskedSelectKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MaskedSelectKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::MaskedSelectKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::MaskedSelectCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MaskedSelectCUDAKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MaskedSelectCUDAKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::MaskedSelectCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     masked_select_grad,
-    ops::MaskedSelectGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MaskedSelectGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MaskedSelectGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::MaskedSelectGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::MaskedSelectGradCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MaskedSelectGradCUDAKernel<paddle::platform::CUDADeviceContext,
+                                    double>,
+    ops::MaskedSelectGradCUDAKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::MaskedSelectGradCUDAKernel<paddle::platform::CUDADeviceContext,
+                                    int64_t>);

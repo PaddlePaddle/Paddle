@@ -30,7 +30,8 @@ class MaskedSelectKernel : public framework::OpKernel<T> {
     auto input = context.Input<framework::Tensor>("X");
     auto mask = context.Input<framework::Tensor>("Mask");
     auto out = context.Output<framework::Tensor>("Y");
-    auto* mask_data = mask->data<T>();
+    auto* mask_data = mask->data<bool>();
+    auto input_data = input->data<T>();
 
     auto input_size = input->numel();
     auto mask_size = mask->numel();
@@ -41,8 +42,8 @@ class MaskedSelectKernel : public framework::OpKernel<T> {
                           "%ld. Please check input "
                           "value.",
                           input_size, mask_size));
-    int out_size = 0;
 
+    int out_size = 0;
     for (int i = 0; i < mask_size; i++) {
       if (mask_data[i]) out_size++;
     }
@@ -50,7 +51,6 @@ class MaskedSelectKernel : public framework::OpKernel<T> {
     framework::DDim out_dim{out_size};
     out->Resize(out_dim);
     auto out_data = out->mutable_data<T>(context.GetPlace());
-    auto input_data = input->data<T>();
 
     int index = 0;
     for (int i = 0; i < mask_size; i++) {
@@ -71,7 +71,7 @@ class MaskedSelectGradKernel : public framework::OpKernel<T> {
     auto input = context.Input<framework::Tensor>(framework::GradVarName("Y"));
 
     out->Resize(mask->dims());
-    auto* mask_data = mask->data<T>();
+    auto* mask_data = mask->data<bool>();
     auto* input_data = input->data<T>();
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     int mask_size = mask->numel();
