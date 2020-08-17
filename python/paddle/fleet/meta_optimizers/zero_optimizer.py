@@ -105,20 +105,48 @@ class ZeroOptimizer(MetaOptimizerBase):
                            OP_ROLE_KEY: OpRole.Backward})
 
     def _insert_broadcast_ops(self, block, fuse_broadcast=False):
-        ring_id = -1
-        program = block.program
-        broadcast_cache = []
-        broadcast_count = 0
-        for op_idx, op in reversed(list(enumerate(block.ops))):
-            if broadcast_count >= self._fuse_broadcast_num:
-                assert (len(broadcast_cache) > 0)
-                insert_idx = op_idx
-                for attr in broadcast_cache:
+        def _insert_cache(insert_idx, cache):
+            assert (len(cache["broadcast"]) > 0)
+            if len(cache["fill_constant"]) > 0:
+                for attr in cache["fill_constant"]:
                     block._insert_op(insert_idx, **attr)
                     insert_idx += 1
-                broadcast_cache = []
-                broadcast_count = 0
+                    # TODO(mapingshuo) remove dummy var
+                    dummy_var_name = attr["outputs"]["Out"]
 
+                for r in range(self._nrings):
+                    block._insert_op(
+                        insert_idx,
+                        type='c_sync_calc_stream',
+                        inputs={'X': dummy_var_name},
+                        outputs={'Out': dummy_var_name},
+                        attrs={'ring_id': r,
+                               OP_ROLE_KEY: OpRole.Backward})
+                    insert_idx += 1
+
+            for attr in cache["broadcast"]:
+                block._insert_op(insert_idx, **attr)
+                insert_idx += 1
+                # TODO(mapingshuo) remove dummy var
+                dummy_var_name = attr["outputs"]["Out"]
+
+            for r in range(self._nrings):
+                block._insert_op(
+                    insert_idx,
+                    type='c_sync_comm_stream',
+                    inputs={'X': dummy_var_name},
+                    outputs={'Out': dummy_var_name},
+                    attrs={'ring_id': r,
+                           OP_ROLE_KEY: OpRole.Backward})
+                insert_idx += 1
+
+        ring_id = -1
+        broadcast_cache = {"fill_constant": [], "broadcast": []}
+        for op_idx, op in reversed(list(enumerate(block.ops))):
+            if len(broadcast_cache["broadcast"]) >= self._fuse_broadcast_num:
+                assert (len(broadcast_cache["broadcast"]) > 0)
+                _insert_cache(op_idx, broadcast_cache)
+                broadcast_cache = {"fill_constant": [], "broadcast": []}
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 continue
             for input_name in op.desc.input_arg_names():
@@ -140,22 +168,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                 # TODO(mapingshuo) OP_ROLE_KEY should be forward if the param
                 # is used in forward network
                 ring_id = (ring_id + 1) % self._nrings
-                broadcast_count += 1
-                if root_device != self.role_maker.worker_index():
-                    broadcast_cache.insert(0, {
-                        "type": 'c_sync_comm_stream',
-                        "inputs": {
-                            'X': param.name
-                        },
-                        "outputs": {
-                            'Out': param.name
-                        },
-                        "attrs": {
-                            'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Backward
-                        }
-                    })
-                broadcast_cache.insert(0, {
+                broadcast_cache["broadcast"].insert(0, {
                     "type": 'c_broadcast',
                     "inputs": {
                         'X': param.name
@@ -170,20 +183,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                     }
                 })
                 if root_device != self.role_maker.worker_index():
-                    broadcast_cache.insert(0, {
-                        "type": 'c_sync_calc_stream',
-                        "inputs": {
-                            'X': param.name
-                        },
-                        "outputs": {
-                            'Out': param.name
-                        },
-                        "attrs": {
-                            'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Backward
-                        }
-                    })
-                    broadcast_cache.insert(0, {
+                    broadcast_cache["fill_constant"].insert(0, {
                         "type": "fill_constant",
                         "outputs": {
                             "Out": param.name
@@ -194,13 +194,10 @@ class ZeroOptimizer(MetaOptimizerBase):
                             "value": 0.0,
                         }
                     })
-
-        if broadcast_count > 0:
-            assert (len(broadcast_cache) > 0)
-            insert_idx = 0
-            for attr in broadcast_cache:
-                block._insert_op(insert_idx, **attr)
-                insert_idx += 1
+        if len(broadcast_cache["broadcast"]) > 0:
+            assert (len(broadcast_cache["broadcast"]) > 0)
+            _insert_cache(0, broadcast_cache)
+        return
 
     def _insert_allreduce_ops(self, block):
         ring_id = -1
