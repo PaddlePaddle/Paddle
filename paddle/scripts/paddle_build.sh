@@ -195,12 +195,6 @@ function cmake_base() {
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     grpc_flag=${WITH_GRPC:-${distibuted_flag}}
 
-    if [ "$SYSTEM" == "Darwin" ]; then
-        gloo_flag="OFF"
-    else
-        gloo_flag=${distibuted_flag}
-    fi
-
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -225,7 +219,6 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
-	    -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DLITE_GIT_TAG=develop
     ========================================
@@ -256,7 +249,6 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-	    -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
@@ -694,13 +686,6 @@ function assert_api_spec_approvals() {
     fi
 }
 
-function assert_file_diff_approvals() {
-    /bin/bash ${PADDLE_ROOT}/tools/check_file_diff_approvals.sh;file_approval_error=$?
-    if [ "$file_approval_error" != 0 ];then
-       exit 6
-    fi
-}
-
 
 function check_coverage() {
     /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
@@ -934,17 +919,94 @@ set +x
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
         collect_failed_tests
-        if [ -n "${failed_test_lists}" ];then
-            failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-            echo "========================================"
-            echo "Summary Failed Tests... "
-            echo "========================================"
-            echo "The following tests FAILED: "
-            echo "${failed_test_lists_ult}"
-        fi
         rm -f $tmp_dir/*
+        exec_times=0
+        retry_unittests_record=''
+        if [ -n "$failed_test_lists" ];then
+            while ( [ $exec_times -lt 3 ] && [ -n "${failed_test_lists}" ] )
+                do
+                    
+                    retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                    failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                    echo "========================================="
+                    echo "This is $[$exec_times+1] re-run"
+                    echo "========================================="
+                    echo "The following unittest will be re-run:"
+                    echo "${failed_test_lists_ult}"
+                        
+                    for line in ${retry_unittests[@]} ;
+                        do
+
+                            one_card_tests=$single_card_tests'|'$single_card_tests_1
+
+                            read tmp_one_tmp <<< "$( echo $one_card_tests | grep -oEi $line )"
+                            read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
+                            read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
+
+                            if [[ "$tmp_one_tmp" != ""  ]]; then
+                                if [[ "$one_card_retry" == "" ]]; then
+                                    one_card_retry="^$line$"
+                                else
+                                    one_card_retry="$one_card_retry|^$line$"
+                                fi
+                            elif [[ "$tmp_mul_tmp" != "" ]]; then
+                                if [[ "$multiple_card_retry" == "" ]]; then
+                                    multiple_card_retry="^$line$"
+                                else
+                                    multiple_card_retry="$multiple_card_retry|^$line$"
+                                fi
+                            else
+                                if [[ "$exclusive_retry" == "" ]];then
+                                    exclusive_retry="^$line$"
+                                else
+                                    exclusive_retry="$exclusive_retry|^$line$"
+                                fi
+                            fi
+
+                        done
+
+                    if [[ "$one_card_retry" != "" ]]; then
+                        card_test "$one_card_retry" 1
+                    fi
+
+                    if [[ "$multiple_card_retry" != "" ]]; then
+                        card_test "$multiple_card_retry" 2
+                    fi
+
+                    if [[ "$exclusive_retry" != "" ]]; then
+                        card_test "$exclusive_retry"
+                    fi
+                    
+                    exec_times=$[$exec_times+1]
+                    failed_test_lists=''
+                    collect_failed_tests
+                    rm -f $tmp_dir/*
+                    one_card_retry=''
+                    multiple_card_retry=''
+                    exclusive_retry=''
+                    retry_unittests=''
+                done
+        fi
+
+
+       
         if [[ "$EXIT_CODE" != "0" ]]; then
-            exit 8;
+            if [[ "$failed_test_lists" == "" ]]; then
+                echo "========================================"
+                echo "Run failure sample exists,and it re-run is successful"
+                echo "========================================"
+                echo "The following tests was re-run:"
+                echo "${retry_unittests_record}"
+            else
+                failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                echo "========================================"
+                echo "Summary Failed Tests... "
+                echo "========================================"
+                echo "The following tests FAILED: "
+                echo "${failed_test_lists_ult}"
+                exit 8;
+            fi
         fi
 set -ex
     fi
@@ -1275,13 +1337,9 @@ EOF
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
-    EXIT_CODE=$?
     fluid_endTime_s=`date +%s`
     echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
     ./clean.sh
-    if [[ "$EXIT_CODE" != "0" ]]; then
-        exit 8;
-    fi
 }
 
 function test_fluid_lib_train() {
@@ -1293,13 +1351,9 @@ EOF
     fluid_train_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/train/demo
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
-    EXIT_CODE=$?
     fluid_train_endTime_s=`date +%s`
     echo "test_fluid_lib_train Total Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
     ./clean.sh
-    if [[ "$EXIT_CODE" != "0" ]]; then
-        exit 8;
-    fi
 }
 
 function build_document_preview() {
@@ -1403,7 +1457,7 @@ function main() {
       test_inference)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
-        #test_fluid_lib_train
+        test_fluid_lib_train
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
@@ -1412,9 +1466,6 @@ function main() {
       assert_api_approvals)
         assert_api_spec_approvals
         ;;
-      assert_file_approvals)
-        assert_file_diff_approvals
-        ;; 
       maccheck)
         cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
