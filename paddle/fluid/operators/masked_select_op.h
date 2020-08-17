@@ -27,25 +27,36 @@ template <typename DeviceContext, typename T>
 class MaskedSelectKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    *auto* input = context.InputVar("X");
-    auto* mask = context.InputVar("Mask");
-    auto* out = context.OutputVar("Y");
+    auto input = context.Input<framework::Tensor>("X");
+    auto mask = context.Input<framework::Tensor>("Mask");
+    auto out = context.Output<framework::Tensor>("Y");
+    auto* mask_data = mask->data<T>();
 
-    auto input_size = inputs->numel();
+    auto input_size = input->numel();
     auto mask_size = mask->numel();
+    PADDLE_ENFORCE_EQ(input_size, mask_size,
+                      platform::errors::InvalidArgument(
+                          "The size of input and mask in OP(masked_selected) "
+                          "must be equal, but got input size:%ld, mask size: "
+                          "%ld. Please check input "
+                          "value.",
+                          input_size, mask_size));
     int out_size = 0;
 
     for (int i = 0; i < mask_size; i++) {
-      if (mask[i]) out_size++;
+      if (mask_data[i]) out_size++;
     }
 
     framework::DDim out_dim{out_size};
     out->Resize(out_dim);
+    auto out_data = out->mutable_data<T>(context.GetPlace());
+    auto input_data = input->data<T>();
 
     int index = 0;
     for (int i = 0; i < mask_size; i++) {
-      if (mask[i]) {
-        out[index] = input[i] index++;
+      if (mask_data[i]) {
+        out_data[index] = input_data[i];
+        index++;
       }
     }
   }
@@ -55,9 +66,23 @@ template <typename DeviceContext, typename T>
 class MaskedSelectGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* mask = context.InputVar("Mask");
-    auto* out = context.OutputVar(framework::GradVarName("X"));
-    auto* input = context.InputVar(framework::GradVarName("Out"));
+    auto out = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto mask = context.Input<framework::Tensor>("Mask");
+    auto input = context.Input<framework::Tensor>(framework::GradVarName("Y"));
+
+    out->Resize(mask->dims());
+    auto* mask_data = mask->data<T>();
+    auto* input_data = input->data<T>();
+    auto* out_data = out->mutable_data<T>(context.GetPlace());
+    int mask_size = mask->numel();
+
+    int index = 0;
+    for (int i = 0; i < mask_size; i++) {
+      if (mask_data[i]) {
+        out_data[index] = input_data[i];
+        index++;
+      }
+    }
   }
 };
 
