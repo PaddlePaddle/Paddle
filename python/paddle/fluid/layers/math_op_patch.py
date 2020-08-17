@@ -54,6 +54,29 @@ EXPRESSION_MAP = {
     "__ge__": "A >= B"
 }
 
+common_methods = [
+    'exp', 'tanh', 'atan', 'sqrt', 'rsqrt', 'abs', 'ceil', 'floor', 'cos',
+    'acos', 'asin', 'sin', 'sinh', 'cosh', 'round', 'reciprocal', 'square',
+    'rank', 'matmul', 'dot', 'norm', 'transpose', 'dist', 't', 'cross',
+    'cholesky', 'bmm', 'histogram', 'equal', 'greater_equal', 'greater_than',
+    'is_empty', 'isfinite', 'less_equal', 'less_than', 'logical_and',
+    'logical_not', 'logical_or', 'logical_xor', 'not_equal', 'reduce_all',
+    'reduce_any', 'allclose', 'equal_all', 'cast', 'expand', 'expand_as',
+    'tile', 'flatten', 'gather', 'gather_nd', 'reshape', 'reverse', 'scatter',
+    'scatter_nd_add', 'scatter_nd', 'shard_index', 'slice', 'split', 'squeeze',
+    'strided_slice', 'unique', 'unique_with_counts', 'unsqueeze', 'flip',
+    'unbind', 'roll', 'cumsum', 'increment', 'log', 'pow', 'reciprocal',
+    'round', 'rsqrt', 'scale', 'sign', 'stanh', 'sum', 'reduce_prod', 'max',
+    'min', 'mm', 'div', 'multiply', 'add', 'logsumexp', 'log1p', 'erf',
+    'addcmul', 'addmm', 'clamp', 'trace', 'kron', 'argmax', 'argmin', 'argsort',
+    'has_inf', 'has_nan', 'topk', 'index_select', 'nonzero', 'sort',
+    'index_sample', 'mean', 'std', 'var', 'elementwise_add', 'elementwise_div',
+    'elementwise_floordiv', 'elementwise_mod', 'elementwise_pow',
+    'elementwise_sub'
+]
+
+_already_patch_variable = False
+
 
 def monkey_patch_variable():
     def unique_tmp_name():
@@ -296,35 +319,111 @@ def monkey_patch_variable():
         __impl__.__name__ = method_name
         return __impl__
 
-    # inject methods
-    for method_name, op_type, reverse, scalar_method in (
-        ("__add__", "elementwise_add", False, _scalar_elementwise_add_),
-            # a+b == b+a. Do not need to reverse explicitly
-        ("__radd__", "elementwise_add", False, _scalar_elementwise_add_),
-        ("__sub__", "elementwise_sub", False, _scalar_elementwise_sub_),
-        ("__rsub__", "elementwise_sub", True, _scalar_elementwise_rsub_),
-        ("__mul__", "elementwise_mul", False, _scalar_elementwise_mul_),
-            # a*b == b*a. Do not need to reverse explicitly
-        ("__rmul__", "elementwise_mul", False, _scalar_elementwise_mul_),
-        ("__div__", "elementwise_div", False, _scalar_elementwise_div_),
-        ("__truediv__", "elementwise_div", False, _scalar_elementwise_div_),
-        ("__rdiv__", "elementwise_div", True, None),
-        ("__rtruediv__", "elementwise_div", True, None),
-        ("__pow__", "elementwise_pow", False, None),
-        ("__rpow__", "elementwise_pow", True, None),
-        ("__floordiv__", "elementwise_floordiv", False, None),
-        ("__mod__", "elementwise_mod", False, None),
-            # for logical compare
-        ("__eq__", "equal", False, None),
-        ("__ne__", "not_equal", False, None),
-        ("__lt__", "less_than", False, None),
-        ("__le__", "less_equal", False, None),
-        ("__gt__", "greater_than", False, None),
-        ("__ge__", "greater_equal", False, None)):
-        setattr(Variable, method_name,
-                _elemwise_method_creator_(method_name, op_type, reverse,
-                                          scalar_method))
+    variable_methods = [
+        # b=-a
+        {
+            '__neg__': _neg_
+        },
+        {
+            'astype': astype
+        },
+        {
+            '__add__': _elemwise_method_creator_(
+                '__add__', 'elementwise_add', False, _scalar_elementwise_add_)
+        },
+        # a+b == b+a. Do not need to reverse explicitly
+        {
+            '__radd__': _elemwise_method_creator_(
+                '__radd__', 'elementwise_add', False, _scalar_elementwise_add_)
+        },
+        {
+            '__sub__': _elemwise_method_creator_(
+                '__sub__', 'elementwise_sub', False, _scalar_elementwise_sub_)
+        },
+        {
+            '__rsub__': _elemwise_method_creator_(
+                '__rsub__', 'elementwise_sub', True, _scalar_elementwise_rsub_)
+        },
+        {
+            '__mul__': _elemwise_method_creator_(
+                '__mul__', 'elementwise_mul', False, _scalar_elementwise_mul_)
+        },
+        # a*b == b*a. Do not need to reverse explicitly
+        {
+            '__rmul__': _elemwise_method_creator_(
+                '__rmul__', 'elementwise_mul', False, _scalar_elementwise_mul_)
+        },
+        {
+            '__div__': _elemwise_method_creator_(
+                '__div__', 'elementwise_div', False, _scalar_elementwise_div_)
+        },
+        {
+            '__truediv__':
+            _elemwise_method_creator_('__truediv__', 'elementwise_div', False,
+                                      _scalar_elementwise_div_)
+        },
+        {
+            '__rdiv__':
+            _elemwise_method_creator_('__rdiv__', 'elementwise_div', True, None)
+        },
+        {
+            '__rtruediv__': _elemwise_method_creator_(
+                'rtruediv__', 'elementwise_div', True, None)
+        },
+        {
+            '__pow__':
+            _elemwise_method_creator_('__pow__', 'elementwise_pow', False, None)
+        },
+        {
+            '__rpow__':
+            _elemwise_method_creator_('__rpow__', 'elementwise_pow', True, None)
+        },
+        {
+            '__floordiv__': _elemwise_method_creator_(
+                '__floordiv__', 'elementwise_floordiv', False, None)
+        },
+        {
+            '__mod__':
+            _elemwise_method_creator_('__mod__', 'elementwise_mod', False, None)
+        },
+        # for logical compare
+        {
+            '__eq__': _elemwise_method_creator_('__eq__', 'equal', False, None)
+        },
+        {
+            '__ne__': _elemwise_method_creator_('__ne__', 'not_equal', False,
+                                                None)
+        },
+        {
+            '__lt__': _elemwise_method_creator_('__lt__', 'less_than', False,
+                                                None)
+        },
+        {
+            '__le__': _elemwise_method_creator_('__le__', 'less_equal', False,
+                                                None)
+        },
+        {
+            '__gt__': _elemwise_method_creator_('__gt__', 'greater_than', False,
+                                                None)
+        },
+        {
+            '__ge__': _elemwise_method_creator_('__ge__', 'greater_equal',
+                                                False, None)
+        },
+    ]
 
-    # b = -a
-    Variable.__neg__ = _neg_
-    Variable.astype = astype
+    global _already_patch_variable
+    if not _already_patch_variable:
+        for method in variable_methods:
+            method_name = method.keys()[0]
+            method_impl = method.values()[0]
+            setattr(Variable, method_name, method_impl)
+    else:
+        import paddle.tensor
+        for method in common_methods:
+            if hasattr(Variable, method): continue
+            method_name = method
+            method_impl = getattr(paddle.tensor, method, None)
+            setattr(Variable, method_name, method_impl)
+
+    _already_patch_variable = True
