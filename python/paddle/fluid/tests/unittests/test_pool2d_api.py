@@ -118,41 +118,5 @@ class TestPool2d_API(unittest.TestCase):
             self.check_avg_static_results(place)
 
 
-class TestPool2dError_API(unittest.TestCase):
-    def test_error_api(self):
-        def run1():
-            with fluid.dygraph.guard():
-                input_np = np.random.uniform(-1, 1,
-                                             [2, 3, 32, 32]).astype(np.float32)
-                res_pd = avg_pool2d(
-                    input_np, kernel_size=2, stride=2, padding=0)
-
-        def run2():
-            with fluid.dygraph.guard():
-                input_np = np.random.uniform(-1, 1,
-                                             [2, 3, 32, 32]).astype(np.uint8)
-                input_pd = fluid.dygraph.to_variable(input_np)
-                res_pd = avg_pool2d(
-                    input_pd, kernel_size=2, stride=2, padding=0)
-
-        def run3():
-            with fluid.dygraph.guard():
-                input_np = np.random.uniform(-1, 1,
-                                             [2, 3, 32, 32]).astype(np.float32)
-                res_pd = max_pool2d(
-                    input_np, kernel_size=2, stride=2, padding=0)
-
-        def run4():
-            with fluid.dygraph.guard():
-                input_np = np.random.uniform(-1, 1,
-                                             [2, 3, 32, 32]).astype(np.uint8)
-                input_pd = fluid.dygraph.to_variable(input_np)
-                res_pd = max_pool2d(
-                    input_pd, kernel_size=2, stride=2, padding=0)
-
-        #self.assertRaises(ValueError, run1)
-        #self.assertRaises(TypeError, run2)
-
-
 if __name__ == '__main__':
     unittest.main()
