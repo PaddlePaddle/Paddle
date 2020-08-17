@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ import numpy as np
 import unittest
 from paddle import fluid
 from paddle.fluid import layers
-from paddle.fluid.layers.distributions import *
+from paddle.distribution import *
 import math
 
 
@@ -41,6 +41,10 @@ class DistributionNumpy():
         """Log probability density/mass function."""
         raise NotImplementedError
 
+    def probs(self, value):
+        """Probability density/mass function."""
+        raise NotImplementedError
+
 
 class UniformNumpy(DistributionNumpy):
     def __init__(self, low, high):
@@ -56,6 +60,9 @@ class UniformNumpy(DistributionNumpy):
         lb = np.less(self.low, value).astype('float32')
         ub = np.less(value, self.high).astype('float32')
         return np.log(lb * ub) - np.log(self.high - self.low)
+
+    def probs(self, value):
+        return np.exp(self.log_prob(value))
 
     def entropy(self):
         return np.log(self.high - self.low)
@@ -75,6 +82,9 @@ class NormalNumpy(DistributionNumpy):
         log_scale = np.log(self.scale)
         return -((value - self.loc) * (value - self.loc)) / (
             2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
+
+    def probs(self, value):
+        return np.exp(self.log_prob(value))
 
     def entropy(self):
         return 0.5 + 0.5 * np.log(np.array(2. * math.pi).astype(
@@ -204,6 +214,10 @@ class DistributionTest(unittest.TestCase):
             lp_np = normal_np.log_prob(values)
             lp_variable = normal_variable.log_prob(values)
 
+            p_float_np_broadcast = normal_float_np_broadcast.probs(values)
+            p_np = normal_np.probs(values)
+            p_variable = normal_variable.probs(values)
+
             kl_float = normal_float.kl_divergence(other_normal_float)
             kl_float_np_broadcast = normal_float_np_broadcast.kl_divergence(
                 other_normal_float_np_broadcast)
@@ -214,7 +228,8 @@ class DistributionTest(unittest.TestCase):
             sample_float, sample_float_np_broadcast, sample_np, sample_variable,
             entropy_float, entropy_float_np_broadcast, entropy_np,
             entropy_variable, lp_float_np_broadcast, lp_np, lp_variable,
-            kl_float, kl_float_np_broadcast, kl_np, kl_variable
+            p_float_np_broadcast, p_np, p_variable, kl_float,
+            kl_float_np_broadcast, kl_np, kl_variable
         ]
         feed_vars = {
             'loc': loc_np,
@@ -279,6 +294,8 @@ class DistributionTest(unittest.TestCase):
         gt_lp_float_np_broadcast = np_normal_float_np_broadcast.log_prob(
             values_np)
         gt_lp = np_normal.log_prob(values_np)
+        gt_p_float_np_broadcast = np_normal_float_np_broadcast.probs(values_np)
+        gt_p = np_normal.probs(values_np)
         gt_kl_float = np_normal_float.kl_divergence(np_other_normal_float)
         gt_kl_float_np_broadcast = np_normal_float_np_broadcast.kl_divergence(
             np_other_normal_float_np_broadcast)
@@ -289,7 +306,8 @@ class DistributionTest(unittest.TestCase):
             output_sample_np, output_sample_variable, output_entropy_float,
             output_entropy_float_np_broadcast, output_entropy_np,
             output_entropy_variable, output_lp_float_np_broadcast, output_lp_np,
-            output_lp_variable, output_kl_float, output_kl_float_np_broadcast,
+            output_lp_variable, output_p_float_np_broadcast, output_p_np,
+            output_p_variable, output_kl_float, output_kl_float_np_broadcast,
             output_kl_np, output_kl_variable
         ] = self.executor.run(program=test_program,
                               feed=feed_vars,
@@ -339,6 +357,15 @@ class DistributionTest(unittest.TestCase):
         np.testing.assert_allclose(
             output_lp_variable, gt_lp, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
+            output_p_float_np_broadcast,
+            gt_p_float_np_broadcast,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_p_np, gt_p, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
+            output_p_variable, gt_p, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
             output_kl_float, gt_kl_float, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
             output_kl_float_np_broadcast,
@@ -378,10 +405,15 @@ class DistributionTest(unittest.TestCase):
             lp_np = uniform_np.log_prob(values)
             lp_variable = uniform_variable.log_prob(values)
 
+            p_float_np_broadcast = uniform_float_np_broadcast.probs(values)
+            p_np = uniform_np.probs(values)
+            p_variable = uniform_variable.probs(values)
+
         fetch_list = [
             sample_float, sample_float_np_broadcast, sample_np, sample_variable,
             entropy_float, entropy_float_np_broadcast, entropy_np,
-            entropy_variable, lp_float_np_broadcast, lp_np, lp_variable
+            entropy_variable, lp_float_np_broadcast, lp_np, lp_variable,
+            p_float_np_broadcast, p_np, p_variable
         ]
         feed_vars = {'low': low_np, 'high': high_np, 'values': values_np}
         return feed_vars, fetch_list
@@ -416,6 +448,8 @@ class DistributionTest(unittest.TestCase):
         gt_lp_float_np_broadcast = np_uniform_float_np_broadcast.log_prob(
             values_np)
         gt_lp = np_uniform.log_prob(values_np)
+        gt_p_float_np_broadcast = np_uniform_float_np_broadcast.probs(values_np)
+        gt_p = np_uniform.probs(values_np)
 
         # result calculated by paddle
         [
@@ -423,7 +457,8 @@ class DistributionTest(unittest.TestCase):
             output_sample_np, output_sample_variable, output_entropy_float,
             output_entropy_float_np_broadcast, output_entropy_np,
             output_entropy_variable, output_lp_float_np_broadcast, output_lp_np,
-            output_lp_variable
+            output_lp_variable, output_p_float_np_broadcast, output_p_np,
+            output_p_variable
         ] = self.executor.run(program=test_program,
                               feed=feed_vars,
                               fetch_list=fetch_list)
@@ -471,107 +506,15 @@ class DistributionTest(unittest.TestCase):
             output_lp_np, gt_lp, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
             output_lp_variable, gt_lp, rtol=tolerance, atol=tolerance)
-
-    def test_categorical_distribution(self,
-                                      batch_size=2,
-                                      dims=3,
-                                      tolerance=1e-6):
-        test_program = fluid.Program()
-
-        logits_np = np.random.randn(batch_size, dims).astype('float32')
-        other_logits_np = np.random.randn(batch_size, dims).astype('float32')
-
-        with fluid.program_guard(test_program):
-            logits = layers.data(name='logits', shape=[dims], dtype='float32')
-            other_logits = layers.data(
-                name='other_logits', shape=[dims], dtype='float32')
-
-            categorical_np = Categorical(logits_np)
-            other_categorical_np = Categorical(other_logits_np)
-
-            entropy_np = categorical_np.entropy()
-            kl_np = categorical_np.kl_divergence(other_categorical_np)
-
-        self.executor.run(fluid.default_main_program())
-
-        np_categorical = CategoricalNumpy(logits_np)
-        np_other_categorical = CategoricalNumpy(other_logits_np)
-        gt_entropy_np = np_categorical.entropy()
-        gt_kl_np = np_categorical.kl_divergence(np_other_categorical)
-
-        # result calculated by paddle
-        [output_entropy_np,
-         output_kl_np] = self.executor.run(program=test_program,
-                                           feed={'logits': logits_np},
-                                           fetch_list=[entropy_np, kl_np])
         np.testing.assert_allclose(
-            output_entropy_np, gt_entropy_np, rtol=tolerance, atol=tolerance)
+            output_p_float_np_broadcast,
+            gt_p_float_np_broadcast,
+            rtol=tolerance,
+            atol=tolerance)
         np.testing.assert_allclose(
-            output_kl_np, gt_kl_np, rtol=tolerance, atol=tolerance)
-
-    def test_multivariateNormalDiag_distribution(self,
-                                                 batch_size=2,
-                                                 tolerance=1e-6):
-        test_program = fluid.Program()
-
-        loc_np = np.random.random(batch_size, ).astype('float32')
-        scale_np = np.diag(np.random.random(batch_size, )).astype('float32')
-        other_loc_np = np.random.random(batch_size, ).astype('float32')
-        other_scale_np = np.diag(np.random.random(batch_size, )).astype(
-            'float32')
-
-        with fluid.program_guard(test_program):
-            loc = layers.data(
-                name='loc',
-                shape=[batch_size, ],
-                dtype='float32',
-                append_batch_size=False)
-            scale = layers.data(
-                name='scale',
-                shape=[batch_size, batch_size],
-                dtype='float32',
-                append_batch_size=False)
-            other_loc = layers.data(
-                name='other_loc',
-                shape=[batch_size, ],
-                dtype='float32',
-                append_batch_size=False)
-            other_scale = layers.data(
-                name='other_scale',
-                shape=[batch_size, batch_size],
-                dtype='float32',
-                append_batch_size=False)
-
-            multivariate_np = MultivariateNormalDiag(loc, scale)
-            other_multivariate_np = MultivariateNormalDiag(other_loc,
-                                                           other_scale)
-
-            entropy_np = multivariate_np.entropy()
-            other_entropy_np = other_multivariate_np.entropy()
-            kl_np = multivariate_np.kl_divergence(other_multivariate_np)
-
-        self.executor.run(fluid.default_main_program())
-
-        np_multivariate = MultivariateNormalDiagNumpy(loc_np, scale_np)
-        np_other_multivariate = MultivariateNormalDiagNumpy(other_loc_np,
-                                                            other_scale_np)
-        gt_entropy_np = np_multivariate.entropy()
-        gt_kl_np = np_multivariate.kl_divergence(np_other_multivariate)
-
-        # result calculated by paddle
-        [output_entropy_np,
-         output_kl_np] = self.executor.run(program=test_program,
-                                           feed={
-                                               'loc': loc_np,
-                                               'scale': scale_np,
-                                               'other_loc': other_loc_np,
-                                               'other_scale': other_scale_np
-                                           },
-                                           fetch_list=[entropy_np, kl_np])
+            output_p_np, gt_p, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
-            output_entropy_np, gt_entropy_np, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(
-            output_kl_np, gt_kl_np, rtol=tolerance, atol=tolerance)
+            output_p_variable, gt_p, rtol=tolerance, atol=tolerance)
 
 
 class DistributionTestError(unittest.TestCase):
@@ -588,6 +531,10 @@ class DistributionTestError(unittest.TestCase):
         value = [1.0, 2.0]
         # type of value must be variable
         self.assertRaises(TypeError, normal.log_prob, value)
+
+        value = [1.0, 2.0]
+        # type of value must be variable
+        self.assertRaises(TypeError, normal.probs, value)
 
         shape = 1.0
         # type of shape must be list
@@ -615,6 +562,10 @@ class DistributionTestError(unittest.TestCase):
         # type of value must be variable
         self.assertRaises(TypeError, uniform.log_prob, value)
 
+        value = [1.0, 2.0]
+        # type of value must be variable
+        self.assertRaises(TypeError, uniform.probs, value)
+
         shape = 1.0
         # type of shape must be list
         self.assertRaises(TypeError, uniform.sample, shape)
@@ -622,33 +573,6 @@ class DistributionTestError(unittest.TestCase):
         seed = 1.0
         # type of seed must be int
         self.assertRaises(TypeError, uniform.sample, [2, 3], seed)
-
-    def test_categorical_error(self):
-        logit = 1.0
-
-        # type of loc and scale must be list, numpy.ndarray, Variable
-        self.assertRaises(TypeError, Categorical, logit)
-
-        categorical = Categorical([-0.602, -0.602])
-
-        categorical_other = Normal(1.0, 2.0)
-        # type of other must be an instance of Normal
-        self.assertRaises(TypeError, categorical.kl_divergence,
-                          categorical_other)
-
-    def test_multivariate_normal_diag_error(self):
-        loc = 1.0
-        scale = 1.0
-
-        # type of loc and scale must be list, numpy.ndarray, Variable
-        self.assertRaises(TypeError, MultivariateNormalDiag, loc, [1.0])
-        self.assertRaises(TypeError, MultivariateNormalDiag, [1.0], scale)
-
-        mnd = MultivariateNormalDiag([0.3, 0.5], [[0.4, 0], [0, 0.5]])
-
-        categorical_other = Normal(1.0, 2.0)
-        # type of other must be an instance of Normal
-        self.assertRaises(TypeError, mnd.kl_divergence, categorical_other)
 
 
 if __name__ == '__main__':
