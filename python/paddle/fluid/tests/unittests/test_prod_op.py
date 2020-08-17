@@ -60,7 +60,7 @@ class TestProdOp(unittest.TestCase):
         result4 = paddle.prod(input, axis=1, dtype='int64')
         result5 = paddle.prod(input, axis=1, keepdim=True, dtype='int64')
 
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+        place = fluid.CUDAPlace(4) if use_gpu else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         static_result = exe.run(
@@ -93,7 +93,7 @@ class TestProdOp(unittest.TestCase):
         if not fluid.core.is_compiled_with_cuda():
             return
 
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(6))
+        paddle.disable_static(place=paddle.fluid.CUDAPlace(4))
         self.run_imperative()
         paddle.enable_static()
 
@@ -107,13 +107,16 @@ class TestProdOpError(unittest.TestCase):
             x = paddle.data(name='x', shape=[2, 2, 4], dtype='float32')
             bool_x = paddle.data(name='bool_x', shape=[2, 2, 4], dtype='bool')
             # The argument x shoule be a Tensor
-            #self.assertRaises(AssertionError, paddle.prod, [1])
+            self.assertRaises(TypeError, paddle.prod, [1])
+
+            # The data type of x should be float32, float64, int32, int64
+            self.assertRaises(TypeError, paddle.prod, bool_x)
 
             # The argument axis's type shoule be int ,list or tuple
             self.assertRaises(TypeError, paddle.prod, x, 1.5)
 
             # The argument dtype of prod_op should be float32, float64, int32 or int64.
-            self.assertRaises(TypeError, paddle.randn, x, 'int32')
+            self.assertRaises(TypeError, paddle.prod, x, 'bool')
 
 
 if __name__ == "__main__":
