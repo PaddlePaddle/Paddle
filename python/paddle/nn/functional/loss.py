@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
 # TODO: define loss functions of neural network  
 import numpy as np
 import paddle
@@ -23,9 +25,7 @@ from ...fluid.layers import center_loss  #DEFINE_ALIAS
 from ...fluid.layers import cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import dice_loss  #DEFINE_ALIAS
 from ...fluid.layers import iou_similarity  #DEFINE_ALIAS
-from ...fluid.layers import kldiv_loss  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
-from ...fluid.layers import mse_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
 from ...fluid.layers import rank_loss  #DEFINE_ALIAS
 from ...fluid.layers import reshape
@@ -41,6 +41,7 @@ from ...fluid.layers import edit_distance  #DEFINE_ALIAS
 from ...fluid.layers import huber_loss  #DEFINE_ALIAS
 from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layer_helper import LayerHelper
+from ...fluid.framework import in_dygraph_mode
 from ...fluid.framework import Variable
 
 __all__ = [
@@ -51,7 +52,7 @@ __all__ = [
     'edit_distance',
     'huber_loss',
     'iou_similarity',
-    'kldiv_loss',
+    'kl_div',
     'l1_loss',
     'log_loss',
     'mse_loss',
@@ -73,16 +74,16 @@ __all__ = [
 
 def margin_ranking_loss(input,
                         other,
-                        target,
+                        label,
                         margin=0.0,
                         reduction='mean',
                         name=None):
     """
 
-    This op the calcluate the the margin rank loss between the input x, y and target, use the math function as follows. 
+    This op the calcluate the the margin rank loss between the input, other and label, use the math function as follows. 
 
     .. math:: 
-        margin\_rank\_loss = max(0, -target * (input - other) + margin)
+        margin\_rank\_loss = max(0, -label * (input - other) + margin)
 
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
 
@@ -99,7 +100,7 @@ def margin_ranking_loss(input,
     Parameters:
         input(Tensor): the first input tensor, it's data type should be float32, float64.
         other(Tensor): the second input tensor, it's data type should be float32, float64.
-        target(Tensor): the target value corresponding to input, it's data type should be float32, float64. 
+        label(Tensor): the label value corresponding to input, it's data type should be float32, float64. 
         margin (float, optional): The margin value to add, default value is 0;
         reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -115,15 +116,15 @@ def margin_ranking_loss(input,
             
             paddle.disable_static()
              
-            x = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype('float32'))
-            y = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype('float32'))
-            target = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype('float32'))
-            loss = paddle.nn.functional.margin_ranking_loss(x, y, target) 
+            input = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype('float32'))
+            other = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype('float32'))
+            label = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype('float32'))
+            loss = paddle.nn.functional.margin_ranking_loss(input, other, label) 
             print(loss.numpy()) # [0.75]
     """
     if fluid.framework.in_dygraph_mode():
         out = core.ops.elementwise_sub(other, input)
-        out = core.ops.elementwise_mul(out, target)
+        out = core.ops.elementwise_mul(out, label)
         if margin != 0.0:
             margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
             out = core.ops.elementwise_add(out, margin)
@@ -140,10 +141,10 @@ def margin_ranking_loss(input,
     fluid.data_feeder.check_variable_and_dtype(
         other, 'other', ['float32', 'float64'], 'margin_rank_loss')
     fluid.data_feeder.check_variable_and_dtype(
-        target, 'target', ['float32', 'float64'], 'margin_rank_loss')
+        label, 'label', ['float32', 'float64'], 'margin_rank_loss')
 
     out = paddle.elementwise_sub(other, input)
-    out = paddle.multiply(out, target)
+    out = paddle.multiply(out, label)
 
     if margin != 0.0:
         margin_var = out.block.create_var(dtype=out.dtype)
@@ -371,3 +372,200 @@ def nll_loss(input,
         out = reshape(out, shape=out_shape)
 
     return out
+
+
+def kl_div(input, label, reduction='mean', name=None):
+    """
+    This operator calculates the Kullback-Leibler divergence loss
+    between Input(X) and Input(Target). Notes that Input(X) is the
+    log-probability and Input(Target) is the probability.
+
+    KL divergence loss is calculated as follows:
+
+    $$l(x, y) = y * (\log(y) - x)$$
+
+    While :math:`x` is input and :math:`y` is label.
+
+    While :attr:`reduction` is :attr:`none`, output loss is in
+    the same shape as input, loss in each point is calculated 
+    seperately and no reduction is applied.
+    
+    While :attr:`reduction` is :attr:`mean`, output loss is in
+    shape of [1] and loss value is the mean value of all losses.
+    
+    While :attr:`reduction` is :attr:`sum`, output loss is in
+    shape of [1] and loss value is the sum value of all losses.
+    
+    While :attr:`reduction` is :attr:`batchmean`, output loss is 
+    in shape of [1] and loss value is the sum value of all losses
+    divided by batch size.
+
+    Args:
+        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means 
+             any number of additional dimensions. It's data type should be float32, float64.
+        label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64.
+        reduction (Tensor): Indicate how to average the loss,
+             the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
+             If `reduction` is ``'mean'``, the reduced mean loss is returned;
+             If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
+             if `reduction` is ``'sum'``, the reduced sum loss is returned;
+             if `reduction` is ``'none'``, no reduction will be apllied.
+             Default is ``'mean'``.
+        name(str, optional): Name for the operation (optional, default is None). For more information, 
+            please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The KL divergence loss. The data type is same as input tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            import paddle.nn.functional as F
+            
+            paddle.enable_imperative()
+            
+            shape = (5, 20)
+            input = np.random.uniform(-10, 10, shape).astype('float32')
+            target = np.random.uniform(-10, 10, shape).astype('float32')
+
+            # 'batchmean' reduction, loss shape will be [N]
+            pred_loss = F.kl_div(paddle.to_variable(input),
+                                 paddle.to_variable(target), reduction='batchmean')
+            # shape=[5]
+            
+            # 'mean' reduction, loss shape will be [1]
+            pred_loss = F.kl_div(paddle.to_variable(input),
+                                 paddle.to_variable(target), reduction='mean')
+            # shape=[1]
+
+            # 'sum' reduction, loss shape will be [1]
+            pred_loss = F.kl_div(paddle.to_variable(input),
+                                 paddle.to_variable(target), reduction='sum')
+            # shape=[1]
+
+            # 'none' reduction, loss shape is same with input shape
+            pred_loss = F.kl_div(paddle.to_variable(input),
+                                 paddle.to_variable(target), reduction='none')
+            # shape=[5, 20]
+
+    """
+    if paddle.in_dynamic_mode():
+        out = core.ops.kldiv_loss(input, label, 'reduction', reduction)
+        return out
+
+    helper = LayerHelper('kl_div', **locals())
+
+    fluid.data_feeder.check_variable_and_dtype(input, 'input',
+                                               ['float32', 'float64'], 'kl_div')
+    fluid.data_feeder.check_variable_and_dtype(label, 'label',
+                                               ['float32', 'float64'], 'kl_div')
+    fluid.data_feeder.check_type(reduction, 'reduction', str, 'kl_div')
+
+    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='kldiv_loss',
+        inputs={'X': input,
+                'Target': label},
+        outputs={'Loss': loss},
+        attrs={'reduction': reduction})
+    return loss
+
+
+def mse_loss(input, label, reduction='mean', name=None):
+    """
+    This op accepts input predications and label and returns the mean square error.
+
+    If :attr:`reduction` is set to ``'none'``, loss is calculated as:
+
+    .. math::
+        Out = (input - label)^2
+
+    If :attr:`reduction` is set to ``'mean'``, loss is calculated as:
+
+    .. math::
+        Out = \operatorname{mean}((input - label)^2)
+
+    If :attr:`reduction` is set to ``'sum'``, loss is calculated as:
+
+    .. math::
+        Out = \operatorname{sum}((input - label)^2)
+
+    Parameters:
+        input (Tensor): Input tensor, the data type should be float32 or float64.
+        label (Tensor): Label tensor, the data type should be float32 or float64.
+        reduction (string, optional): The reduction method for the output,
+            could be 'none' | 'mean' | 'sum'.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned.
+            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
+            Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+
+    Returns:
+        Tensor: The tensor tensor storing the mean square error difference of input and label.
+
+    Return type: Tensor.
+    
+    Examples:
+
+        .. code-block:: python
+            import numpy as np
+            import paddle
+
+
+            # static graph mode
+            paddle.enable_static()
+            mse_loss = paddle.nn.loss.MSELoss()
+            input = paddle.data(name="input", shape=[1])
+            label = paddle.data(name="label", shape=[1])
+            place = paddle.CPUPlace()
+            input_data = np.array([1.5]).astype("float32")
+            label_data = np.array([1.7]).astype("float32")
+
+            output = mse_loss(input,label)
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            output_data = exe.run(
+                paddle.static.default_main_program(),
+                feed={"input":input_data, "label":label_data},
+                fetch_list=[output],
+                return_numpy=True)
+            print(output_data)
+            # [array([0.04000002], dtype=float32)]
+
+            # dynamic graph mode
+            paddle.disable_static()
+            input = paddle.to_variable(input_data)
+            label = paddle.to_variable(label_data)
+            output = mse_loss(input, label)
+            print(output.numpy())
+            # [0.04000002]
+
+    """
+
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "'reduction' in 'mse_loss' should be 'sum', 'mean' or 'none', "
+            "but received {}.".format(reduction))
+
+    if not paddle.fluid.framework.in_dygraph_mode():
+        paddle.fluid.data_feeder.check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'mse_loss')
+        paddle.fluid.data_feeder.check_variable_and_dtype(
+            label, 'label', ['float32', 'float64'], 'mse_loss')
+
+    if reduction == 'none':
+        return paddle.fluid.layers.square(
+            paddle.fluid.layers.elementwise_sub(input, label), name=name)
+    elif reduction == 'mean':
+        return paddle.mean(
+            paddle.fluid.layers.square(
+                paddle.fluid.layers.elementwise_sub(input, label)),
+            name=name)
+    else:
+        return paddle.sum(paddle.fluid.layers.square(
+            paddle.fluid.layers.elementwise_sub(input, label)),
+                          name=name)

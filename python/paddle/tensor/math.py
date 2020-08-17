@@ -233,134 +233,30 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
-def add(x, y, alpha=1, name=None):
+def add(x, y, name=None):
     """
 Examples:
 
-    .. code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        def gen_data():
-            return {
-                "x": np.array([2, 3, 4]).astype('float32'),
-                "y": np.array([1, 5, 2]).astype('float32')
-            }
-
-        x = fluid.data(name="x", shape=[3], dtype='float32')
-        y = fluid.data(name="y", shape=[3], dtype='float32')
-        z1 = paddle.add(x, y)
-        z2 = paddle.add(x, y, alpha=10)
-        # z = x + y
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z1.name, z2.name])
-
-        print(z_value[0]) # [3., 8., 6.]
-        print(z_value[1]) # [12. 53. 24.]
-
-
-    .. code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        def gen_data():
-            return {
-                "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                "y": np.zeros((4, 5)).astype('float32')
-            }
-
-        x = fluid.data(name="x", shape=[2, 3, 4, 5], dtype='float32')
-        y = fluid.data(name="y", shape=[4, 5], dtype='float32')
-        z = paddle.add(x, y, name='z')
-        # z = x + y
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
-
-        print(z_value[0])
-        print(z_value[0].shape) # z.shape=[2,3,4,5]
-
-
     ..  code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import numpy as np
 
-        def gen_data():
-            return {
-                "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
-                "y": np.random.randint(1, 5, size=[5]).astype('float32')
-            }
-
-        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.data(name="y", shape=[5], dtype='float32')
+        paddle.disable_static()
+        np_x = np.array([2, 3, 4]).astype('float64')
+        np_y = np.array([1, 5, 2]).astype('float64')
+        x = paddle.to_variable(np_x)
+        y = paddle.to_variable(np_y)
         z = paddle.add(x, y)
-        # z = x / y
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
-        print(z_value[0])
-        print(z_value[0].shape) # z.shape=[2,3,4,5]
-
-
-    ..  code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        x = fluid.data(name="x", shape=[3], dtype="float32")
-        y = fluid.data(name='y', shape=[3], dtype='float32')
-        z = paddle.add(x, y)
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        data1 = np.array([2, 3, 4], dtype='float32')
-        data2 = np.array([1, 5, 2], dtype='float32')
-        z_value = exe.run(feed={'x': data1,
-                                'y': data2},
-                                fetch_list=[z])
-        print(z_value[0]) # [3. 8. 6.]
-
-
-    ..  code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        with fluid.dygraph.guard():
-            np_x = np.array([2, 3, 4]).astype('float64')
-            np_y = np.array([1, 5, 2]).astype('float64')
-            x = fluid.dygraph.to_variable(np_x)
-            y = fluid.dygraph.to_variable(np_y)
-            z = paddle.add(x, y, alpha=-0.5)
-            np_z = z.numpy()
-            print(np_z)  # [1.5, 0.5, 3. ]
+        np_z = z.numpy()
+        print(np_z)  # [3., 8., 6. ]
 
     """
     op_type = 'elementwise_add'
     axis = -1
-    act = None
-    if alpha != 1:
-        y = scale(y, scale=alpha)
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
+            x, y, axis=axis, op_name=op_type)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
@@ -621,29 +517,20 @@ for func in [
 ]:
     proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div', 'maximum': 'elementwise_max', 'minimum': 'elementwise_min', 'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
-    if func.__name__ in ['add']:
-        alias_main = ':alias_main: paddle.%(func)s' % {'func': func.__name__}
-        alias = ':alias: paddle.%(func)s, paddle.tensor.%(func)s, paddle.tensor.math.%(func)s' % {'func': func.__name__}
 
-        additional_args_lines = [
-            "alpha (int|float, optional): The alpha factor of the input. Default is 1. If alpha is not 1, the equation becomes Out = X + alpha * Y.",
-            "name (string, optional): Name of the output. \
-            Default is None. It's used to print debug info for developers. Details: \
-            :ref:`api_guide_Name` "
-        ]
-    else:
-        additional_args_lines = [
-            "name (string, optional): Name of the output. \
-            Default is None. It's used to print debug info for developers. Details: \
-            :ref:`api_guide_Name` "
-        ]
+    additional_args_lines = [
+        "name (string, optional): Name of the output. \
+        Default is None. It's used to print debug info for developers. Details: \
+        :ref:`api_guide_Name` "
+    ]
 
-    func.__doc__ = alias_main + """\n""" + alias + """\n""" + _generate_doc_string_(
+    func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=additional_args_lines,
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
             "use_quantizer", "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
+
 
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     """
@@ -1099,17 +986,15 @@ def logsumexp(x, dim=None, keepdim=False, name=None):
     return layers.log(sum_out, name)
 
 
-def inverse(input, name=None):
-    """
-	:alias_main: paddle.inverse
-	:alias: paddle.inverse,paddle.tensor.inverse,paddle.tensor.math.inverse
 
+def inverse(x, name=None):
+    """
     Takes the inverse of the square matrix. A square matrix is a matrix with
     the same number of rows and columns. The input can be a square matrix
     (2-D Tensor) or batches of square matrices.
 
     Args:
-        input (Variable): The input Variable which holds a Tensor. The last two
+        x (Variable): The input tensor. The last two
             dimensions should be equal. When the number of dimensions is
             greater than 2, it is treated as batches of square matrix. The data
             type can be float32 and float64.
@@ -1118,52 +1003,38 @@ def inverse(input, name=None):
             please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: A Tensor holds the inverse of input. The shape and data type
-            is the same as input.
+        Variable: A Tensor holds the inverse of x. The shape and data type
+                        is the same as x.
 
     Examples:
         .. code-block:: python
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
             mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
+            paddle.disable_static()
+            mat = paddle.to_variable(mat_np)
+            inv = paddle.inverse(mat)
+            print(inv) # [[0.5, 0], [0, 0.5]]
 
-            # example for static graph
-            input = fluid.data("input", shape=[2, 2], dtype="float32")
-            out = paddle.inverse(input)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            results = exe.run(feed={"input": mat_np },
-                              fetch_list=[out.name])
-            print(results[0]) # [[0.5, 0], [0, 0.5]]
-
-            # example for dynamic graph
-            with fluid.dygraph.guard():
-                mat = fluid.dygraph.to_variable(mat_np)
-                inv = paddle.inverse(mat)
-                print(inv) # [[0.5, 0], [0, 0.5]]
     """
     if in_dygraph_mode():
-        return core.ops.inverse(input)
+        return core.ops.inverse(x)
 
-    def _check_input(input):
-        check_variable_and_dtype(input, 'input',
+    def _check_input(x):
+        check_variable_and_dtype(x, 'x',
                                  ['float32', 'float64'], 'inverse')
-        if len(input.shape) < 2:
+        if len(x.shape) < 2:
             raise ValueError(
                 "The input of inverse is expected to be a Tensor whose number "
                 "of dimensions is no less than 2. But reviced: %d, "
-                "input's shape: %s." % (len(input.shape), input.shape))
-
-    _check_input(input)
-
+                "x's shape: %s." % (len(x.shape), x.shape))
+    _check_input(x)
     helper = LayerHelper('inverse', **locals())
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
-        type='inverse', inputs={'Input': [input] }, outputs={'Output': [out]})
+        type='inverse', inputs={'Input': [x] }, outputs={'Output': [out]})
     return out
 
 
@@ -1177,19 +1048,19 @@ def max(x, axis=None, keepdim=False, name=None):
             float64, int32, int64.
         axis(list|int, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
+             `x` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keepdim` is true, default
+            than the `x` unless :attr:`keepdim` is true, default
             value is False.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         Tensor, results of maximum on the specified axis of input tensor,
-        it's data type is the same as input's Tensor.
+        it's data type is the same as `x`.
 
     Examples:
         .. code-block:: python
@@ -1232,7 +1103,14 @@ def max(x, axis=None, keepdim=False, name=None):
     """
 
     if axis is not None and not isinstance(axis, list):
-        axis = [axis]
+        if isinstance(axis, tuple):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis= [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
+
     reduce_all = True if axis == None or axis == [] else False
     axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():
@@ -1265,12 +1143,12 @@ def min(x, axis=None, keepdim=False, name=None):
         x(Tensor): A tensor, the data type is float32, float64, int32, int64.
         axis(list|int, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
+            `x` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keepdim` is true, default
+            than the `x` unless :attr:`keepdim` is true, default
             value is False.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
@@ -1320,7 +1198,13 @@ def min(x, axis=None, keepdim=False, name=None):
     """
 
     if axis is not None and not isinstance(axis, list):
-        axis= [axis]
+        if isinstance(axis, tuple):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis= [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
     reduce_all = True if axis == None or axis == [] else False
     axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():

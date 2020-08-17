@@ -26,6 +26,7 @@ __all__ = [
     'L1Loss',
     'NLLLoss',
     'BCELoss',
+    'KLDivLoss',
     'MarginRankingLoss'
 ]
 
@@ -574,15 +575,84 @@ class NLLLoss(fluid.dygraph.Layer):
             name=self._name)
 
 
+class KLDivLoss(fluid.dygraph.Layer):
+    """
+    This interface calculates the Kullback-Leibler divergence loss
+    between Input(X) and Input(Target). Notes that Input(X) is the
+    log-probability and Input(Target) is the probability.
+
+    KL divergence loss is calculated as follows:
+
+    $$l(x, y) = y * (\log(y) - x)$$
+
+    Parameters:
+        reduction (str, optional): Indicate how to average the loss, 
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            Default is ``'mean'``.
+
+    Shape:
+      - input: (N, *) where * means, any number of additional dimensions.
+      - label: (N, *), same shape as input
+      - output: tensor with shape: (1) by default.
+
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            import paddle.nn as nn
+            
+            paddle.enable_imperative()
+
+            shape = (5, 20)
+            x = np.random.uniform(-10, 10, shape).astype('float32')
+            target = np.random.uniform(-10, 10, shape).astype('float32')
+
+            # 'batchmean' reduction, loss shape will be [N]
+            kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[5]
+            
+            # 'mean' reduction, loss shape will be [1]
+            kldiv_criterion = nn.KLDivLoss(reduction='mean')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[1]
+
+            # 'sum' reduction, loss shape will be [1]
+            kldiv_criterion = nn.KLDivLoss(reduction='sum')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[1]
+
+            # 'none' reduction, loss shape is same with X shape
+            kldiv_criterion = nn.KLDivLoss(reduction='none')
+            pred_loss = kldiv_criterion(paddle.to_variable(x),
+                                        paddle.to_variable(target))
+            # shape=[5, 20]
+    """
+
+    def __init__(self, reduction='mean'):
+        super(KLDivLoss, self).__init__()
+        self.reduction = reduction
+
+    def forward(self, input, label):
+        out = paddle.nn.functional.kl_div(input, label, self.reduction)
+        return out
+
+
 class MarginRankingLoss(fluid.dygraph.Layer):
     """
 
     This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
-    The MarginRankingLoss layer calculates the margin rank loss between the input, other and target 
+    The MarginRankingLoss layer calculates the margin rank loss between the input, other and label 
     , use the math function as follows.
 
     .. math:: 
-        margin\_rank\_loss = max(0, -target * (input - other) + margin)
+        margin\_rank\_loss = max(0, -label * (input - other) + margin)
 
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
 
@@ -604,8 +674,8 @@ class MarginRankingLoss(fluid.dygraph.Layer):
     Shape: 
         input: N-D Tensor, the shape is [N, *], N is batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
         other: N-D Tensor, `other` have the same shape and dtype as `input`.
-        target: N-D Tensor, target have the same shape and dtype as `input`.
-        out: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
+        label: N-D Tensor, label have the same shape and dtype as `input`.
+        output: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Returns:
         A callable object of MarginRankingLoss.
@@ -621,9 +691,9 @@ class MarginRankingLoss(fluid.dygraph.Layer):
              
             input = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype("float32"))
             other = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype("float32"))
-            target = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype("float32"))
+            label = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype("float32"))
             margin_rank_loss = paddle.nn.MarginRankingLoss()
-            loss = margin_rank_loss(input, other, target) 
+            loss = margin_rank_loss(input, other, label) 
             print(loss.numpy()) # [0.75]
     """
 
@@ -637,7 +707,7 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         self.reduction = reduction
         self.name = name
 
-    def forward(self, input, other, target):
+    def forward(self, input, other, label):
         out = paddle.nn.functional.margin_ranking_loss(
-            input, other, target, self.margin, self.reduction, self.name)
+            input, other, label, self.margin, self.reduction, self.name)
         return out

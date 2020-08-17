@@ -22,9 +22,7 @@ from __future__ import print_function
 from .random import randperm
 from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
-from .creation import create_tensor  #DEFINE_ALIAS
-# from .creation import create_lod_tensor        #DEFINE_ALIAS
-# from .creation import create_random_int_lodtensor        #DEFINE_ALIAS
+from .creation import to_tensor  #DEFINE_ALIAS
 from .creation import crop_tensor  #DEFINE_ALIAS
 from .creation import diag  #DEFINE_ALIAS
 from .creation import eye  #DEFINE_ALIAS
@@ -77,6 +75,7 @@ from .manipulation import cast  #DEFINE_ALIAS
 from .manipulation import concat  #DEFINE_ALIAS
 from .manipulation import expand  #DEFINE_ALIAS
 from .manipulation import expand_as  #DEFINE_ALIAS
+from .manipulation import tile  #DEFINE_ALIAS
 from .manipulation import flatten  #DEFINE_ALIAS
 from .manipulation import gather  #DEFINE_ALIAS
 from .manipulation import gather_nd  #DEFINE_ALIAS
@@ -178,6 +177,5 @@ from .stat import mean  #DEFINE_ALIAS
 from .stat import reduce_mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
 from .stat import var  #DEFINE_ALIAS
-# from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS
