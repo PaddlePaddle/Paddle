@@ -26,6 +26,7 @@ from ...fluid.layers import softplus  #DEFINE_ALIAS
 from ...fluid.layers import softshrink  #DEFINE_ALIAS
 from ...fluid.layers import softsign  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
+from ...fluid.layers import sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import tanh_shrink  #DEFINE_ALIAS
 from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
 
@@ -45,12 +46,12 @@ __all__ = [
     'relu',
     'relu6',
     'selu',
-    'sigmoid',
     'soft_relu',
     'softmax',
     'softplus',
     'softshrink',
     'softsign',
+    'sigmoid',
     'swish',
     'tanh_shrink',
     'thresholded_relu',
@@ -374,67 +375,6 @@ def relu(x, name=None):
     return out
 
 
-def sigmoid(input, inplace=False, name=None):
-    """
-	:alias_main: paddle.nn.functional.sigmoid
-	:alias: paddle.nn.functional.sigmoid,paddle.nn.functional.activation.sigmoid
-
-    Sigmoid Activation.
-
-    .. math:
-
-        output = \frac{1}{1 + e^{-input}}
-    
-    Parameters:
-        input (Variable): The input variable. A multi-dimension Tensor with type float16, float32, or float64.
-        inplace (bool, optional): If inplace is True, the input and output are the same variable.
-            Otherwise, the input and output of are different variables. Default: False. Note that if x is
-            more than one OPs' input, inplace must be False.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-    
-    Returns:
-        Output of sigmoid operator, a Tensor with shape same as input
-    
-    Examples:
-        .. code-block:: python
-          
-          import paddle.fluid as fluid
-          import paddle.nn.functional as functional
-          import numpy as np
-          # In the static graph mode
-          input = fluid.data(name="input", shape=[None, 4])
-          output = functional.sigmoid(input)
-          place = fluid.CPUPlace()
-          exe = fluid.Executor(place)
-          exe.run(fluid.default_startup_program())
-          input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
-          output_data = exe.run(feed={"input": input_data},
-                                fetch_list=[output])
-          print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
-          # In the dynamic graph mode
-          with fluid.dygraph.guard():
-              input = fluid.dygraph.to_variable(input_data)
-              output = functional.sigmoid(input)
-              print(output) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
-    """
-
-    if in_dygraph_mode():
-        if inplace:
-            warnings.warn(
-                "Inplace on sigmoid is not allowed and will be discarded in dygraph mode currently."
-            )
-        return core.ops.sigmoid(input)
-
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'sigmoid')
-    helper = LayerHelper("sigmoid", **locals())
-    outputs = helper.create_variable_for_type_inference(input.dtype)
-    helper.append_op(
-        type='sigmoid', inputs={'X': [input]}, outputs={'Out': outputs})
-    return outputs
-
-
 def logsigmoid(x, name=None):
     """
     logsigmoid activation.
@@ -579,7 +519,7 @@ def softmax(x, axis=-1, name=None):
                       [[1.0, 2.0, 3.0, 4.0],
                        [5.0, 6.0, 7.0, 8.0],
                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
-        x = paddle.to_variable(x)
+        x = paddle.to_tensor(x)
         out = F.softmax(x)
         # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
