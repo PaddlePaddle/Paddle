@@ -77,10 +77,13 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     auto *in_var = block_.FindVarRecursive(input_n);
     auto *out_var = block_.FindVarRecursive(output_n);
 
-    PADDLE_ENFORCE_EQ(in_var->GetType(), out_var->GetType(),
-                      platform::errors::InvalidArgument(
-                          "The type of input %s and output %s do not match.",
-                          input_n, output_n));
+    PADDLE_ENFORCE_EQ(
+        in_var->GetType(), out_var->GetType(),
+        platform::errors::InvalidArgument(
+            "The type of input %s and output %s do not match. The input type "
+            "is %s, output type is %s.",
+            input_n, output_n, DataTypeToString(in_var->GetType()),
+            DataTypeToString(out_var->GetType())));
 
     SetDim(output_n, GetDim(input_n));
   }
@@ -513,7 +516,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
       }
       default:
         PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported attribute type code %d.", attr.type()));
+            "Unsupported attribute type (code %d).", attr.type()));
     }
     need_update_ = true;
     return;
@@ -580,8 +583,10 @@ Attribute OpDesc::GetNullableAttr(const std::string &name) const {
 
 std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
-                                          "Attribute %s is not found.", name));
+  PADDLE_ENFORCE_NE(
+      it, attrs_.end(),
+      platform::errors::NotFound(
+          "Attribute `%s` is not found in operator `%s`.", name, desc_.type()));
   auto blocks = BOOST_GET_CONST(std::vector<BlockDesc *>, it->second);
 
   std::vector<int> ids;
@@ -594,8 +599,10 @@ std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
 
 int OpDesc::GetBlockAttrId(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
-                                          "Attribute %s is not found.", name));
+  PADDLE_ENFORCE_NE(
+      it, attrs_.end(),
+      platform::errors::NotFound(
+          "Attribute `%s` is not found in operator `%s`.", name, desc_.type()));
   return BOOST_GET_CONST(BlockDesc *, it->second)->ID();
 }
 
@@ -684,7 +691,8 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
 
   void operator()(boost::blank) const {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupported calling method of SetAttrDescVisitor object."));
+        "Unsupported calling method of SetAttrDescVisitor object for "
+        "`boosst::blank` type."));
   }
 };
 
