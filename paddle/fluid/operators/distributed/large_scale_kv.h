@@ -28,13 +28,13 @@
 #include <thread>  // NOLINT
 
 #include <ThreadPool.h>
-
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"

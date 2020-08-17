@@ -111,6 +111,28 @@ class VariableWrapper {
     }
   }
 
+  const platform::Place Place() const {
+    const framework::Tensor* tensor = nullptr;
+    auto place =
+        platform::CPUPlace();  // Default place for var not initialized.
+    if (var_.IsInitialized()) {
+      if (type_ == framework::proto::VarType::LOD_TENSOR) {
+        tensor = &(var_.Get<framework::LoDTensor>());
+      } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
+        tensor = &(var_.Get<framework::SelectedRows>().value());
+      } else {
+        VLOG(6) << "Variable " << name_ << " is not initialized";
+        return place;
+      }
+    }
+    if (tensor && tensor->IsInitialized()) {
+      return tensor->place();
+    } else {
+      VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
+      return place;
+    }
+  }
+
  private:
   void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
     auto shared_var = grad_var_.lock();

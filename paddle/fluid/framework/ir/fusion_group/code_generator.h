@@ -61,7 +61,7 @@ class CodeGenerator {
       const std::unordered_map<int, std::string>& dtypes) const;
 
   // Encode all var nodes in the subgraph with an unique number.
-  std::unordered_map<std::string, int> EncodeVarNodes(SubGraph* subgraph);
+  std::unordered_map<Node*, int> EncodeVarNodes(SubGraph* subgraph);
 
  private:
   std::vector<CodeTemplate> code_templates_;

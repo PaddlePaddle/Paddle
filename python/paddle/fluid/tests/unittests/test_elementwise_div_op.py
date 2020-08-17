@@ -241,44 +241,6 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 
 
 class TestDivOp(unittest.TestCase):
-    def test_out(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[3], dtype="float32")
-            y = fluid.data(name='y', shape=[3], dtype='float32')
-
-            res = fluid.data(name="output", shape=[3], dtype="float32")
-            y_1 = paddle.div(x, y, out=res)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            data1 = np.array([2, 3, 4], dtype='float32')
-            data2 = np.array([1, 5, 2], dtype='float32')
-            np_res, np_y_1 = exe.run(feed={'x': data1,
-                                           'y': data2},
-                                     fetch_list=[res, y_1])
-
-            self.assertEqual((np_res == np_y_1).all(), True)
-
-    def test_out_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
-            return
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[3], dtype="float32")
-            y = fluid.data(name='y', shape=[3], dtype='float32')
-
-            res = fluid.data(name="output", shape=[3], dtype="float32")
-            y_1 = paddle.div(x, y, out=res)
-
-            place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-            data1 = np.array([2, 3, 4], dtype='float32')
-            data2 = np.array([1, 5, 2], dtype='float32')
-            np_res, np_y_1 = exe.run(feed={'x': data1,
-                                           'y': data2},
-                                     fetch_list=[res, y_1])
-
-            self.assertEqual((np_res == np_y_1).all(), True)
-
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")

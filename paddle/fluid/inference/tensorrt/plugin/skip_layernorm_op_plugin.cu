@@ -32,17 +32,13 @@ namespace plugin {
 
 int SkipLayerNormPluginDynamic::initialize() {
   cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
-  cudaMemcpy(bias_gpu_, bias_, bias_size_ * sizeof(float),
+  cudaMemcpy(bias_gpu_, bias_.data(), bias_size_ * sizeof(float),
              cudaMemcpyHostToDevice);
   cudaMalloc(&scale_gpu_, sizeof(float) * scale_size_);
-  cudaMemcpy(scale_gpu_, scale_, scale_size_ * sizeof(float),
+  cudaMemcpy(scale_gpu_, scale_.data(), scale_size_ * sizeof(float),
              cudaMemcpyHostToDevice);
   return 0;
 }
-
-size_t SkipLayerNormPluginDynamic::getSerializationSize() const { return 0; }
-
-void SkipLayerNormPluginDynamic::serialize(void *buffer) const {}
 
 nvinfer1::DimsExprs SkipLayerNormPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
