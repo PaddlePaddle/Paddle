@@ -20,12 +20,12 @@ import unittest
 import numpy as np
 
 
-class TestClassProd(unittest.TestCase):
+class TestProdOp(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random(size=(10, 10, 5)).astype(np.float32)
 
     def run_imperative(self):
-        input = paddle.to_variable(self.input)
+        input = paddle.to_tensor(self.input)
         dy_result = paddle.prod(input)
         expected_result = np.prod(self.input)
         self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
@@ -93,12 +93,27 @@ class TestClassProd(unittest.TestCase):
         if not fluid.core.is_compiled_with_cuda():
             return
 
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(place=paddle.fluid.CUDAPlace(6))
         self.run_imperative()
         paddle.enable_static()
 
         with fluid.program_guard(fluid.Program()):
             self.run_static(use_gpu=True)
+
+
+class TestProdOpError(unittest.TestCase):
+    def test_error(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = paddle.data(name='x', shape=[2, 2, 4], dtype='float32')
+            bool_x = paddle.data(name='bool_x', shape=[2, 2, 4], dtype='bool')
+            # The argument x shoule be a Tensor
+            #self.assertRaises(AssertionError, paddle.prod, [1])
+
+            # The argument axis's type shoule be int ,list or tuple
+            self.assertRaises(TypeError, paddle.prod, x, 1.5)
+
+            # The argument dtype of prod_op should be float32, float64, int32 or int64.
+            self.assertRaises(TypeError, paddle.randn, x, 'int32')
 
 
 if __name__ == "__main__":

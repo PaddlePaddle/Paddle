@@ -1743,13 +1743,13 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     Compute the product of tensor elements over the given axis.
 
     Args:
-        x(Tensor): Input of prod operator.
-        axis(list/int, optional): The dimentions along which the product is performed. If None, 
-            multiply all elements of input and return a Tensor with a single element, 
-            otherwise must be in the range [−rank(input),rank(input)). If :math:`axis[i]<0`, the axis 
-            to reduce is :math:`rank(input) + aixs[i]`. The default value is None.
+        x(Tensor): Input of prod operator. The data type is float32, float64, int32, int64.
+        axis(list|int, optional): The axis along which the product is computed. If :attr:`None`, 
+            multiply all elements of `x` and return a Tensor with a single element, 
+            otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
+            the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
         dtype(str, optional): The desired date type of returned tensor, can be float32, float64, 
-            int32, int64. If defined, the input tensor is casted to dtype before operator performed. 
+            int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
             This is very useful for avoiding data type overflows. The default value is False.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
             tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
@@ -1763,34 +1763,54 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
         .. code-block:: python
 
             import paddle
-            from paddle import to_variable
             import numpy as np
 
             paddle.disable_static()
 
-            x_data = np.array([[0.2, 0.3, 0.5, 0.9],
+            # the axis is a int element
+            data_x = np.array([[0.2, 0.3, 0.5, 0.9],
                          [0.1, 0.2, 0.6, 0.7]]).astype(np.float32)
-            x = paddle.to_variable(x_data)
+            x = paddle.to_tensor(data_x)
             out1 = paddle.prod(x)
-            # out1 = [0.0002268]
+            print(out1.numpy())
+            # [0.0002268]
 
-            out2 = paddle.prod(x, 0)
-            # out2 = [0.02, 0.06, 0.3 , 0.63]
+            out2 = paddle.prod(x, -1)
+            print(out2.numpy())
+            # [0.027  0.0084]
 
-            out3 = paddle.prod(x, -1)
-            # out3 = [0.027 , 0.0084]
+            out3 = paddle.prod(x, 0)
+            print(out3.numpy())
+            # [0.02 0.06 0.3  0.63]
+            print(out3.numpy().dtype)
+            # float32
 
-            out4 = paddle.prod(x, -1, keepdim=True)
-            # out4 = [[0.27 ], [0.084]]
+            out4 = paddle.prod(x, 0, keepdim=True)
+            print(out4.numpy())
+            # [[0.02 0.06 0.3  0.63]]
 
             out5 = paddle.prod(x, 0, dtype='int64')
-            # out5 = [0, 0, 0, 0]
+            print(out5.numpy())
+            # [0 0 0 0]
+            print(out5.numpy().dtype)
+            # int64
 
-            out6 = paddle.prod(x, [0, 1])
-            # out6 = [0.02268]
+            # the axis is list
+            data_y = np.array([[[1.0, 2.0], [3.0, 4.0]],
+                               [[5.0, 6.0], [7.0, 8.0]]])
+            y = paddle.to_tensor(data_y)
+            out6 = paddle.prod(y, [0, 1])
+            print(out6.numpy())
+            # [105. 384.]
+
+            out7 = paddle.prod(y, (1, 2))
+            print(out7.numpy())
+            # [  24. 1680.]
 
     """
-    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
-        x = layers.cast(x, dtype)
+    if dtype is not None:
+        check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'prod')
+        if x.dtype != convert_np_dtype_to_dtype_(dtype):
+            x = layers.cast(x, dtype)
 
     return layers.reduce_prod(input=x, dim=axis, keep_dim=keepdim, name=name)
