@@ -22,7 +22,6 @@ from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
 from ...fluid.layers import logsigmoid  #DEFINE_ALIAS
 from ...fluid.layers import maxout  #DEFINE_ALIAS
-from ...fluid.layers import selu  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
 from ...fluid.layers import softplus  #DEFINE_ALIAS
 from ...fluid.layers import softshrink  #DEFINE_ALIAS
@@ -337,6 +336,58 @@ def relu6(x, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'threshold': threshold})
+    return out
+
+
+def selu(x,
+         scale=1.0507009873554804934193349852946,
+         alpha=1.6732632423543772848170429916717,
+         name=None):
+    """
+    selu activation
+
+    .. math::
+
+        \text{selu}(x) = scale * (\max(0,x) + \min(0, \alpha * (\exp(x) - 1))), \\
+        with\,alpha=1.6732632423543772848170429916717 and \\
+        scale=1.0507009873554804934193349852946
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        scale (float, optional): The value of scale for selu. Default is 1.0507009873554804934193349852946
+        alpha (float, optional): The value of alpha for selu. Default is 1.6732632423543772848170429916717
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([[0, 1],[2, 3]]))
+        out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.selu(x, 'scale', scale, 'alpha', alpha)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'selu')
+    helper = LayerHelper('selu', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='selu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'scale': scale,
+               'alpha': alpha})
     return out
 
 

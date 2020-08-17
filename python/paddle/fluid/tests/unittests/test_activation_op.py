@@ -338,6 +338,8 @@ class TestTanhshrink(TestActivation):
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [10, 17]).astype(self.dtype)
+        # Since zero point in tanhshrink is not differentiable, avoid randomize zero.
+        x[np.abs(x) < 0.005] = 0.02
         out = ref_tanhshrink(x)
 
         self.inputs = {'X': x}
@@ -353,6 +355,8 @@ class TestTanhshrinkAPI(unittest.TestCase):
     # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink
     def setUp(self):
         self.x_np = np.random.uniform(0.1, 1, [10, 17]).astype('float32')
+        # Since zero point in tanhshrink is not differentiable, avoid randomize zero.
+        self.x_np[np.abs(self.x_np) < 0.005] = 0.02
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
@@ -842,7 +846,6 @@ class TestBReluOpError(unittest.TestCase):
 
 def ref_relu6(x, threshold=6.0):
     out = np.copy(x)
-    out[np.abs(x) < 0.005] = 0.02
     out[np.abs(x - threshold) < 0.005] = threshold + 0.02
     out = np.minimum(np.maximum(x, 0), threshold)
     return out
@@ -854,6 +857,7 @@ class TestReLU6(TestActivation):
         self.init_dtype()
 
         x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
+        x[np.abs(x) < 0.005] = 0.02
         out = ref_relu6(x)
 
         self.inputs = {'X': x}
@@ -870,6 +874,7 @@ class TestReLU6API(unittest.TestCase):
     # test paddle.nn.ReLU6, paddle.nn.functional.relu6
     def setUp(self):
         self.x_np = np.random.uniform(-1, 10, [10, 12]).astype('float32')
+        self.x_np[np.abs(self.x_np) < 0.005] = 0.02
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
@@ -915,6 +920,94 @@ class TestReLU6API(unittest.TestCase):
             # support the input dtype is float16
             x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
             F.relu6(x_fp16)
+
+
+def ref_selu(x,
+             scale=1.0507009873554804934193349852946,
+             alpha=1.6732632423543772848170429916717):
+    out = np.copy(x)
+    out_flat = out.flatten()
+    for i in range(out_flat.size):
+        if out_flat[i] < 0:
+            out_flat[i] = alpha * np.exp(out_flat[i]) - alpha
+        out_flat[i] = scale * out_flat[i]
+    out = out_flat.reshape(x.shape)
+    return out
+
+
+class TestSELU(TestActivation):
+    def setUp(self):
+        self.op_type = "selu"
+        self.init_dtype()
+
+        scale = 1.0507009873554804934193349852946
+        alpha = 1.6732632423543772848170429916717
+
+        x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
+        x[np.abs(x) < 0.005] = 0.02
+        out = ref_selu(x, scale, alpha)
+        self.inputs = {'X': x}
+        self.attrs = {'scale': scale, "alpha": alpha}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
+class TestSELUAPI(unittest.TestCase):
+    # test paddle.nn.SELU, paddle.nn.functional.selu
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.x_np[np.abs(self.x_np) < 0.005] = 0.02
+        self.scale = 1.0507009873554804934193349852946
+        self.alpha = 1.6732632423543772848170429916717
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12])
+            out1 = F.selu(x, self.scale, self.alpha)
+            selu = paddle.nn.SELU(self.scale, self.alpha)
+            out2 = selu(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_selu(self.x_np, self.scale, self.alpha)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.selu(x, self.scale, self.alpha)
+        selu = paddle.nn.SELU(self.scale, self.alpha)
+        out2 = selu(x)
+        out_ref = ref_selu(self.x_np, self.scale, self.alpha)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', [10, 12])
+            out = fluid.layers.selu(x, self.scale, self.alpha)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_selu(self.x_np, self.scale, self.alpha)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.selu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.selu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.selu(x_fp16)
 
 
 class TestHardSwish(TestActivation):

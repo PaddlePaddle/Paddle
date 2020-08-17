@@ -19,6 +19,7 @@ __all__ = [
     #       'PReLU',
     'ReLU',
     'ReLU6',
+    'SELU',
     'LeakyReLU',
     'Sigmoid',
     #       'Softmax',
@@ -294,6 +295,53 @@ class ReLU6(layers.Layer):
 
     def forward(self, x):
         return F.relu6(x, self._name)
+
+
+class SELU(layers.Layer):
+    """
+    SELU Activation
+
+    .. math::
+
+        \text{SELU}(x) = scale * (\max(0,x) + \min(0, \alpha * (\exp(x) - 1))), \\
+        with\,alpha=1.6732632423543772848170429916717 and \\
+        scale=1.0507009873554804934193349852946
+
+    Parameters:
+        scale (float, optional): The value of scale for SELU. Default is 1.0507009873554804934193349852946
+        alpha (float, optional): The value of alpha for SELU. Default is 1.6732632423543772848170429916717
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([[0, 1],[2, 3]]))
+        m = paddle.nn.SELU()
+        out = m(x) # [[0, 1.050701],[2.101402, 3.152103]]
+    """
+
+    def __init__(self,
+                 scale=1.0507009873554804934193349852946,
+                 alpha=1.6732632423543772848170429916717,
+                 name=None):
+        super(SELU, self).__init__()
+        self._scale = scale
+        self._alpha = alpha
+        self._name = name
+
+    def forward(self, x):
+        return F.selu(x, self._scale, self._alpha, self._name)
 
 
 class LeakyReLU(layers.Layer):
