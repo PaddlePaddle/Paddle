@@ -92,7 +92,7 @@ def elu(x, alpha=1.0, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([[-1,6],[1,15.6]]))
+        x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
         out = F.elu(x, alpha=0.2) # [[-0.12642411  6.        ]
                                   #  [ 1.          15.6      ]]
     """
@@ -140,7 +140,7 @@ def gelu(x, approximate=False, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([[ 0.87165993, -1.0541513 , -0.37214822],
+        x = paddle.to_tensor(np.array([[ 0.87165993, -1.0541513 , -0.37214822],
                                          [ 0.15647964,  0.32496083,  0.33045998]]))
         out = F.gelu(x) # [[ 0.70456535, -0.15380788, -0.13207214],
                         #  [ 0.08796856,  0.20387867,  0.2080159 ]]
@@ -361,7 +361,7 @@ def relu(x, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(p.array([-2, 0, 1]).astype('float32'))
+        x = paddle.to_tensor(p.array([-2, 0, 1]).astype('float32'))
         out = F.relu(x) # [0, 0, 1]
     """
 
@@ -400,7 +400,7 @@ def logsigmoid(x, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([1.0, 2.0, 3.0, 4.0]))
+        x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
         out = F.logsigmoid(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 

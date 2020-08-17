@@ -59,7 +59,7 @@ class ELU(layers.Layer):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([[-1,6],[1,15.6]]))
+        x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
         m = paddle.nn.ELU(0.2)
         out = m(x) # [[-0.12642411  6.        ]
                    #  [ 1.          15.6      ]]
@@ -107,7 +107,7 @@ class GELU(layers.Layer):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([[ 0.87165993, -1.0541513 , -0.37214822],
+        x = paddle.to_tensor(np.array([[ 0.87165993, -1.0541513 , -0.37214822],
                                          [ 0.15647964,  0.32496083,  0.33045998]]))
         m = paddle.nn.GELU()
         out = m(x) # [[ 0.70456535, -0.15380788, -0.13207214],
@@ -330,7 +330,7 @@ class ReLU(layers.Layer):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(p.array([-2, 0, 1]).astype('float32'))
+        x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
         m = paddle.nn.ReLU()
         out = m(x) # [0, 0, 1]
     """
@@ -448,7 +448,7 @@ class LogSigmoid(layers.Layer):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([1.0, 2.0, 3.0, 4.0]))
+        x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
         m = paddle.nn.LogSigmoid()
         out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
