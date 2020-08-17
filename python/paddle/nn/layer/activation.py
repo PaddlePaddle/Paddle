@@ -28,7 +28,7 @@ __all__ = [
 from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
-from .. import functional
+from .. import functional as F
 
 
 class Hardshrink(layers.Layer):
@@ -75,7 +75,7 @@ class Hardshrink(layers.Layer):
         self._name = name
 
     def forward(self, x):
-        return functional.hardshrink(x, self._threshold, self._name)
+        return F.hardshrink(x, self._threshold, self._name)
 
 
 class HSigmoid(layers.Layer):
@@ -202,7 +202,7 @@ class HSigmoid(layers.Layer):
             [C, 1], attr=self._bias_attr, is_bias=True, dtype=self._dtype)
 
     def forward(self, input, label, path_table=None, path_code=None):
-        out = functional.hsigmoid(
+        out = F.hsigmoid(
             input,
             label,
             self.weight,
@@ -253,7 +253,7 @@ class ReLU(layers.Layer):
         self._inplace = inplace
 
     def forward(self, input):
-        return functional.relu(input, self._inplace)
+        return F.relu(input, self._inplace)
 
 
 class LeakyReLU(layers.Layer):
@@ -283,7 +283,7 @@ class LeakyReLU(layers.Layer):
         paddle.disable_static()
 
         lrelu = paddle.nn.LeakyReLU()
-        x = paddle.to_variable(np.array([-2, 0, 1], 'float32'))
+        x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
         out = lrelu(x)  # [-0.02, 0., 1.]
     """
 
@@ -293,52 +293,47 @@ class LeakyReLU(layers.Layer):
         self._name = name
 
     def forward(self, x):
-        return functional.leaky_relu(x, self._alpha, self._name)
+        return F.leaky_relu(x, self._alpha, self._name)
 
 
 class Sigmoid(layers.Layer):
     """
-	:alias_main: paddle.nn.Sigmoid
-	:alias: paddle.nn.Sigmoid,paddle.nn.layer.Sigmoid,paddle.nn.layer.activation.Sigmoid
-
-    Sigmoid Activation.
+    this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.
     
-    .. math:
+    .. math::
 
-        output = \frac{1}{1 + e^{-input}}
-
+        output = \\frac{1}{1 + e^{-x}}
+    
     Parameters:
-        inplace (bool, optional): If inplace is True, the input and output
-            are the same variable. Otherwise, the input and output
-            are different variables. Default False. Note that if x is
-            more than one OPs' input, inplace must be False.
-    
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        x: N-D tensor, available dtype is float16, float32, float64.
+
     Returns:
-        None
+        A callable object of Sigmoid.
     
     Examples:
+
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import paddle.nn as nn
           import numpy as np
-          input = fluid.data(name="input", shape=[None, 4])
-          output = nn.Sigmoid()(input)
-          place = fluid.CPUPlace()
-          exe = fluid.Executor(place)
-          exe.run(fluid.default_startup_program())
+          import paddle
+
+          paddle.disable_static()
           input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
-          output_data = exe.run(feed={"input": input_data},
-                                fetch_list=[output])
-          print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+          m = paddle.nn.Sigmoid()
+          x = paddle.to_variable(input_data)
+          output = m(x)
+          print(output.numpy()) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
-    def __init__(self, inplace=False):
+    def __init__(self, name=None):
         super(Sigmoid, self).__init__()
-        self._inplace = inplace
+        self.name = name
 
-    def forward(self, input):
-        return functional.sigmoid(input, self._inplace)
+    def forward(self, x):
+        return F.sigmoid(x, self.name)
 
 
 class LogSoftmax(layers.Layer):
@@ -394,4 +389,4 @@ class LogSoftmax(layers.Layer):
         self._axis = axis
 
     def forward(self, input):
-        return functional.log_softmax(input, self._axis)
+        return F.log_softmax(input, self._axis)
