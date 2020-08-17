@@ -114,4 +114,15 @@ class StrategyCompiler(StrategyCompilerBase):
                 0]
             return_graph = None if graph_optimizers == None else graph_optimizers[
                 0]
+
+            # do heuristic filter here, if any meta optimizer in graph optimizers is in 
+            # any meta optimizers' black list, set return_graph to None
+            need_graph_opt = True
+            for graph_opt in graph_optimizers:
+                for program_opt in meta_optimizers:
+                    if graph_opt.__class__.__name__ in program_opt.meta_optimizers_black_list:
+                        need_graph_opt = False
+            if not need_graph_opt:
+                return_graph = None
+
             return return_meta, return_graph
