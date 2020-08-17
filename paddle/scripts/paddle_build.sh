@@ -529,13 +529,17 @@ EOF
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
         ut_startTime_s=`date +%s`
-        ctest --output-on-failure -j $2
+        ctest --output-on-failure -j $2;EXCODE_MAC=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
         # Recovery proxy to avoid failure in later steps
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
+        
+        if [[ "$EXCODE_MAC" != "0" ]]; then
+            exit 8;
+        fi
     fi
 }
 
