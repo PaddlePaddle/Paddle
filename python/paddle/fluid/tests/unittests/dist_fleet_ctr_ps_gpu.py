@@ -29,7 +29,7 @@ import numpy as np
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 from dist_fleet_ctr import TestDistCTR2x2, fake_ctr_reader
-from paddle.fleet.base.util_factory import fleet_util
+from paddle.distributed.fleet.base.util_factory import fleet_util
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
