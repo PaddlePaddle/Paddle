@@ -374,14 +374,13 @@ class AvgPool1d(layers.Layer):
             'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
             it could be the following forms: `[pad_left, pad_right]`. If padding is non-zero,
             then the input is implicitly zero-padded on both sides for padding number of points.
-        use_cudnn (bool): Only used in cudnn kernel, need install cudnn. Default False
         ceil_mode (bool): ${ceil_mode_comment}Whether to use the ceil function to calculate output height and width.
             If it is set to False, the floor function will be used. Default False
+        count_include_pad (bool): Whether to exclude padding points in average pooling
+                          mode, default is `true`.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-        count_include_pad (bool): Whether to exclude padding points in average pooling
-                          mode, default is `true`.
 
     Returns:
         Variable: The output tensor of pooling result. The data type is same as input tensor.
@@ -399,21 +398,19 @@ class AvgPool1d(layers.Layer):
 
         .. code-block:: python
           import paddle
-          import numpy as np
-          import paddle.fluid.dygraph as dg
-          input_data = np.random.rand(2,3,32).astype("float32")
-          avg_pool1d_op = paddle.nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
-          place = paddle.fluid.CPUPlace()
-          with dg.guard(place) as g:
-              input = dg.to_variable(input_data)
-              output = avg_pool1d_op(input)
-              print(output.shape)
-              # [2L, 3L, 16L]
+          import paddle.nn as nn
+          paddle.disable_static()
+          
+          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          AvgPool1d = nn.AvgPool1d(kernel_size=2, stride=2, padding=0)
+          pool_out = AvgPool1d(data)
+          # pool_out shape: [1, 3, 16] 
+
     """
 
     def __init__(self,
                  kernel_size,
-                 stride=1,
+                 stride=None,
                  padding=0,
                  ceil_mode=False,
                  count_include_pad=True):
@@ -424,8 +421,8 @@ class AvgPool1d(layers.Layer):
         self.ceil_mode = ceil_mode
         self.count_include_pad = count_include_pad
 
-    def forward(self, input):
-        out = F.avg_pool1d(input, self.kernel_size, self.stride, self.padding,
+    def forward(self, x):
+        out = F.avg_pool1d(x, self.kernel_size, self.stride, self.padding,
                            self.ceil_mode, self.count_include_pad)
         return out
 
@@ -482,31 +479,23 @@ class MaxPool1d(layers.Layer):
         .. code-block:: python
 
           import paddle
-          import numpy as np
-          import paddle.fluid.dygraph as dg
-          input_data = np.random.rand(2,3,32).astype("float32")
-          max_pool1d_op = paddle.nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
-          place = paddle.fluid.CPUPlace()
-          with dg.guard(place) as g:
-              input = dg.to_variable(input_data)
-              output = max_pool1d_op(input)
-              print(output.shape)
-              # [2L, 3L, 16L]
-
-          # for return_indices=True
-          max_pool1d_op = paddle.nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_indices=True)
-          place = paddle.fluid.CPUPlace()
-          with dg.guard(place) as g:
-              input = dg.to_variable(input_data)
-              output, indices = max_pool1d_op(input)
-              print(output.numpy().shape, indices.numpy().shape)
-              # [2L, 3L, 16L], [2L, 3L, 16L]
+          import paddle.nn as nn
+          paddle.disable_static()
+          
+          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          MaxPool1d = nn.MaxPool1d(kernel_size=2, stride=2, padding=0)
+          pool_out = MaxPool1d(data)
+          # pool_out shape: [1, 3, 16]
+          
+          MaxPool1d = nn.MaxPool1d(kernel_size=2, stride=2, padding=0, return_indices=True)
+          pool_out, indices = MaxPool1d(data)
+          # pool_out shape: [1, 3, 16], indices shape: [1, 3, 16]
 
     """
 
     def __init__(self,
                  kernel_size,
-                 stride=1,
+                 stride=None,
                  padding=0,
                  ceil_mode=False,
                  return_indices=False):
@@ -576,16 +565,13 @@ class AdaptiveAvgPool1d(layers.Layer):
           #         output[:, :, i] = sum(input[:, :, lstart: lend])/(lstart - lend)
           #
           import paddle
-          import numpy as np
-          import paddle.fluid.dygraph as dg
-          input_data = np.random.rand(2,3,32).astype("float32")
-          adaptive_avg_pool1d_op = paddle.nn.AdaptiveAvgPool1D(output_size=12)
-          place = paddle.fluid.CPUPlace()
-          with dg.guard(place) as g:
-              input = dg.to_variable(input_data)
-              output = adaptive_avg_pool1d_op(input)
-              print(output.shape)
-              # [2L, 3L, 12L]
+          import paddle.nn as nn
+          paddle.disable_static()
+          
+          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          AdaptiveAvgPool1d = nn.AdaptiveAvgPool1d(output_size=16)
+          pool_out = AdaptiveAvgPool1d(data)
+          # pool_out shape: [1, 3, 16]
     """
 
     def __init__(self, output_size):
@@ -650,25 +636,19 @@ class AdaptiveMaxPool1d(layers.Layer):
           #         lend = ceil((i + 1) * L / m)
           #         output[:, :, i] = max(input[:, :, lstart: lend])
           #
-          import paddle
-          import numpy as np
-          import paddle.fluid.dygraph as dg
-          input_data = np.random.rand(2,3,32).astype("float32")
-          adaptive_max_pool1d_op1 = paddle.nn.AdaptiveMaxPool1D(output_size=12)
-          place = paddle.fluid.CPUPlace()
-          with dg.guard(place) as g:
-              input = dg.to_variable(input_data)
-              output = adaptive_max_pool1d_op1(input)
-              print(output.shape)
-              # [2L, 3L, 12L]
-
-          adaptive_max_pool1d_op2 = paddle.nn.AdaptiveMaxPool1D(output_size=12, return_indices=True)
-          place = paddle.fluid.CPUPlace()
-          with dg.guard(place) as g:
-              input = dg.to_variable(input_data)
-              output, indices = adaptive_max_pool1d_op2(input)
-              print(output.shape, indices.shape)
-              # [2L, 3L, 12L], [2L, 3L, 12L]
+                    import paddle
+          import paddle.nn as nn
+          paddle.disable_static()
+          
+          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          AdaptiveMaxPool1d = nn.AdaptiveMaxPool1d(output_size=16)
+          pool_out = AdaptiveMaxPool1d(data)
+          # pool_out shape: [1, 3, 16]
+          
+          # for return_indices = true
+          AdaptiveMaxPool1d = nn.AdaptiveMaxPool1d(output_size=16, return_indices=True)
+          pool_out, indices = AdaptiveMaxPool1d(data)
+          # pool_out shape: [1, 3, 16], indices shape: [1, 3, 16]
 
     """
 

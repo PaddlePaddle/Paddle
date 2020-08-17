@@ -115,8 +115,7 @@ class TestPool1d_API(unittest.TestCase):
     def check_avg_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
-            result = F.avg_pool1d(
-                input=input, kernel_size=2, stride=2, padding=0)
+            result = F.avg_pool1d(input, kernel_size=2, stride=2, padding=0)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
             result_np = avg_pool1D_forward_naive(
@@ -147,8 +146,7 @@ class TestPool1d_API(unittest.TestCase):
     def check_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
-            result = F.max_pool1d(
-                input=input, kernel_size=2, stride=2, padding=0)
+            result = F.max_pool1d(input, kernel_size=2, stride=2, padding=0)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
             result_np = max_pool1D_forward_naive(

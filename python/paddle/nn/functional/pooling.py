@@ -17,6 +17,9 @@ from ...fluid.layers import pool2d  #DEFINE_ALIAS
 from ...fluid.layers import pool3d  #DEFINE_ALIAS
 from ...fluid.layers import adaptive_pool2d  #DEFINE_ALIAS
 from ...fluid.layers import adaptive_pool3d  #DEFINE_ALIAS
+from ...fluid.layers import utils, LayerHelper
+from ...fluid import core
+from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from ...fluid.layers import unsqueeze, squeeze, LayerHelper
 
@@ -24,6 +27,13 @@ __all__ = [
     'pool2d', 'pool3d', 'adaptive_pool2d', 'adaptive_pool3d', 'avg_pool1d',
     'max_pool1d', 'adaptive_avg_pool1d', 'adaptive_max_pool1d'
 ]
+
+
+def check_input(x, dimension):
+    if len(x.shape) != dimension:
+        raise ValueError(
+            "Excepted Input X is 3-D tensor, but received {}-D Tensor".format(
+                len(x.shape)))
 
 
 def update_padding(padding, pool_type='avg'):
@@ -45,18 +55,14 @@ def update_padding(padding, pool_type='avg'):
     return padding
 
 
-def avg_pool1d(input,
-               kernel_size=-1,
-               stride=1,
+def avg_pool1d(x,
+               kernel_size,
+               stride=None,
                padding=0,
-               ceil_mode=False,
                count_include_pad=True,
-               use_cudnn=False,
+               ceil_mode=False,
                name=None):
     """
-    :alias_main: paddle.nn.functional.avg_pool1d
-    :alias: paddle.nn.functional.pool2d,paddle.nn.functional.pooling.avg_pool1d
-    :old_api: paddle.fluid.layers.avg_pool1d
 
     This operation applies a 1D average pooling over an input signal composed
     of several input planes, based on the input, output_size, return_indices parameters.
@@ -74,7 +80,7 @@ def avg_pool1d(input,
 
 
     Args:
-        input (Variable): The input tensor of pooling operator which is a 3-D tensor with
+        x (Variable): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` or
                           `"NHL"`, where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type if float32 or float64.
@@ -86,7 +92,6 @@ def avg_pool1d(input,
             'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
             it could be the following forms: `[pad_left, pad_right]`. If padding is non-zero,
             then the input is implicitly zero-padded on both sides for padding number of points.
-        use_cudnn (bool): Only used in cudnn kernel, need install cudnn. Default False
         ceil_mode (bool): ${ceil_mode_comment}Whether to use the ceil function to calculate output height and width.
             If it is set to False, the floor function will be used. Default False
         name(str, optional): For detailed information, please refer
@@ -112,24 +117,26 @@ def avg_pool1d(input,
         .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
+          import paddle.nn.functional as F
+          paddle.disable_static()
 
-          data = fluid.data(name='data', shape=[None, 3, 32], dtype='float32')
-
-          # max pool2d
-          pool2d = paddle.nn.functional.avg_pool1d(input=data, kernel_size=2, stride=2, padding=0)
-          # pool2d' s shape : [None, 3, 16]
+          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          pool_out = F.avg_pool1d(data, kernel_size=2, stride=2, padding=0)
+          # pool_out shape: [1, 3, 16]
 
     """
-
-    if not isinstance(use_cudnn, bool):
-        raise TypeError("Attr(use_cudnn) should be True or False. Received "
-                        "Attr(use_cudnn): %s." % str(use_cudnn))
     """NCL to NCHW"""
     data_format = "NCHW"
-    input = unsqueeze(input, [2])
-    kernel_size = [1, kernel_size]
-    stride = [1, stride]
+    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'pool')
+    check_input(x, 3)
+    x = unsqueeze(x, [2])
+    kernel_size = utils.convert_to_list(kernel_size, 1, 'pool_size')
+    kernel_size = [1] + kernel_size
+    if stride is None:
+        stride = kernel_size
+    else:
+        stride = utils.convert_to_list(stride, 1, 'pool_stride')
+        stride = [1] + stride
 
     padding_algorithm = "EXPLICIT"
     if isinstance(padding, str):
@@ -151,6 +158,15 @@ def avg_pool1d(input,
 
     padding = update_padding(padding, "avg")
 
+    if in_dygraph_mode():
+        output = core.ops.pool2d(
+            x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
+            False, 'strides', stride, 'paddings', padding, 'padding_algorithm',
+            padding_algorithm, 'use_cudnn', not count_include_pad, 'ceil_mode',
+            ceil_mode, 'use_mkldnn', False, 'exclusive', True, 'data_format',
+            data_format)
+        return squeeze(output, [2])
+
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
@@ -158,7 +174,7 @@ def avg_pool1d(input,
 
     helper.append_op(
         type=op_type,
-        inputs={"X": input},
+        inputs={"X": x},
         outputs={"Out": pool_out},
         attrs={
             "pooling_type": 'avg',
@@ -167,7 +183,7 @@ def avg_pool1d(input,
             "strides": stride,
             "paddings": padding,
             "padding_algorithm": padding_algorithm,
-            "use_cudnn": use_cudnn,
+            "use_cudnn": True,
             "ceil_mode": ceil_mode,
             "use_mkldnn": False,
             "exclusive": not count_include_pad,
@@ -177,13 +193,12 @@ def avg_pool1d(input,
     return squeeze(pool_out, [2])
 
 
-def max_pool1d(input,
-               kernel_size=-1,
-               stride=1,
+def max_pool1d(x,
+               kernel_size,
+               stride=None,
                padding=0,
                ceil_mode=False,
                return_indices=False,
-               use_cudnn=False,
                name=None):
     """
     :alias_main: paddle.nn.functional.max_pool1d
@@ -204,7 +219,7 @@ def max_pool1d(input,
        Output(N_i, C_i, l) &=  max(Input[N_i, C_i, stride \times l:stride \times l+k])}
 
     Args:
-        input (Variable): The input tensor of pooling operator which is a 3-D tensor with
+        x (Variable): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` or
                           `"NHL"`, where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type if float32 or float64.
@@ -215,7 +230,6 @@ def max_pool1d(input,
         padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
             it could be the following forms: `[pad_left, pad_right]`.
-        use_cudnn (bool): Only used in cudnn kernel, need install cudnn. Default False
         ceil_mode (bool): Whether to use the ceil function to calculate output height and width. False is the default.
             If it is set to False, the floor function will be used. Default False
         name(str, optional): For detailed information, please refer
@@ -240,24 +254,27 @@ def max_pool1d(input,
         .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
+          import paddle.nn.functional as F
+          paddle.disable_static()
 
-          data = fluid.data(name='data', shape=[None, 3, 32], dtype='float32')
+          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          pool_out = F.max_pool1d(data, kernel_size=2, stride=2, padding=0)
+          # pool_out shape: [1, 3, 16]
 
-          # max pool2d
-          pool2d = paddle.nn.functional.max_pool1d(input=data, kernel_size=2, stride=2, padding=0)
-          # pool2d' s shape : [None, 3, 16]
+          pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_indices=True)
+          # pool_out shape: [1, 3, 16],  indices shape: [1, 3, 16]
 
     """
-
-    if not isinstance(use_cudnn, bool):
-        raise TypeError("Attr(use_cudnn) should be True or False. Received "
-                        "Attr(use_cudnn): %s." % str(use_cudnn))
     """NCL to NCHW"""
     data_format = "NCHW"
-    input = unsqueeze(input, [2])
-    kernel_size = [1, kernel_size]
-    stride = [1, stride]
+    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'pool')
+    check_input(x, 3)
+    x = unsqueeze(x, [2])
+    kernel_size = [1] + utils.convert_to_list(kernel_size, 1, 'pool_size')
+    if stride is None:
+        stride = kernel_size
+    else:
+        stride = [1] + utils.convert_to_list(stride, 1, 'pool_stride')
 
     padding_algorithm = "EXPLICIT"
     if isinstance(padding, str):
@@ -279,6 +296,15 @@ def max_pool1d(input,
 
     padding = update_padding(padding, 'max')
 
+    if in_dygraph_mode():
+        pool_out = core.ops.max_pool2d_with_index(
+            x, 'ksize', kernel_size, 'global_pooling', False, 'strides', stride,
+            'paddings', padding, 'padding_algorithm', padding_algorithm,
+            'use_cudnn', True, 'ceil_mode', ceil_mode, 'use_mkldnn', False,
+            'exclusive', True, 'data_format', data_format)
+        return (squeeze(pool_out[0], [2]), squeeze(
+            pool_out[1], [2])) if return_indices else squeeze(pool_out[0], [2])
+
     op_type = 'max_pool2d_with_index'
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
@@ -288,7 +314,7 @@ def max_pool1d(input,
 
     helper.append_op(
         type=op_type,
-        inputs={"X": input},
+        inputs={"X": x},
         outputs=outputs,
         attrs={
             "pooling_type": 'max',
@@ -297,7 +323,7 @@ def max_pool1d(input,
             "strides": stride,
             "paddings": padding,
             "padding_algorithm": padding_algorithm,
-            "use_cudnn": use_cudnn,
+            "use_cudnn": True,
             "ceil_mode": ceil_mode,
             "use_mkldnn": False,
             "exclusive": True,
@@ -308,11 +334,8 @@ def max_pool1d(input,
             squeeze(mask, [2])) if return_indices else squeeze(pool_out, [2])
 
 
-def adaptive_avg_pool1d(input, output_size, name=None):
+def adaptive_avg_pool1d(x, output_size, name=None):
     """
-        :alias_main: paddle.nn.functional.adaptive_avg_pool1d
-        :alias: paddle.nn.functional.adaptive_avg_pool1d,paddle.nn.functional.pooling.adaptive_avg_pool1d
-        :old_api: paddle.fluid.layers.adaptive_avg_pool1d
 
         This operation applies a 1D adaptive average pooling over an input signal composed
         of several input planes, based on the input, output_size, return_indices parameters.
@@ -331,7 +354,7 @@ def adaptive_avg_pool1d(input, output_size, name=None):
            Output(i) &= \\frac{sum(Input[lstart:lend])}{(lstart - lend)}
 
         Args:
-            input (Variable): The input tensor of pooling operator, which is a 3-D tensor
+            x (Variable): The input tensor of pooling operator, which is a 3-D tensor
                               with shape [N, C, L].  The format of input tensor is NCL,
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
@@ -364,32 +387,36 @@ def adaptive_avg_pool1d(input, output_size, name=None):
               #         output[:, :, i] = sum(input[:, :, lstart: lend])/(lstart - lend)
               #
               import paddle
-              import paddle.fluid as fluid
-              data = fluid.data(name='data', shape=[None, 3, 32], dtype='float32')
-              pool_out = paddle.nn.functional.adaptive_average_pool1d(
-                                input=data,
-                                output_size=16)
-              # pool_out shape: [None, 3, 16])
+              import paddle.nn.functional as F
+              paddle.disable_static()
+
+              data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+              pool_out = F.adaptive_average_pool1d(data, output_size=16)
+              # pool_out shape: [1, 3, 16])
         """
     pool_type = 'avg'
-    check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'adaptive_pool2d')
+    check_variable_and_dtype(x, 'input', ['float32', 'float64'],
+                             'adaptive_pool2d')
+    check_input(x, 3)
     check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
 
-    pool_size = [1, output_size]
+    pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
     l_type = "pool2d"
+    x = unsqueeze(x, [2])
+    if in_dygraph_mode():
+        pool_out = core.ops.pool2d(x, 'pooling_type', pool_type, 'ksize',
+                                   pool_size, 'adaptive', True)
+        return squeeze(pool_out, [2])
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     outputs = {"Out": pool_out}
-    input = unsqueeze(input, [2])
     helper.append_op(
         type=l_type,
-        inputs={"X": input},
+        inputs={"X": x},
         outputs=outputs,
         attrs={
             "pooling_type": pool_type,
@@ -400,12 +427,8 @@ def adaptive_avg_pool1d(input, output_size, name=None):
     return squeeze(pool_out, [2])
 
 
-def adaptive_max_pool1d(input, output_size, return_indices=False, name=None):
+def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
     """
-        :alias_main: paddle.nn.functional.adaptive_max_pool1d
-        :alias: paddle.nn.functional.adaptive_max_pool1d,paddle.nn.functional.pooling.adaptive_max_pool1d
-        :old_api: paddle.fluid.layers.adaptive_pool2d
-
         This operation applies a 1D adaptive max pooling over an input signal composed
         of several input planes, based on the input, output_size, return_indices parameters.
         Input(X) and output(Out) are in NCL format, where N is batch
@@ -423,7 +446,7 @@ def adaptive_max_pool1d(input, output_size, return_indices=False, name=None):
            Output(i) &= max(Input[lstart:lend])}
 
         Args:
-            input (Variable): The input tensor of pooling operator, which is a 3-D tensor
+            x (Variable): The input tensor of pooling operator, which is a 3-D tensor
                               with shape [N, C, L].  The format of input tensor is NCL,
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
@@ -458,24 +481,35 @@ def adaptive_max_pool1d(input, output_size, return_indices=False, name=None):
               #         output[:, :, i] = max(input[:, :, lstart: lend])
               #
               import paddle
-              import paddle.fluid as fluid
-              data = fluid.data(name='data', shape=[None, 3, 32], dtype='float32')
-              pool_out = paddle.nn.functional.adaptive_max_pool1d(
-                                input=data,
-                                output_size=16)
-              # pool_out shape: [None, 3, 16]
+              import paddle.nn.functional as F
+              paddle.disable_static()
 
-        """
+              data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+              pool_out = F.adaptive_max_pool1d(data, output_size=16)
+              # pool_out shape: [1, 3, 16])
+
+              pool_out, indices = F.adaptive_max_pool1d(data, output_size=16, return_indices=True)
+              # pool_out shape: [1, 3, 16] indices  shape: [1, 3, 16]
+
+
+    """
     pool_type = 'max'
-    check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'adaptive_pool2d')
+    check_variable_and_dtype(x, 'input', ['float32', 'float64'],
+                             'adaptive_pool2d')
+    check_input(x, 3)
     check_type(output_size, 'pool_size', (int), 'adaptive_max_pool1d')
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool1d')
 
-    pool_size = [1, output_size]
+    pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
     l_type = 'max_pool2d_with_index'
+
+    x = unsqueeze(x, [2])
+    if in_dygraph_mode():
+        pool_out = core.ops.max_pool2d_with_index(
+            x, 'pooling_type', pool_type, 'ksize', pool_size, 'adaptive', True)
+        return (squeeze(pool_out[0], [2]), squeeze(
+            pool_out[1], [2])) if return_indices else squeeze(pool_out[0], [2])
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
@@ -484,10 +518,9 @@ def adaptive_max_pool1d(input, output_size, return_indices=False, name=None):
     mask = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out, "Mask": mask}
 
-    input = unsqueeze(input, [2])
     helper.append_op(
         type=l_type,
-        inputs={"X": input},
+        inputs={"X": x},
         outputs=outputs,
         attrs={
             "pooling_type": pool_type,
