@@ -17,6 +17,7 @@ from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
 from .. import fluid
 from ..fluid.framework import in_dygraph_mode
+from paddle.common_ops_import import *
 
 # TODO: define logic functions of a tensor  
 from ..fluid.layers import is_empty  #DEFINE_ALIAS
@@ -100,52 +101,54 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     ${comment}
 
     Args:
-        x(inputtype):{input_comment}.
-        y(othertype):{other_comment}.
-        rtol(rtoltype,optional):{rtol_comment}.
-        atol(atoltype,optional):{atol_comment}.
-        equal_nan(equalnantype,optional):{equal_nan_comment}.
-        name(STR, optional): The default value is None.
-                        Normally there is no need for user to set this property.
-                        For more information, please refer to :ref:`api_guide_Name`.
+        x(Tensor): ${input_comment}.
+        y(Tensor): ${other_comment}.
+        rtol(rtoltype, optional): ${rtol_comment}.
+        atol(atoltype, optional): ${atol_comment}.
+        equal_nan(equalnantype, optional): ${equal_nan_comment}.
+        name (str, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
-        ${out_comment}.
+        Tensor: ${out_comment}.
 
-    Return Type:
-        ${out_type}
-        
+    Raises:
+        TypeError: The data type of ``x`` must be one of float32, float64.
+        TypeError: The data type of ``y`` must be one of float32, float64.
+        TypeError: The type of ``rtol`` must be float.
+        TypeError: The type of ``atol`` must be float.
+        TypeError: The type of ``equal_nan`` must be bool.
+
     Examples:
         .. code-block:: python
 
           import paddle
           import numpy as np
 
-          paddle.enable_imperative()
+          paddle.disable_static()
 
           np_x = np.array([10000., 1e-07]).astype("float32")
           np_y = np.array([10000.1, 1e-08]).astype("float32")
-          x = paddle.imperative.to_variable(np_x)
-          y = paddle.imperative.to_variable(np_y)
-
+          x = paddle.to_tensor(np_x)
+          y = paddle.to_tensor(np_y)
           result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
           np_result1 = result1.numpy()
           # [False]
-          result2 = paddle.allclose(a, b, rtol=1e-05, atol=1e-08,
+          result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
           np_result2 = result2.numpy()
           # [False]
 
           np_x = np.array([1.0, float('nan')]).astype("float32")
           np_y = np.array([1.0, float('nan')]).astype("float32")
-          x = paddle.imperative.to_variable(np_x)
-          y = paddle.imperative.to_variable(np_y)
+          x = paddle.to_tensor(np_x)
+          y = paddle.to_tensor(np_y)
           result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
           np_result1 = result1.numpy()
           # [False]
-          result2 = paddle.allclose(a, b, rtol=1e-05, atol=1e-08,
+          result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
           np_result2 = result2.numpy()
           # [True]
@@ -156,6 +159,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
                                  equal_nan)
 
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
+    check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
     check_type(rtol, 'rtol', float, 'allclose')
     check_type(atol, 'atol', float, 'allclose')
     check_type(equal_nan, 'equal_nan', bool, 'allclose')
@@ -163,7 +167,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     helper = LayerHelper("allclose", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
 
-    inputs = {'Input': input, 'Other': other}
+    inputs = {'Input': x, 'Other': y}
     outputs = {'Out': out}
     attrs = {'rtol': rtol, 'atol': atol, 'equal_nan': equal_nan}
     helper.append_op(

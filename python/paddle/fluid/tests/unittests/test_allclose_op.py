@@ -15,6 +15,8 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
 
 
 class TestAllcloseOp(OpTest):
@@ -74,6 +76,57 @@ class TestAllcloseOpNanTrue(TestAllcloseOp):
         self.rtol = 1e-05
         self.atol = 1e-08
         self.equal_nan = True
+
+
+class TestAllcloseDygraph(unittest.TestCase):
+    def test_api_case(self):
+        paddle.disable_static()
+        x_data = np.random.rand(10, 10)
+        y_data = np.random.rand(10, 10)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        out = paddle.allclose(x, y, rtol=1e-05, atol=1e-08)
+        expected_out = np.allclose(x_data, y_data, rtol=1e-05, atol=1e-08)
+        self.assertTrue((out.numpy() == expected_out).all(), True)
+        paddle.enable_static()
+
+
+class TestAllcloseError(unittest.TestCase):
+    def test_input_dtype(self):
+        def test_x_dtype():
+            with fluid.program_guard(fluid.Program()):
+                x = fluid.data(name='x', shape=[10, 10], dtype='float16')
+                y = fluid.data(name='y', shape=[10, 10], dtype='float64')
+                result = paddle.allclose(x, y)
+
+        self.assertRaises(TypeError, test_x_dtype)
+
+        def test_y_dtype():
+            with fluid.program_guard(fluid.Program()):
+                x = fluid.data(name='x', shape=[10, 10], dtype='float64')
+                y = fluid.data(name='y', shape=[10, 10], dtype='int32')
+                result = paddle.allclose(x, y)
+
+        self.assertRaises(TypeError, test_y_dtype)
+
+    def test_attr(self):
+        x = fluid.data(name='x', shape=[10, 10], dtype='float64')
+        y = fluid.data(name='y', shape=[10, 10], dtype='float64')
+
+        def test_rtol():
+            result = paddle.allclose(x, y, rtol=True)
+
+        self.assertRaises(TypeError, test_rtol)
+
+        def test_atol():
+            result = paddle.allclose(x, y, rtol=True)
+
+        self.assertRaises(TypeError, test_atol)
+
+        def test_equal_nan():
+            result = paddle.allclose(x, y, equal_nan=1)
+
+        self.assertRaises(TypeError, test_equal_nan)
 
 
 if __name__ == "__main__":
