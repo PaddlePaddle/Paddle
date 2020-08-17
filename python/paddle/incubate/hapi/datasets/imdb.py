@@ -32,16 +32,15 @@ MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
 
 class Imdb(Dataset):
     """
-    Implement of IMDB dataset.
+    Implementation of `IMDB <https://www.imdb.com/interfaces/>`_ dataset.
 
     Args:
         data_file(str): path to data tar file, can be set None if
             :attr:`download` is True. Default None
         mode(str): 'train' 'test' mode. Default 'train'.
         cutoff(int): cutoff number for building word dictionary. Default 150.
-        download(bool): whether auto download cifar dataset if
-            :attr:`data_file` unset. Default
-            True
+        download(bool): whether to download dataset automatically if
+            :attr:`data_file` is not set. Default True
 
     Returns:
         Dataset: instance of IMDB dataset
@@ -67,7 +66,7 @@ class Imdb(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file not set and auto download disabled"
+            assert download, "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(data_file, URL, MD5,
                                                         'imdb', download)
 

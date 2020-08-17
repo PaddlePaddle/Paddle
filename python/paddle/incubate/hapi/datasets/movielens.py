@@ -88,7 +88,7 @@ class UserInfo(object):
 
 class Movielens(Dataset):
     """
-    Implement of Movielens 1-M dataset.
+    Implementation of `Movielens 1-M <https://grouplens.org/datasets/movielens/1m/>`_ dataset.
 
     Args:
         data_file(str): path to data tar file, can be set None if
@@ -96,8 +96,8 @@ class Movielens(Dataset):
         mode(str): 'train' or 'test' mode. Default 'train'.
         test_ratio(float): split ratio for test sample. Default 0.1.
         rand_seed(int): random seed. Default 0.
-        download(bool): whether auto download cifar dataset if
-            :attr:`data_file` unset. Default True.
+        download(bool): whether to download dataset automatically if
+            :attr:`data_file` is not set. Default True
 
     Returns:
         Dataset: instance of Movielens 1-M dataset
@@ -128,7 +128,7 @@ class Movielens(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file not set and auto download disabled"
+            assert download, "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(data_file, URL, MD5,
                                                         'sentiment', download)
 

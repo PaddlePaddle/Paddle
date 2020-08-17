@@ -38,7 +38,7 @@ NUM_TOTAL_INSTANCES = 2000
 
 class Sentiment(Dataset):
     """
-    Implement of sentiment dataset.
+    Implementation of sentiment dataset.
 
     Args:
         data_file(str): path to data tar file, can be set None if

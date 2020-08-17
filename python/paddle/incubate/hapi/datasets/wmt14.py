@@ -40,7 +40,7 @@ UNK_IDX = 2
 
 class WMT14(Dataset):
     """
-    Implement of WMT14 test dataset.
+    Implement of `WMT14 <http://www.statmt.org/wmt14/>`_ test dataset.
     The original WMT14 dataset is too large and a small set of data for set is
     provided. This module will download dataset from
     http://paddlepaddle.bj.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz
@@ -50,9 +50,8 @@ class WMT14(Dataset):
             :attr:`download` is True. Default None
         mode(str): 'train', 'test' or 'gen'. Default 'train'
         dict_size(int): word dictionary size. Default -1.
-        download(bool): whether auto download cifar dataset if
-            :attr:`data_file` unset. Default
-            True
+        download(bool): whether to download dataset automatically if
+            :attr:`data_file` is not set. Default True
 
     Returns:
         Dataset: instance of WMT14 dataset
@@ -82,7 +81,7 @@ class WMT14(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file not set and auto download disabled"
+            assert download, "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(
                 data_file, URL_TRAIN, MD5_TRAIN, 'wmt14', download)
 

@@ -40,16 +40,16 @@ MODE_FLAG_MAP = {
 
 class Cifar(Dataset):
     """
-    Implement of cifar dataset, supported cifar10 and cifar100.
+    Implementation of `Cifar <https://www.cs.toronto.edu/~kriz/cifar.html>`_
+    dataset, supported cifar10 and cifar100.
 
     Args:
         data_file(str): path to data file, can be set None if
             :attr:`download` is True. Default None
         mode(str): 'train100', 'test100', 'train10' or 'test10' mode. Default 'train100'.
         transform(callable): transform to perform on image, None for on transform.
-        download(bool): whether auto download cifar dataset if
-            :attr:`data_file` unset. Default
-            True
+        download(bool): whether to download dataset automatically if
+            :attr:`data_file` is not set. Default True
 
     Returns:
         Dataset: instance of cifar dataset
@@ -80,7 +80,7 @@ class Cifar(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file not set and auto download disabled"
+            assert download, "data_file is not set and downloading automatically is disabled"
             data_url = CIFAR10_URL if self.mode in ['train10', 'test10'
                                                     ] else CIFAR100_URL
             data_md5 = CIFAR10_MD5 if self.mode in ['train10', 'test10'

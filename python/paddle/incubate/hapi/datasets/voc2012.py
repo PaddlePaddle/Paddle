@@ -39,15 +39,14 @@ MODE_FLAG_MAP = {'train': 'trainval', 'test': 'train', 'valid': "val"}
 
 class VOC2012(Dataset):
     """
-    Implement of VOC2012 dataset
+    Implement of `VOC2012 <http://host.robots.ox.ac.uk/pascal/VOC/voc2012/>`_ dataset
 
     Args:
         data_file(str): path to data file, can be set None if
             :attr:`download` is True. Default None
         mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
-        download(bool): whether auto download mnist dataset if
-            :attr:`data_file` unset. Default
-            True
+        download(bool): whether to download dataset automatically if
+            :attr:`data_file` is not set. Default True
 
     Examples:
 
@@ -74,7 +73,7 @@ class VOC2012(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file not set and auto download disabled"
+            assert download, "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(
                 data_file, VOC_URL, VOC_MD5, CACHE_DIR, download)
         self.transform = transform

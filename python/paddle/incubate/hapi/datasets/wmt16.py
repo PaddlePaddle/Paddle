@@ -42,7 +42,7 @@ UNK_MARK = "<unk>"
 
 class WMT16(Dataset):
     """
-    Implement of WMT16 test dataset.
+    Implement of `WMT16 <http://www.statmt.org/wmt16/>`_ test dataset.
     ACL2016 Multimodal Machine Translation. Please see this website for more
     details: http://www.statmt.org/wmt16/multimodal-task.html#task1
 
@@ -67,9 +67,8 @@ class WMT16(Dataset):
         src_dict_size(int): word dictionary size for source language word. Default -1.
         trg_dict_size(int): word dictionary size for target language word. Default -1.
         lang(str): source language, 'en' or 'de'. Default 'en'.
-        download(bool): whether auto download cifar dataset if
-            :attr:`data_file` unset. Default
-            True
+        download(bool): whether to download dataset automatically if
+            :attr:`data_file` is not set. Default True
 
     Returns:
         Dataset: instance of WMT16 dataset
@@ -101,7 +100,7 @@ class WMT16(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file not set and auto download disabled"
+            assert download, "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(
                 data_file, DATA_URL, DATA_MD5, 'wmt16', download)
 

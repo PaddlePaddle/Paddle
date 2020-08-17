@@ -30,18 +30,17 @@ MD5 = '30177ea32e27c525793142b6bf2c8e2d'
 
 class Imikolov(Dataset):
     """
-    Implement of imikolov dataset.
+    Implementation of imikolov dataset.
 
     Args:
         data_file(str): path to data tar file, can be set None if
             :attr:`download` is True. Default None
-        data_tyle(str): 'NGRAM' or 'SEQ'. Default 'NGRAM'.
+        data_type(str): 'NGRAM' or 'SEQ'. Default 'NGRAM'.
         window_size(int): sliding window size for 'NGRAM' data. Default -1.
         mode(str): 'train' 'test' mode. Default 'train'.
         min_word_freq(int): minimal word frequence for building word dictionary. Default 50.
-        download(bool): whether auto download cifar dataset if
-            :attr:`data_file` unset. Default
-            True
+        download(bool): whether to download dataset automatically if
+            :attr:`data_file` is not set. Default True
 
     Returns:
         Dataset: instance of imikolov dataset
@@ -80,7 +79,7 @@ class Imikolov(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file not set and auto download disabled"
+            assert download, "data_file is not set and downloading automatically disabled"
             self.data_file = _check_exists_and_download(data_file, URL, MD5,
                                                         'imikolov', download)
 
