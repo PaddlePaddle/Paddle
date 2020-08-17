@@ -47,7 +47,8 @@ __all__ = [
     'unfold',
     #       'bilinear_tensor_product',
     'assign',
-    'interpolate'
+    'interpolate',
+    'cosine_similarity',
 ]
 
 
@@ -462,8 +463,8 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        x (Variable): The input tensor with data type float32/double/int32/int64_t.
-        pad (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        x (Tensor): The input tensor with data type float32/double/int32/int64_t.
+        pad (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. 1. If input dimension is 3, then the pad has the form (pad_left,
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
@@ -483,7 +484,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
                     
     Returns: a Tensor padded according to pad and mode and data type is same as input.
-    Return Type: Variable
+    Return Type: Tensor
 
     Examples:
         .. code-block:: text
@@ -642,13 +643,13 @@ def cosine_similarity(x1, x2, dim=1, eps=1e-8):
     Compute cosine similarity between x1 and x2 along dim.
 
     Parameters:
-        x1 (Variable): First input. float32/double.
-        x2 (Variable): Second input. float32/double.
+        x1 (Tensor): First input. float32/double.
+        x2 (Tensor): Second input. float32/double.
         dim (int): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float): Small value to avoid division by zero. Default is 1e-8.
                     
     Returns: a Tensor representing cosine similarity between x1 and x2 along dim.
-    Return Type: Variable
+    Return Type: Tensor
 
     Examples:
         .. code-block:: text

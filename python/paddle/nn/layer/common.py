@@ -354,7 +354,7 @@ class ReflectionPad1d(layers.Layer):
     Uses reflection of the input boundaries to pad the input tensor.
 
     Parameters:
-        padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
         data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
            Default is  "NCL"
@@ -413,7 +413,7 @@ class ReplicationPad1d(layers.Layer):
     Uses input boundaries to pad the input tensor.
 
     Parameters:
-        padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
         data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
            Default is  "NCL"
@@ -472,7 +472,7 @@ class ConstantPad1d(layers.Layer):
     Uses a constant value to pad the input tensor.
 
     Parameters:
-        padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
         value (float32): The value to fill the padded areas. Default is 0.0
         data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
@@ -535,7 +535,7 @@ class ConstantPad2d(layers.Layer):
     Uses a constant value to pad the input tensor.
 
     Parameters:
-        padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
         value (float32): The value to fill the padded areas. Default is 0.0
         data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
@@ -578,11 +578,7 @@ class ConstantPad2d(layers.Layer):
             #    [0. 0. 0. 0.]]]]
     """
 
-    def __init__(self,
-                 padding=[0, 0, 0, 0],
-                 value=0.0,
-                 data_format="NCHW",
-                 name=None):
+    def __init__(self, padding, value=0.0, data_format="NCHW", name=None):
         super(ConstantPad2d, self).__init__()
         self._mode = "constant"
         self._data_format = data_format
@@ -667,7 +663,7 @@ class ReplicationPad2d(layers.Layer):
     Uses input boundaries to pad the input tensor.
 
     Parameters:
-        padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
         data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
            Default is  "NCHW"
@@ -793,7 +789,7 @@ class ConstantPad3d(layers.Layer):
     Uses a constant value to pad the input tensor.
 
     Parameters:
-        padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         value (float32): The value to fill the padded areas. Default is 0.0
         data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
@@ -859,7 +855,7 @@ class ReplicationPad3d(layers.Layer):
     Uses input boundaries to pad the input tensor.
 
     Parameters:
-        padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
            Default is  "NCDHW"
