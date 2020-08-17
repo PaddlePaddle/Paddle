@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import unittest
@@ -27,7 +28,7 @@ class TestTracerMode(unittest.TestCase):
     def get_tracer_mode(self):
         assert fluid.in_dygraph_mode(), "Dygraph mode must be enabled"
 
-    @fluid.dygraph.no_grad
+    @paddle.no_grad()
     def no_grad_func(self, a):
         self.assertEqual(self.tracer._train_mode, False)
         return a
@@ -55,12 +56,31 @@ class TestTracerMode(unittest.TestCase):
             def need_no_grad_func(a, b=1):
                 return a + b
 
-            decorated_func = fluid.dygraph.no_grad(need_no_grad_func)
+            decorated_func = paddle.no_grad()(need_no_grad_func)
             self.assertTrue(
                 str(inspect.getargspec(decorated_func)) ==
                 str(inspect.getargspec(need_no_grad_func)))
 
             self.assertEqual(self.tracer._train_mode, self.init_mode)
+
+            def test_gen():
+                for i in range(3):
+                    yield i
+
+            a = 0
+            for i in test_gen():
+                a += i
+
+            @paddle.no_grad()
+            def test_wrapped_gen():
+                for i in range(3):
+                    yield i
+
+            b = 0
+            for i in test_wrapped_gen():
+                b += i
+
+            self.assertEqual(a, b)
 
         with fluid.dygraph.guard():
             self.check_not_support_rlt(False)
