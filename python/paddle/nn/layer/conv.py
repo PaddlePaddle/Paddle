@@ -41,22 +41,18 @@ def _get_default_param_initializer(num_channels, filter_size):
 
 class Conv1D(layers.Layer):
     """
-	:alias_main: paddle.nn.Conv2D
-	:alias: paddle.nn.Conv2D,paddle.nn.layer.Conv2D,paddle.nn.layer.conv.Conv2D
+	:alias_main: paddle.nn.Conv1D
+	:alias: paddle.nn.Conv1D,paddle.nn.layer.Conv1D,paddle.nn.layer.conv.Conv1D
 
-    This interface is used to construct a callable object of the ``Conv2D`` class.
+    This interface is used to construct a callable object of the ``Conv1D`` class.
     For more details, refer to code examples.
-    The convolution2D layer calculates the output based on the input, filter
-    and strides, paddings, dilations, groups parameters. Input and
-    Output are in NCHW format, where N is batch size, C is the number of
-    the feature map, H is the height of the feature map, and W is the width of the feature map.
-    Filter's shape is [MCHW] , where M is the number of output feature map,
-    C is the number of input feature map, H is the height of the filter,
-    and W is the width of the filter. If the groups is greater than 1,
-    C will equal the number of input feature map divided by the groups.
-    Please refer to UFLDL's `convolution
-    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_
-    for more details.
+    The convolution1D layer calculates the output based on the input, filter
+    and stride, padding, dilation, groups parameters. Input and
+    Output are in NCL format, where N is batch size, C is the number of
+    the feature map, L is the length of the feature map.
+    Filter's shape is [MCL] , where M is the number of output feature map,
+    C is the number of input feature map, L is the size of the filter. 
+    If the groups is greater than 1, C will equal the number of input feature map divided by the groups.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
     applied to the final result.
@@ -69,8 +65,8 @@ class Conv1D(layers.Layer):
 
     Where:
 
-    * :math:`X`: Input value, a ``Tensor`` with NCHW format.
-    * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
+    * :math:`X`: Input value, a ``Tensor`` with NCL format.
+    * :math:`W`: Filter value, a ``Tensor`` with shape [MCL] .
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
     * :math:`\\sigma`: Activation function.
@@ -80,41 +76,37 @@ class Conv1D(layers.Layer):
 
         - Input:
 
-          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
+          Input shape: :math:`(N, C_{in}, L_{in})`
 
-          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
+          Filter shape: :math:`(C_{out}, C_{in}, L_f)`
 
         - Output:
 
-          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
+          Output shape: :math:`(N, C_{out}, L_{out})`
 
         Where
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Parameters:
         num_channels(int): The number of channels in the input image.
         num_filters(int): The number of filter. It is as same as the output
             feature map.
         filter_size (int or tuple): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
+            it must contain one integer, (filter_size).
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
-            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`on both sides 
-            3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
-            4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
+            2. an int, which means the feature map is zero paded by size of `padding` on both sides.
+            3. a list[int] or tuple[int] whose length is 1, which means the feature map is zero paded by size of `padding[0]` on both sides.
+            4. a list[int] or tuple[int] whose length is 2. It has the form  [pad_before, pad_after].
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
         stride (int or tuple, optional): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: 1.
+            contain one integers, (stride_size). Default: 1.
         dilation (int or tuple, optional): The dilation size. If dilation is a tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: 1.
+            contain one integer, (dilation_size). Default: 1.
         groups (int, optional): The groups number of the Conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
@@ -134,8 +126,6 @@ class Conv1D(layers.Layer):
             library is installed. Default: True.
         act (str, optional): Activation type, if it is set to None, activation is not appended.
             Default: None.
-        data_format (str, optional): Data format that specifies the layout of input.
-            It can be "NCHW" or "NHWC". Default: "NCHW".
         dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Attribute:
@@ -157,16 +147,16 @@ class Conv1D(layers.Layer):
           import paddle.fluid.dygraph as dg
           from paddle import nn
 
-          x = np.random.uniform(-1, 1, (2, 4, 8, 8)).astype('float32')
+          x = np.random.uniform(-1, 1, (2, 4, 8)).astype('float32')
           place = fluid.CPUPlace()
           with dg.guard(place):
               x_var = dg.to_variable(x)
-              conv = nn.Conv2D(4, 6, (3, 3))
+              conv = nn.Conv2D(4, 6, (3))
               y_var = conv(x_var)
               y_np = y_var.numpy()
               print(y_np.shape)
           
-          # (2, 6, 6, 6)
+          # (2, 6, 6)
     """
 
     def __init__(self,

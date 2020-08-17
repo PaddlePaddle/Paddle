@@ -1332,17 +1332,14 @@ def conv1d(input,
     """
     :api_attr: Static Graph
 
-    The convolution2D layer calculates the output based on the input, filter
+    The convolution1D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
-    Output are in NCHW or NHWC format, where N is batch size, C is the number of
-    channels, H is the height of the feature, and W is the width of the feature.
-    Filter is in MCHW format, where M is the number of output image channels,
-    C is the number of input image channels, H is the height of the filter,
-    and W is the width of the filter. If the groups is greater than 1,
+    Output are in NCL format, where N is batch size, C is the number of
+    channels, L is the length of the feature.
+    Filter is in MCL format, where M is the number of output image channels,
+    C is the number of input image channels, L is the size of the filter. 
+    If the groups is greater than 1,
     C will equal the number of input image channels divided by the groups.
-    Please refer to UFLDL's `convolution
-    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_
-    for more details.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
     applied to the final result.
@@ -1355,8 +1352,8 @@ def conv1d(input,
 
     Where:
 
-    * :math:`X`: Input value, a tensor with NCHW or NHWC format.
-    * :math:`W`: Filter value, a tensor with MCHW format.
+    * :math:`X`: Input value, a tensor with NCL format.
+    * :math:`W`: Filter value, a tensor with MCL format.
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
@@ -1366,46 +1363,37 @@ def conv1d(input,
 
         - Input:
 
-          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
+          Input shape: :math:`(N, C_{in}, L_{in})`
 
-          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
+          Filter shape: :math:`(C_{out}, C_{in}, L_f)`
 
         - Output:
 
-          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
+          Output shape: :math:`(N, C_{out}, L_{out})`
 
         Where
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Args:
-        input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type
+        input (Variable): The input is 3-D Tensor with shape [N, C, L], the data type
             of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple): The filter size. If filter_size
-            is a tuple, it must contain two integers, (filter_size_height,
-            filter_size_width). Otherwise, filter_size_height = filter_size_width =\
-            filter_size.
+            is a tuple, it must contain one integer, (filter_size).
         stride (int|tuple): The stride size. It means the stride in convolution.
-            If stride is a tuple, it must contain two integers, (stride_height, stride_width).
-            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
+            If stride is a tuple, it must contain one integer. Default: stride = 1.
         padding (string|int|list|tuple): The padding size. It means the number of zero-paddings
             on both sides for each dimension.If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
-            it could be in three forms: `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when
-            `data_format` is `"NCHW"`, `padding` can be in the form `[[0,0], [0,0],
-            [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NHWC"`, `pool_padding` can be in the form
-            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            it could be in three forms: `[pad_size]` or `[pad_top, pad_bottom]`,
+            and `padding` can be in the form `[[0,0], [0,0], [pad_top, pad_bottom]]`.
             Default: padding = 0.
         dilation (int|tuple): The dilation size. It means the spacing between the kernel
-            points. If dilation is a tuple, it must contain two integers, (dilation_height,
-            dilation_width). Otherwise, dilation_height = dilation_width = dilation.
+            points. If dilation is a tuple, it must contain one integers, (dilation_size).
             Default: dilation = 1.
         groups (int): The groups number of the Conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
@@ -1429,25 +1417,20 @@ def conv1d(input,
         name(str|None): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv2d, whose data type is the
+        A Variable holding Tensor representing the conv1d, whose data type is the
         same with input. If act is None, the tensor variable storing the convolution
         result, and if act is not None, the tensor variable storing convolution
         and non-linearity activation result.
 
     Raises:
         ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
         ValueError: If the channel dimmention of the input is less than or equal to zero.
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
             or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 4-D Tensor.
+        ShapeError: If the input is not 3-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
         ShapeError: If the dimension size of input minus the size of `stride` is not 2.
         ShapeError: If the number of input channels is not equal to filter's channels * groups.
@@ -1457,12 +1440,12 @@ def conv1d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+          data = fluid.data(name='data', shape=[None, 3, 32], dtype='float32')
+          conv2d = fluid.layers.conv1d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'conv2d')
+                             'conv1d')
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
         raise ValueError("Attr(use_cudnn) should be True or False. Received "
@@ -1491,8 +1474,6 @@ def conv1d(input,
                 "received: the channel of input is {}, the shape of input is {}"
                 ", the groups is {}".format(num_channels, input.shape, groups))
         num_filter_channels = num_channels // groups
-
-    # TODO: check length of filter_size, stride and dilation 
 
     filter_size = utils.convert_to_list(filter_size, 1, 'filter_size') + [1]
     stride = utils.convert_to_list(stride, 1, 'stride') + [1]

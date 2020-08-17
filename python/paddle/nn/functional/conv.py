@@ -98,23 +98,19 @@ def conv1d(input,
            act=None,
            name=None):
     """
-	:alias_main: paddle.nn.functional.conv2d
-	:alias: paddle.nn.functional.conv2d,paddle.nn.functional.conv.conv2d
+	:alias_main: paddle.nn.functional.conv1d
+	:alias: paddle.nn.functional.conv1d,paddle.nn.functional.conv.conv1d
 
-    The convolution2D layer calculates the output based on the input, filter
+    The convolution1D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
-    Output are in NCHW or NHWC format, where N is batch size, C is the number of
-    channels, H is the height of the feature, and W is the width of the feature.
-    Filter is in MCHW format, where M is the number of output image channels,
-    C is the number of input image channels, H is the height of the filter,
-    and W is the width of the filter. If the groups is greater than 1,
-    C will equal the number of input image channels divided by the groups.
-    Please refer to UFLDL's `convolution
-    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_
-    for more details.
-    If bias attribution and activation type are provided, bias is added to the
-    output of the convolution, and the corresponding activation function is
-    applied to the final result.
+    Output are in NCL format, where N is batch size, C is the number of
+    channels, L is the height of the feature.
+    Filter is in MCL format, where M is the number of output image channels,
+    C is the number of input image channels, L is the size of the filter.
+    If the groups is greater than 1, C will equal the number of input image
+    channels divided by the groups. If bias attribution and activation type
+    are provided, bias is added to the output of the convolution, and the
+    corresponding activation function is applied to the final result.
 
     For each input :math:`X`, the equation is:
 
@@ -124,8 +120,8 @@ def conv1d(input,
 
     Where:
 
-    * :math:`X`: Input value, a tensor with NCHW or NHWC format.
-    * :math:`W`: Filter value, a tensor with MCHW format.
+    * :math:`X`: Input value, a tensor with NCL format.
+    * :math:`W`: Filter value, a tensor with MCL format.
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
@@ -135,78 +131,66 @@ def conv1d(input,
 
         - Input:
 
-          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
+          Input shape: :math:`(N, C_{in}, L_{in})`
 
-          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
+          Filter shape: :math:`(C_{out}, C_{in}, L_f)`
 
         - Output:
 
-          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
+          Output shape: :math:`(N, C_{out}, L_{out})`
 
         Where
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Args:
-        input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type 
+        input (Variable): The input is 3-D Tensor with shape [N, C, L], the data type 
             of input is float16 or float32 or float64.
-        weight (Variable): The convolution kernel with shape [M, C/g, kH, kW], where M is
-            the number of output channels, g is the number of groups, kH is the filter's
-            height, kW is the filter's width. 
+        weight (Variable): The convolution kernel with shape [M, C/g, kL], where M is
+            the number of output channels, g is the number of groups, kL is the filter's size. 
         bias (Variable, optional): The bias with shape [M,].
-        padding (string|int|list|tuple): The padding size. It means the number of zero-paddings
-            on both sides for each dimension.If `padding` is a string, either 'VALID' or
-            'SAME' which is the padding algorithm. If padding size is a tuple or list,
-            it could be in three forms: `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when 
-            `data_format` is `"NCHW"`, `padding` can be in the form `[[0,0], [0,0], 
-            [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NHWC"`, `pool_padding` can be in the form
-            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-            Default: padding = 0.
-        stride (int|tuple): The stride size. It means the stride in convolution. 
-            If stride is a tuple, it must contain two integers, (stride_height, stride_width). 
-            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
-        dilation (int|tuple): The dilation size. It means the spacing between the kernel
-            points. If dilation is a tuple, it must contain two integers, (dilation_height, 
-            dilation_width). Otherwise, dilation_height = dilation_width = dilation. 
-            Default: dilation = 1.
-        groups (int): The groups number of the Conv2d Layer. According to grouped
+
+        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+            1. a string in ['valid', 'same'].
+            2. an int, which means the feature map is zero paded by size of `padding` on both sides.
+            3. a list[int] or tuple[int] whose length is 1, which means the feature map is zero paded by size of `padding[0]` on both sides.
+            4. a list[int] or tuple[int] whose length is 2. It has the form  [pad_before, pad_after].
+            5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
+            The default value is 0.
+        stride (int or tuple, optional): The stride size. If stride is a tuple, it must
+            contain one integers, (stride_size). Default: 1.
+        dilation (int or tuple, optional): The dilation size. If dilation is a tuple, it must
+            contain one integer, (dilation_size). Default: 1.
+        groups (int, optional): The groups number of the Conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1.
+            connected to the second half of the input channels. Default: 1.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None
-        data_format (str, optional): Specify the data format of the input, and the data format of the output 
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
 
     Returns:
-        A Variable holding Tensor representing the conv2d, whose data type is the 
+        A Variable holding Tensor representing the conv1d, whose data type is the 
         same with input. If act is None, the tensor variable storing the convolution 
         result, and if act is not None, the tensor variable storing convolution 
         and non-linearity activation result.
 
     Raises:
         ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
         ValueError: If the channel dimmention of the input is less than or equal to zero.
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 4-D Tensor.
+        ShapeError: If the input is not 3-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 1.
         ShapeError: If the number of input channels is not equal to filter's channels * groups.
         ShapeError: If the number of output channels is not be divided by groups.
 
@@ -218,8 +202,8 @@ def conv1d(input,
           import paddle.fluid.dygraph as dg
           import numpy as np
 
-          x = np.random.randn(2, 3, 8, 8).astype(np.float32)
-          w = np.random.randn(6, 3, 3, 3).astype(np.float32)
+          x = np.random.randn(2, 3, 8).astype(np.float32)
+          w = np.random.randn(6, 3, 3).astype(np.float32)
 
           place = fluid.CPUPlace()
           with dg.guard(place):
@@ -229,7 +213,7 @@ def conv1d(input,
               y_np = y_var.numpy()
           print(y_np.shape)
 
-          # (2, 6, 6, 6)
+          # (2, 6, 6)
     """
     # entry checks
     if not isinstance(use_cudnn, bool):
