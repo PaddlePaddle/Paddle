@@ -29,7 +29,7 @@ class Sampler(object):
     implement following methods:
 
     :code:`__iter__`: return sample index iterably, which iterate over indices
-                      of dataset elements
+    of dataset elements
 
     :code:`__len__`: the number of sample in :attr:`data_source`
 
