@@ -90,7 +90,8 @@ class ExpandAsV2GradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandAsV2Grad");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ExpandAsV2Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "ExpandAsV2Grad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
