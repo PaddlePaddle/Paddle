@@ -1489,7 +1489,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         check_dtype(stop.dtype, 'stop',
                     ['int32', 'int64', 'float32', 'float64'], 'linspace')
     else:
-        check_type(stop, 'end', (int, float), 'linspace')
+        check_type(stop, 'stop', (int, float), 'linspace')
     check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
                 'linspace')
     check_type(num, 'num', (int), 'linspace')
