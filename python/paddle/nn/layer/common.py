@@ -521,8 +521,8 @@ class MaxPool2d(layers.Layer):
                  kernel_size,
                  stride=None,
                  padding=0,
-                 ceil_mode=False,
                  return_indices=False,
+                 ceil_mode=False,
                  name=None,
                  data_format="NCHW"):
         super(MaxPool2d, self).__init__()
@@ -612,10 +612,10 @@ class MaxPool3d(layers.Layer):
                  kernel_size,
                  stride,
                  padding,
-                 ceil_mode=False,
                  return_indices=False,
+                 ceil_mode=False,
                  name=None,
-                 data_format="NCHW"):
+                 data_format="NCDHW"):
         super(MaxPool3d, self).__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -701,7 +701,7 @@ class AvgPool3d(layers.Layer):
                  ceil_mode=False,
                  count_include_pad=True,
                  name=None,
-                 data_format="NCHW"):
+                 data_format="NCDHW"):
         super(AvgPool3d, self).__init__()
         self.ksize = kernel_size
         self.stride = stride

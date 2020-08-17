@@ -98,8 +98,8 @@ def max_pool2d(x,
                kernel_size,
                stride=None,
                padding=0,
-               ceil_mode=False,
                return_indices=False,
+               ceil_mode=False,
                name=None,
                data_format="NCHW"):
     """
@@ -216,11 +216,12 @@ def max_pool2d(x,
     padding = update_padding2d(padding, data_format)
 
     if in_dygraph_mode():
-        return core.ops.max_pool2d_with_index(
+        output = core.ops.max_pool2d_with_index(
             x, 'ksize', kernel_size, 'global_pooling', False, 'strides', stride,
             'paddings', padding, 'padding_algorithm', padding_algorithm,
             'use_cudnn', True, 'ceil_mode', ceil_mode, 'use_mkldnn', False,
             'exclusive', True, 'data_format', data_format)
+        return output if return_indices else output[0]
 
     op_type = 'max_pool2d_with_index'
     helper = LayerHelper(op_type, **locals())
@@ -402,8 +403,8 @@ def max_pool3d(x,
                kernel_size,
                stride=None,
                padding=0,
-               ceil_mode=False,
                return_indices=False,
+               ceil_mode=False,
                name=None,
                data_format="NCDHW"):
     """
@@ -527,11 +528,12 @@ def max_pool3d(x,
     padding = update_padding3d(padding, data_format)
 
     if in_dygraph_mode():
-        return core.ops.max_pool3d_with_index(
+        output = core.ops.max_pool3d_with_index(
             x, 'pooling_type', 'max', 'ksize', kernel_size, 'strides', stride,
             'paddings', padding, 'global_pooling', False, 'padding_algorithm',
             padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
             'use_mkldnn', False, 'exclusive', True, 'data_format', data_format)
+        return output if return_indices else output[0]
 
     op_type = "max_pool3d_with_index"
     helper = LayerHelper(op_type, **locals())

@@ -36,7 +36,7 @@ class TestPool3d_API(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(
                 name="input", shape=[2, 3, 32, 32, 32], dtype="float32")
-            result = avg_pool3d(input=input, kernel_size=2, stride=2, padding=0)
+            result = avg_pool3d(input, kernel_size=2, stride=2, padding=0)
 
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
             result_np = pool3D_forward_naive(
@@ -76,7 +76,7 @@ class TestPool3d_API(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(
                 name="input", shape=[2, 3, 32, 32, 32], dtype="float32")
-            result = max_pool3d(input=input, kernel_size=2, stride=2, padding=0)
+            result = max_pool3d(input, kernel_size=2, stride=2, padding=0)
 
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
             result_np = pool3D_forward_naive(

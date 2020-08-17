@@ -101,12 +101,12 @@ class TestPool2d_API(unittest.TestCase):
                 strides=[2, 2],
                 paddings=[0, 0],
                 pool_type='max')
-            self.assertTrue(np.allclose(result[0].numpy(), result_np))
+            self.assertTrue(np.allclose(result.numpy(), result_np))
 
             max_pool2d_dg = paddle.nn.layer.MaxPool2d(
                 kernel_size=2, stride=2, padding=0)
             result = max_pool2d_dg(input)
-            self.assertTrue(np.allclose(result[0].numpy(), result_np))
+            self.assertTrue(np.allclose(result.numpy(), result_np))
 
     def test_pool2d(self):
         for place in self.places:
