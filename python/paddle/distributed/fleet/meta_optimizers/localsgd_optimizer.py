@@ -39,7 +39,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.localsgd = False
-        dist_strategy.localsgd_configs = {'k_steps': 1}
+        dist_strategy.localsgd_configs = {}
 
     def snapshot_name(self, param_name):
         return param_name + self.snapshot_key
