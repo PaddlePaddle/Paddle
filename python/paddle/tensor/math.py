@@ -63,6 +63,7 @@ from ..fluid.layers import tanh    #DEFINE_ALIAS
 from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
 from ..fluid.layers import sums    #DEFINE_ALIAS
+from ..fluid import layers
 
 __all__ = [
         'abs',
@@ -85,6 +86,7 @@ __all__ = [
         'log',
         'mul',
         'multiplex',
+        'prod',
         'pow',
         'reciprocal',
         'reduce_max',
@@ -1735,3 +1737,60 @@ def cumsum(x, axis=None, dtype=None, name=None):
             kwargs[name] = val
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
+
+def prod(x, axis=None, keepdim=False, dtype=None, name=None):
+    """
+    Compute the product of tensor elements over the given axis.
+
+    Args:
+        x(Tensor): Input of prod operator.
+        axis(list/int, optional): The dimentions along which the product is performed. If None, 
+            multiply all elements of input and return a Tensor with a single element, 
+            otherwise must be in the range [−rank(input),rank(input)). If :math:`axis[i]<0`, the axis 
+            to reduce is :math:`rank(input) + aixs[i]`. The default value is None.
+        dtype(str, optional): The desired date type of returned tensor, can be float32, float64, 
+            int32, int64. If defined, the input tensor is casted to dtype before operator performed. 
+            This is very useful for avoiding data type overflows. The default value is False.
+        keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
+            tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
+        name(string, optional): The default value is None. Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor, result of product on the specified dim of input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle import to_variable
+            import numpy as np
+
+            paddle.disable_static()
+
+            x_data = np.array([[0.2, 0.3, 0.5, 0.9],
+                         [0.1, 0.2, 0.6, 0.7]]).astype(np.float32)
+            x = paddle.to_variable(x_data)
+            out1 = paddle.prod(x)
+            # out1 = [0.0002268]
+
+            out2 = paddle.prod(x, 0)
+            # out2 = [0.02, 0.06, 0.3 , 0.63]
+
+            out3 = paddle.prod(x, -1)
+            # out3 = [0.027 , 0.0084]
+
+            out4 = paddle.prod(x, -1, keepdim=True)
+            # out4 = [[0.27 ], [0.084]]
+
+            out5 = paddle.prod(x, 0, dtype='int64')
+            # out5 = [0, 0, 0, 0]
+
+            out6 = paddle.prod(x, [0, 1])
+            # out6 = [0.02268]
+
+    """
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = layers.cast(x, dtype)
+
+    return layers.reduce_prod(input=x, dim=axis, keep_dim=keepdim, name=name)
