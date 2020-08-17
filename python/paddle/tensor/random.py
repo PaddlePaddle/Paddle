@@ -23,18 +23,196 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers import utils, uniform_random, gaussian_random
 from ..fluid.layers.tensor import fill_constant
+import paddle
+import warnings
 
 from ..fluid.io import shuffle  #DEFINE_ALIAS
 
 __all__ = [
     #       'gaussin',
     #       'uniform',
+    'standard_normal',
+    'normal',
     'shuffle',
     'randn',
     'rand',
     'randint',
     'randperm'
 ]
+
+
+def standard_normal(shape, dtype=None, name=None):
+    """
+    This OP returns a Tensor filled with random values sampled from a standard
+    normal distribution with mean 0 and standard deviation 1, with ``shape``
+    and ``dtype``.
+
+    Args:
+        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+            is a list or tuple, the elements of it should be integers or Tensors
+            (with the shape [1], and the data type int32 or int64). If ``shape``
+            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
+            int64).
+        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+            output tensor. Supported data types: float32, float64. If ``dytpe``
+            is None, the data type is float32. Default is None.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A Tensor filled with random values sampled from a standard
+        normal distribution with mean 0 and standard deviation 1, with
+        ``shape`` and ``dtype``.
+
+    Raises:
+        TypeError: If ``shape`` is not list, tuple, Tensor.
+        TypeError: If ``dtype`` is not float32, float64.
+
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        # example 1: attr shape is a list which doesn't contain Tensor.
+        result_1 = paddle.standard_normal(shape=[2, 3])
+        # [[-2.923464  ,  0.11934398, -0.51249987],
+        #  [ 0.39632758,  0.08177969,  0.2692008 ]]
+
+        # example 2: attr shape is a list which contains Tensor.
+        dim_1 = paddle.fill_constant([1], "int64", 2)
+        dim_2 = paddle.fill_constant([1], "int32", 3)
+        result_2 = paddle.standard_normal(shape=[dim_1, dim_2, 2])
+        # [[[-2.8852394 , -0.25898588],
+        #   [-0.47420555,  0.17683524],
+        #   [-0.7989969 ,  0.00754541]],
+        #  [[ 0.85201347,  0.32320443],
+        #   [ 1.1399018 ,  0.48336947],
+        #   [ 0.8086993 ,  0.6868893 ]]]
+
+        # example 3: attr shape is a Tensor, the data type must be int64 or int32.
+        var_shape = paddle.to_tensor(np.array([2, 3]))
+        result_3 = paddle.standard_normal(var_shape)
+        # [[-2.878077 ,  0.17099959,  0.05111201]
+        #  [-0.3761474, -1.044801  ,  1.1870178 ]]
+
+    """
+    if dtype is None:
+        dtype = 'float32'
+
+    out = gaussian_random(
+        shape=shape, mean=0.0, std=1.0, seed=0, dtype=dtype, name=name)
+    out.stop_gradient = True
+    return out
+
+
+randn = standard_normal
+
+
+def normal(mean=0.0, std=1.0, shape=None, name=None):
+    """
+    This OP returns a Tensor filled with random values sampled from a normal
+    distribution with ``mean`` and ``std`` (standard deviation) .
+
+    If ``mean`` is a Tensor, it is the mean of each output element’s normal distribution.
+    If ``mean`` is float, it is the mean of all output element's normal distribution.
+
+    If ``std`` is a Tensor, it is the standard deviation of each output element’s normal distribution.
+    If ``std`` is float, it is the standard deviation of all output element's normal distribution.
+
+    If ``mean`` is a Tensor, the output Tensor has the same shape and data type as ``mean``.
+    If ``mean`` is not a Tensor and ``std`` is a Tensor, the output Tensor has the same shape and data type as ``std``.
+    If ``mean`` and ``std`` are not a Tensor, the output Tensor has the same shape as ``shape``, with data type float32.
+
+    If ``mean`` and ``std`` are Tensor, the num of elements of ``mean`` and ``std`` should be the same.
+
+    Args:
+        mean (float|Tensor, optional): The mean of the output Tensor's normal distribution.
+            If ``mean`` is float, all elements of the output Tensor shared the same mean.
+            If ``mean`` is a Tensor, it has per-element means. Default is 0.0
+        std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
+            If ``mean`` is float, all elements of the output Tensor shared the same standard deviation.
+            If ``mean`` is a Tensor, it has per-element standard deviations. Defaule is 1.0
+        shape (list|tuple|Tensor, optional): The shape of the output Tensor. If ``shape``
+            is a list or tuple, the elements of it should be integers or Tensors
+            (with the shape [1], and the data type int32 or int64). If ``shape``
+            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
+            int64). If ``mean`` or ``std`` is a Tensor, the shape of the output
+            Tensor is the same as ``mean`` or ``std`` , attr ``shape`` is ignored.
+            Default is None
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
+
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        out1 = paddle.normal(shape=[2, 3])
+        # [[ 0.17501129  0.32364586  1.561118  ]
+        #  [-1.7232178   1.1545963  -0.76156676]]
+
+        mean_tensor = paddle.to_tensor(np.array([1.0, 2.0, 3.0]))
+        out2 = paddle.normal(mean=mean_tensor)
+        # [ 0.18644847 -1.19434458  3.93694787]
+
+        std_tensor = paddle.to_tensor(np.array([1.0, 2.0, 3.0]))
+        out3 = paddle.normal(mean=mean_tensor, std=std_tensor)
+        # [1.00780561 3.78457445 5.81058198]
+
+    """
+    if not in_dygraph_mode():
+        check_type(mean, 'mean', (int, float, Variable), 'normal')
+        check_type(std, 'std', (int, float, Variable), 'normal')
+        if isinstance(mean, Variable):
+            check_dtype(
+                mean.dtype, 'mean', ['float32', 'float64'], 'normal',
+                "If mean is Tensor, it's data type only support float32, float64."
+            )
+        if isinstance(std, Variable):
+            check_dtype(
+                std.dtype, 'std', ['float32', 'float64'], 'normal',
+                "If std is Tensor, it's data type only support float32, float64."
+            )
+        if shape is not None:
+            if isinstance(shape, (list, tuple)):
+                for item in shape:
+                    check_type(item, 'shape', (int), 'normal',
+                               'Elements of shape should be int.')
+            elif isinstance(shape, Variable):
+                check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'normal')
+            else:
+                assert TypeError(
+                    'If mean and std are all not Tensor, shape should be list, tuple, Tensor.'
+                )
+
+    if isinstance(mean, Variable):
+        if isinstance(std, Variable):
+            if std.dtype != mean.dtype:
+                std = paddle.cast(std, mean.dtype)
+            mean_shape = paddle.shape(mean)
+            std = paddle.reshape(std, mean_shape)
+        else:
+            std = float(std)
+        out = standard_normal(paddle.shape(mean), mean.dtype, name)
+    elif isinstance(std, Variable):
+        mean = float(mean)
+        out = standard_normal(paddle.shape(std), std.dtype, name)
+    else:
+        out = standard_normal(shape=shape, name=name)
+
+    out = out * std + mean
+    if not in_dygraph_mode():
+        out.stop_grediant = True
+    return out
 
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
@@ -147,77 +325,6 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='randint', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-    return out
-
-
-def randn(shape, dtype=None, name=None):
-    """
-	:alias_main: paddle.randn
-	:alias: paddle.tensor.randn, paddle.tensor.random.randn
-
-    This OP returns a Tensor filled with random values sampled from a normal
-    distribution with mean 0 and standard deviation 1 (also called the standard
-    normal distribution), with ``shape`` and ``dtype``.
-
-    Args:
-        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
-            is a list or tuple, the elements of it should be integers or Tensors
-            (with the shape [1], and the data type int32 or int64). If ``shape``
-            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
-            int64).
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
-            output tensor. Supported data types: float32, float64. If ``dytpe``
-            is None, the data type is float32. Default is None.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: A Tensor filled with random values sampled from a normal
-        distribution with mean 0 and standard deviation 1 (also called the
-        standard normal distribution), with ``shape`` and ``dtype``.
-
-    Raises:
-        TypeError: If ``shape`` is not list, tuple, Tensor.
-        TypeError: If ``dtype`` is not float32, float64.
-
-    Examples:
-        .. code-block:: python
-
-        import paddle
-        import numpy as np
-
-        paddle.disable_static()
-
-        # example 1: attr shape is a list which doesn't contain Tensor.
-        result_1 = paddle.randn(shape=[2, 3])
-        # [[-2.923464  ,  0.11934398, -0.51249987],
-        #  [ 0.39632758,  0.08177969,  0.2692008 ]]
-
-        # example 2: attr shape is a list which contains Tensor.
-        dim_1 = paddle.fill_constant([1], "int64", 2)
-        dim_2 = paddle.fill_constant([1], "int32", 3)
-        result_2 = paddle.randn(shape=[dim_1, dim_2, 2])
-        # [[[-2.8852394 , -0.25898588],
-        #   [-0.47420555,  0.17683524],
-        #   [-0.7989969 ,  0.00754541]],
-        #  [[ 0.85201347,  0.32320443],
-        #   [ 1.1399018 ,  0.48336947],
-        #   [ 0.8086993 ,  0.6868893 ]]]
-
-        # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-        var_shape = paddle.to_variable(np.array([2, 3]))
-        result_3 = paddle.randn(var_shape)
-        # [[-2.878077 ,  0.17099959,  0.05111201]
-        #  [-0.3761474, -1.044801  ,  1.1870178 ]]
-
-    """
-    if dtype is None:
-        dtype = 'float32'
-
-    out = gaussian_random(
-        shape=shape, mean=0.0, std=1.0, seed=0, dtype=dtype, name=name)
-    out.stop_gradient = True
     return out
 
 
