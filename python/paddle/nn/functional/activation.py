@@ -93,8 +93,9 @@ def elu(x, alpha=1.0, name=None):
         paddle.disable_static()
 
         x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
-        out = F.elu(x, alpha=0.2) # [[-0.12642411  6.        ]
-                                  #  [ 1.          15.6      ]]
+        out = F.elu(x, alpha=0.2) 
+        # [[-0.12642411  6.        ]
+        #  [ 1.          15.6      ]]
     """
 
     if in_dygraph_mode():
@@ -361,8 +362,8 @@ def relu(x, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_tensor(p.array([-2, 0, 1]).astype('float32'))
-        out = F.relu(x) # [0, 0, 1]
+        x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+        out = F.relu(x) # [0., 0., 1.]
     """
 
     if in_dygraph_mode():
