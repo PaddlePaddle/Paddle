@@ -276,8 +276,7 @@ class Conv2D(layers.Layer):
             pre_act = pre_bias
 
         # Currently, we don't support inplace in dygraph mode
-        return self._helper.append_activation(
-            pre_act, act=self._act)
+        return self._helper.append_activation(pre_act, act=self._act)
 
 
 class Conv3D(layers.Layer):
@@ -1010,8 +1009,7 @@ class Linear(layers.Layer):
                 })
         else:
             pre_activation = tmp
-        return self._helper.append_activation(
-            pre_activation, act=self._act)
+        return self._helper.append_activation(pre_activation, act=self._act)
 
 
 class InstanceNorm(layers.Layer):

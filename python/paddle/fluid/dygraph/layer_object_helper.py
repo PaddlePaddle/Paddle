@@ -136,10 +136,7 @@ class LayerObjectHelper(LayerHelperBase):
         return param
 
     # TODO: this should not be called anymore after all activation func move to Layers
-    def append_activation(self,
-                          input_var,
-                          act=None,
-                          use_cudnn=None):
+    def append_activation(self, input_var, act=None, use_cudnn=None):
         """Append activation
 
             Args:
