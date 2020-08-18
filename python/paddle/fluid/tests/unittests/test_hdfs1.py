@@ -56,7 +56,7 @@ class FSTest1(FSTestBase):
         fs = HDFSClient(
             "/usr/local/hadoop-2.7.7/",
             None,
-            time_out=15 * 1000,
+            time_out=6 * 1000,
             sleep_inter=100)
         self.assertFalse(fs.is_dir("./test_hdfs.py"))
         s = """
@@ -82,14 +82,14 @@ java.io.IOException: Input/output error
         fs = HDFSClient(
             "/usr/local/hadoop-2.7.7/",
             config,
-            time_out=15 * 1000,
+            time_out=6 * 1000,
             sleep_inter=100)
 
     def test_exists(self):
         fs = HDFSClient(
             "/usr/local/hadoop-2.7.7/",
             None,
-            time_out=15 * 1000,
+            time_out=6 * 1000,
             sleep_inter=100)
         self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
         self.assertFalse(fs.is_dir(os.path.abspath("./xxxx")))

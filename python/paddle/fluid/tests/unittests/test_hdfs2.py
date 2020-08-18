@@ -39,18 +39,11 @@ class FSTest2(FSTestBase):
         self._test_upload(fs)
 
         self._test_download(fs)
-        self._test_mkdirs(fs)
-        self._test_list_dir(fs)
-        self._test_try_upload(fs)
-        self._test_try_download(fs)
 
     def test_local(self):
         fs = LocalFS()
         self._test_rm(fs)
         self._test_touch(fs)
         self._test_dirs(fs)
+
         self._test_touch_file(fs)
-        self._test_mkdirs(fs)
-        self._test_list_dir(fs)
-        self._test_try_upload(fs)
-        self._test_try_download(fs)
