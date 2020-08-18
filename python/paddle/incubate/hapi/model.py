@@ -47,7 +47,7 @@ __all__ = [
 ]
 
 
-class Input(fluid.dygraph.Layer):
+class Input(paddle.nn.Layer):
     """
     Define inputs the model.
 
@@ -665,14 +665,14 @@ class Model(object):
     """
     An Model object is network with training and inference features.
     Dynamic graph and static graph are supported at the same time,
-    switched by `fluid.enable_dygraph()`. The usage is as follows.
+    switched by `paddle.disable_static()`. The usage is as follows.
     But note, the switching between dynamic and static should be before
     instantiating a Model. The input description, i.e, hapi.Input,
     must be required for static graph.
 
     Args:
-        network (fluid.dygraph.Layer): The network is an instance of
-            fluid.dygraph.Layer.
+        network (paddle.nn.Layer): The network is an instance of
+            paddle.nn.Layer.
         inputs (Input|list|dict|None): `inputs`, entry points of network,
             could be a Input layer, or lits of Input layers,
             or dict (name: Input), or None. For static graph,
@@ -690,7 +690,7 @@ class Model(object):
         import paddle.fluid as fluid
         import paddle.incubate.hapi as hapi
         
-        class MyNet(fluid.dygraph.Layer):
+        class MyNet(paddle.nn.Layer):
             def __init__(self, classifier_act=None):
                 super(MyNet, self).__init__()
                 self._fc1 = fluid.dygraph.Linear(784, 200, act=classifier_act)
@@ -701,7 +701,7 @@ class Model(object):
         
         device = hapi.set_device('gpu')
         # if use static graph, do not set
-        fluid.enable_dygraph(device)
+        paddle.disable_static(device)
         
         # inputs and labels are not required for dynamic graph.
         input = hapi.Input('x', [None, 784], 'float32')
@@ -775,7 +775,7 @@ class Model(object):
               import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self, classifier_act=None):
                       super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 10, act=classifier_act)
@@ -785,7 +785,7 @@ class Model(object):
                       return y
 
               device = hapi.set_device('gpu')
-              fluid.enable_dygraph(device)
+              paddle.disable_static(device)
 
               input = hapi.Input('x', [None, 784], 'float32')
               label = hapi.Input('label', [None, 1], 'int64')
@@ -824,7 +824,7 @@ class Model(object):
               import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self, classifier_act=None):
                       super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 10, act=classifier_act)
@@ -834,7 +834,7 @@ class Model(object):
                       return y
 
               device = hapi.set_device('gpu')
-              fluid.enable_dygraph(device)
+              paddle.disable_static(device)
 
               input = hapi.Input('x', [None, 784], 'float32')
               label = hapi.Input('label', [None, 1], 'int64')
@@ -870,7 +870,7 @@ class Model(object):
               import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
@@ -879,7 +879,7 @@ class Model(object):
                       return y
 
               device = hapi.set_device('gpu')
-              fluid.enable_dygraph(device)
+              paddle.disable_static(device)
 
               model = hapi.Model(MyNet())
               model.prepare()
@@ -918,7 +918,7 @@ class Model(object):
               import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
               
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
@@ -927,7 +927,7 @@ class Model(object):
                       return y
               
               device = hapi.set_device('cpu')
-              fluid.enable_dygraph(device)
+              paddle.disable_static(device)
               model = hapi.Model(MyNet())
               model.save('checkpoint/test')
         """
@@ -970,7 +970,7 @@ class Model(object):
               import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
               
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
@@ -979,7 +979,7 @@ class Model(object):
                       return y
               
               device = hapi.set_device('cpu')
-              fluid.enable_dygraph(device)
+              paddle.disable_static(device)
               model = hapi.Model(MyNet())
               model.load('checkpoint/test')
         """
@@ -1045,7 +1045,7 @@ class Model(object):
               import paddle.fluid as fluid
               from paddle.incubate.hapi import Model
 
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
                       self._fc = fluid.dygraph.Linear(20, 10, act='softmax')
@@ -1053,7 +1053,7 @@ class Model(object):
                       y = self._fc(x)
                       return y
 
-              fluid.enable_dygraph()
+              paddle.disable_static()
               model = Model(MyNet())
               params = model.parameters()
         """
@@ -1068,7 +1068,7 @@ class Model(object):
                 and should be a Optimizer instance. It can be None in eval
                 and test mode.
             loss (Loss|callable function|None): Loss function can
-                be a `fluid.dygraph.Layer` instance or any callable function
+                be a `paddle.nn.Layer` instance or any callable function
                 taken the predicted values and ground truth values as input.
                 It can be None when there is no loss.
             metrics (Metric|list of Metric|None): If metrics is set, all
@@ -1087,7 +1087,7 @@ class Model(object):
                     startup_prog_seed = fluid.default_startup_program(
                     ).random_seed
                     fluid.disable_dygraph()
-                    fluid.enable_dygraph(self._place)
+                    paddle.disable_static(self._place)
                     # enable_dygraph would create and switch to a new program,
                     # thus also copy seed to the new program
                     fluid.default_main_program().random_seed = main_prog_seed
@@ -1100,9 +1100,9 @@ class Model(object):
 
         self._optimizer = optimizer
         if loss is not None:
-            if not isinstance(loss, fluid.dygraph.Layer) and not callable(loss):
+            if not isinstance(loss, paddle.nn.Layer) and not callable(loss):
                 raise TypeError("'loss' must be sub classes of " \
-                    "`fluid.dygraph.Layer` or any callable function.")
+                    "`paddle.nn.Layer` or any callable function.")
         self._loss = loss
 
         metrics = metrics or []
@@ -1188,7 +1188,7 @@ class Model(object):
 
               dynamic = True
               device = hapi.set_device('gpu')
-              fluid.enable_dygraph(device) if dynamic else None
+              paddle.disable_static(device) if dynamic else None
            
               train_dataset = hapi.datasets.MNIST(mode='train')
               val_dataset = hapi.datasets.MNIST(mode='test')
@@ -1221,7 +1221,7 @@ class Model(object):
 
               dynamic = True
               device = hapi.set_device('gpu')
-              fluid.enable_dygraph(device) if dynamic else None
+              paddle.disable_static(device) if dynamic else None
            
               train_dataset = hapi.datasets.MNIST(mode='train')
               train_loader = fluid.io.DataLoader(train_dataset,
@@ -1368,7 +1368,7 @@ class Model(object):
             print(result)
 
             # imperative mode
-            fluid.enable_dygraph()
+            paddle.disable_static()
             model = hapi.Model(hapi.vision.LeNet())
             model.prepare(metrics=paddle.metric.Accuracy())
             result = model.evaluate(val_dataset, batch_size=64)
@@ -1475,7 +1475,7 @@ class Model(object):
 
             # imperative mode
             device = hapi.set_device('cpu')
-            fluid.enable_dygraph(device)
+            paddle.disable_static(device)
             model = hapi.Model(hapi.vision.LeNet())
             model.prepare()
             result = model.predict(test_dataset, batch_size=64)

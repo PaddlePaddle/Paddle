@@ -77,10 +77,10 @@ class Metric(object):
         .. code-block:: python
             def compute(pred, label):
                 # sort prediction and slice the top-5 scores
-                pred = fluid.layers.argsort(pred, descending=True)[1][:, :5]
+                pred = paddle.argsort(pred, descending=True)[1][:, :5]
                 # calculate whether the predictions are correct
                 correct = pred == label
-                return fluid.layers.cast(correct, dtype='float32')
+                return paddle.cast(correct, dtype='float32')
 
         With the :code:`compute`, we split some calculations to OPs (which
         may run on GPU devices, will be faster), and only fetch 1 tensor with
@@ -184,12 +184,12 @@ class Accuracy(Metric):
         import paddle
 
         paddle.disable_static()
-        x = paddle.to_variable(np.array([
+        x = paddle.to_tensor(np.array([
             [0.1, 0.2, 0.3, 0.4],
             [0.1, 0.4, 0.3, 0.2],
             [0.1, 0.2, 0.4, 0.3],
             [0.1, 0.2, 0.3, 0.4]]))
-        y = paddle.to_variable(np.array([[0], [1], [2], [3]]))
+        y = paddle.to_tensor(np.array([[0], [1], [2], [3]]))
 
         m = paddle.metric.Accuracy()
         correct = m.compute(x, y)
@@ -203,14 +203,13 @@ class Accuracy(Metric):
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import paddle.incubate.hapi as hapi
 
         paddle.disable_static()
         train_dataset = hapi.datasets.MNIST(mode='train')
 
         model = hapi.Model(hapi.vision.LeNet(classifier_activation=None))
-        optim = fluid.optimizer.Adam(
+        optim = paddle.optimizer.Adam(
             learning_rate=0.001, parameter_list=model.parameters())
         model.prepare(
             optim,
@@ -241,9 +240,9 @@ class Accuracy(Metric):
         Return:
             Tensor: Correct mask, a tensor with shape [batch_size, topk].
         """
-        pred = fluid.layers.argsort(pred, descending=True)[1][:, :self.maxk]
+        pred = paddle.argsort(pred, descending=True)[1][:, :self.maxk]
         correct = pred == label
-        return fluid.layers.cast(correct, dtype='float32')
+        return paddle.cast(correct, dtype='float32')
 
     def update(self, correct, *args):
         """
@@ -446,7 +445,7 @@ class Recall(Metric):
 
     Args:
         name (str, optional): String name of the metric instance.
-            Default is `precision`.
+            Default is `recall`.
 
     Example by standalone:
         
@@ -583,10 +582,13 @@ class Auc(Metric):
     computed using the height of the precision values by the recall.
 
     Args:
-        name (str, optional): String name of the metric instance. Default
-            is `acc`.
         curve (str): Specifies the mode of the curve to be computed,
             'ROC' or 'PR' for the Precision-Recall-curve. Default is 'ROC'.
+        num_thresholds (int): The number of thresholds to use when
+            discretizing the roc curve. Default is 4095.
+            'ROC' or 'PR' for the Precision-Recall-curve. Default is 'ROC'.
+        name (str, optional): String name of the metric instance. Default
+            is `auc`.
 
     "NOTE: only implement the ROC curve type via Python now."
 
@@ -615,7 +617,6 @@ class Auc(Metric):
 
         import numpy as np
         import paddle
-        import paddle.fluid as fluid
         import paddle.nn as nn
         import paddle.incubate.hapi as hapi
         
@@ -640,7 +641,7 @@ class Auc(Metric):
             learning_rate=0.001, parameter_list=model.parameters())
         
         def loss(x, y):
-            return fluid.layers.cross_entropy(x, y)
+            return nn.functional.nll_loss(paddle.log(x), y)
         
         model.prepare(
             optim,
