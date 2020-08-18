@@ -403,8 +403,7 @@ class StaticGraphAdapter(object):
 
             if mode != 'test':
                 for metric in self.model._metrics:
-                    metrics.append(
-                        to_list(metric.compute(*(outputs + labels))))
+                    metrics.append(to_list(metric.compute(*(outputs + labels))))
 
             if mode == 'train' and self.model._optimizer:
                 self._loss_endpoint = fluid.layers.sum(losses)

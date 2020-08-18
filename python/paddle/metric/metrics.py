@@ -167,8 +167,6 @@ class Metric(object):
 class Accuracy(Metric):
     """
     Encapsulates accuracy metric logic.
-    def __init__(self, topk=(1, ), name='acc', *args, **kwargs):
-
 
     Args:
         topk (int|tuple(int)): Number of top elements to look at
