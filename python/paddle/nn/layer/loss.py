@@ -27,7 +27,8 @@ __all__ = [
     'NLLLoss',
     'BCELoss',
     'KLDivLoss',
-    'MarginRankingLoss'
+    'MarginRankingLoss',
+    'CTCLoss',
 ]
 
 
@@ -711,3 +712,108 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         out = paddle.nn.functional.margin_ranking_loss(
             input, other, label, self.margin, self.reduction, self.name)
         return out
+
+
+class CTCLoss(fluid.dygraph.Layer):
+    """
+	:alias_main: paddle.nn.CTCLoss
+	:alias: paddle.nn.CTCLoss,paddle.nn.layer.CTCLoss,paddle.nn.layer.loss.CTCLoss
+
+    An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc) 
+    to compute Connectionist Temporal Classification (CTC) loss. 
+    It can be aliased as softmax with CTC, since a native softmax activation 
+    is interated to the Warp-CTC library to normalize values for each row of the input tensor.
+
+    Parameters:
+        blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, 
+            which is in the half-opened interval [0, num_classes + 1). 
+            The data type must be int32. Default is 0.
+        reduction (str, optional): Indicate how to average the loss, 
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned;
+            If :attr:`reduction` is ``'none'``, no reduction will be applied;
+            Default is ``'mean'``.
+
+    Shape:
+        log_probs (Variable): – The unscaled probabilities of variable-length sequences, 
+            which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], 
+            where max_logit_length is the longest length of input logit sequence. 
+            The data type must be float32.
+        labels (Variable): The ground truth of variable-length sequence, which must be a 3-D Tensor. 
+            The tensor shape is [batch_size, max_label_length], where max_label_length is 
+            the longest length of label sequence. The data type must be int32.
+        input_lengths (Variable): The length for each input sequence, 
+            it should have shape [batch_size] and dtype int64.
+        label_lengths (Variable): The length for each label sequence, 
+            it should have shape [batch_size] and dtype int64.
+
+    Returns:
+        The Connectionist Temporal Classification (CTC) loss.
+
+    Return type: Variable.
+    
+    Examples:
+
+        .. code-block:: python
+
+            # declarative mode
+            import paddle.nn.functional as F
+            import numpy as np
+            import paddle
+
+            # length of the longest logit sequence
+            max_seq_length = 4
+            #length of the longest label sequence
+            max_label_length = 3
+            # number of logit sequences
+            batch_size = 2
+            # class num
+            class_num = 3
+
+            np.random.seed(1)
+            log_probs = np.array([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
+                                    [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
+
+                                    [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
+                                    [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
+
+                                    [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
+                                    [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
+
+                                    [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
+                                    [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
+
+                                    [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
+                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]]).astype("float32")
+            labels = np.array([[1, 2, 2],
+                            [1, 2, 2]]).astype("int32")
+            input_lengths = np.array([5, 5]).astype("int64")
+            label_lengths = np.array([3, 3]).astype("int64")
+
+            paddle.disable_static()
+            log_probs = paddle.to_variable(log_probs)
+            labels = paddle.to_variable(labels)
+            input_lengths = paddle.to_variable(input_lengths)
+            label_lengths = paddle.to_variable(label_lengths)
+
+            loss = paddle.nn.CTCLoss(blank=0, reduction='none')(log_probs, labels, 
+                input_lengths, 
+                label_lengths)
+            print(loss.numpy())  #[3.9179852 2.9076521]
+
+            loss = paddle.nn.CTCLoss(blank=0, reduction='mean')(log_probs, labels, 
+                input_lengths, 
+                label_lengths)
+            print(loss.numpy())  #[1.1376063]
+    """
+
+    def __init__(self, blank=0, reduction='mean'):
+        super(CTCLoss, self).__init__()
+        self.blank = blank
+        self.reduction = reduction
+
+    def forward(self, log_probs, labels, input_lengths, label_lengths):
+        return paddle.nn.functional.ctc_loss(log_probs, labels, input_lengths,
+                                             label_lengths, self.blank,
+                                             self.reduction)

@@ -25,6 +25,8 @@ from . import extension
 __all__ += extension.__all__
 from . import common
 __all__ += common.__all__
+from . import loss
+__all__ += loss.__all__
 from .activation import brelu  #DEFINE_ALIAS
 from .activation import elu  #DEFINE_ALIAS
 from .activation import erf  #DEFINE_ALIAS
@@ -143,6 +145,7 @@ from .loss import softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import square_error_cost  #DEFINE_ALIAS
 from .loss import ssd_loss  #DEFINE_ALIAS
 from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
+from .loss import ctc_loss  #DEFINE_ALIAS
 # from .norm import batch_norm        #DEFINE_ALIAS
 # from .norm import data_norm        #DEFINE_ALIAS
 # from .norm import group_norm        #DEFINE_ALIAS
