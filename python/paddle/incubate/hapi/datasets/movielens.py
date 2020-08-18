@@ -114,9 +114,7 @@ class Movielens(Dataset):
 		    super(SimpleNet, self).__init__()
 
 		def forward(self, category, title, rating):
-		    return paddle.sum(category), \
-			    paddle.sum(title), \
-			    paddle.sum(rating)
+		    return paddle.sum(category), paddle.sum(title), paddle.sum(rating)
 
 	    paddle.disable_static()
 

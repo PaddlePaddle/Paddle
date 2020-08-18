@@ -85,9 +85,7 @@ class WMT16(Dataset):
 		    super(SimpleNet, self).__init__()
 
 		def forward(self, src_ids, trg_ids, trg_ids_next):
-		    return paddle.sum(src_ids), \
-			    paddle.sum(trg_ids), \
-			    paddle.sum(trg_ids_next)
+		    return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)
 
 	    paddle.disable_static()
 
