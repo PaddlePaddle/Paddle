@@ -36,7 +36,8 @@ __all__ = ['Distribution', 'Uniform', 'Normal']
 
 class Distribution(object):
     """
-    The abstract base class for probability distributions. Functions are implemented in specific distributions.
+    The abstract base class for probability distributions. Functions are 
+    implemented in specific distributions.
     """
 
     def __init__(self):
