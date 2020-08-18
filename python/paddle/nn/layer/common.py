@@ -370,7 +370,7 @@ class AdaptiveAvgPool2d(layers.Layer):
             it must contain two element, (H, W). H and W can be either a int, or None which means
             the size will be the same as that of the input.
         data_format (str): The data format of the input and output data. An optional string
-            from: “NCHW”, “NDHW”. The default is “NCHW”. When it is “NCHW”, the data is stored in
+            from: “NCHW”, “NHWC”. The default is “NCHW”. When it is “NCHW”, the data is stored in
             the order of: [batch_size, input_channels, input_height, input_width].
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
