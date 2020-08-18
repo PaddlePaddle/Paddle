@@ -37,7 +37,7 @@ from ..fluid.dygraph import no_grad
 from ..fluid.dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpochDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
-from ..fluid.functools import reduce
+from functools import reduce
 from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 
@@ -58,6 +58,27 @@ class Optimizer(object):
     Define the common interface of an optimizer.
     User should not use this class directly,
     but need to use one of it's implementation.
+
+    Args:
+        learning_rate (float|Variable): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Tensor`` with a float type.
+        parameters (Iterable, optional): Iterable of ``Tensor`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
+        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
+            It canbe a float value as coeff of L2 regularization or \
+            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+            the regularization setting here in optimizer will be ignored for this parameter. \
+            Otherwis, the regularization setting here in optimizer will take effect. \
+            Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of \
+            some derived class of ``GradientClipBase`` . There are three cliping strategies \
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , \
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`.
+            The default value is None.
     """
 
     @imperative_base.no_grad()
@@ -949,7 +970,7 @@ class Optimizer(object):
                 continue
             if param._grad_ivar() is not None:
                 grad_var = param._grad_ivar()
-                params_grads.append((jparam, grad_var))
+                params_grads.append((param, grad_var))
 
         optimize_ops = self.apply_optimize(
             loss=None, startup_program=None, params_grads=params_grads)

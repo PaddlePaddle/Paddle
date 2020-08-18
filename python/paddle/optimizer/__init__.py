@@ -20,7 +20,7 @@ __all__ = [
     'LambOptimizer', 'LarsMomentum', 'LarsMomentumOptimizer',
     'LookaheadOptimizer', 'ModelAverage', 'Momentum', 'MomentumOptimizer',
     'PipelineOptimizer', 'RecomputeOptimizer', 'RMSPropOptimizer', 'SGD',
-    'SGDOptimizer'
+    'SGDOptimizer', 'Optimizer'
 ]
 
 
@@ -33,3 +33,4 @@ from ..fluid.optimizer import  SGD, Momentum, Adagrad, Dpsgd, DecayedAdagrad, \
             RecomputeOptimizer
 
 from .optimizer import Optimizer
+from .adam import Adam

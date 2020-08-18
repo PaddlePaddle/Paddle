@@ -446,7 +446,9 @@ class TestAdamOptimizerBetaVariable(unittest.TestCase):
 
 class TestAdamOpV2(unittest.TestCase):
     def test_adam_op(self):
-        exe = fluid.Executor(place, shape)
+        place = fluid.CPUPlace()
+        shape = [2, 3, 8, 8]
+        exe = fluid.Executor(place)
         train_prog = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
@@ -461,7 +463,11 @@ class TestAdamOpV2(unittest.TestCase):
                     shape=[1], value=0.95, dtype='float32', persistable=True)
                 betas = [beta1, beta2]
                 opt = paddle.optimizer.Adam(
-                    lr=1e-5, betas=betas, weight_decay=0.01, eps=1e-8)
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8)
                 opt.minimize(loss)
 
         exe.run(startup)
@@ -469,12 +475,18 @@ class TestAdamOpV2(unittest.TestCase):
         rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
         assert rets[0] is not None
 
-    shape = [2, 3, 8, 8]
-    places = [fluid.CPUPlace()]
-    if core.is_compiled_with_cuda():
-        places.append(fluid.CUDAPlace(0))
-    for place in places:
-        test_with_place(place, shape)
+    def test_adam_op_dygraph(self):
+        with fluid.dygraph.guard():
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = fluid.dygraph.to_variable(value)
+            linear = fluid.Linear(13, 5, dtype="float32")
+
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.01, parameters=linear.parameters())
+            out = linear(a)
+            out.backward()
+            adam.step()
+            adam.clear_gradients()
 
 
 if __name__ == "__main__":
