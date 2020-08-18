@@ -35,11 +35,11 @@ class InputSpec(object):
 
         from paddle.static import InputSpec
 
-        input = InputSpec('x', [None, 784], 'float32')
-        label = InputSpec('label', [None, 1], 'int64')
+        input = InputSpec([None, 784], 'float32', 'x')
+        label = InputSpec([None, 1], 'int64', 'label')
     """
 
-    def __init__(self, name=None, shape=None, dtype='float32'):
+    def __init__(self, shape=None, dtype='float32', name=None):
         self.shape = shape
         self.dtype = dtype
         self.name = name
