@@ -44,12 +44,12 @@ class Adam(Optimizer):
 
     Args:
         learning_rate (float|Tensor, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
-        beta1 (float|Variable, optional): The exponential decay rate for the 1st moment estimates.
-            It should be a float number or a Variable with shape [1] and data type as float32.
+            It can be a float value or a ``Tensor`` with a float type. The default value is 0.001.
+        beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
+            It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.9.
-        beta2 (float|Variable, optional): The exponential decay rate for the 2nd moment estimates.
-            It should be a float number or a Variable with shape [1] and data type as float32.
+        beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
+            It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
@@ -107,7 +107,7 @@ class Adam(Optimizer):
 
         .. code-block:: python
 
-            # Adam with beta1/beta2 as Variable
+            # Adam with beta1/beta2 as Tensor
             import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler

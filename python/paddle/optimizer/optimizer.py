@@ -60,7 +60,7 @@ class Optimizer(object):
     but need to use one of it's implementation.
 
     Args:
-        learning_rate (float|Variable): The learning rate used to update ``Parameter``.
+        learning_rate (float|Tensor): The learning rate used to update ``Parameter``.
             It can be a float value or a ``Tensor`` with a float type.
         parameters (Iterable, optional): Iterable of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
