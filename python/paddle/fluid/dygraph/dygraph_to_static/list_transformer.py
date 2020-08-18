@@ -19,6 +19,7 @@ import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
+from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import array_length, array_read, array_write, create_array
@@ -174,6 +175,7 @@ class ListTransformer(gast.NodeTransformer):
         SplitAssignTransformer(self.root).transform()
         self.visit(self.root)
         self.replace_list_with_tensor_array(self.root)
+        # self.return_dynamic_list_as_tensor_array(self.root)
 
     def visit_Call(self, node):
         #if isinstance(node.func, gast.Attribute):
@@ -249,6 +251,16 @@ class ListTransformer(gast.NodeTransformer):
                         "fluid.dygraph.dygraph_to_static.variable_trans_func.DynamicList()"
                     ).body[0].value
                     child_node.value = dynamic_list_node
+
+    def return_dynamic_list_as_tensor_array(self, node):
+        for child_node in gast.walk(node):
+            if isinstance(child_node, gast.Return):
+                rename_transformer = RenameTransformer(child_node)
+                for name in self.list_name_to_updated:
+                    rename_transformer.rename(
+                        name,
+                        "fluid.dygraph.dygraph_to_static.variable_trans_func.dynamic_list_as_tensor_array({})".
+                        format(name))
 
     def _transform_list_append_in_control_flow(self, node):
         for child_node in gast.walk(node):

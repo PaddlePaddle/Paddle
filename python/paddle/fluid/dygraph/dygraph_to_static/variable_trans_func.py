@@ -172,9 +172,14 @@ class DynamicList(list):
             self.private_array = None
             super(DynamicList, self).__init__(iterable)
 
+    def __str__(self):
+        if self.private_type == Variable:
+            return "DynamicList : " + str(self.private_array)
+        return super(DynamicList, self).__len__()
+
     def __len__(self):
         if self.private_type == Variable:
-            return len(self.private_array)
+            return self.private_size
         return super(DynamicList, self).__len__()
 
     def __getitem__(self, i):

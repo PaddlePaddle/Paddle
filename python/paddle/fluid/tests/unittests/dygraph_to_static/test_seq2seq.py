@@ -116,7 +116,6 @@ def train(attn_model=False):
 
 def infer(attn_model=False):
     with fluid.dygraph.guard(place):
-
         if attn_model:
             model = AttentionModel(
                 args.hidden_size,
@@ -172,7 +171,7 @@ class TestSeq2seq(unittest.TestCase):
             return infer(attn_model)
 
     def _test_train(self, attn_model=False):
-        #dygraph_loss = self.run_dygraph(mode="train", attn_model=attn_model)
+        dygraph_loss = self.run_dygraph(mode="train", attn_model=attn_model)
         static_loss = self.run_static(mode="train", attn_model=attn_model)
         result = np.allclose(dygraph_loss, static_loss)
         self.assertTrue(
@@ -191,12 +190,12 @@ class TestSeq2seq(unittest.TestCase):
 
     def test_base_model(self):
         self._test_train(attn_model=False)
-        #self._test_predict(attn_model=False)
+        self._test_predict(attn_model=False)
 
-    #def test_attn_model(self):
-    #    self._test_train(attn_model=True)
-    # TODO(liym27): add predict
-    # self._test_predict(attn_model=True)
+    def test_attn_model(self):
+        self._test_train(attn_model=True)
+        # TODO(liym27): add predict
+        # self._test_predict(attn_model=True)
 
 
 if __name__ == '__main__':
