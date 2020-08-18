@@ -62,8 +62,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
                              None by default.
 
     Returns:
-        Tensor: The output tensor of avg adaptive pool2d result. The data type is same
-                  as input tensor.
+        Tensor: The output tensor of avg adaptive pool2d result. The data type is same as input tensor.
 
     Raises:
         ValueError: If `data_format` is not "NCHW" or "NHWC".
@@ -178,8 +177,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
                              None by default.
 
     Returns:
-        Tensor: The output tensor of avg adaptive pool3d result. The data type is same
-                  as input tensor.
+        Tensor: The output tensor of avg adaptive pool3d result. The data type is same as input tensor.
 
     Raises:
         ValueError: If `data_format` is not "NCDHW" or "NDHWC".
