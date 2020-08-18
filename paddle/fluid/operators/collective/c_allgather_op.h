@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -30,7 +31,27 @@ template <typename T>
 class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW("unimplemented cpu kernel for CAllGatherOp.");
+#if defined(PADDLE_WITH_GLOO)
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
+
+    int64_t send_numel = in->numel();
+    const T* send_buff = in->data<T>();
+    T* recv_buff = out->data<T>();
+    auto place = ctx.GetPlace();
+    auto gloo = paddle::framework::GlooWrapper::GetInstance();
+    auto nranks = gloo->Rank();
+    // PADDLE_ENFOREC_EQ(gloo->IsInitialized(), true,
+    gloo::AllgatherOptions opts(gloo->GetContext());
+    opts.setInput(const_cast<T*>(send_buff), send_numel);
+    opts.setOutput(recv_buff, send_numel * nranks);
+    gloo::allgather(opts);
+#else
+    PADDLE_ENFORCE_EQ(
+        true, false,
+        platform::errors::Unavailable(
+            "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
+#endif
   }
 };
 

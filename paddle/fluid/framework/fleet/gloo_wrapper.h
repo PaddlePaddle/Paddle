@@ -105,6 +105,13 @@ enum GlooStoreType { HDFS, HTTP };
 
 class GlooWrapper {
  public:
+  static std::shared_ptr<GlooWrapper> GetInstance() {
+    if (nullptr == s_instance_) {
+      s_instance_.reset(new GlooWrapper());
+    }
+    return s_instance_;
+  }
+
   GlooWrapper() {}
 
   virtual ~GlooWrapper() {}
@@ -152,6 +159,9 @@ class GlooWrapper {
     LOG(WARNING) << "Barrier does nothing when WITH_GLOO=OFF";
 #endif
   }
+
+  bool IsInitialized() { return is_initialized_; }
+  std::shared_ptr<gloo::Context> GetContext() { return context_; }
 
   template <typename T>
   std::vector<T> AllReduce(std::vector<T>& sendbuf,            // NOLINT
@@ -221,6 +231,8 @@ class GlooWrapper {
   // configs for http store
   int http_port_;
   std::string http_scope_;
+
+  static std::shared_ptr<GlooWrapper> s_instance_;
 };
 
 }  // namespace framework
