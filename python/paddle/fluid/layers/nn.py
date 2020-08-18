@@ -3352,6 +3352,15 @@ def data_norm(input,
         "BatchSum": batch_sum,
         "BatchSquareSum": batch_square_sum
     }
+    attrs = {
+        "epsilon": epsilon,
+        "sync_stats": sync_stats,
+        "summary_decay_rate": summary_decay_rate,
+    }
+    if slot_dim > 0:
+        attrs["slot_dim"] = slot_dim
+    if enable_scale_and_shift:
+        attrs["enable_scale_and_shift"] = enable_scale_and_shift
     if enable_scale_and_shift:
         inputs["scale_w"] = scale_w
         inputs["bias"] = bias
@@ -3366,13 +3375,7 @@ def data_norm(input,
             "BatchSum": batch_sum,
             "BatchSquareSum": batch_square_sum
         },
-        attrs={
-            "epsilon": epsilon,
-            "slot_dim": slot_dim,
-            "sync_stats": sync_stats,
-            "summary_decay_rate": summary_decay_rate,
-            "enable_scale_and_shift": enable_scale_and_shift
-        })
+        attrs=attrs)
 
     return helper.append_activation(data_norm_out)
 
