@@ -246,22 +246,36 @@ def monkey_patch_math_varbase():
         ('ndim', _ndim_),
         ('size', lambda x: x.shape),
         # Type2: From Template that create core.ops automatically. It's recommended.
-        ('__add__', _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
+        ('__add__',
+         _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
         ##  a+b == b+a. Do not need to reverse explicitly
-        ('__radd__', _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
-        ('__sub__', _binary_creator_('__sub__', 'elementwise_sub', False, _scalar_sub_)),
-        ('__rsub__', _binary_creator_('__rsub__', 'elementwise_sub', True, _scalar_rsub_)),
-        ('__mul__', _binary_creator_('__mul__', 'elementwise_mul', False, _scalar_mul_)),
+        ('__radd__',
+         _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
+        ('__sub__', _binary_creator_('__sub__', 'elementwise_sub', False,
+                                     _scalar_sub_)),
+        ('__rsub__', _binary_creator_('__rsub__', 'elementwise_sub', True,
+                                      _scalar_rsub_)),
+        ('__mul__', _binary_creator_('__mul__', 'elementwise_mul', False,
+                                     _scalar_mul_)),
         ## a*b == b*a. Do not need to reverse explicitly
-        ('__rmul__', _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
-        ('__div__', _binary_creator_('__div__', 'elementwise_div', False, _scalar_div_)),
-        ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div', False, _scalar_div_)),
-        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True, None)),
-        ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div', True, None)),
-        ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False, None)),
-        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True, None)),
-        ('__floordiv__', _binary_creator_('__floordiv__', 'elementwise_floordiv', False, None)),
-        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False, None)),
+        ('__rmul__',
+         _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
+        ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
+                                     _scalar_div_)),
+        ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
+                                         False, _scalar_div_)),
+        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
+                                      None)),
+        ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div', True,
+                                          None)),
+        ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
+                                     None)),
+        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
+                                      None)),
+        ('__floordiv__', _binary_creator_('__floordiv__',
+                                          'elementwise_floordiv', False, None)),
+        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
+                                     None)),
         ## for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
@@ -300,13 +314,13 @@ def monkey_patch_math_varbase():
     if not _already_patch_varbase:
         for method in varbase_methods:
             method_name = method[0]
-            method_impl = method[0]
+            method_impl = method[1]
             setattr(core.VarBase, method_name, method_impl)
     else:
         import paddle.tensor
         for method_name in common_methods:
             if hasattr(core.VarBase, method_name): continue
-            method_impl = getattr(paddle.tensor, method, None)
+            method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(core.VarBase, method_name, method_impl)
 
     _already_patch_varbase = True
