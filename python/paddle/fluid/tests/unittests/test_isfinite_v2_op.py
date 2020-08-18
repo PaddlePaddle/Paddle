@@ -136,7 +136,26 @@ class TestCUDANormal(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
-    pass
+    def test_bad_input(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_isinf_bad_x():
+                x = [1, 2, 3]
+                result = paddle.tensor.isinf(x)
+
+            self.assertRaises(TypeError, test_isinf_bad_x)
+
+            def test_isnan_bad_x():
+                x = [1, 2, 3]
+                result = paddle.tensor.isnan(x)
+
+            self.assertRaises(TypeError, test_isnan_bad_x)
+
+            def test_isfinite_bad_x():
+                x = [1, 2, 3]
+                result = paddle.tensor.isfinite(x)
+
+            self.assertRaises(TypeError, test_isfinite_bad_x)
 
 
 if __name__ == '__main__':

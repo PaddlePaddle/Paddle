@@ -398,7 +398,7 @@ class AllOutVisitor : public boost::static_visitor<> {
 };
 
 template <typename Predicate>
-inline bool All(const framework::Tensor& tensor, Predicate predicate,
+inline void All(const framework::Tensor& tensor, Predicate predicate,
                 framework::Tensor* out) {
   AllOutVisitor<Predicate> visitor(tensor, predicate, out);
   auto place = tensor.place();

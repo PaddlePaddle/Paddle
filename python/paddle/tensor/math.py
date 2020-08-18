@@ -1741,11 +1741,11 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
 def isfinite(x, name=None):
     """
-	    :alias: paddle.tensor.math.isfinite
+      :alias: paddle.tensor.math.isfinite
     Return whether every element of input tensor is finite number or not.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1777,7 +1777,7 @@ def isinf(x, name=None):
     Return whether every element of input tensor is `+/-INF` or not.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1809,7 +1809,7 @@ def isnan(x, name=None):
     Return whether every element of input tensor is `NaN` or not.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
