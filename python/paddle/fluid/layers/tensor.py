@@ -1454,7 +1454,7 @@ def linspace(start, stop, num, dtype=None, name=None):
     Raises:
         TypeError: The ``dtype`` must be one of int32, int64, float32 and float64.
         TypeError: The type of ``num`` must be int When it's not a Tensor.
-        TypeError: The data type of ``num`` must be int32 or int 64  When it's  a Tensor.
+        TypeError: The data type of ``num`` must be int32  When it's  a Tensor.
         TypeError: The data type of ``start`` and  ``stop`` must be same as ``dtype`` When it's  a Tensor.
 
 
@@ -1480,7 +1480,6 @@ def linspace(start, stop, num, dtype=None, name=None):
         tensor_stop = fill_constant([1], dtype, stop)
     if not isinstance(num, Variable):
         tensor_num = fill_constant([1], 'int32', num)
-        tensor_num = tensor_num
     if in_dygraph_mode():
         return core.ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                  dtype)
@@ -1497,7 +1496,7 @@ def linspace(start, stop, num, dtype=None, name=None):
     else:
         check_type(stop, 'stop', (int, float), 'linspace')
     if isinstance(num, Variable):
-        check_dtype(num.dtype, 'num', ['int32', 'int64'], 'linspace')
+        check_dtype(num.dtype, 'num', ['int32'], 'linspace')
     else:
         check_type(num, 'num', (int), 'linspace')
     check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
