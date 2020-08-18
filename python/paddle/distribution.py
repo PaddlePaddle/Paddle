@@ -36,7 +36,7 @@ __all__ = ['Distribution', 'Uniform', 'Normal']
 
 class Distribution(object):
     """
-    Distribution is the abstract base class for probability distributions.
+    The abstract base class for probability distributions. Functions are implemented in specific distributions.
     """
 
     def __init__(self):
@@ -189,6 +189,8 @@ class Uniform(Distribution):
           # [0.6931472] with shape: [1]
           lp = uniform.log_prob(value_tensor)
           # [-0.6931472] with shape: [1]
+          p = uniform.probs(value_tensor)
+          # [0.5] with shape: [1]
     """
 
     def __init__(self, low, high, name=None):
@@ -348,6 +350,8 @@ class Normal(Distribution):
           # [1.4189385] with shape: [1]
           lp = normal_a.log_prob(value_tensor)
           # [-1.2389386] with shape: [1]
+          p = normal_a.probs(value_tensor)
+          # [0.28969154] with shape: [1]
           kl = normal_a.kl_divergence(normal_b)
           # [0.34939718] with shape: [1]
     """
