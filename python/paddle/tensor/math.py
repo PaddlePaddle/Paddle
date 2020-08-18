@@ -1758,7 +1758,7 @@ def isfinite(x, name=None):
             import numpy as np
             paddle.disable_static()
             x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            x = paddle.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
             out = paddle.tensor.isfinite(x)
             print(out.numpy())  # [False  True  True False  True False False]
     """
@@ -1789,7 +1789,7 @@ def isinf(x, name=None):
             import numpy as np
             paddle.disable_static()
             x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            x = paddle.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
             out = paddle.tensor.isinf(x)
             print(out.numpy())  # [ True False False  True False False False]
     """
@@ -1820,7 +1820,7 @@ def isnan(x, name=None):
             import numpy as np
             paddle.disable_static()
             x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            x = paddle.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
             out = paddle.tensor.isinf(x)
             print(out.numpy())  # [False False False False False  True  True]
     """
