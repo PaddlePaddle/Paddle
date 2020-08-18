@@ -62,9 +62,9 @@ class MovieReviews(Dataset):
 		    super(SimpleNet, self).__init__()
 
 		def forward(self, word, category):
-		    return paddle.reduce_sum(word), category
+		    return paddle.sum(word), category
 
-	    paddle.fluid.enable_imperative()
+	    paddle.disable_static()
 
 	    movie_reviews = MovieReviews(mode='train')
 

@@ -58,9 +58,9 @@ class UCIHousing(Dataset):
 		    super(SimpleNet, self).__init__()
 
 		def forward(self, feature, target):
-		    return paddle.reduce_sum(feature), target
+		    return paddle.sum(feature), target
 
-	    paddle.fluid.enable_imperative()
+	    paddle.disable_static()
 
 	    uci_housing = UCIHousing(mode='train')
 

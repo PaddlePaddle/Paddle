@@ -57,9 +57,9 @@ class Imdb(Dataset):
 		    super(SimpleNet, self).__init__()
 
 		def forward(self, doc, label):
-		    return paddle.reduce_sum(doc), label
+		    return paddle.sum(doc), label
 
-	    paddle.fluid.enable_imperative()
+	    paddle.disable_static()
 
 	    imdb = Imdb(mode='train')
 

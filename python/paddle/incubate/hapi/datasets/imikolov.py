@@ -57,9 +57,9 @@ class Imikolov(Dataset):
 		    super(SimpleNet, self).__init__()
 
 		def forward(self, src, trg):
-		    return paddle.reduce_sum(src), paddle.reduce_sum(trg)
+		    return paddle.sum(src), paddle.sum(trg)
 
-	    paddle.fluid.enable_imperative()
+	    paddle.disable_static()
 
 	    imikolov = Imikolov(mode='train', data_type='SEQ', window_size=2)
 

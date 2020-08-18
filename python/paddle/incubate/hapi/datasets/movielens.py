@@ -114,11 +114,11 @@ class Movielens(Dataset):
 		    super(SimpleNet, self).__init__()
 
 		def forward(self, category, title, rating):
-		    return paddle.reduce_sum(category), \
-			    paddle.reduce_sum(title), \
-			    paddle.reduce_sum(rating)
+		    return paddle.sum(category), \
+			    paddle.sum(title), \
+			    paddle.sum(rating)
 
-	    paddle.fluid.enable_imperative()
+	    paddle.disable_static()
 
 	    movielens = Movielens(mode='train')
 

@@ -71,13 +71,31 @@ class Conll05st(Dataset):
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import Cifar
+	    import paddle
+	    from paddle.incubate.hapi.datasets import Conll05st
 
-            cifar = Cifar(mode='train10')
+	    class SimpleNet(paddle.nn.Layer):
+		def __init__(self):
+		    super(SimpleNet, self).__init__()
 
-            for i in range(len(cifar)):
-                sample = cifar[i]
-                print(sample[0].shape, sample[1])
+		def forward(self, pred_idx, mark, label):
+		    return paddle.sum(pred_idx), \
+			    paddle.sum(mark), \
+			    paddle.sum(label)
+
+	    paddle.disable_static()
+
+	    conll05st = Conll05st()
+
+	    for i in range(10):
+		pred_idx, mark, label= conll05st[i][-3:]
+		pred_idx = paddle.to_tensor(pred_idx)
+		mark = paddle.to_tensor(mark)
+		label = paddle.to_tensor(label)
+
+		model = SimpleNet()
+		pred_idx, mark, label= model(pred_idx, mark, label)
+		print(pred_idx.numpy(), mark.numpy(), label.numpy())
 
     """
 

@@ -60,9 +60,9 @@ class VOC2012(Dataset):
 		    super(SimpleNet, self).__init__()
 
 		def forward(self, image, label):
-		    return paddle.reduce_sum(image), label
+		    return paddle.sum(image), label
 
-	    paddle.fluid.enable_imperative()
+	    paddle.disable_static()
 
 	    voc2012 = VOC2012(mode='train')
 
