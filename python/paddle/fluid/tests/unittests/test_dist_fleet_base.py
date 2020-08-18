@@ -157,7 +157,13 @@ class TestFleetBase(unittest.TestCase):
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
 
+    def tearDown(self):
+        t = time.time() - self.startTime
+        print('%s: %.3f' % (self.__class__.__name__, t))
+
     def setUp(self):
+        self.startTime = time.time()
+
         self._mode = "sync"
         self._reader = "pyreader"
         self._trainers = 2
