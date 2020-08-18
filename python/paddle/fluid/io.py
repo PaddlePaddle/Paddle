@@ -29,7 +29,6 @@ import paddle
 import paddle.reader
 from paddle.reader import *
 from paddle.fluid import layers
-from paddle.fluid import CPUPlace
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, \
@@ -568,12 +567,6 @@ def _save_distributed_persistables(executor, dirname, main_program):
             "'_save_distributed_persistables' just be designed for distributed training."
         )
 
-    # Todo(MrChengmo): support recv&save GPU-Kernel for ps-gpu model save
-    if not isinstance(executor.place, CPUPlace):
-        save_executor = Executor(CPUPlace())
-    else:
-        save_executor = executor
-
     remote_params_map = main_program._parameters_on_pservers.get_distributed_vars_by_vtypes(
         ["Optimizer", "RemotePrefetch"], groupby=True)
 
@@ -590,17 +583,14 @@ def _save_distributed_persistables(executor, dirname, main_program):
     local_vars = list(
         filter(__exclude_vars(exclude_var_names), main_program.list_vars()))
     save_vars(
-        save_executor,
-        main_program=main_program,
-        dirname=dirname,
-        vars=local_vars)
+        executor, main_program=main_program, dirname=dirname, vars=local_vars)
 
     if main_program._is_chief:
         if remote_params_map:
-            __save_remote_params(save_executor, dirname, remote_params_map)
+            __save_remote_params(executor, dirname, remote_params_map)
         if main_program._distributed_lookup_table:
             __save_distributed_lookup_tables(
-                save_executor, dirname, main_program._distributed_lookup_table,
+                executor, dirname, main_program._distributed_lookup_table,
                 main_program._endpoints)
 
 
