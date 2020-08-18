@@ -105,8 +105,11 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "Set true to transpose the last two dimensions of Y before "
                   "doing multiplication")
         .SetDefault(false);
-    AddComment(R"DOC(
-
+    AddComment(
+        R"DOC(Batch Matrix multiplication Yi = Ai * Bi, where A has shape (dim0, dim1, ... M, K),
+B has shape (dim0, dim1, ... K, N), Y has shape (dim0, dim1, ... M, N) and i ranges
+from 0 to (dim0 * dim1 ...) - 1. rank(A) == rank(B) >= 2. In case of A and B being
+two dimensional, it behaves like normal matrix multiplication.
 )DOC");
   }
 };

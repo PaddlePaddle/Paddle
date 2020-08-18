@@ -107,12 +107,14 @@ static void IncreaseIndexInDims(const int ndim, const int64_t* dims,
 }
 
 template <typename DeviceContext, typename T>
-void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
-                    bool trans_y,
+void MatMulFunction(const Tensor* X, const Tensor* Y,
+                    const std::vector<std::int64_t>& x_dims,
+                    const std::vector<std::int64_t>& y_dims, Tensor* Out,
+                    bool trans_x, bool trans_y,
                     const paddle::framework::ExecutionContext& ctx) {
   // get dims
-  const std::vector<std::int64_t> x_dims = vectorize(X->dims());
-  const std::vector<std::int64_t> y_dims = vectorize(Y->dims());
+  // const std::vector<std::int64_t> x_dims = vectorize(X->dims());
+  // const std::vector<std::int64_t> y_dims = vectorize(Y->dims());
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
 
@@ -323,6 +325,16 @@ void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
 }
 
 template <typename DeviceContext, typename T>
+void MatMulFunction(const Tensor* X, const Tensor* Y, Tensor* Out, bool trans_x,
+                    bool trans_y,
+                    const paddle::framework::ExecutionContext& ctx) {
+  const std::vector<std::int64_t> x_dims = vectorize(X->dims());
+  const std::vector<std::int64_t> y_dims = vectorize(Y->dims());
+  MatMulFunction<DeviceContext, T>(X, Y, x_dims, y_dims, Out, trans_x, trans_y,
+                                   ctx);
+}
+
+template <typename DeviceContext, typename T>
 class MatMulV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
@@ -346,12 +358,13 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     bool trans_y = ctx.Attr<bool>("trans_y");
 
     // get dims
-    const std::vector<std::int64_t> x_dims = vectorize(X->dims());
-    const std::vector<std::int64_t> y_dims = vectorize(Y->dims());
-    const std::vector<std::int64_t> dout_dims = vectorize(dOut->dims());
-    const int x_ndim = x_dims.size();
-    const int y_ndim = y_dims.size();
-    const int ndim = dout_dims.size();
+    std::vector<std::int64_t> x_dims = vectorize(X->dims());
+    std::vector<std::int64_t> y_dims = vectorize(Y->dims());
+    std::vector<std::int64_t> dout_dims = vectorize(dOut->dims());
+
+    int x_ndim = x_dims.size();
+    int y_ndim = y_dims.size();
+    int ndim = dout_dims.size();
 
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
@@ -369,44 +382,77 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
       }
     }
 
-    // FIXME
+    // It is very tricky.
+    if (x_ndim == 1) {
+      x_dims.insert(x_dims.begin() + 0, 1);
+      x_ndim += 1;
+      if (trans_x)
+        dout_dims.push_back(1);
+      else
+        dout_dims.insert(dout_dims.begin() + ndim - 1, 1);
+      ndim += 1;
+    }
+
+    VLOG(0) << "x_dims";
+    for (auto ele : x_dims) VLOG(0) << ele;
+
+    if (y_ndim == 1) {
+      y_dims.push_back(1);
+      y_ndim += 1;
+      if (trans_y)
+        dout_dims.insert(dout_dims.begin() + ndim - 1, 1);
+      else
+        dout_dims.push_back(1);
+      ndim += 1;
+    }
+    VLOG(0) << "y_dims";
+    for (auto ele : y_dims) VLOG(0) << ele;
+
+    VLOG(0) << "dout_dims";
+    for (auto ele : dout_dims) VLOG(0) << ele;
+
     assert(x_ndim >= 2 && y_ndim >= 2);
     // the normal case
     Tensor dx_help, dy_help;
-
     if (trans_x) {
       if (trans_y) {
         // X'Y'
         // dA = Y'G', dB = G'X'
         if (dx)
-          MatMulFunction<DeviceContext, T>(Y, dOut, &dx_help, true, true, ctx);
+          MatMulFunction<DeviceContext, T>(Y, dOut, y_dims, dout_dims, &dx_help,
+                                           true, true, ctx);
         if (dy)
-          MatMulFunction<DeviceContext, T>(dOut, X, &dy_help, true, true, ctx);
+          MatMulFunction<DeviceContext, T>(dOut, X, dout_dims, x_dims, &dy_help,
+                                           true, true, ctx);
       } else {
         // X'Y:
         // dX = YG', dY = XG
         if (dx)
-          MatMulFunction<DeviceContext, T>(Y, dOut, &dx_help, false, true, ctx);
+          MatMulFunction<DeviceContext, T>(Y, dOut, y_dims, dout_dims, &dx_help,
+                                           false, true, ctx);
         if (dy)
-          MatMulFunction<DeviceContext, T>(X, dOut, &dy_help, false, false,
-                                           ctx);
+          MatMulFunction<DeviceContext, T>(X, dOut, x_dims, dout_dims, &dy_help,
+                                           false, false, ctx);
       }
     } else {
       if (trans_y) {
         // XY':
         // dX = GY, dY = G'X
         if (dx)
-          MatMulFunction<DeviceContext, T>(dOut, Y, &dx_help, false, false,
-                                           ctx);
+          MatMulFunction<DeviceContext, T>(dOut, Y, dout_dims, y_dims, &dx_help,
+                                           false, false, ctx);
         if (dy)
-          MatMulFunction<DeviceContext, T>(dOut, X, &dy_help, true, false, ctx);
+          MatMulFunction<DeviceContext, T>(dOut, X, dout_dims, x_dims, &dy_help,
+                                           true, false, ctx);
       } else {
         // XY:
         // dX = GY', dY = X'G
         if (dx)
-          MatMulFunction<DeviceContext, T>(dOut, Y, &dx_help, false, true, ctx);
+          MatMulFunction<DeviceContext, T>(dOut, Y, dout_dims, y_dims, &dx_help,
+                                           false, true, ctx);
         if (dy)
-          MatMulFunction<DeviceContext, T>(X, dOut, &dy_help, true, false, ctx);
+          MatMulFunction<DeviceContext, T>(X, dOut, x_dims, dout_dims, &dy_help,
+                                           true, false, ctx);
       }
     }
 
@@ -444,35 +490,35 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
       }
     }
 
-    // T* vlog_x = dx_help.data<T>();
-    // T* vlog_y = dy_help.data<T>();
-    // VLOG(0) << "x data:";
-    // for (int i =0; i < dx_help.numel(); ++i){
-    //     VLOG(0) << vlog_x[i];
-    // }
-    // VLOG(0) << "y data:";
+    VLOG(0) << "dx_reduce_dims";
+    for (auto ele : dx_reduce_dims) {
+      VLOG(0) << ele;
+    }
 
-    // for (int i =0; i < dy_help.numel(); ++i){
-    //     VLOG(0) << vlog_y[i];
-    // }
+    VLOG(0) << "dy_reduce_dims";
+    for (auto ele : dy_reduce_dims) {
+      VLOG(0) << ele;
+    }
 
-    // VLOG(0) << "dx_reduce_dims";
-    // for(auto ele : dx_reduce_dims){
-    //   VLOG(0) << ele;
-    // }
+    VLOG(0) << "dx_help_dims";
+    for (auto ele : dx_help_dims) {
+      VLOG(0) << ele;
+    }
 
-    // VLOG(0) << "dy_reduce_dims";
-    // for(auto ele : dy_reduce_dims){
-    //   VLOG(0) << ele;
-    // }
+    VLOG(0) << "dy_help_dims";
+    for (auto ele : dy_help_dims) {
+      VLOG(0) << ele;
+    }
 
     // reduce sum to get grad by ReduceSum
     if (dx) {
+      dx->Resize(dx_help.dims());
       ReduceSumForMatmulGrad<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
                                                ctx);
       dx->Resize(X->dims());
     }
     if (dy) {
+      dy->Resize(dy_help.dims());
       ReduceSumForMatmulGrad<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
                                                ctx);
       dy->Resize(Y->dims());
