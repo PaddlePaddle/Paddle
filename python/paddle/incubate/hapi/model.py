@@ -1551,29 +1551,44 @@ class Model(object):
 
         Examples:
         .. code-block:: python
+
             import numpy as np
-            import paddle.fluid as fluid
+            import paddle
             import paddle.incubate.hapi as hapi
             from paddle.nn import Linear
+            from paddle.incubate.hapi.datasets.mnist import MNIST as MnistDataset
 
-            class MyModel(fluid.dygraph.Layer):
-                def __init__(self, classifier_activation='softmax'):
-                    super(MyModel, self).__init__()
-                    self._fc = Linear(20, 10, act=classifier_activation)
 
-                @fluid.dygraph.jit.declarative # In static mode, you need to delete this.
-                def forward(self, x):
-                    y = self._fc(x)
-                    return y
+            class Mnist(Layer):
+                def __init__(self, classifier_act=None):
+                    super(Mnist, self).__init__()
 
-            dynamic = True # False.
-            fluid.enable_dygraph() if dynamic else None
-            inputs = hapi.Input('x', [-1, 20], 'float32')
-            model = hapi.Model(MyModel(), inputs)
-            model.prepare()
-            tensor_img = np.array(np.random.random((1, 20)), dtype=np.float32)
-            results = model.test_batch(tensor_img) # Now it's necessary in a dygraph
+                    self.fc = Linear(input_dim=784, output_dim=10, act="softmax")
 
+                @paddle.jit.to_static # In static mode, you need to delete this.
+                def forward(self, inputs):
+                    outputs = self.fc(inputs)
+                    return outputs
+
+
+            dynamic = True # False
+            device = hapi.set_device('gpu')
+
+            # if use static graph, do not set
+            disable_static(device) if dynamic else None
+
+            # inputs and labels are not required for dynamic graph.
+            input = hapi.Input('x', [None, 784], 'float32')
+            label = hapi.Input('label', [None, 1], 'int64')
+
+            model = hapi.Model(Mnist(), input, label)
+            optim = optimizer.SGD(learning_rate=1e-3,
+                parameter_list=model.parameters())
+            model.prepare(optim,
+                            paddle.nn.CrossEntropyLoss(),
+                            hapi.metrics.Accuracy())
+            mnist_data = hapi.datasets.MNIST(mode='train', chw_format=False)
+            model.fit(mnist_data, epochs=1, batch_size=32, verbose=0)
             model.save_inference_model('inference_model')
         """
 

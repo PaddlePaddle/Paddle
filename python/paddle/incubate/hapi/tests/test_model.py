@@ -473,23 +473,23 @@ class TestModelFunction(unittest.TestCase):
             fluid.enable_dygraph() if dynamic else None
             prog_translator = ProgramTranslator()
             prog_translator.enable(False) if not dynamic else None
+            net = LeNetDeclarative()
+            inputs = [Input('X', [None, 1, 28, 28], 'float32')]
+            model = Model(net, inputs)
+            model.prepare()
+            save_dir = tempfile.mkdtemp()
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+            tensor_img = np.array(
+                np.random.random((1, 1, 28, 28)), dtype=np.float32)
+            ori_results = model.test_batch(tensor_img)
+            model.save_inference_model(save_dir)
+            fluid.disable_dygraph() if dynamic else None
+
+            place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
             new_scope = fluid.Scope()
             with fluid.scope_guard(new_scope):
-                net = LeNetDeclarative()
-                inputs = [Input('X', [None, 1, 28, 28], 'float32')]
-                model = Model(net, inputs)
-                model.prepare()
-                save_dir = tempfile.mkdtemp()
-                if not os.path.exists(save_dir):
-                    os.makedirs(save_dir)
-                tensor_img = np.array(
-                    np.random.random((1, 1, 28, 28)), dtype=np.float32)
-                ori_results = model.test_batch(tensor_img)
-                model.save_inference_model(save_dir)
-                fluid.disable_dygraph() if dynamic else None
-
-                place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
-                ) else fluid.CUDAPlace(0)
                 exe = fluid.Executor(place)
                 [inference_program, feed_target_names, fetch_targets] = (
                     fluid.io.load_inference_model(
