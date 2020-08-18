@@ -21,6 +21,7 @@ from ..fluid.layers import transpose  #DEFINE_ALIAS
 
 __all__ = [
     'matmul',
+    'matmul_v2',
     'dot',
     #       'einsum',
     'norm',
@@ -164,6 +165,141 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='matmul',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
+
+
+def matmul_v2(x, y, transpose_x=False, transpose_y=False, name=None):
+    """
+    Applies matrix multiplication to two tensors. It is different from the
+    `matmul` in the broadcast rule. `matmul_v2` follows the complete broadcast 
+    rules, and its behavior is consistent with `np.matmul`.
+
+    Currently, the input tensors' rank can be any, `matmul_v2` can be used to
+    achieve the `dot`, `matmul` and `batchmatmul`.
+
+    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
+    flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
+
+    - If a transpose flag is specified, the last two dimensions of the tensor
+      are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for
+      :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as
+      :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the
+      opposite: It is treated as :math:`[D, 1]` in nontransposed form and as
+      :math:`[1, D]` in transposed form.
+
+    The multiplication behavior depends on the dimensions of `x` and `y`. Specifically:
+
+    - If both tensors are 1-dimensional, the dot product result is obtained.
+    - If both tensors are 2-dimensional, the matrix-matrix product is obtained.
+    - If the `x` is 1-dimensional and the `y` is 2-dimensional, 
+      a `1` is prepended to its dimension in order to conduct the matrix multiply. 
+      After the matrix multiply, the prepended dimension is removed.
+    - If the `x` is 2-dimensional and `y` is 1-dimensional, 
+      the matrix-vector product is obtained.
+    - If both arguments are at least 1-dimensional and at least one argument 
+      is N-dimensional (where N > 2), then a batched matrix multiply is obtained. 
+      If the first argument is 1-dimensional, a 1 is prepended to its dimension 
+      in order to conduct the batched matrix multiply and removed after. 
+      If the second argument is 1-dimensional, a 1 is appended to its 
+      dimension for the purpose of the batched matrix multiple and removed after. 
+      The non-matrix (exclude the last two dimensions) dimensions are 
+      broadcasted according the broadcast rule. 
+      For example, if input is a :math:`j \times 1 \times n \times m` (j×1×n×m) 
+      tensor and the other is a :math:`1 \times m \times p` (k×m×p) tensor, 
+      out will be an :math:`j \times k \times n \times p` (j×k×n×p) tensor.
+
+    Args:
+        x (Tensor): The input variable which is a Tensor or LoDTensor.
+        y (Tensor): The input variable which is a Tensor or LoDTensor.
+        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
+        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Tensor: The output Tensor.
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+        # vector x vector
+        x_data = np.random.uniform([10]).astype(np.float32)
+        y_data = np.random.uniform([10]).astype(np.float32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        z = paddle.matmul_v2(x, y)
+        print(z.numpy().shape)
+        # [1]
+
+        # matrix x vector
+        x_data = np.random.uniform([10, 5]).astype(np.float32)
+        y_data = np.random.uniform([5]).astype(np.float32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        z = paddle.matmul_v2(x, y)
+        print(z.numpy().shape)
+        # [10]
+
+        # batched matrix x broadcasted vector
+        x_data = np.random.uniform([10, 5, 2]).astype(np.float32)
+        y_data = np.random.uniform([2]).astype(np.float32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        z = paddle.matmul_v2(x, y)
+        print(z.numpy().shape)
+        # [10, 5]
+
+        # batched matrix x batched matrix
+        x_data = np.random.uniform([10, 5, 2]).astype(np.float32)
+        y_data = np.random.uniform([10, 2, 5]).astype(np.float32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        z = paddle.matmul_v2(x, y)
+        print(z.numpy().shape)
+        # [10, 5, 5]
+
+        # batched matrix x broadcasted matrix
+        x_data = np.random.uniform([10, 1, 5, 2]).astype(np.float32)
+        y_data = np.random.uniform([1, 3, 2, 5]).astype(np.float32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        z = paddle.matmul_v2(x, y)
+        print(z.numpy().shape)
+        # [10, 3, 5, 5]
+
+    """
+    if in_dygraph_mode():
+        out = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, y, out, 'trans_x', transpose_x, 'trans_y',
+                        transpose_y)
+        return out
+
+    attrs = {
+        'trans_x': transpose_x,
+        'trans_y': transpose_y,
+    }
+
+    def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            check_variable_and_dtype(val, name, ['float32', 'float64'],
+                                     'matmul_v2')
+
+    __check_input(x, y)
+
+    helper = LayerHelper('matmul_v2', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='matmul_v2',
         inputs={'X': x,
                 'Y': y},
         outputs={'Out': out},

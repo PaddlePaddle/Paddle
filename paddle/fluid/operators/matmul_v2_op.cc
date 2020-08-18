@@ -94,9 +94,9 @@ class MatMulV2Op : public framework::OperatorWithKernel {
 class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "tensor of shape (dim0, dim1 ... M, K)");
-    AddInput("Y", "tensor of shape (dim0, dim1 ... K, N)");
-    AddOutput("Out", "tensor of shape (dim0, dim1 ... M, N)");
+    AddInput("X", "tensor of shape (d0, d1 ... M, K)");
+    AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
+    AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
     AddAttr<bool>("trans_x",
                   "Set true to transpose the last two dimensions of X before "
                   "doing multiplication")
@@ -106,10 +106,10 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "doing multiplication")
         .SetDefault(false);
     AddComment(
-        R"DOC(Batch Matrix multiplication Yi = Ai * Bi, where A has shape (dim0, dim1, ... M, K),
-B has shape (dim0, dim1, ... K, N), Y has shape (dim0, dim1, ... M, N) and i ranges
-from 0 to (dim0 * dim1 ...) - 1. rank(A) == rank(B) >= 2. In case of A and B being
-two dimensional, it behaves like normal matrix multiplication.
+        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
+        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)). 
+        In addition, it is also satisfied the broadcast rule which is similar as
+        numpy.matmul.
 )DOC");
   }
 };

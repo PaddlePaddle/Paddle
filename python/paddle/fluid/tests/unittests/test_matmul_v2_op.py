@@ -145,7 +145,7 @@ class TestMatMuklOp6(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (1, 2, 100, 2)
+        self.x_shape = (1, 2, 100, 1)
         self.y_shape = (100, )
         self.trans_x = True
         self.trans_y = False
@@ -158,7 +158,7 @@ class TestMatMuklOp7(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (1, 2, 2, 100)
+        self.x_shape = (1, 2, 1, 100)
         self.y_shape = (100, )
         self.trans_x = False
         self.trans_y = False
@@ -269,90 +269,80 @@ class TestMatMuklOp15(TestMatMulV2Op):
         self.dtype = "float64"
 
 
-# class TestMatMuklOp2(TestMatMulV2Op):
-#     """
-#     """
-#     def config(self):
-#         self.x_shape = (10,)
-#         self.y_shape = (1, 10, 5)
-#         self.trans_x = False
-#         self.trans_y = False
-#         self.dtype = "float64"
+class TestMatMuklOp16(TestMatMulV2Op):
+    """
+    case 16 : to check the gradient for special case
+    """
 
-# class TestMatMuklOp3(TestMatMulV2Op):
-#     """
-#     """
-#     def config(self):
-#         self.x_shape = (10,)
-#         self.y_shape = (10, 10, 5)
-#         self.trans_x = False
-#         self.trans_y = False
-#         self.dtype = "float64"
+    def config(self):
+        self.x_shape = (100)
+        self.y_shape = (1, 2, 2, 100, 1)
+        self.trans_x = False
+        self.trans_y = False
+        self.dtype = "float64"
 
-# class Generator(object):
-#     def setUp(self):
-#         self.op_type = "matmul_v2"
-#         X = np.random.random(self.shape_X).astype("float64")
-#         Y = np.random.random(self.shape_Y).astype("float64")
-#         Out = reference_matmul(X, Y, self.transpose_X, self.transpose_Y)
-#         #print(X.shape,Y.shape,Out.shape,self.transpose_X,self.transpose_X)
-#         #print(Out)
-#         self.inputs = {'X': X, 'Y': Y}
-#         self.attrs = {
-#             'trans_x': self.transpose_X,
-#             'trans_y': self.transpose_Y
-#         }
-#         self.outputs = {'Out': Out}
 
-#     def test_check_output(self):
-#         self.check_output()
+class TestMatMuklOp17(TestMatMulV2Op):
+    """
+    case 17 : to check the gradient for special case
+    """
 
-# def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y, batchsize):
-#     global shape_x, shape_y
-#     if dim_X == 1 and dim_Y == 1:
-#         return [100], [100]
+    def config(self):
+        self.x_shape = (2, 1, 100)
+        self.y_shape = (100)
+        self.trans_x = False
+        self.trans_y = False
+        self.dtype = "float64"
 
-#     if dim_X == 1: 
-#         shape_x = [100]
-#         if transpose_Y:
-#             shape_y = [2, 100]
-#         else:
-#             if batchsize == -1:
-#                 shape_y = [100, 2]
-#             else:
-#                 shape_y = [batchsize, 100, 2]
-#         return shape_x, shape_y
 
-#     if dim_Y == 1: 
-#         shape_y = [100]
-#         if transpose_X:
-#             shape_x = [100, 2]
-#         else:
-#             if batchsize == -1:
-#                 shape_x = [2, 100]
-#             else:
-#                 shape_x = [batchsize, 2, 100]
-#         return shape_x, shape_y
+class TestMatMuklOp18(TestMatMulV2Op):
+    """
+    case 17 : to check the gradient for special case
+    """
 
-# # Generate operators cases for all possibilities
-# def inject_test(dim_x, dim_y, trans_x, trans_y, batchsize):
-#     test_name = ('TestMatMulV2Op_dimX_{}_dim_Y_{}_transX_{}_transY_{}_Batchsize{}'.format(
-#         dim_x, dim_y, trans_x, trans_y, batchsize))
-#     shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
-#                                                   trans_y, batchsize)
-#     print(shape_x, shape_y, trans_x, trans_y)
-#     globals()[test_name] = type(test_name, (Generator, OpTest), {
-#         'shape_X': shape_x,
-#         'shape_Y': shape_y,
-#         'transpose_X': trans_x,
-#         'transpose_Y': trans_y,
-#     })
+    def config(self):
+        self.x_shape = (2, 100, 1)
+        self.y_shape = (100)
+        self.trans_x = False
+        self.trans_y = True
+        self.dtype = "float64"
 
-# for dim_X in [1]:
-#     for dim_Y in [1, -1]:
-#         for batchsize in [-1, 1, 2]:
-#             for transose_x in [False, True]:
-#                 for transose_y in [False, True]:
-#                     inject_test(dim_X, dim_Y, transose_x, transose_y, batchsize)
+
+class TestMatMulV2API(unittest.TestCase):
+    def setUp(self):
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float64")
+            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float64")
+
+            result = paddle.matmul_v2(input_x, input_y)
+
+            x_np = np.random([4, 3]).astype("float64")
+            y_np = np.random([3, 4]).astype("float64")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input_x": x_np,
+                                    "input_y": y_np},
+                              fetch_list=[result])
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input_x = np.random([4, 3]).astype("float64")
+                input_y = np.random([3, 4]).astype("float64")
+                x = paddle.to_tensor(input_x)
+                y = paddle.to_tensor(input_y)
+                result = paddle.matmul_v2(x, y)
+
+
 if __name__ == "__main__":
     unittest.main()
