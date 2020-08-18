@@ -68,6 +68,33 @@ class UniformNumpy(DistributionNumpy):
         return np.log(self.high - self.low)
 
 
+class NormalNumpy(DistributionNumpy):
+    def __init__(self, loc, scale):
+        self.loc = np.array(loc).astype('float32')
+        self.scale = np.array(scale).astype('float32')
+
+    def sample(self, shape):
+        shape = tuple(shape) + (self.loc + self.scale).shape
+        return self.loc + (np.random.randn(*shape) * self.scale)
+
+    def log_prob(self, value):
+        var = self.scale * self.scale
+        log_scale = np.log(self.scale)
+        return -((value - self.loc) * (value - self.loc)) / (
+            2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
+
+    def entropy(self):
+        return 0.5 + 0.5 * np.log(np.array(2. * math.pi).astype(
+            'float32')) + np.log(self.scale)
+
+    def kl_divergence(self, other):
+        var_ratio = (self.scale / other.scale)
+        var_ratio = var_ratio * var_ratio
+        t1 = ((self.loc - other.loc) / other.scale)
+        t1 = (t1 * t1)
+        return 0.5 * (var_ratio + t1 - 1 - np.log(var_ratio))
+
+
 class DistributionTest(unittest.TestCase):
     def setUp(self, use_gpu=False):
         self.use_gpu = use_gpu
