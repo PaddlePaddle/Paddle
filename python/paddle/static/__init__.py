@@ -21,8 +21,8 @@ __all__ = [
     'load', 'data', 'InputSpec'
 ]
 
-from .input import InputSpec
-from ..fluid.data import data  #DEFINE_ALIAS
+from .input import data  #DEFINE_ALIAS
+from .input import InputSpec  #DEFINE_ALIAS
 from ..fluid.executor import Executor  #DEFINE_ALIAS
 from ..fluid.executor import global_scope  #DEFINE_ALIAS
 from ..fluid.executor import scope_guard  #DEFINE_ALIAS

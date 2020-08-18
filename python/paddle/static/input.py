@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import data
+from ..fluid.data import data
+
+__all__ = ['data', 'InputSpec']
 
 
 class InputSpec(object):
@@ -46,3 +48,7 @@ class InputSpec(object):
 
     def _create_feed_layer(self):
         return data(self.name, shape=self.shape, dtype=self.dtype)
+
+    def __repr__(self):
+        return '{}(shape={}, dtype={}, name={})'.format(
+            type_name(self), self.shape, self.dtype, self.name)

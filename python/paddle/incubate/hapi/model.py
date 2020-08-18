@@ -702,16 +702,8 @@ class Model(object):
             if not isinstance(inputs, (list, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or dict in static graph mode")
-        if inputs is None:
-            self._inputs = [Input(name=n) \
-                for n in extract_args(self.network.forward) if n != 'self']
-        elif isinstance(input, dict):
-            self._inputs = [inputs[n] \
-                for n in extract_args(self.network.forward) if n != 'self']
-        else:
-            self._inputs = to_list(inputs)
-
-        self._labels = to_list(labels)
+        self._inputs = self._verify_spec(inputs, True)
+        self._labels = self._verify_spec(labels)
 
         # init backend
         if fluid.in_dygraph_mode():
@@ -1606,6 +1598,36 @@ class Model(object):
         if mode == 'test':
             return logs, outputs
         return logs
+
+    def _verify_spec(self, specs, is_input=False):
+        out_specs = []
+
+        if specs is None:
+            # If not specific specs of `Input`, using argument names of `forward` function
+            # to generate `Input`.
+            if is_input:
+                out_specs = [
+                    Input(name=n) for n in extract_args(self.network.forward)
+                    if n != 'self'
+                ]
+            else:
+                out_specs = to_list(specs)
+        elif isinstance(specs, dict):
+            assert is_input == False
+            out_specs = [specs[n] \
+                for n in extract_args(self.network.forward) if n != 'self']
+        else:
+            out_specs = to_list(specs)
+        # Note: checks each element has specificed `name`.
+        if out_specs is not None:
+            for i, spec in enumerate(out_specs):
+                assert isinstance(spec, Input)
+                if spec.name is None:
+                    raise ValueError(
+                        "Requires Input[{}].name != None, but receive `None` with {}.".
+                        format(i, spec))
+
+        return out_specs
 
     def _reset_metrics(self):
         for metric in self._metrics:
