@@ -80,6 +80,9 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
     LIST(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
 
+    LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_sparse_embedding_ctr)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_gloo)
+
     # TODO: Fix these unittests failed on Windows
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
