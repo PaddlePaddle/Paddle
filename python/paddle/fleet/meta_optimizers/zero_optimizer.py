@@ -368,6 +368,8 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         if startup_program is None:
             startup_program = default_startup_program()
+        main_block = loss.block
+        startup_block = startup_program.global_block()
 
         # step1: initialize nccl
         # TODO(mapingshuo) fix get_trainer_endpoints
@@ -379,6 +381,7 @@ class ZeroOptimizer(MetaOptimizerBase):
             collective_helper._init_communicator(
                 startup_program, current_endpoint, endpoints,
                 self.role_maker.worker_index(), ring_id, '6174')
+        startup_block._sync_with_cpp()
 
         # step2: split params
         self._varname2param = {x[0].name: x[0] for x in params_grads}
@@ -387,8 +390,6 @@ class ZeroOptimizer(MetaOptimizerBase):
         print(self._device2params)
 
         # step3: remove ops that generate params
-        main_block = loss.block
-        startup_block = startup_program.global_block()
         for idx, op in reversed(list(enumerate(startup_block.ops))):
             for output_name in op.desc.output_arg_names():
                 var_device_id = self._var_device_id(output_name)
@@ -399,6 +400,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                       (self.role_maker.worker_index(), op.type))
                 startup_block._remove_op(idx)
                 break
+        startup_block._sync_with_cpp()
 
         for idx, op in reversed(list(enumerate(main_block.ops))):
             for output_name in op.desc.output_arg_names():
@@ -408,9 +410,11 @@ class ZeroOptimizer(MetaOptimizerBase):
                           (self.role_maker.worker_index(), op.type))
                     main_block._remove_op(idx)
                     break
+        main_block._sync_with_cpp()
 
         # step4 add broadcast ops
         self._insert_broadcast_ops(main_block)
+        main_block._sync_with_cpp()
 
         # step5: remove Parameter from main program and startup program
         for var_name, var in main_block.vars.items():
@@ -421,6 +425,7 @@ class ZeroOptimizer(MetaOptimizerBase):
             print("%d: main_block remove %s" %
                   (self.role_maker.worker_index(), var_name))
             main_block._remove_var(var_name)
+        main_block._sync_with_cpp()
 
         for var_name, var in startup_block.vars.items():
             var_device_id = self._var_device_id(var_name)
@@ -430,13 +435,15 @@ class ZeroOptimizer(MetaOptimizerBase):
             print("%d: startup_block remove %s" %
                   (self.role_maker.worker_index(), var_name))
             startup_block._remove_var(var_name)
+        startup_block._sync_with_cpp()
 
         # step6: insert reduce_sum for grad
         self._insert_scale_loss_grad_ops(
             main_block, scale=1.0 / self.role_maker.worker_num())
+        main_block._sync_with_cpp()
         self._insert_allreduce_ops(main_block)
+        main_block._sync_with_cpp()
         print("insert allreduce done")
-
         return optimize_ops, params_grads
 
     def _broadcast_params(self, block):
