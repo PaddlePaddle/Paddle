@@ -18,9 +18,9 @@ import random
 import tempfile
 import shutil
 
-from paddle.incubate.hapi.model import Model, Input
-from paddle.incubate.hapi.vision.models import LeNet
-from paddle.incubate.hapi.callbacks import config_callbacks
+from paddle import Model, Input
+from paddle.vision.models import LeNet
+from paddle.callbacks import config_callbacks
 
 
 class TestCallbacks(unittest.TestCase):

@@ -13,9 +13,11 @@
 # limitations under the License.
 
 # TODO: define the functions to manipulate devices 
+import re
+
 from paddle.fluid import core
 from paddle.fluid import framework
-import re
+from paddle.fluid.dygraph.parallel import ParallelEnv
 
 __all__ = [
     'get_cudnn_version',
@@ -90,18 +92,23 @@ def set_device(device):
     lower_device = device.lower()
     if lower_device == 'cpu':
         place = core.CPUPlace()
-        framework._set_expected_place(place)
+    elif lower_device == 'gpu':
+        if not fluid.is_compiled_with_cuda():
+            raise ValueError(
+                "The device should not be 'gpu', " \
+                "since PaddlePaddle is not compiled with CUDA")
+        place = core.CUDAPlace(ParallelEnv().dev_id)
     else:
-        avaliable_device = ((lower_device == 'cpu') or
-                            re.match(r'gpu:\d+', lower_device))
+        avaliable_device = re.match(r'gpu:\d+', lower_device)
         if not avaliable_device:
             raise ValueError(
-                "The device must be a string which is like 'cpu' or 'gpu:0'")
+                "The device must be a string which is like 'cpu', 'gpu' or 'gpu:0'")
         device_info_list = device.split(':', 1)
         device_id = device_info_list[1]
         device_id = int(device_id)
         place = core.CUDAPlace(device_id)
-        framework._set_expected_place(place)
+    framework._set_expected_place(place)
+    return place
 
 
 def get_device():

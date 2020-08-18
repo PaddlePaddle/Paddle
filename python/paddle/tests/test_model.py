@@ -26,13 +26,12 @@ from paddle import fluid
 from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
 from paddle.fluid.dygraph.base import to_variable
 
-import paddle.incubate.hapi as hapi
-from paddle.incubate.hapi import Model, Input
+from paddle import Model, Input
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
-from paddle.incubate.hapi.datasets import MNIST
-from paddle.incubate.hapi.vision.models import LeNet
-from paddle.incubate.hapi.distributed import DistributedBatchSampler, prepare_distributed_context
+from paddle.datasets import MNIST
+from paddle.vision.models import LeNet
+from paddle.distributed import DistributedBatchSampler, prepare_distributed_context
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
@@ -124,8 +123,8 @@ class TestModel(unittest.TestCase):
     def setUpClass(cls):
         if not fluid.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
-        cls.device = hapi.set_device('gpu')
-        fluid.enable_dygraph(cls.device)
+        cls.device = paddle.set_device('gpu')
+        fluid.enable_dygraph(device)
 
         sp_num = 1280
         cls.train_dataset = MnistDataset(mode='train', sample_num=sp_num)
@@ -322,7 +321,7 @@ class TestModelFunction(unittest.TestCase):
 
         ref = get_expect()
         for dynamic in [True, False]:
-            device = hapi.set_device('cpu')
+            device = paddle.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             self.set_seed()
 
@@ -354,7 +353,7 @@ class TestModelFunction(unittest.TestCase):
 
         ref = get_expect()
         for dynamic in [True, False]:
-            device = hapi.set_device('cpu')
+            device = paddle.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             self.set_seed()
             net = MyModel()
@@ -369,7 +368,7 @@ class TestModelFunction(unittest.TestCase):
     def test_save_load(self):
         path = tempfile.mkdtemp()
         for dynamic in [True, False]:
-            device = hapi.set_device('cpu')
+            device = paddle.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel(classifier_activation=None)
             inputs = [Input('x', [None, 20], 'float32')]
@@ -387,7 +386,7 @@ class TestModelFunction(unittest.TestCase):
     def test_dynamic_save_static_load(self):
         path = tempfile.mkdtemp()
         # dynamic saving
-        device = hapi.set_device('cpu')
+        device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)
         model = Model(MyModel(classifier_activation=None))
         optim = fluid.optimizer.SGD(learning_rate=0.001,
@@ -417,7 +416,7 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(path + '/test')
 
-        device = hapi.set_device('cpu')
+        device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)  #if dynamic else None
 
         net = MyModel(classifier_activation=None)
@@ -433,7 +432,7 @@ class TestModelFunction(unittest.TestCase):
 
     def test_parameters(self):
         for dynamic in [True, False]:
-            device = hapi.set_device('cpu')
+            device = paddle.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel()
             inputs = [Input('x', [None, 20], 'float32')]

@@ -34,18 +34,159 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
-from paddle.io import DataLoader, Dataset
+from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.metric import Metric
 
-from .distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from .callbacks import config_callbacks
-from .utils import to_list, to_numpy, flatten_list, restore_flatten_list, extract_args
 from .device import _get_device
 
 __all__ = [
     'Model',
     'Input',
 ]
+
+
+def to_list(value):
+    if value is None:
+        return value
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value]
+
+
+def to_numpy(var):
+    assert isinstance(var, (Variable, fluid.core.VarBase)), "not a variable"
+    if isinstance(var, fluid.core.VarBase):
+        return var.numpy()
+    t = global_scope().find_var(var.name).get_tensor()
+    return np.array(t)
+
+
+def flatten_list(l):
+    assert isinstance(l, list), "not a list"
+    outl = []
+    splits = []
+    for sl in l:
+        assert isinstance(sl, list), "sub content not a list"
+        splits.append(len(sl))
+        outl += sl
+    return outl, splits
+
+
+def restore_flatten_list(l, splits):
+    outl = []
+    for split in splits:
+        assert len(l) >= split, "list length invalid"
+        sl, l = l[:split], l[split:]
+        outl.append(sl)
+    return outl
+
+
+def extract_args(func):
+    if hasattr(inspect, 'getfullargspec'):
+        return inspect.getfullargspec(func)[0]
+    else:
+        return inspect.getargspec(func)[0]
+
+
+def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
+    return collective._c_allgather(
+        x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream)
+
+
+def wait_server_ready(endpoints):
+    assert not isinstance(endpoints, six.string_types)
+    while True:
+        all_ok = True
+        not_ready_endpoints = []
+        for ep in endpoints:
+            ip_port = ep.split(":")
+            with contextlib.closing(
+                    socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+                sock.settimeout(2)
+                result = sock.connect_ex((ip_port[0], int(ip_port[1])))
+                if result != 0:
+                    all_ok = False
+                    not_ready_endpoints.append(ep)
+        if not all_ok:
+            time.sleep(3)
+        else:
+            break
+
+
+def init_communicator(program, rank, nranks, wait_port, current_endpoint,
+                      endpoints):
+    if nranks < 2:
+        return
+    other_endpoints = endpoints[:]
+    other_endpoints.remove(current_endpoint)
+    if rank == 0 and wait_port:
+        wait_server_ready(other_endpoints)
+    block = program.global_block()
+    nccl_id_var = block.create_var(
+        name=fluid.unique_name.generate('nccl_id'),
+        persistable=True,
+        type=fluid.core.VarDesc.VarType.RAW)
+
+    block.append_op(
+        type='c_gen_nccl_id',
+        inputs={},
+        outputs={'Out': nccl_id_var},
+        attrs={
+            'rank': rank,
+            'endpoint': current_endpoint,
+            'other_endpoints': other_endpoints
+        })
+
+    block.append_op(
+        type='c_comm_init',
+        inputs={'X': nccl_id_var},
+        outputs={},
+        attrs={
+            'nranks': nranks,
+            'rank': rank,
+            'ring_id': 0,
+        })
+
+
+def prepare_distributed_context(place=None):
+    if place is None:
+        place = fluid.CUDAPlace(ParallelEnv().dev_id) if ParallelEnv().nranks > 1 \
+            else fluid.CUDAPlace(0)
+
+    strategy = ParallelStrategy()
+    strategy.nranks = ParallelEnv().nranks
+    strategy.local_rank = ParallelEnv().local_rank
+    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
+    strategy.current_endpoint = ParallelEnv().current_endpoint
+
+    if strategy.nranks < 2:
+        return
+
+    global _parallel_context_initialized
+
+    if not _parallel_context_initialized and isinstance(place, fluid.CUDAPlace):
+
+        def _init_context():
+            communicator_prog = fluid.Program()
+            init_communicator(communicator_prog, strategy.local_rank,
+                              strategy.nranks, True, strategy.current_endpoint,
+                              strategy.trainer_endpoints)
+            exe = fluid.Executor(place)
+            exe.run(communicator_prog)
+
+        if fluid.in_dygraph_mode():
+            fluid.disable_dygraph()
+            _init_context()
+            fluid.enable_dygraph(place)
+        else:
+            _init_context()
+
+    else:
+        assert ("Only support CUDAPlace for now.")
+
+    _parallel_context_initialized = True
+    return strategy
 
 
 class Input(paddle.nn.Layer):
