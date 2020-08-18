@@ -27,7 +27,7 @@ from itertools import chain
 import paddle
 from paddle.io import Dataset
 
-__all__ = ['Sentiment']
+__all__ = ['MovieReviews']
 
 URL = "https://corpora.bj.bcebos.com/movie_reviews%2Fmovie_reviews.zip"
 MD5 = '155de2b77c6834dd8eea7cbe88e93acb'
@@ -36,9 +36,9 @@ NUM_TRAINING_INSTANCES = 1600
 NUM_TOTAL_INSTANCES = 2000
 
 
-class Sentiment(Dataset):
+class MovieReviews(Dataset):
     """
-    Implementation of sentiment dataset.
+    Implementation of `NLTK movie reviews <http://www.nltk.org/nltk_data/>`_ dataset.
 
     Args:
         data_file(str): path to data tar file, can be set None if
@@ -48,18 +48,18 @@ class Sentiment(Dataset):
             :attr:`data_file` unset. Default True.
 
     Returns:
-        Dataset: instance of sentiment dataset
+        Dataset: instance of movie reviews dataset
 
     Examples:
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import Sentiment
+            from paddle.incubate.hapi.datasets import MovieReviews
 
-            sentiment = Sentiment()
+            movie_reviews = moviw_reviews()
 
-            for i in range(len(sentiment)):
-                sample = sentiment[i]
+            for i in range(len(movie_reviews)):
+                sample = movie_reviews[i]
                 print(sample)
 
     """

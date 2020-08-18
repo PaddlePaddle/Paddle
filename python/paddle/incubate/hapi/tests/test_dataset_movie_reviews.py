@@ -23,29 +23,29 @@ from paddle.incubate.hapi.datasets import *
 from paddle.incubate.hapi.datasets.utils import _check_exists_and_download
 
 
-class TestSentimentTrain(unittest.TestCase):
+class TestMovieReviewsTrain(unittest.TestCase):
     def test_main(self):
-        sentiment = Sentiment(mode='train')
-        self.assertTrue(len(sentiment) == 1600)
+        movie_reviews = MovieReviews(mode='train')
+        self.assertTrue(len(movie_reviews) == 1600)
 
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1600)
-        data = sentiment[idx]
+        data = movie_reviews[idx]
         self.assertTrue(len(data) == 2)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(int(data[1]) in [0, 1])
 
 
-class TestSentimentTest(unittest.TestCase):
+class TestMovieReviewsTest(unittest.TestCase):
     def test_main(self):
-        sentiment = Sentiment(mode='test')
-        self.assertTrue(len(sentiment) == 400)
+        movie_reviews = MovieReviews(mode='test')
+        self.assertTrue(len(movie_reviews) == 400)
 
         # traversal whole dataset may cost a
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 400)
-        data = sentiment[idx]
+        data = movie_reviews[idx]
         self.assertTrue(len(data) == 2)
         self.assertTrue(len(data[0].shape) == 1)
         self.assertTrue(int(data[1]) in [0, 1])
