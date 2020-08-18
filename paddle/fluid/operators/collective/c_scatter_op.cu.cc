@@ -81,7 +81,9 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
                               place, static_cast<framework::Tensor*>(out));
     out->Resize(out_dims);
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_ENFORCE_EQ(
+        true, false,
+        platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };

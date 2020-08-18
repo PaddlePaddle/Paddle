@@ -54,7 +54,9 @@ template <ReduceType red_type, typename T>
 class CReduceOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW("CReduce op do not support CPUKernel for now.");
+    PADDLE_ENFORCE_EQ(
+        true, false,
+        platform::errors::Unavailable("Unimplemented CReduceOpCPUKernel now."));
   }
 };
 
@@ -104,14 +106,18 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
         break;
 
       default:
-        PADDLE_THROW("Invalid reduce type: %d", red_type);
+        PADDLE_ENFORCE_EQ(true, false, platform::errors::InvalidArgument(
+                                           "red_type must be one of kRedSum, "
+                                           "kRedMax, kRedMin, kRedProd."));
     }
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
         sendbuff, recvbuff, numel, dtype, nccl_red_type, root, comm->comm(),
         stream));
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_ENFORCE_EQ(true, false,
+                      platform::errors::Unavailable(
+                          "PaddlePaddle should compile with GPU.."));
 #endif
   }
 };
