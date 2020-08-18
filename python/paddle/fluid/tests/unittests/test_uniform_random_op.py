@@ -477,20 +477,14 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
 
 class TestUniformAlias(unittest.TestCase):
     def test_alias(self):
-        def test_paddle_uniform():
-            paddle.uniform([2, 3], min=-5.0, max=5.0)
+        paddle.uniform([2, 3], min=-5.0, max=5.0)
+        paddle.tensor.uniform([2, 3], min=-5.0, max=5.0)
+        paddle.tensor.random.uniform([2, 3], min=-5.0, max=5.0)
 
-        self.assertRaises(AttributeError, test_paddle_uniform)
+        def test_uniform_random():
+            paddle.tensor.random.uniform_random([2, 3], min=-5.0, max=5.0)
 
-        def test_paddle_tensor_uniform():
-            paddle.tensor.uniform([2, 3], min=-5.0, max=5.0)
-
-        self.assertRaises(AttributeError, test_paddle_tensor_uniform)
-
-        def test_paddle_tensor_random_uniform():
-            paddle.tensor.random.uniform([2, 3], min=-5.0, max=5.0)
-
-        self.assertRaises(AttributeError, test_paddle_tensor_random_uniform)
+        self.assertRaises(AttributeError, test_uniform_random)
 
 
 if __name__ == "__main__":
