@@ -376,7 +376,7 @@ def roll(x, shifts, axis=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis,
                'shifts': shifts})
-    out = reshape(out, shape=origin_shape, inplace=True)
+    out = layers.reshape(out, shape=origin_shape, inplace=True)
     return out
 
 

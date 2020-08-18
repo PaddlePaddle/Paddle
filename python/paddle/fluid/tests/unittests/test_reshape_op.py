@@ -286,7 +286,7 @@ class TestReshapeAPI(unittest.TestCase):
         self._set_paddle_api()
         input = np.random.random([2, 25]).astype("float32")
         shape = [2, 5, 5]
-        with paddle.imperative.guard():
+        with fluid.dygraph.guard():
             x = self.to_tensor(input)
             positive_five = self.fill_constant([1], "int32", 5)
 
