@@ -25,6 +25,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
+        self.meta_optimizers_black_list = []
 
     def _is_graph_out(self):
         return True

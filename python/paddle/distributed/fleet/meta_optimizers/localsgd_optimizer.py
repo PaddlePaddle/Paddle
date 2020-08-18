@@ -25,6 +25,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         super(LocalSGDOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = []
+        self.meta_optimizers_black_list = []
         self.snapshot_key = '@SNAPSHOT'
 
     def _can_apply(self):

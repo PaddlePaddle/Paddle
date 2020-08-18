@@ -29,6 +29,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
             "LambOptimizer",
             "GraphExecutionOptimizer",
         ]
+        self.meta_optimizers_black_list = []
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
