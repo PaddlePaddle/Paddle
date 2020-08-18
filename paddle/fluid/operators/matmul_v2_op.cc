@@ -108,7 +108,7 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(
         R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
         B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)). 
-        In addition, it is also satisfied the broadcast rule which is similar as
+        In addition, it also satisfied the broadcast rule which is similar as
         numpy.matmul.
 )DOC");
   }

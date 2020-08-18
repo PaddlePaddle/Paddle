@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
 
 import paddle
 import paddle.fluid as fluid
@@ -295,19 +296,6 @@ class TestMatMuklOp17(TestMatMulV2Op):
         self.dtype = "float64"
 
 
-class TestMatMuklOp18(TestMatMulV2Op):
-    """
-    case 17 : to check the gradient for special case
-    """
-
-    def config(self):
-        self.x_shape = (2, 100, 1)
-        self.y_shape = (100)
-        self.trans_x = False
-        self.trans_y = True
-        self.dtype = "float64"
-
-
 class TestMatMulV2API(unittest.TestCase):
     def setUp(self):
         self.places = [fluid.CPUPlace()]
@@ -316,13 +304,13 @@ class TestMatMulV2API(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float64")
-            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float64")
+            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float32")
+            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float32")
 
-            result = paddle.matmul_v2(input_x, input_y)
+            result = paddle.matmul(input_x, input_y)
 
-            x_np = np.random([4, 3]).astype("float64")
-            y_np = np.random([3, 4]).astype("float64")
+            x_np = np.random.random([4, 3]).astype("float32")
+            y_np = np.random.random([3, 4]).astype("float32")
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
@@ -337,11 +325,11 @@ class TestMatMulV2API(unittest.TestCase):
     def test_dygraph(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-                input_x = np.random([4, 3]).astype("float64")
-                input_y = np.random([3, 4]).astype("float64")
+                input_x = np.random.random([4, 3]).astype("float64")
+                input_y = np.random.random([3, 4]).astype("float64")
                 x = paddle.to_tensor(input_x)
                 y = paddle.to_tensor(input_y)
-                result = paddle.matmul_v2(x, y)
+                result = paddle.matmul(x, y)
 
 
 if __name__ == "__main__":
