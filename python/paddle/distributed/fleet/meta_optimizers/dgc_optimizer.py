@@ -68,11 +68,7 @@ class DGCOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.dgc = False
-        dist_strategy.dgc_configs = {
-            'rampup_begin_step': 0,
-            'rampup_step': 1,
-            'sparsity': [0.999]
-        }
+        dist_strategy.dgc_configs = {}
 
     def backward(self,
                  loss,

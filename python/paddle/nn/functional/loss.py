@@ -41,6 +41,7 @@ from ...fluid.layers import edit_distance  #DEFINE_ALIAS
 from ...fluid.layers import huber_loss  #DEFINE_ALIAS
 from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layer_helper import LayerHelper
+from ...fluid.framework import in_dygraph_mode
 from ...fluid.framework import Variable
 
 __all__ = [
@@ -175,61 +176,61 @@ def margin_ranking_loss(input,
         return result_out
 
 
-def l1_loss(x, label, reduction='mean', name=None):
+def l1_loss(input, label, reduction='mean', name=None):
     """
-    This operator computes the L1 Loss of Tensor ``x`` and ``label`` as follows.
+    This operator computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
 
-    If :attr:`reduction` set to ``'none'``, the loss is:
-
-    .. math::
-        Out = \lvert x - label\rvert
-
-    If :attr:`reduction` set to ``'mean'``, the loss is:
+    If `reduction` set to ``'none'``, the loss is:
 
     .. math::
-        Out = MEAN(\lvert x - label\rvert)
+        Out = \lvert input - label\rvert
 
-    If :attr:`reduction` set to ``'sum'``, the loss is:
+    If `reduction` set to ``'mean'``, the loss is:
 
     .. math::
-        Out = SUM(\lvert x - label\rvert)
+        Out = MEAN(\lvert input - label\rvert)
+
+    If `reduction` set to ``'sum'``, the loss is:
+
+    .. math::
+        Out = SUM(\lvert input - label\rvert)
 
     
     Parameters:
-        x (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
-        label (Tensor): label. The shapes is [N, *], same shape as ``x`` . It's data type should be float32, float64, int32, int64.
+        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
+        label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
         reduction (str, optional): Indicate the reduction to apply to the loss, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'none'``, the unreduced loss is returned; 
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. 
-            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. 
+            If `reduction` is ``'none'``, the unreduced loss is returned; 
+            If `reduction` is ``'mean'``, the reduced mean loss is returned. 
+            If `reduction` is ``'sum'``, the reduced sum loss is returned. 
             Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor, the L1 Loss of Tensor ``x`` and ``label``.
-            If :attr:`reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``x`` .
-            If :attr:`reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1], which means the output is a scalar.
+        Tensor, the L1 Loss of Tensor ``input`` and ``label``.
+            If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
+            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
     Examples:
         .. code-block:: python
             import paddle
             import numpy as np
             
             paddle.disable_static()
-            x_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
+            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
             label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            x = paddle.to_variable(x_data)
+            input = paddle.to_variable(input_data)
             label = paddle.to_variable(label_data)
 
-            l1_loss = paddle.nn.functional.l1_loss(x, label)
+            l1_loss = paddle.nn.functional.l1_loss(input, label)
             print(l1_loss.numpy())  
             # [0.35]
 
-            l1_loss = paddle.nn.functional.l1_loss(x, label, reduction='none')
+            l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
             print(l1_loss.numpy())  
             # [[0.20000005 0.19999999]
             # [0.2        0.79999995]]
 
-            l1_loss = paddle.nn.functional.l1_loss(x, label, reduction='sum')
+            l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
             print(l1_loss.numpy())  
             # [1.4]
     """
@@ -240,7 +241,7 @@ def l1_loss(x, label, reduction='mean', name=None):
 
     if in_dygraph_mode():
         unreduced = _elementwise_op_in_dygraph(
-            x, label, axis=-1, act='abs', op_name='elementwise_sub')
+            input, label, axis=-1, act='abs', op_name='elementwise_sub')
         if reduction == 'mean':
             return core.ops.mean(unreduced)
         elif reduction == 'sum':
@@ -250,18 +251,18 @@ def l1_loss(x, label, reduction='mean', name=None):
             return unreduced
 
     fluid.data_feeder.check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
 
     if reduction == 'sum':
-        unreduced = paddle.elementwise_sub(x, label, act='abs')
+        unreduced = paddle.elementwise_sub(input, label, act='abs')
         return paddle.sum(unreduced, name=name)
     elif reduction == 'mean':
-        unreduced = paddle.elementwise_sub(x, label, act='abs')
+        unreduced = paddle.elementwise_sub(input, label, act='abs')
         return paddle.mean(unreduced, name=name)
     else:
-        return paddle.elementwise_sub(x, label, act='abs', name=name)
+        return paddle.elementwise_sub(input, label, act='abs', name=name)
 
 
 def nll_loss(input,
