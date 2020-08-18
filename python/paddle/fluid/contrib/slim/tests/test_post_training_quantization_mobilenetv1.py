@@ -28,6 +28,8 @@ from paddle.fluid.contrib.slim.quantization import PostTrainingQuantization
 
 random.seed(0)
 np.random.seed(0)
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CPU_NUM"] = "1"
 
 DATA_DIM = 224
 THREAD = 1
@@ -140,9 +142,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         self.batch_size = 1 if os.environ.get('DATASET') == 'full' else 50
         self.sample_iterations = 50 if os.environ.get(
-            'DATASET') == 'full' else 2
+            'DATASET') == 'full' else 1
         self.infer_iterations = 50000 if os.environ.get(
-            'DATASET') == 'full' else 2
+            'DATASET') == 'full' else 1
 
         self.timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
         self.int8_model = os.path.join(os.getcwd(),
@@ -194,7 +196,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
     def run_program(self, model_path, batch_size, infer_iterations):
         image_shape = [3, 224, 224]
-        place = fluid.CPUPlace()
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() \
+                else fluid.CPUPlace()
         exe = fluid.Executor(place)
         [infer_program, feed_dict, fetch_targets] = \
             fluid.io.load_inference_model(model_path, exe)
@@ -257,6 +260,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             executor=exe,
             sample_generator=val_reader,
             model_dir=model_path,
+            batch_nums=2,
             algo=algo,
             quantizable_op_type=quantizable_op_type,
             is_full_quantize=is_full_quantize,
@@ -311,12 +315,7 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
         data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
-        quantizable_op_type = [
-            "conv2d",
-            "depthwise_conv2d",
-            "mul",
-            "pool2d",
-        ]
+        quantizable_op_type = ["conv2d", "depthwise_conv2d"]
         is_full_quantize = False
         is_use_cache_file = False
         is_optimize_model = True
