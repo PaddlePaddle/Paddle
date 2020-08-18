@@ -23,9 +23,9 @@ from paddle.incubate.hapi.datasets import *
 from paddle.incubate.hapi.datasets.utils import _check_exists_and_download
 
 
-class TestCifarTrain10(unittest.TestCase):
+class TestCifar10Train(unittest.TestCase):
     def test_main(self):
-        cifar = Cifar(mode='train10')
+        cifar = Cifar10(mode='train')
         self.assertTrue(len(cifar) == 50000)
 
         # traversal whole dataset may cost a
@@ -37,9 +37,9 @@ class TestCifarTrain10(unittest.TestCase):
         self.assertTrue(0 <= int(label) <= 9)
 
 
-class TestCifarTest10(unittest.TestCase):
+class TestCifar10Test(unittest.TestCase):
     def test_main(self):
-        cifar = Cifar(mode='test10')
+        cifar = Cifar10(mode='test')
         self.assertTrue(len(cifar) == 10000)
 
         # traversal whole dataset may cost a
@@ -51,9 +51,9 @@ class TestCifarTest10(unittest.TestCase):
         self.assertTrue(0 <= int(label) <= 9)
 
 
-class TestCifarTrain100(unittest.TestCase):
+class TestCifar100Train(unittest.TestCase):
     def test_main(self):
-        cifar = Cifar(mode='train100')
+        cifar = Cifar100(mode='train')
         self.assertTrue(len(cifar) == 50000)
 
         # traversal whole dataset may cost a
@@ -65,9 +65,9 @@ class TestCifarTrain100(unittest.TestCase):
         self.assertTrue(0 <= int(label) <= 99)
 
 
-class TestCifarTest100(unittest.TestCase):
+class TestCifar100Test(unittest.TestCase):
     def test_main(self):
-        cifar = Cifar(mode='test100')
+        cifar = Cifar100(mode='test')
         self.assertTrue(len(cifar) == 10000)
 
         # traversal whole dataset may cost a

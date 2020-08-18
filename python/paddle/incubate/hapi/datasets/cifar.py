@@ -22,7 +22,7 @@ from six.moves import cPickle as pickle
 from paddle.io import Dataset
 from .utils import _check_exists_and_download
 
-__all__ = ['Cifar']
+__all__ = ['Cifar10', 'Cifar100']
 
 URL_PREFIX = 'https://dataset.bj.bcebos.com/cifar/'
 CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'
@@ -38,60 +38,75 @@ MODE_FLAG_MAP = {
 }
 
 
-class Cifar(Dataset):
+class Cifar10(Dataset):
     """
-    Implementation of `Cifar <https://www.cs.toronto.edu/~kriz/cifar.html>`_
-    dataset, supported cifar10 and cifar100.
+    Implementation of `Cifar-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
+    dataset, which has 10 categories.
 
     Args:
         data_file(str): path to data file, can be set None if
             :attr:`download` is True. Default None
-        mode(str): 'train100', 'test100', 'train10' or 'test10' mode. Default 'train100'.
+        mode(str): 'train', 'test' mode. Default 'train'.
         transform(callable): transform to perform on image, None for on transform.
         download(bool): whether to download dataset automatically if
             :attr:`data_file` is not set. Default True
 
     Returns:
-        Dataset: instance of cifar dataset
+        Dataset: instance of cifar-10 dataset
 
     Examples:
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import Cifar
+            from paddle.incubate.hapi.datasets import Cifar10
 
-            cifar = Cifar(mode='train10')
+            cifar10 = Cifar10(mode='train')
 
-            for i in range(len(cifar)):
-                sample = cifar[i]
+            for i in range(len(cifar10)):
+                sample = cifar10[i]
+                print(sample[0].shape, sample[1])
+            
+
+            # Cifar10 with transform
+            from paddle.incubate.hapi.datasets import Cifar10
+            from paddle.incubate.hapi.vision.transforms import Normalize
+
+            normalize = Normalize(mean=[0.5, 0.5, 0.5],
+                                std=[0.5, 0.5, 0.5])
+            cifar10 = Cifar10(mode='train', transform=transform)
+
+            for i in range(len(cifar10)):
+                sample = cifar10[i]
                 print(sample[0].shape, sample[1])
 
     """
 
     def __init__(self,
                  data_file=None,
-                 mode='train100',
+                 mode='train',
                  transform=None,
                  download=True):
-        assert mode.lower() in ['train10', 'test10', 'train100', 'test100'], \
+        assert mode.lower() in ['train', 'test', 'train', 'test'], \
             "mode should be 'train10', 'test10', 'train100' or 'test100', but got {}".format(mode)
         self.mode = mode.lower()
-        self.flag = MODE_FLAG_MAP[self.mode]
+
+        self._init_url_md5_flag()
 
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file is not set and downloading automatically is disabled"
-            data_url = CIFAR10_URL if self.mode in ['train10', 'test10'
-                                                    ] else CIFAR100_URL
-            data_md5 = CIFAR10_MD5 if self.mode in ['train10', 'test10'
-                                                    ] else CIFAR100_MD5
             self.data_file = _check_exists_and_download(
-                data_file, data_url, data_md5, 'cifar', download)
+                data_file, self.data_url, self.data_md5, 'cifar', download)
 
         self.transform = transform
 
         # read dataset into memory
         self._load_data()
+
+    def _init_url_md5_flag(self):
+        self.data_url = CIFAR10_URL
+        self.data_md5 = CIFAR10_MD5
+        self.flag = MODE_FLAG_MAP[self.mode + '10']
 
     def _load_data(self):
         self.data = []
@@ -120,3 +135,45 @@ class Cifar(Dataset):
 
     def __len__(self):
         return len(self.data)
+
+
+class Cifar100(Cifar10):
+    """
+    Implementation of `Cifar-100 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
+    dataset, which has 100 categories.
+
+    Args:
+        data_file(str): path to data file, can be set None if
+            :attr:`download` is True. Default None
+        mode(str): 'train', 'test' mode. Default 'train'.
+        transform(callable): transform to perform on image, None for on transform.
+        download(bool): whether to download dataset automatically if
+            :attr:`data_file` is not set. Default True
+
+    Returns:
+        Dataset: instance of cifar-100 dataset
+
+    Examples:
+
+        .. code-block:: python
+
+            from paddle.incubate.hapi.datasets import Cifar100
+
+            cifar100 = Cifar100(mode='train')
+
+            for i in range(len(cifar100)):
+                sample = cifar100[i]
+                print(sample[0].shape, sample[1])
+
+    """
+    def __init__(self,
+                 data_file=None,
+                 mode='train',
+                 transform=None,
+                 download=True):
+        super(Cifar100, self).__init__(data_file, mode, transform, download)
+
+    def _init_url_md5_flag(self):
+        self.data_url = CIFAR100_URL
+        self.data_md5 = CIFAR100_MD5
+        self.flag = MODE_FLAG_MAP[self.mode + '100']
