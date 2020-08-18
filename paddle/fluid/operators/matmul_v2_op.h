@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <cublas.h>
-#include <gtest/gtest.h>
 #include <algorithm>
 #include <functional>
 #include <vector>
@@ -301,7 +300,7 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
     std::vector<const T*> x_ptr(out_batch_size);
     std::vector<const T*> y_ptr(out_batch_size);
     std::vector<T*> out_ptr(out_batch_size);
-    std::vector<std::int64_t> index(batch_dim);
+    std::vector<std::int64_t> index(batch_dim, 0);
     for (std::int64_t i = 0; i < out_batch_size; ++i) {
       // using the index to get offset
       const std::int64_t x_index =
@@ -398,8 +397,6 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
       ndim += 1;
     }
 
-    ASSERT_GE(x_ndim, 2);
-    ASSERT_GE(y_ndim, 2);
     // the normal case
     Tensor dx_help, dy_help;
     if (trans_x) {
