@@ -31,18 +31,17 @@ import paddle.reader
 import paddle.dataset
 import paddle.batch
 batch = batch.batch
-import paddle.tensor
 from .fluid import monkey_patch_variable
 from .fluid.dygraph import monkey_patch_math_varbase
-monkey_patch_variable()
-monkey_patch_math_varbase()
+#monkey_patch_variable()
+#monkey_patch_math_varbase()
 import paddle.framework
 from .framework import VarBase as Tensor
 from .framework import ComplexVariable as ComplexTensor
 import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
-
+import paddle.tensor
 import paddle.nn
 import paddle.distributed.fleet
 import paddle.optimizer

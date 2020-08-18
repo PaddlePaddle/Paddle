@@ -300,13 +300,13 @@ def monkey_patch_math_varbase():
     if not _already_patch_varbase:
         for method in varbase_methods:
             method_name = method[0]
-            method_impl = method[0]
+            method_impl = method[1]
             setattr(core.VarBase, method_name, method_impl)
     else:
         import paddle.tensor
         for method_name in common_methods:
             if hasattr(core.VarBase, method_name): continue
-            method_impl = getattr(paddle.tensor, method, None)
+            method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(core.VarBase, method_name, method_impl)
 
     _already_patch_varbase = True

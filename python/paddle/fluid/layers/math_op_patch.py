@@ -54,6 +54,8 @@ EXPRESSION_MAP = {
     "__ge__": "A >= B"
 }
 
+# method for Tensor from paddle.tensor
+# edit it when paddle.tensor has new method about Tensor operation
 common_methods = [
     'exp',
     'tanh', 
@@ -451,8 +453,8 @@ def monkey_patch_variable():
     else:
         import paddle.tensor
         for method_name in common_methods:
-            if hasattr(Variable, method): continue
-            method_impl = getattr(paddle.tensor, method, None)
+            if hasattr(Variable, method_name): continue
+            method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(Variable, method_name, method_impl)
 
     _already_patch_variable = True

@@ -467,9 +467,10 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(
                 x.allclose(y).numpy(), paddle.allclose(x, y).numpy()))
+        m = x.expand([2, 2, 3])
         self.assertTrue(
             np.array_equal(
-                x.expand_as(z).numpy(), paddle.expand_as(x, z).numpy()))
+                x.expand_as(m).numpy(), paddle.expand_as(x, m).numpy()))
         index = paddle.to_tensor([2, 1, 0])
         self.assertTrue(
             np.array_equal(
