@@ -26,6 +26,7 @@ from .. import core
 from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.utils import deprecated
 import numpy
 import warnings
 
