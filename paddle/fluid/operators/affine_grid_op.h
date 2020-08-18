@@ -37,12 +37,13 @@ using Array4 = Eigen::DSizes<int64_t, 4>;
  */
 template <typename DeviceContext, typename T>
 struct Linspace {
-  void operator()(T start, T end, int count, framework::Tensor* numbers,
+  void operator()(T start, T end, int count, bool align_corners,
+                  framework::Tensor* numbers,
                   const framework::ExecutionContext& ctx);
 };
 
 template <typename DeviceContext, typename T>
-inline void GetIdxMap(int n, int h, int w, Tensor* grid,
+inline void GetIdxMap(int n, int h, int w, bool align_corners, Tensor* grid,
                       const framework::ExecutionContext& ctx) {
   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
   grid->mutable_data<T>({n, h, w, 3}, ctx.GetPlace());
@@ -50,16 +51,19 @@ inline void GetIdxMap(int n, int h, int w, Tensor* grid,
   // Get indexes of height with shape [height, width, 1]
   Tensor h_idx;
   Linspace<DeviceContext, T> linspace;
-  linspace((T)-1, (T)1, h, &h_idx, ctx);
+  linspace((T)-1, (T)1, h, align_corners, &h_idx, ctx);
   auto h_idx_t = EigenTensor<T, 1>::From(h_idx);
   // Get indexes of width with shape [height, width, 1]
   Tensor w_idx;
-  linspace((T)-1, (T)1, w, &w_idx, ctx);
+  linspace((T)-1, (T)1, w, align_corners, &w_idx, ctx);
   auto w_idx_t = EigenTensor<T, 1>::From(w_idx);
   // Get constant ones tensor with shape [height, width, 1]
   Tensor ones;
   ones.mutable_data<T>({h, w, 1}, ctx.GetPlace());
-  auto ones_t = EigenTensor<T, 3>::From(ones).setConstant((T)1);
+
+  math::SetConstant<DeviceContext, T>()(
+      ctx.template device_context<DeviceContext>(), &ones, static_cast<T>(1));
+  auto ones_t = EigenTensor<T, 3>::From(ones);
   // Get grid tensor with shape [n, h, w, 3] by concatenating h_idx, w_idx and
   // ones
   Tensor w_idx_map;
@@ -74,11 +78,9 @@ inline void GetIdxMap(int n, int h, int w, Tensor* grid,
   Tensor w_h_one_idx_map;
   w_h_one_idx_map.mutable_data<T>({h, w, 3}, ctx.GetPlace());
   auto w_h_one_idx_map_t = EigenTensor<T, 3>::From(w_h_one_idx_map);
-
   w_idx_map_t.device(place) = w_idx_t.reshape(Array2(1, w))
                                   .broadcast(Array2(h, 1))
                                   .reshape(Array3(h, w, 1));
-
   h_idx_map_t.device(place) = h_idx_t.reshape(Array2(1, h))
                                   .broadcast(Array2(w, 1))
                                   .shuffle(Array2(1, 0))
@@ -97,6 +99,7 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
     auto* theta = ctx.Input<Tensor>("Theta");
     int n = theta->dims()[0];
     auto size_attr = ctx.Attr<std::vector<int>>("output_shape");
+    auto align_corners = ctx.Attr<bool>("align_corners");
     int h = 0;
     int w = 0;
     if (size_attr.size() == 0) {
@@ -116,7 +119,7 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<DeviceContext>(), output,
         static_cast<T>(0));
     Tensor grid;
-    GetIdxMap<DeviceContext, T>(n, h, w, &grid, ctx);
+    GetIdxMap<DeviceContext, T>(n, h, w, align_corners, &grid, ctx);
     // output = grid * theta.T
     // TODO(wanghaoshuang): Refine batched matrix multiply
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
@@ -140,6 +143,7 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
     auto theta_grad = ctx.Output<Tensor>(framework::GradVarName("Theta"));
     int n = output_grad->dims()[0];
     auto size_attr = ctx.Attr<std::vector<int>>("output_shape");
+    auto align_corners = ctx.Attr<bool>("align_corners");
     int h = 0;
     int w = 0;
     if (size_attr.size() == 0) {
@@ -158,7 +162,7 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<DeviceContext>(), theta_grad,
         static_cast<T>(0));
     Tensor grid;
-    GetIdxMap<DeviceContext, T>(n, h, w, &grid, ctx);
+    GetIdxMap<DeviceContext, T>(n, h, w, align_corners, &grid, ctx);
     // output = grid * theta.T
     // TODO(wanghaoshuang): Refine batched matrix multiply
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
