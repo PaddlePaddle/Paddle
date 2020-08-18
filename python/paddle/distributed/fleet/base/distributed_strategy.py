@@ -81,6 +81,8 @@ class DistributedJobInfo(object):
 
 
 class DistributedStrategy(object):
+    __lock_attr = False
+
     def __init__(self):
         """
         DistributedStrategy is the main configuration entry for distributed training of Paddle.
@@ -95,6 +97,13 @@ class DistributedStrategy(object):
 
         """
         self.strategy = distributed_strategy_pb2.DistributedStrategy()
+        self.__lock_attr = True
+
+    def __setattr__(self, key, value):
+        if self.__lock_attr and not hasattr(self, key):
+            raise TypeError("%s is not a attribute of %s" %
+                            (key, self.__class__.__name__))
+        object.__setattr__(self, key, value)
 
     def save_to_prototxt(self, output):
         """
