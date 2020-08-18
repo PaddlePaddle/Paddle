@@ -16,6 +16,9 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/platform/float16.h"
+
+namespace plat = paddle::platform;
 
 namespace paddle {
 namespace operators {
@@ -96,15 +99,17 @@ namespace ops = paddle::operators;
       paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
       paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
-#define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)                      \
-  REGISTER_OP_CPU_KERNEL(                                                   \
-      op_type, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int, \
-                                   ops::functor>,                           \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, int64_t,      \
-                          ops::functor>,                                    \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,        \
-                          ops::functor>,                                    \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,       \
+#define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)                       \
+  REGISTER_OP_CPU_KERNEL(                                                    \
+      op_type, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int,  \
+                                   ops::functor>,                            \
+      ops::OverflowKernel<paddle::platform::CPUDeviceContext, int64_t,       \
+                          ops::functor>,                                     \
+      ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,         \
+                          ops::functor>,                                     \
+      ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,        \
+                          ops::functor>,                                     \
+      ops::OverflowKernel<paddle::platform::CPUDeviceContext, plat::float16, \
                           ops::functor>);
 
 REGISTER_V2OP_MAKER(isinf_v2, "isinfv2(X)");

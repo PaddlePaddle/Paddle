@@ -22,6 +22,8 @@ namespace plat = paddle::platform;
   REGISTER_OP_CUDA_KERNEL(                                                    \
       op_type, ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,  \
                                    ops::functor>,                             \
+      ops::OverflowKernel<paddle::platform::CUDADeviceContext, int64_t,       \
+                          ops::functor>,                                      \
       ops::OverflowKernel<paddle::platform::CUDADeviceContext, float,         \
                           ops::functor>,                                      \
       ops::OverflowKernel<paddle::platform::CUDADeviceContext, double,        \
