@@ -90,8 +90,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
         paddle.disable_static()
         # vector x vector
-        x_data = np.random.uniform([10]).astype(np.float32)
-        y_data = np.random.uniform([10]).astype(np.float32)
+        x_data = np.random.random([10]).astype(np.float32)
+        y_data = np.random.random([10]).astype(np.float32)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         z = paddle.matmul(x, y)
@@ -99,8 +99,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         # [1]
 
         # matrix x vector
-        x_data = np.random.uniform([10, 5]).astype(np.float32)
-        y_data = np.random.uniform([5]).astype(np.float32)
+        x_data = np.random.random([10, 5]).astype(np.float32)
+        y_data = np.random.random([5]).astype(np.float32)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         z = paddle.matmul(x, y)
@@ -108,8 +108,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         # [10]
 
         # batched matrix x broadcasted vector
-        x_data = np.random.uniform([10, 5, 2]).astype(np.float32)
-        y_data = np.random.uniform([2]).astype(np.float32)
+        x_data = np.random.random([10, 5, 2]).astype(np.float32)
+        y_data = np.random.random([2]).astype(np.float32)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         z = paddle.matmul(x, y)
@@ -117,8 +117,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         # [10, 5]
 
         # batched matrix x batched matrix
-        x_data = np.random.uniform([10, 5, 2]).astype(np.float32)
-        y_data = np.random.uniform([10, 2, 5]).astype(np.float32)
+        x_data = np.random.random([10, 5, 2]).astype(np.float32)
+        y_data = np.random.random([10, 2, 5]).astype(np.float32)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         z = paddle.matmul(x, y)
@@ -126,8 +126,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         # [10, 5, 5]
 
         # batched matrix x broadcasted matrix
-        x_data = np.random.uniform([10, 1, 5, 2]).astype(np.float32)
-        y_data = np.random.uniform([1, 3, 2, 5]).astype(np.float32)
+        x_data = np.random.random([10, 1, 5, 2]).astype(np.float32)
+        y_data = np.random.random([1, 3, 2, 5]).astype(np.float32)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         z = paddle.matmul(x, y)
