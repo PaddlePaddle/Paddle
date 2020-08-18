@@ -187,14 +187,6 @@ class FleetTranspiler(Fleet):
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
                 recv_type=1)
 
-        for name, ctx in send_ctx.items():
-            print("name: {}, ctx: {}".format(name, ctx))
-
-        print("==== = ==== =============== ====")
-
-        for name, ctx in recv_ctx.items():
-            print("name: {}, ctx: {}".format(name, ctx))
-
         from paddle.fluid.communicator import Communicator
         self._communicator = Communicator(
             trainer_config.mode, kwargs,
