@@ -146,7 +146,7 @@ class Layer(core.Layer):
               import paddle
               import paddle.nn as nn
               
-              paddle.enable_imperative()
+              paddle.disable_static()
               
               net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
 
@@ -161,7 +161,7 @@ class Layer(core.Layer):
 
               print(net.state_dict())
         """
-        for layer in self.sublayers():
+        for layer in self.children():
             layer.apply(fn)
 
         fn(self)
@@ -352,6 +352,56 @@ class Layer(core.Layer):
                 include_sublayers=include_sublayers)
         ]
         return ret
+
+    def children(self):
+        """Returns an iterator over immediate children layers.
+
+        Yields:
+            Layer: a child layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    
+                    layer_list = list(model.children())
+
+                    print(layer_list)
+
+        """
+        for _, layer in self.named_children():
+            yield layer
+
+    def named_children(self):
+        """Returns an iterator over immediate children layers, yielding both
+        the name of the layer as well as the layer itself.
+
+        Yields:
+            (string, Layer): Tuple containing a name and child layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    for prefix, layer in model.named_children():
+                        print(prefix, layer)
+
+        """
+        memo = set()
+        for name, layer in self._sub_layers.items():
+            if layer is not None and layer not in memo:
+                memo.add(layer)
+                yield name, layer
 
     def sublayers(self, include_sublayers=True):
         """Returns a list of sub layers.

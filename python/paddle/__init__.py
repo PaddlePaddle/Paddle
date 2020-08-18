@@ -31,16 +31,18 @@ import paddle.reader
 import paddle.dataset
 import paddle.batch
 batch = batch.batch
+import paddle.framework
+from .framework import VarBase as Tensor
+from .framework import ComplexVariable as ComplexTensor
 import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
 import paddle.tensor
 import paddle.nn
-import paddle.fleet
-import paddle.framework
-import paddle.imperative
+import paddle.distributed.fleet
 import paddle.optimizer
 import paddle.metric
+import paddle.device
 import paddle.incubate.complex as complex
 
 # TODO: define alias in tensor and framework directory
@@ -49,9 +51,7 @@ from .tensor.random import randperm
 
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
-from .tensor.creation import create_tensor  #DEFINE_ALIAS
-# from .tensor.creation import create_lod_tensor        #DEFINE_ALIAS
-# from .tensor.creation import create_random_int_lodtensor        #DEFINE_ALIAS
+from .tensor.creation import to_tensor  #DEFINE_ALIAS
 from .tensor.creation import crop_tensor  #DEFINE_ALIAS
 from .tensor.creation import diag  #DEFINE_ALIAS
 from .tensor.creation import eye  #DEFINE_ALIAS
@@ -69,8 +69,6 @@ from .tensor.creation import full_like  #DEFINE_ALIAS
 from .tensor.creation import triu  #DEFINE_ALIAS
 from .tensor.creation import tril  #DEFINE_ALIAS
 from .tensor.creation import meshgrid  #DEFINE_ALIAS
-from .tensor.io import save  #DEFINE_ALIAS
-from .tensor.io import load  #DEFINE_ALIAS
 from .tensor.linalg import matmul  #DEFINE_ALIAS
 from .tensor.linalg import dot  #DEFINE_ALIAS
 # from .tensor.linalg import einsum        #DEFINE_ALIAS
@@ -104,6 +102,7 @@ from .tensor.manipulation import cast  #DEFINE_ALIAS
 from .tensor.manipulation import concat  #DEFINE_ALIAS
 from .tensor.manipulation import expand  #DEFINE_ALIAS
 from .tensor.manipulation import expand_as  #DEFINE_ALIAS
+from .tensor.manipulation import tile  #DEFINE_ALIAS
 from .tensor.manipulation import flatten  #DEFINE_ALIAS
 from .tensor.manipulation import gather  #DEFINE_ALIAS
 from .tensor.manipulation import gather_nd  #DEFINE_ALIAS
@@ -137,8 +136,6 @@ from .tensor.math import cumsum  #DEFINE_ALIAS
 from .tensor.math import elementwise_add  #DEFINE_ALIAS
 from .tensor.math import elementwise_div  #DEFINE_ALIAS
 from .tensor.math import elementwise_floordiv  #DEFINE_ALIAS
-from .tensor.math import elementwise_max  #DEFINE_ALIAS
-from .tensor.math import elementwise_min  #DEFINE_ALIAS
 from .tensor.math import elementwise_mod  #DEFINE_ALIAS
 from .tensor.math import elementwise_pow  #DEFINE_ALIAS
 from .tensor.math import elementwise_sub  #DEFINE_ALIAS
@@ -167,7 +164,9 @@ from .tensor.math import sums  #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
 from .tensor.math import elementwise_sum  #DEFINE_ALIAS
 from .tensor.math import max  #DEFINE_ALIAS
+from .tensor.math import maximum  #DEFINE_ALIAS
 from .tensor.math import min  #DEFINE_ALIAS
+from .tensor.math import minimum  #DEFINE_ALIAS
 from .tensor.math import mm  #DEFINE_ALIAS
 from .tensor.math import div  #DEFINE_ALIAS
 from .tensor.math import multiply  #DEFINE_ALIAS
@@ -201,42 +200,51 @@ from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
 from .framework.random import manual_seed  #DEFINE_ALIAS
-from .framework import append_backward  #DEFINE_ALIAS
-from .framework import gradients  #DEFINE_ALIAS
-from .framework import Executor  #DEFINE_ALIAS
-from .framework import global_scope  #DEFINE_ALIAS
-from .framework import scope_guard  #DEFINE_ALIAS
-from .framework import BuildStrategy  #DEFINE_ALIAS
-from .framework import CompiledProgram  #DEFINE_ALIAS
-from .framework import default_main_program  #DEFINE_ALIAS
-from .framework import default_startup_program  #DEFINE_ALIAS
+from .framework import Variable  #DEFINE_ALIAS
+from .framework import ParamAttr  #DEFINE_ALIAS
 from .framework import create_global_var  #DEFINE_ALIAS
 from .framework import create_parameter  #DEFINE_ALIAS
-from .framework import Print  #DEFINE_ALIAS
-from .framework import py_func  #DEFINE_ALIAS
-from .framework import ExecutionStrategy  #DEFINE_ALIAS
-from .framework import name_scope  #DEFINE_ALIAS
-from .framework import ParallelExecutor  #DEFINE_ALIAS
-from .framework import ParamAttr  #DEFINE_ALIAS
-from .framework import Program  #DEFINE_ALIAS
-from .framework import program_guard  #DEFINE_ALIAS
-from .framework import Variable  #DEFINE_ALIAS
-from .framework import WeightNormParamAttr  #DEFINE_ALIAS
 from .framework import CPUPlace  #DEFINE_ALIAS
 from .framework import CUDAPlace  #DEFINE_ALIAS
 from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
+
+from .framework import BackwardStrategy  #DEFINE_ALIAS
+from .framework import to_variable  #DEFINE_ALIAS
+from .framework import grad  #DEFINE_ALIAS
+from .framework import no_grad  #DEFINE_ALIAS
+from .framework import save  #DEFINE_ALIAS
+from .framework import load  #DEFINE_ALIAS
+from .framework import prepare_context  #DEFINE_ALIAS
+from .framework import ParallelEnv  #DEFINE_ALIAS
+from .framework import DataParallel  #DEFINE_ALIAS
+
+from .framework import NoamDecay  #DEFINE_ALIAS
+from .framework import PiecewiseDecay  #DEFINE_ALIAS
+from .framework import NaturalExpDecay  #DEFINE_ALIAS
+from .framework import ExponentialDecay  #DEFINE_ALIAS
+from .framework import InverseTimeDecay  #DEFINE_ALIAS
+from .framework import PolynomialDecay  #DEFINE_ALIAS
+from .framework import CosineDecay  #DEFINE_ALIAS
+
 from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.stat import mean  #DEFINE_ALIAS
 from .tensor.stat import reduce_mean  #DEFINE_ALIAS
 from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 from .fluid.data import data
+from .device import get_cudnn_version
+from .device import set_device
+from .device import get_device
 # from .tensor.tensor import Tensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensorArray        #DEFINE_ALIAS
 
 from . import incubate
 from .incubate import hapi
-from .fluid.dygraph.base import enable_dygraph as enable_imperative  #DEFINE_ALIAS
-from .fluid.dygraph.base import disable_dygraph as disable_imperative  #DEFINE_ALIAS
-from .fluid.framework import in_dygraph_mode as in_imperative_mode  #DEFINE_ALIAS
+from .fluid.dygraph.base import enable_dygraph as disable_static  #DEFINE_ALIAS
+from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
+from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
+from .fluid.dygraph.base import no_grad  #DEFINE_ALIAS
+
+from . import jit
+from . import static
