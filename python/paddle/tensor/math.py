@@ -1756,8 +1756,7 @@ def isfinite(x, name=None):
 
             import paddle
             import numpy as np
-            cpu = paddle.CPUPlace()
-            paddle.disable_static(cpu)
+            paddle.disable_static()
             x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             x = paddle.to_variable(x_np)
             out = paddle.tensor.isfinite(x)
@@ -1765,8 +1764,8 @@ def isfinite(x, name=None):
     """
     if in_dygraph_mode():
         return core.ops.isfinite_v2(x)
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'is_finite')
     helper = LayerHelper("isfinite_v2", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'is_finite')
     out = helper.create_variable_for_type_inference('bool')
     helper.append_op(type="isfinite_v2", inputs={"X": x}, outputs={"Out": out})
     return out
@@ -1788,8 +1787,7 @@ def isinf(x, name=None):
 
             import paddle
             import numpy as np
-            cpu = paddle.CPUPlace()
-            paddle.disable_static(cpu)
+            paddle.disable_static()
             x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             x = paddle.to_variable(x_np)
             out = paddle.tensor.isinf(x)
@@ -1797,8 +1795,8 @@ def isinf(x, name=None):
     """
     if in_dygraph_mode():
         return core.ops.isinf_v2(x)
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'is_inf')
     helper = LayerHelper("isinf_v2", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'is_inf')
     out = helper.create_variable_for_type_inference(dtype='bool')
     helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
     return out
@@ -1820,8 +1818,7 @@ def isnan(x, name=None):
 
             import paddle
             import numpy as np
-            cpu = paddle.CPUPlace()
-            paddle.disable_static(cpu)
+            paddle.disable_static()
             x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             x = paddle.to_variable(x_np)
             out = paddle.tensor.isinf(x)
@@ -1829,8 +1826,8 @@ def isnan(x, name=None):
     """
     if in_dygraph_mode():
         return core.ops.isnan_v2(x)
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'is_nan')
     helper = LayerHelper("isnan_v2", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'is_nan')
     out = helper.create_variable_for_type_inference(dtype='bool')
     helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
     return out

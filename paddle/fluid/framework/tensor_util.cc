@@ -489,7 +489,7 @@ struct BothFalseVisitor : public boost::static_visitor<> {
 #ifdef PADDLE_WITH_CUDA
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
     constexpr int MAX_BLOCK_DIM = 512;
-    constexpr int MAX_GRID_DIM = 65535;
+    const int MAX_GRID_DIM = ctx->GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
     int element_num = in_.numel();
     int block_size = (element_num >= MAX_BLOCK_DIM)
                          ? MAX_BLOCK_DIM
@@ -503,20 +503,24 @@ struct BothFalseVisitor : public boost::static_visitor<> {
 
   void VisitorImpl(const platform::CPUPlace& cpu) const {
     int num = in_.numel();
+    const bool* in_ptr = in_.data<bool>();
+    bool* out_ptr = out_->data<bool>();
     for (int i = 0; i < num; ++i) {
-      bool lhs = !in_.data<bool>()[i];
-      bool rhs = !out_->mutable_data<bool>(cpu)[i];
-      out_->mutable_data<bool>(cpu)[i] = lhs && rhs;
+      bool lhs = !in_ptr[i];
+      bool rhs = !out_ptr[i];
+      out_ptr[i] = lhs && rhs;
     }
   }
 
   void VisitorImpl(
       const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
     int num = in_.numel();
+    const bool* in_ptr = in_.data<bool>();
+    bool* out_ptr = out_->data<bool>();
     for (int i = 0; i < num; ++i) {
-      bool lhs = !in_.data<bool>()[i];
-      bool rhs = !out_->mutable_data<bool>(cpu)[i];
-      out_->mutable_data<bool>(cpu)[i] = lhs && rhs;
+      bool lhs = !in_ptr[i];
+      bool rhs = !out_ptr[i];
+      out_ptr[i] = lhs && rhs;
     }
   }
 };

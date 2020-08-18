@@ -1312,7 +1312,7 @@ def has_nan(x):
 def isfinite(x):
     """
 	:alias_main: paddle.isfinite
-	:alias: paddle.isfinite, paddle.tensor.logic.isfinite
+  :alias: paddle.isfinite,paddle.tensor.isfinite,paddle.tensor.logic.isfinite
 	:old_api: paddle.fluid.layers.isfinite
 
     Test if any of x contains an infinity/NAN number. If all the elements are finite,
