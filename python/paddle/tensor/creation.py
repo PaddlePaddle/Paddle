@@ -29,7 +29,6 @@ from paddle.common_ops_import import *
 
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
-from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
@@ -913,4 +912,93 @@ def meshgrid(*args, **kwargs):
     helper.append_op(
         type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out})
 
+    return out
+
+
+def diag(x, offset=0, padding_value=0, name=None):
+    """
+    If ``x`` is a vector (1-D tensor), a 2-D square tensor whth the elements of ``x`` as the diagonal is returned.
+
+    If ``x`` is a matrix (2-D tensor), a 1-D tensor with the diagonal elements of ``x`` is returned.
+
+    The argument ``offset`` controls the diagonal offset:
+
+    If ``offset`` = 0, it is the main diagonal.
+
+    If ``offset`` > 0, it is superdiagonal.
+
+    If ``offset`` < 0, it is subdiagonal.
+
+    Args:
+        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float32, float64, int32, int64.
+        offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
+        padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, a square matrix or a vector. The output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+
+          paddle.disable_static()
+          x = paddle.to_tensor([1, 2, 3])
+          y = paddle.diag(x)
+          print(y.numpy())
+          # [[1 0 0]
+          #  [0 2 0]
+          #  [0 0 3]]
+
+          y = paddle.diag(x, offset=1)
+          print(y.numpy())
+          # [[0 1 0 0]
+          #  [0 0 2 0]
+          #  [0 0 0 3]
+          #  [0 0 0 0]]
+
+          y = paddle.diag(x, padding_value=6)
+          print(y.numpy())
+          # [[1 6 6]
+          #  [6 2 6]
+          #  [6 6 3]]
+
+        .. code-block:: python
+
+          import paddle
+
+          paddle.disable_static()
+          x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+          y = paddle.diag(x)
+          print(y.numpy())
+          # [1 5]
+
+          y = paddle.diag(x, offset=1)
+          print(y.numpy())
+          # [2 6]
+
+          y = paddle.diag(x, offset=-1)
+          print(y.numpy())
+          # [4]
+    """
+    if in_dygraph_mode():
+        return core.ops.diag_v2(x, "offset", offset, "padding_value",
+                                padding_value)
+
+    check_type(x, 'x', (Variable), 'diag_v2')
+    check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
+                'diag_v2')
+    helper = LayerHelper("diag_v2", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='diag_v2',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'offset': offset,
+               'padding_value': padding_value})
+
+    out.stop_gradient = True
     return out

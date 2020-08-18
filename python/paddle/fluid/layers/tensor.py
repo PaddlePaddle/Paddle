@@ -26,6 +26,7 @@ from .. import core
 from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.utils import deprecated
 import numpy
 import warnings
 
@@ -1537,6 +1538,7 @@ def zeros_like(x, out=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.diag")
 def diag(diagonal):
     """
 	:alias_main: paddle.diag

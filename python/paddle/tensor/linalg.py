@@ -21,7 +21,6 @@ from ..fluid.layers import transpose  #DEFINE_ALIAS
 
 __all__ = [
     'matmul',
-    'diag',
     'dot',
     #       'einsum',
     'norm',
@@ -819,61 +818,4 @@ def histogram(input, bins=100, min=0, max=0):
         attrs={'bins': bins,
                'min': min,
                'max': max})
-    return out
-
-
-def diag(x, offset=0, padding_value=0, name=None):
-    """
-    If ``x`` is a vector (1-D tensor), a 2-D square tensor whth the elements of ``x`` as the diagonal is returned.
-
-    If ``x`` is a matrix (2-D tensor), a 1-D tensor with the diagonal elements of ``x`` is returned.
-
-    The argument ``offset`` controls the diagonal offset:
-
-    If ``offset`` = 0, it is the main diagonal.
-
-    If ``offset`` > 0, it is superdiagonal.
-
-    If ``offset`` < 0, it is subdiagonal.
-
-    Args:
-        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float32, float64, int32, int64.
-        offset ()
-    Returns:
-        Variable, the output data type is the same as input data type.: The tensor variable storing the square matrix, \
-            the diagonal values specified by input :attr:`diagonal`. the output shape is :math:`[N, N]` with two dims.
-
-    Examples:
-        .. code-block:: python
-
-          # [[3, 0, 0]
-          #  [0, 4, 0]
-          #  [0, 0, 5] 
-
-          import paddle.fluid as fluid
-          import numpy as np
-          diagonal = np.arange(3, 6, dtype='int32')
-          data = fluid.layers.diag(diagonal)
-          # diagonal.shape=(3,) data.shape=(3, 3)
-
-    """
-    if in_dygraph_mode():
-        return core.ops.diag_v2(x, "offset", offset, "padding_value",
-                                padding_value)
-
-    check_type(x, 'x', (Variable, numpy.ndarray), 'diag_2')
-    check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
-                'diag_v2')
-    helper = LayerHelper("diag_v2", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type='diag_v2',
-        inputs={'x': x},
-        outputs={'Out': out},
-        attrs={'offset': offset,
-               'padding_value': padding_value})
-
-    out.stop_gradient = True
     return out
