@@ -407,16 +407,14 @@ add_sample_code(globals()["softplus"], r"""
 Examples:
     .. code-block:: python
 
-        import numpy as np
         import paddle
         import paddle.nn.functional as F
+        import numpy as np
+
         paddle.disable_static()
 
-        x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.to_variable(x_data)
-        out = F.softplus(x)
-        print(out.numpy())
-        # [0.51301525 0.59813887 0.74439666 0.85435524]
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
 
 """)
 
@@ -424,16 +422,14 @@ add_sample_code(globals()["softsign"], r"""
 Examples:
     .. code-block:: python
 
-        import numpy as np
         import paddle
         import paddle.nn.functional as F
+        import numpy as np
+
         paddle.disable_static()
 
-        x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.to_variable(x_data)
-        out = F.softsign(x)
-        print(out.numpy())
-        # [-0.28571429 -0.16666667  0.09090909  0.23076923]
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
 
 """)
 

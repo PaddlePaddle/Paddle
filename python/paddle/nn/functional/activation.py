@@ -534,7 +534,7 @@ def softplus(x, beta=1, threshold=20, name=None):
         paddle.disable_static()
 
         x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-        out = F.softplus(x) # []
+        out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
 
     """
     if in_dygraph_mode():
@@ -585,8 +585,8 @@ def softshrink(x, threshold=0.5, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-        out = F.softshrink(x) # []
+        x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
+        out = F.softshrink(x) # [-0.4, 0, 0, 0.3]
 
     """
     if in_dygraph_mode():
@@ -631,7 +631,7 @@ def softsign(x, name=None):
         paddle.disable_static()
 
         x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-        out = F.softsign(x) # [-0.28571429, -0.16666667, 0.09090909, 0.23076923]
+        out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
 
     """
     if in_dygraph_mode():

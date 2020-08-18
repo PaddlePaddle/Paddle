@@ -455,7 +455,7 @@ class Softplus(layers.Layer):
 
         x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
         m = paddle.nn.Softplus()
-        out = m(x) # []
+        out = m(x) # [0.513015, 0.598139, 0.744397, 0.854355]
 
     """
 
@@ -499,9 +499,9 @@ class Softshrink(layers.Layer):
 
         paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
         m = paddle.nn.Softshrink()
-        out = m(x) # []
+        out = m(x) # [-0.4, 0, 0, 0.3]
     """
 
     def __init__(self, threshold=0.5, name=None):
@@ -540,7 +540,7 @@ class Softsign(layers.Layer):
 
         x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
         m = paddle.nn.Softsign()
-        out = m(x) # [-0.28571429, -0.16666667, 0.09090909, 0.23076923]
+        out = m(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
     """
 
     def __init__(self, name=None):
