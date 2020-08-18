@@ -444,7 +444,7 @@ class TestAdamOptimizerBetaVariable(unittest.TestCase):
             test_with_place(place, shape)
 
 
-class TestAdamOpBetasV2(unittest.TestCase):
+class TestAdamOpV2(unittest.TestCase):
     def test_adam_op(self):
         exe = fluid.Executor(place, shape)
         train_prog = fluid.Program()
@@ -461,7 +461,7 @@ class TestAdamOpBetasV2(unittest.TestCase):
                     shape=[1], value=0.95, dtype='float32', persistable=True)
                 betas = [beta1, beta2]
                 opt = paddle.optimizer.Adam(
-                    lr=1e-5, betas=betas, weight_decay=0.01)
+                    lr=1e-5, betas=betas, weight_decay=0.01, eps=1e-8)
                 opt.minimize(loss)
 
         exe.run(startup)

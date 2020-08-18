@@ -24,10 +24,12 @@ __all__ = [
 ]
 
 
-from .optimizer import  SGD, Momentum, Adagrad, Adam, Adamax, AdamW, Dpsgd, DecayedAdagrad, \
+from ..fluid.optimizer import  SGD, Momentum, Adagrad, Dpsgd, DecayedAdagrad, \
             Ftrl, SGDOptimizer, MomentumOptimizer, AdagradOptimizer, DpsgdOptimizer, \
             DecayedAdagradOptimizer, RMSPropOptimizer, FtrlOptimizer, Adadelta, \
             AdadeltaOptimizer, ModelAverage, LarsMomentum, \
             LarsMomentumOptimizer, DGCMomentumOptimizer, LambOptimizer, \
             ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, \
             RecomputeOptimizer
+
+from .optimizer import Optimizer
