@@ -77,7 +77,7 @@ class GatherV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
     AddOutput("Y", "The output of gather op");
-    AddInput("axis",
+    AddInput("Axis",
              "The Tensor which contains the axis that we do gather operation.");
     AddComment(R"DOC(
 Y is obtained by gathering entries of the axis dimension
@@ -96,9 +96,9 @@ class GatherV2GradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("gather_v2_grad");
     op->SetInput("Index", this->Input("Index"));
     op->SetInput("X", this->Input("X"));
+    op->SetInput("Axis", this->Input("Axis"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetAttrMap(this->Attrs());
   }
 };
 
