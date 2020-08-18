@@ -85,63 +85,70 @@ class TestPad3dOp(OpTest):
         self.pad_value = 0.0
 
 
-# class TestCase1(TestPad3dOp):
-#     def initTestCase(self):
-#         self.shape = (2, 3, 4, 5, 6)
-#         self.paddings = [0, 1, 2, 3, 4, 5]
-#         self.mode = "constant"
-#         self.data_format = "NCDHW"
-#         self.value = 1.0
+class TestCase1(TestPad3dOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6)
+        self.paddings = [0, 1, 2, 3, 4, 5]
+        self.mode = "constant"
+        self.data_format = "NCDHW"
+        self.value = 1.0
 
-# class TestCase2(TestPad3dOp):
-#     def initTestCase(self):
-#         self.shape = (2, 3, 4, 5, 6)
-#         self.paddings = [1, 1, 1, 1, 1, 1]
-#         self.mode = "constant"
-#         self.data_format = "NDHWC"
-#         self.value = 1.0
 
-# class TestCase3(TestPad3dOp):
-#     def initTestCase(self):
-#         self.shape = (2, 3, 4, 5, 6)
-#         self.paddings = [0, 1, 1, 0, 2, 3]
-#         self.mode = "reflect"
-#         self.data_format = "NCDHW"
+class TestCase2(TestPad3dOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6)
+        self.paddings = [1, 1, 1, 1, 1, 1]
+        self.mode = "constant"
+        self.data_format = "NDHWC"
+        self.value = 1.0
 
-# class TestCase4(TestPad3dOp):
-#     def initTestCase(self):
-#         self.shape = (4, 4, 4, 4, 4)
-#         self.paddings = [0, 1, 2, 1, 2, 3]
-#         self.mode = "reflect"
-#         self.data_format = "NDHWC"
 
-# class TestCase5(TestPad3dOp):
-#     def initTestCase(self):
-#         self.shape = (2, 3, 4, 5, 6)
-#         self.paddings = [0, 1, 2, 3, 2, 1]
-#         self.mode = "replicate"
-#         self.data_format = "NCDHW"
+class TestCase3(TestPad3dOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6)
+        self.paddings = [0, 1, 1, 0, 2, 3]
+        self.mode = "reflect"
+        self.data_format = "NCDHW"
 
-# class TestCase6(TestPad3dOp):
-#     def initTestCase(self):
-#         self.shape = (4, 4, 4, 4, 4)
-#         self.paddings = [5, 4, 2, 1, 2, 3]
-#         self.mode = "replicate"
-#         self.data_format = "NDHWC"
 
-# class TestCase7(TestPad3dOp):
-#     def initTestCase(self):
-#         self.shape = (2, 3, 4, 5, 6)
-#         self.paddings = [0, 1, 2, 3, 2, 1]
-#         self.mode = "circular"
-#         self.data_format = "NCDHW"
+class TestCase4(TestPad3dOp):
+    def initTestCase(self):
+        self.shape = (4, 4, 4, 4, 4)
+        self.paddings = [0, 1, 2, 1, 2, 3]
+        self.mode = "reflect"
+        self.data_format = "NDHWC"
 
-# class TestCase8(TestPad3dOp):
-#     def initTestCase(self):
-#         self.shape = (4, 4, 4, 4, 4)
-#         self.paddings = [0, 1, 2, 1, 2, 3]
-#         self.mode = "circular"
-#         self.data_format = "NDHWC"
+
+class TestCase5(TestPad3dOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6)
+        self.paddings = [0, 1, 2, 3, 2, 1]
+        self.mode = "replicate"
+        self.data_format = "NCDHW"
+
+
+class TestCase6(TestPad3dOp):
+    def initTestCase(self):
+        self.shape = (4, 4, 4, 4, 4)
+        self.paddings = [5, 4, 2, 1, 2, 3]
+        self.mode = "replicate"
+        self.data_format = "NDHWC"
+
+
+class TestCase7(TestPad3dOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6)
+        self.paddings = [0, 1, 2, 3, 2, 1]
+        self.mode = "circular"
+        self.data_format = "NCDHW"
+
+
+class TestCase8(TestPad3dOp):
+    def initTestCase(self):
+        self.shape = (4, 4, 4, 4, 4)
+        self.paddings = [0, 1, 2, 1, 2, 3]
+        self.mode = "circular"
+        self.data_format = "NDHWC"
 
 
 class TestPadAPI(unittest.TestCase):
@@ -301,8 +308,7 @@ class TestPadAPI(unittest.TestCase):
             self.check_static_result_3(place=place)
             self.check_static_result_4(place=place)
 
-    def test_dygraph(self):
-
+    def test_dygraph_1(self):
         paddle.disable_static()
 
         input_shape = (1, 2, 3, 4, 5)
@@ -310,11 +316,113 @@ class TestPadAPI(unittest.TestCase):
         mode = "constant"
         value = 100
         input_data = np.random.rand(*input_shape).astype(np.float32)
-        np_out = self._get_numpy_out(input_data, pad, mode, value)
+        np_out1 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NCDHW")
+        np_out2 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NDHWC")
         tensor_data = paddle.to_tensor(input_data)
 
-        y = F.pad(tensor_data, pad=pad, mode=mode, value=value)
-        self.assertTrue(np.allclose(y.numpy(), np_out))
+        y1 = F.pad(tensor_data,
+                   pad=pad,
+                   mode=mode,
+                   value=value,
+                   data_format="NCDHW")
+        y2 = F.pad(tensor_data,
+                   pad=pad,
+                   mode=mode,
+                   value=value,
+                   data_format="NDHWC")
+
+        self.assertTrue(np.allclose(y1.numpy(), np_out1))
+        self.assertTrue(np.allclose(y2.numpy(), np_out2))
+
+    def test_dygraph_2(self):
+        paddle.disable_static()
+
+        input_shape = (2, 3, 4, 5)
+        pad = [1, 1, 3, 4]
+        mode = "constant"
+        value = 100
+        input_data = np.random.rand(*input_shape).astype(np.float32)
+        np_out1 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NCHW")
+        np_out2 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NHWC")
+
+        tensor_data = paddle.to_tensor(input_data)
+        tensor_pad = paddle.to_tensor(pad, dtype="int32")
+
+        y1 = F.pad(tensor_data,
+                   pad=tensor_pad,
+                   mode=mode,
+                   value=value,
+                   data_format="NCHW")
+        y2 = F.pad(tensor_data,
+                   pad=tensor_pad,
+                   mode=mode,
+                   value=value,
+                   data_format="NHWC")
+
+        self.assertTrue(np.allclose(y1.numpy(), np_out1))
+        self.assertTrue(np.allclose(y2.numpy(), np_out2))
+
+    def test_dygraph_2(self):
+        paddle.disable_static()
+
+        input_shape = (2, 3, 4, 5)
+        pad = [1, 1, 3, 4]
+        mode = "constant"
+        value = 100
+        input_data = np.random.rand(*input_shape).astype(np.float32)
+        np_out1 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NCHW")
+        np_out2 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NHWC")
+        tensor_data = paddle.to_tensor(input_data)
+        tensor_pad = paddle.to_tensor(pad, dtype="int32")
+
+        y1 = F.pad(tensor_data,
+                   pad=tensor_pad,
+                   mode=mode,
+                   value=value,
+                   data_format="NCHW")
+        y2 = F.pad(tensor_data,
+                   pad=tensor_pad,
+                   mode=mode,
+                   value=value,
+                   data_format="NHWC")
+
+        self.assertTrue(np.allclose(y1.numpy(), np_out1))
+        self.assertTrue(np.allclose(y2.numpy(), np_out2))
+
+    def test_dygraph_3(self):
+        paddle.disable_static()
+
+        input_shape = (3, 4, 5)
+        pad = [3, 4]
+        mode = "constant"
+        value = 100
+        input_data = np.random.rand(*input_shape).astype(np.float32)
+        np_out1 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NCL")
+        np_out2 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NLC")
+        tensor_data = paddle.to_tensor(input_data)
+        tensor_pad = paddle.to_tensor(pad, dtype="int32")
+
+        y1 = F.pad(tensor_data,
+                   pad=tensor_pad,
+                   mode=mode,
+                   value=value,
+                   data_format="NCL")
+        y2 = F.pad(tensor_data,
+                   pad=tensor_pad,
+                   mode=mode,
+                   value=value,
+                   data_format="NLC")
+
+        self.assertTrue(np.allclose(y1.numpy(), np_out1))
+        self.assertTrue(np.allclose(y2.numpy(), np_out2))
 
 
 class TestPad1dAPI(unittest.TestCase):
