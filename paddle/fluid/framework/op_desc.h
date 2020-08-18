@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -137,6 +138,23 @@ class OpDesc {
   BlockDesc *Block() { return this->block_; }
 
   const BlockDesc *Block() const { return this->block_; }
+  std::string GetInputNameByIdx(size_t idx) {
+    PADDLE_ENFORCE_LT(idx, input_names_.size(),
+                      platform::errors::OutOfRange(
+                          "The index should be less than the size of inputs of "
+                          "operator %s, but got index is %d and size is %d",
+                          Type(), idx, output_names_.size()));
+    return input_names_[idx];
+  }
+  std::string GetOutputNameByIdx(size_t idx) {
+    PADDLE_ENFORCE_LT(
+        idx, output_names_.size(),
+        platform::errors::OutOfRange(
+            "The index should be less than the size of outputs of "
+            "operator %s, but got index is %d and size is %d",
+            Type(), idx, output_names_.size()));
+    return output_names_[idx];
+  }
 
  private:
   template <typename MapType>
@@ -155,6 +173,9 @@ class OpDesc {
   VariableNameMap inputs_;
   // output arg name => output variable names
   VariableNameMap outputs_;
+  // keep input/output order, so we can get name by idx
+  std::vector<std::string> input_names_;
+  std::vector<std::string> output_names_;
   AttributeMap attrs_;
 
   // need_update_ indicate there some local changes not be synchronized. If

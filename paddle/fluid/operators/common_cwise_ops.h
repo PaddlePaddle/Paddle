@@ -40,6 +40,16 @@ class UnaryOp : public framework::OperatorWithKernel {
   // Use default GetExpectedKernelType
 };
 
+class UnaryGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    return UnaryOpUnchangedInferShape(ctx);
+  }
+  // Use default GetExpectedKernelType
+};
+
 template <typename DeviceContext, typename Functor, typename T>
 class UnaryOpKernel : public framework::OpKernel<T> {
  public:
@@ -58,10 +68,12 @@ class UnaryOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename Functor, typename T>
-class UnaryOpGradKernel : public framework::OpKernel<T> {
+class UnaryGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     // NOTE(zhiqiu): only supports Tensor now
+    std::cout << ctx.GetInputNameByIdx(0) << std::endl;
+    std::cout << ctx.GetOutputNameByIdx(0) << std::endl;
     auto *dout = ctx.Input<Tensor>(ctx.GetInputNameByIdx(0));
     auto *dx = ctx.Output<Tensor>(ctx.GetOutputNameByIdx(0));
     dx->mutable_data<T>(ctx.GetPlace());

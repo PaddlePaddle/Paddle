@@ -57,9 +57,10 @@ namespace functors = paddle::operators::functors;
 REGISTER_OPERATOR(test_neg, ops::UnaryOp, ops::TestNegOpMaker,
                   ops::TestNegOpGradMaker<paddle::framework::OpDesc>,
                   ops::TestNegOpGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(test_neg_grad, ops::UnaryGradOp);
 REGISTER_OP_KERNEL_4(test_neg, ops::UnaryOpKernel, CPU, functors::Neg, int,
                      int64_t, float, double);
-REGISTER_OP_KERNEL_4(test_neg_grad, ops::UnaryOpGradKernel, CPU, functors::Neg,
+REGISTER_OP_KERNEL_4(test_neg_grad, ops::UnaryGradOpKernel, CPU, functors::Neg,
                      int, int64_t, float, double);
 namespace paddle {
 namespace operators {
@@ -75,8 +76,8 @@ TEST(test_neg, test_run) {
   in_tensor->Resize({2, 10});
   size_t numel = 2 * 10;
   auto in_data = in_tensor->mutable_data<float>(cpu_place);
-  std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
-                                             static_cast<float>(20.0));
+  std::uniform_real_distribution<float> dist(static_cast<float>(-10.0),
+                                             static_cast<float>(10.0));
   std::mt19937 engine;
   std::vector<float> expected_out;
   expected_out.reserve(numel);
@@ -90,5 +91,35 @@ TEST(test_neg, test_run) {
   auto is_equal = std::equal(out_data, out_data + numel, expected_out.data());
   ASSERT_TRUE(is_equal);
 }
+
+TEST(test_neg_grad, test_run) {
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  auto op = framework::OpRegistry::CreateOp(
+      "test_neg_grad", {{"DOut", {"DOut"}}}, {{"DX", {"DX"}}}, {});
+
+  auto in_tensor = scope.Var("DOut")->GetMutable<framework::LoDTensor>();
+  in_tensor->Resize({2, 10});
+  size_t numel = 2 * 10;
+  auto in_data = in_tensor->mutable_data<float>(cpu_place);
+  std::uniform_real_distribution<float> dist(static_cast<float>(-10.0),
+                                             static_cast<float>(10.0));
+  std::mt19937 engine;
+  std::vector<float> expected_out;
+  expected_out.reserve(numel);
+  for (size_t i = 0; i < numel; ++i) {
+    in_data[i] = dist(engine);
+    expected_out[i] = -in_data[i];
+  }
+  std::cout << "here" << std::endl;
+  auto out_tensor = scope.Var("DX")->GetMutable<framework::LoDTensor>();
+  op->Run(scope, cpu_place);
+  std::cout << "here2" << std::endl;
+  auto out_data = out_tensor->data<float>();
+  auto is_equal = std::equal(out_data, out_data + numel, expected_out.data());
+  ASSERT_TRUE(is_equal);
+}
+
 }  // namespace operators
 }  // namespace paddle
