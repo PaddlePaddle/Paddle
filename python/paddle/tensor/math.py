@@ -534,9 +534,6 @@ for func in [
 
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
-	:alias_main: paddle.sum
-	:alias: paddle.sum,paddle.tensor.sum,paddle.tensor.math.sum
-
     Computes the sum of tensor elements over the given dimension.
 
     Args:
@@ -566,13 +563,16 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import numpy as np
             import paddle
-            import paddle.fluid as fluid
+            paddle.disable_static()
+
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
+            x_data = np.array([[0.2, 0.3, 0.5, 0.9],[0.1, 0.2, 0.6, 0.7]]).astype('float32')
+            x = paddle.to_variable(x_data)
             out1 = paddle.sum(x)  # [3.5]
             out2 = paddle.sum(x, axis=0)  # [0.3, 0.5, 1.1, 1.6]
             out3 = paddle.sum(x, axis=-1)  # [1.9, 1.6]
@@ -582,10 +582,10 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y_data = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]).astype('float32')
+            y = paddle.to_variable(y_data)
             out5 = paddle.sum(y, axis=[1, 2]) # [10, 26]
             out6 = paddle.sum(y, axis=[0, 1]) # [16, 20]
-
     """
     if axis is not None and not isinstance(axis, (list, tuple)):
         axis = [axis]
