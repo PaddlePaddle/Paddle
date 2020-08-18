@@ -154,10 +154,13 @@ class OptimizerWithMixedPrecision(object):
             A list of optimize operators.
         """
 
+        params_unscaled_grads = []
         grads = [g for _, g in params_grads]
         with self._train_program._optimized_guard(grads):
             found_inf = check_finite_and_unscale(
                 grads, self._loss_scaling, name="find_infinite_scale")
+            for pg, new_g in zip(params_grads, grads):
+                params_unscaled_grads.append((pg[0], new_g))
 
         if self._use_dynamic_loss_scaling:
             update_loss_scaling(
@@ -171,9 +174,15 @@ class OptimizerWithMixedPrecision(object):
                 self._decr_ratio,
                 name="update_loss_scaling")
 
+            # skip gradients updating if the `found_inf` is true
+            with layers.Switch() as switch:
+                with switch.case(found_inf):
+                    for _, g in params_unscaled_grads:
+                        layers.assign(layers.zeros_like(g), g)
+
         # apply_gradient append all ops in global block, thus we shouldn't
         # apply gradient in the switch branch.
-        optimize_ops = self._optimizer.apply_gradients(params_grads)
+        optimize_ops = self._optimizer.apply_gradients(params_unscaled_grads)
 
         return optimize_ops
 

@@ -34,7 +34,7 @@ __global__ void CheckFiniteAndUnscale(const T* in, const T* scale, int num,
     if (!isfinite(in[idx])) {
       *found_inf = true;
     }
-    out[idx] = *found_inf ? static_cast<T>(0) : in[idx] * (*scale);
+    out[idx] = *found_inf ? in[idx] : in[idx] * (*scale);
   }
 }
 
