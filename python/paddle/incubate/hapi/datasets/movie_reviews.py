@@ -54,13 +54,28 @@ class MovieReviews(Dataset):
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import MovieReviews
+	    import paddle
+	    from paddle.incubate.hapi.datasets import MovieReviews
 
-            movie_reviews = moviw_reviews()
+	    class SimpleNet(paddle.nn.Layer):
+		def __init__(self):
+		    super(SimpleNet, self).__init__()
 
-            for i in range(len(movie_reviews)):
-                sample = movie_reviews[i]
-                print(sample)
+		def forward(self, word, category):
+		    return paddle.reduce_sum(word), category
+
+	    paddle.fluid.enable_imperative()
+
+	    movie_reviews = MovieReviews(mode='train')
+
+	    for i in range(10):
+		word_list, category = movie_reviews[i]
+		word_list = paddle.to_tensor(word_list)
+		category = paddle.to_tensor(category)
+
+		model = SimpleNet()
+		word_list, category = model(word_list, category)
+		print(word_list.numpy().shape, category.numpy())
 
     """
 

@@ -27,7 +27,7 @@ __all__ = ["VOC2012"]
 VOC_URL = 'http://host.robots.ox.ac.uk/pascal/VOC/voc2012/\
 VOCtrainval_11-May-2012.tar'
 
-VOC_MD5 = '6cd6e144f989b92b3379bac3b3de84fd'
+VOC_MD5 = '131da710f39b47a43fdfa256cbc11976'
 SET_FILE = 'VOCdevkit/VOC2012/ImageSets/Segmentation/{}.txt'
 DATA_FILE = 'VOCdevkit/VOC2012/JPEGImages/{}.jpg'
 LABEL_FILE = 'VOCdevkit/VOC2012/SegmentationClass/{}.png'
@@ -52,13 +52,28 @@ class VOC2012(Dataset):
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import VOC2012
+	    import paddle
+	    from paddle.incubate.hapi.datasets import VOC2012
 
-            voc_2012 = VOC2012(mode='test')
+	    class SimpleNet(paddle.nn.Layer):
+		def __init__(self):
+		    super(SimpleNet, self).__init__()
 
-            for i in range(len(voc_2012)):
-                sample = voc_2012[i]
-                print(sample[0].shape, sample[1])
+		def forward(self, image, label):
+		    return paddle.reduce_sum(image), label
+
+	    paddle.fluid.enable_imperative()
+
+	    voc2012 = VOC2012(mode='train')
+
+	    for i in range(10):
+		image, label= voc2012[i]
+		image = paddle.cast(paddle.to_tensor(image), 'float32')
+		label = paddle.to_tensor(label)
+
+		model = SimpleNet()
+		image, label= model(image, label)
+		print(image.numpy().shape, label.numpy().shape)
 
     """
 

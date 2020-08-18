@@ -49,13 +49,28 @@ class Imikolov(Dataset):
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import Imikolov
+	    import paddle
+	    from paddle.incubate.hapi.datasets import Imikolov
 
-            imikolov = Imikolov()
+	    class SimpleNet(paddle.nn.Layer):
+		def __init__(self):
+		    super(SimpleNet, self).__init__()
 
-            for i in range(len(imikolov)):
-                sample = imikolov[i]
-                print(sample)
+		def forward(self, src, trg):
+		    return paddle.reduce_sum(src), paddle.reduce_sum(trg)
+
+	    paddle.fluid.enable_imperative()
+
+	    imikolov = Imikolov(mode='train', data_type='SEQ', window_size=2)
+
+	    for i in range(10):
+		src, trg = imikolov[i]
+		src = paddle.to_tensor(src)
+		trg = paddle.to_tensor(trg)
+
+		model = SimpleNet()
+		src, trg = model(src, trg)
+		print(src.numpy().shape, trg.numpy().shape)
 
     """
 
@@ -138,9 +153,9 @@ class Imikolov(Dataset):
                         l = [self.word_idx.get(w, UNK) for w in l]
                         for i in six.moves.range(self.window_size, len(l) + 1):
                             self.data.append(tuple(l[i - self.window_size:i]))
-                elif self.data_type == 'SEG':
+                elif self.data_type == 'SEQ':
                     l = l.strip().split()
-                    l = [word_idx.get(w, UNK) for w in l]
+                    l = [self.word_idx.get(w, UNK) for w in l]
                     src_seq = [self.word_idx['<s>']] + l
                     trg_seq = l + [self.word_idx['<e>']]
                     if self.window_size > 0 and len(src_seq) > self.window_size:

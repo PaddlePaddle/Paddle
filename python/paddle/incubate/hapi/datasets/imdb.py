@@ -49,13 +49,28 @@ class Imdb(Dataset):
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import Imdb
+	    import paddle
+	    from paddle.incubate.hapi.datasets import Imdb
 
-            imdb = Imdb()
+	    class SimpleNet(paddle.nn.Layer):
+		def __init__(self):
+		    super(SimpleNet, self).__init__()
 
-            for i in range(len(imdb)):
-                sample = imdb[i]
-                print(sample)
+		def forward(self, doc, label):
+		    return paddle.reduce_sum(doc), label
+
+	    paddle.fluid.enable_imperative()
+
+	    imdb = Imdb(mode='train')
+
+	    for i in range(10):
+		doc, label = imdb[i]
+		doc = paddle.to_tensor(doc)
+		label = paddle.to_tensor(label)
+
+		model = SimpleNet()
+		image, label = model(doc, label)
+		print(doc.numpy().shape, label.numpy().shape)
 
     """
 

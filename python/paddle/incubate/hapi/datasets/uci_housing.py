@@ -50,13 +50,28 @@ class UCIHousing(Dataset):
         
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import UCIHousing	
+	    import paddle
+	    from paddle.incubate.hapi.datasets import UCIHousing
 
-            uci_housing = UCIHousing(mode='test')
+	    class SimpleNet(paddle.nn.Layer):
+		def __init__(self):
+		    super(SimpleNet, self).__init__()
 
-            for i in range(len(uci_housing)):
-                sample = uci_housing[i]
-                print(sample)
+		def forward(self, feature, target):
+		    return paddle.reduce_sum(feature), target
+
+	    paddle.fluid.enable_imperative()
+
+	    uci_housing = UCIHousing(mode='train')
+
+	    for i in range(10):
+		feature, target = uci_housing[i]
+		feature = paddle.to_tensor(feature)
+		target = paddle.to_tensor(target)
+
+		model = SimpleNet()
+		feature, target = model(feature, target)
+		print(feature.numpy().shape, target.numpy())
 
     """
 

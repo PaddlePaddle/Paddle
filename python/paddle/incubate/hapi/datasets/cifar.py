@@ -58,26 +58,33 @@ class Cifar10(Dataset):
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import Cifar10
+	    import paddle
+	    from paddle.incubate.hapi.datasets import Cifar10
+	    from paddle.incubate.hapi.vision.transforms import Normalize
 
-            cifar10 = Cifar10(mode='train')
+	    class SimpleNet(paddle.nn.Layer):
+		def __init__(self):
+		    super(SimpleNet, self).__init__()
+		    self.fc = paddle.nn.Linear(3072, 10, act='softmax')
 
-            for i in range(len(cifar10)):
-                sample = cifar10[i]
-                print(sample[0].shape, sample[1])
-            
+		def forward(self, image, label):
+		    image = paddle.reshape(image, (3, -1))
+		    return self.fc(image), label
 
-            # Cifar10 with transform
-            from paddle.incubate.hapi.datasets import Cifar10
-            from paddle.incubate.hapi.vision.transforms import Normalize
+	    paddle.fluid.enable_imperative()
 
-            normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                std=[0.5, 0.5, 0.5])
-            cifar10 = Cifar10(mode='train', transform=transform)
+	    normalize = Normalize(mean=[0.5, 0.5, 0.5],
+				std=[0.5, 0.5, 0.5])
+	    cifar10 = Cifar10(mode='train', transform=normalize)
 
-            for i in range(len(cifar10)):
-                sample = cifar10[i]
-                print(sample[0].shape, sample[1])
+	    for i in range(10):
+		image, label = cifar10[i]
+		image = paddle.to_tensor(image)
+		label = paddle.to_tensor(label)
+
+		model = SimpleNet()
+		image, label = model(image, label)
+		print(image.numpy().shape, label.numpy().shape)
 
     """
 
@@ -157,15 +164,36 @@ class Cifar100(Cifar10):
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import Cifar100
+	    import paddle
+	    from paddle.incubate.hapi.datasets import Cifar100
+	    from paddle.incubate.hapi.vision.transforms import Normalize
 
-            cifar100 = Cifar100(mode='train')
+	    class SimpleNet(paddle.nn.Layer):
+		def __init__(self):
+		    super(SimpleNet, self).__init__()
+		    self.fc = paddle.nn.Linear(3072, 100, act='softmax')
 
-            for i in range(len(cifar100)):
-                sample = cifar100[i]
-                print(sample[0].shape, sample[1])
+		def forward(self, image, label):
+		    image = paddle.reshape(image, (3, -1))
+		    return self.fc(image), label
+
+	    paddle.fluid.enable_imperative()
+
+	    normalize = Normalize(mean=[0.5, 0.5, 0.5],
+				std=[0.5, 0.5, 0.5])
+	    cifar100 = Cifar100(mode='train', transform=normalize)
+
+	    for i in range(10):
+		image, label = cifar100[i]
+		image = paddle.to_tensor(image)
+		label = paddle.to_tensor(label)
+
+		model = SimpleNet()
+		image, label = model(image, label)
+		print(image.numpy().shape, label.numpy().shape)
 
     """
+
     def __init__(self,
                  data_file=None,
                  mode='train',

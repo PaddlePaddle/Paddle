@@ -59,14 +59,31 @@ class WMT14(Dataset):
     Examples:
 
         .. code-block:: python
+	    import paddle
+	    from paddle.incubate.hapi.datasets import WMT14
 
-            from paddle.incubate.hapi.datasets import WMT14
+	    class SimpleNet(paddle.nn.Layer):
+		def __init__(self):
+		    super(SimpleNet, self).__init__()
 
-            wmt14 = WMT14()
+		def forward(self, src_ids, trg_ids, trg_ids_next):
+		    return paddle.reduce_sum(src_ids), \
+			    paddle.reduce_sum(trg_ids), \
+			    paddle.reduce_sum(trg_ids_next)
 
-            for i in range(len(wmt14)):
-                sample = wmt14[i]
-                print(sample)
+	    paddle.fluid.enable_imperative()
+
+	    wmt14 = WMT14(mode='train', dict_size=50)
+
+	    for i in range(10):
+		src_ids, trg_ids, trg_ids_next = wmt14[i]
+		src_ids = paddle.to_tensor(src_ids)
+		trg_ids = paddle.to_tensor(trg_ids)
+		trg_ids_next = paddle.to_tensor(trg_ids_next)
+
+		model = SimpleNet()
+		src_ids, trg_ids, trg_ids_next = model(src_ids, trg_ids, trg_ids_next)
+		print(src_ids.numpy(), trg_ids.numpy(), trg_ids_next.numpy())
 
     """
 

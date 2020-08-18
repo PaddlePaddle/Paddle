@@ -106,13 +106,31 @@ class Movielens(Dataset):
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import Movielens
+	    import paddle
+	    from paddle.incubate.hapi.datasets import Movielens
 
-            movielens = Movielens()
+	    class SimpleNet(paddle.nn.Layer):
+		def __init__(self):
+		    super(SimpleNet, self).__init__()
 
-            for i in range(len(movielens)):
-                sample = movielens[i]
-                print(sample)
+		def forward(self, category, title, rating):
+		    return paddle.reduce_sum(category), \
+			    paddle.reduce_sum(title), \
+			    paddle.reduce_sum(rating)
+
+	    paddle.fluid.enable_imperative()
+
+	    movielens = Movielens(mode='train')
+
+	    for i in range(10):
+		category, title, rating = movielens[i][-3:]
+		category = paddle.to_tensor(category)
+		title = paddle.to_tensor(title)
+		rating = paddle.to_tensor(rating)
+
+		model = SimpleNet()
+		category, title, rating = model(category, title, rating)
+		print(category.numpy().shape, title.numpy().shape, rating.numpy().shape)
 
     """
 
