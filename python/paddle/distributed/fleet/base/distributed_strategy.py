@@ -740,6 +740,17 @@ class DistributedStrategy(object):
             print("WARNING: elastic should have value of bool type")
 
     @property
+    def data_parallel(self):
+        return self.strategy.data_parallel
+
+    @data_parallel.setter
+    def data_parallel(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.data_parallel = flag
+        else:
+            print("WARNING: data_parallel should have value of bool type")
+
+    @property
     def auto(self):
         return self.strategy.auto
 

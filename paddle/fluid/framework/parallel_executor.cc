@@ -534,7 +534,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
               << "you can force it off by env FLAGS_enable_parallel_graph=0";
   }
 
-  if (member_->use_cuda_ && member_->nranks_ > 1) {
+  if (member_->use_cuda_ && member_->nranks_ > 1 &&
+      member_->build_strategy_.reduce_ !=
+          details::BuildStrategy::ReduceStrategy::kUserDefined) {
 #if defined(PADDLE_WITH_NCCL)
     member_->InitOrGetNCCLCommunicator(scope, &member_->build_strategy_);
 
@@ -558,6 +560,10 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
   // broadcast parameters from the 0th device to others:
   auto need_broadcast = [&]() -> bool {
+    if (member_->build_strategy_.reduce_ ==
+        details::BuildStrategy::ReduceStrategy::kUserDefined) {
+      return false;
+    }
     if (member_->build_strategy_.num_trainers_ > 1) {
       // 1. num_tariners would be grater than 1 for nccl distributed training.
       return true;

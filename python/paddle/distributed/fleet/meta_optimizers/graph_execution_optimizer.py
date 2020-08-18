@@ -119,6 +119,10 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                     dist_strategy.fuse_all_reduce_ops
         local_build_strategy.nccl_comm_num = \
                     dist_strategy.nccl_comm_num
+        if dist_strategy.localsgd or dist_strategy.data_parallel:
+            local_build_strategy.reduce_strategy = \
+                    paddle.fluid.BuildStrategy.ReduceStrategy.UserDefined
+            local_build_strategy.enable_sequential_execution = True
 
         if self.user_defined_strategy.recompute == True:
             logging.warn(
@@ -171,7 +175,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             )
 
         # TODO(guru4elephant): should be an independent optimizer
-        self._setup_nccl_op(startup_program, main_program, local_build_strategy)
+        if not dist_strategy.data_parallel:
+            self._setup_nccl_op(startup_program, main_program,
+                                local_build_strategy)
 
         local_build_strategy.num_trainers = self.role_maker.worker_num()
         local_build_strategy.trainer_id = self.role_maker.worker_index()
