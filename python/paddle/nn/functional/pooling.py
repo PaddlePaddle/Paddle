@@ -70,26 +70,26 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     Examples:
         .. code-block:: python
 
-          # adaptive avg pool2d
-          # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
-          # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
-          # of input data into m * n grids averagely and performs poolings in each
-          # grid to get output.
-          # adaptive avg pool performs calculations as follow:
-          #
-          #     for i in range(m):
-          #         for j in range(n):
-          #             hstart = floor(i * H / m)
-          #             hend = ceil((i + 1) * H / m)
-          #             wstart = floor(i * W / n)
-          #             wend = ceil((i + 1) * W / n)
-          #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
-          #
-          import paddle
-          paddle.disable_static()
-          input_data = np.random.rand(2, 3, 32, 32)
-          x = paddle.to_tensor(input_data)
-          pool_out = paddle.nn.functional.adaptive_avg_pool2d(
+            # adaptive avg pool2d
+            # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
+            # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
+            # of input data into m * n grids averagely and performs poolings in each
+            # grid to get output.
+            # adaptive avg pool performs calculations as follow:
+            #
+            #     for i in range(m):
+            #         for j in range(n):
+            #             hstart = floor(i * H / m)
+            #             hend = ceil((i + 1) * H / m)
+            #             wstart = floor(i * W / n)
+            #             wend = ceil((i + 1) * W / n)
+            #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
+            #
+            import paddle
+            paddle.disable_static()
+            input_data = np.random.rand(2, 3, 32, 32)
+            x = paddle.to_tensor(input_data)
+            pool_out = paddle.nn.functional.adaptive_avg_pool2d(
                             x = x,
                             output_size=[3, 3])
     """
@@ -185,29 +185,29 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     Examples:
         .. code-block:: python
 
-          # adaptive avg pool3d
-          # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
-          # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
-          # of input data into l * m * n grids averagely and performs poolings in each
-          # grid to get output.
-          # adaptive avg pool performs calculations as follow:
-          #
-          #     for i in range(l):
-          #         for j in range(m):
-          #             for k in range(n):
-          #                 dstart = floor(i * D / l)
-          #                 dend = ceil((i + 1) * D / l)
-          #                 hstart = floor(j * H / m)
-          #                 hend = ceil((j + 1) * H / m)
-          #                 wstart = floor(k * W / n)
-          #                 wend = ceil((k + 1) * W / n)
-          #                 output[:, :, i, j, k] =
-          #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
-          import paddle
-          paddle.disable_static()
-          input_data = np.random.rand(2, 3, 8, 32, 32)
-          x = paddle.to_tensor(input_data)
-          pool_out = paddle.nn.functional.adaptive_avg_pool3d(
+            # adaptive avg pool3d
+            # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
+            # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
+            # of input data into l * m * n grids averagely and performs poolings in each
+            # grid to get output.
+            # adaptive avg pool performs calculations as follow:
+            #
+            #     for i in range(l):
+            #         for j in range(m):
+            #             for k in range(n):
+            #                 dstart = floor(i * D / l)
+            #                 dend = ceil((i + 1) * D / l)
+            #                 hstart = floor(j * H / m)
+            #                 hend = ceil((j + 1) * H / m)
+            #                 wstart = floor(k * W / n)
+            #                 wend = ceil((k + 1) * W / n)
+            #                 output[:, :, i, j, k] =
+            #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
+            import paddle
+            paddle.disable_static()
+            input_data = np.random.rand(2, 3, 8, 32, 32)
+            x = paddle.to_tensor(input_data)
+            pool_out = paddle.nn.functional.adaptive_avg_pool3d(
                             x = x,
                             output_size=[3, 3, 3])
     """

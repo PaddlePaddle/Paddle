@@ -377,8 +377,7 @@ class AdaptiveAvgPool2d(layers.Layer):
                              None by default.
 
     Shape:
-        x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
-            The data type can be float16, float32, float64, int32 or int64.
+        x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor. The data type can be float16, float32, float64, int32 or int64.
 
     Returns:
         A callable object of AdaptiveAvgPool2d.
@@ -386,27 +385,27 @@ class AdaptiveAvgPool2d(layers.Layer):
     Examples:
         .. code-block:: python
 
-          # adaptive avg pool2d
-          # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
-          # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
-          # of input data into m * n grids averagely and performs poolings in each
-          # grid to get output.
-          # adaptive avg pool performs calculations as follow:
-          #
-          #     for i in range(m):
-          #         for j in range(n):
-          #             hstart = floor(i * H / m)
-          #             hend = ceil((i + 1) * H / m)
-          #             wstart = floor(i * W / n)
-          #             wend = ceil((i + 1) * W / n)
-          #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
-          #
-          import paddle
-          paddle.disable_static()
-          input_data = np.random.rand(2, 3, 32, 32)
-          x = paddle.to_tensor(input_data)
-          adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(output_size=3)
-          pool_out = adaptive_avg_pool(x = x)
+            # adaptive avg pool2d
+            # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
+            # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
+            # of input data into m * n grids averagely and performs poolings in each
+            # grid to get output.
+            # adaptive avg pool performs calculations as follow:
+            #
+            #     for i in range(m):
+            #         for j in range(n):
+            #             hstart = floor(i * H / m)
+            #             hend = ceil((i + 1) * H / m)
+            #             wstart = floor(i * W / n)
+            #             wend = ceil((i + 1) * W / n)
+            #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
+            #
+            import paddle
+            paddle.disable_static()
+            input_data = np.random.rand(2, 3, 32, 32)
+            x = paddle.to_tensor(input_data)
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(output_size=3)
+            pool_out = adaptive_avg_pool(x = x)
     """
 
     def __init__(self, output_size, data_format="NCHW", name=None):
@@ -459,8 +458,7 @@ class AdaptiveAvgPool3d(layers.Layer):
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
     Shape:
-        x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
-            The data type can be float16, float32, float64, int32 or int64.
+        x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor. The data type can be float16, float32, float64, int32 or int64.
 
     Returns:
         A callable object of AdaptiveAvgPool3d.
@@ -468,30 +466,30 @@ class AdaptiveAvgPool3d(layers.Layer):
     Examples:
         .. code-block:: python
 
-          # adaptive avg pool3d
-          # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
-          # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
-          # of input data into l * m * n grids averagely and performs poolings in each
-          # grid to get output.
-          # adaptive avg pool performs calculations as follow:
-          #
-          #     for i in range(l):
-          #         for j in range(m):
-          #             for k in range(n):
-          #                 dstart = floor(i * D / l)
-          #                 dend = ceil((i + 1) * D / l)
-          #                 hstart = floor(j * H / m)
-          #                 hend = ceil((j + 1) * H / m)
-          #                 wstart = floor(k * W / n)
-          #                 wend = ceil((k + 1) * W / n)
-          #                 output[:, :, i, j, k] =
-          #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
-          import paddle
-          paddle.disable_static()
-          input_data = np.random.rand(2, 3, 8, 32, 32)
-          x = paddle.to_tensor(input_data)
-          adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3d(output_size=3)
-          pool_out = adaptive_avg_pool(x = x)
+            # adaptive avg pool3d
+            # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
+            # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
+            # of input data into l * m * n grids averagely and performs poolings in each
+            # grid to get output.
+            # adaptive avg pool performs calculations as follow:
+            #
+            #     for i in range(l):
+            #         for j in range(m):
+            #             for k in range(n):
+            #                 dstart = floor(i * D / l)
+            #                 dend = ceil((i + 1) * D / l)
+            #                 hstart = floor(j * H / m)
+            #                 hend = ceil((j + 1) * H / m)
+            #                 wstart = floor(k * W / n)
+            #                 wend = ceil((k + 1) * W / n)
+            #                 output[:, :, i, j, k] =
+            #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
+            import paddle
+            paddle.disable_static()
+            input_data = np.random.rand(2, 3, 8, 32, 32)
+            x = paddle.to_tensor(input_data)
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3d(output_size=3)
+            pool_out = adaptive_avg_pool(x = x)
     """
 
     def __init__(self, output_size, data_format="NCDHW", name=None):
