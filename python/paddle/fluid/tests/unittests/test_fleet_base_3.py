@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
-import paddle
 import os
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
 
 
@@ -27,10 +29,6 @@ class TestFleetBase(unittest.TestCase):
                        "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_collective_minimize(self):
-        import paddle
-        import paddle.distributed.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
