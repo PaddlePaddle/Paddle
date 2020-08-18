@@ -580,7 +580,7 @@ function generate_api_spec() {
     cd ${PADDLE_ROOT}/build/.check_api_workspace
     virtualenv .${spec_kind}_env
     source .${spec_kind}_env/bin/activate
-    pip install ${PADDLE_ROOT}/build/python/dist/*whl;pip_excode=$?
+    pip install --no-cache-dir ${PADDLE_ROOT}/build/python/dist/*whl;pip_excode=$?
     if [[ "$pip_excode" != "0" ]]; then
         exit 4;
     fi
