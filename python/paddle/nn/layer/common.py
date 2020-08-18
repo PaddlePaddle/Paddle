@@ -24,7 +24,7 @@ from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
     'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
-    'Pad2D', 'Dropout', 'Dropout2d', 'Dropout3d'
+    'Pad2D', 'Dropout', 'Dropout2D', 'Dropout3D'
 ]
 
 
@@ -380,12 +380,11 @@ class Dropout(layers.Layer):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle.fluid.dygraph.base import to_variable
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = np.array([[1,2,3], [4,5,6]]).astype('float32')
-            x = to_variable(x)
+            x = paddle.to_tensor(x)
             m = paddle.nn.Dropout(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
@@ -415,13 +414,13 @@ class Dropout(layers.Layer):
         return out
 
 
-class Dropout2d(layers.Layer):
+class Dropout2D(layers.Layer):
     """
-        :alias_main: paddle.nn.Dropout2d
-        :alias: paddle.nn.Dropout,paddle.nn.layer.Dropout2d,paddle.nn.layer.common.Dropout2d
+        :alias_main: paddle.nn.Dropout2D
+        :alias: paddle.nn.Dropout,paddle.nn.layer.Dropout2D,paddle.nn.layer.common.Dropout2D
 
-    Dropout2d Layer.
-    This interface is used to construct a callable object of the `Dropout2d` class.
+    Dropout2D Layer.
+    This interface is used to construct a callable object of the `Dropout2D` class.
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
@@ -446,13 +445,12 @@ class Dropout2d(layers.Layer):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle.fluid.dygraph.base import to_variable
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
-            x = to_variable(x)
-            m = paddle.nn.Dropout2d(p=0.5)
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout2D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
@@ -462,7 +460,7 @@ class Dropout2d(layers.Layer):
    """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
-        super(Dropout2d, self).__init__()
+        super(Dropout2D, self).__init__()
 
         self.p = p
         self.training = _dygraph_tracer()._train_mode
@@ -479,13 +477,13 @@ class Dropout2d(layers.Layer):
         return out
 
 
-class Dropout3d(layers.Layer):
+class Dropout3D(layers.Layer):
     """
-        :alias_main: paddle.nn.Dropout3d
-        :alias: paddle.nn.Dropout,paddle.nn.layer.Dropout3d,paddle.nn.layer.common.Dropout3d
+        :alias_main: paddle.nn.Dropout3D
+        :alias: paddle.nn.Dropout,paddle.nn.layer.Dropout3D,paddle.nn.layer.common.Dropout3D
 
-    Dropout3d Layer.
-    This interface is used to construct a callable object of the `Dropout3d` class.
+    Dropout3D Layer.
+    This interface is used to construct a callable object of the `Dropout3D` class.
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
     a channel is a 3D feature map with the shape `DHW`). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
@@ -510,13 +508,12 @@ class Dropout3d(layers.Layer):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle.fluid.dygraph.base import to_variable
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
-            x = to_variable(x)
-            m = paddle.nn.Dropout3d(p=0.5)
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout3D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
@@ -526,7 +523,7 @@ class Dropout3d(layers.Layer):
    """
 
     def __init__(self, p=0.5, data_format='NCDHW', name=None):
-        super(Dropout3d, self).__init__()
+        super(Dropout3D, self).__init__()
 
         self.p = p
         self.training = _dygraph_tracer()._train_mode

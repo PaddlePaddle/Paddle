@@ -246,7 +246,7 @@ class TestDropoutFAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float32")
+            input = fluid.data(name="input", shape=[40, 40], dtype="float32")
             res1 = paddle.nn.functional.dropout(x=input, p=0., training=False)
             res2 = paddle.nn.functional.dropout(
                 x=input, p=0., axis=0, training=True, mode='upscale_in_train')
@@ -285,7 +285,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 training=False,
                 mode='downscale_in_infer')
 
-            in_np = np.random.random([4, 4]).astype("float32")
+            in_np = np.random.random([40, 40]).astype("float32")
             res_np = in_np
 
             exe = fluid.Executor(place)
@@ -303,7 +303,7 @@ class TestDropoutFAPI(unittest.TestCase):
     def test_dygraph(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-                in_np = np.random.random([4, 4]).astype("float32")
+                in_np = np.random.random([40, 40]).astype("float32")
                 res_np = in_np
                 input = fluid.dygraph.to_variable(in_np)
 
@@ -375,62 +375,63 @@ class TestDropoutFAPIError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
+            def test_Variable2():
+                # the input of dropout must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                paddle.nn.functional.dropout(x1, p=0.5, axis=0)
+
+            self.assertRaises(TypeError, test_Variable2)
+
             def test_dtype():
                 # the input dtype of dropout must be float32 or float64
                 # float16 only can be set on GPU place
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
-                paddle.nn.functional.dropout(x2, p=0.5)
+                xr = fluid.data(name='xr', shape=[3, 4, 5, 6], dtype="int32")
+                paddle.nn.functional.dropout(xr, p=0.5)
 
             self.assertRaises(TypeError, test_dtype)
 
             def test_pdtype():
                 # p should be int or float
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
                 paddle.nn.functional.dropout(x2, p='0.5')
 
-            self.assertRaises(AssertionError, test_pdtype)
+            self.assertRaises(TypeError, test_pdtype)
 
             def test_pvalue():
                 # p should be 0.<=p<=1.
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
                 paddle.nn.functional.dropout(x2, p=1.2)
 
-            self.assertRaises(AssertionError, test_pvalue)
+            self.assertRaises(ValueError, test_pvalue)
 
             def test_mode():
                 # mode should be 'downscale_in_infer' or 'upscale_in_train'
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
                 paddle.nn.functional.dropout(x2, mode='abc')
 
-            self.assertRaises(AssertionError, test_mode)
+            self.assertRaises(ValueError, test_mode)
 
             def test_axis():
                 # axis should be int or list
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
                 paddle.nn.functional.dropout(x2, axis=1.2)
 
-            self.assertRaises(AssertionError, test_axis)
-
-            def test_axis_dtype():
-                # axis should be int or list
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
-                paddle.nn.functional.dropout(x2, axis=1.2)
-
-            self.assertRaises(AssertionError, test_axis_dtype)
+            self.assertRaises(TypeError, test_axis)
 
             def test_axis_max():
                 # maximum of axis should less than dimensions of x
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
                 paddle.nn.functional.dropout(x2, axis=[0, 5])
 
-            self.assertRaises(AssertionError, test_axis_max)
+            self.assertRaises(ValueError, test_axis_max)
 
             def test_axis_len():
                 # length of axis should not greater than dimensions of x
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
                 paddle.nn.functional.dropout(x2, axis=[0, 1, 2, 3, 4])
 
-            self.assertRaises(AssertionError, test_axis_len)
+            self.assertRaises(ValueError, test_axis_len)
 
 
 class TestDropoutCAPI(unittest.TestCase):
@@ -443,7 +444,7 @@ class TestDropoutCAPI(unittest.TestCase):
     def test_dygraph(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-                input_np = np.random.random([4, 4]).astype("float32")
+                input_np = np.random.random([40, 40]).astype("float32")
                 result_np = input_np
                 input = fluid.dygraph.to_variable(input_np)
                 m = paddle.nn.Dropout(p=0.)
@@ -509,7 +510,7 @@ class TestDropout2dFAPIError(unittest.TestCase):
                 x = fluid.data(name='x1', shape=[2, 3, 4, 5, 6], dtype="int32")
                 paddle.nn.functional.dropout2d(x)
 
-            self.assertRaises(AssertionError, test_xdim)
+            self.assertRaises(ValueError, test_xdim)
 
             def test_dataformat():
                 # data_format should be 'NCHW' or 'NHWC'
@@ -519,7 +520,7 @@ class TestDropout2dFAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_dataformat)
 
 
-class TestDropout2dCAPI(unittest.TestCase):
+class TestDropout2DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -532,7 +533,7 @@ class TestDropout2dCAPI(unittest.TestCase):
                 input_np = np.random.random([2, 3, 4, 5]).astype("float32")
                 result_np = input_np
                 input = fluid.dygraph.to_variable(input_np)
-                m = paddle.nn.Dropout2d(p=0.)
+                m = paddle.nn.Dropout2D(p=0.)
                 m.eval()
                 result = m(input)
                 self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -595,7 +596,7 @@ class TestDropout3dFAPIError(unittest.TestCase):
                 x = fluid.data(name='x1', shape=[2, 3, 4, 5], dtype="int32")
                 paddle.nn.functional.dropout3d(x)
 
-            self.assertRaises(AssertionError, test_xdim)
+            self.assertRaises(ValueError, test_xdim)
 
             def test_dataformat():
                 # data_format should be 'NCDHW' or 'NDHWC'
@@ -605,7 +606,7 @@ class TestDropout3dFAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_dataformat)
 
 
-class TestDropout3dCAPI(unittest.TestCase):
+class TestDropout3DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -618,7 +619,7 @@ class TestDropout3dCAPI(unittest.TestCase):
                 input_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
                 result_np = input_np
                 input = fluid.dygraph.to_variable(input_np)
-                m = paddle.nn.Dropout3d(p=0.)
+                m = paddle.nn.Dropout3D(p=0.)
                 m.eval()
                 result = m(input)
                 self.assertTrue(np.allclose(result.numpy(), result_np))

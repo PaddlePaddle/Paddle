@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import warnings
+import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import Variable, fill_constant
 
@@ -516,11 +517,10 @@ def dropout(x,
         .. code-block:: python
             import paddle
             import numpy as np
-            from paddle.fluid.dygraph.base import to_variable
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = np.array([[1,2,3], [4,5,6]]).astype('float32')
-            x = to_variable(x)
+            x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.dropout(x, 0.5)
             y_test = paddle.nn.functional.dropout(x, 0.5, training=False) #test
             print(x.numpy())
@@ -578,11 +578,10 @@ def dropout(x,
         .. code-block:: python
             import paddle
             import numpy as np
-            from paddle.fluid.dygraph.base import to_variable
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = np.array([[1,2,3], [4,5,6]]).astype('float32')
-            x = to_variable(x)
+            x = paddle.to_tensor(x)
             y_0 = paddle.nn.functional.dropout(x, axis=0)
             y_1 = paddle.nn.functional.dropout(x, axis=1)
             y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
@@ -592,14 +591,15 @@ def dropout(x,
             print(y_01.numpy())
 
     """
-    assert isinstance(p, (float, int)), "p argument should be a number"
-    assert 0 <= p <= 1, "p argument should between 0 and 1"
-    assert mode in (
-        'downscale_in_infer', 'upscale_in_train'
-    ), "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
-    if axis:
-        assert isinstance(axis, (
-            int, list)), "datatype of axis argument should be int or list"
+    if not isinstance(p, (float, int)):
+        raise TypeError("p argument should be a number")
+    if p < 0 or p > 1:
+        raise ValueError("p argument should between 0 and 1")
+    if mode not in ('downscale_in_infer', 'upscale_in_train'):
+        raise ValueError(
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+    if axis and not isinstance(axis, (int, list)):
+        raise TypeError("datatype of axis argument should be int or list")
 
     if axis == None:  # commonly used dropout
         seed = None
@@ -644,23 +644,26 @@ def dropout(x,
             attrs=attrs)
         return out
     else:  #sometimes called dropout_nd #TODO: optimize with c++
+        if not in_dygraph_mode():
+            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
             scale = layers.fill_constant(
                 shape=[1], dtype='float32', value=1 / keep_prob)
-            scale_input = layers.elementwise_mul(
+            scale_input = paddle.multiply(
                 x, scale) if mode == 'upscale_in_train' else x
 
             #get mask shape
             input_shape = x.shape
             drop_axes = [axis] if isinstance(axis, int) else axis
-            assert max(drop_axes) <= len(input_shape)-1, \
-                "axis value should less than dimensions of x:{}, but get drop_axes value:{} " \
-                    .format(len(input_shape), max(drop_axes))
-            assert len(drop_axes) <= len(input_shape), \
-                "length of axis should not greater than dimensions of x:{}, but get length of drop axes: {}" \
-                    .format(len(input_shape), len(drop_axes) )
+            if max(drop_axes) > len(input_shape) - 1:
+                raise ValueError("axis value should less than dimensions of x:{}, but get drop_axes value:{} " \
+                    .format(len(input_shape), max(drop_axes)))
+            if len(drop_axes) > len(input_shape):
+                raise ValueError(
+                    "length of axis should not greater than dimensions of x:{}, but get length of drop axes: {}".
+                    format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
             for i in drop_axes:
                 mask_shape[i] = input_shape[i]
@@ -673,13 +676,13 @@ def dropout(x,
 
             scale_input = layers.cast(scale_input, dtype)
             keep_mask = layers.cast(keep_mask, dtype)
-            ret = layers.elementwise_mul(scale_input, keep_mask)
+            ret = paddle.multiply(scale_input, keep_mask, name=name)
             return ret
         else:  # test
             scale = layers.fill_constant(
                 shape=[1], dtype='float32', value=keep_prob)
-            ret = layers.elementwise_mul(
-                x, scale) if mode == 'downscale_in_infer' else x
+            ret = paddle.multiply(x,
+                                  scale) if mode == 'downscale_in_infer' else x
             return ret
 
 
@@ -712,11 +715,10 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
         .. code-block:: python
             import paddle
             import numpy as np
-            from paddle.fluid.dygraph.base import to_variable
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
-            x = to_variable(x)
+            x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.dropout2d(x)  #train
             y_test = paddle.nn.functional.dropout2d(x, training=False) #test
             for i in range(2):
@@ -726,8 +728,9 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
                     print(y_test.numpy()[i,j,:,:])
     """
     input_shape = x.shape
-    assert len(input_shape) == 4, "dimensions of x should be 4, but received {} != 4"\
-        .format(len(input_shape))
+    if len(input_shape) != 4:
+        raise ValueError("dimensions of x should be 4, but received {} != 4"\
+        .format(len(input_shape)))
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
@@ -772,11 +775,10 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
         .. code-block:: python
             import paddle
             import numpy as np
-            from paddle.fluid.dygraph.base import to_variable
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
-            x = to_variable(x)
+            x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.dropout3d(x)  #train
             y_test = paddle.nn.functional.dropout3d(x, training=False) #test
             print(x.numpy()[0,0,:,:,:])
@@ -785,8 +787,9 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     """
 
     input_shape = x.shape
-    assert len(input_shape) == 5, "dimensions of x should be 5, but received {} != 5" \
-        .format(len(input_shape))
+    if len(input_shape) != 5:
+        raise ValueError("dimensions of x should be 5, but received {} != 5" \
+        .format(len(input_shape)))
 
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(

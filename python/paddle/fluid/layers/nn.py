@@ -931,6 +931,7 @@ def cos_sim(X, Y):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.dropout")
 def dropout(x,
             dropout_prob,
             is_test=False,
@@ -946,8 +947,6 @@ def dropout(x,
     training. The dropout operator randomly sets (according to the given dropout
     probability) the outputs of some units to zero, while others are remain
     unchanged.
-
-    ***Warning*** This API is deprecated since 2.0, we recommend to use `paddle.nn.functional.dropout` to achieve the same function.
 
     dropout op can be removed from the program to make the program more efficient.
 

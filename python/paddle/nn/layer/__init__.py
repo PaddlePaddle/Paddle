@@ -42,8 +42,8 @@ from .common import Linear  #DEFINE_ALIAS
 from .common import Flatten  #DEFINE_ALIAS
 from .common import UpSample  #DEFINE_ALIAS
 from .common import Dropout  #DEFINE_ALIAS
-from .common import Dropout2d  #DEFINE_ALIAS
-from .common import Dropout3d  #DEFINE_ALIAS
+from .common import Dropout2D  #DEFINE_ALIAS
+from .common import Dropout3D  #DEFINE_ALIAS
 from .conv import Conv2D  #DEFINE_ALIAS
 from .conv import Conv2DTranspose  #DEFINE_ALIAS
 from .conv import Conv3D  #DEFINE_ALIAS
