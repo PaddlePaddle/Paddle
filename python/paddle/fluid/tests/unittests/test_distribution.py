@@ -21,28 +21,19 @@ import math
 
 
 class DistributionNumpy():
-    """
-        Distribution is the abstract base class for probability distributions.
-    """
-
     def sample(self):
-        """Sampling from the distribution."""
         raise NotImplementedError
 
     def entropy(self):
-        """The entropy of the distribution."""
         raise NotImplementedError
 
     def kl_divergence(self, other):
-        """The KL-divergence between self distributions and other."""
         raise NotImplementedError
 
     def log_prob(self, value):
-        """Log probability density/mass function."""
         raise NotImplementedError
 
     def probs(self, value):
-        """Probability density/mass function."""
         raise NotImplementedError
 
 
@@ -456,6 +447,22 @@ class DistributionTest(unittest.TestCase):
 
 
 class DistributionTestError(unittest.TestCase):
+    def test_distribution_error(self):
+        distribution = Distribution()
+
+        self.assertRaises(NotImplementedError, distribution.sample)
+        self.assertRaises(NotImplementedError, distribution.entropy)
+
+        normal = Normal(0.0, 1.0)
+        self.assertRaises(NotImplementedError, distribution.kl_divergence,
+                          normal)
+
+        value_npdata = np.array([0.8], dtype="float32")
+        value_tensor = layers.create_tensor(dtype="float32")
+        self.assertRaises(NotImplementedError, distribution.log_prob,
+                          value_tensor)
+        self.assertRaises(NotImplementedError, distribution.probs, value_tensor)
+
     def test_normal_error(self):
         loc = int(1)
         scale = int(1)
@@ -511,6 +518,24 @@ class DistributionTestError(unittest.TestCase):
         seed = 1.0
         # type of seed must be int
         self.assertRaises(TypeError, uniform.sample, [2, 3], seed)
+
+
+class DistributionTestName(unittest.TestCase):
+    def test_normal_name(self):
+        name = 'test_normal'
+        normal1 = Normal(0.0, 1.0, name=name)
+        self.assertEqual(normal1.name, name)
+
+        normal2 = Normal(0.0, 1.0)
+        self.assertEqual(normal2.name, 'Normal')
+
+    def test_uniform_name(self):
+        name = 'test_uniform'
+        uniform1 = Uniform(0.0, 1.0, name=name)
+        self.assertEqual(uniform1.name, name)
+
+        uniform2 = Uniform(0.0, 1.0)
+        self.assertEqual(uniform2.name, 'Uniform')
 
 
 if __name__ == '__main__':
