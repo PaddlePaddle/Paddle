@@ -54,7 +54,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two element, (H, W). H and W can be either a int, or None which means
             the size will be the same as that of the input.
-        data_format (string) – The data format of the input and output data. An optional string
+        data_format (str): The data format of the input and output data. An optional string
             from: “NCHW”, “NDHW”. The default is “NCHW”. When it is “NCHW”, the data is stored in
             the order of: [batch_size, input_channels, input_height, input_width].
         name(str, optional): For detailed information, please refer
@@ -170,7 +170,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means
             the size will be the same as that of the input.
-        data_format (string) – The data format of the input and output data. An optional string
+        data_format (str): The data format of the input and output data. An optional string
             from: “NCDHW”, “NDHWC”. The default is “NCDHW”. When it is “NCDHW”, the data is stored in
             the order of: [batch_size, input_channels, input_depth, input_height, input_width].
         name(str, optional): For detailed information, please refer
