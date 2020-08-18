@@ -68,6 +68,8 @@ DEFINE_bool(warmup, false,
 
 DEFINE_bool(enable_profile, false, "Turn on profiler for fluid");
 DEFINE_int32(cpu_num_threads, 1, "Number of threads for each paddle instance.");
+DEFINE_int32(ernie_cpu_num_threads, 4,
+             "Number of threads for each paddle instance.");
 
 namespace paddle {
 namespace inference {
