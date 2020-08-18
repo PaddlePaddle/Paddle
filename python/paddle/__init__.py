@@ -38,6 +38,7 @@ import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
 import paddle.tensor
+import paddle.distribution
 import paddle.nn
 import paddle.distributed.fleet
 import paddle.optimizer
