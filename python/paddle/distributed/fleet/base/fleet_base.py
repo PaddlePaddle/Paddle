@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import paddle
+from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
 from .strategy_compiler import StrategyCompiler
 from .distributed_strategy import DistributedStrategy
 from .meta_optimizer_factory import MetaOptimizerFactory
@@ -59,9 +60,16 @@ class Fleet(object):
         self._runtime_handle = None
         self._util = None
 
-    def init(self, role_maker):
-        self._role_maker = role_maker
-        self.strategy_compiler = StrategyCompiler()
+    def init(self, role_maker=None, is_collective=False):
+        if isinstance(role_maker, RoleMakerBase):
+            self._role_maker = role_maker
+        elif role_maker==None:
+            if isinstance(is_collective, boolen):
+                self._is_collective=is_collective
+                self._role_maker =PaddleCloudRoleMaker(is_collective=self._is_collective)
+            else:
+                self._role_maker = PaddleCloudRoleMaker(is_collective=False)
+        self.strategy_compiler = StrategyCompiler()       
 
     def is_first_worker(self):
         """
