@@ -64,9 +64,9 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     framework::DDim x_dims = x->dims();
     framework::DDim out_dims(x_dims);
     framework::Tensor temp;
-    VLOG(3) << "rank " << comm->rank() << " invoking Scatter.";
+    auto in_data_ptr = x->data<T>();
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBroadcast(
-        reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
+        reinterpret_cast<const void*>(in_data_ptr),
         temp.mutable_data<T>(out_dims, place), numel, dtype, root_id,
         comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " invoke Scatter.";
