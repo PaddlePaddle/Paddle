@@ -667,7 +667,6 @@ def masked_select(x, mask, name=None):
             x = paddle.to_tensor(data)
             mask = paddle.to_tensor(mask_data)
             out = paddle.masked_select(x, mask)
-            print(out.numpy())
             #[1.0 5.0 6.0 9.0]
     """
 
