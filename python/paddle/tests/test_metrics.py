@@ -102,8 +102,8 @@ class TestAccuracyDynamic(unittest.TestCase):
             acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
             for _ in range(10):
                 label, pred = self.random_pred_label()
-                label_var = to_tensor(label)
-                pred_var = to_tensor(pred)
+                label_var = paddle.to_tensor(label)
+                pred_var = paddle.to_tensor(pred)
                 state = to_list(acc.compute(pred_var, label_var))
                 acc.update(* [s.numpy() for s in state])
                 res_m = acc.accumulate()

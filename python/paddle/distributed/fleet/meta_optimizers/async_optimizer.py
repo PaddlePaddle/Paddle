@@ -139,4 +139,4 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
         return None, None
 
     def _disable_strategy(self, dist_strategy):
-        self.user_defined_strategy.a_sync_configs["k_steps"] = -1
+        self.user_defined_strategy.a_sync_configs = {}
