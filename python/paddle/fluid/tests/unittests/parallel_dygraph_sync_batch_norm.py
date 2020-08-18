@@ -55,7 +55,7 @@ class TestLayer(fluid.dygraph.Layer):
         self._sync_batch_norm = SyncBatchNorm(num_filters)
 
         self._conv2 = Conv2D(
-            num_channels=num_channels,
+            num_channels=num_filters,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=stride,

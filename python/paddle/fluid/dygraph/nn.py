@@ -3260,7 +3260,7 @@ class SyncBatchNorm(layers.Layer):
 
           x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
           paddle.disable_static()
-          x = paddle.to_variable(x)
+          x = paddle.to_tensor(x)
           if paddle.fluid.is_compiled_with_cuda():
               sync_batch_norm = nn.SyncBatchNorm(2)
               hidden1 = sync_batch_norm(x)
@@ -3296,9 +3296,7 @@ class SyncBatchNorm(layers.Layer):
         # create parameter
         if weight_attr == False:
             self.weight = self.create_parameter(
-                attr=self._weight_attr,
-                shape=param_shape,
-                default_initializer=Constant(1.0))
+                attr=None, shape=param_shape, default_initializer=Constant(1.0))
             self.weight.stop_gradient = True
         else:
             self.weight = self.create_parameter(
@@ -3309,7 +3307,7 @@ class SyncBatchNorm(layers.Layer):
 
         if bias_attr == False:
             self.bias = self.create_parameter(
-                attr=self._bias_attr,
+                attr=None,
                 shape=param_shape,
                 default_initializer=Constant(0.0),
                 is_bias=True)
