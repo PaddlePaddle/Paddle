@@ -43,8 +43,8 @@ class GatherV2OpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(axis_size, 1,
                       platform::errors::InvalidArgument(
                           "Axis size should be 1, but received %d", axis_size));
-    int axis_index = axis;
-    auto index_dim_size = input_dim[axis];
+    int axis_index = axis_data[0];
+    int index_dim_size = input_dim[axis_index];
     PADDLE_ENFORCE_LE(
         index_size, index_dim_size,
         platform::errors::InvalidArgument(
@@ -55,7 +55,7 @@ class GatherV2OpKernel : public framework::OpKernel<T> {
 
     int inner_dim_size = 1;
     int outer_dim_size = 1;
-    std::vector<int> out_dim_vec = {input_dim_size};
+    std::vector<int> out_dim_vec{index_dim_size};
 
     for (int i = 0; i < axis_index; i++) {
       inner_dim_size *= input_dim[i];
@@ -70,7 +70,12 @@ class GatherV2OpKernel : public framework::OpKernel<T> {
     auto* out_data = out->mutable_data<T>(ctx.GetPlace());
 
     for (int i = 0; i < inner_dim_size; i++) {
-      for (int j = 0; j < outer_dim_size) {
+      for (int j = 0; j < index_size; j++) {
+        for (int k = 0; k < outer_dim_size; k++) {
+          int index = k + index_data[j] * outer_dim_size +
+                      (i * input_size / inner_dim_size);
+          out_data[i] = input_data[index];
+        }
       }
     }
   }
