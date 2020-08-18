@@ -4866,7 +4866,7 @@ def split(input, num_or_sections, dim=-1, name=None):
 
     check_variable_and_dtype(
         input, 'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'in64'], 'split')
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'split')
     check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
     check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):
@@ -10094,12 +10094,12 @@ def unstack(x, axis=0, num=None):
     raised.
 
     Args:
-        x (Variable): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
+        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
         axis (int): The axis along which the input is unstacked.
         num (int|None): The number of output variables.
 
     Returns:
-        list(Variable): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
+        list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
 
     Raises:
         ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
@@ -10108,7 +10108,7 @@ def unstack(x, axis=0, num=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
+            x = fluid.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
             y = fluid.layers.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
@@ -12049,8 +12049,8 @@ def logical_and(x, y, out=None, name=None):
             paddle.disable_static()
             x_data = np.array([True, True, False, False], dtype=np.bool)
             y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_variable(x_data)
-            y = paddle.to_variable(y_data)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
             res = paddle.logical_and(x, y)
             print(res.numpy()) # [True False False False]
     """

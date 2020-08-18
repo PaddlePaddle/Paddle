@@ -219,7 +219,7 @@ $$out = \\frac{1}{\\sqrt{x}}$$
 )DOC";
 
 UNUSED constexpr char AbsDoc[] = R"DOC(
-Abs Activation Operator.
+Abs Operator.
 
 $$out = |x|$$
 
@@ -241,6 +241,9 @@ $$out = \\left \\lfloor x \\right \\rfloor$$
 
 UNUSED constexpr char CosDoc[] = R"DOC(
 Cosine Operator. Computes cosine of x element-wise.
+
+Input range is `(-inf, inf)` and output range is `[-1,1]`.
+Return `nan` if input is out of boundary.
 
 $$out = cos(x)$$
 
@@ -334,7 +337,7 @@ class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of acos operator");
     AddOutput("Out", "Output of acos operator");
     AddComment(R"DOC(
-Arccosine Activation Operator.
+Arccosine Operator.
 
 $$out = \cos^{-1}(x)$$
 
@@ -348,7 +351,7 @@ class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of asin operator");
     AddOutput("Out", "Output of asin operator");
     AddComment(R"DOC(
-Arcsine Activation Operator.
+Arcsine Operator.
 
 $$out = \sin^{-1}(x)$$
 
@@ -362,9 +365,9 @@ class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of atan operator");
     AddOutput("Out", "Output of atan operator");
     AddComment(R"DOC(
-Arctanh Activation Operator.
+Arctangent Operator.
 
-$$out = \tanh^{-1}(x)$$
+$$out = \tan^{-1}(x)$$
 
 )DOC");
   }
