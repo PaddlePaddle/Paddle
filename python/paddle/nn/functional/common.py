@@ -27,6 +27,8 @@ from ...fluid.layers import assign  #DEFINE_ALIAS
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
 from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
+from ...fluid.framework import in_dygraph_mode
+from ...fluid.data_feeder import check_variable_and_dtype
 
 import paddle
 
@@ -474,11 +476,10 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         .. code-block:: python
             import paddle
             import numpy as np
-            from paddle.fluid.dygraph.base import to_variable
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = np.array([[-1, 1], [-1, 1]]).astype('float32')
-            x = to_variable(x)
+            x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
             y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False) #test
             print(x.numpy())
@@ -486,8 +487,14 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
             # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
             print(y_test.numpy())
     """
-    assert isinstance(p, (float, int)), "p argument should be a number"
-    assert 0 <= p <= 1, "p argument should between 0 and 1"
+    if not isinstance(p, (float, int)):
+        raise TypeError("p argument should be a float or int")
+    if p < 0 or p > 1:
+        raise ValueError("p argument should between 0 and 1")
+
+    if not in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'alpha_dropout')
 
     if training:
         #get transformation params

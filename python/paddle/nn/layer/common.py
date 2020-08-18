@@ -373,12 +373,11 @@ class AlphaDropout(layers.Layer):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle.fluid.dygraph.base import to_variable
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x = np.array([[-1, 1], [-1, 1]]).astype('float32')
-            x = to_variable(x)
+            x = paddle.to_tensor(x)
             m = paddle.nn.AlphaDropout(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase

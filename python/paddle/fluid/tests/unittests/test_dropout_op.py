@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+import paddle
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -291,21 +291,28 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
                 paddle.nn.functional.alpha_dropout(x1, p=0.5)
 
-            self.assertRaises(AssertionError, test_Variable)
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_dtype():
+                # the input dtype of dropout must be float32 or float64
+                xr = fluid.data(name='xr', shape=[3, 4, 5, 6], dtype="int32")
+                paddle.nn.functional.alpha_dropout(xr)
+
+            self.assertRaises(TypeError, test_dtype)
 
             def test_pdtype():
                 # p should be int or float
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
                 paddle.nn.functional.alpha_dropout(x2, p='0.5')
 
-            self.assertRaises(AssertionError, test_pdtype)
+            self.assertRaises(TypeError, test_pdtype)
 
             def test_pvalue():
                 # p should be 0.<=p<=1.
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
                 paddle.nn.functional.alpha_dropout(x2, p=1.2)
 
-            self.assertRaises(AssertionError, test_pvalue)
+            self.assertRaises(ValueError, test_pvalue)
 
 
 class TestAlphaDropoutCAPI(unittest.TestCase):
