@@ -57,7 +57,7 @@ class AutoCheckpointTest2(AutoCheckPointACLBase):
         os.environ.update(proc_env)
 
     def test_corner_epoch_no(self):
-        self._test_core_epoch_no(1)
+        self._test_corner_epoch_no(1)
 
 
 if __name__ == '__main__':
