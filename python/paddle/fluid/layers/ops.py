@@ -23,10 +23,15 @@ from paddle.utils import deprecated
 __activations_noattr__ = [
     'sigmoid',
     'logsigmoid',
+    'tanh_shrink',
+    'softplus',
+    'softsign',
+]
+
+__unary_func__ = [
     'exp',
     'tanh',
     'atan',
-    'tanh_shrink',
     'sqrt',
     'rsqrt',
     'abs',
@@ -34,15 +39,13 @@ __activations_noattr__ = [
     'floor',
     'cos',
     'acos',
-    'asin',
     'sin',
     'sinh',
+    'asin',
     'cosh',
     'round',
     'reciprocal',
     'square',
-    'softplus',
-    'softsign',
 ]
 
 __all__ = []
@@ -58,9 +61,18 @@ globals()['_scale'] = generate_layer_fn('scale')
 globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
 
 __all__ += __activations_noattr__
+__all__ += __unary_func__
 
 for _OP in set(__activations_noattr__):
-    globals()[_OP] = generate_activation_fn(_OP)
+    func = generate_activation_fn(_OP)
+    func = deprecated(
+        since="2.0.0", update_to="paddle.nn.functional.%s" % (_OP))(func)
+    globals()[_OP] = func
+
+for _OP in set(__unary_func__):
+    func = generate_activation_fn(_OP)
+    func = deprecated(since="2.0.0", update_to="paddle.%s" % (_OP))(func)
+    globals()[_OP] = func
 
 add_sample_code(globals()["sigmoid"], r"""
 Examples:

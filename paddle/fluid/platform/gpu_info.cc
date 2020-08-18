@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
@@ -38,11 +39,11 @@ USE_GPU_MEM_STAT;
 namespace paddle {
 namespace platform {
 
-/* Here is a very simple CUDA “pro tip”: cudaDeviceGetAttribute() is a much
-faster way to query device properties. You can see details in
-https://devblogs.nvidia.com/cuda-pro-tip-the-fast-way-to-query-device-properties/
-*/
+int CudnnVersion() {
+  if (!dynload::HasCUDNN()) return -1;
 
+  return dynload::cudnnGetVersion();
+}
 static int GetCUDADeviceCountImpl() {
   int driverVersion = 0;
   cudaError_t status = cudaDriverGetVersion(&driverVersion);
@@ -73,6 +74,10 @@ int GetCUDADeviceCount() {
   return dev_cnt;
 }
 
+/* Here is a very simple CUDA “pro tip”: cudaDeviceGetAttribute() is a much
+faster way to query device properties. You can see details in
+https://devblogs.nvidia.com/cuda-pro-tip-the-fast-way-to-query-device-properties/
+*/
 int GetCUDAComputeCapability(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(),
                     platform::errors::InvalidArgument(

@@ -31,6 +31,7 @@ from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
+from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
@@ -544,10 +545,8 @@ class Executor(object):
 
     def __init__(self, place=None):
         if place is None:
-            if core.is_compiled_with_cuda():
-                self.place = core.CUDAPlace(0)
-            else:
-                self.place = core.CPUPlace()
+            expected_place = framework._current_expected_place()
+            self.place = expected_place
         else:
             self.place = place
         self.program_caches = dict()
