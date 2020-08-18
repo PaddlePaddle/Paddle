@@ -630,7 +630,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                                        'reduce_all', reduce_all_flag)
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sum')
-    check_type(axis, 'axis', (int, list, tuple), 'sum')
+    check_type(axis, 'axis', (int, list, tuple, type(None)), 'sum')
 
     helper = LayerHelper('sum', **locals())
     if dtype_flag:
