@@ -23,7 +23,7 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
     startup_program = fluid.Program()
     main_program = fluid.Program()
     place = paddle.CPUPlace()
-    if use_gpu:
+    if use_gpu and fluid.core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     exe = fluid.Executor(place)
     with fluid.program_guard(main_program, startup_program):
@@ -122,8 +122,6 @@ class TestCPUNormal(unittest.TestCase):
         test(self, 'isfinite')
 
 
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestCUDANormal(unittest.TestCase):
     def test_inf(self):
         test(self, 'isinf', True)
