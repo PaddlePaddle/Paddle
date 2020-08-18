@@ -35,7 +35,7 @@ from paddle.fluid.tests.unittests.test_auto_checkpoint import AutoCheckPointACLB
 logger = get_logger()
 
 
-class AutoCheckpointTest2(AutoCheckPointACLBase):
+class AutoCheckpointTest1(AutoCheckPointACLBase):
     def setUp(self):
         get_logger()
         logger.info("enter tests")
