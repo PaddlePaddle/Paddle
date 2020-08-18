@@ -256,39 +256,39 @@ class MSELoss(fluid.dygraph.layers.Layer):
 class L1Loss(fluid.dygraph.Layer):
     """
     This interface is used to construct a callable object of the ``L1Loss`` class.
-    The L1Loss layer calculates the L1 Loss of ``x`` and ``label`` as follows.
+    The L1Loss layer calculates the L1 Loss of ``input`` and ``label`` as follows.
 
-     If :attr:`reduction` set to ``'none'``, the loss is:
-
-    .. math::
-        Out = \lvert x - label\rvert
-
-    If :attr:`reduction` set to ``'mean'``, the loss is:
+     If `reduction` set to ``'none'``, the loss is:
 
     .. math::
-        Out = MEAN(\lvert x - label\rvert)
+        Out = \lvert input - label\rvert
 
-    If :attr:`reduction` set to ``'sum'``, the loss is:
+    If `reduction` set to ``'mean'``, the loss is:
 
     .. math::
-        Out = SUM(\lvert x - label\rvert)
+        Out = MEAN(\lvert input - label\rvert)
+
+    If `reduction` set to ``'sum'``, the loss is:
+
+    .. math::
+        Out = SUM(\lvert input - label\rvert)
 
     
     Parameters:
         reduction (str, optional): Indicate the reduction to apply to the loss, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'none'``, the unreduced loss is returned; 
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. 
-            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. 
+            If `reduction` is ``'none'``, the unreduced loss is returned; 
+            If `reduction` is ``'mean'``, the reduced mean loss is returned. 
+            If `reduction` is ``'sum'``, the reduced sum loss is returned. 
             Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        x (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
-        label (Tensor): label. The shapes is [N, *], same shape as ``x`` . It's data type should be float32, float64, int32, int64.
-        output (Tensor): The L1 Loss of ``x`` and ``label``. 
-            If :attr:`reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``x`` .
-            If :attr:`reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1], which means the output is a scalar.
+        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
+        label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
+        output (Tensor): The L1 Loss of ``input`` and ``label``. 
+            If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
+            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
             
     Examples:
         .. code-block:: python
@@ -296,23 +296,23 @@ class L1Loss(fluid.dygraph.Layer):
             import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
+            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
             label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            x = paddle.to_variable(x_data)
+            input = paddle.to_variable(input_data)
             label = paddle.to_variable(label_data)
 
             l1_loss = paddle.nn.loss.L1Loss()
-            output = l1_loss(x, label)
+            output = l1_loss(input, label)
             print(output.numpy())  
             # [0.35]
 
             l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
-            output = l1_loss(x, label)
+            output = l1_loss(input, label)
             print(output.numpy())  
             # [1.4]
 
             l1_loss = paddle.nn.loss.L1Loss(reduction='none')
-            output = l1_loss(x, label)
+            output = l1_loss(input, label)
             print(output.numpy())  
             # [[0.20000005 0.19999999]
             # [0.2        0.79999995]]
@@ -327,9 +327,9 @@ class L1Loss(fluid.dygraph.Layer):
         self.reduction = reduction
         self.name = name
 
-    def forward(self, x, label):
+    def forward(self, input, label):
         return paddle.nn.functional.l1_loss(
-            x, label, self.reduction, name=self.name)
+            input, label, self.reduction, name=self.name)
 
 
 class BCELoss(fluid.dygraph.Layer):
