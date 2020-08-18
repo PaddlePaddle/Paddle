@@ -37,14 +37,64 @@ __all__ = [
     'SimpleRNNCell',
     'LSTMCell',
     'GRUCell',
-    'StackedRNNCell',
-    'StackedLSTMCell',
-    # 'stackedGRUCell',
     'RNN',
-    'BidirectionalRNN',
+    'BiRNN',
+    'SimpleRNN',
     'LSTM',
-    # 'GRU',
+    'GRU',
+    # 'StackedRNNCell',
+    # 'StackedLSTMCell',
+    # 'stackedGRUCell',
 ]
+
+
+def split_states(states, bidirectional=False, state_components=1):
+    if state_components == 1:
+        states = layers.unstack(states)
+        if not bidirectional:
+            return states
+        else:
+            return list(zip(states[::2], states[1::2]))
+    else:
+        states = tuple([layers.unstack(item) for item in states])
+        if not bidirectional:
+            return list(zip(*states))
+        else:
+            states = list(zip(*states))
+            return list(zip(states[::2], states[1::2]))
+
+
+def concat_states(states, bidirectional=False, state_components=1):
+    if state_components == 1:
+        return layers.stack(flatten(states))
+    else:
+        states = flatten(states)
+        componnets = []
+        for i in range(state_components):
+            componnets.append(states[i::state_components])
+        return [layers.stack(item) for item in componnets]
+
+
+def birnn(cell_fw, cell_bw, inputs, states_fw, states_bw, sequence_length,
+          time_major):
+    outputs_fw, states_fw = layers.rnn(cell_fw,
+                                       inputs,
+                                       states_fw,
+                                       sequence_length,
+                                       time_major=time_major)
+
+    outputs_bw, states_bw = layers.rnn(cell_bw,
+                                       inputs,
+                                       states_bw,
+                                       sequence_length,
+                                       time_major=time_major,
+                                       is_reverse=True)
+
+    outputs = map_structure(lambda x, y: layers.concat([x, y], -1), outputs_fw,
+                            outputs_bw)
+
+    final_states = (states_fw, states_bw)
+    return outputs, final_states
 
 
 class RNNCellBase(Layer):
@@ -460,8 +510,8 @@ class RNN(Layer):
             self.cell.call = self.cell.forward
         self.is_reverse = is_reverse
         self.time_major = time_major
-        self.batch_index, self.time_step_index = (1, 0) \
-            if time_major else (0, 1)
+        # self.batch_index, self.time_step_index = (1, 0) \
+        #     if time_major else (0, 1)
 
     def forward(self, inputs, initial_states=None, sequence_length=None):
         """
@@ -494,9 +544,6 @@ class RNN(Layer):
                 thus has the same structure with it and has tensors with same shapes \
                 and data types.
         """
-        flat_inputs = flatten(inputs)
-        batch_size, time_steps = (flat_inputs[0].shape[self.batch_index],
-                                  flat_inputs[0].shape[self.time_step_index])
 
         if initial_states is None:
             initial_states = self.cell.get_initial_states(
@@ -504,79 +551,17 @@ class RNN(Layer):
                 dtype=inputs.dtype,
                 batch_dim_idx=self.batch_index)
 
-        if fluid.in_dygraph_mode():
-
-            class ArrayWrapper(object):
-                def __init__(self, x):
-                    self.array = [x]
-
-                def append(self, x):
-                    self.array.append(x)
-                    return self
-
-            def _maybe_copy(state, new_state, step_mask):
-                # TODO: use where_op
-                new_state = layers.elementwise_mul(
-                    new_state, step_mask, axis=0) - layers.elementwise_mul(
-                        state, (step_mask - 1), axis=0)
-                return new_state
-
-            if not self.time_major:
-                inputs = map_structure(
-                    lambda x: layers.transpose(x, [1, 0] + list(
-                        range(2, len(x.shape)))), inputs)
-
-            if sequence_length is not None:
-                mask = layers.sequence_mask(
-                    sequence_length, maxlen=time_steps, dtype=inputs.dtype)
-                mask = layers.transpose(mask, [1, 0])
-
-            if self.is_reverse:
-                inputs = map_structure(lambda x: layers.reverse(x, axis=[0]),
-                                       inputs)
-                mask = layers.reverse(
-                    mask, axis=[0]) if sequence_length is not None else None
-
-            states = initial_states
-            outputs = []
-            for i in range(time_steps):
-                step_inputs = map_structure(lambda x: x[i], inputs)
-                step_outputs, new_states = self.cell(step_inputs, states)
-                if sequence_length is not None:
-                    new_states = map_structure(
-                        partial(
-                            _maybe_copy, step_mask=mask[i]),
-                        states,
-                        new_states)
-                states = new_states
-                outputs = map_structure(
-                    lambda x: ArrayWrapper(x),
-                    step_outputs) if i == 0 else map_structure(
-                        lambda x, x_array: x_array.append(x), step_outputs,
-                        outputs)
-
-            final_outputs = map_structure(
-                lambda x: layers.stack(x.array, axis=self.time_step_index),
-                outputs)
-
-            if self.is_reverse:
-                final_outputs = map_structure(
-                    lambda x: layers.reverse(x, axis=self.time_step_index),
-                    final_outputs)
-
-            final_states = new_states
-        else:
-            final_outputs, final_states = layers.rnn(
-                self.cell,
-                inputs,
-                initial_states=initial_states,
-                sequence_length=sequence_length,
-                time_major=self.time_major,
-                is_reverse=self.is_reverse)
+        final_outputs, final_states = layers.rnn(
+            self.cell,
+            inputs,
+            initial_states=initial_states,
+            sequence_length=sequence_length,
+            time_major=self.time_major,
+            is_reverse=self.is_reverse)
         return final_outputs, final_states
 
 
-class BidirectionalRNN(Layer):
+class BiRNN(Layer):
     """
     Wrapper for bidirectional RNN. It assembles two RNNCell instances to perform
     forward and backward RNN separately, and merge outputs of these two RNN
@@ -584,11 +569,7 @@ class BidirectionalRNN(Layer):
     Parameters:
         cell_fw (RNNCell): A RNNCell instance used for forward RNN.
         cell_bw (RNNCell): A RNNCell instance used for backward RNN.
-        merge_mode (str|None, optional): The way to merget outputs of forward and
-            backward RNN. It can be `concat`, `sum`, `ave`, `mul`, `zip` and None,
-            where None stands for make the two `outputs` as a tuple, `zip` stands
-            for make each two corresponding tensors of the two `outputs` as a tuple.
-            Default `concat`
+
     Examples:
         .. code-block:: python
             import paddle
@@ -600,32 +581,11 @@ class BidirectionalRNN(Layer):
             outputs, _ = bi_rnn(inputs)  # [2, 4, 128]
     """
 
-    def __init__(self,
-                 cell_fw,
-                 cell_bw,
-                 merge_mode='concat',
-                 time_major=False,
-                 cell_cls=None,
-                 **kwargs):
-        super(BidirectionalRNN, self).__init__()
-        self.rnn_fw = RNN(cell_fw, is_reverse=False, time_major=time_major)
-        self.rnn_bw = RNN(cell_bw, is_reverse=True, time_major=time_major)
-        if merge_mode == 'concat':
-            self.merge_func = lambda x, y: layers.concat([x, y], -1)
-        elif merge_mode == 'sum':
-            self.merge_func = lambda x, y: layers.elementwise_add(x, y)
-        elif merge_mode == 'ave':
-            self.merge_func = lambda x, y: layers.scale(
-                layers.elementwise_add(x, y), 0.5)
-        elif merge_mode == 'mul':
-            self.merge_func = lambda x, y: layers.elementwise_mul(x, y)
-        elif merge_mode == 'zip':
-            self.merge_func = lambda x, y: (x, y)
-        elif merge_mode is None:
-            self.merge_func = None
-        else:
-            raise ValueError('Unsupported value for `merge_mode`: %s' %
-                             merge_mode)
+    def __init__(self, cell_fw, cell_bw, time_major=False):
+        super(BiRNN, self).__init__()
+        self.cell_fw = cell_fw
+        self.cell_bw = cell_bw
+        self.time_major = time_major
 
     def forward(self,
                 inputs,
@@ -659,21 +619,15 @@ class BidirectionalRNN(Layer):
                 `final_states` of forward and backward RNN.
         """
         if isinstance(initial_states, (list, tuple)):
-            assert len(
-                initial_states
-            ) == 2, "length of initial_states should be 2 when it is a list/tuple"
+            assert len(initial_states) == 2, \
+                "length of initial_states should be 2 when it is a list/tuple"
         else:
             initial_states = [initial_states, initial_states]
-        outputs_fw, states_fw = self.rnn_fw(inputs, initial_states[0],
-                                            sequence_length, **kwargs)
-        outputs_bw, states_bw = self.rnn_bw(inputs, initial_states[1],
-                                            sequence_length, **kwargs)
-        outputs = map_structure(self.merge_func, outputs_fw,
-                                outputs_bw) if self.merge_func else (outputs_fw,
-                                                                     outputs_bw)
-        final_states = map_structure(
-            self.merge_func, states_fw,
-            states_bw) if self.merge_func else (states_fw, states_bw)
+        states_fw, states_bw = initial_states
+
+        outputs, final_states = birnn(self.cell_fw, self.cell_bw, inputs,
+                                      states_fw, states_bw, sequence_length,
+                                      self.time_major)
         return outputs, final_states
 
     @staticmethod
@@ -710,162 +664,342 @@ class BidirectionalRNN(Layer):
         return param_attrs
 
 
-class SimpleRNN(Layer):
-    pass
+class SimpleRNN(LayerList):
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 nonlinearity="tanh",
+                 direction="forward",
+                 dropout=0.,
+                 time_major=False,
+                 name=None):
+        super(SimpleRNN, self).__init__()
+
+        if direction in ["forward", "backward"]:
+            is_reverse = direction == "backward"
+            cell = SimpleRNNCell(input_size, hidden_size, nonlinearity)
+            self.append(RNN(cell, is_reverse, time_major))
+            for i in range(1, num_layers):
+                cell = SimpleRNNCell(hidden_size, hidden_size, nonlinearity)
+                self.append(RNN(cell, is_reverse, time_major))
+        elif direction == "bidirectional":
+            cell_fw = SimpleRNNCell(input_size, hidden_size, nonlinearity)
+            cell_bw = SimpleRNNCell(input_size, hidden_size, nonlinearity)
+            self.append(BiRNN(cell_fw, cell_bw, time_major))
+            for i in range(1, num_layers):
+                cell_fw = SimpleRNNCell(2 * hidden_size, hidden_size,
+                                        nonlinearity)
+                cell_bw = SimpleRNNCell(2 * hidden_size, hidden_size,
+                                        nonlinearity)
+                self.append(BiRNN(cell_fw, cell_bw, time_major))
+        else:
+            raise ValueError(
+                "direction should be forward, backward or bidirectional, "
+                "received direction = {}".format(direction))
+
+        self.dropout = dropout
+        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.time_major = time_major
+        self.num_layers = num_layers
+
+    def forward(self, inputs, initial_states=None, sequence_length=None):
+        batch_index = 1 if self.time_major else 0
+        batch_size = inputs.shape[batch_index] if fluid.in_dygraph_mode() \
+                     else layers.shape(inputs)[batch_index]
+        if initial_states is None:
+            state_shape = (self.num_directions * self.num_layers, batch_size,
+                           self.hidden_size)
+            initial_states = layers.zeros(state_shape, dtype=inputs.dtype)
+
+        states = split_states(initial_states, self.num_directions == 2)
+        final_states = []
+        for i, rnn_layer in enumerate(self):
+            if i > 0:
+                inputs = layers.dropout(
+                    inputs,
+                    self.dropout,
+                    dropout_implementation="upscale_in_train")
+            outputs, final_state = rnn_layer(inputs, states[i], sequence_length)
+            final_states.append(final_state)
+            inputs = outputs
+
+        final_states = concat_states(final_states, self.num_directions == 2)
+        return outputs, final_states
 
 
-class LSTM(Layer):
-    """
-    Applies a stacked multi-layer long short-term memory (LSTM) RNN to an input
-    sequence.
-
-    The formula for LSTM used here is as follows:
-
-    .. math::
-        i_{t} & = \sigma(W_{x_{i}}x_{t} + b_{x_{i}} + W_{h_{i}}h_{t-1} + b_{h_{i}})
-        f_{t} & = \sigma(W_{x_{f}}x_{t} + b_{x_{f}} + W_{h_{f}}h_{t-1} + b_{h_{f}})
-        o_{t} & = \sigma(W_{x_{o}}x_{t} + b_{x_{o}} + W_{h_{o}}h_{t-1} + b_{h_{o}})
-        c_{t} & = f_{t}c_{t-1} + i_{t} \\tanh (W_{x_{c}}x_{t} + b_{x_{c}} + W_{h_{c}}h_{t-1} + b_{h_{c}})
-        h_{t} & = o_{t} \\tanh (c_{t})
-
-    Parameters:
-        input_size (int): The input feature size for the first LSTM.
-        hidden_size (int): The hidden size for every LSTM.
-        num_layers(int, optional): The number of LSTM to be stacked. Default 1.
-        dropout(float, optional): The dropout probability applied on the outputs
-            of each LSTM except the last one. 0 for not dropout. Default 0.0
-        direction (str, optional): Indicate the direction for LSTM calculation
-            applying on the input sequences. It can be `forward`, `backward` or
-            `bidirect`. If it is `backward`, calculate in the reverse order of
-            input sequences. If it is `bidirect`, each layer would be a 
-            bidirectional LSTM composed of a `forward` LSTM and `backward` LSTM,
-            and it concatenates their outputs as outputs. Default: `forward`.
-        time_major (bool, optional): Indicate the data layout of Tensor included
-            in `input` and `output` tensors. If `False`, the data layout would
-            be batch major with shape `[batch_size, sequence_length, ...]`.  If
-            `True`, the data layout would be time major with shape
-            `[sequence_length, batch_size, ...]`. Default: `False`.
-        param_attr (list|tuple|ParamAttr): A list, tuple or something can be
-            converted to a ParamAttr instance by `ParamAttr._to_attr`. If it is
-            a list or tuple, it's length must equal to `num_layers`. Otherwise,
-            construct a list by `StackedRNNCell.stack_param_attr(param_attr, num_layers)`.
-            Default None.
-        bias_attr (list|tuple|ParamAttr): A list, tuple or something can be
-            converted to a ParamAttr instance by `ParamAttr._to_attr`. If it is
-            a list or tuple, it's length must equal to `num_layers`. Otherwise,
-            construct a list by `StackedRNNCell.stack_param_attr(bias_attr, num_layers)`.
-            Default None.
-        dtype(string, optional): The data type used in this cell. It can be
-            float32 or float64. Default float32.
-    Examples:
-        .. code-block:: python
-            import paddle
-            import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import LSTM
-            inputs = paddle.rand((2, 4, 32))
-            lstm = LSTM(input_size=32, hidden_size=64, num_layers=2)
-            outputs, _ = lstm(inputs)  # [2, 4, 64]
-    """
-
+class LSTM(LayerList):
     def __init__(self,
                  input_size,
                  hidden_size,
                  num_layers=1,
                  direction="forward",
-                 dropout=0.0,
+                 dropout=0.,
                  time_major=False,
                  name=None):
         super(LSTM, self).__init__()
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
+
+        if direction in ["forward", "backward"]:
+            is_reverse = direction == "backward"
+            cell = LSTMCell(input_size, hidden_size)
+            self.append(RNN(cell, is_reverse, time_major))
+            for i in range(1, num_layers):
+                cell = LSTMCell(hidden_size, hidden_size)
+                self.append(RNN(cell, is_reverse, time_major))
+        elif direction == "bidirectional":
+            cell_fw = LSTMCell(input_size, hidden_size)
+            cell_bw = LSTMCell(input_size, hidden_size)
+            self.append(BiRNN(cell_fw, cell_bw, time_major))
+            for i in range(1, num_layers):
+                cell_fw = LSTMCell(2 * hidden_size, hidden_size)
+                cell_bw = LSTMCell(2 * hidden_size, hidden_size)
+                self.append(BiRNN(cell_fw, cell_bw, time_major))
+        else:
+            raise ValueError(
+                "direction should be forward, backward or bidirectional, "
+                "received direction = {}".format(direction))
+
         self.dropout = dropout
-        self.direction = direction
-        self.num_directions = 2 if direction == 'bidirect' else 1
+        self.num_directions = 2 if direction == "bidirectional" else 1
         self.time_major = time_major
+        self.num_layers = num_layers
 
-        if direction == 'bidirect':
-            param_attrs = BidirectionalRNN.bidirect_param_attr(param_attr)
-            bias_attrs = BidirectionalRNN.bidirect_param_attr(bias_attr)
-            fw_param_attrs = StackedRNNCell.stack_param_attr(param_attrs[0],
-                                                             num_layers)
-            bw_param_attrs = StackedRNNCell.stack_param_attr(param_attrs[1],
-                                                             num_layers)
-            fw_bias_attrs = StackedRNNCell.stack_param_attr(bias_attrs[0],
-                                                            num_layers)
-            bw_bias_attrs = StackedRNNCell.stack_param_attr(bias_attrs[1],
-                                                            num_layers)
+    def forward(self, inputs, initial_states=None, sequence_length=None):
+        batch_index = 1 if self.time_major else 0
+        batch_size = inputs.shape[batch_index] if fluid.in_dygraph_mode() \
+                     else layers.shape(inputs)[batch_index]
+        if initial_states is None:
+            state_shape = (self.num_directions * self.num_layers, batch_size,
+                           self.hidden_size)
+            init_h = layers.zeros(state_shape, dtype=inputs.dtype)
+            init_c = layers.zeros(state_shape, dtype=inputs.dtype)
+            initial_states = (init_h, init_c)
 
-            # maybe design cell including both forward and backward later
-            merge_mode = 'concat'
-            rnns = []
-            for i in range(num_layers):
-                cell_fw = StackedLSTMCell(input_size if i == 0 else (
-                    hidden_size * 2 if merge_mode == 'concat' else
-                    hidden_size), hidden_size, 1, dropout, fw_param_attrs[i],
-                                          fw_bias_attrs[i], dtype)
-                cell_bw = StackedLSTMCell(input_size if i == 0 else (
-                    hidden_size * 2 if merge_mode == 'concat' else
-                    hidden_size), hidden_size, 1, dropout, bw_param_attrs[i],
-                                          bw_bias_attrs[i], dtype)
-                rnns.append(
-                    BidirectionalRNN(
-                        cell_fw,
-                        cell_bw,
-                        merge_mode=merge_mode,
-                        time_major=time_major))
-            self.lstm = LayerList(rnns)
+        states = split_states(initial_states, self.num_directions == 2, 2)
+        final_states = []
+        for i, rnn_layer in enumerate(self):
+            if i > 0:
+                inputs = layers.dropout(
+                    inputs,
+                    self.dropout,
+                    dropout_implementation="upscale_in_train")
+            outputs, final_state = rnn_layer(inputs, states[i], sequence_length)
+            final_states.append(final_state)
+            inputs = outputs
+
+        final_states = concat_states(final_states, self.num_directions == 2, 2)
+        return outputs, final_states
+
+
+class GRU(LayerList):
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 direction="forward",
+                 dropout=0.,
+                 time_major=False,
+                 name=None):
+        super(GRU, self).__init__()
+
+        if direction in ["forward", "backward"]:
+            is_reverse = direction == "backward"
+            cell = GRUCell(input_size, hidden_size)
+            self.append(RNN(cell, is_reverse, time_major))
+            for i in range(1, num_layers):
+                cell = GRUCell(hidden_size, hidden_size)
+                self.append(RNN(cell, is_reverse, time_major))
+        elif direction == "bidirectional":
+            cell_fw = GRUCell(input_size, hidden_size)
+            cell_bw = GRUCell(input_size, hidden_size)
+            self.append(BiRNN(cell_fw, cell_bw, time_major))
+            for i in range(1, num_layers):
+                cell_fw = GRUCell(2 * hidden_size, hidden_size)
+                cell_bw = GRUCell(2 * hidden_size, hidden_size)
+                self.append(BiRNN(cell_fw, cell_bw, time_major))
         else:
-            lstm_cell = StackedLSTMCell(input_size, hidden_size, num_layers,
-                                        dropout, param_attr, bias_attr, dtype)
-            self.lstm = RNN(lstm_cell,
-                            is_reverse=(direction == "backward"),
-                            time_major=time_major)
+            raise ValueError(
+                "direction should be forward, backward or bidirectional, "
+                "received direction = {}".format(direction))
 
-    def forward(self, input, initial_states=None, sequence_length=None):
-        """
-        Performs the stacked multi-layer LSTM layer by layer. Each LSTM's `outputs`
-        is the `inputs` of the subsequent one.
-        Parameters:
-            inputs (Variable): The inputs for the first LSTM. It is a float32
-                or float64 tensor shaped `[batch_size, sequence_length, input_size]`.
-            initial_states (list|None, optional): A list containing initial states 
-                of all stacked LSTM, and the initial states of each LSTM is a pair
-                of tensors shaped `[batch_size, hidden_size]`. If not provided,
-                use 0 as initial states. Default None.
-            sequence_length (Variable, optional): A tensor with shape `[batch_size]`.
-                It stores real length of each instance, thus enables users to extract
-                the last valid state when past a batch element's sequence length for
-                correctness. If not provided, the paddings would be treated same as
-                non-padding inputs. Default None.
-        Returns:
-            tuple: A tuple( :code:`(outputs, final_states)` ), where `outputs` \
-                is the output of last LSTM and it is a tensor with shape \
-                `[batch_size, sequence_length, hidden_size]` and has the same \
-                data type as `inputs`, `final_states` is the counterpart of \
-                `initial_states` at last time step, thus has the same structure \
-                with it and has tensors with same shapes data types. 
-        """
-        if not isinstance(self.lstm, LayerList):
-            return self.lstm(input, initial_states, sequence_length)
-        else:
-            if isinstance(initial_states, (list, tuple)):
-                assert len(initial_states) == self.num_layers, (
-                    "length of initial_states should be %d when it is a list|tuple"
-                    % self.num_layers)
-            else:
-                initial_states = [initial_states] * self.num_layers
-            stacked_states = []
-            for i in range(self.num_layers):
-                output, states = self.lstm[i](input, initial_states[i],
-                                              sequence_length)
-                input = output
-                stacked_states.append(states)
-            return output, stacked_states
+        self.dropout = dropout
+        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.time_major = time_major
+        self.num_layers = num_layers
+
+    def forward(self, inputs, initial_states=None, sequence_length=None):
+        batch_index = 1 if self.time_major else 0
+        batch_size = inputs.shape[batch_index] if fluid.in_dygraph_mode() \
+                     else layers.shape(inputs)[batch_index]
+        if initial_states is None:
+            state_shape = (self.num_directions * self.num_layers, batch_size,
+                           self.hidden_size)
+            initial_states = layers.zeros(state_shape, dtype=inputs.dtype)
+        states = split_states(initial_states, self.num_directions == 2)
+
+        final_states = []
+        for i, rnn_layer in enumerate(self):
+            if i > 0:
+                inputs = layers.dropout(
+                    inputs,
+                    self.dropout,
+                    dropout_implementation="upscale_in_train")
+            outputs, final_state = rnn_layer(inputs, states[i], sequence_length)
+            final_states.append(final_state)
+            inputs = outputs
+
+        final_states = concat_states(final_states, self.num_directions == 2)
+        return outputs, final_states
 
 
-class GRU(Layer):
-    pass
+# class LSTM(Layer):
+#     """
+#     Applies a stacked multi-layer long short-term memory (LSTM) RNN to an input
+#     sequence.
+
+#     The formula for LSTM used here is as follows:
+
+#     .. math::
+#         i_{t} & = \sigma(W_{x_{i}}x_{t} + b_{x_{i}} + W_{h_{i}}h_{t-1} + b_{h_{i}})
+#         f_{t} & = \sigma(W_{x_{f}}x_{t} + b_{x_{f}} + W_{h_{f}}h_{t-1} + b_{h_{f}})
+#         o_{t} & = \sigma(W_{x_{o}}x_{t} + b_{x_{o}} + W_{h_{o}}h_{t-1} + b_{h_{o}})
+#         c_{t} & = f_{t}c_{t-1} + i_{t} \\tanh (W_{x_{c}}x_{t} + b_{x_{c}} + W_{h_{c}}h_{t-1} + b_{h_{c}})
+#         h_{t} & = o_{t} \\tanh (c_{t})
+
+#     Parameters:
+#         input_size (int): The input feature size for the first LSTM.
+#         hidden_size (int): The hidden size for every LSTM.
+#         num_layers(int, optional): The number of LSTM to be stacked. Default 1.
+#         dropout(float, optional): The dropout probability applied on the outputs
+#             of each LSTM except the last one. 0 for not dropout. Default 0.0
+#         direction (str, optional): Indicate the direction for LSTM calculation
+#             applying on the input sequences. It can be `forward`, `backward` or
+#             `bidirect`. If it is `backward`, calculate in the reverse order of
+#             input sequences. If it is `bidirect`, each layer would be a 
+#             bidirectional LSTM composed of a `forward` LSTM and `backward` LSTM,
+#             and it concatenates their outputs as outputs. Default: `forward`.
+#         time_major (bool, optional): Indicate the data layout of Tensor included
+#             in `input` and `output` tensors. If `False`, the data layout would
+#             be batch major with shape `[batch_size, sequence_length, ...]`.  If
+#             `True`, the data layout would be time major with shape
+#             `[sequence_length, batch_size, ...]`. Default: `False`.
+#         param_attr (list|tuple|ParamAttr): A list, tuple or something can be
+#             converted to a ParamAttr instance by `ParamAttr._to_attr`. If it is
+#             a list or tuple, it's length must equal to `num_layers`. Otherwise,
+#             construct a list by `StackedRNNCell.stack_param_attr(param_attr, num_layers)`.
+#             Default None.
+#         bias_attr (list|tuple|ParamAttr): A list, tuple or something can be
+#             converted to a ParamAttr instance by `ParamAttr._to_attr`. If it is
+#             a list or tuple, it's length must equal to `num_layers`. Otherwise,
+#             construct a list by `StackedRNNCell.stack_param_attr(bias_attr, num_layers)`.
+#             Default None.
+#         dtype(string, optional): The data type used in this cell. It can be
+#             float32 or float64. Default float32.
+#     Examples:
+#         .. code-block:: python
+#             import paddle
+#             import paddle.fluid as fluid
+#             from paddle.incubate.hapi.text import LSTM
+#             inputs = paddle.rand((2, 4, 32))
+#             lstm = LSTM(input_size=32, hidden_size=64, num_layers=2)
+#             outputs, _ = lstm(inputs)  # [2, 4, 64]
+#     """
+
+#     def __init__(self,
+#                  input_size,
+#                  hidden_size,
+#                  num_layers=1,
+#                  direction="forward",
+#                  dropout=0.0,
+#                  time_major=False,
+#                  name=None):
+#         super(LSTM, self).__init__()
+#         self.input_size = input_size
+#         self.hidden_size = hidden_size
+#         self.num_layers = num_layers
+#         self.dropout = dropout
+#         self.direction = direction
+#         self.num_directions = 2 if direction == 'bidirect' else 1
+#         self.time_major = time_major
+
+#         if direction == 'bidirect':
+#             param_attrs = BidirectionalRNN.bidirect_param_attr(param_attr)
+#             bias_attrs = BidirectionalRNN.bidirect_param_attr(bias_attr)
+#             fw_param_attrs = StackedRNNCell.stack_param_attr(param_attrs[0],
+#                                                              num_layers)
+#             bw_param_attrs = StackedRNNCell.stack_param_attr(param_attrs[1],
+#                                                              num_layers)
+#             fw_bias_attrs = StackedRNNCell.stack_param_attr(bias_attrs[0],
+#                                                             num_layers)
+#             bw_bias_attrs = StackedRNNCell.stack_param_attr(bias_attrs[1],
+#                                                             num_layers)
+
+#             # maybe design cell including both forward and backward later
+#             merge_mode = 'concat'
+#             rnns = []
+#             for i in range(num_layers):
+#                 cell_fw = StackedLSTMCell(input_size if i == 0 else (
+#                     hidden_size * 2 if merge_mode == 'concat' else
+#                     hidden_size), hidden_size, 1, dropout, fw_param_attrs[i],
+#                                           fw_bias_attrs[i], dtype)
+#                 cell_bw = StackedLSTMCell(input_size if i == 0 else (
+#                     hidden_size * 2 if merge_mode == 'concat' else
+#                     hidden_size), hidden_size, 1, dropout, bw_param_attrs[i],
+#                                           bw_bias_attrs[i], dtype)
+#                 rnns.append(
+#                     BidirectionalRNN(
+#                         cell_fw,
+#                         cell_bw,
+#                         merge_mode=merge_mode,
+#                         time_major=time_major))
+#             self.lstm = LayerList(rnns)
+#         else:
+#             lstm_cell = StackedLSTMCell(input_size, hidden_size, num_layers,
+#                                         dropout, param_attr, bias_attr, dtype)
+#             self.lstm = RNN(lstm_cell,
+#                             is_reverse=(direction == "backward"),
+#                             time_major=time_major)
+
+#     def forward(self, input, initial_states=None, sequence_length=None):
+#         """
+#         Performs the stacked multi-layer LSTM layer by layer. Each LSTM's `outputs`
+#         is the `inputs` of the subsequent one.
+#         Parameters:
+#             inputs (Variable): The inputs for the first LSTM. It is a float32
+#                 or float64 tensor shaped `[batch_size, sequence_length, input_size]`.
+#             initial_states (list|None, optional): A list containing initial states 
+#                 of all stacked LSTM, and the initial states of each LSTM is a pair
+#                 of tensors shaped `[batch_size, hidden_size]`. If not provided,
+#                 use 0 as initial states. Default None.
+#             sequence_length (Variable, optional): A tensor with shape `[batch_size]`.
+#                 It stores real length of each instance, thus enables users to extract
+#                 the last valid state when past a batch element's sequence length for
+#                 correctness. If not provided, the paddings would be treated same as
+#                 non-padding inputs. Default None.
+#         Returns:
+#             tuple: A tuple( :code:`(outputs, final_states)` ), where `outputs` \
+#                 is the output of last LSTM and it is a tensor with shape \
+#                 `[batch_size, sequence_length, hidden_size]` and has the same \
+#                 data type as `inputs`, `final_states` is the counterpart of \
+#                 `initial_states` at last time step, thus has the same structure \
+#                 with it and has tensors with same shapes data types. 
+#         """
+#         if not isinstance(self.lstm, LayerList):
+#             return self.lstm(input, initial_states, sequence_length)
+#         else:
+#             if isinstance(initial_states, (list, tuple)):
+#                 assert len(initial_states) == self.num_layers, (
+#                     "length of initial_states should be %d when it is a list|tuple"
+#                     % self.num_layers)
+#             else:
+#                 initial_states = [initial_states] * self.num_layers
+#             stacked_states = []
+#             for i in range(self.num_layers):
+#                 output, states = self.lstm[i](input, initial_states[i],
+#                                               sequence_length)
+#                 input = output
+#                 stacked_states.append(states)
+#             return output, stacked_states
 
 
 # TODO: restucture RNN layers

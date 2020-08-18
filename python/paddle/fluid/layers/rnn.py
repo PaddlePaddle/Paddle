@@ -492,6 +492,95 @@ def rnn(cell,
             cell = fluid.layers.GRUCell(hidden_size=128)
             outputs = fluid.layers.rnn(cell=cell, inputs=inputs)
     """
+    if in_dygraph_mode:
+        return _rnn_dynamic_graph(cell, inputs, initial_states, sequence_length,
+                                  time_major, is_reverse, **kwargs)
+    else:
+        return _rnn_static_graph(cell, inputs, initial_states, sequence_length,
+                                 time_major, is_reverse, **kwargs)
+
+
+class ArrayWrapper(object):
+    def __init__(self, x):
+        self.array = [x]
+
+    def append(self, x):
+        self.array.append(x)
+        return self
+
+
+def _maybe_copy(state, new_state, step_mask):
+    """update rnn state or just pass the old state through"""
+    new_state = nn.elementwise_mul(new_state, step_mask, axis=0) \
+              + nn.elementwise_mul(state, (1 - step_mask), axis=0)
+    return new_state
+
+
+def _transpose_batch_time(x):
+    perm = [1, 0] + list(range(2, len(x.shape)))
+    return nn.transpose(x, perm)
+
+
+def _rnn_dynamic_graph(cell,
+                       inputs,
+                       initial_states=None,
+                       sequence_length=None,
+                       time_major=False,
+                       is_reverse=False,
+                       **kwargs):
+
+    time_step_index = 0 if time_major else 1
+    flat_inputs = flatten(inputs)
+    time_steps = flat_inputs[0].shape[time_step_index]
+
+    if not time_major:
+        inputs = map_structure(_transpose_batch_time, inputs)
+
+    if sequence_length is not None:
+        mask = sequence_lod.sequence_mask(
+            sequence_length, maxlen=time_steps, dtype=inputs.dtype)
+        mask = nn.transpose(mask, [1, 0])
+
+    if is_reverse:
+        inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
+        mask = tensor.reverse(mask, axis=[0]) \
+            if sequence_length is not None else None
+
+    states = initial_states
+    outputs = []
+    for i in range(time_steps):
+        step_inputs = map_structure(lambda x: x[i], inputs)
+        step_outputs, new_states = cell(step_inputs, states, **kwargs)
+        if sequence_length is not None:
+            new_states = map_structure(
+                partial(
+                    _maybe_copy, step_mask=mask[i]), states, new_states)
+        states = new_states
+        outputs = map_structure(lambda x: ArrayWrapper(x),
+                                step_outputs) if i == 0 else map_structure(
+                                    lambda x, x_array: x_array.append(x),
+                                    step_outputs, outputs)
+
+    final_outputs = map_structure(
+        lambda x: nn.stack(x.array, axis=time_step_index),
+        outputs)
+
+    if is_reverse:
+        final_outputs = map_structure(
+            lambda x: tensor.reverse(x, axis=time_step_index),
+            final_outputs)
+
+    final_states = new_states
+    return final_outputs, final_states
+
+
+def _rnn_static_graph(cell,
+                      inputs,
+                      initial_states=None,
+                      sequence_length=None,
+                      time_major=False,
+                      is_reverse=False,
+                      **kwargs):
     check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
     if isinstance(inputs, (list, tuple)):
         for i, input_x in enumerate(inputs):
@@ -512,16 +601,6 @@ def rnn(cell,
 
     check_type(sequence_length, 'sequence_length', (Variable, type(None)),
                'rnn')
-
-    def _maybe_copy(state, new_state, step_mask):
-        # TODO: use where_op
-        new_state = nn.elementwise_mul(
-            new_state, step_mask, axis=0) - nn.elementwise_mul(
-                state, (step_mask - 1), axis=0)
-        return new_state
-
-    def _transpose_batch_time(x):
-        return nn.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _switch_grad(x, stop=False):
         x.stop_gradient = stop
