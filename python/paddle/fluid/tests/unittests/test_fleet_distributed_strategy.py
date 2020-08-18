@@ -289,6 +289,11 @@ class TestStrategyConfig(unittest.TestCase):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.execution_strategy = exe_strategy
 
+    def test_unknown_strategy(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        with self.assertRaises(TypeError):
+            strategy.unknown_key = 'UNK'
+
 
 if __name__ == '__main__':
     unittest.main()
