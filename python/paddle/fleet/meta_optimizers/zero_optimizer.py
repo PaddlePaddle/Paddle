@@ -39,7 +39,30 @@ class ZeroOptimizer(MetaOptimizerBase):
         self._varname2grad = {}
         # self._nrings(int) is for nccl communicate
         self._nrings = 1
-        self._fuse_broadcast_num = 10
+        self._fuse_broadcast_num = 20
+        self._fuse_broadcast_MB_bytes = 64
+        self._dtype_to_size = {
+            core.VarDesc.VarType.FP16: 2,
+            core.VarDesc.VarType.FP32: 4,
+            core.VarDesc.VarType.FP64: 8,
+            core.VarDesc.VarType.INT16: 2,
+            core.VarDesc.VarType.INT32: 4,
+            core.VarDesc.VarType.INT64: 8,
+            core.VarDesc.VarType.BOOL: 1,
+            core.VarDesc.VarType.UINT8: 1,
+        }
+
+    def _get_var_size(self, param):
+        """
+        input:
+            - param: var
+        return:
+            var size in Bytes
+        """
+        assert -1 not in param.shape
+        return reduce(
+            lambda x, y: x * y,
+            param.shape) * self._dtype_to_size[param.dtype] / 1024.0 / 1024.0
 
     def _can_apply(self):
         return self.user_defined_strategy.zero
@@ -48,18 +71,29 @@ class ZeroOptimizer(MetaOptimizerBase):
         dist_strategy.zero = False
 
     def _split_params(self, params_grads):
+        total_param_mem = 0.0
+        param2mem = []
+        for param, _ in params_grads:
+            mem = self._get_var_size(param)
+            total_param_mem += mem
+            param2mem.append((param.name, mem))
+            # print(param.name, mem)
+        # print("total_param_mem: ", total_param_mem)
         device_num = self.role_maker.worker_num()
-        param_num = len(params_grads)
-        param_sub_num = int(math.ceil(1.0 * param_num / device_num))
-        for i in range(device_num):
-            param_names = [
-                x[0].name
-                for x in params_grads[(i * param_sub_num):(i + 1) *
-                                      param_sub_num]
-            ]
-            self._device2params[i] = param_names
-            for param_name in param_names:
-                self._param2device[param_name] = i
+        # print("device_num: ", device_num)
+        self._device2params = {x: [] for x in range(device_num)}
+        device_idx = 0
+        mem_accu = 0.0
+        for param_name, mem in param2mem:
+            # print("accu", param_name, mem)
+            # print("mem_accu: ", mem_accu)
+            # print("device_idx + 1: ", device_idx + 1)
+            # print("tgt: ", total_param_mem * 1.0 * (device_idx + 1) / device_num)
+            if mem_accu > total_param_mem * 1.0 * (device_idx + 1) / device_num:
+                device_idx += 1
+            self._device2params[device_idx].append(param_name)
+            self._param2device[param_name] = device_idx
+            mem_accu += mem
         return
 
     def _is_opti_var(self, var_name):
@@ -110,7 +144,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                           append_comm_sync=False):
             insert_idx = cache["insert_idx"]
             dummy_var_name = cache["dummy_var_name"]
-            assert (len(cache["broadcast"]) > 0)
+            assert (len(cache["broadcast_ops"]) > 0)
 
             if prepend_comm_sync:
                 for r in range(self._nrings):
@@ -123,8 +157,8 @@ class ZeroOptimizer(MetaOptimizerBase):
                                OP_ROLE_KEY: OpRole.Backward})
                     insert_idx += 1
 
-            if len(cache["fill_constant"]) > 0:
-                for attr in cache["fill_constant"]:
+            if len(cache["fill_constant_ops"]) > 0:
+                for attr in cache["fill_constant_ops"]:
                     block._insert_op(insert_idx, **attr)
                     insert_idx += 1
                     # TODO(mapingshuo) remove dummy var
@@ -137,7 +171,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                     attrs={OP_ROLE_KEY: OpRole.Backward})
                 insert_idx += 1
 
-            for attr in cache["broadcast"]:
+            for attr in cache["broadcast_ops"]:
                 block._insert_op(insert_idx, **attr)
                 insert_idx += 1
                 # TODO(mapingshuo) remove dummy var
@@ -158,20 +192,25 @@ class ZeroOptimizer(MetaOptimizerBase):
         ring_id = -1
         broadcast_caches = []
         cache = {
-            "fill_constant": [],
-            "broadcast": [],
+            "fill_constant_ops": [],
+            "broadcast_ops": [],
             "insert_idx": 0,
-            "dummy_var_name": ""
+            "dummy_var_name": "",
+            "param2broadcast": {},
+            "mem_accu": 0.0,
         }
         for op_idx, op in reversed(list(enumerate(block.ops))):
-            if len(cache["broadcast"]) >= self._fuse_broadcast_num:
+            if cache["mem_accu"] >= self._fuse_broadcast_MB_bytes:
+                # if len(cache["broadcast_ops"]) > self._fuse_broadcast_num:
                 cache["insert_idx"] = op_idx
                 broadcast_caches.insert(0, cache)
                 cache = {
-                    "fill_constant": [],
-                    "broadcast": [],
+                    "fill_constant_ops": [],
+                    "broadcast_ops": [],
                     "insert_idx": 0,
-                    "dummy_var_name": ""
+                    "dummy_var_name": "",
+                    "param2broadcast": {},
+                    "mem_accu": 0.0,
                 }
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 continue
@@ -179,28 +218,38 @@ class ZeroOptimizer(MetaOptimizerBase):
                 if input_name not in self._param2device:
                     continue
                 root_device = self._param2device[input_name]
+                if input_name in cache["param2broadcast"]:
+                    # skip broadcast because it reuse the old broadcast var
+                    broadcast_name = cache["param2broadcast"][input_name]
+                    if input_name != broadcast_name:
+                        op._rename_input(input_name, broadcast_name)
+                    continue
                 if root_device == self.role_maker.worker_index():
-                    param = self._varname2param[input_name]
+                    broadcast_var = self._varname2param[input_name]
                 else:
-                    broadcast_name = unique_name.generate(input_name +
-                                                          "@BroadCast")
-                    op._rename_input(input_name, broadcast_name)
-                    param = block.create_var(
-                        name=broadcast_name,
+                    broadcast_var = block.create_var(
+                        name=unique_name.generate(input_name + "@BroadCast"),
                         shape=self._varname2param[input_name].shape,
                         dtype=self._varname2param[input_name].dtype,
                         persistable=False)
-                print("main_block insert broadcast op for %s" % param.name)
+                if input_name != broadcast_var.name:
+                    op._rename_input(input_name, broadcast_var.name)
+                cache["param2broadcast"][input_name] = broadcast_var.name
+                cache["mem_accu"] += self._get_var_size(broadcast_var)
+                cache["dummy_var_name"] = broadcast_var.name
+
+                print("main_block insert broadcast op for %s" %
+                      broadcast_var.name)
                 # TODO(mapingshuo) OP_ROLE_KEY should be forward if the param
                 # is used in forward network
                 ring_id = (ring_id + 1) % self._nrings
-                cache["broadcast"].insert(0, {
+                cache["broadcast_ops"].insert(0, {
                     "type": 'c_broadcast',
                     "inputs": {
-                        'X': param.name
+                        'X': broadcast_var.name
                     },
                     "outputs": {
-                        'Out': param.name
+                        'Out': broadcast_var.name
                     },
                     "attrs": {
                         'ring_id': ring_id,
@@ -208,20 +257,19 @@ class ZeroOptimizer(MetaOptimizerBase):
                         OP_ROLE_KEY: OpRole.Forward
                     }
                 })
-                cache["dummy_var_name"] = param.name
                 if root_device != self.role_maker.worker_index():
-                    cache["fill_constant"].insert(0, {
+                    cache["fill_constant_ops"].insert(0, {
                         "type": "fill_constant",
                         "outputs": {
-                            "Out": param.name
+                            "Out": broadcast_var.name
                         },
                         "attrs": {
-                            "shape": param.shape,
-                            "dtype": param.dtype,
+                            "shape": broadcast_var.shape,
+                            "dtype": broadcast_var.dtype,
                             "value": 0.0,
                         }
                     })
-        if len(cache["broadcast"]) > 0:
+        if len(cache["broadcast_ops"]) > 0:
             cache["insert_idx"] = 0
             broadcast_caches.insert(0, cache)
 
@@ -237,9 +285,8 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         inserted_op_num = 0
         for idx, cache in enumerate(broadcast_caches):
-            prepend_comm_sync = True if idx != 0 else False
-            append_comm_sync = False if idx != len(
-                broadcast_caches) - 1 else True
+            prepend_comm_sync = False
+            append_comm_sync = True
             cache["insert_idx"] += inserted_op_num
             inserted_op_num += _insert_cache(
                 cache,
@@ -313,7 +360,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                       startup_program=None,
                       parameter_list=None,
                       no_grad_set=None):
-        self._nrings = 3
+        self._nrings = 10
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
