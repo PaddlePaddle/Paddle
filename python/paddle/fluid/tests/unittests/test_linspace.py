@@ -75,6 +75,15 @@ class TestLinspaceOpNumOneCase(OpTest):
 
 
 class TestLinspaceAPI(unittest.TestCase):
+    def test_variable_input(self):
+        start = paddle.full(shape=[1], fill_value=0, dtype='int32')
+        stop = paddle.full(shape=[1], fill_value=10, dtype='int32')
+        out = paddle.linspace(0, 10, 5, dtype='float32')
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        res = exe.run(fluid.default_main_program(), fetch_list=[out])
+        np_res = np.linspace(0, 10, 5, dtype='float32')
+        self.assertEqual((res == np_res).all(), True)
+
     def test_dtype(self):
         out_1 = paddle.linspace(0, 10, 5, dtype='float32')
         out_2 = paddle.linspace(0, 10, 5, dtype=np.float32)
@@ -96,8 +105,8 @@ class TestLinspaceAPI(unittest.TestCase):
         np_out1 = np.linspace(0, 10, 5, dtype='float32')
         out2 = paddle.linspace(0, 10, 5, dtype='int32')
         np_out2 = np.linspace(0, 10, 5, dtype='int32')
-        out3 = paddle.linspace(0, 10, 18, dtype='int32')
-        np_out3 = np.linspace(0, 10, 18, dtype='int32')
+        out3 = paddle.linspace(0, 10, 200, dtype='int32')
+        np_out3 = np.linspace(0, 10, 200, dtype='int32')
         paddle.enable_static()
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
