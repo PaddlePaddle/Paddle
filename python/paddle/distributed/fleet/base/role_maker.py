@@ -110,6 +110,14 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
+    def node_num(self):
+        """
+        Get the training node number
+        Returns:
+            int: node num
+        """
+        raise NotImplementedError("Please implement this method in child class")
+
     def get_trainer_endpoints(self):
         """
         return trainer endpoints
@@ -288,6 +296,14 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._trainers_num
 
+    def node_num(self):
+        """
+        return the training node number
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._node_num
+
     def get_trainer_endpoints(self):
         """
         get endpoint of all trainers
@@ -363,6 +379,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._trainers_num = trainers_num
         self._role = role
         self._current_id = current_id
+        self._node_num = len(
+            set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def _collective_env(self):
         self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
@@ -378,6 +396,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         # assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
+        self._node_num = len(
+            set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def _init_gloo_env(self):
         def init_gloo_instance(role="trainer"):
@@ -528,12 +548,16 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
             self._cur_endpoint = self._worker_endpoints[self._current_id]
         elif self._role == Role.SERVER:
             self._cur_endpoint = self._server_endpoints[self._current_id]
+        self._node_num = len(
+            set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def _user_defined_collective_env(self):
         self._worker_endpoints = self._kwargs.get("worker_endpoints")
         self._current_id = self._kwargs.get("current_id")
         self._trainers_num = len(self._worker_endpoints)
         self._training_role = Role.Worker
+        self._node_num = len(
+            set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def generate_role(self):
         """

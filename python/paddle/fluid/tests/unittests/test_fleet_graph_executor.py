@@ -14,6 +14,8 @@
 
 import unittest
 import paddle
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
 import os
 from launch_function_helper import launch_func
 
@@ -39,8 +41,6 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         }
 
         def node_func():
-            import paddle.distributed.fleet as fleet
-            import paddle.distributed.fleet.base.role_maker as role_maker
             role = role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             input_x = paddle.fluid.layers.data(
