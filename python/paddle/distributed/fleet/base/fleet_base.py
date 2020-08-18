@@ -59,15 +59,15 @@ class Fleet(object):
     def __init__(self):
         self._runtime_handle = None
         self._util = None
-        self._role_maker=None
-        self._is_collective=False
+        self._role_maker = None
+        self._is_collective = False
 
     def init(self, role_maker=None, is_collective=False):
         """
         Initialize role_maker in Fleet.
 
         This function is responsible for the distributed architecture 
-        what you want to run your code behind，such as Transpiler,
+        what you want to run your code behind,such as Transpiler,
         Collective in PaddleCloudRoleMaker or UserDefinedRoleMaker 
         
         """
@@ -80,10 +80,12 @@ class Fleet(object):
                     is_collective=self._is_collective)
             else:
                 raise ValueError(
-                            "Something wrong occurred, please check whether is_collective is bool value")
+                    "Something wrong occurred, please check whether is_collective is bool value"
+                )
         else:
             raise ValueError(
-                            "Something wrong occurred, please check whether rolemaker is instance of RoleMakerBase")
+                "Something wrong occurred, please check whether rolemaker is instance of RoleMakerBase"
+            )
         self.strategy_compiler = StrategyCompiler()
 
     def is_first_worker(self):
