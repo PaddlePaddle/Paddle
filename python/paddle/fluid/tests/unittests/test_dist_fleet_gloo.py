@@ -168,8 +168,6 @@ class TestDistGloo_2x2(TestFleetBase):
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36013,127.0.0.1:36014",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_PSERVER_ID": "0",
-            #GLOO FLAG
-            "PADDLE_GLOO_FLAG": "1",
         }
 
         required_envs.update(need_envs)
