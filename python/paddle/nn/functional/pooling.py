@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # TODO: define pooling functions
+
 from ...fluid.layers import pool2d  #DEFINE_ALIAS
 from ...fluid.layers import pool3d  #DEFINE_ALIAS
 from ...fluid.layers import adaptive_pool2d  #DEFINE_ALIAS
@@ -30,10 +31,9 @@ __all__ = [
 
 
 def check_input(x, dimension):
-    if len(x.shape) != dimension:
-        raise ValueError(
-            "Excepted Input X is 3-D tensor, but received {}-D Tensor".format(
-                len(x.shape)))
+    if len(x.shape) != dimension or not isinstance(core.VarBase):
+        raise ValueError("Excepted Input X is 3-D tensor, but received {}-D {}".
+                         format(len(x.shape), type(x)))
 
 
 def update_padding(padding, pool_type='avg'):
@@ -80,7 +80,7 @@ def avg_pool1d(x,
 
 
     Args:
-        x (Variable): The input tensor of pooling operator which is a 3-D tensor with
+        x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` or
                           `"NHL"`, where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type if float32 or float64.
@@ -104,7 +104,6 @@ def avg_pool1d(x,
         Variable: The output tensor of pooling result. The data type is same as input tensor.
 
     Raises:
-        TypeError: If `use_cudnn` is not a bool value.
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ValueError: If `padding` is a list or tuple but its length greater than 1.
@@ -120,7 +119,7 @@ def avg_pool1d(x,
           import paddle.nn.functional as F
           paddle.disable_static()
 
-          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           pool_out = F.avg_pool1d(data, kernel_size=2, stride=2, padding=0)
           # pool_out shape: [1, 3, 16]
 
@@ -219,7 +218,7 @@ def max_pool1d(x,
        Output(N_i, C_i, l) &=  max(Input[N_i, C_i, stride \times l:stride \times l+k])}
 
     Args:
-        x (Variable): The input tensor of pooling operator which is a 3-D tensor with
+        x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` or
                           `"NHL"`, where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type if float32 or float64.
@@ -257,7 +256,7 @@ def max_pool1d(x,
           import paddle.nn.functional as F
           paddle.disable_static()
 
-          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           pool_out = F.max_pool1d(data, kernel_size=2, stride=2, padding=0)
           # pool_out shape: [1, 3, 16]
 
@@ -354,7 +353,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
            Output(i) &= \\frac{sum(Input[lstart:lend])}{(lstart - lend)}
 
         Args:
-            x (Variable): The input tensor of pooling operator, which is a 3-D tensor
+            x (Tensor): The input tensor of pooling operator, which is a 3-D tensor
                               with shape [N, C, L].  The format of input tensor is NCL,
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
@@ -390,7 +389,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
               import paddle.nn.functional as F
               paddle.disable_static()
 
-              data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+              data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
               pool_out = F.adaptive_average_pool1d(data, output_size=16)
               # pool_out shape: [1, 3, 16])
         """
@@ -484,7 +483,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
               import paddle.nn.functional as F
               paddle.disable_static()
 
-              data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+              data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
               pool_out = F.adaptive_max_pool1d(data, output_size=16)
               # pool_out shape: [1, 3, 16])
 

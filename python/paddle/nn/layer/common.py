@@ -362,7 +362,7 @@ class AvgPool1d(layers.Layer):
 
 
     Args:
-        input (Variable): The input tensor of pooling operator which is a 3-D tensor with
+        input (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` or
                           `"NHL"`, where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type if float32 or float64.
@@ -401,7 +401,7 @@ class AvgPool1d(layers.Layer):
           import paddle.nn as nn
           paddle.disable_static()
           
-          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AvgPool1d = nn.AvgPool1d(kernel_size=2, stride=2, padding=0)
           pool_out = AvgPool1d(data)
           # pool_out shape: [1, 3, 16] 
@@ -443,7 +443,7 @@ class MaxPool1d(layers.Layer):
        Output(N_i, C_i, l) &=  max(Input[N_i, C_i, stride \times l:stride \times l+k])}
 
     Args:
-        input (Variable): The input tensor of pooling operator which is a 3-D tensor with
+        input (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` or
                           `"NHL"`, where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type if float32 or float64.
@@ -482,7 +482,7 @@ class MaxPool1d(layers.Layer):
           import paddle.nn as nn
           paddle.disable_static()
           
-          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           MaxPool1d = nn.MaxPool1d(kernel_size=2, stride=2, padding=0)
           pool_out = MaxPool1d(data)
           # pool_out shape: [1, 3, 16]
@@ -532,7 +532,7 @@ class AdaptiveAvgPool1d(layers.Layer):
        Output(i) &= \\frac{sum(Input[lstart:lend])}{(lstart - lend)}
 
     Args:
-        input (Variable): The input tensor of pooling operator, which is a 3-D tensor
+        input (Tensor): The input tensor of pooling operator, which is a 3-D tensor
                           with shape [N, C, L].  The format of input tensor is NCL,
                           where N is batch size, C is the number of channels, L is the
                           length of the feature. The data type is float32 or float64.
@@ -568,7 +568,7 @@ class AdaptiveAvgPool1d(layers.Layer):
           import paddle.nn as nn
           paddle.disable_static()
           
-          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AdaptiveAvgPool1d = nn.AdaptiveAvgPool1d(output_size=16)
           pool_out = AdaptiveAvgPool1d(data)
           # pool_out shape: [1, 3, 16]
@@ -602,7 +602,7 @@ class AdaptiveMaxPool1d(layers.Layer):
        Output(i) &= max(Input[lstart:lend])}
 
     Args:
-        input (Variable): The input tensor of pooling operator, which is a 3-D tensor
+        input (Tensor): The input tensor of pooling operator, which is a 3-D tensor
                           with shape [N, C, L].  The format of input tensor is NCL,
                           where N is batch size, C is the number of channels, L is the
                           length of the feature. The data type is float32 or float64.
@@ -640,7 +640,7 @@ class AdaptiveMaxPool1d(layers.Layer):
           import paddle.nn as nn
           paddle.disable_static()
           
-          data = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AdaptiveMaxPool1d = nn.AdaptiveMaxPool1d(output_size=16)
           pool_out = AdaptiveMaxPool1d(data)
           # pool_out shape: [1, 3, 16]
