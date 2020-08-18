@@ -380,11 +380,12 @@ class AvgPool2d(layers.Layer):
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Otherwise, the pool padding size will be a square of an int.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
+        count_include_pad (bool): Whether to exclude padding points in average pooling
+                          mode, default is `true`.
+        divisor_override (int|float) if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-        count_include_pad (bool): Whether to exclude padding points in average pooling
-                          mode, default is `true`.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
@@ -406,7 +407,7 @@ class AvgPool2d(layers.Layer):
           paddle.disable_static()
 
           # max pool2d
-          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
           Pool2d = nn.AvgPool2d(kernel_size=2,
                                 stride=2, padding=0)
           output = Poo2d(input)
@@ -420,6 +421,7 @@ class AvgPool2d(layers.Layer):
                  padding=0,
                  ceil_mode=False,
                  count_include_pad=True,
+                 divisor_override=None,
                  name=None,
                  data_format="NCHW"):
         super(AvgPool2d, self).__init__()
@@ -428,6 +430,7 @@ class AvgPool2d(layers.Layer):
         self.padding = padding
         self.ceil_mode = ceil_mode
         self.count_include_pad = count_include_pad
+        self.divisor = divisor_override
         self.name = name
         self.data_format = data_format
 
@@ -439,6 +442,7 @@ class AvgPool2d(layers.Layer):
             padding=self.padding,
             ceil_mode=self.ceil_mode,
             count_include_pad=self.count_include_pad,
+            divisor_override=self.divisor,
             name=self.name,
             data_format=self.data_format)
 
@@ -505,7 +509,7 @@ class MaxPool2d(layers.Layer):
           paddle.disable_static()
 
           # max pool2d
-          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
           MaxPool2d = nn.MaxPool2d(kernel_size=2,
                                    stride=2, padding=0)
           output = MaxPool2d(input)
@@ -568,7 +572,7 @@ class MaxPool3d(layers.Layer):
             `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
             when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-        ceil_mode (bool): ${ceil_mode_comment}
+        ceil_mode (bool): when True, will use ceil instead of floor to compute the output shape.
         count_include_pad (bool): Whether to exclude padding points in average pooling
                           mode, default is True.
         name(str, optional): For detailed information, please refer
@@ -596,7 +600,7 @@ class MaxPool3d(layers.Layer):
           paddle.disable_static()
 
           # max pool3d
-          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
+          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
           MaxPool3d = nn.MaxPool3d(kernel_size=2,
                                    stride=2, padding=0)
           output = MaxPool3d(input)
@@ -662,6 +666,7 @@ class AvgPool3d(layers.Layer):
         ceil_mode (bool): ${ceil_mode_comment}
         count_include_pad (bool): Whether to exclude padding points in average pooling
                           mode, default is True.
+        divisor_override (int|float) if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -686,7 +691,7 @@ class AvgPool3d(layers.Layer):
           paddle.disable_static()
 
           # avg pool3d
-          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
+          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
           AvgPool3d = nn.AvgPool3d(kernel_size=2,
                                    stride=2, padding=0)
           output = AvgPool3d(input)
@@ -700,6 +705,7 @@ class AvgPool3d(layers.Layer):
                  padding=0,
                  ceil_mode=False,
                  count_include_pad=True,
+                 divisor_override=None,
                  name=None,
                  data_format="NCDHW"):
         super(AvgPool3d, self).__init__()
@@ -710,6 +716,7 @@ class AvgPool3d(layers.Layer):
         self.count_include_pad = count_include_pad
         self.name = name
         self.data_format = data_format
+        self.divisor = divisor_override
 
     def forward(self, x):
         return F.avg_pool3d(
@@ -719,5 +726,6 @@ class AvgPool3d(layers.Layer):
             padding=self.padding,
             ceil_mode=self.ceil_mode,
             count_include_pad=self.count_include_pad,
+            divisor_override=self.divisor,
             name=self.name,
             data_format=self.data_format)

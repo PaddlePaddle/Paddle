@@ -56,19 +56,20 @@ class TestPool3d_API(unittest.TestCase):
         with fluid.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
-            result = avg_pool3d(input, kernel_size=2, stride=2, padding=0)
+            result = avg_pool3d(input, kernel_size=2, stride=2, padding="SAME")
 
             result_np = pool3D_forward_naive(
                 input_np,
                 ksize=[2, 2, 2],
                 strides=[2, 2, 2],
                 paddings=[0, 0, 0],
-                pool_type='avg')
+                pool_type='avg',
+                padding_algorithm="SAME")
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
             avg_pool3d_dg = paddle.nn.layer.AvgPool3d(
-                kernel_size=2, stride=2, padding=0)
+                kernel_size=2, stride=None, padding="SAME")
             result = avg_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
@@ -107,8 +108,91 @@ class TestPool3d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
             max_pool3d_dg = paddle.nn.layer.MaxPool3d(
+                kernel_size=2, stride=None, padding=0)
+            result = max_pool3d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+    def check_max_dygraph_stride_is_none(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result, indices = max_pool3d(
+                input,
+                kernel_size=2,
+                stride=None,
+                padding="SAME",
+                return_indices=True)
+
+            result_np = pool3D_forward_naive(
+                input_np,
+                ksize=[2, 2, 2],
+                strides=[2, 2, 2],
+                paddings=[0, 0, 0],
+                pool_type='max',
+                padding_algorithm="SAME")
+
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+            max_pool3d_dg = paddle.nn.layer.MaxPool3d(
                 kernel_size=2, stride=2, padding=0)
             result = max_pool3d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+    def check_max_dygraph_padding(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            padding = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]
+            result = max_pool3d(input, kernel_size=2, stride=2, padding=padding)
+
+            result_np = pool3D_forward_naive(
+                input_np,
+                ksize=[2, 2, 2],
+                strides=[2, 2, 2],
+                paddings=[0, 0, 0],
+                pool_type='max')
+
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+            max_pool3d_dg = paddle.nn.layer.MaxPool3d(
+                kernel_size=2, stride=2, padding=0)
+            result = max_pool3d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+            padding = [0, 0, 0, 0, 0, 0]
+            result = max_pool3d(input, kernel_size=2, stride=2, padding=padding)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+    def check_avg_divisor(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            padding = 0
+            result = avg_pool3d(
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=padding,
+                divisor_override=8)
+
+            result_np = pool3D_forward_naive(
+                input_np,
+                ksize=[2, 2, 2],
+                strides=[2, 2, 2],
+                paddings=[0, 0, 0],
+                pool_type='avg')
+
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+            avg_pool3d_dg = paddle.nn.layer.AvgPool3d(
+                kernel_size=2, stride=2, padding=0)
+            result = avg_pool3d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+            padding = [0, 0, 0, 0, 0, 0]
+            result = avg_pool3d(
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=padding,
+                divisor_override=8)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
     def test_pool3d(self):
@@ -118,6 +202,139 @@ class TestPool3d_API(unittest.TestCase):
             self.check_avg_dygraph_results(place)
             self.check_max_static_results(place)
             self.check_avg_static_results(place)
+            self.check_max_dygraph_stride_is_none(place)
+            self.check_max_dygraph_padding(place)
+            self.check_avg_divisor(place)
+
+
+class TestPool3dError_API(unittest.TestCase):
+    def test_error_api(self):
+        def run1():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                padding = [[0, 1], [0, 0], [0, 0], [0, 0], [0, 0]]
+                res_pd = avg_pool3d(
+                    input_pd, kernel_size=2, stride=2, padding=padding)
+
+        self.assertRaises(ValueError, run1)
+
+        def run2():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                padding = [[0, 1], [0, 0], [0, 0], [0, 0], [0, 0]]
+                res_pd = avg_pool3d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding=padding,
+                    data_format='NCDHW')
+
+        self.assertRaises(ValueError, run2)
+
+        def run3():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                padding = [[0, 1], [0, 0], [0, 0], [0, 0], [0, 0]]
+                res_pd = avg_pool3d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding=padding,
+                    data_format='NDHWC')
+
+        self.assertRaises(ValueError, run3)
+
+        def run4():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                res_pd = avg_pool3d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding=0,
+                    data_format='NNNN')
+
+        self.assertRaises(ValueError, run4)
+
+        def run5():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                res_pd = max_pool3d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding=0,
+                    data_format='NNNN')
+
+        self.assertRaises(ValueError, run5)
+
+        def run6():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                res_pd = avg_pool3d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding="padding",
+                    data_format='NNNN')
+
+        self.assertRaises(ValueError, run6)
+
+        def run7():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                res_pd = max_pool3d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding="padding",
+                    data_format='NNNN')
+
+        self.assertRaises(ValueError, run7)
+
+        def run8():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                res_pd = avg_pool3d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding="VALID",
+                    ceil_mode=True,
+                    data_format='NNNN')
+
+        self.assertRaises(ValueError, run8)
+
+        def run9():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                res_pd = max_pool3d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding="VALID",
+                    ceil_mode=True,
+                    data_format='NNNN')
+
+        self.assertRaises(ValueError, run9)
 
 
 if __name__ == '__main__':

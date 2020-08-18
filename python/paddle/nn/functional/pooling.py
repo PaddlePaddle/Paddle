@@ -28,6 +28,13 @@ __all__ = [
 ]
 
 
+def check_instance(x, x_name, types=(int, float)):
+
+    if not isinstance(x, types):
+        raise ValueError("Excepted {} type for {} but received type: {}. ".
+                         format(types, x_name, type(x)))
+
+
 def update_padding2d(padding, data_format):
     def is_list_or_tuple(ele):
         if isinstance(ele, list) or isinstance(ele, tuple):
@@ -169,7 +176,7 @@ def max_pool2d(x,
           paddle.disable_static()
 
           # max pool2d
-          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
           output = F.max_pool2d(input,
                                 kernel_size=2,
                                 stride=2, padding=0)
@@ -183,8 +190,7 @@ def max_pool2d(x,
                                              return_indices=True)
           # output.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
-    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
-                             'conv2d')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -257,6 +263,7 @@ def avg_pool2d(x,
                padding=0,
                ceil_mode=False,
                count_include_pad=True,
+               divisor_override=None,
                name=None,
                data_format="NCHW"):
     """
@@ -299,11 +306,12 @@ def avg_pool2d(x,
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Otherwise, the pool padding size will be a square of an int.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
+        count_include_pad (bool): Whether to exclude padding points in average pooling
+                          mode, default is `true`.
+        divisor_override (float): if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-        count_include_pad (bool): Whether to exclude padding points in average pooling
-                          mode, default is `true`.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
@@ -325,16 +333,15 @@ def avg_pool2d(x,
           import numpy as np
           paddle.disable_static()
 
-          # max pool2d
-          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+          # avg pool2d
+          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
           output = F.avg_pool2d(input,
                                 kernel_size=2,
                                 stride=2, padding=0)
           # output.shape [1, 3, 16, 16]
 
     """
-    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
-                             'conv2d')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -366,12 +373,17 @@ def avg_pool2d(x,
     pool_padding = update_padding2d(padding, data_format)
 
     if in_dygraph_mode():
-        return core.ops.pool2d(
+        output = core.ops.pool2d(
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
             False, 'padding_algorithm', padding_algorithm, 'strides', stride,
             'paddings', pool_padding, 'use_cudnn', True, 'ceil_mode', ceil_mode,
             'use_mkldnn', False, 'exclusive', not count_include_pad,
             'data_format', data_format)
+        if divisor_override is None:
+            return output
+        else:
+            check_instance(divisor_override, "divisor_override")
+            return output * (kernel_size[0] * kernel_size[1]) / divisor_override
 
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
@@ -396,7 +408,11 @@ def avg_pool2d(x,
             "data_format": data_format,
         })
 
-    return pool_out
+    if divisor_override is None:
+        return pool_out
+    else:
+        check_instance(divisor_override, "divisor_override")
+        return pool_out * (kernel_size[0] * kernel_size[1]) / divisor_override
 
 
 def max_pool3d(x,
@@ -475,19 +491,16 @@ def max_pool3d(x,
           import numpy as np
           paddle.disable_static()
 
-          # max pool2d
-          input = paddle.to_variable(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+          # max pool3d
+          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
           output = F.max_pool2d(input,
                                 kernel_size=2,
                                 stride=2, padding=0)
           output.shape [1, 3, 16, 16, 16]
 
-          # return_indices=True
-          import paddle.fluid as fluid
-          data = fluid.data(name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
-
-          # max pool3d
-          output, max_indices = paddle.nn.functional.max_pool3d(data,
+          # for return_indices=True
+          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+          output, max_indices = paddle.nn.functional.max_pool3d(input,
                                         kernel_size = 2,
                                         stride = 2,
                                         padding=0,
@@ -495,10 +508,9 @@ def max_pool3d(x,
           # output.shape [None, 3, 16, 16, 16], max_indices.shape [None, 3, 16, 16, 16],
 
     """
-    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
-                             'conv2d')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
-    if kernel_size is None:
+    if stride is None:
         stride = kernel_size
     else:
         stride = utils.convert_to_list(stride, 3, 'pool_stride')
@@ -569,6 +581,7 @@ def avg_pool3d(x,
                padding=0,
                ceil_mode=False,
                count_include_pad=False,
+               divisor_override=None,
                name=None,
                data_format="NCDHW"):
     """
@@ -601,6 +614,7 @@ def avg_pool3d(x,
         ceil_mode (bool): ${ceil_mode_comment}
         count_include_pad (bool): Whether to exclude padding points in average pooling
                           mode, default is True.
+        divisor_override (int|float) if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -623,17 +637,16 @@ def avg_pool3d(x,
         .. code-block:: python
           import paddle.fluid as fluid
           import paddle
-          data = fluid.data(name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
+          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
           # avg pool3d
           pool3d = paddle.nn.functional.avg_pool3d(
-                                            input = data,
+                                            input,
                                             kernel_size = 2,
                                             stride = 2,
                                             padding=0)
-          # pool3d.shape: [None, 3, 16, 16, 16]
+          # pool3d.shape: [1, 3, 16, 16, 16]
     """
-    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
-                             'conv2d')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -665,12 +678,18 @@ def avg_pool3d(x,
     padding = update_padding3d(padding, data_format)
 
     if in_dygraph_mode():
-        return core.ops.pool3d(
+        output = core.ops.pool3d(
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'strides', stride,
             'paddings', padding, 'global_pooling', False, 'padding_algorithm',
             padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
             'use_mkldnn', False, 'exclusive', not count_include_pad,
             'data_format', data_format)
+        if divisor_override is None:
+            return output
+        else:
+            check_instance(divisor_override, "divisor_override")
+            return output * (kernel_size[0] * kernel_size[1] *
+                             kernel_size[2]) / divisor_override
 
     op_type = "pool3d"
     helper = LayerHelper(op_type, **locals())
@@ -696,4 +715,9 @@ def avg_pool3d(x,
             "data_format": data_format,
         })
 
-    return pool_out
+    if divisor_override is None:
+        return pool_out
+    else:
+        check_instance(divisor_override, "divisor_override")
+        return pool_out * (kernel_size[0] * kernel_size[1] *
+                           kernel_size[2]) / divisor_override
