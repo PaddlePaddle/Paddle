@@ -31,7 +31,7 @@ class FSTest2(FSTestBase):
         fs = HDFSClient(
             "/usr/local/hadoop-2.7.7/",
             None,
-            time_out=15 * 1000,
+            time_out=5 * 1000,
             sleep_inter=100)
         self._test_rm(fs)
         self._test_touch(fs)

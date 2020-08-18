@@ -94,7 +94,7 @@ java.io.IOException: Input/output error
         self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
         self.assertFalse(fs.is_dir(os.path.abspath("./xxxx")))
         self.assertTrue(fs.is_dir(os.path.abspath("./xxx/..")))
-        dirs, files = fs.ls_dir(os.path.abspath("./test_hdfs.py"))
+        dirs, files = fs.ls_dir(os.path.abspath("./test_hdfs1.py"))
         self.assertTrue(dirs == [])
         self.assertTrue(len(files) == 1)
         dirs, files = fs.ls_dir(os.path.abspath("./xxx/.."))
