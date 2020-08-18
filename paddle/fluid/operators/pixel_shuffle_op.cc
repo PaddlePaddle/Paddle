@@ -91,7 +91,6 @@ class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<std::string>(
         "data_format",
-        "(string, default NCHW) Only used in "
         "An optional string from: \"NHWC\", \"NCHW\". "
         "Defaults to \"NHWC\", Specify the data format of the input data.")
         .SetDefault("NCHW");

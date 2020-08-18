@@ -22,14 +22,12 @@ __all__ = ['PixelShuffle']
 
 class PixelShuffle(layers.Layer):
     """
-        :alias_main: paddle.nn.PixelShuffle
-        :alias: paddle.nn.PixelShuffle,paddle.nn.layer.PixelShuffle,paddle.nn.layer.vision.PixelShuffle
     
     PixelShuffle Layer    
 
     This operator rearranges elements in a tensor of shape [N, C, H, W]
     to a tensor of shape [N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor],
-    or from shape [N, H, W, C] to [N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2].
+    or from shape [N, H, W, C] to [N, H*upscale_factor, W*upscale_factor, C/upscale_factor**2].
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/upscale_factor.
     Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
@@ -39,6 +37,7 @@ class PixelShuffle(layers.Layer):
     Parameters:
 
         upscale_factor(int): factor to increase spatial resolution.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - x: 4-D tensor with shape: (N, C, H, W) or (N, H, W, C).
@@ -54,7 +53,7 @@ class PixelShuffle(layers.Layer):
 
             paddle.disable_static()
             x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            x_var = paddle.to_variable(x)
+            x_var = paddle.to_tensor(x)
             pixel_shuffle = nn.PixelShuffle(3)
             out_var = pixel_shuffle(x_var)
             out = out_var.numpy()
