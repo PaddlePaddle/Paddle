@@ -169,7 +169,7 @@ class TestDistGloo_2x2(TestFleetBase):
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_PSERVER_ID": "0",
             #GLOO FLAG
-            "PADDLE_GLOO_SUPPORT": "1",
+            "PADDLE_WITH_GLOO": "1",
         }
 
         required_envs.update(need_envs)

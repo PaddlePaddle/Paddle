@@ -168,7 +168,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def __init__(self, is_collective=False, **kwargs):
         super(PaddleCloudRoleMaker, self).__init__()
         self._is_collective = is_collective
-        self._init_gloo = False #default no init gloo
+        self._init_gloo = False  #default no init gloo
         self._kwargs = kwargs
 
         self._role_is_generated = False
@@ -465,8 +465,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             if not self._is_collective:
                 self._ps_env()
-                if "PADDLE_GLOO_SUPPORT" in os.environ:
-                    self._init_gloo = bool(os.environ["PADDLE_GLOO_SUPPORT"])
+                if "PADDLE_WITH_GLOO" in os.environ:
+                    self._init_gloo = bool(os.environ["PADDLE_WITH_GLOO"])
                 if self._init_gloo:
                     self._init_gloo_env()
             else:
