@@ -74,10 +74,7 @@ class LambOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.lamb = False
-        dist_strategy.lamb_configs = {
-            'lamb_weight_decay': 0.01,
-            'exclude_from_weight_decay': [],
-        }
+        dist_strategy.lamb_configs = {}
 
     def backward(self,
                  loss,
