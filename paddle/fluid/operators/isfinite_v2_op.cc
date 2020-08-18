@@ -46,7 +46,8 @@ class OverflowV2Op : public framework::OperatorWithKernel {
     } else if (x_var->IsType<framework::SelectedRows>()) {
       dtype = x_var->Get<framework::SelectedRows>().value().type();
     } else {
-      PADDLE_THROW("Cannot find the input data type by all input data");
+      PADDLE_THROW(plat::errors::InvalidArgument(
+          "Cannot find the input data type by all input data"));
     }
     return framework::OpKernelType(framework::proto::VarType::Type(dtype),
                                    ctx.GetPlace());
