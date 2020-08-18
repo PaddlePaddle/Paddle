@@ -23,14 +23,16 @@ import paddle.fluid as fluid
 
 def p_norm(x, axis, porder, keepdims=False):
     if axis is None: axis = -1
-    r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
+    r = np.linalg.norm(
+        x, ord=porder, axis=axis, keepdims=keepdims).astype(x.dtype)
     return r
 
 
 def frobenius_norm(x, axis=None, keepdims=False):
     if isinstance(axis, list): axis = tuple(axis)
     if axis is None: axis = (-2, -1)
-    r = np.linalg.norm(x, ord='fro', axis=axis, keepdims=keepdims)
+    r = np.linalg.norm(
+        x, ord='fro', axis=axis, keepdims=keepdims).astype(x.dtype)
     return r
 
 
@@ -114,7 +116,7 @@ class TestPnormOp(OpTest):
         porder = self.attrs["porder"]
         axis = self.attrs["axis"]
         if porder == 0:
-            grad = np.zeros(x.shape)
+            grad = np.zeros(x.shape).astype(x.dtype)
         elif porder in [float("inf"), float("-inf")]:
             norm = p_norm(x, axis=axis, porder=porder, keepdims=True)
             x_abs = np.abs(x)
@@ -129,7 +131,7 @@ class TestPnormOp(OpTest):
         for s in x.shape:
             numel *= s
         numel /= x.shape[axis]
-        return [grad * 1 / numel]
+        return [grad.astype(x.dtype) * 1 / numel]
 
 
 class TestPnormOp2(TestPnormOp):

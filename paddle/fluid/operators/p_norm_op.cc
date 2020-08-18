@@ -49,7 +49,7 @@ Given a tensor X, compute Lp-norm of X.
 
 When p = 0, defining $0^0 = 0$, the zero-norm of X is simply the number of non-zero elements of X.
 $$
-||X||_{0} = \lim_{p \rightarrow 0} \sum_i=1 |x_i|^p
+||X||_{0} = \lim_{p \rightarrow 0} \sum_i |x_i|^p
 $$
 
 When p = inf, the inf-norm of X is the maximum element of X.
@@ -78,25 +78,33 @@ class PnormOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "p_norm");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "p_norm");
-    auto xdim = ctx->GetInputDim("X");
+    auto x_dim = ctx->GetInputDim("X");
+    auto x_rank = x_dim.size();
     int axis = ctx->Attrs().Get<int>("axis");
     bool keepdim = ctx->Attrs().Get<bool>("keepdim");
 
-    if (axis < 0) axis = xdim.size() + axis;
-    PADDLE_ENFORCE_GT(
-        xdim.size(), axis,
-        platform::errors::InvalidArgument(
-            "The input axis of p_norm is not support for "
-            "axis:%f >= xdim.size():%f, current input tensor X'shape is=[%s].",
-            axis, xdim.size(), xdim));
+    PADDLE_ENFORCE_GE(axis, -x_rank,
+                      platform::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], R is "
+                          "the rank of Input(X). But received axis: %d, R: %d. "
+                          "Current Input(X)'s shape is=[%s].",
+                          axis, x_rank, x_dim));
+    PADDLE_ENFORCE_LT(axis, x_rank,
+                      platform::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], R is "
+                          "the rank of Input(X). But received axis: %d, R: %d. "
+                          "Current Input(X)'s shape is=[%s].",
+                          axis, x_rank, x_dim));
 
+    if (axis < 0) axis = x_dim.size() + axis;
     std::vector<int> reduce_dims;
-    for (int i = 0; i < xdim.size(); ++i) {
-      if (i != axis) reduce_dims.emplace_back(xdim[i]);
+    for (int i = 0; i < x_dim.size(); ++i) {
+      if (i != axis) reduce_dims.emplace_back(x_dim[i]);
     }
-    xdim[axis] = 1;
+    x_dim[axis] = 1;
+
     if (keepdim) {
-      ctx->SetOutputDim("Out", xdim);
+      ctx->SetOutputDim("Out", x_dim);
     } else {
       ctx->SetOutputDim("Out", framework::make_ddim(reduce_dims));
     }
