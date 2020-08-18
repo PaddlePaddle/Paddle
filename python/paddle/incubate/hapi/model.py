@@ -1399,6 +1399,7 @@ class Model(object):
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
                 is False. stack_outputs as False is used for LoDTensor output situation,
                 it is recommended set as True if outputs contains no LoDTensor. Default: False.
+            callbacks(Callback): A Callback instance, default None.
         Returns:
             list: output of models.
 
