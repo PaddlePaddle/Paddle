@@ -643,7 +643,7 @@ def masked_select(x, mask, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
-    Returns: A 1-D Tensor which is the same data type  as ``x`.
+    Returns: A 1-D Tensor which is the same data type  as ``x``.
     
     Raises:
         TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
