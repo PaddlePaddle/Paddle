@@ -36,7 +36,7 @@ class Sampler(object):
 
     Args:
         data_source(Dataset, optional): this could be an instance of
-                :code:`paddle.io.Dataset` other python object which
+                :code:`paddle.io.Dataset` other Python object which
                 implemented :code:`__len__` for Sampler to get indices
                 as the range of :attr:`dataset` length. Default None.
 
@@ -98,7 +98,7 @@ class SequenceSampler(Sampler):
 
     Args:
         data_source(Dataset): dataset to sample, this could be an
-                instance of :code:`paddle.io.Dataset` other python
+                instance of :code:`paddle.io.Dataset` other Python
                 object which implemented :code:`__len__`.
 
     Returns:
@@ -148,7 +148,7 @@ class RandomSampler(Sampler):
 
     Args:
         data_source(Dataset): dataset to sample, this could be an
-                instance of :code:`paddle.io.Dataset` other python
+                instance of :code:`paddle.io.Dataset` other Python
                 object which implemented :code:`__len__`.
         replacement(bool): If False, sample the whole dataset, If False,
                 set :attr:`num_samples` for how many sample to draw. Default False.
