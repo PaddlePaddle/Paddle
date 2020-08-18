@@ -37,7 +37,6 @@ __all__ = [
 ]
 
 
-@templatedoc()
 def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
     """
     This OP returns a Tensor filled with random values sampled from a uniform
