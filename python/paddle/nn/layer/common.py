@@ -378,6 +378,7 @@ class AdaptiveAvgPool2d(layers.Layer):
 
     Shape:
         x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor. The data type can be float16, float32, float64, int32 or int64.
+        output (Tensor): The output tensor of adaptive avg pool2d operator, which is a 4-D tensor. The data type is same as input x.
 
     Returns:
         A callable object of AdaptiveAvgPool2d.
@@ -459,6 +460,7 @@ class AdaptiveAvgPool3d(layers.Layer):
                              None by default.
     Shape:
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor. The data type can be float16, float32, float64, int32 or int64.
+        output (Tensor): The output tensor of adaptive avg pool3d operator, which is a 5-D tensor. The data type is same as input x.
 
     Returns:
         A callable object of AdaptiveAvgPool3d.
