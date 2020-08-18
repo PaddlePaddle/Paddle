@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
@@ -37,11 +38,11 @@ class CPURandintKernel : public framework::OpKernel<T> {
         new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);
       }
     }
-
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     if (!new_shape.empty()) out->Resize(framework::make_ddim(new_shape));
     T* data = out->mutable_data<T>(ctx.GetPlace());
     int64_t size = out->numel();
+
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
