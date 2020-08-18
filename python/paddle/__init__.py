@@ -32,7 +32,8 @@ import paddle.dataset
 import paddle.batch
 batch = batch.batch
 import paddle.tensor
-from .fluid import monkey_patch_variable, monkey_patch_math_varbase
+from .fluid import monkey_patch_variable
+from .fluid.dygraph import monkey_patch_math_varbase
 monkey_patch_variable()
 monkey_patch_math_varbase()
 import paddle.framework
