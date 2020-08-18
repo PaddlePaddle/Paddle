@@ -25,6 +25,8 @@ import warnings
 from collections import Iterable
 
 from paddle import fluid
+# Note: Use alias `Input` temporarily before releasing hapi feature.
+from paddle.static import InputSpec as Input
 from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
@@ -45,40 +47,6 @@ __all__ = [
     'Model',
     'Input',
 ]
-
-
-class Input(fluid.dygraph.Layer):
-    """
-    Define inputs the model.
-
-    Args:
-        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
-            for more details.
-        shape (tuple(integers)|list[integers]): List|Tuple of integers
-            declaring the shape. You can set "None" or -1 at a dimension
-            to indicate the dimension can be of any size. For example,
-            it is useful to set changeable batch size as "None" or -1.
-        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
-            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
-            uint8. Default: float32.
-
-    Examples:
-        .. code-block:: python
-
-        import paddle.incubate.hapi as hapi
-
-        input = hapi.Input('x', [None, 784], 'float32')
-        label = hapi.Input('label', [None, 1], 'int64')
-    """
-
-    def __init__(self, name, shape=None, dtype='float32'):
-        super(Input, self).__init__()
-        self.shape = shape
-        self.dtype = dtype
-        self.name = name
-
-    def forward(self):
-        return fluid.data(self.name, shape=self.shape, dtype=self.dtype)
 
 
 class StaticGraphAdapter(object):
@@ -388,8 +356,8 @@ class StaticGraphAdapter(object):
         with fluid.program_guard(prog, self._startup_prog):
             inputs = self.model._inputs
             labels = self.model._labels if self.model._labels else []
-            inputs = [k.forward() for k in to_list(inputs)]
-            labels = [k.forward() for k in to_list(labels)]
+            inputs = [k._create_feed_layer() for k in to_list(inputs)]
+            labels = [k._create_feed_layer() for k in to_list(labels)]
             self._label_vars[mode] = labels
             outputs = to_list(self.model.network.forward(*inputs))
 
@@ -508,7 +476,7 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -517,7 +485,7 @@ class DynamicGraphAdapter(object):
             self.ddp_model.apply_collective_grads()
         else:
             outputs = self.model.network.forward(
-                * [to_variable(x) for x in inputs])
+                *[to_variable(x) for x in inputs])
             losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -528,7 +496,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -541,7 +509,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -572,7 +540,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss_function and len(metrics):
