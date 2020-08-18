@@ -182,14 +182,8 @@ class BaseModel(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, inputs):
-        print(inputs[0].shape)
-        print(type(inputs[0]))
         inputs = [fluid.dygraph.to_variable(np_inp) for np_inp in inputs]
-        print(inputs[0].shape)
-        print(type(inputs[0]))
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
-        print("Huihuang debug")
-        print(src.shape)
         if src.shape[0] < self.batch_size:
             self.batch_size = src.shape[0]
 

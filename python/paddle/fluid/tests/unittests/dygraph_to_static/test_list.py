@@ -33,8 +33,7 @@ def test_list_append_without_control_flow(x):
     # It's a plain python control flow which won't be transformed
     if 2 > 1:
         a.append(x)
-    # TODO(Aurelius84): Currently, run_program_op doesn't support output LoDTensorArray.
-    return a[0]
+    return a
 
 
 def test_list_append_in_if(x):
