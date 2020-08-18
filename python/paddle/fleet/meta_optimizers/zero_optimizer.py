@@ -139,6 +139,36 @@ class ZeroOptimizer(MetaOptimizerBase):
                            OP_ROLE_KEY: OpRole.Backward})
 
     def _insert_broadcast_ops(self, block, fuse_broadcast=False):
+        def _insert_comm_sync(insert_idx, dummy_var_name):
+            for r in range(self._nrings):
+                block._insert_op(
+                    insert_idx,
+                    type='c_sync_comm_stream',
+                    inputs={'X': dummy_var_name},
+                    outputs={'Out': dummy_var_name},
+                    attrs={'ring_id': r,
+                           OP_ROLE_KEY: OpRole.Backward})
+                insert_idx += 1
+            return self._nrings
+
+        def _insert_broadcast_inner(insert_idx, attrs):
+            for attr in attrs:
+                block._insert_op(insert_idx, **attr)
+                insert_idx += 1
+            return len(attrs)
+
+        def _insert_fill_constant(insert_idx, attrs, dummy_var_name):
+            for attr in attrs:
+                block._insert_op(insert_idx, **attr)
+                insert_idx += 1
+            block._insert_op(
+                insert_idx,
+                type='c_sync_calc_stream',
+                inputs={'X': dummy_var_name},
+                outputs={'Out': dummy_var_name},
+                attrs={OP_ROLE_KEY: OpRole.Backward})
+            return len(attrs) + 1
+
         def _insert_cache(cache,
                           prepend_comm_sync=False,
                           append_comm_sync=False):
@@ -147,45 +177,17 @@ class ZeroOptimizer(MetaOptimizerBase):
             assert (len(cache["broadcast_ops"]) > 0)
 
             if prepend_comm_sync:
-                for r in range(self._nrings):
-                    block._insert_op(
-                        insert_idx,
-                        type='c_sync_comm_stream',
-                        inputs={'X': dummy_var_name},
-                        outputs={'Out': dummy_var_name},
-                        attrs={'ring_id': r,
-                               OP_ROLE_KEY: OpRole.Backward})
-                    insert_idx += 1
+                insert_idx += _insert_comm_sync(insert_idx, dummy_var_name)
 
             if len(cache["fill_constant_ops"]) > 0:
-                for attr in cache["fill_constant_ops"]:
-                    block._insert_op(insert_idx, **attr)
-                    insert_idx += 1
-                    # TODO(mapingshuo) remove dummy var
+                insert_idx += _insert_fill_constant(
+                    insert_idx, cache["fill_constant_ops"], dummy_var_name)
 
-                block._insert_op(
-                    insert_idx,
-                    type='c_sync_calc_stream',
-                    inputs={'X': dummy_var_name},
-                    outputs={'Out': dummy_var_name},
-                    attrs={OP_ROLE_KEY: OpRole.Backward})
-                insert_idx += 1
-
-            for attr in cache["broadcast_ops"]:
-                block._insert_op(insert_idx, **attr)
-                insert_idx += 1
-                # TODO(mapingshuo) remove dummy var
+            insert_idx += _insert_broadcast_inner(insert_idx,
+                                                  cache["broadcast_ops"])
 
             if append_comm_sync:
-                for r in range(self._nrings):
-                    block._insert_op(
-                        insert_idx,
-                        type='c_sync_comm_stream',
-                        inputs={'X': dummy_var_name},
-                        outputs={'Out': dummy_var_name},
-                        attrs={'ring_id': r,
-                               OP_ROLE_KEY: OpRole.Backward})
-                    insert_idx += 1
+                insert_idx += _insert_comm_sync(insert_idx, dummy_var_name)
 
             return insert_idx - cache["insert_idx"]
 
