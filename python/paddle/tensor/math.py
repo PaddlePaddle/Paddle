@@ -1741,7 +1741,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
 def isfinite(x, name=None):
     """
-      :alias: paddle.tensor.math.isfinite
+
     Return whether every element of input tensor is finite number or not.
 
     Args:
@@ -1773,7 +1773,7 @@ def isfinite(x, name=None):
 
 def isinf(x, name=None):
     """
-      :alias: paddle.tensor.math.isinf
+
     Return whether every element of input tensor is `+/-INF` or not.
 
     Args:
@@ -1805,7 +1805,7 @@ def isinf(x, name=None):
 
 def isnan(x, name=None):
     """
-      :alias: paddle.tensor.math.isnan
+
     Return whether every element of input tensor is `NaN` or not.
 
     Args:

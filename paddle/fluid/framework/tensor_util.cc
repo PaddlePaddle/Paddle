@@ -386,7 +386,7 @@ class AllOutVisitor : public boost::static_visitor<> {
  public:
   AllOutVisitor(const framework::Tensor& tensor, Predicate predicate,
                 framework::Tensor* out)
-      : tensor_(tensor), predicate_(predicate), out_(out) {}
+      : tensor_(tensor), out_(out), predicate_(predicate) {}
 
   template <typename Place>
   void operator()(const Place& place) const {
