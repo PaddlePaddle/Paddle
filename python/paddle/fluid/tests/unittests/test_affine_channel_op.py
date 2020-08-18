@@ -22,7 +22,6 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-import time
 
 
 def affine_channel(x, scale, bias, layout):
@@ -151,7 +150,4 @@ class TestAffineChannel2D(TestAffineChannelOp):
 #        self.layout = 'NHWC'
 
 if __name__ == '__main__':
-    start = time.time()
     unittest.main()
-    end = time.time()
-    print('time cost: ', end - start)
