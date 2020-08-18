@@ -83,6 +83,9 @@ class NormalNumpy(DistributionNumpy):
         return -((value - self.loc) * (value - self.loc)) / (
             2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
 
+    def probs(self, value):
+        return np.exp(self.log_prob(value))
+
     def entropy(self):
         return 0.5 + 0.5 * np.log(np.array(2. * math.pi).astype(
             'float32')) + np.log(self.scale)
