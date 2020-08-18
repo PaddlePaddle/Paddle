@@ -71,8 +71,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
       out will be a (j×k×n×p) tensor.
 
     Args:
-        x (Tensor): The input variable which is a Tensor or LoDTensor.
-        y (Tensor): The input variable which is a Tensor or LoDTensor.
+        x (Tensor): The input tensor which is a Tensor or LoDTensor.
+        y (Tensor): The input tensor which is a Tensor or LoDTensor.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
         name(str|None): A name for this layer(optional). If set None, the layer
