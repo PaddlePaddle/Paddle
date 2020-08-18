@@ -254,7 +254,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
             \left\{
             \begin{aligned}
             &x, & & if \ x >= 0 \\
-            &negative_slope * x, & & otherwise \\
+            &negative\_slope * x, & & otherwise \\
             \end{aligned}
             \right. \\
 
