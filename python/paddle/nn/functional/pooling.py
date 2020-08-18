@@ -55,7 +55,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             it must contain two element, (H, W). H and W can be either a int, or None which means
             the size will be the same as that of the input.
         data_format (str): The data format of the input and output data. An optional string
-            from: “NCHW”, “NHWC”. The default is “NCHW”. When it is “NCHW”, the data is stored in
+            from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in
             the order of: [batch_size, input_channels, input_height, input_width].
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
@@ -171,7 +171,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means
             the size will be the same as that of the input.
         data_format (str): The data format of the input and output data. An optional string
-            from: “NCDHW”, “NDHWC”. The default is “NCDHW”. When it is “NCDHW”, the data is stored in
+            from: "NCDHW", "NDHWC". The default is "NCDHW". When it is "NCDHW", the data is stored in
             the order of: [batch_size, input_channels, input_depth, input_height, input_width].
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
