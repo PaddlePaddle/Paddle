@@ -51,4 +51,4 @@ class InputSpec(object):
 
     def __repr__(self):
         return '{}(shape={}, dtype={}, name={})'.format(
-            type_name(self), self.shape, self.dtype, self.name)
+            type(self).__name__, self.shape, self.dtype, self.name)
