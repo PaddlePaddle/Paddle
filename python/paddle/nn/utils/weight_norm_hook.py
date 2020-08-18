@@ -146,7 +146,7 @@ class WeightNorm(object):
 
 def weight_norm(layer, name='weight', dim=0):
     """
-    This weight_norm layer apply weight normalization to a parameter according to the 
+    This weight_norm layer applies weight normalization to a parameter according to the 
     following formula:
 
     .. math::
@@ -155,8 +155,10 @@ def weight_norm(layer, name='weight', dim=0):
 
     Weight normalization is a reparameterization of the weight vectors in a neural network that 
     decouples the magnitude of those weight vectors from their direction. Weight normalization 
-    has been implemented as discussed in this paper: `Weight Normalization: A Simple 
-    Reparameterization to Accelerate Training of Deep Neural Networks
+    replaces the parameter specified by `name`(eg: 'weight') with two parameters: one parameter 
+    specifying the magnitude (eg: 'weight_g') and one parameter specifying the direction 
+    (eg: 'weight_v'). Weight normalization has been implemented as discussed in this paper: 
+    `Weight Normalization: A Simple Reparameterization to Accelerate Training of Deep Neural Networks
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
 
     Parameters:
@@ -211,8 +213,8 @@ def remove_weight_norm(layer, name='weight'):
           conv = Conv2D(3, 5, 3)
           wn = weight_norm(conv)
           remove_weight_norm(conv)
-          print(conv.weight.shape)
-          # [5, 3, 3, 3]
+          print(conv.weight_g)
+          # AttributeError: 'Conv2D' object has no attribute 'weight_g'
     """
     for k, hook in layer._forward_pre_hooks.items():
         if isinstance(hook, WeightNorm) and hook.name == name:
