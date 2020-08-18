@@ -24,8 +24,18 @@ from ..fluid.layers import has_nan  #DEFINE_ALIAS
 from ..fluid.layers import topk  #DEFINE_ALIAS
 
 __all__ = [
-    'argmax', 'argmin', 'argsort', 'has_inf', 'has_nan', 'masked_select',
-    'topk', 'where', 'index_select', 'nonzero', 'sort', 'index_sample'
+    'argmax',
+    'argmin',
+    'argsort',
+    'has_inf',
+    'has_nan',
+    'masked_select',
+    'topk',
+    'where',
+    'index_select',
+    'nonzero',
+    'sort',
+    'index_sample',
 ]
 
 from paddle.common_ops_import import *
@@ -633,11 +643,11 @@ def masked_select(x, mask, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
-    Returns: A 1-D Tensor which is the same as ``x`
+    Returns: A 1-D Tensor which is the same data type  as ``x`
     
     Raises:
         TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
-        TypeError: ``mask`` must be a Tensor and the data type of ``mask`` must be int32 or int64.
+        TypeError: ``mask`` must be a Tensor and the data type of ``mask`` must be bool.
 
     Examples:
 
