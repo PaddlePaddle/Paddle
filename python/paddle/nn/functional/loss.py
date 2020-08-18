@@ -590,31 +590,30 @@ def ctc_loss(log_probs,
     is interated to the Warp-CTC library to normalize values for each row of the input tensor.
 
     Parameters:
-        log_probs (Variable): – The unscaled probabilities of variable-length sequences, 
+        log_probs (Tensor): The unscaled probability sequence with padding,
             which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], 
             where max_logit_length is the longest length of input logit sequence. 
             The data type must be float32.
-        labels (Variable): The ground truth of variable-length sequence, which must be a 3-D Tensor. 
+        labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. 
             The tensor shape is [batch_size, max_label_length], where max_label_length is 
             the longest length of label sequence. The data type must be int32.
-        input_lengths (Variable): The length for each input sequence, 
+        input_lengths (Tensor): The length for each input sequence, 
             it should have shape [batch_size] and dtype int64.
-        label_lengths (Variable): The length for each label sequence, 
+        label_lengths (Tensor): The length for each label sequence, 
             it should have shape [batch_size] and dtype int64.
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, 
             which is in the half-opened interval [0, num_classes + 1). 
             The data type must be int32. Default is 0.
-        reduction (str, optional): Indicate how to average the loss, 
+        reduction (string, optional): Indicate how to average the loss, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
-            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned;
-            If :attr:`reduction` is ``'none'``, no reduction will be applied;
-            Default is ``'mean'``.
+            If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, 
+            and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; 
+            If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
 
     Returns:
-        The Connectionist Temporal Classification (CTC) loss.
-
-    Return type: Variable.
+        Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``.
+            If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, 
+            the shape of loss is [1]. Data type is the same as ``log_probs``.
     
     Examples:
 
