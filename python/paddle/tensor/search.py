@@ -167,6 +167,10 @@ def argmax(x, axis=None, dtype=None, keepdim=False, name=None):
             print(out2.numpy())
             # [[2 2 0 1]
             #  [0 1 1 1]]
+            out3 = paddle.argmax(x, axis=-1)
+            print(out3.numpy())
+            # [[2 3 1]
+            #  [0 3 1]
     """
     flatten = False
     if axis is None:
@@ -251,6 +255,10 @@ def argmin(x, axis=None, dtype=None, keepdim=False, name=None):
             print(out2.numpy())
             # [[1 1 1 2]
             #  [2 0 2 0]]
+            out3 = paddle.argmin(x, axis=-1)
+            print(out3.numpy())
+            # [[0 0 2]
+            #  [1 0 2]]
             
              
     """
