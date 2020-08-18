@@ -534,10 +534,18 @@ def tanhshrink(x, name=None):
         paddle.disable_static()
 
         x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-        out = F.tanhshrink(x) # [-0.02005104, -0.00262468, 0.00033201, 0.00868739]
+        out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
 
     """
-    return paddle.fluid.layers.tanh_shrink(x=x, name=name)
+    if in_dygraph_mode():
+        return core.ops.tanh_shrink(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'tanhshrink')
+    helper = LayerHelper('tanh_shrink', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='tanh_shrink', inputs={'X': x}, outputs={'Out': out})
+    return out
 
 
 def log_softmax(input, axis=None, dtype=None, name=None):

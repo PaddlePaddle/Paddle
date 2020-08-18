@@ -338,8 +338,6 @@ class TestTanhshrink(TestActivation):
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [10, 17]).astype(self.dtype)
-        # Since zero point in tanhshrink is not differentiable, avoid randomize zero.
-        x[np.abs(x) < 0.005] = 0.02
         out = ref_tanhshrink(x)
 
         self.inputs = {'X': x}
@@ -355,14 +353,12 @@ class TestTanhshrinkAPI(unittest.TestCase):
     # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink
     def setUp(self):
         self.x_np = np.random.uniform(0.1, 1, [10, 17]).astype('float32')
-        # Since zero point in tanhshrink is not differentiable, avoid randomize zero.
-        self.x_np[np.abs(self.x_np) < 0.005] = 0.02
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', [10, 17])
+            x = paddle.data('X', self.x_np.shape)
             out1 = F.tanhshrink(x)
             tanhshrink = paddle.nn.Tanhshrink()
             out2 = tanhshrink(x)
@@ -385,7 +381,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [10, 17])
+            x = fluid.data('X', self.x_np.shape)
             out = fluid.layers.tanh_shrink(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -880,7 +876,7 @@ class TestReLU6API(unittest.TestCase):
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', [10, 12])
+            x = paddle.data('X', self.x_np.shape)
             out1 = F.relu6(x)
             relu6 = paddle.nn.ReLU6()
             out2 = relu6(x)
@@ -903,7 +899,7 @@ class TestReLU6API(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [10, 12])
+            x = fluid.data('X', self.x_np.shape)
             out = fluid.layers.relu6(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -968,7 +964,7 @@ class TestSELUAPI(unittest.TestCase):
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', [10, 12])
+            x = paddle.data('X', self.x_np.shape)
             out1 = F.selu(x, self.scale, self.alpha)
             selu = paddle.nn.SELU(self.scale, self.alpha)
             out2 = selu(x)
@@ -991,7 +987,7 @@ class TestSELUAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [10, 12])
+            x = fluid.data('X', self.x_np.shape)
             out = fluid.layers.selu(x, self.scale, self.alpha)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])

@@ -20,6 +20,8 @@ from ..framework import convert_np_dtype_to_dtype_, Variable
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
 
+__deprecated_func_name__ = {'tanh_shrink': 'tanhshrink', }
+
 __activations_noattr__ = [
     'sigmoid',
     'logsigmoid',
@@ -64,14 +66,20 @@ __all__ += __activations_noattr__
 __all__ += __unary_func__
 
 for _OP in set(__activations_noattr__):
+    _new_OP = _OP
+    if _OP in __deprecated_func_name__:
+        _new_OP = __deprecated_func_name__[_OP]
     func = generate_activation_fn(_OP)
     func = deprecated(
-        since="2.0.0", update_to="paddle.nn.functional.%s" % (_OP))(func)
+        since="2.0.0", update_to="paddle.nn.functional.%s" % (_new_OP))(func)
     globals()[_OP] = func
 
 for _OP in set(__unary_func__):
+    _new_OP = _OP
+    if _OP in __deprecated_func_name__:
+        _new_OP = __deprecated_func_name__[_OP]
     func = generate_activation_fn(_OP)
-    func = deprecated(since="2.0.0", update_to="paddle.%s" % (_OP))(func)
+    func = deprecated(since="2.0.0", update_to="paddle.%s" % (_new_OP))(func)
     globals()[_OP] = func
 
 add_sample_code(globals()["sigmoid"], r"""
@@ -160,16 +168,14 @@ add_sample_code(globals()["tanh_shrink"], r"""
 Examples:
     .. code-block:: python
 
-        import numpy as np
         import paddle
         import paddle.nn.functional as F
+        import numpy as np
+
         paddle.disable_static()
 
-        x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.to_variable(x_data)
-        out = F.tanh_shrink(x)
-        print(out.numpy())
-        # [-0.02005104 -0.00262468  0.00033201  0.00868739]
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
 
 """)
 
