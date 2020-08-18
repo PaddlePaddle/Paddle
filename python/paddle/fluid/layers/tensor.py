@@ -1453,7 +1453,10 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     Raises:
         TypeError: The ``dtype`` must be one of int32, int64, float32 and float64.
-        TypeError: The type of ``num`` must be int.
+        TypeError: The type of ``num`` must be int When it's not a Tensor.
+        TypeError: The data type of ``num`` must be int32 or int 64  When it's  a Tensor.
+        TypeError: The data type of ``start`` and  ``stop`` must be same as ``dtype`` When it's  a Tensor.
+
 
 
     Examples:
@@ -1466,6 +1469,9 @@ def linspace(start, stop, num, dtype=None, name=None):
     """
     if dtype is None:
         dtype = 'float32'
+    tensor_num = num
+    tensor_start = start
+    tensor_stop = stop
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if not isinstance(start, Variable):
@@ -1474,6 +1480,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         tensor_stop = fill_constant([1], dtype, stop)
     if not isinstance(num, Variable):
         tensor_num = fill_constant([1], 'int32', num)
+        tensor_num = tensor_num
     if in_dygraph_mode():
         return core.ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                  dtype)
@@ -1481,18 +1488,20 @@ def linspace(start, stop, num, dtype=None, name=None):
     helper = LayerHelper("linspace", **locals())
 
     if isinstance(start, Variable):
-        check_dtype(start.dtype, 'start',
-                    ['int32', 'int64', 'float32', 'float64'], 'linspace')
+        check_dtype(start.dtype, 'start', (convert_dtype(dtype)), 'linspace')
     else:
         check_type(start, 'start', (int, float), 'linspace')
+
     if isinstance(stop, Variable):
-        check_dtype(stop.dtype, 'stop',
-                    ['int32', 'int64', 'float32', 'float64'], 'linspace')
+        check_dtype(stop.dtype, 'stop', (convert_dtype(dtype)), 'linspace')
     else:
         check_type(stop, 'stop', (int, float), 'linspace')
+    if isinstance(num, Variable):
+        check_dtype(num.dtype, 'num', ['int32', 'int64'], 'linspace')
+    else:
+        check_type(num, 'num', (int), 'linspace')
     check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
                 'linspace')
-    check_type(num, 'num', (int), 'linspace')
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
