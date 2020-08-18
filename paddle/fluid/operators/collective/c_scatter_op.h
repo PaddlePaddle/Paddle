@@ -29,7 +29,6 @@ template <typename T>
 class CScatterOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW("Unimplemented cpu kernel for CScatterOp.");
     PADDLE_ENFORCE_EQ(true, false,
                       platform::errors::Unavailable(
                           "Unimplemented cpu kernel for CScatterOp."));
