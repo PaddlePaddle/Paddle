@@ -1630,14 +1630,15 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     Compute the product of tensor elements over the given axis.
 
     Args:
-        x(Tensor): Input of prod operator. The data type is float32, float64, int32, int64.
-        axis(list|int, optional): The axis along which the product is computed. If :attr:`None`, 
+        x(Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
             multiply all elements of `x` and return a Tensor with a single element, 
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
             the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
-        dtype(str, optional): The desired date type of returned tensor, can be float32, float64, 
+        dtype(str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
             int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
-            This is very useful for avoiding data type overflows. The default value is False.
+            This is very useful for avoiding data type overflows. The default value is None, the dtype 
+            of output is the same as input Tensor `x`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
             tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
         name(string, optional): The default value is None. Normally there is no need for user to set this property.
@@ -1645,6 +1646,10 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
 
     Returns:
         Tensor, result of product on the specified dim of input tensor.
+
+    Raises:
+        ValueError: The :attr:`dtype` must be float32, float64, int32 or int64.
+        TypeError: The type of :attr:`axis` must be int, list or tuple.
 
     Examples:
         .. code-block:: python

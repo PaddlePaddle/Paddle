@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import paddle
-import paddle.fluid as fluid
 import unittest
 import numpy as np
 
@@ -32,6 +31,10 @@ class TestProdOp(unittest.TestCase):
 
         dy_result = paddle.prod(input, axis=1)
         expected_result = np.prod(self.input, axis=1)
+        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+
+        dy_result = paddle.prod(input, axis=-1)
+        expected_result = np.prod(self.input, axis=-1)
         self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
 
         dy_result = paddle.prod(input, axis=[0, 1])
@@ -52,58 +55,64 @@ class TestProdOp(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
 
     def run_static(self, use_gpu=False):
-        input = fluid.data(name='input', shape=[10, 10, 5], dtype='float32')
+        input = paddle.data(name='input', shape=[10, 10, 5], dtype='float32')
         result0 = paddle.prod(input)
         result1 = paddle.prod(input, axis=1)
-        result2 = paddle.prod(input, axis=[0, 1])
-        result3 = paddle.prod(input, axis=1, keepdim=True)
-        result4 = paddle.prod(input, axis=1, dtype='int64')
-        result5 = paddle.prod(input, axis=1, keepdim=True, dtype='int64')
+        result2 = paddle.prod(input, axis=-1)
+        result3 = paddle.prod(input, axis=[0, 1])
+        result4 = paddle.prod(input, axis=1, keepdim=True)
+        result5 = paddle.prod(input, axis=1, dtype='int64')
+        result6 = paddle.prod(input, axis=1, keepdim=True, dtype='int64')
 
-        place = fluid.CUDAPlace(4) if use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        static_result = exe.run(
-            feed={"input": self.input},
-            fetch_list=[result0, result1, result2, result3, result4, result5])
+        place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        exe.run(paddle.static.default_startup_program())
+        static_result = exe.run(feed={"input": self.input},
+                                fetch_list=[
+                                    result0, result1, result2, result3, result4,
+                                    result5, result6
+                                ])
 
         expected_result = np.prod(self.input)
         self.assertTrue(np.allclose(static_result[0], expected_result))
         expected_result = np.prod(self.input, axis=1)
         self.assertTrue(np.allclose(static_result[1], expected_result))
-        expected_result = np.prod(self.input, axis=(0, 1))
+        expected_result = np.prod(self.input, axis=-1)
         self.assertTrue(np.allclose(static_result[2], expected_result))
-        expected_result = np.prod(self.input, axis=1, keepdims=True)
+        expected_result = np.prod(self.input, axis=(0, 1))
         self.assertTrue(np.allclose(static_result[3], expected_result))
-        expected_result = np.prod(self.input, axis=1, dtype=np.int64)
+        expected_result = np.prod(self.input, axis=1, keepdims=True)
         self.assertTrue(np.allclose(static_result[4], expected_result))
+        expected_result = np.prod(self.input, axis=1, dtype=np.int64)
+        self.assertTrue(np.allclose(static_result[5], expected_result))
         expected_result = np.prod(
             self.input, axis=1, keepdims=True, dtype=np.int64)
-        self.assertTrue(np.allclose(static_result[5], expected_result))
+        self.assertTrue(np.allclose(static_result[6], expected_result))
 
     def test_cpu(self):
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        paddle.disable_static(place=paddle.CPUPlace())
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             self.run_static()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not paddle.fluid.core.is_compiled_with_cuda():
             return
 
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(4))
+        paddle.disable_static(place=paddle.CUDAPlace(0))
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             self.run_static(use_gpu=True)
 
 
 class TestProdOpError(unittest.TestCase):
     def test_error(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
             x = paddle.data(name='x', shape=[2, 2, 4], dtype='float32')
             bool_x = paddle.data(name='bool_x', shape=[2, 2, 4], dtype='bool')
             # The argument x shoule be a Tensor

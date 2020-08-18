@@ -4594,7 +4594,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
     Args:
         input (Variable): The input variable which is a Tensor, the data type is float32,
             float64, int32, int64.
-        dim (list|int, optional): The dimensions along which the product is performed. If
+        dim (int|list|tuple, optional): The dimensions along which the product is performed. If
             :attr:`None`, multiply all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
