@@ -15,18 +15,51 @@
 # TODO: define the classes of Transformer neural network
 # __all__ = [ ]
 
+import copy
 import collections
 
 import numpy as np
 
 from ...fluid import layers
-from ...fluid.dygraph import Layer, Linear
+from ...fluid.param_attr import ParamAttr
+from ...fluid.dygraph import Layer, Linear, Dropout, LayerNorm, LayerList
 from .. import functional as F
 from ...fluid.layers import utils
 from ...fluid.layers.utils import map_structure
 
 
-class MultiHeadAttention(Layer):
+def _convert_param_attr_to_list(param_attr, n):
+    """
+    If `param_attr` is a list or tuple, convert every element in it to a
+    ParamAttr instance. Otherwise, repeat `param_attr` `n` times to
+    construct a list, and rename every one by appending a increasing index
+    suffix to avoid having same names when `param_attr` contains a name.
+
+    Parameters:
+        param_attr (list|tuple|ParamAttr): A list, tuple or something can be
+            converted to a ParamAttr instance by `ParamAttr._to_attr`.
+        n (int): The times to repeat to construct a list when `param_attr`
+            is not a list or tuple.
+
+    Returns:
+        list: A list composed of each including cell's `param_attr`.
+    """
+    if isinstance(param_attr, (list, tuple)):
+        assert len(param_attr) == n, (
+            "length of param_attr should be %d when it is a list/tuple" % n)
+        param_attrs = [ParamAttr._to_attr(attr) for attr in param_attr]
+    else:
+        param_attrs = []
+        attr = ParamAttr._to_attr(param_attr)
+        for i in range(n):
+            attr_i = copy.deepcopy(attr)
+            if attr.name:
+                attr_i.name = attr_i.name + "_" + str(i)
+            param_attrs.append(attr_i)
+    return param_attrs
+
+
+class MultiheadAttention(Layer):
     """
     Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
@@ -61,10 +94,10 @@ class MultiHeadAttention(Layer):
 
             # encoder input: [batch_size, sequence_length, d_model]
             query = paddle.rand((2, 4, 128))
-            # self attention bias: [batch_size, num_heads, query_len, query_len]
-            attn_bias = paddle.rand((2, 2, 4, 4))
-            multi_head_attn = paddle.MultiHeadAttention(64, 64, 128, n_head=2)
-            output = multi_head_attn(query, attn_bias=attn_bias)  # [2, 4, 128]
+            # self attention mask: [batch_size, num_heads, query_len, query_len]
+            attn_mask = paddle.rand((2, 2, 4, 4))
+            multi_head_attn = paddle.MultiheadAttention(64, 64, 128, n_head=2)
+            output = multi_head_attn(query, attn_mask=attn_mask)  # [2, 4, 128]
     """
 
     Cache = collections.namedtuple("Cache", ["k", "v"])
@@ -76,10 +109,10 @@ class MultiHeadAttention(Layer):
                  dropout=0.,
                  kdim=None,
                  vdim=None,
-                 need_weights=True,
+                 need_weights=False,
                  param_attr=None,
                  bias_attr=None):
-        super(MultiHeadAttention, self).__init__()
+        super(MultiheadAttention, self).__init__()
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
         self.vdim = vdim if vdim is not None else embed_dim
@@ -129,11 +162,11 @@ class MultiHeadAttention(Layer):
                 is a tensor with shape `[batch_size, value_length, vdim]`.
                 The data type should be float32 or float64. If None, use `query` as
                 `value`.
-            cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
+            cache (MultiheadAttention.Cache|MultiheadAttention.StaticCache, optional):
                 It is a namedtuple with `k` and `v` as fields, and stores tensors
                 shaped `[batch_size, num_heads, length, embed_dim]` which are results
                 of linear projection, reshape and transpose calculations in
-                MultiHeadAttention. If is an instance of `Cache`, `k` and `v`
+                MultiheadAttention. If is an instance of `Cache`, `k` and `v`
                 fields reserve intermediate results of previous positions, which
                 mostly used for decoder self attention. If it is an instance of
                 `StaticCache`, `key` and `value` args would be ignored, `k` and
@@ -198,7 +231,7 @@ class MultiHeadAttention(Layer):
         v = layers.transpose(x=v, perm=[0, 2, 1, 3])
         return k, v
 
-    def gen_cache(self, key, value=None, type=MultiHeadAttention.Cache):
+    def gen_cache(self, key, value=None, type=MultiheadAttention.Cache):
         """
         Generates cache for `forward` usage accroding to arguments.
 
@@ -215,18 +248,19 @@ class MultiHeadAttention(Layer):
         Parameters:
             key (Variable): The keys for multi-head attention. It is
                 a tensor with shape `[batch_size, key_length, kdim]`. The
-                data type should be float32 or float64.
+                data type should be float32 or float64. If `value` is None,
+                it is only for batch size and data type reference.
             value (Variable, optional): The values for multi-head attention. It
                 is a tensor with shape `[batch_size, value_length, vdim]`.
                 The data type should be float32 or float64. If None, `key` is only
                 for batch size reference. Default None.
-            type (type): It should be `MultiHeadAttention.StaticCache` or
-                `MultiHeadAttention.Cache` to indicate the cache type to generate.
+            type (type): It should be `MultiheadAttention.StaticCache` or
+                `MultiheadAttention.Cache` to indicate the cache type to generate.
         
         Returns:
             namedtupe: an instance of `Cache` or `StaticCache` accordingly.
         """
-        if type == MultiHeadAttention.StaticCache:  # static_kv
+        if type == MultiheadAttention.StaticCache:  # static_kv
             k, v = self.cal_kv(key, value)
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
@@ -270,11 +304,11 @@ class MultiHeadAttention(Layer):
                 have 0 values. The data type should be float32 or float64. It can
                 be None when nothing wanted or needed to be prevented attention to.
                 Default None
-            cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
+            cache (MultiheadAttention.Cache|MultiheadAttention.StaticCache, optional):
                 It is a namedtuple with `k` and `v` as fields, and stores tensors
                 shaped `[batch_size, num_heads, length, embed_dim]` which are results
                 of linear projection, reshape and transpose calculations in
-                MultiHeadAttention. If is an instance of `Cache`, `k` and `v`
+                MultiheadAttention. If is an instance of `Cache`, `k` and `v`
                 fields reserve intermediate results of previous positions, which
                 mostly used for decoder self attention. If it is an instance of
                 `StaticCache`, `key` and `value` args would be ignored, `k` and
@@ -331,55 +365,59 @@ class MultiHeadAttention(Layer):
             outs.append(weights)
         if cache is not None:
             outs.append(cache)
-        return out if len(outs) else outs
+        return out if len(outs) else tuple(outs)
 
 
 class TransformerEncoderLayer(Layer):
     """
     TransformerEncoderLayer is composed of two sub-layers which are self (multi-head)
     attention and feedforward network. Before and after each sub-layer, pre-process
-    and post-precess would be applied on the input and output.
+    and post-precess would be applied on the input and output accordingly. If
+    `normalize_before` is True, pre-process is layer normalization and post-precess
+    includes dropout, residual connection. Otherwise, no pre-process and post-precess
+    includes dropout, residual connection, layer normalization.
 
     Parameters:
-        n_head (int): The number of heads in multi-head attention(MHA).
-        d_key (int): The feature size to transformer queries and keys as in
-            multi-head attention. Mostly it equals to `d_model // n_head`.
-        d_value (int): The feature size to transformer values as in multi-head
-            attention. Mostly it equals to `d_model // n_head`.
         d_model (int): The expected feature size in the input and output.
-        d_inner_hid (int): The hidden layer size in the feedforward network(FFN).
-        prepostprocess_dropout (float, optional): The dropout probability used
-            in pre-process and post-precess of MHA and FFN sub-layer. Default 0.1
-        attention_dropout (float, optional): The dropout probability used
-            in MHA to drop some attention target. Default 0.1
-        relu_dropout (float, optional): The dropout probability used after FFN
-            activition. Default 0.1
-        preprocess_cmd (str, optional): The process applied before each MHA and
-            FFN sub-layer, and it also would be applied on output of the last
-            stacked layer. It should be a string composed of `d`, `a`, `n`,
-            where `d` for dropout, `a` for add residual connection, `n` for
-            layer normalization. Default `n`.
-        postprocess_cmd (str, optional): The process applied after each MHA and
-            FFN sub-layer. Same as `preprocess_cmd`. It should be a string
-            composed of `d`, `a`, `n`, where `d` for dropout, `a` for add
-            residual connection, `n` for layer normalization. Default `da`.
-        ffn_fc1_act (str, optional): The activation function in the feedforward
+        nhead (int): The number of heads in multi-head attention(MHA).
+        dim_feedforward (int): The hidden layer size in the feedforward network(FFN).
+        dropout (float, optional): The dropout probability used in pre-process
+            and post-precess of MHA and FFN sub-layer. Default 0.1
+        activation (str, optional): The activation function in the feedforward
             network. Default relu.
-         
+        attn_dropout (float, optional): The dropout probability used
+            in MHA to drop some attention target. If None, use the value of
+            `dropout`. Default None
+        act_dropout (float, optional): The dropout probability used after FFN
+            activition.  If None, use the value of `dropout`. Default None
+        act_dropout (float, optional): The dropout probability used after FFN
+            activition.  If None, use the value of `dropout`. Default None
+        param_attr(ParamAttr|tuple, optional): To specify the weight parameter property.
+            If it is a tuple, `param_attr[0]` would be used as `param_attr` for
+            MHA, and `param_attr[1]` would be used as `param_attr` for linear in FFN.
+            Otherwise, MHA and FFN both use it as `param_attr` to create parameters.
+            Default: None, which means the default weight parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` . 
+        bias_attr (ParamAttr|tuple, optional): To specify the bias parameter property.
+            If it is a tuple, `bias_attr[0]` would be used as `bias_attr` for
+            MHA, and `bias_attr[1]` would be used as `bias_attr` for linear in FFN.
+            Otherwise, MHA and FFN both use it as `bias_attr` to create parameters.
+            Default: None, which means the default bias parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+
     Examples:
 
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import TransformerEncoderLayer
+            from paddle import TransformerEncoderLayer
 
             # encoder input: [batch_size, src_len, d_model]
             enc_input = paddle.rand((2, 4, 128))
-            # self attention bias: [batch_size, n_head, src_len, src_len]
-            attn_bias = paddle.rand((2, 2, 4, 4))
-            encoder_layer = TransformerEncoderLayer(2, 64, 64, 128, 512)
-            enc_output = encoder_layer(enc_input, attn_bias)  # [2, 4, 128]
+            # self attention mask: [batch_size, n_head, src_len, src_len]
+            attn_mask = paddle.rand((2, 2, 4, 4))
+            encoder_layer = TransformerEncoderLayer(128, 2, 512)
+            enc_output = encoder_layer(enc_input, attn_mask)  # [2, 4, 128]
     """
 
     def __init__(self,
@@ -388,51 +426,134 @@ class TransformerEncoderLayer(Layer):
                  dim_feedforward,
                  dropout=0.1,
                  activation="relu",
-                 attn_dropout=0.1,
-                 act_dropout=0.1,
-                 normalize_before=True):
+                 attn_dropout=None,
+                 act_dropout=None,
+                 normalize_before=False,
+                 param_attr=None,
+                 bias_attr=None):
+        self._config = locals()
+        self._config.pop("self")
 
         super(TransformerEncoderLayer, self).__init__()
+        attn_dropout = dropout if attn_dropout is None else attn_dropout
+        act_dropout = dropout if act_dropout is None else act_dropout
+        self.normalize_before = normalize_before
 
-        self.preprocesser1 = PrePostProcessLayer(preprocess_cmd, d_model,
-                                                 prepostprocess_dropout)
-        self.self_attn = MultiHeadAttention(d_key, d_value, d_model, n_head,
-                                            attention_dropout)
-        self.postprocesser1 = PrePostProcessLayer(postprocess_cmd, d_model,
-                                                  prepostprocess_dropout)
+        param_attrs = _convert_param_attr_to_list(param_attr, 2)
+        bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
 
-        self.preprocesser2 = PrePostProcessLayer(preprocess_cmd, d_model,
-                                                 prepostprocess_dropout)
-        self.ffn = FFN(d_inner_hid, d_model, relu_dropout, fc1_act=ffn_fc1_act)
-        self.postprocesser2 = PrePostProcessLayer(postprocess_cmd, d_model,
-                                                  prepostprocess_dropout)
+        self.self_attn = MultiheadAttention(
+            d_model,
+            nhead,
+            dropout=attn_dropout,
+            param_attr=param_attrs[0],
+            bias_attr=bias_attrs[0])
+        self.linear1 = Linear(
+            d_model,
+            dim_feedforward,
+            param_attr=param_attrs[1],
+            bias_attr=bias_attrs[1])
+        self.dropout = Dropout(
+            act_dropout, dropout_implementation="upscale_in_train")
+        self.linear2 = Linear(
+            dim_feedforward,
+            d_model,
+            param_attr=param_attrs[1],
+            bias_attr=bias_attrs[1])
+        self.norm1 = LayerNorm(d_model)
+        self.norm2 = LayerNorm(d_model)
+        self.dropout1 = Dropout(
+            dropout, dropout_implementation="upscale_in_train")
+        self.dropout2 = Dropout(
+            dropout, dropout_implementation="upscale_in_train")
+        self.activation = getattr(layers, activation)
 
     def forward(self, src, src_mask=None):
         """
         Applies a Transformer encoder layer on the input.
 
         Parameters:
-            enc_input (Variable): The input of Transformer encoder layer. It is
+            src (Variable): The input of Transformer encoder layer. It is
                 a tensor with shape `[batch_size, sequence_length, d_model]`.
                 The data type should be float32 or float64.
-            attn_bias(Variable, optional): A tensor used in encoder self attention
-                to mask out attention on unwanted positions, usually the paddings. It
-                is a tensor with shape `[batch_size, n_head, sequence_length, sequence_length]`,
+            src_mask (Variable, optional): A tensor used in multi-head attention
+                to prevents attention to some unwanted positions, usually the
+                paddings or the subsequent positions. It is a tensor with shape
+                broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`,
                 where the unwanted positions have `-INF` values and the others
                 have 0 values. The data type should be float32 or float64. It can
-                be None when nothing wanted or needed to be masked out. Default None
+                be None when nothing wanted or needed to be prevented attention to.
+                Default None
 
         Returns:
             Variable: The output of Transformer encoder layer. It is a tensor that \
                 has the same shape and data type as `enc_input`.
         """
-        attn_output = self.self_attn(
-            self.preprocesser1(enc_input), None, None, attn_bias)
-        attn_output = self.postprocesser1(attn_output, enc_input)
+        residual = src
+        if self.normalize_before:
+            src = self.norm1(src)
+        # TODO(guosheng): Add cache for encoder for the usage like UniLM
+        src = self.self_attn(src, src, src, src_mask)
+        src = residual + self.dropout1(src)
+        if not self.normalize_before:
+            src = self.norm1(src)
 
-        ffn_output = self.ffn(self.preprocesser2(attn_output))
-        ffn_output = self.postprocesser2(ffn_output, attn_output)
-        return ffn_output
+        residual = src
+        if self.normalize_before:
+            src = self.norm2(src)
+        src = self.linear2(self.dropout(self.activation(self.linear1(src))))
+        src = residual + self.dropout2(src)
+        if not self.normalize_before:
+            src = self.norm2(src)
+        return src
+
+
+class TransformerEncoder(Layer):
+    """
+    TransformerEncoder is a stack of N encoder layers. 
+
+    Parameters:
+        encoder_layer (Layer): an instance of the `TransformerEncoderLayer`. It
+            would be used as the first layer, and the other layers would be created
+            according to the configurations of it.
+        num_layers (int): The number of encoder layers to be stacked.
+        norm (LayerNorm, optional): the layer normalization component. If provided,
+            apply layer normalization on the output of last encoder layer.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            from paddle import TransformerEncoderLayer, TransformerEncoder
+
+            # encoder input: [batch_size, src_len, d_model]
+            enc_input = paddle.rand((2, 4, 128))
+            # self attention mask: [batch_size, n_head, src_len, src_len]
+            attn_mask = paddle.rand((2, 2, 4, 4))
+            encoder_layer = TransformerEncoderLayer(2, 64, 64, 128, 512)
+            encoder = TransformerEncoder(encoder_layer, 2)
+            enc_output = encoder(enc_input, attn_mask)  # [2, 4, 128]
+    """
+
+    def __init__(self, encoder_layer, num_layers, norm=None):
+        super(TransformerEncoder, self).__init__()
+        self.layers = LayerList([(encoder_layer if i == 0 else
+                                  type(encoder_layer)(encoder_layer._config))
+                                 for i in range(num_layers)])
+        self.num_layers = num_layers
+        self.norm = norm
+
+    def forward(self, src, src_mask=None):
+        output = src
+
+        for mod in self.layers:
+            output = mod(output, src_mask=src_mask)
+
+        if self.norm is not None:
+            output = self.norm(output)
+
+        return output
 
 
 class TransformerCell(Layer):
