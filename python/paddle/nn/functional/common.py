@@ -487,13 +487,13 @@ def bilinear(x1, x2, weight, bias=None, name=None):
         import numpy
         import paddle.nn.functional as F
 
-        with paddle.fluid.dygraph.guard():
-            x1 = numpy.random.random((5, 5)).astype('float32')
-            x2 = numpy.random.random((5, 4)).astype('float32')
-            w = numpy.random.random((1000, 5, 4)).astype('float32')
-            b = numpy.random.random((1, 1000)).astype('float32')
+        paddle.disable_static()
+        x1 = numpy.random.random((5, 5)).astype('float32')
+        x2 = numpy.random.random((5, 4)).astype('float32')
+        w = numpy.random.random((1000, 5, 4)).astype('float32')
+        b = numpy.random.random((1, 1000)).astype('float32')
 
-            result = F.bilinear(paddle.to_tensor(x1), paddle.to_tensor(x2), paddle.to_tensor(w), paddle.to_tensor(b))           # result shape [5, 1000]
+        result = F.bilinear(paddle.to_tensor(x1), paddle.to_tensor(x2), paddle.to_tensor(w), paddle.to_tensor(b))           # result shape [5, 1000]
 
     """
 
