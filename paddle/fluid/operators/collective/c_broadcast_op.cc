@@ -55,7 +55,7 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 };
 
 template <typename T>
-class CBroacastOpGradMaker : public framework::SingleGradOpMaker<T> {
+class CBroadcastOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -74,10 +74,10 @@ class CBroacastOpGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_broadcast, ops::CReduceOp,
+REGISTER_OPERATOR(c_broadcast, ops::CBroadcastOp,
                   ops::CBroadcastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CBroadcastOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CBraodcastOpMaker);
+                  ops::CBroadcastOpMaker);
 
 REGISTER_OP_CPU_KERNEL(c_broadcast, ops::CBroadcastOpCPUKernel<float>,
                        ops::CBroadcastOpCPUKernel<double>,
