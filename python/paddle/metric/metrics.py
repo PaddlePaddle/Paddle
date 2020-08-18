@@ -19,7 +19,8 @@ from __future__ import print_function
 import six
 import abc
 import numpy as np
-import paddle.fluid as fluid
+
+import paddle
 
 __all__ = ['Metric', 'Accuracy', 'Precision', 'Recall', 'Auc']
 
@@ -77,7 +78,7 @@ class Metric(object):
         .. code-block:: python
             def compute(pred, label):
                 # sort prediction and slice the top-5 scores
-                pred = paddle.argsort(pred, descending=True)[1][:, :5]
+                pred = paddle.argsort(pred, descending=True)[:, :5]
                 # calculate whether the predictions are correct
                 correct = pred == label
                 return paddle.cast(correct, dtype='float32')
@@ -238,7 +239,7 @@ class Accuracy(Metric):
         Return:
             Tensor: Correct mask, a tensor with shape [batch_size, topk].
         """
-        pred = paddle.argsort(pred, descending=True)[1][:, :self.maxk]
+        pred = paddle.argsort(pred, descending=True)[:, :self.maxk]
         correct = pred == label
         return paddle.cast(correct, dtype='float32')
 
@@ -254,7 +255,7 @@ class Accuracy(Metric):
         Return:
             Tensor: the accuracy of current step.
         """
-        if isinstance(correct, fluid.core.VarBase):
+        if isinstance(correct, paddle.Tensor):
             correct = correct.numpy()
         accs = []
         for i, k in enumerate(self.topk):
@@ -383,12 +384,12 @@ class Precision(Metric):
                 the shape should keep the same as preds.
                 The data type is 'int32' or 'int64'.
         """
-        if isinstance(preds, fluid.core.VarBase):
+        if isinstance(preds, paddle.Tensor):
             preds = preds.numpy()
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
-        if isinstance(labels, fluid.core.VarBase):
+        if isinstance(labels, paddle.Tensor):
             labels = preds.numpy()
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
@@ -518,12 +519,12 @@ class Recall(Metric):
                 the shape should keep the same as preds.
                 Shape: [batch_size, 1], Dtype: 'int32' or 'int64'.
         """
-        if isinstance(preds, fluid.core.VarBase):
+        if isinstance(preds, paddle.Tensor):
             preds = preds.numpy()
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
-        if isinstance(labels, fluid.core.VarBase):
+        if isinstance(labels, paddle.Tensor):
             labels = preds.numpy()
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
@@ -569,7 +570,6 @@ class Auc(Metric):
     The auc metric is for binary classification.
     Refer to https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve.
     Please notice that the auc metric is implemented with python, which may be a little bit slow.
-    If you concern the speed, please use the fluid.layers.auc instead.
 
     The `auc` function creates four local variables, `true_positives`,
     `true_negatives`, `false_positives` and `false_negatives` that are used to

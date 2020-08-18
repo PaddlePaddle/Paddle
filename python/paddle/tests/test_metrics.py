@@ -21,7 +21,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.base import to_variable
 
 from paddle.incubate.hapi.utils import to_list
 
@@ -48,12 +47,12 @@ def convert_to_one_hot(y, C):
 
 class TestAccuracy(unittest.TestCase):
     def test_acc(self):
-        fluid.enable_dygraph()
+        paddle.disable_static()
 
-        x = paddle.to_variable(
+        x = paddle.to_tensor(
             np.array([[0.1, 0.2, 0.3, 0.4], [0.1, 0.4, 0.3, 0.2],
                       [0.1, 0.2, 0.4, 0.3], [0.1, 0.2, 0.3, 0.4]]))
-        y = paddle.to_variable(np.array([[0], [1], [2], [3]]))
+        y = paddle.to_tensor(np.array([[0], [1], [2], [3]]))
 
         m = paddle.metric.Accuracy(name='my_acc')
 
@@ -65,10 +64,10 @@ class TestAccuracy(unittest.TestCase):
         self.assertEqual(m.update(correct), 0.75)
         self.assertEqual(m.accumulate(), 0.75)
 
-        x = paddle.to_variable(
+        x = paddle.to_tensor(
             np.array([[0.1, 0.2, 0.3, 0.4], [0.1, 0.3, 0.4, 0.2],
                       [0.1, 0.2, 0.4, 0.3], [0.1, 0.2, 0.3, 0.4]]))
-        y = paddle.to_variable(np.array([[0], [1], [2], [3]]))
+        y = paddle.to_tensor(np.array([[0], [1], [2], [3]]))
         correct = m.compute(x, y)
         # check results
         self.assertEqual(m.update(correct), 0.5)
@@ -78,7 +77,7 @@ class TestAccuracy(unittest.TestCase):
         m.reset()
         self.assertEqual(m.total[0], 0.0)
         self.assertEqual(m.count[0], 0.0)
-        fluid.disable_imperative()
+        paddle.enable_static()
 
 
 class TestAccuracyDynamic(unittest.TestCase):
@@ -103,8 +102,8 @@ class TestAccuracyDynamic(unittest.TestCase):
             acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
             for _ in range(10):
                 label, pred = self.random_pred_label()
-                label_var = to_variable(label)
-                pred_var = to_variable(pred)
+                label_var = to_tensor(label)
+                pred_var = to_tensor(pred)
                 state = to_list(acc.compute(pred_var, label_var))
                 acc.update(* [s.numpy() for s in state])
                 res_m = acc.accumulate()
@@ -168,7 +167,7 @@ class TestAccuracyStaticMultiTopk(TestAccuracyStatic):
 
 class TestPrecision(unittest.TestCase):
     def test_1d(self):
-        fluid.enable_dygraph()
+        paddle.disable_static()
 
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
@@ -184,10 +183,10 @@ class TestPrecision(unittest.TestCase):
         r = m.accumulate()
         self.assertAlmostEqual(r, 4. / 7.)
 
-        fluid.disable_imperative()
+        paddle.enable_static()
 
     def test_2d(self):
-        fluid.enable_dygraph()
+        paddle.disable_static()
 
         x = np.array([0.1, 0.5, 0.6, 0.7]).reshape(-1, 1)
         y = np.array([1, 0, 1, 1]).reshape(-1, 1)
@@ -203,12 +202,12 @@ class TestPrecision(unittest.TestCase):
         r = m.accumulate()
         self.assertAlmostEqual(r, 4. / 7.)
 
-        fluid.disable_imperative()
+        paddle.enable_static()
 
 
 class TestRecall(unittest.TestCase):
     def test_1d(self):
-        fluid.enable_dygraph()
+        paddle.disable_static()
 
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
@@ -224,12 +223,12 @@ class TestRecall(unittest.TestCase):
         r = m.accumulate()
         self.assertAlmostEqual(r, 3. / 5.)
 
-        fluid.disable_imperative()
+        paddle.enable_static()
 
 
 class TestAuc(unittest.TestCase):
     def test_auc(self):
-        fluid.enable_dygraph()
+        paddle.disable_static()
         x = np.array([[0.78, 0.22], [0.62, 0.38], [0.55, 0.45], [0.30, 0.70],
                       [0.14, 0.86], [0.59, 0.41], [0.91, 0.08], [0.16, 0.84]])
         y = np.array([[0], [1], [1], [0], [1], [0], [0], [1]])
@@ -237,7 +236,7 @@ class TestAuc(unittest.TestCase):
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 0.8125)
-        fluid.disable_imperative()
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

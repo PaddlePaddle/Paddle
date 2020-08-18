@@ -24,6 +24,7 @@ import six
 import warnings
 from collections import Iterable
 
+import paddle
 from paddle import fluid
 from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
