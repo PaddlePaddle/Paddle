@@ -14,7 +14,7 @@
 
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import in_dygraph_mode
+from ...fluid.framework import core, in_dygraph_mode
 
 from ...fluid.layers import affine_channel  #DEFINE_ALIAS
 from ...fluid.layers import affine_grid  #DEFINE_ALIAS
