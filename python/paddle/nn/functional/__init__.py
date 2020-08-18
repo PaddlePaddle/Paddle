@@ -119,6 +119,7 @@ from .lod import hash  #DEFINE_ALIAS
 # from .lod import dynamic_gru        #DEFINE_ALIAS
 # from .lod import dynamic_lstm        #DEFINE_ALIAS
 # from .lod import dynamic_lstmp        #DEFINE_ALIAS
+from .loss import binary_cross_entropy  #DEFINE_ALIAS
 from .loss import bpr_loss  #DEFINE_ALIAS
 from .loss import center_loss  #DEFINE_ALIAS
 from .loss import cross_entropy  #DEFINE_ALIAS

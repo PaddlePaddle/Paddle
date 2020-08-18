@@ -436,64 +436,9 @@ class BCELoss(fluid.dygraph.Layer):
         self.name = name
 
     def forward(self, input, label):
-        if in_dygraph_mode():
-            one = _varbase_creator(dtype=input.dtype)
-            core.ops.fill_constant(one, 'value',
-                                   float(1.0), 'force_cpu', False, 'dtype',
-                                   one.dtype, 'str_value', '1.0', 'shape', [1])
-            one.stop_gradient = True
-            label_minus = core.ops.elementwise_sub(label, one)
-            input_minus = core.ops.elementwise_sub(one, input)
-            input_minus_log = core.ops.log(input_minus)
-            input_log = core.ops.log(input)
-            loss_1 = core.ops.elementwise_mul(label_minus, input_minus_log)
-            loss_2 = core.ops.elementwise_mul(label, input_log)
-            out = core.ops.elementwise_sub(loss_1, loss_2)
-
-            if self.weight is not None:
-                out = core.ops.elementwise_mul(out, self.weight, 'axis', -1)
-
-            if self.reduction == 'sum':
-                return core.ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
-                                           "reduce_all", True)
-            elif self.reduction == 'mean':
-                return core.ops.reduce_mean(out, 'dim', [0], 'keep_dim', False,
-                                            "reduce_all", True)
-            else:
-                return out
-
-        dtype = self._helper.input_dtype(input)
-        fluid.data_feeder.check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], 'BCELoss')
-        fluid.data_feeder.check_variable_and_dtype(
-            label, 'label', ['float32', 'float64'], 'BCELoss')
-
-        one = paddle.fill_constant(shape=[1], value=1.0, dtype=dtype)
-        one.stop_gradient = True
-        label_minus = paddle.elementwise_sub(label, one)
-        input_minus = paddle.elementwise_sub(one, input)
-        input_minus_log = paddle.log(input_minus)
-        input_log = paddle.log(input)
-        loss_1 = paddle.multiply(label_minus, input_minus_log)
-        loss_2 = paddle.multiply(label, input_log)
-        sub_name = self.name if self.weight is None and self.reduction is 'none' else None
-        out = paddle.elementwise_sub(loss_1, loss_2, name=sub_name)
-
-        if self.weight is not None:
-            if isinstance(self.weight, paddle.framework.Variable):
-                weight_name = self.name if self.reduction is 'none' else None
-                out = paddle.multiply(
-                    out, self.weight, axis=-1, name=weight_name)
-            else:
-                raise ValueError(
-                    "The weight is not a Tensor, please convert to Tensor.")
-
-        if self.reduction == 'sum':
-            return paddle.sum(out, name=self.name)
-        elif self.reduction == 'mean':
-            return paddle.mean(out, name=self.name)
-        else:
-            return out
+        out = paddle.nn.functional.binary_cross_entropy(
+            input, label, self.weight, self.reduction, self.name)
+        return out
 
 
 class NLLLoss(fluid.dygraph.Layer):
