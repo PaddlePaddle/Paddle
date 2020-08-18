@@ -23,14 +23,19 @@ class TestApi(unittest.TestCase):
         x = fluid.data(name='x', shape=[10, 16], dtype='float32')
         param_in = fluid.ParamAttr(name="param_in")
         param_hidden = fluid.ParamAttr(name="param_hidden")
-        y = fluid.layers.search_grnn(x, 16, 16, param_attr_in, param_hidden)
+        y = fluid.layers.search_grnn(x, 16, 16, param_in, param_hidden)
+
+        x_d = fluid.create_lod_tensor(
+            np.random.randn(10, 16).astype('float32'), [[2, 3, 5]],
+            fluid.CPUPlace())
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         out = exe.run(fluid.default_main_program(),
-                      feed={'x': np.random.rand([10, 16]).astype('float32')},
-                      fetch=[y])
-        print(out[0].numpy())
+                      feed={'x': x_d},
+                      fetch_list=[y],
+                      return_numpy=False)
+        print(out[0])
 
 
 if __name__ == '__main__':

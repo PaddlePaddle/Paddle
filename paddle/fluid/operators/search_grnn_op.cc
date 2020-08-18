@@ -664,7 +664,8 @@ namespace ops = paddle::operators;
 namespace plt = paddle::platform;
 namespace frm = paddle::framework;
 REGISTER_OPERATOR(search_grnn, ops::SearchGrnnOP, ops::SearchGrnnOpMaker,
-                  ops::SearchGrnnOpGradMaker<paddle::framework::OpDesc>);
+                  ops::SearchGrnnOpGradMaker<paddle::framework::OpDesc>,
+                  ops::SearchGrnnOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(search_grnn_grad, ops::SearchGrnnOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
