@@ -75,6 +75,7 @@ from .common import interpolate  #DEFINE_ALIAS
 from .common import bilinear  #DEFINE_ALIAS
 from .conv import conv1d  #DEFINE_ALIAS
 from .conv import conv_transpose1d  #DEFINE_ALIAS
+from .common import linear  #DEFINE_ALIAS
 from .conv import conv2d  #DEFINE_ALIAS
 from .conv import conv_transpose2d  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS

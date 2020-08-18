@@ -893,6 +893,7 @@ class Pool2D(layers.Layer):
         return pool_out
 
 
+@deprecated(since='2.0.0', update_to='paddle.nn.Linear')
 class Linear(layers.Layer):
     """
     :alias_main: paddle.nn.Linear
