@@ -22,6 +22,7 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+import time
 
 
 def affine_channel(x, scale, bias, layout):
@@ -63,7 +64,7 @@ class TestAffineChannelOp(OpTest):
         self.check_grad(['X'], 'Out', no_grad_set=set(['Scale', 'Bias']))
 
     def init_test_case(self):
-        self.shape = [2, 100, 12, 12]
+        self.shape = [2, 100, 3, 3]
         self.C = 100
         self.layout = 'NCHW'
 
@@ -102,7 +103,7 @@ class TestAffineChannelOpError(unittest.TestCase):
 
 class TestAffineChannelNHWC(TestAffineChannelOp):
     def init_test_case(self):
-        self.shape = [2, 12, 12, 100]
+        self.shape = [2, 3, 3, 100]
         self.C = 100
         self.layout = 'NHWC'
 
@@ -115,7 +116,7 @@ class TestAffineChannelNHWC(TestAffineChannelOp):
 
 class TestAffineChannel2D(TestAffineChannelOp):
     def init_test_case(self):
-        self.shape = [8, 100]
+        self.shape = [2, 100]
         self.C = 100
         self.layout = 'NCHW'
 
@@ -150,4 +151,7 @@ class TestAffineChannel2D(TestAffineChannelOp):
 #        self.layout = 'NHWC'
 
 if __name__ == '__main__':
+    start = time.time()
     unittest.main()
+    end = time.time()
+    print('time cost: ', end - start)
