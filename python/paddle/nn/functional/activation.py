@@ -23,9 +23,6 @@ from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
 from ...fluid.layers import logsigmoid  #DEFINE_ALIAS
 from ...fluid.layers import maxout  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import softplus  #DEFINE_ALIAS
-from ...fluid.layers import softshrink  #DEFINE_ALIAS
-from ...fluid.layers import softsign  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
@@ -53,7 +50,7 @@ __all__ = [
     'softsign',
     'sigmoid',
     'swish',
-    'tanh_shrink',
+    'tanhshrink',
     'thresholded_relu',
     'log_softmax'
 ]
@@ -505,6 +502,147 @@ def softmax(x, axis=-1, name=None):
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
     """
     return paddle.fluid.layers.softmax(input=x, axis=axis, name=name)
+
+
+def softplus(x, beta=1, threshold=20, name=None):
+    """
+    softplus activation
+
+    .. math::
+
+        \text{softplus}(x) = \frac{1}{\beta} * \log(1 + \exp(\beta * x)) \\
+        \text{For numerical stability, the implementation reverts to the linear function when :}\,x \times \beta > threshold.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        beta (float, optional): The value of beta for softplus. Default is 1
+        threshold (float, optional): The value of threshold for softplus. Default is 20
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        out = F.softplus(x) # []
+
+    """
+    if in_dygraph_mode():
+        return core.ops.softplus(x, 'beta', beta, 'threshold', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'softplus')
+    helper = LayerHelper('softplus', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='softplus',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'beta': beta,
+               'threshold': threshold})
+    return out
+
+
+def softshrink(x, threshold=0.5, name=None):
+    """
+    softshrink activation
+
+    .. math::
+
+        \text{softshrink}(x) =
+        \begin{cases}
+        x - threshold, & \text{ if } x > threshold \\
+        x + threshold, & \text{ if } x < -threshold \\
+        0, & \text{ otherwise }
+        \end{cases}
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        out = F.softshrink(x) # []
+
+    """
+    if in_dygraph_mode():
+        return core.ops.softshrink(x, 'lambda', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'softshrink')
+    helper = LayerHelper('softshrink', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='softshrink',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'lambda': threshold})
+    return out
+
+
+def softsign(x, name=None):
+    """
+    softsign activation
+
+    .. math::
+
+        \text{softsign}(x) = \frac{x}{1 + |x|}
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        out = F.softsign(x) # [-0.28571429, -0.16666667, 0.09090909, 0.23076923]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.softsign(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'softsign')
+    helper = LayerHelper('softsign', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='softsign', inputs={'X': x}, outputs={'Out': out})
+    return out
 
 
 def tanhshrink(x, name=None):

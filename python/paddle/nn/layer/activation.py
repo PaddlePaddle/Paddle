@@ -23,6 +23,9 @@ __all__ = [
     'LeakyReLU',
     'Sigmoid',
     #       'Softmax',
+    'Softplus',
+    'Softshrink',
+    'Softsign',
     'Tanhshrink',
     'LogSoftmax',
     'HSigmoid'
@@ -422,6 +425,130 @@ class Sigmoid(layers.Layer):
 
     def forward(self, x):
         return F.sigmoid(x, self.name)
+
+
+class Softplus(layers.Layer):
+    """
+    Softplus Activation
+
+    .. math::
+
+        \text{Softplus}(x) = \frac{1}{\beta} * \log(1 + \exp(\beta * x)) \\
+        \text{For numerical stability, the implementation reverts to the linear function when :}\,x \times \beta > threshold.
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        m = paddle.nn.Softplus()
+        out = m(x) # []
+
+    """
+
+    def __init__(self, beta=1, threshold=20, name=None):
+        super(Softplus, self).__init__()
+        self._beta = beta
+        self._threshold = threshold
+        self._name = name
+
+    def forward(self, x):
+        return F.softplus(x, self._beta, self._threshold, self._name)
+
+
+class Softshrink(layers.Layer):
+    """
+    Softshrink Activation
+
+    .. math::
+
+        \text{Softshrink}(x) =
+        \begin{cases}
+        x - threshold, & \text{ if } x > threshold \\
+        x + threshold, & \text{ if } x < -threshold \\
+        0, & \text{ otherwise }
+        \end{cases}
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        m = paddle.nn.Softshrink()
+        out = m(x) # []
+    """
+
+    def __init__(self, threshold=0.5, name=None):
+        super(Softshrink, self).__init__()
+        self._threshold = threshold
+        self._name = name
+
+    def forward(self, x):
+        return F.softshrink(x, self._threshold, self._name)
+
+
+class Softsign(layers.Layer):
+    """
+    Softsign Activation
+
+    .. math::
+
+        \text{Softsign}(x) = \frac{x}{1 + |x|}
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        m = paddle.nn.Softsign()
+        out = m(x) # [-0.28571429, -0.16666667, 0.09090909, 0.23076923]
+    """
+
+    def __init__(self, name=None):
+        super(Softsign, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.softsign(x, self._name)
 
 
 class Tanhshrink(layers.Layer):
