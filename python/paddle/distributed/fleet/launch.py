@@ -166,11 +166,11 @@ def get_cluster_from_args(args, gpus):
 def get_gpus(gpus):
     if gpus is None:
         gpus_num = fluid.core.get_cuda_device_count()
-        gpus = [str(x) for x in range(0, gpus_num)]
+        res_gpus = [str(x) for x in range(0, gpus_num)]
     else:
         cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
         if cuda_visible_devices is None or cuda_visible_devices == "":
-            gpus = [x.strip() for x in gpus.split(',')]
+            res_gpus = [x.strip() for x in gpus.split(',')]
         else:
             # change gpus into relative values
             # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.gpus=4,5,6,7;
@@ -180,10 +180,14 @@ def get_gpus(gpus):
                 assert x in cuda_visible_devices_list, "Can't find "\
                 "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
                 % (x, cuda_visible_devices)
-            gpus = [
+            res_gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in gpus.split(',')
             ]
+            logger.info("Change selected_gpus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "CUDA_VISIBLE_DEVICES:{}".format(
+                            gpus, res_gpus, cuda_visible_devices_list))
 
     return gpus
 

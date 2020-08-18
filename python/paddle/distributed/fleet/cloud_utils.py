@@ -19,14 +19,11 @@ from paddle.distributed.fleet.launch_utils import get_cluster, logger
 
 def get_cloud_cluster(args_node_ips, selected_gpus):
     """
-    args_node_ips, args_node_ip:string
+    args_node_ips, selected_gpus:list
     """
     #you can automatically get ip info while using paddlecloud multi nodes mode.
     pdc_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
     assert pdc_endpoints is not None, "PADDLE_TRAINER_ENDPOINTS should not be None"
-
-    node_ips = os.getenv("PADDLE_TRAINERS")
-    assert node_ips is not None, "PADDLE_TRAINERS should not be None"
 
     node_ip = os.getenv("POD_IP")
     assert node_ip is not None, "POD_IP should not be None"
@@ -37,24 +34,24 @@ def get_cloud_cluster(args_node_ips, selected_gpus):
     trainer_num = os.getenv("TRAINER_PORTS_NUM")
     assert trainer_num is not None, "TRAINER_PORTS_NUM should not be None"
 
-    node_ips = node_ips.split(",")
-    node_rank = int(node_rank)
     pdc_endpoints = pdc_endpoints.split(",")
+    pdc_endpoints_ips = [x.strip().split(":")[0] for x in pdc_endpoints]
+    node_ips = list(set(pdc_endpoints_ips))
+    node_ips.sort(key=pdc_endpoints_ips.index)
+    node_rank = int(node_rank)
     trainer_num = int(trainer_num)
     trainer_endpoints = []
     # paddlecloud single-node show all ports num: PADDLE_TRAINER_ENDPOINTS={ip1:port1,...ip1:port8}
     # paddlecloud multi-node only concat fisrt port: PADDLE_TRAINER_ENDPOINTS={ip1:port1,ip2:port2,ip3:port3}
     if len(pdc_endpoints) == len(node_ips):
-        start_ips = [x.strip().split(":")[0] for x in pdc_endpoints]
-        assert start_ips == node_ips, "Ips resolved from PADDLE_TRAINER_ENDPOINTS:{} "\
-                "and PADDLE_TRAINERS:{} are different. Please Check.".format(pdc_endpoints, node_ips)
         start_ports = [int(x.strip().split(":")[1]) for x in pdc_endpoints]
         for n_rank, start_port in enumerate(start_ports):
             free_ports = [
                 x for x in range(start_port, start_port + len(selected_gpus))
             ]
             trainer_endpoints += [
-                "%s:%d" % (start_ips[n_rank], port) for port in free_ports
+                "%s:%d" % (pdc_endpoints_ips[n_rank], port)
+                for port in free_ports
             ]
     elif len(pdc_endpoints) == trainer_num * len(node_ips):
         trainer_endpoints = pdc_endpoints
@@ -66,9 +63,9 @@ def get_cloud_cluster(args_node_ips, selected_gpus):
     if args_node_ips != "127.0.0.1" and args_node_ips != ",".join(node_ips):
         logger.warning(
             "Please NOTE: When using paddlecloud, cluster_node_ips is \
-automatically got from PADDLE_TRAINERS(multi nodes) or POD_IP(single node).\
-Your input cluster_node_ips: {} doesn't equals to IPs: {} from \
-paddlecloud environment.".format(args_node_ips, node_ips))
+automatically got from PADDLE_TRAINER_ENDPOINTS. Your input cluster_node_ips:\
+{} doesn't equals to IPs: {} from paddlecloud environment."
+            .format(args_node_ips, node_ips))
 
     logger.info("parsed from args:node_ips:{}"
                 "node_ip:{} node_rank:{} trainer_endpoints:{}"
@@ -81,11 +78,10 @@ paddlecloud environment.".format(args_node_ips, node_ips))
 
 
 def use_paddlecloud():
-    node_ips = os.getenv("PADDLE_TRAINERS")
     node_ip = os.getenv("POD_IP")
     node_rank = os.getenv("PADDLE_TRAINER_ID")
     trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-    if node_ips is None or node_ip is None or node_rank is None or trainer_endpoints is None:
+    if node_ip is None or node_rank is None or trainer_endpoints is None:
         return False
     else:
         return True
