@@ -107,8 +107,8 @@ def max_pool2d(x,
                padding=0,
                return_indices=False,
                ceil_mode=False,
-               name=None,
-               data_format="NCHW"):
+               data_format="NCHW",
+               name=None):
     """
     This operation applies 2D max pooling over input feature based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
@@ -150,13 +150,13 @@ def max_pool2d(x,
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Otherwise, the pool padding size will be a square of an int.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
         return_indices (bool): Whether to return the max indices along with the outputs.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
     Returns:
         Variable: The output tensor of pooling result. The data type is same as input tensor.
@@ -264,8 +264,8 @@ def avg_pool2d(x,
                ceil_mode=False,
                count_include_pad=True,
                divisor_override=None,
-               name=None,
-               data_format="NCHW"):
+               data_format="NCHW",
+               name=None):
     """
     This operation applies 2D average pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
@@ -309,12 +309,12 @@ def avg_pool2d(x,
         count_include_pad (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
         divisor_override (float): if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
     Returns:
         Variable: The output tensor of pooling result. The data type is same as input tensor.
@@ -421,8 +421,8 @@ def max_pool3d(x,
                padding=0,
                return_indices=False,
                ceil_mode=False,
-               name=None,
-               data_format="NCDHW"):
+               data_format="NCDHW",
+               name=None):
     """
     This operation applies 3D max pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
@@ -466,13 +466,13 @@ def max_pool3d(x,
             when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
         ceil_mode (bool): ${ceil_mode_comment}
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
         return_indices (bool): Whether to return the max indices along with the outputs.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
     Returns:
         Variable: The output tensor of pooling result. The data type is same as input tensor.
@@ -582,8 +582,8 @@ def avg_pool3d(x,
                ceil_mode=False,
                count_include_pad=False,
                divisor_override=None,
-               name=None,
-               data_format="NCDHW"):
+               data_format="NCDHW",
+               name=None):
     """
     This operation applies 3D max pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
@@ -615,12 +615,12 @@ def avg_pool3d(x,
         count_include_pad (bool): Whether to exclude padding points in average pooling
                           mode, default is True.
         divisor_override (int|float) if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
 
     Returns:
