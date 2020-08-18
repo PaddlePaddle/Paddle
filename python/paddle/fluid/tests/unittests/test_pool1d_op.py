@@ -207,12 +207,11 @@ class TestPool1d_API(unittest.TestCase):
     def check_adaptive_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
-            result = F.adaptive_max_pool1d(
-                input, kernel_size=2, stride=2, padding=0)
+            result = F.adaptive_max_pool1d(input, output_size=16)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
             result_np = max_pool1D_forward_naive(
-                input_np, ksize=[2], strides=[2], paddings=[0], adaptive=True)
+                input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True)
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
@@ -223,12 +222,11 @@ class TestPool1d_API(unittest.TestCase):
     def check_adaptive_avg_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
-            result = F.adaptive_avg_pool1d(
-                input, kernel_size=2, stride=2, padding=0)
+            result = F.adaptive_avg_pool1d(input, output_size=16)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
             result_np = avg_pool1D_forward_naive(
-                input_np, ksize=[2], strides=[2], paddings=[0], adaptive=True)
+                input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True)
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),

@@ -31,7 +31,7 @@ __all__ = [
 
 
 def check_input(x, dimension):
-    if len(x.shape) != dimension or not isinstance(core.VarBase):
+    if len(x.shape) != dimension:
         raise ValueError("Excepted Input X is 3-D tensor, but received {}-D {}".
                          format(len(x.shape), type(x)))
 
