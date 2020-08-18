@@ -148,7 +148,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x_np)
+        x = paddle.to_tensor(self.x_np)
         out1 = F.logsigmoid(x)
         m = paddle.nn.LogSigmoid()
         out2 = m(x)
@@ -716,7 +716,7 @@ class TestReluAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x_np)
+        x = paddle.to_tensor(self.x_np)
         out1 = F.relu(x)
         m = paddle.nn.ReLU()
         out2 = m(x)
@@ -836,7 +836,7 @@ class TestGELUAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x_np)
+        x = paddle.to_tensor(self.x_np)
         out1 = F.gelu(x)
         m = paddle.nn.GELU()
         out2 = m(x)
@@ -1059,7 +1059,7 @@ class TestELUAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x_np)
+        x = paddle.to_tensor(self.x_np)
         out1 = F.elu(x)
         m = paddle.nn.ELU()
         out2 = m(x)
