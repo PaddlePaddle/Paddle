@@ -2730,7 +2730,6 @@ class Block(object):
         return var
 
     def _remove_var(self, name):
-        self._sync_with_cpp()
         self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
@@ -2822,7 +2821,6 @@ class Block(object):
         Returns:
             Operator: the insert Operator.
         """
-        self._sync_with_cpp()
         op_desc = self.desc._insert_op(index)
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.insert(index, op)
@@ -2838,7 +2836,6 @@ class Block(object):
         Returns:
             None
         """
-        self._sync_with_cpp()
         self.desc._remove_op(index, index + 1)
         del self.ops[index]
 
