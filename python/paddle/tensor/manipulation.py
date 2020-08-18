@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from ..fluid.layers import core, reshape
+from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -23,7 +23,7 @@ from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import reshape  #DEFINE_ALIAS
+from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
@@ -998,7 +998,9 @@ def expand(x, shape, name=None):
         type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
+
 broadcast_to = expand
+
 
 def reshape(x, shape, name=None):
     """
