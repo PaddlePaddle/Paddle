@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/prepared_operator.h"
+
 #include <sstream>
+
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
@@ -40,23 +42,17 @@ static void PrepareData(const platform::Place& place,
     for (const auto& var_base : name_pair.second) {
       const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {
-        auto tmp_place = tensor->place();
-
-        // TODO(jiabin): Support transform data layout when we Verify it on more
-        // tests
-        if (!(tmp_place == place)) {
-          auto kernel_type_for_var = op.GetKernelTypeForVar(
-              name_pair.first, *tensor, expected_kernel_key);
-          if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
-            continue;
-          } else {
-            VLOG(3) << "Transform Variable " << var_base->Name() << " from "
-                    << kernel_type_for_var << " to " << expected_kernel_key;
-            framework::Tensor out;
-            TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
-                          &out);
-            SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
-          }
+        auto kernel_type_for_var = op.GetKernelTypeForVar(
+            name_pair.first, *tensor, expected_kernel_key);
+        if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+          continue;
+        } else {
+          VLOG(3) << "Transform Variable " << var_base->Name() << " from "
+                  << kernel_type_for_var << " to " << expected_kernel_key;
+          framework::Tensor out;
+          TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
+                        &out);
+          SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
         }
       }
     }
@@ -91,6 +87,13 @@ PreparedOp PrepareOpImpl(const NameVarMap<VarType>& ins,
   auto& kernels = kernels_iter->second;
 
   framework::RuntimeContext ctx({}, {});
+#ifdef PADDLE_WITH_MKLDNN
+  // MKLDNN variant of code reads attributes in some of GetKernelTypeForVar and
+  // GetKernelType functions, so we need to copy the attributes there.
+  // Const qualifier of Attrs had to be discarded to overwrite it.
+  auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(op.Attrs());
+  mutable_op_attrs = attrs;
+#endif
   auto expected_kernel_key =
       op.GetExpectedKernelType(DygraphExecutionContext<VarType>(
           op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs));
@@ -137,7 +140,8 @@ static void PreparedOpRunImpl(
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
 
-  DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs);
+  DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
+                                                    op.Type());
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 

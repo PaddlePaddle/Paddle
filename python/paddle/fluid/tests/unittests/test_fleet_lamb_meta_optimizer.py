@@ -16,8 +16,8 @@ import unittest
 import paddle
 from paddle import fluid
 import os
-import paddle.fleet as fleet
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 
 class TestFleetLambMetaOptimizer(unittest.TestCase):
@@ -47,7 +47,7 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
                     input=prediction, label=input_y)
                 avg_cost = paddle.fluid.layers.mean(x=cost)
 
-                strategy = paddle.fleet.DistributedStrategy()
+                strategy = paddle.distributed.fleet.DistributedStrategy()
                 strategy.lamb = True
                 strategy.lamb_configs = {
                     'lamb_weight_decay': 0.01,
