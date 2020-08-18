@@ -40,7 +40,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.gradient_merge = False
-        dist_strategy.gradient_merge_configs = {"k_steps": 1, "avg": True}
+        dist_strategy.gradient_merge_configs = {}
 
     def minimize_impl(self,
                       loss,
