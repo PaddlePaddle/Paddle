@@ -35,6 +35,11 @@ using LoD = framework::LoD;
 #define SIGMOID_D(a) ((a) * (1 - (a)))
 #define TANHD(a) (1 - (a) * (a))
 
+template <typename T>
+T sigmoid(T z) {
+  return 1 / (1 + std::exp(-z));
+}
+
 class SearchGrnnOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -130,7 +135,7 @@ class SearchGrnnOP : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -380,7 +385,7 @@ class SearchGrnnOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
