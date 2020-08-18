@@ -38,7 +38,7 @@ from paddle.io import DataLoader, Dataset
 from .distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from .metrics import Metric
 from .callbacks import config_callbacks
-from .utils import to_list, to_numpy, flatten_list, restore_flatten_list, extract_args
+from .utils import to_list, to_numpy, flatten_list, restore_flatten_list, extract_args, summary
 from .device import _get_device
 
 __all__ = [
@@ -508,7 +508,7 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -517,7 +517,7 @@ class DynamicGraphAdapter(object):
             self.ddp_model.apply_collective_grads()
         else:
             outputs = self.model.network.forward(
-                * [to_variable(x) for x in inputs])
+                *[to_variable(x) for x in inputs])
             losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -528,7 +528,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -541,7 +541,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -572,7 +572,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss_function and len(metrics):
@@ -1638,6 +1638,53 @@ class Model(object):
         if mode == 'test':
             return logs, outputs
         return logs
+
+    def summary(self, input_size=None, batch_size=None, dtype=None):
+        """Prints a string summary of the network.
+
+        Args:
+            input_size (list|tuple, optional): size of input tensor, Default: None.
+            batch_size (int, optional): batch size of input tensor, Default: None.
+            dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
+
+        Returns:
+            Dict: a summary of the network.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              import paddle.fluid as fluid
+              import paddle.incubate.hapi as hapi
+
+              dynamic = True
+              device = hapi.set_device('cpu')
+              fluid.enable_dygraph(device) if dynamic else None
+           
+              input = hapi.Input('image', [None, 1, 28, 28], 'float32')
+              label = hapi.Input('label', [None, 1], 'int64')
+           
+              model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
+                  input, label)
+              optim = fluid.optimizer.Adam(
+                  learning_rate=0.001, parameter_list=model.parameters())
+              model.prepare(
+                  optim,
+                  paddle.nn.CrossEntropyLoss(),
+                  hapi.metrics.Accuracy(topk=(1, 2)))
+
+              params_info = model.summary()
+              print(params_info)
+
+        """
+
+        assert input_size is not None or self._inputs is not None, \
+                'input size must be set when input of Model is None'
+        input_size = input_size if input_size is not None else [
+            tuple(x.shape[1:]) for x in self._inputs
+        ]
+        batch_size = -1 if batch_size is None else self._inputs[0].shape[0]
+        return summary(self.network, input_size, batch_size, dtype)
 
     def _reset_metrics(self):
         for metric in self._metrics:

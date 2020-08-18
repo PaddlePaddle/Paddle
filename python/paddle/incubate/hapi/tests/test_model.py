@@ -436,6 +436,17 @@ class TestModelFunction(unittest.TestCase):
             self.assertTrue(params[0].shape[1] == 10)
             fluid.disable_dygraph() if dynamic else None
 
+    def test_summary(self):
+        for dynamic in [True, False]:
+            device = hapi.set_device('cpu')
+            fluid.enable_dygraph(device) if dynamic else None
+            net = MyModel()
+            inputs = [Input('x', [None, 20], 'float32')]
+            model = Model(net, inputs)
+            model.prepare()
+            params_info = model.summary()
+            print(params_info)
+
     def test_export_deploy_model(self):
         net = LeNet()
         inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
