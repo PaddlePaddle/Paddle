@@ -654,7 +654,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
     """
     if main_program and main_program._is_distributed:
         return _save_distributed_persistables(
-            save_executor, dirname=dirname, main_program=main_program)
+            executor, dirname=dirname, main_program=main_program)
     else:
         return save_vars(
             executor,
