@@ -202,7 +202,7 @@ def monkey_patch_variable():
                    "out_dtype": out.dtype})
         return out
 
-    def _scalar_elementwise_op_(var, scale, bias):
+    def _scalar_op_(var, scale, bias):
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
         block.append_op(
@@ -214,27 +214,27 @@ def monkey_patch_variable():
         return out
 
     def _neg_(var):
-        return _scalar_elementwise_op_(var, -1.0, 0.0)
+        return _scalar_op_(var, -1.0, 0.0)
 
-    def _scalar_elementwise_add_(var, value):
-        return _scalar_elementwise_op_(var, 1.0, value)
+    def _scalar_add_(var, value):
+        return _scalar_op_(var, 1.0, value)
 
-    def _scalar_elementwise_sub_(var, value):
-        return _scalar_elementwise_op_(var, 1.0, -value)
+    def _scalar_sub_(var, value):
+        return _scalar_op_(var, 1.0, -value)
 
-    def _scalar_elementwise_rsub_(var, value):
-        return _scalar_elementwise_op_(var, -1.0, value)
+    def _scalar_rsub_(var, value):
+        return _scalar_op_(var, -1.0, value)
 
-    def _scalar_elementwise_mul_(var, value):
-        return _scalar_elementwise_op_(var, value, 0.0)
+    def _scalar_mul_(var, value):
+        return _scalar_op_(var, value, 0.0)
 
-    def _scalar_elementwise_div_(var, value):
-        return _scalar_elementwise_op_(var, 1.0 / value, 0.0)
+    def _scalar_div_(var, value):
+        return _scalar_op_(var, 1.0 / value, 0.0)
 
-    def _elemwise_method_creator_(method_name,
-                                  op_type,
-                                  reverse=False,
-                                  scalar_method=None):
+    def _binary_creator_(method_name,
+                         op_type,
+                         reverse=False,
+                         scalar_method=None):
         def __impl__(self, other_var):
             # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
             # which may lose accuracy. This is a hot fix for release 1.6.
@@ -320,110 +320,59 @@ def monkey_patch_variable():
         return __impl__
 
     variable_methods = [
-        # b=-a
-        {
-            '__neg__': _neg_
-        },
-        {
-            'astype': astype
-        },
-        {
-            '__add__': _elemwise_method_creator_(
-                '__add__', 'elementwise_add', False, _scalar_elementwise_add_)
-        },
+        #   b=-a
+        ('__neg__', _neg_),
+        ('astype', astype),
+        ('__add__', _binary_creator_('__add__', 'elementwise_add', False,
+                                     _scalar_add_)),
         # a+b == b+a. Do not need to reverse explicitly
-        {
-            '__radd__': _elemwise_method_creator_(
-                '__radd__', 'elementwise_add', False, _scalar_elementwise_add_)
-        },
-        {
-            '__sub__': _elemwise_method_creator_(
-                '__sub__', 'elementwise_sub', False, _scalar_elementwise_sub_)
-        },
-        {
-            '__rsub__': _elemwise_method_creator_(
-                '__rsub__', 'elementwise_sub', True, _scalar_elementwise_rsub_)
-        },
-        {
-            '__mul__': _elemwise_method_creator_(
-                '__mul__', 'elementwise_mul', False, _scalar_elementwise_mul_)
-        },
+        ('__radd__', _binary_creator_('__radd__', 'elementwise_add', False,
+                                      _scalar_add_)),
+        ('__sub__', _binary_creator_('__sub__', 'elementwise_sub', False,
+                                     _scalar_sub_)),
+        ('__rsub__', _binary_creator_('__rsub__', 'elementwise_sub', True,
+                                      _scalar_rsub_)),
+        ('__mul__', _binary_creator_('__mul__', 'elementwise_mul', False,
+                                     _scalar_mul_)),
         # a*b == b*a. Do not need to reverse explicitly
-        {
-            '__rmul__': _elemwise_method_creator_(
-                '__rmul__', 'elementwise_mul', False, _scalar_elementwise_mul_)
-        },
-        {
-            '__div__': _elemwise_method_creator_(
-                '__div__', 'elementwise_div', False, _scalar_elementwise_div_)
-        },
-        {
-            '__truediv__':
-            _elemwise_method_creator_('__truediv__', 'elementwise_div', False,
-                                      _scalar_elementwise_div_)
-        },
-        {
-            '__rdiv__':
-            _elemwise_method_creator_('__rdiv__', 'elementwise_div', True, None)
-        },
-        {
-            '__rtruediv__': _elemwise_method_creator_(
-                'rtruediv__', 'elementwise_div', True, None)
-        },
-        {
-            '__pow__':
-            _elemwise_method_creator_('__pow__', 'elementwise_pow', False, None)
-        },
-        {
-            '__rpow__':
-            _elemwise_method_creator_('__rpow__', 'elementwise_pow', True, None)
-        },
-        {
-            '__floordiv__': _elemwise_method_creator_(
-                '__floordiv__', 'elementwise_floordiv', False, None)
-        },
-        {
-            '__mod__':
-            _elemwise_method_creator_('__mod__', 'elementwise_mod', False, None)
-        },
+        ('__rmul__', _binary_creator_('__rmul__', 'elementwise_mul', False,
+                                      _scalar_mul_)),
+        ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
+                                     _scalar_div_)),
+        ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
+                                         False, _scalar_div_)),
+        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
+                                      None)),
+        ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div', True,
+                                          None)),
+        ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
+                                     None)),
+        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
+                                      None)),
+        ('__floordiv__', _binary_creator_('__floordiv__',
+                                          'elementwise_floordiv', False, None)),
+        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
+                                     None)),
         # for logical compare
-        {
-            '__eq__': _elemwise_method_creator_('__eq__', 'equal', False, None)
-        },
-        {
-            '__ne__': _elemwise_method_creator_('__ne__', 'not_equal', False,
-                                                None)
-        },
-        {
-            '__lt__': _elemwise_method_creator_('__lt__', 'less_than', False,
-                                                None)
-        },
-        {
-            '__le__': _elemwise_method_creator_('__le__', 'less_equal', False,
-                                                None)
-        },
-        {
-            '__gt__': _elemwise_method_creator_('__gt__', 'greater_than', False,
-                                                None)
-        },
-        {
-            '__ge__': _elemwise_method_creator_('__ge__', 'greater_equal',
-                                                False, None)
-        },
+        ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
+        ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
+        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
+        ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
+        ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
+        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None))
     ]
 
     global _already_patch_variable
     if not _already_patch_variable:
         for method in variable_methods:
-            method_name = method.keys()[0]
-            method_impl = method.values()[0]
+            method_name = method[0]
+            method_impl = method[1]
             setattr(Variable, method_name, method_impl)
     else:
         import paddle.tensor
-        for method in common_methods:
+        for method_name in common_methods:
             if hasattr(Variable, method): continue
-            method_name = method
             method_impl = getattr(paddle.tensor, method, None)
-            setattr(Variable, method_name, method_impl)
+            if method_impl: setattr(Variable, method_name, method_impl)
 
     _already_patch_variable = True
