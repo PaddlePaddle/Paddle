@@ -705,11 +705,11 @@ def save(layer, model_path, input_spec=None, configs=None):
     prog_translator = ProgramTranslator()
     if not prog_translator.enable:
         raise RuntimeError(
-            "The paddle.imperative.jit.save doesn't work when setting ProgramTranslator.enable=False."
+            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable=False."
         )
     if not isinstance(layer, Layer):
         raise TypeError(
-            "The input layer of paddle.imperative.jit.save should be 'Layer', but received layer type is %s."
+            "The input layer of paddle.jit.save should be 'Layer', but received layer type is %s."
             % type(layer))
 
     if configs is None:

@@ -17,7 +17,6 @@ from ...fluid.layers import brelu  #DEFINE_ALIAS
 from ...fluid.layers import elu  #DEFINE_ALIAS
 from ...fluid.layers import erf  #DEFINE_ALIAS
 from ...fluid.layers import gelu  #DEFINE_ALIAS
-from ...fluid.layers import hard_shrink  #DEFINE_ALIAS
 from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
@@ -26,11 +25,11 @@ from ...fluid.layers import maxout  #DEFINE_ALIAS
 from ...fluid.layers import relu6  #DEFINE_ALIAS
 from ...fluid.layers import selu  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import softmax  #DEFINE_ALIAS
 from ...fluid.layers import softplus  #DEFINE_ALIAS
 from ...fluid.layers import softshrink  #DEFINE_ALIAS
 from ...fluid.layers import softsign  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
+from ...fluid.layers import sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import tanh_shrink  #DEFINE_ALIAS
 from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
 
@@ -39,7 +38,7 @@ __all__ = [
     'elu',
     'erf',
     'gelu',
-    'hard_shrink',
+    'hardshrink',
     'hard_sigmoid',
     'hard_swish',
     'hsigmoid',
@@ -50,12 +49,12 @@ __all__ = [
     'relu',
     'relu6',
     'selu',
-    'sigmoid',
     'soft_relu',
     'softmax',
     'softplus',
     'softshrink',
     'softsign',
+    'sigmoid',
     'swish',
     'tanh_shrink',
     'thresholded_relu',
@@ -67,6 +66,60 @@ from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype
+import paddle
+
+
+def hardshrink(x, threshold=0.5, name=None):
+    """
+    hard shrinkage activation
+
+    .. math::
+
+        hardshrink(x)=
+            \left\{
+            \begin{aligned}
+            &x, & & if \ x > threshold \\
+            &x, & & if \ x < -threshold \\
+            &0, & & if \ others
+            \end{aligned}
+            \right.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        threshold (float, optional): The value of threshold for hardthrink. Default is 0.5
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_variable(np.array([-1, 0.3, 2.5]))
+        out = F.hardshrink(x) # [-1., 0., 2.5]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.hard_shrink(x, 'threshold', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hardshrink')
+    helper = LayerHelper('hardshrink', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='hard_shrink',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
+    return out
 
 
 def hsigmoid(input,
@@ -244,65 +297,120 @@ def relu(input, inplace=False, name=None):
     return outs
 
 
-def sigmoid(input, inplace=False, name=None):
+def softmax(x, axis=-1, name=None):
     """
-	:alias_main: paddle.nn.functional.sigmoid
-	:alias: paddle.nn.functional.sigmoid,paddle.nn.functional.activation.sigmoid
+    This operator implements the softmax layer. The calculation process is as follows:
 
-    Sigmoid Activation.
+    1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
 
-    .. math:
+    2. Then ``x`` will be logically flattened to a 2-D matrix. The matrix's second
+    dimension(row length) is the same as the dimension :attr:`axis` of ``x``,
+    and the first dimension(column length) is the product of all other dimensions
+    of ``x``. For each row of the matrix, the softmax operator squashes the
+    K-dimensional(K is the width of the matrix, which is also the size of ``x``'s
+    dimension :attr:`axis`) vector of arbitrary real values to a K-dimensional
+    vector of real values in the range [0, 1] that add up to 1.
 
-        output = \frac{1}{1 + e^{-input}}
-    
-    Parameters:
-        input (Variable): The input variable. A multi-dimension Tensor with type float16, float32, or float64.
-        inplace (bool, optional): If inplace is True, the input and output are the same variable.
-            Otherwise, the input and output of are different variables. Default: False. Note that if x is
-            more than one OPs' input, inplace must be False.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-    
+    3. After the softmax operation is completed, the inverse operations of steps 1 and 2
+    are performed to restore the two-dimensional matrix to the same dimension as the ``x`` .
+
+    It computes the exponential of the given dimension and the sum of exponential
+    values of all the other dimensions in the K-dimensional vector input.
+    Then the ratio of the exponential of the given dimension and the sum of
+    exponential values of all the other dimensions is the output of the softmax
+    operator.
+
+    For each row :math:`i` and each column :math:`j` in the matrix, we have:
+
+    .. math::
+
+        out[i, j] = \\frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+
+    Example:
+
+    .. code-block:: text
+
+        Case 1:
+          Input:
+            x.shape = [2, 3, 4]
+            x.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+
+          Attrs:
+            axis = -1
+
+          Output:
+            out.shape = [2, 3, 4]
+            out.data = [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+                        [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+
+        Case 2:
+          Input:
+            x.shape = [2, 3, 4]
+            x.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+          Attrs:
+            axis = 1
+
+          Output:
+            out.shape = [2, 3, 4]
+            out.data = [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
+                         [0.01786798, 0.01786798, 0.04661262, 0.04661262],
+                         [0.97555875, 0.97555875, 0.93623955, 0.93623955]],
+                        [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
+                         [0.26762315, 0.26762315, 0.26762315, 0.26762315],
+                         [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
+
+    Args:
+        x (Tensor): The input multi-dimension Tensor with data type float32, float64.
+        axis (int, optional): The axis along which to perform softmax calculations.
+            It should be in range [-D, D), where D is the dimensions of ``x`` .
+            When ``axis`` < 0, it works the same way as :math:`axis + D` .
+            Default is -1.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
-        Output of sigmoid operator, a Tensor with shape same as input
-    
+        A Tensor with the same data type and shape as ``x`` .
+
     Examples:
+
         .. code-block:: python
-          
-          import paddle.fluid as fluid
-          import paddle.nn.functional as functional
-          import numpy as np
-          # In the static graph mode
-          input = fluid.data(name="input", shape=[None, 4])
-          output = functional.sigmoid(input)
-          place = fluid.CPUPlace()
-          exe = fluid.Executor(place)
-          exe.run(fluid.default_startup_program())
-          input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
-          output_data = exe.run(feed={"input": input_data},
-                                fetch_list=[output])
-          print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
-          # In the dynamic graph mode
-          with fluid.dygraph.guard():
-              input = fluid.dygraph.to_variable(input_data)
-              output = functional.sigmoid(input)
-              print(output) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = np.array([[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]], 'float32')
+        x = paddle.to_tensor(x)
+        out = F.softmax(x)
+        # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+        #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+        # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
     """
-
-    if in_dygraph_mode():
-        if inplace:
-            warnings.warn(
-                "Inplace on sigmoid is not allowed and will be discarded in dygraph mode currently."
-            )
-        return core.ops.sigmoid(input)
-
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'sigmoid')
-    helper = LayerHelper("sigmoid", **locals())
-    outputs = helper.create_variable_for_type_inference(input.dtype)
-    helper.append_op(
-        type='sigmoid', inputs={'X': [input]}, outputs={'Out': outputs})
-    return outputs
+    return paddle.fluid.layers.softmax(input=x, axis=axis, name=name)
 
 
 def log_softmax(input, axis=None, dtype=None, name=None):

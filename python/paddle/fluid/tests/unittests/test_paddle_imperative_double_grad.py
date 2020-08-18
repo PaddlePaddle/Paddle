@@ -22,7 +22,7 @@ import paddle
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if paddle.in_imperative_mode():
+        if paddle.in_dynamic_mode():
             return func(*args, **kwargs)
         else:
             with fluid.dygraph.guard():
@@ -54,7 +54,7 @@ class TestDygraphDoubleGrad(TestCase):
              allow_unused=False):
         backward_strategy = fluid.dygraph.BackwardStrategy()
         backward_strategy.sort_sum_gradient = self.sort_sum_gradient
-        return paddle.imperative.grad(
+        return paddle.grad(
             outputs=outputs,
             inputs=inputs,
             grad_outputs=grad_outputs,

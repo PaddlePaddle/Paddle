@@ -97,7 +97,7 @@ def create_paddle_case(op_type, callback):
                 y = paddle.nn.data(name='y', shape=[1, 2, 3], dtype='int32')
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
-                exe = paddle.Executor(self.place)
+                exe = paddle.static.Executor(self.place)
                 input_x = np.arange(1, 7).reshape((1, 2, 1, 3)).astype(np.int32)
                 input_y = np.arange(0, 6).reshape((1, 2, 3)).astype(np.int32)
                 real_result = callback(input_x, input_y)

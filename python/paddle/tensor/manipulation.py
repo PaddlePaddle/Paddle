@@ -23,7 +23,6 @@ from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import expand  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import reshape  #DEFINE_ALIAS
 from ..fluid.layers import scatter  #DEFINE_ALIAS
@@ -42,11 +41,33 @@ from ..fluid import layers
 import paddle
 
 __all__ = [
-    'cast', 'concat', 'expand', 'expand_as', 'flatten', 'gather', 'gather_nd',
-    'reshape', 'reverse', 'scatter', 'scatter_nd_add', 'scatter_nd',
-    'shard_index', 'slice', 'split', 'squeeze', 'stack', 'strided_slice',
-    'transpose', 'unique', 'unique_with_counts', 'unsqueeze', 'unstack', 'flip',
-    'unbind', 'roll'
+    'cast',
+    'concat',
+    'expand',
+    'expand_as',
+    'flatten',
+    'gather',
+    'gather_nd',
+    'reshape',
+    'reverse',
+    'scatter',
+    'scatter_nd_add',
+    'scatter_nd',
+    'shard_index',
+    'slice',
+    'split',
+    'squeeze',
+    'stack',
+    'strided_slice',
+    'transpose',
+    'unique',
+    'unique_with_counts',
+    'unsqueeze',
+    'unstack',
+    'flip',
+    'unbind',
+    'roll',
+    'tile',
 ]
 
 
@@ -82,16 +103,16 @@ def concat(x, axis=0, name=None):
             import paddle
             import numpy as np
             
-            paddle.enable_imperative()  # Now we are in imperative mode
+            paddle.disable_static()  # Now we are in imperative mode
             in1 = np.array([[1, 2, 3],
                             [4, 5, 6]])
             in2 = np.array([[11, 12, 13],
                             [14, 15, 16]])
             in3 = np.array([[21, 22],
                             [23, 24]])
-            x1 = paddle.imperative.to_variable(in1)
-            x2 = paddle.imperative.to_variable(in2)
-            x3 = paddle.imperative.to_variable(in3)
+            x1 = paddle.to_variable(in1)
+            x2 = paddle.to_variable(in2)
+            x3 = paddle.to_variable(in3)
             zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             # When the axis is negative, the real axis is (axis + Rank(x))
             # As follow, axis is -1, Rank(x) is 2, the real axis is 1
@@ -135,12 +156,12 @@ def flip(x, axis, name=None):
           import paddle
           import numpy as np
 
-          paddle.enable_imperative()
+          paddle.disable_static()
 
           image_shape=(3, 2, 2)
           x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           x = x.astype('float32')
-          img = paddle.imperative.to_variable(x)
+          img = paddle.to_variable(x)
           out = paddle.flip(img, [0,1])
 
           print(out) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
@@ -226,13 +247,13 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             image_shape=(2, 3, 4, 4)
             x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3]).reshape(image_shape) / 100.
             x = x.astype('float32')
             
-            img = paddle.imperative.to_variable(x)
+            img = paddle.to_variable(x)
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
     """
@@ -304,8 +325,8 @@ def roll(x, shifts, axis=None, name=None):
             data = np.array([[1.0, 2.0, 3.0],
                              [4.0, 5.0, 6.0],
                              [7.0, 8.0, 9.0]])
-            paddle.enable_imperative()
-            x = paddle.imperative.to_variable(data)
+            paddle.disable_static()
+            x = paddle.to_variable(data)
             out_z1 = paddle.roll(x, shifts=1)
             print(out_z1.numpy())
             #[[9. 1. 2.]
@@ -417,7 +438,7 @@ def stack(x, axis=0, name=None):
     Args:
         x (Tensor|list[Tensor]): Input ``x`` can be a single tensor, or a ``list`` of tensors.
                                      If ``x`` is a ``list``, the Tensors in ``x``
-                                     must be of the same shape and dtype. Support data types: float32, float64, int32, int64.
+                                     must be of the same shape and dtype. Supported data types: float32, float64, int32, int64.
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
                               where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
                               If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
@@ -436,10 +457,10 @@ def stack(x, axis=0, name=None):
             data2 = np.array([[3.0, 4.0]])
             data3 = np.array([[5.0, 6.0]])
 
-            paddle.enable_imperative()
-            x1 = paddle.imperative.to_variable(data1)
-            x2 = paddle.imperative.to_variable(data2)
-            x3 = paddle.imperative.to_variable(data3)
+            paddle.disable_static()
+            x1 = paddle.to_variable(data1)
+            x2 = paddle.to_variable(data2)
+            x3 = paddle.to_variable(data3)
 
             out = paddle.stack([x1, x2, x3], axis=0)
             print(out.shape)  # [3, 1, 2]
@@ -482,10 +503,10 @@ def split(x, num_or_sections, axis=0, name=None):
             import numpy as np
             import paddle
             
-            paddle.enable_imperative()
+            paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.imperative.to_variable(x_np)
+            x = paddle.to_variable(x_np)
 
             out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -559,21 +580,22 @@ def squeeze(x, axis=None, name=None):
             out.shape = [1, 3, 5]
 
     Args:
-        input (Tensor): The input Tensor. Support data type: float32, float64, int8, int32, int64.
+        x (Tensor): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
-                          The range of axis is :math:`[-ndim(input), ndim(input))`.
-                          If axis is negative, :math:`axis = axis + ndim(input)`.
-                          If axis is None, all the dimensions of input of size 1 will be removed.
+                          The range of axis is :math:`[-ndim(x), ndim(x))`.
+                          If axis is negative, :math:`axis = axis + ndim(x)`.
+                          If axis is None, all the dimensions of x of size 1 will be removed.
         name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Tensor: Output squeezed Tensor. Data type is same as input Tensor.
+        Tensor: Squeezed Tensor with the same data type as input Tensor.
 
     Examples:
         .. code-block:: python
+
             import paddle
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             
             x = paddle.rand([5, 1, 10])
             output = paddle.squeeze(x, axis=1)
@@ -590,87 +612,50 @@ def squeeze(x, axis=None, name=None):
     return layers.squeeze(x, axis, name)
 
 
-def unsqueeze(input, axes, out=None, name=None):
+def unsqueeze(x, axis, name=None):
     """
 	:alias_main: paddle.unsqueeze
-	:alias: paddle.unsqueeze,paddle.tensor.unsqueeze,paddle.tensor.manipulation.unsqueeze
+	:alias: paddle.unsqueeze, paddle.tensor.unsqueeze, paddle.tensor.manipulation.unsqueeze
 
-    Insert single-dimensional entries to the shape of a Tensor. Takes one
-    required argument axes, a list of dimensions that will be inserted.
-    Dimension indices in axes are as seen in the output tensor.
-
-    For example:
-
-    .. code-block:: text
-
-      Given a tensor such that tensor with shape [3, 4, 5],
-      then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
+    Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
+    required argument axis, a dimension or list of dimensions that will be inserted.
+    Dimension indices in axis are as seen in the output tensor.
 
     Args:
-        input (Variable): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
-        axes (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
-        name (str|None): Name for this layer.
+        x (Tensor): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
+        axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . 
+                                    If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. 
+                                    If ``axis`` is a Tensor, it should be an 1-D Tensor .
+                                    If ``axis`` is negative, ``axis = axis + ndim(x) + 1``.
+        name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Variable: Output unsqueezed Tensor, with data type being float32, float64, int32, int64.
+        Tensor: Unsqueezed Tensor with the same data type as input Tensor.
 
     Examples:
         .. code-block:: python
-            import numpy as np
+
             import paddle
-            import paddle.fluid as fluid
 
-            with fluid.dygraph.guard():
-                input_1 = np.random.random([5, 10]).astype("int32")
-                # input is a variable which shape is [5, 10]
-                input = fluid.dygraph.to_variable(input_1)
+            paddle.disable_static()
+            x = paddle.rand([5, 10])
+            print(x.shape)  # [5, 10]
+            
+            out1 = paddle.unsqueeze(x, axis=0)
+            print(out1.shape)  # [1, 5, 10]
+            
+            out2 = paddle.unsqueeze(x, axis=[0, 2]) 
+            print(out2.shape)  # [1, 5, 1, 10]
 
-                output = paddle.unsqueeze(input, axes=[1])
-                # output.shape [5, 1, 10]
+            axis = paddle.fluid.dygraph.to_variable([0, 1, 2])
+            out3 = paddle.unsqueeze(x, axis=axis) 
+            print(out3.shape)  # [1, 1, 1, 5, 10]
+            
     """
-    if not isinstance(axes, (int, list, tuple, Variable)):
-        raise TypeError(
-            "The type of 'axes' in unsqueeze must be int, list, tuple or Variable, but "
-            "received %s." % (type(axes)))
-    helper = LayerHelper("unsqueeze2", **locals())
-    inputs = {"X": input}
-    attrs = {}
+    if isinstance(axis, int):
+        axis = [axis]
 
-    def _to_Variable_list(one_list):
-        Variable_list = []
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                ele.stop_gradient = True
-                Variable_list.append(ele)
-            else:
-                assert (isinstance(ele, int))
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
-                Variable_list.append(temp_out)
-        return Variable_list
-
-    if isinstance(axes, int):
-        axes = [axes]
-    if isinstance(axes, Variable):
-        axes.stop_gradient = True
-        inputs["AxesTensor"] = axes
-    elif isinstance(axes, (list, tuple)):
-        contain_var = not all(not isinstance(ele, Variable) for ele in axes)
-        if contain_var:
-            inputs["AxesTensorList"] = _to_Variable_list(axes)
-        else:
-            attrs["axes"] = axes
-
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type="unsqueeze2",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Out": out,
-                 "XShape": x_shape})
-
-    return out
+    return layers.unsqueeze(x, axis, name)
 
 
 def gather(input, index, overwrite=True):
@@ -802,3 +787,199 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
+
+
+def tile(x, repeat_times, name=None):
+    """
+    :alias_main: paddle.tile
+	:alias: paddle.tile,paddle.tensor.tile,paddle.tensor.manipulation.tile
+    Construct a new tensor by repeating ``x`` the number of times given by the parameter ``repeat_times``.
+    The rank of ``x`` should be less than or equal to 6, and the size of the shape of ``repeat_times`` should
+    be less than or equal to 6.
+    If the size of the parameter ``repeat_times`` is ``d``, and the rank for ``x`` is ``r``, then the number
+    of dimensions for the result is ``max(d, r)``.
+    If ``r < d``, ``x`` if first promoted to a d-dimensional tensor by inserting new axes at the beginning.
+    For example, a tensor ``x`` with the shape(3,) is promoted to a 2-D tensor with the shape (1, 3) if ``d`` is 2
+    and a 3-D tensor with the shape(1, 1, 3) if ``d`` is 3.
+    If ``r > d``, ``repeat_times`` is first promoted by inserting 1's at the beginning.
+    For example, if the tensor ``x`` is with a shape(4, 3, 2, 2) and ``repeat_times`` is a tuple (3, 2),
+    ``repeat_times`` is first promoted to a tuple (1, 1, 3, 2).
+    The following gives an using case:
+    .. code-block:: text
+        Input(x) is a 3-D tensor of shape (2, 3, 1):
+                [
+                   [[1], [2], [3]],
+                   [[4], [5], [6]]
+                ]
+        Attr(repeat_times):  [1, 2, 2]
+        Output(out) is a 3-D tensor of shape (2, 6, 2):
+                [
+                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
+                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
+                ]
+    Args:
+        x (Tensor): The input tensor, its data type should be bool, float32, float64, int32. The rank of ``x`` should be in [1, 6].
+        repeat_times (Tensor|tuple|list): The number of repeating times for each dimension of the input ``x``. If repeat_times is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If repeat_times is Tensor, it should be an 1-D Tensor. The size of its shape should be in [1, 6].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name` .
+    Returns:
+        N-D Tensor. The data type is the same as ``x``. After tiling, each dimension of the output is equal to the corresponding dimension of ``x`` multiplying the corresponding value given by ``repeat_times`` .
+    Raises:
+        TypeError: The type of ``repeat_times`` must be list, tuple or Tensor.
+        ValueError: The elements of ``repeat_times`` cannot be negative.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            # example 1:
+            np_data_1 = np.array([1, 2, 3]).astype('int32')
+            data_1 = paddle..to_variable(np_data_1)
+            tiled_1 = paddle.tile(data_1, repeat_times=[2, 1])
+            # [[1, 2, 3], [1, 2, 3]]
+            # example 2:
+            np_repeat_times = np.array([2, 1]).astype("int32")
+            repeat_times = paddle.to_variable(np_repeat_times)
+            tiled_2 = paddle.tile(data_1, repeat_times=repeat_times)
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    if in_dygraph_mode():
+        if isinstance(repeat_times, (list, tuple)):
+            repeat_times = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in repeat_times
+            ]
+
+            return core.ops.tile(x, 'repeat_times', repeat_times)
+
+    inputs = {"X": [x]}
+    attrs = {}
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
+    check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
+        raise ValueError(
+            "When the date type is bool for the input 'x' of tile op, you "
+            "must set its stop_gradient to be False by "
+            "some_var.stop_gradient == True supporting some_var is the input.")
+
+    helper = LayerHelper('tile', input=x, **locals())
+
+    def get_attr_repeat_times(list_repeat_times):
+        attrs_repeat_times = []
+        for idx, times in enumerate(list_repeat_times):
+            if isinstance(times, Variable):
+                attrs_repeat_times.append(-1)
+            else:
+                attrs_repeat_times.append(times)
+                assert times > 0, (
+                    "Every element given in repeat_times must be positive.")
+        return attrs_repeat_times
+
+    if isinstance(repeat_times, Variable):
+        repeat_times.stop_gradient = True
+        inputs['RepeatTimes'] = repeat_times
+        attrs['repeat_times'] = [-1] * len(repeat_times.shape)
+    elif isinstance(repeat_times, (list, tuple)):
+        attrs['repeat_times'] = get_attr_repeat_times(repeat_times)
+        if utils._contain_var(repeat_times):
+            inputs['repeat_times_tensor'] = utils._convert_to_tensor_list(
+                repeat_times)
+
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='tile', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
+
+
+def expand(x, shape, name=None):
+    """
+    :alias_main: paddle.expand
+    :alias: paddle.expand,paddle.tensor.expand,paddle.tensor.manipulation.expand
+
+    Expand the input tensor to a given shape.
+
+    The rank of ``x`` should be less than or equal to 6, and the number of elements in ``shape`` should also be less than or equal to 6. The size of the dimension to expand must be 1. 
+
+
+    Args:
+        x (Tensor): The input Tensor with rank in [1, 6]. The data type is bool, float32, float64 or int32.
+        shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all elements of
+                it should be integers or Tensors with shape (1,). If shape is a Tensor, it should be an 1-D Tensor. 
+                The value -1 in shape, means keeping the corresponding dimension unchanged.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor: A Tensor with the given shape. The data type is the same as ``x``.
+
+    Raises:
+        TypeError: The type of ``shape`` must be list, tuple or Variable.
+        ValueError: The elements of ``shape`` must be positive or -1.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            paddle.disable_static()
+
+            # example 1:
+            np_data_1 = np.array([1, 2, 3]).astype=('int32)
+            data_1 = paddle.to_variable(np_data_1)
+            expanded_1 = paddle.expand(data_1, shape=[2, 3])
+            # [[1, 2, 3], [1, 2, 3]]
+
+            # example 2:
+            np_shape = np.array([2, 3]).astype=('int32)
+            shape = paddle.to_variable(np_shape)
+            expanded_2 = paddle.expand(data_1, shape=shape)
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    if in_dygraph_mode():
+        if isinstance(shape, (list, tuple)):
+            expand_shape = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in shape
+            ]
+
+            return core.ops.expand_v2(x, 'shape', expand_shape)
+
+    inputs = {"X": [x]}
+    attrs = {}
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
+    check_type(shape, 'shape', (list, tuple, Variable), 'expand')
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
+        raise ValueError("When the data type of input 'x' for expand is bool, "
+                         "you must set its stop_gradient to be False by "
+                         " some_var.stop_gradient = False, supporting "
+                         "some_var as the input.")
+
+    helper = LayerHelper('expand', input=x, **locals())
+
+    def get_attr_expand_shape(list_expand_shape):
+        attrs_expand_shape = []
+        for idx, shape in enumerate(list_expand_shape):
+            if isinstance(shape, Variable):
+                attrs_expand_shape.append(-1)
+            else:
+                attrs_expand_shape.append(shape)
+                assert shape > 0 or shape == -1, (
+                    "Every element in shape must be positive or -1.")
+        return attrs_expand_shape
+
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        inputs['Shape'] = shape
+    elif isinstance(shape, (list, tuple)):
+        attrs['shape'] = get_attr_expand_shape(shape)
+        if utils._contain_var(shape):
+            inputs['expand_shapes_tensor'] = utils._convert_to_tensor_list(
+                shape)
+
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out

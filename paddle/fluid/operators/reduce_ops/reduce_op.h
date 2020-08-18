@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -98,6 +99,18 @@ class ReduceKernel : public framework::OpKernel<T> {
     int out_dtype = context.Attr<int>("out_dtype");
     framework::proto::VarType::Type cast_out_dtype;
 
+    // The dims has full dim, set the reduce_all is True
+    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
+    std::set<int> dims_set(dims.begin(), dims.end());
+    bool full_dim = true;
+    for (auto i = 0; i < input_dim_size; i++) {
+      if (dims_set.find(i) == dims_set.end()) {
+        full_dim = false;
+        break;
+      }
+    }
+    reduce_all = (reduce_all || full_dim);
+
     if (out_dtype < 0) {
       auto* cast_input = context.Input<Tensor>("X");
       cast_out_dtype =
@@ -136,6 +149,18 @@ class BoolReduceKernel : public framework::OpKernel<OutT> {
 
     auto dims = context.Attr<std::vector<int>>("dim");
     bool keep_dim = context.Attr<bool>("keep_dim");
+
+    // The dims has full dim, set the reduce_all is True
+    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
+    std::set<int> dims_set(dims.begin(), dims.end());
+    bool full_dim = true;
+    for (auto i = 0; i < input_dim_size; i++) {
+      if (dims_set.find(i) == dims_set.end()) {
+        full_dim = false;
+        break;
+      }
+    }
+    reduce_all = (reduce_all || full_dim);
 
     if (reduce_all) {
       // Flatten and reduce 1-D tensor
@@ -183,6 +208,17 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     auto* output = context.Output<Tensor>(framework::GradVarName("X"));
     output->mutable_data<T>(context.GetPlace());
 
+    // The dims has full dim, set the reduce_all is True
+    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
+    std::set<int> dims_set(dims.begin(), dims.end());
+    bool full_dim = true;
+    for (auto i = 0; i < input_dim_size; i++) {
+      if (dims_set.find(i) == dims_set.end()) {
+        full_dim = false;
+        break;
+      }
+    }
+    reduce_all = (reduce_all || full_dim);
     // NOTE: EigenTensor::From() uses tensor->data()
     // if op has NoNeedBufferVarsInferer, the corresponding kNoNeedBufferX or
     // kNoNeedBufferY should set true
