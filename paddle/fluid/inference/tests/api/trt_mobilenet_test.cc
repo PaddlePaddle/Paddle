@@ -57,7 +57,7 @@ TEST(PredictorPool, use_gpu) {
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
   config.EnableTensorRtEngine();
-  PredictorPool pred_pool(config, 1);
+  services::PredictorPool pred_pool(config, 1);
 
   auto predictor = pred_pool.Retrive(0);
   auto input_names = predictor->GetInputNames();

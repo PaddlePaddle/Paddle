@@ -520,12 +520,12 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
   // TODO(NHZlX): Should add the link to the doc of
   // paddle_infer::CreatePredictor<paddle_infer::Config>
   if (deprecated_warning) {
-    LOG(WARNING)
-        << "The 'paddle::CreatePaddlePredictor<AnalysisConfig>' "
-           "interface deprecated for now, which will be discarded in a "
-           "later release or two,"
-           "please use the "
-           "'paddle_infer::CreatePredictor<paddle_infer::Config>'.";
+    LOG(WARNING) << "The "
+                    "'paddle::CreatePaddlePredictor<paddle::AnalysisConfig>' "
+                    "is going to be deprecated in the next release, plase use "
+                    "the latest "
+                    "'paddle_infer::CreatePredictor<paddle_infer::Config>' "
+                    "instead.";
   }
 
   if (config.glog_info_disabled()) {
@@ -1074,49 +1074,6 @@ namespace paddle_infer {
 
 void Tensor::Reshape(const std::vector<int> &shape) { tensor_->Reshape(shape); }
 
-template <typename T>
-void Tensor::CopyFromCpu(const T *data) {
-  tensor_->copy_from_cpu<T>(data);
-}
-template PD_INFER_DECL void Tensor::CopyFromCpu<float>(const float *data);
-template PD_INFER_DECL void Tensor::CopyFromCpu<int64_t>(const int64_t *data);
-template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
-template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
-
-template <typename T>
-T *Tensor::mutable_data(PlaceType place) {
-  return tensor_->mutable_data<T>(place);
-}
-
-template PD_INFER_DECL float *Tensor::mutable_data<float>(PlaceType);
-template PD_INFER_DECL int64_t *Tensor::mutable_data<int64_t>(PlaceType);
-template PD_INFER_DECL int32_t *Tensor::mutable_data<int32_t>(PlaceType);
-template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType);
-
-template <typename T>
-void Tensor::CopyToCpu(T *data) {
-  return tensor_->copy_to_cpu<T>(data);
-}
-
-template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data);
-template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data);
-template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data);
-template PD_INFER_DECL void Tensor::CopyToCpu<uint8_t>(uint8_t *data);
-
-template <typename T>
-T *Tensor::data(PlaceType *place, int *size) const {
-  return tensor_->data<T>(place, size);
-}
-
-template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
-                                                  int *size) const;
-template PD_INFER_DECL int64_t *Tensor::data<int64_t>(PlaceType *place,
-                                                      int *size) const;
-template PD_INFER_DECL int32_t *Tensor::data<int32_t>(PlaceType *place,
-                                                      int *size) const;
-template PD_INFER_DECL uint8_t *Tensor::data<uint8_t>(PlaceType *place,
-                                                      int *size) const;
-
 std::vector<int> Tensor::shape() const { return tensor_->shape(); }
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
@@ -1191,6 +1148,7 @@ std::shared_ptr<Predictor> CreatePredictor(const Config &config) {  // NOLINT
   return predictor;
 }
 
+namespace services {
 PredictorPool::PredictorPool(const Config &config, size_t size) {
   PADDLE_ENFORCE_GE(
       size, 1UL,
@@ -1202,10 +1160,10 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
   for (size_t i = 0; i < size - 1; i++) {
     if (config.tensorrt_engine_enabled()) {
       Config config_tmp(copy_config);
-      preds_.emplace_back(
-          std::unique_ptr<Predictor>(new Predictor(config_tmp)));
+      preds_.push_back(
+          std::move(std::unique_ptr<Predictor>(new Predictor(config_tmp))));
     } else {
-      preds_.emplace_back(std::move(main_pred_->Clone()));
+      preds_.push_back(std::move(main_pred_->Clone()));
     }
   }
 }
@@ -1221,4 +1179,5 @@ Predictor *PredictorPool::Retrive(size_t idx) {
   }
   return preds_[idx - 1].get();
 }
+}  // namespace services
 }  // namespace paddle_infer

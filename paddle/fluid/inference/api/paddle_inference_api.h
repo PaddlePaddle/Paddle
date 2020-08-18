@@ -42,7 +42,7 @@ class PD_INFER_DECL Tensor {
   // Can only be created by predictor->GetInputHandle(cosnt std::string& name)
   // or predictor->GetOutputHandle(cosnt std::string& name)
   Tensor() = delete;
-  explicit Tensor(std::unique_ptr<paddle::ZeroCopyTensor> tensor)
+  explicit Tensor(std::unique_ptr<paddle::ZeroCopyTensor>&& tensor)
       : tensor_(std::move(tensor)) {}
   void Reshape(const std::vector<int>& shape);
 
@@ -76,7 +76,7 @@ class PD_INFER_DECL Predictor {
   Predictor() = default;
   ~Predictor() {}
   // Use for clone
-  explicit Predictor(std::unique_ptr<paddle::PaddlePredictor> pred)
+  explicit Predictor(std::unique_ptr<paddle::PaddlePredictor>&& pred)
       : predictor_(std::move(pred)) {}
 
   explicit Predictor(const Config& config) {
@@ -109,13 +109,38 @@ PD_INFER_DECL int GetNumBytesOfDataType(DataType dtype);
 
 PD_INFER_DECL std::string GetPaddleVersion();
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
+
+template <typename T>
+void Tensor::CopyFromCpu(const T* data) {
+  tensor_->copy_from_cpu<T>(data);
+}
+
+template <typename T>
+void Tensor::CopyToCpu(T* data) {
+  return tensor_->copy_to_cpu<T>(data);
+}
+
+template <typename T>
+T* Tensor::mutable_data(PlaceType place) {
+  return tensor_->mutable_data<T>(place);
+}
+
+template <typename T>
+T* Tensor::data(PlaceType* place, int* size) const {
+  return tensor_->data<T>(place, size);
+}
+
 }  // namespace paddle_infer
 
 namespace paddle_infer {
+namespace services {
 
 class PD_INFER_DECL PredictorPool {
  public:
   PredictorPool() = delete;
+  PredictorPool(const PredictorPool&) = delete;
+  PredictorPool& operator=(const PredictorPool&) = delete;
+
   explicit PredictorPool(const Config& config, size_t size = 1);
   Predictor* Retrive(size_t idx);
 
@@ -123,5 +148,5 @@ class PD_INFER_DECL PredictorPool {
   std::shared_ptr<Predictor> main_pred_;
   std::vector<std::unique_ptr<Predictor>> preds_;
 };
-
+}  // namespace services
 }  // namespace paddle_infer

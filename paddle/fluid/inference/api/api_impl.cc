@@ -317,12 +317,11 @@ CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
   // TODO(NHZlX): Should add the link to the doc of
   // paddle_infer::CreatePredictor<paddle_infer::Config>
   if (deprecated_warning) {
-    LOG(WARNING)
-        << "The 'paddle::CreatePaddlePredictor<NativeConfig>' interface "
-           "deprecated for now, which will be discarded in a "
-           "later release or two,"
-           "please use the "
-           "'paddle_infer::CreatePredictor<paddle_infer::Config>'.";
+    LOG(WARNING) << "The 'paddle::CreatePaddlePredictor<paddle::NativeConfig>' "
+                    "is going to be deprecated in the next release, plase use "
+                    "the latest "
+                    "'paddle_infer::CreatePredictor<paddle_infer::Config>' "
+                    "instead.";
   }
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {

@@ -113,10 +113,9 @@ void PaddleBuf::Free() {
 }
 
 NativeConfig::NativeConfig() {
-  LOG(WARNING) << "The paddle::NativeConfig interface is deprecrated for now, "
-                  "which will be discarded in a "
-                  "later release or two,"
-                  "please use the paddle_infer::Config.";
+  LOG(WARNING) << "The paddle::NativeConfig interface is going to be "
+                  "deprecated in the next release, plase use the latest "
+                  "paddle_infer::Config instead.";
 }
 
 std::string get_version() {

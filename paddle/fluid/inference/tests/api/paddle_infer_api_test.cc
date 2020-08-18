@@ -34,7 +34,7 @@ TEST(Predictor, use_gpu) {
 
   auto predictor = CreatePredictor(config);
   auto pred_clone = predictor->Clone();
-  PredictorPool pred_pool(config1, 4);
+  services::PredictorPool pred_pool(config1, 4);
   auto pred2 = pred_pool.Retrive(2);
 
   std::vector<int> in_shape = {1, 3, 318, 318};
