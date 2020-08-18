@@ -116,10 +116,10 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
     This OP returns a Tensor filled with random values sampled from a normal
     distribution with ``mean`` and ``std`` (standard deviation) .
 
-    If ``mean`` is a Tensor, it is the mean of each output element’s normal distribution.
+    If ``mean`` is a Tensor, it is the mean of each output element's normal distribution.
     If ``mean`` is float, it is the mean of all output elements' normal distribution.
 
-    If ``std`` is a Tensor, it is the standard deviation of each output element’s normal distribution.
+    If ``std`` is a Tensor, it is the standard deviation of each output element's normal distribution.
     If ``std`` is float, it is the standard deviation of all output elements' normal distribution.
 
     If ``mean`` is a Tensor, the output Tensor has the same shape and data type as ``mean``.
