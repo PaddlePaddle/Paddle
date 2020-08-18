@@ -31,7 +31,6 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DECORATOR_NAMES
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
 from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data
@@ -96,7 +95,7 @@ class FunctionCache(object):
         """
         # Note: In Python2, it will raise OSError when inspect function
         # with decorator directly and function.__wrapped__ holds the actual function.
-        func = unwrap(func, DECORATOR_NAMES)
+        func = unwrap(func)
         source_code = func_to_source_code(func)
 
         # TODO(liym27):
@@ -677,7 +676,7 @@ class ProgramTranslator(object):
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_code"
         # Gets AST from dygraph function
 
-        unwrap_func = unwrap(dygraph_func, DECORATOR_NAMES)
+        unwrap_func = unwrap(dygraph_func)
         raw_code = inspect.getsource(unwrap_func)
         code = textwrap.dedent(raw_code)
         root = gast.parse(code)
