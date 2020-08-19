@@ -97,7 +97,7 @@ class TestExpandAsV2Error(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x1 = fluid.layers.data(name='x1', shape=[4], dtype="uint8")
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint32")
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
             self.assertRaises(TypeError, paddle.tensor.expand_as, x1, x2)
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
             x3.stop_gradient = False
