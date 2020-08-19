@@ -149,7 +149,7 @@ class Uniform(Distribution):
     * :math:`Z`: is the normalizing constant.
 
     The parameters `low` and `high` must be shaped in a way that supports
-    broadcasting (e.g., `high - low` is a valid operation).
+    [broadcasting](https://www.paddlepaddle.org.cn/documentation/docs/en/develop/beginners_guide/basic_concept/broadcasting_en.html) (e.g., `high - low` is a valid operation).
 
     Args:
         low(float|list|numpy.ndarray|Variable): The lower boundary of uniform distribution.The data type is float32
@@ -160,9 +160,10 @@ class Uniform(Distribution):
         .. code-block:: python
 
           import numpy as np
-          from paddle.fluid import layers
+          import paddle
           from paddle.distribution import Uniform
 
+          paddle.disable_static()
           # Without broadcasting, a single uniform distribution [3, 4]:
           u1 = Uniform(low=3.0, high=4.0)
           # 2 distributions [1, 3], [2, 4]
@@ -176,8 +177,7 @@ class Uniform(Distribution):
 
           # Complete example
           value_npdata = np.array([0.8], dtype="float32")
-          value_tensor = layers.create_tensor(dtype="float32")
-          layers.assign(value_npdata, value_tensor)
+          value_tensor = paddle.to_variable(value_npdata)
 
           uniform = Uniform([0.], [2.])
 
@@ -319,9 +319,10 @@ class Normal(Distribution):
         .. code-block:: python
           
           import numpy as np
-          from paddle.fluid import layers
+          import paddle
           from paddle.distribution import Normal
 
+          paddle.disable_static()
           # Define a single scalar Normal distribution.
           dist = Normal(loc=0., scale=3.)
           # Define a batch of two scalar valued Normals.
@@ -336,8 +337,7 @@ class Normal(Distribution):
 
           # Complete example
           value_npdata = np.array([0.8], dtype="float32")
-          value_tensor = layers.create_tensor(dtype="float32")
-          layers.assign(value_npdata, value_tensor)
+          value_tensor = paddle.to_variable(value_npdata)
 
           normal_a = Normal([0.], [1.])
           normal_b = Normal([0.5], [2.])
@@ -397,13 +397,13 @@ class Normal(Distribution):
             normal_random_tmp = nn.gaussian_random(
                 zero_tmp_shape, mean=0., std=1., seed=seed)
             output = normal_random_tmp * (zero_tmp + self.scale) + self.loc
-            return nn.reshape(output, output_shape)
+            return nn.reshape(output, output_shape, name=name)
         else:
             output_shape = shape + batch_shape
             output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed) * \
                      (tensor.zeros(output_shape, dtype=self.loc.dtype) + self.scale) + self.loc
             if self.all_arg_is_float:
-                return nn.reshape(output, shape)
+                return nn.reshape(output, shape, name=name)
             else:
                 return output
 
