@@ -98,3 +98,7 @@ java.io.IOException: Input/output error
         self.assertTrue(dirs == [])
         self.assertTrue(len(files) == 1)
         dirs, files = fs.ls_dir(os.path.abspath("./xxx/.."))
+
+
+if __name__ == '__main__':
+    unittest.main()

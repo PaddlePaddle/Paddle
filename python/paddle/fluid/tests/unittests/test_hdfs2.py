@@ -44,3 +44,7 @@ class FSTest2(FSTestBase):
         self._test_dirs(fs)
 
         self._test_touch_file(fs)
+
+
+if __name__ == '__main__':
+    unittest.main()

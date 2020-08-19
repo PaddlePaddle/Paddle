@@ -47,3 +47,7 @@ class FSTest3(FSTestBase):
         self._test_list_dir(fs)
         self._test_try_upload(fs)
         self._test_try_download(fs)
+
+
+if __name__ == '__main__':
+    unittest.main()
