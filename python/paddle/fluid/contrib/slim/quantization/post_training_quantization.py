@@ -29,6 +29,7 @@ from .quantization_pass import _out_scale_op_list
 from .quantization_pass import _get_op_input_var_names
 from .quantization_pass import _get_op_output_var_names
 from .quantization_pass import _get_output_name_index
+from .quantization_pass import _channelwise_quant_axis1_ops
 
 __all__ = ['PostTrainingQuantization', 'WeightQuantization']
 
@@ -316,6 +317,7 @@ class PostTrainingQuantization(object):
         self._out_scale_op_list = _out_scale_op_list
         self._quantized_weight_var_name = set()
         self._quantized_act_var_name = set()
+        self.weight_op_pairs = {}
         self._sampling_data = {}
         self._quantized_var_kl_threshold = {}
         self._quantized_var_min = {}
@@ -436,6 +438,8 @@ class PostTrainingQuantization(object):
         graph = IrGraph(core.Graph(self._program.desc), for_test=True)
         graph = _remove_ctrl_vars(graph)
         graph = _apply_pass(self._scope, graph, 'conv_bn_fuse_pass')
+        graph = _apply_pass(self._scope, graph, 'depthwise_conv_bn_fuse_pass')
+        graph = _apply_pass(self._scope, graph, 'conv_transpose_bn_fuse_pass')
         self._program = graph.to_program()
 
     def _collect_target_varnames(self):
@@ -446,10 +450,11 @@ class PostTrainingQuantization(object):
         # TODO(juncaipeng), consider the name_scope of skip_quant
         _logger.info("Collect quantized variable names ...")
 
-        def collect_var_name(var_name_list, persistable_var_names):
+        def collect_var_name(var_name_list, persistable_var_names, op_type):
             for var_name in var_name_list:
                 if var_name in persistable_var_names:
                     self._quantized_weight_var_name.add(var_name)
+                    self.weight_op_pairs[var_name] = op_type
                 else:
                     self._quantized_act_var_name.add(var_name)
 
@@ -462,13 +467,15 @@ class PostTrainingQuantization(object):
             # For quantized ops, sample inputs and outputs
             if op_type in self._quantizable_op_type:
                 collect_var_name(
-                    _get_op_input_var_names(op), persistable_var_names)
+                    _get_op_input_var_names(op), persistable_var_names, op_type)
                 collect_var_name(
-                    _get_op_output_var_names(op), persistable_var_names)
+                    _get_op_output_var_names(op), persistable_var_names,
+                    op_type)
             # For other op, only sample output scale
             elif op_type in self._out_scale_op_list:
                 collect_var_name(
-                    _get_op_output_var_names(op), persistable_var_names)
+                    _get_op_output_var_names(op), persistable_var_names,
+                    op_type)
 
     def _set_activation_persistable(self):
         '''
@@ -492,45 +499,75 @@ class PostTrainingQuantization(object):
         Sample the input threshold(min, max, or abs_max) in every iterations.
         '''
         assert self._algo in ["abs_max", "min_max"], \
-            "The algo should be abs_max or min_max to sample min max value."
-
+            "The algo should be abs_max or min_max for _sample_threshold."
         if self._algo == "abs_max":
-            # Only calculate abs_max value for weight for once
-            if self._quantized_var_abs_max == {}:
-                for var_name in self._quantized_weight_var_name:
-                    var_tensor = _load_variable_data(self._scope, var_name)
-                    abs_max_per_channel = []
-                    for i in range(var_tensor.shape[0]):
-                        abs_max_per_channel.append(
-                            float(np.max(np.abs(var_tensor[i]))))
-                    self._quantized_var_abs_max[var_name] = abs_max_per_channel
-            for var_name in self._quantized_act_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
-                abs_max_value = float(np.max(np.abs(var_tensor)))
-                if (var_name not in self._quantized_var_abs_max) or \
-                    (abs_max_value > self._quantized_var_abs_max[var_name]):
-                    self._quantized_var_abs_max[var_name] = abs_max_value
+            self._sample_threshold_abs_max()
         elif self._algo == "min_max":
-            if self._quantized_var_min == {} and self._quantized_var_max == {}:
-                for var_name in self._quantized_weight_var_name:
-                    var_tensor = _load_variable_data(self._scope, var_name)
-                    min_per_channel = []
-                    max_per_channle = []
-                    for i in range(var_tensor.shape[0]):
-                        min_per_channel.append(float(np.min(var_tensor[i])))
-                        max_per_channle.append(float(np.max(var_tensor[i])))
-                    self._quantized_var_min[var_name] = min_per_channel
-                    self._quantized_var_max[var_name] = max_per_channle
-            for var_name in self._quantized_act_var_name:
+            self._sample_threshold_min_max()
+
+    def _sample_threshold_abs_max(self):
+        assert self._algo == "abs_max", \
+            "The algo should be abs_max for _sample_threshold_abs_max."
+        # Only calculate abs_max value for weight for once
+        if self._quantized_var_abs_max == {}:
+            for var_name in self._quantized_weight_var_name:
                 var_tensor = _load_variable_data(self._scope, var_name)
-                min_value = float(np.min(var_tensor))
-                max_value = float(np.max(var_tensor))
-                if (var_name not in self._quantized_var_min) or \
-                    (min_value < self._quantized_var_min[var_name]):
-                    self._quantized_var_min[var_name] = min_value
-                if (var_name not in self._quantized_var_max) or \
-                    (max_value > self._quantized_var_max[var_name]):
-                    self._quantized_var_max[var_name] = max_value
+                if self._weight_quantize_type == "abs_max":
+                    abs_max_value = float(np.max(np.abs(var_tensor)))
+                elif self._weight_quantize_type == "channel_wise_abs_max":
+                    abs_max_value = []
+                    if self.weight_op_pairs[
+                            var_name] in _channelwise_quant_axis1_ops:
+                        for i in range(var_tensor.shape[1]):
+                            abs_max_value.append(
+                                float(np.max(np.abs(var_tensor[:, i]))))
+                    else:
+                        for i in range(var_tensor.shape[0]):
+                            abs_max_value.append(
+                                float(np.max(np.abs(var_tensor[i]))))
+                self._quantized_var_abs_max[var_name] = abs_max_value
+
+        for var_name in self._quantized_act_var_name:
+            var_tensor = _load_variable_data(self._scope, var_name)
+            abs_max_value = float(np.max(np.abs(var_tensor)))
+            if (var_name not in self._quantized_var_abs_max) or \
+                (abs_max_value > self._quantized_var_abs_max[var_name]):
+                self._quantized_var_abs_max[var_name] = abs_max_value
+
+    def _sample_threshold_min_max(self):
+        assert self._algo == "min_max", \
+            "The algo should be min_max for _sample_threshold_min_max."
+        if self._quantized_var_min == {} and self._quantized_var_max == {}:
+            for var_name in self._quantized_weight_var_name:
+                var_tensor = _load_variable_data(self._scope, var_name)
+                if self._weight_quantize_type == "abs_max":
+                    min_value = float(np.min(var_tensor))
+                    max_value = float(np.max(var_tensor))
+                elif self._weight_quantize_type == "channel_wise_abs_max":
+                    min_value = []
+                    max_value = []
+                    if self.weight_op_pairs[
+                            var_name] in _channelwise_quant_axis1_ops:
+                        for i in range(var_tensor.shape[1]):
+                            min_value.append(float(np.min(var_tensor[:, i])))
+                            max_value.append(float(np.max(var_tensor[:, i])))
+                    else:
+                        for i in range(var_tensor.shape[0]):
+                            min_value.append(float(np.min(var_tensor[i])))
+                            max_value.append(float(np.max(var_tensor[i])))
+                self._quantized_var_min[var_name] = min_value
+                self._quantized_var_max[var_name] = max_value
+
+        for var_name in self._quantized_act_var_name:
+            var_tensor = _load_variable_data(self._scope, var_name)
+            min_value = float(np.min(var_tensor))
+            max_value = float(np.max(var_tensor))
+            if (var_name not in self._quantized_var_min) or \
+                (min_value < self._quantized_var_min[var_name]):
+                self._quantized_var_min[var_name] = min_value
+            if (var_name not in self._quantized_var_max) or \
+                (max_value > self._quantized_var_max[var_name]):
+                self._quantized_var_max[var_name] = max_value
 
     def _save_input_threhold(self):
         '''
@@ -554,11 +591,6 @@ class PostTrainingQuantization(object):
         applied in every iteration.
         '''
         assert self._algo == "KL", "The algo should be KL to sample data."
-        for var_name in self._quantized_weight_var_name:
-            if var_name not in self._sampling_data:
-                var_tensor = _load_variable_data(self._scope, var_name)
-                self._sampling_data[var_name] = var_tensor
-
         if self._is_use_cache_file:
             for var_name in self._quantized_act_var_name:
                 var_tensor = _load_variable_data(self._scope, var_name)
@@ -584,15 +616,20 @@ class PostTrainingQuantization(object):
 
         # Abs_max threshold for weights
         for var_name in self._quantized_weight_var_name:
-            weight_data = self._sampling_data[var_name]
-            weight_threshold = None
+            weight_data = _load_variable_data(self._scope, var_name)
             if self._weight_quantize_type == "abs_max":
-                weight_threshold = np.max(np.abs(weight_data))
+                weight_threshold = float(np.max(np.abs(weight_data)))
             elif self._weight_quantize_type == "channel_wise_abs_max":
                 weight_threshold = []
-                for i in range(weight_data.shape[0]):
-                    abs_max_value = np.max(np.abs(weight_data[i]))
-                    weight_threshold.append(abs_max_value)
+                if self.weight_op_pairs[
+                        var_name] in _channelwise_quant_axis1_ops:
+                    for i in range(weight_data.shape[1]):
+                        weight_threshold.append(
+                            float(np.max(np.abs(weight_data[:, i]))))
+                else:
+                    for i in range(weight_data.shape[0]):
+                        weight_threshold.append(
+                            float(np.max(np.abs(weight_data[i]))))
             self._quantized_var_kl_threshold[var_name] = weight_threshold
 
         # KL threshold for activations
