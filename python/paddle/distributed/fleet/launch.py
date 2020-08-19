@@ -189,7 +189,7 @@ def get_gpus(gpus):
                         "CUDA_VISIBLE_DEVICES:{}".format(
                             gpus, res_gpus, cuda_visible_devices_list))
 
-    return gpus
+    return res_gpus
 
 
 def launch_collective(args):
