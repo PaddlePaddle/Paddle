@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...device import get_cudnn_version
+from ...fluid.framework import core, in_dygraph_mode, Variable
+from ...fluid.layer_helper import LayerHelper
+from ...fluid.data_feeder import check_variable_and_dtype
+
 # TODO: define specitial functions used in computer vision task  
 from ...fluid.layers import affine_channel  #DEFINE_ALIAS
-from ...fluid.layers import affine_grid  #DEFINE_ALIAS
 from ...fluid.layers import anchor_generator  #DEFINE_ALIAS
 from ...fluid.layers import bipartite_match  #DEFINE_ALIAS
 from ...fluid.layers import box_clip  #DEFINE_ALIAS
@@ -89,3 +93,87 @@ __all__ = [
     'yolo_box',
     'yolov3_loss'
 ]
+
+
+def affine_grid(theta, out_shape, align_corners=True, name=None):
+    """
+    It generates a grid of (x,y) coordinates using the parameters of
+    the affine transformation that correspond to a set of points where
+    the input feature map should be sampled to produce the transformed
+    output feature map.
+
+    Args:
+        theta (Variable) - A Tensor with shape [N, 2, 3]. It contains a batch of affine transform parameters.
+                           The data type can be float32 or float64.
+        out_shape (Variable | list | tuple): The shape of target output with format [batch_size, channel, height, width].
+                                             ``out_shape`` can be a Tensor or a list or tuple. The data
+                                             type must be int32.
+        align_corners(bool): Whether to align corners of target feature map and source feature map. Default: True.
+        name(str|None): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A Tensor with shape [batch_size, H, W, 2] while 'H' and 'W' are the height and width of feature map in affine transformation. The data type is the same as `theta`.
+
+    Raises:
+        ValueError: If the type of arguments is not supported.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+            
+            paddle.disable_static()
+            place = paddle.CPUPlace()
+            theta_shape = [20, 2, 3]
+            theta = np.random.randn(*theta_shape).astype("float32")
+            theta_var = paddle.to_variable(theta)
+            y_var = F.affine_grid(
+                    theta_var,
+                    [20, 2, 5, 5],
+                    align_corners=False)
+            y_np = y_var.numpy()
+            print(y_np)
+    """
+    helper = LayerHelper('affine_grid')
+
+    check_variable_and_dtype(theta, 'theta', ['float32', 'float64'],
+                             'affine_grid')
+
+    if get_cudnn_version() >= 6000 and align_corners:
+        use_cudnn = True
+    else:
+        use_cudnn = False
+
+    if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
+            isinstance(out_shape, Variable)):
+        raise ValueError("The out_shape should be a list, tuple or Variable.")
+
+    if in_dygraph_mode():
+        _out_shape = out_shape.numpy().tolist() if isinstance(
+            out_shape, Variable) else out_shape
+        return core.ops.affine_grid(theta, "output_shape", _out_shape,
+                                    "align_corners", align_corners, "use_cudnn",
+                                    use_cudnn)
+
+    if not isinstance(theta, Variable):
+        raise ValueError("The theta should be a Variable.")
+
+    out = helper.create_variable_for_type_inference(theta.dtype)
+    ipts = {'Theta': theta}
+    attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
+    if isinstance(out_shape, Variable):
+        ipts['OutputShape'] = out_shape
+        check_variable_and_dtype(out_shape, 'out_shape', ['int32'],
+                                 'affine_grid')
+    else:
+        attrs['output_shape'] = out_shape
+
+    helper.append_op(
+        type='affine_grid',
+        inputs=ipts,
+        outputs={'Output': out},
+        attrs=None if len(attrs) == 0 else attrs)
+    return out

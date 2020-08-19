@@ -9081,8 +9081,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     return out
 
 
-def affine_grid(theta, out_shape, name=None, align_corners=True,
-                use_cudnn=True):
+def affine_grid(theta, out_shape, name=None):
     """
     It generates a grid of (x,y) coordinates using the parameters of
     the affine transformation that correspond to a set of points where
@@ -9096,9 +9095,6 @@ def affine_grid(theta, out_shape, name=None, align_corners=True,
                                              ``out_shape`` can be a Tensor or a list or tuple. The data
                                              type must be int32.
         name(str|None): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        align_corners(bool): Whether to align corners of target feature map and source feature map. Default: True.
-        use_cudnn(bool): It will ignore `align_corners` and compute in align corners mode when use_cudnn is true.
-                         Default: True.
 
     Returns:
         Variable: A Tensor with shape [batch_size, H, W, 2] while 'H' and 'W' are the height and width of feature map in affine transformation. The data type is the same as `theta`.
@@ -9140,7 +9136,7 @@ def affine_grid(theta, out_shape, name=None, align_corners=True,
 
     out = helper.create_variable_for_type_inference(theta.dtype)
     ipts = {'Theta': theta}
-    attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
+    attrs = {}
     if isinstance(out_shape, Variable):
         ipts['OutputShape'] = out_shape
         check_variable_and_dtype(out_shape, 'out_shape', ['int32'],
