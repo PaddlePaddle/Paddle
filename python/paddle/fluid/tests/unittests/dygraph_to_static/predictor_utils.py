@@ -24,11 +24,13 @@ from paddle.fluid.core import create_paddle_predictor
 
 
 class PredictorTools(object):
-    ''' Paddle-Inference predictor
+    '''
+    Paddle-Inference predictor
     '''
 
     def __init__(self, model_path, params_file, feeds_var):
-        '''__init__
+        '''
+        __init__
         '''
         self.model_path = model_path
         self.params_file = params_file
@@ -59,13 +61,13 @@ class PredictorTools(object):
         return config
 
     def _get_analysis_outputs(self, config):
-        """
+        '''
         Return outputs of paddle inference
         Args:
             config (AnalysisConfig): predictor configs
         Returns:
             outs (numpy array): forward netwrok prediction outputs
-        """
+        '''
         predictor = create_paddle_predictor(config)
         tensor_shapes = predictor.get_input_tensor_shape()
         names = predictor.get_input_names()
@@ -92,7 +94,8 @@ class PredictorTools(object):
         return outs
 
     def __call__(self):
-        '''__call__
+        '''
+        __call__
         '''
         config = self._load_model_and_set_config()
         outputs = self._get_analysis_outputs(config)
