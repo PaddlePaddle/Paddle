@@ -67,9 +67,9 @@ class Distribution(object):
         """
         Argument validation for distribution args
         Args:
-            value (float, list, numpy.ndarray, Variable)
+            value (float, list, numpy.ndarray, Tensor)
         Raises
-            ValueError: if one argument is Variable, all arguments should be Variable
+            ValueError: if one argument is Tensor, all arguments should be Tensor
         """
         is_variable = False
         is_number = False
@@ -81,18 +81,18 @@ class Distribution(object):
 
         if is_variable and is_number:
             raise ValueError(
-                'if one argument is Variable, all arguments should be Variable')
+                'if one argument is Tensor, all arguments should be Tensor')
 
         return is_variable
 
     def _to_variable(self, *args):
         """
-        Argument convert args to Variable
+        Argument convert args to Tensor
 
         Args:
-            value (float, list, numpy.ndarray, Variable)
+            value (float, list, numpy.ndarray, Tensor)
         Returns:
-            Variable of args.
+            Tensor of args.
         """
         numpy_args = []
         variable_args = []
@@ -104,7 +104,7 @@ class Distribution(object):
                 if isinstance(arg, cls):
                     valid_arg = True
                     break
-            assert valid_arg, "type of input args must be float, list, numpy.ndarray or Variable."
+            assert valid_arg, "type of input args must be float, list, numpy.ndarray or Tensor."
             if isinstance(arg, float):
                 arg = np.zeros(1) + arg
             arg_np = np.array(arg)
@@ -152,8 +152,8 @@ class Uniform(Distribution):
     [broadcasting](https://www.paddlepaddle.org.cn/documentation/docs/en/develop/beginners_guide/basic_concept/broadcasting_en.html) (e.g., `high - low` is a valid operation).
 
     Args:
-        low(float|list|numpy.ndarray|Variable): The lower boundary of uniform distribution.The data type is float32
-        high(float|list|numpy.ndarray|Variable): The higher boundary of uniform distribution.The data type is float32
+        low(float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is float32
+        high(float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is float32
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -177,7 +177,7 @@ class Uniform(Distribution):
 
           # Complete example
           value_npdata = np.array([0.8], dtype="float32")
-          value_tensor = paddle.to_variable(value_npdata)
+          value_tensor = paddle.to_tensor(value_npdata)
 
           uniform = Uniform([0.], [2.])
 
@@ -217,7 +217,7 @@ class Uniform(Distribution):
           seed (int): Python integer number.
 
         Returns:
-          Variable: A tensor with prepended dimensions shape.The data type is float32.
+          Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
         check_type(shape, 'shape', (list), 'sample')
@@ -249,10 +249,10 @@ class Uniform(Distribution):
         """Log probability density/mass function.
 
         Args:
-          value (Variable): The input tensor.
+          value (Tensor): The input tensor.
 
         Returns:
-          Variable: log probability.The data type is same with value.
+          Tensor: log probability.The data type is same with value.
 
         """
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
@@ -269,20 +269,26 @@ class Uniform(Distribution):
         """Probability density/mass function.
 
         Args:
-          value (Variable): The input tensor.
+          value (Tensor): The input tensor.
 
         Returns:
-          Variable: probability.The data type is same with value.
+          Tensor: probability.The data type is same with value.
 
         """
         name = self.name + '_probs'
-        return ops.exp(self.log_prob(value))
+        lb_bool = control_flow.less_than(self.low, value)
+        ub_bool = control_flow.less_than(value, self.high)
+        lb = tensor.cast(lb_bool, dtype=value.dtype)
+        ub = tensor.cast(ub_bool, dtype=value.dtype)
+        output = (lb * ub) / (self.high - self.low)
+        return output
+        # return ops.exp(self.log_prob(value))
 
     def entropy(self):
         """Shannon entropy in nats.
 
         Returns:
-          Variable: Shannon entropy of uniform distribution.The data type is float32.
+          Tensor: Shannon entropy of uniform distribution.The data type is float32.
 
         """
         name = self.name + '_entropy'
@@ -311,8 +317,8 @@ class Normal(Distribution):
     * :math:`Z`: is the normalization constant.
 
     Args:
-        loc(float|list|numpy.ndarray|Variable): The mean of normal distribution.The data type is float32.
-        scale(float|list|numpy.ndarray|Variable): The std of normal distribution.The data type is float32.
+        loc(float|list|numpy.ndarray|Tensor): The mean of normal distribution.The data type is float32.
+        scale(float|list|numpy.ndarray|Tensor): The std of normal distribution.The data type is float32.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -337,7 +343,7 @@ class Normal(Distribution):
 
           # Complete example
           value_npdata = np.array([0.8], dtype="float32")
-          value_tensor = paddle.to_variable(value_npdata)
+          value_tensor = paddle.to_tensor(value_npdata)
 
           normal_a = Normal([0.], [1.])
           normal_b = Normal([0.5], [2.])
@@ -379,7 +385,7 @@ class Normal(Distribution):
           seed (int): Python integer number.
 
         Returns:
-          Variable: A tensor with prepended dimensions shape.The data type is float32.
+          Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
 
@@ -397,13 +403,13 @@ class Normal(Distribution):
             normal_random_tmp = nn.gaussian_random(
                 zero_tmp_shape, mean=0., std=1., seed=seed)
             output = normal_random_tmp * (zero_tmp + self.scale) + self.loc
-            return nn.reshape(output, output_shape, name=name)
+            return nn.reshape(output, output_shape)
         else:
             output_shape = shape + batch_shape
             output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed) * \
                      (tensor.zeros(output_shape, dtype=self.loc.dtype) + self.scale) + self.loc
             if self.all_arg_is_float:
-                return nn.reshape(output, shape, name=name)
+                return nn.reshape(output, shape)
             else:
                 return output
 
@@ -411,7 +417,7 @@ class Normal(Distribution):
         """Shannon entropy in nats.
 
         Returns:
-          Variable: Shannon entropy of normal distribution.The data type is float32.
+          Tensor: Shannon entropy of normal distribution.The data type is float32.
 
         """
         name = self.name + '_entropy'
@@ -425,10 +431,10 @@ class Normal(Distribution):
         """Log probability density/mass function.
 
         Args:
-          value (Variable): The input tensor.
+          value (Tensor): The input tensor.
 
         Returns:
-          Variable: log probability.The data type is same with value.
+          Tensor: log probability.The data type is same with value.
 
         """
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
@@ -444,14 +450,20 @@ class Normal(Distribution):
         """Probability density/mass function.
 
         Args:
-          value (Variable): The input tensor.
+          value (Tensor): The input tensor.
 
         Returns:
-          Variable: probability.The data type is same with value.
+          Tensor: probability.The data type is same with value.
 
         """
         name = self.name + '_probs'
-        return ops.exp(self.log_prob(value))
+        # output = ops.exp(self.log_prob(value))
+        var = self.scale * self.scale
+        output = ops.exp(-1. * ((value - self.loc) * (value - self.loc)) /
+                         (2. * var)) / (math.sqrt(2 * math.pi) * self.scale)
+        # output.name = name
+        return output
+        # return ops.exp(self.log_prob(value))
 
     def kl_divergence(self, other):
         """The KL-divergence between two normal distributions.
@@ -460,7 +472,7 @@ class Normal(Distribution):
             other (Normal): instance of Normal.
 
         Returns:
-            Variable: kl-divergence between two normal distributions.The data type is float32.
+            Tensor: kl-divergence between two normal distributions.The data type is float32.
 
         """
 
