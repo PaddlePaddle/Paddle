@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <cublas.h>
 #include <algorithm>
 #include <functional>
 #include <vector>
