@@ -42,13 +42,23 @@ template <typename T>
 static void CalcGridLocations(const platform::CPUDeviceContext& ctx,
                               const Tensor& grid, Tensor* x_w, Tensor* x_e,
                               Tensor* y_n, Tensor* y_s, Tensor* d_w,
-                              Tensor* d_e, Tensor* d_n, Tensor* d_s) {
+                              Tensor* d_e, Tensor* d_n, Tensor* d_s,
+                              bool align_corners) {
   auto& place = *ctx.eigen_device();
   const int n = grid.dims()[0];
   const int h = grid.dims()[1];
   const int w = grid.dims()[2];
-  const T x_max = static_cast<T>(w - 1);
-  const T y_max = static_cast<T>(h - 1);
+
+  T x_scale = static_cast<T>(w - 1);
+  T y_scale = static_cast<T>(h - 1);
+
+  if (!align_corners) {
+    x_scale = static_cast<T>(w);
+    y_scale = static_cast<T>(h);
+  }
+
+  x_scale *= 0.5;
+  y_scale *= 0.5;
 
   // split grid with shape (n, h, w, 2) into (x, y) by the 3rd Dim
   Tensor grid_x, grid_y;
@@ -66,17 +76,24 @@ static void CalcGridLocations(const platform::CPUDeviceContext& ctx,
   Tensor half_xmax;
   Tensor half_ymax;
   half_xmax.mutable_data<T>({n, h, w}, ctx.GetPlace());
-  auto half_xmax_t =
-      EigenTensor<T, 3>::From(half_xmax).setConstant(0.5 * x_max);
+  auto half_xmax_t = EigenTensor<T, 3>::From(half_xmax).setConstant(x_scale);
   half_ymax.mutable_data<T>({n, h, w}, ctx.GetPlace());
-  auto half_ymax_t =
-      EigenTensor<T, 3>::From(half_ymax).setConstant(0.5 * y_max);
+  auto half_ymax_t = EigenTensor<T, 3>::From(half_ymax).setConstant(y_scale);
 
   // scale grid to [0, h-1/w-1]
   auto grid_x_t = EigenTensor<T, 3>::From(grid_x);
   auto grid_y_t = EigenTensor<T, 3>::From(grid_y);
   grid_x_t.device(place) = (grid_x_t + ones_t) * half_xmax_t;
   grid_y_t.device(place) = (grid_y_t + ones_t) * half_ymax_t;
+
+  if (!align_corners) {
+    grid_x_t.device(place) = grid_x_t - 0.5;
+    grid_y_t.device(place) = grid_y_t - 0.5;
+  }
+
+  // Clipping grid_x_t and grid_y_t
+  grid_x_t.clip(0, w - 1);
+  grid_y_t.clip(0, h - 1);
 
   // calculate coords of 4 corner points
   x_w->mutable_data<T>({n, h, w}, ctx.GetPlace());
