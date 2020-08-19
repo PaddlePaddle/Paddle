@@ -368,3 +368,7 @@ REGISTER_PASS(conv_transpose_bn_fuse_pass,
               paddle::framework::ir::ConvTransposeBNFusePass);
 REGISTER_PASS(conv_transpose_eltwiseadd_bn_fuse_pass,
               paddle::framework::ir::ConvTransposeEltwiseAddBNFusePass);
+REGISTER_PASS(depthwise_conv_bn_fuse_pass,
+              paddle::framework::ir::DepthwiseConvBNFusePass);
+REGISTER_PASS(depthwise_conv_eltwiseadd_bn_fuse_pass,
+              paddle::framework::ir::DepthwiseConvEltwiseAddBNFusePass);
