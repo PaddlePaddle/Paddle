@@ -480,5 +480,15 @@ class TestModelFunction(unittest.TestCase):
         shutil.rmtree(save_dir)
 
 
+class TestRaiseError(unittest.TestCase):
+    def test_input_without_name(self):
+        net = MyModel(classifier_activation=None)
+
+        inputs = [Input([None, 10], 'float32')]
+        labels = [Input([None, 1], 'int64', 'label')]
+        with self.assertRaises(ValueError):
+            model = Model(net, inputs, labels)
+
+
 if __name__ == '__main__':
     unittest.main()
