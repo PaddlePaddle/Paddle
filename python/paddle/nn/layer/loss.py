@@ -28,9 +28,6 @@ __all__ = [
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
     """
-	:alias_main: paddle.nn.CrossEntropyLoss
-	:alias: paddle.nn.CrossEntropyLoss,paddle.nn.layer.CrossEntropyLoss,paddle.nn.layer.loss.CrossEntropyLoss
-
     This operator implements the cross entropy loss function. This OP combines ``LogSoftmax``,
     and ``NLLLoss`` together.
 
@@ -62,14 +59,14 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         weight (Variable, optional): Weight tensor, a manual rescaling weight given
             to each class and the shape is (C). It has the same dimensions as class
 	    number and the data type is float32, float64. Default is ``'None'``.
+        ignore_index (int64, optional): Specifies a target value that is ignored
+            and does not contribute to the input gradient. Default is ``-100``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-        ignore_index (int64, optional): Specifies a target value that is ignored
-            and does not contribute to the input gradient. Default is ``-100``.
 
     Returns:
         The tensor variable storing the cross_entropy_loss of input and label.
@@ -78,51 +75,28 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
     Examples:
         .. code-block:: python
-
-            # declarative mode
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
-
-            input = fluid.data(name='input', shape=[5, 100], dtype='float64')
-            label = fluid.data(name='label', shape=[5], dtype='int64')
-            weight = fluid.data(name='weight', shape=[100], dtype='float64')
-            ce_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight, reduction='mean')
-            output = ce_loss(input, label)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            paddle.disable_static()
             input_data = np.random.random([5, 100]).astype("float64")
             label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
             weight_data = np.random.random([100]).astype("float64")
-            output = exe.run(fluid.default_main_program(),
-                        feed={"input": input_data, "label": label_data,"weight": weight_data},
-                        fetch_list=[output],
-                        return_numpy=True)
-            print(output)
+            input =  paddle.to_tensor(input_data)
+            label =  paddle.to_tensor(label_data)
+            weight = paddle.to_tensor(weight_data)
+            ce_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight)
+            output = ce_loss(input, label)
+            print(output.numpy())
 
-            # imperative mode
-            import paddle.fluid.dygraph as dg
-            with dg.guard(place) as g:
-                input = dg.to_variable(input_data)
-                label = dg.to_variable(label_data)
-                weight = dg.to_variable(weight_data)
-                ce_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight, reduction='mean')
-                output = ce_loss(input, label)
-                print(output.numpy())
     """
 
-    def __init__(self, weight=None, reduction='mean', ignore_index=-100):
+    def __init__(self, weight=None, ignore_index=-100, reduction='mean'):
         super(CrossEntropyLoss, self).__init__()
         self.weight = weight
         self.reduction = reduction
         self.ignore_index = ignore_index
 
     def forward(self, input, label):
-        fluid.data_feeder.check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], 'cross_entropy_loss')
-        fluid.data_feeder.check_variable_and_dtype(label, 'label', ['int64'],
-                                                   'cross_entropy_loss')
 
         if self.reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
