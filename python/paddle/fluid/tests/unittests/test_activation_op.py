@@ -1440,18 +1440,6 @@ class TestSoftplusAPI(unittest.TestCase):
         for r in res:
             self.assertEqual(np.allclose(out_ref, r), True)
 
-    def test_static_api_default_options(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_shape, self.dtype)
-            out1 = F.softplus(x)
-            softplus = paddle.nn.Softplus()
-            out2 = softplus(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-        out_ref = ref_softplus(self.x_np)
-        for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
-
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
@@ -1463,18 +1451,7 @@ class TestSoftplusAPI(unittest.TestCase):
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
 
-    def test_dygraph_api_default_options(self):
-        paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.softplus(x)
-        softplus = paddle.nn.Softplus()
-        out2 = softplus(x)
-        out_ref = ref_softplus(self.x_np)
-        for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
-        paddle.enable_static()
-
-    def test_fluid_api_default_options(self):
+    def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_shape, self.dtype)
             out = fluid.layers.softplus(x)
@@ -1544,18 +1521,6 @@ class TestSoftshrinkAPI(unittest.TestCase):
         for r in res:
             self.assertEqual(np.allclose(out_ref, r), True)
 
-    def test_static_api_default_options(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_shape, self.dtype)
-            out1 = F.softshrink(x)
-            softshrink = paddle.nn.Softshrink()
-            out2 = softshrink(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-        out_ref = ref_softshrink(self.x_np)
-        for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
-
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
@@ -1567,17 +1532,6 @@ class TestSoftshrinkAPI(unittest.TestCase):
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
 
-    def test_dygraph_api_default_options(self):
-        paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.softshrink(x)
-        softshrink = paddle.nn.Softshrink()
-        out2 = softshrink(x)
-        out_ref = ref_softshrink(self.x_np)
-        for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
-        paddle.enable_static()
-
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_shape, self.dtype)
@@ -1585,15 +1539,6 @@ class TestSoftshrinkAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_softshrink(self.x_np, self.threshold)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-    def test_fluid_api_default_options(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_shape, self.dtype)
-            out = fluid.layers.softshrink(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_softshrink(self.x_np)
         self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
