@@ -937,15 +937,17 @@ set +x
         rm -f $tmp_dir/*
         exec_times=0
         retry_unittests_record=''
+        retry_time=3
+        exec_time_display_array=('first' 'second' 'third')
         if [ -n "$failed_test_lists" ];then
-            while ( [ $exec_times -lt 3 ] && [ -n "${failed_test_lists}" ] )
+            while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
                 do
                     
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
                     failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
                     read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' )
                     echo "========================================="
-                    echo "This is $[$exec_times+1] re-run"
+                    echo "This is the ${exec_time_display_array[$exec_times]} time to re-run"
                     echo "========================================="
                     echo "The following unittest will be re-run:"
                     echo "${failed_test_lists_ult}"
@@ -1009,9 +1011,9 @@ set +x
         if [[ "$EXIT_CODE" != "0" ]]; then
             if [[ "$failed_test_lists" == "" ]]; then
                 echo "========================================"
-                echo "Run failure sample exists,and it re-run is successful"
+                echo "There are failed tests, which have been successful after re-run:"
                 echo "========================================"
-                echo "The following tests was re-run:"
+                echo "The following tests have been re-ran:"
                 echo "${retry_unittests_record}"
             else
                 failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
