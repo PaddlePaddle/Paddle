@@ -93,8 +93,19 @@ class TestExpandAsOpRank4(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestExpandAsV2Error(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x1 = fluid.layers.data(name='x1', shape=[4], dtype="uint8")
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint32")
+            self.assertRaises(TypeError, paddle.tensor.expand_as, x1, x2)
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
+            x3.stop_gradient = False
+            self.assertRaises(ValueError, paddle.tensor.expand, x3, x2)
+
+
 # Test python API
-class TestExpandAPI(unittest.TestCase):
+class TestExpandAsV2API(unittest.TestCase):
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
