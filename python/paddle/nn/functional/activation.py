@@ -17,7 +17,6 @@ from ...fluid.layers import brelu  #DEFINE_ALIAS
 from ...fluid.layers import elu  #DEFINE_ALIAS
 from ...fluid.layers import erf  #DEFINE_ALIAS
 from ...fluid.layers import gelu  #DEFINE_ALIAS
-from ...fluid.layers import hard_shrink  #DEFINE_ALIAS
 from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
@@ -30,6 +29,7 @@ from ...fluid.layers import softplus  #DEFINE_ALIAS
 from ...fluid.layers import softshrink  #DEFINE_ALIAS
 from ...fluid.layers import softsign  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
+from ...fluid.layers import sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import tanh_shrink  #DEFINE_ALIAS
 from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
 
@@ -38,7 +38,7 @@ __all__ = [
     'elu',
     'erf',
     'gelu',
-    'hard_shrink',
+    'hardshrink',
     'hard_sigmoid',
     'hard_swish',
     'hsigmoid',
@@ -49,12 +49,12 @@ __all__ = [
     'relu',
     'relu6',
     'selu',
-    'sigmoid',
     'soft_relu',
     'softmax',
     'softplus',
     'softshrink',
     'softsign',
+    'sigmoid',
     'swish',
     'tanh_shrink',
     'thresholded_relu',
@@ -65,8 +65,61 @@ import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
-from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
+
+
+def hardshrink(x, threshold=0.5, name=None):
+    """
+    hard shrinkage activation
+
+    .. math::
+
+        hardshrink(x)=
+            \left\{
+            \begin{aligned}
+            &x, & & if \ x > threshold \\
+            &x, & & if \ x < -threshold \\
+            &0, & & if \ others
+            \end{aligned}
+            \right.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        threshold (float, optional): The value of threshold for hardthrink. Default is 0.5
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_variable(np.array([-1, 0.3, 2.5]))
+        out = F.hardshrink(x) # [-1., 0., 2.5]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.hard_shrink(x, 'threshold', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hardshrink')
+    helper = LayerHelper('hardshrink', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='hard_shrink',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
+    return out
 
 
 def hsigmoid(input,
@@ -244,67 +297,6 @@ def relu(input, inplace=False, name=None):
     return outs
 
 
-def sigmoid(input, inplace=False, name=None):
-    """
-	:alias_main: paddle.nn.functional.sigmoid
-	:alias: paddle.nn.functional.sigmoid,paddle.nn.functional.activation.sigmoid
-
-    Sigmoid Activation.
-
-    .. math:
-
-        output = \frac{1}{1 + e^{-input}}
-    
-    Parameters:
-        input (Variable): The input variable. A multi-dimension Tensor with type float16, float32, or float64.
-        inplace (bool, optional): If inplace is True, the input and output are the same variable.
-            Otherwise, the input and output of are different variables. Default: False. Note that if x is
-            more than one OPs' input, inplace must be False.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-    
-    Returns:
-        Output of sigmoid operator, a Tensor with shape same as input
-    
-    Examples:
-        .. code-block:: python
-          
-          import paddle.fluid as fluid
-          import paddle.nn.functional as functional
-          import numpy as np
-          # In the static graph mode
-          input = fluid.data(name="input", shape=[None, 4])
-          output = functional.sigmoid(input)
-          place = fluid.CPUPlace()
-          exe = fluid.Executor(place)
-          exe.run(fluid.default_startup_program())
-          input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
-          output_data = exe.run(feed={"input": input_data},
-                                fetch_list=[output])
-          print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
-          # In the dynamic graph mode
-          with fluid.dygraph.guard():
-              input = fluid.dygraph.to_variable(input_data)
-              output = functional.sigmoid(input)
-              print(output) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
-    """
-
-    if in_dygraph_mode():
-        if inplace:
-            warnings.warn(
-                "Inplace on sigmoid is not allowed and will be discarded in dygraph mode currently."
-            )
-        return core.ops.sigmoid(input)
-
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'sigmoid')
-    helper = LayerHelper("sigmoid", **locals())
-    outputs = helper.create_variable_for_type_inference(input.dtype)
-    helper.append_op(
-        type='sigmoid', inputs={'X': [input]}, outputs={'Out': outputs})
-    return outputs
-
-
 def softmax(x, axis=-1, name=None):
     """
     This operator implements the softmax layer. The calculation process is as follows:
@@ -401,7 +393,7 @@ def softmax(x, axis=-1, name=None):
         import paddle.nn.functional as F
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         x = np.array([[[2.0, 3.0, 4.0, 5.0],
                        [3.0, 4.0, 5.0, 6.0],
@@ -409,7 +401,7 @@ def softmax(x, axis=-1, name=None):
                       [[1.0, 2.0, 3.0, 4.0],
                        [5.0, 6.0, 7.0, 8.0],
                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
-        x = paddle.imperative.to_variable(x)
+        x = paddle.to_tensor(x)
         out = F.softmax(x)
         # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
@@ -421,12 +413,10 @@ def softmax(x, axis=-1, name=None):
     return paddle.fluid.layers.softmax(input=x, axis=axis, name=name)
 
 
-def log_softmax(input, axis=None, dtype=None, name=None):
+def log_softmax(x, axis=-1, dtype=None, name=None):
     """
-	:alias_main: paddle.nn.functional.log_softmax
-	:alias: paddle.nn.functional.log_softmax,paddle.nn.functional.activation.log_softmax
-
-    This operator implements the log_softmax layer. The calculation process is as follows:
+    This operator implements the log_softmax layer. The calculation process is
+    as follows:
 
     .. math::
 
@@ -434,78 +424,85 @@ def log_softmax(input, axis=None, dtype=None, name=None):
                   = log(\\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
 
     Parameters:
-        input (Variable): The input variable. A multi-dimension Tensor with type float32, or float64.
-        axis (int, optional): The index of dimension to perform softmax calculations, it should be in
-            range :math:`[-1, rank-1]`, while :math:`rank` is the rank of input variable. Default: None. 
-            None and -1 means the last dimension.
-        dtype (np.dtype|core.VarDesc.VarType|str): The desired data type of returned tensor. If specified,
-            the input tensor is casted to dtype before the operation is performed. This is useful for
-            preventing data type overflows. Default: None. Supported dtype: float32 or float64
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
+        x (Tensor): The input Tensor with data type float32, float64.
+        axis (int, optional): The axis along which to perform log_softmax
+            calculations. It should be in range [-D, D), where D is the
+            dimensions of ``x`` . If ``axis`` < 0, it works the same way as
+            :math:`axis + D` . Default is -1.
+        dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
+            type of the output tensor. If dtype is specified, ``x`` is casted
+            to ``dtype`` before the operation is performed. This is useful for 
+            preventing data type overflows. Supported dtype: float32, float64.
+            If ``dtype`` is None, the output Tensor has the same dtype as x.
+            Default is None.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
  
     Returns:
-        Variable: ``Tensor`` indicates the output of softmax. The data type and shape are the same as ``input``.
+        A Tensor with the same shape and data type (use ``dtype`` if it is
+        specified) as x.
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import paddle.nn.functional as F
-          import numpy as np
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
 
-          data = np.array([[[-2.0, 3.0, -4.0, 5.0],
-                            [3.0, -4.0, 5.0, -6.0],
-                            [-7.0, -8.0, 8.0, 9.0]],
-                           [[1.0, -2.0, -3.0, 4.0],
-                            [-5.0, 6.0, 7.0, -8.0],
-                            [6.0, 7.0, 8.0, 9.0]]]).astype('float32')
-          with fluid.dygraph.guard():
-              data = fluid.dygraph.to_variable(data)
-              res = F.log_softmax(data, -1)
-              # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
-              #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
-              #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
-              #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
-              #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
-              #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
+        paddle.disable_static()
+
+        x = np.array([[[-2.0, 3.0, -4.0, 5.0],
+                        [3.0, -4.0, 5.0, -6.0],
+                        [-7.0, -8.0, 8.0, 9.0]],
+                        [[1.0, -2.0, -3.0, 4.0],
+                        [-5.0, 6.0, 7.0, -8.0],
+                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
+        x = paddle.to_tensor(x)
+        out1 = F.log_softmax(x)
+        out2 = F.log_softmax(x, dtype='float64')
+        # out1's data type is float32; out2's data type is float64
+        # out1 and out2's value is as follows:
+        # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
+        #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
+        #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
+        #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
+        #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
+        #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
     """
 
-    axis = -1 if axis is None else axis
-    dtype = convert_np_dtype_to_dtype_(dtype) if dtype is not None else dtype
+    if axis is None:
+        axis = -1
+    if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        outs_cast = input if dtype is None \
-            else core.ops.cast(input, 'in_dtype', input.dtype, 'out_dtype', dtype)
-        outs_softmax = core.ops.softmax(outs_cast, 'axis', axis, 'use_cudnn',
-                                        False)
-        return core.ops.log(outs_softmax)
+        if dtype is not None:
+            x = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return core.ops.log_softmax(x, 'axis', axis)
 
     if dtype is None:
-        check_variable_and_dtype(
-            input, 'input', ['float16', 'float32', 'float64'], 'log_softmax')
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'log_softmax')
+    else:
+        check_dtype(dtype, 'dtype', ['float32', 'float64'], 'log_softmax',
+                    'If dtype is not None, it only support float32 or float64.')
 
     helper = LayerHelper("log_softmax", **locals())
-    outs_cast = input
+    out_cast = x
     if dtype is not None:
-        outs_cast = helper.create_variable_for_type_inference(dtype)
+        out_cast = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type='cast',
-            inputs={'X': input},
-            outputs={'Out': outs_cast},
-            attrs={'in_dtype': input.dtype,
+            inputs={'X': x},
+            outputs={'Out': out_cast},
+            attrs={'in_dtype': x.dtype,
                    'out_dtype': dtype})
 
-    outs_softmax = helper.create_variable_for_type_inference(outs_cast.dtype)
+    out = helper.create_variable_for_type_inference(out_cast.dtype)
     helper.append_op(
-        type='softmax',
-        inputs={'X': outs_cast},
-        outputs={'Out': outs_softmax},
-        attrs={'axis': axis,
-               'use_cudnn': False})
+        type='log_softmax',
+        inputs={'X': out_cast},
+        outputs={'Out': out},
+        attrs={'axis': axis})
 
-    outs_log = helper.create_variable_for_type_inference(outs_softmax.dtype)
-    helper.append_op(
-        type='log', inputs={'X': outs_softmax}, outputs={'Out': outs_log})
-
-    return outs_log
+    return out

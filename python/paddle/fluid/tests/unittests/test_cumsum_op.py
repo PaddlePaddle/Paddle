@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-from paddle.imperative import to_variable
+from paddle import to_variable
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -83,16 +83,18 @@ class TestCumsumOp(unittest.TestCase):
             self.assertTrue(np.allclose(z, out[5]))
 
     def test_cpu(self):
-        with paddle.imperative.guard(paddle.fluid.CPUPlace()):
-            self.run_cases()
+        paddle.disable_static(paddle.fluid.CPUPlace())
+        self.run_cases()
+        paddle.enable_static()
 
         self.run_static()
 
     def test_gpu(self):
         if not fluid.core.is_compiled_with_cuda():
             return
-        with paddle.imperative.guard(paddle.fluid.CUDAPlace(0)):
-            self.run_cases()
+        paddle.disable_static(paddle.fluid.CUDAPlace(0))
+        self.run_cases()
+        paddle.enable_static()
 
         self.run_static(use_gpu=True)
 

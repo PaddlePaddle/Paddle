@@ -380,7 +380,7 @@ class DataParallel(layers.Layer):
                 self._reshape_inplace(x=g_var, shape=g_shape)
                 assert g_var.shape == g_shape
 
-    @no_grad
+    @no_grad()
     def apply_collective_grads(self):
         """
         AllReduce the Parameters' gradient.

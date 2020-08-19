@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from paddle import Program, program_guard
+from paddle.static import program_guard, Program
 
 
 class TestRandnOp(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestRandnOp(unittest.TestCase):
 
         place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
-        exe = paddle.Executor(place)
+        exe = paddle.static.Executor(place)
         res = exe.run(train_program,
                       feed={'X': np.array(
                           shape, dtype='int32')},
@@ -55,20 +55,21 @@ class TestRandnOpForDygraph(unittest.TestCase):
         shape = [1000, 784]
         place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
-        with paddle.imperative.guard(place):
-            x1 = paddle.randn(shape, 'float32')
-            x2 = paddle.randn(shape, 'float64')
+        paddle.disable_static(place)
+        x1 = paddle.randn(shape, 'float32')
+        x2 = paddle.randn(shape, 'float64')
 
-            dim_1 = paddle.fill_constant([1], "int64", 20)
-            dim_2 = paddle.fill_constant([1], "int32", 50)
-            x3 = paddle.randn(shape=[dim_1, dim_2, 784])
+        dim_1 = paddle.fill_constant([1], "int64", 20)
+        dim_2 = paddle.fill_constant([1], "int32", 50)
+        x3 = paddle.randn(shape=[dim_1, dim_2, 784])
 
-            var_shape = paddle.imperative.to_variable(np.array(shape))
-            x4 = paddle.randn(var_shape)
+        var_shape = paddle.to_variable(np.array(shape))
+        x4 = paddle.randn(var_shape)
 
-            for out in [x1, x2, x3, x4]:
-                self.assertAlmostEqual(np.mean(out.numpy()), .0, delta=0.1)
-                self.assertAlmostEqual(np.std(out.numpy()), 1., delta=0.1)
+        for out in [x1, x2, x3, x4]:
+            self.assertAlmostEqual(np.mean(out.numpy()), .0, delta=0.1)
+            self.assertAlmostEqual(np.std(out.numpy()), 1., delta=0.1)
+        paddle.enable_static()
 
 
 class TestRandnOpError(unittest.TestCase):
