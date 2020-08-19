@@ -15,6 +15,8 @@
 # TODO: define activation functions of neural network
 
 __all__ = [
+    'ELU',
+    'GELU',
     'Hardshrink',
     #       'PReLU',
     'ReLU',
@@ -27,6 +29,7 @@ __all__ = [
     'Softshrink',
     'Softsign',
     'Tanhshrink',
+    'LogSigmoid',
     'LogSoftmax',
     'HSigmoid'
 ]
@@ -35,6 +38,103 @@ from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
+
+
+class ELU(layers.Layer):
+    """
+    ELU Activation.
+
+    ..  math::
+    
+        ELU(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
+
+    Parameters:
+        alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
+        m = paddle.nn.ELU(0.2)
+        out = m(x) 
+        # [[-0.12642411  6.        ]
+        #  [ 1.          15.6      ]]
+    """
+
+    def __init__(self, alpha=1.0, name=None):
+        super(ELU, self).__init__()
+        self._alpha = alpha
+        self._name = name
+
+    def forward(self, x):
+        return F.elu(x, self._alpha, self._name)
+
+
+class GELU(layers.Layer):
+    """
+    GELU Activation.
+
+    If approximate is True
+
+    ..  math::
+
+        GELU(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+
+    else
+
+    ..  math::
+
+        GELU(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
+
+    Parameters:
+        approximate (bool, optional): Wether to enable approximation. Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        data = np.random.randn(2, 3).astype("float32")
+        x = paddle.to_tensor(data)
+
+        m = paddle.nn.GELU()
+        out = m(x)
+
+        data
+        # array([[ 0.87165993, -1.0541513 , -0.37214822],
+        #         [ 0.15647964,  0.32496083,  0.33045998]], dtype=float32)
+        out
+        # array([[ 0.70456535, -0.15380788, -0.13207214],
+        #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
+    """
+
+    def __init__(self, approximate=False, name=None):
+        super(GELU, self).__init__()
+        self._approximate = approximate
+        self._name = name
+
+    def forward(self, x):
+        return F.gelu(x, self._approximate, self._name)
 
 
 class Hardshrink(layers.Layer):
@@ -222,44 +322,39 @@ class HSigmoid(layers.Layer):
 
 class ReLU(layers.Layer):
     """
-	:alias_main: paddle.nn.ReLU
-	:alias: paddle.nn.ReLU,paddle.nn.layer.ReLU,paddle.nn.layer.activation.ReLU
-
     ReLU Activation.
 
     .. math:
 
-        out = max(x, 0)
+        ReLU(x) = max(x, 0)
 
     Parameters:
-        inplace (bool, optional): If inplace is True, the input and output of 
-            ``ReLU`` are the same variable. Otherwise, the input and output of
-            ``ReLU`` are different variables. Default False. Note that if x is
-            more than one OPs' input, inplace must be False.
-    
-    Returns:
-        None
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
     
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import paddle.nn as nn
-          import numpy as np
+        import paddle
+        import numpy as np
 
-          data = np.array([-2, 0, 1]).astype('float32')
-          my_relu = nn.ReLU()
-          with fluid.dygraph.guard():
-              data = fluid.dygraph.to_variable(data)
-              res = my_relu(data)  # [0, 0, 1]
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+        m = paddle.nn.ReLU()
+        out = m(x) # [0., 0., 1.]
     """
 
-    def __init__(self, inplace=False):
+    def __init__(self, name=None):
         super(ReLU, self).__init__()
-        self._inplace = inplace
+        self._name = name
 
-    def forward(self, input):
-        return F.relu(input, self._inplace)
+    def forward(self, x):
+        return F.relu(x, self._name)
 
 
 class ReLU6(layers.Layer):
@@ -568,7 +663,6 @@ class Tanhshrink(layers.Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-
         .. code-block:: python
 
         import paddle
@@ -587,6 +681,44 @@ class Tanhshrink(layers.Layer):
 
     def forward(self, x):
         return F.tanhshrink(x, self._name)
+
+
+class LogSigmoid(layers.Layer):
+    """
+    LogSigmoid Activation.
+    
+    .. math:
+
+        LogSigmoid(x) = \log \frac{1}{1 + e^{-x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, or float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
+        m = paddle.nn.LogSigmoid()
+        out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+    """
+
+    def __init__(self, name=None):
+        super(LogSigmoid, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.logsigmoid(x, self._name)
 
 
 class LogSoftmax(layers.Layer):

@@ -11409,7 +11409,12 @@ Examples:
     """
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_add')
+            x,
+            y,
+            axis=axis,
+            act=act,
+            op_name='elementwise_add',
+            use_mkldnn=core.globals()["FLAGS_use_mkldnn"])
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
