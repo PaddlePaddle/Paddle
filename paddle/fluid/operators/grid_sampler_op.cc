@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/grid_sampler_op.h"
 #include <memory>
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -107,6 +108,13 @@ class GridSampleOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_cudnn",
         "(bool, default true) Only used in cudnn kernel, need install cudnn")
         .SetDefault(true);
+
+    AddAttr<bool>("align_corners", "(bool, default true)").SetDefault(true);
+
+    AddAttr<std::string>("mode", "(bool, default true)").SetDefault("bilinear");
+
+    AddAttr<std::string>("padding_mode", "(bool, default true)")
+        .SetDefault("zeros");
 
     AddComment(R"DOC(
       This operation samples input X by using bilinear interpolation based on 
@@ -217,9 +225,9 @@ REGISTER_OPERATOR(grid_sampler_grad, ops::GridSampleOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     grid_sampler,
-    ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, float>);
+// ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     grid_sampler_grad,
-    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, float>);
+//    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
