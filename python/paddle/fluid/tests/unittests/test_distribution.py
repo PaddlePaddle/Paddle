@@ -525,6 +525,9 @@ class DistributionTestError(unittest.TestCase):
 
 
 class DistributionTestName(unittest.TestCase):
+    def get_prefix(self, string):
+        return (string.split('.')[0])
+
     def test_normal_name(self):
         name = 'test_normal'
         normal1 = Normal(0.0, 1.0, name=name)
@@ -533,6 +536,25 @@ class DistributionTestName(unittest.TestCase):
         normal2 = Normal(0.0, 1.0)
         self.assertEqual(normal2.name, 'Normal')
 
+        sample = normal1.sample([2])
+        self.assertEqual(self.get_prefix(sample.name), name + '_sample')
+
+        entropy = normal1.entropy()
+        self.assertEqual(self.get_prefix(entropy.name), name + '_entropy')
+
+        value_npdata = np.array([0.8], dtype="float32")
+        value_tensor = layers.create_tensor(dtype="float32")
+        layers.assign(value_npdata, value_tensor)
+
+        lp = normal1.log_prob(value_tensor)
+        self.assertEqual(self.get_prefix(lp.name), name + '_log_prob')
+
+        p = normal1.probs(value_tensor)
+        self.assertEqual(self.get_prefix(p.name), name + '_probs')
+
+        kl = normal1.kl_divergence(normal2)
+        self.assertEqual(self.get_prefix(kl.name), name + '_kl_divergence')
+
     def test_uniform_name(self):
         name = 'test_uniform'
         uniform1 = Uniform(0.0, 1.0, name=name)
@@ -540,6 +562,22 @@ class DistributionTestName(unittest.TestCase):
 
         uniform2 = Uniform(0.0, 1.0)
         self.assertEqual(uniform2.name, 'Uniform')
+
+        sample = uniform1.sample([2])
+        self.assertEqual(self.get_prefix(sample.name), name + '_sample')
+
+        entropy = uniform1.entropy()
+        self.assertEqual(self.get_prefix(entropy.name), name + '_entropy')
+
+        value_npdata = np.array([0.8], dtype="float32")
+        value_tensor = layers.create_tensor(dtype="float32")
+        layers.assign(value_npdata, value_tensor)
+
+        lp = uniform1.log_prob(value_tensor)
+        self.assertEqual(self.get_prefix(lp.name), name + '_log_prob')
+
+        p = uniform1.probs(value_tensor)
+        self.assertEqual(self.get_prefix(p.name), name + '_probs')
 
 
 if __name__ == '__main__':

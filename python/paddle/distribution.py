@@ -25,6 +25,7 @@ from .fluid.layers import control_flow
 from .fluid.layers import tensor
 from .fluid.layers import ops
 from .fluid.layers import nn
+from .tensor.math import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
 import math
 import numpy as np
 import warnings
@@ -233,15 +234,16 @@ class Uniform(Distribution):
                 zero_tmp, zero_tmp.shape, min=0., max=1., seed=seed)
             output = uniform_random_tmp * (zero_tmp + self.high - self.low
                                            ) + self.low
-            return nn.reshape(output, output_shape)
+            return nn.reshape(output, output_shape, name=name)
         else:
             output_shape = shape + batch_shape
             output = nn.uniform_random(
                 output_shape, seed=seed) * (tensor.zeros(
                     output_shape, dtype=self.low.dtype) +
-                                            (self.high - self.low)) + self.low
+                                            (self.high - self.low))
+            output = elementwise_add(output, self.low, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape)
+                return nn.reshape(output, shape, name=name)
             else:
                 return output
 
@@ -263,7 +265,8 @@ class Uniform(Distribution):
         ub_bool = control_flow.less_than(value, self.high)
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return nn.log(lb * ub) - nn.log(self.high - self.low)
+        return elementwise_sub(
+            nn.log(lb * ub), nn.log(self.high - self.low), name=name)
 
     def probs(self, value):
         """Probability density/mass function.
@@ -280,9 +283,7 @@ class Uniform(Distribution):
         ub_bool = control_flow.less_than(value, self.high)
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        output = (lb * ub) / (self.high - self.low)
-        return output
-        # return ops.exp(self.log_prob(value))
+        return elementwise_div((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):
         """Shannon entropy in nats.
@@ -292,7 +293,7 @@ class Uniform(Distribution):
 
         """
         name = self.name + '_entropy'
-        return nn.log(self.high - self.low)
+        return nn.log(self.high - self.low, name=name)
 
 
 class Normal(Distribution):
@@ -403,13 +404,14 @@ class Normal(Distribution):
             normal_random_tmp = nn.gaussian_random(
                 zero_tmp_shape, mean=0., std=1., seed=seed)
             output = normal_random_tmp * (zero_tmp + self.scale) + self.loc
-            return nn.reshape(output, output_shape)
+            return nn.reshape(output, output_shape, name=name)
         else:
             output_shape = shape + batch_shape
             output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed) * \
-                     (tensor.zeros(output_shape, dtype=self.loc.dtype) + self.scale) + self.loc
+                     (tensor.zeros(output_shape, dtype=self.loc.dtype) + self.scale)
+            output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape)
+                return nn.reshape(output, shape, name=name)
             else:
                 return output
 
@@ -424,8 +426,10 @@ class Normal(Distribution):
         batch_shape = list((self.loc + self.scale).shape)
         zero_tmp = tensor.fill_constant_batch_size_like(
             self.loc + self.scale, batch_shape, self.loc.dtype, 0.)
-        return 0.5 + 0.5 * math.log(2 * math.pi) + nn.log(
-            (self.scale + zero_tmp))
+        return elementwise_add(
+            0.5 + zero_tmp,
+            0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp)),
+            name=name)
 
     def log_prob(self, value):
         """Log probability density/mass function.
@@ -443,8 +447,10 @@ class Normal(Distribution):
         name = self.name + '_log_prob'
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
-        return -1. * ((value - self.loc) * (value - self.loc)) / (
-            2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
+        return elementwise_sub(
+            -1. * ((value - self.loc) * (value - self.loc)) / (2. * var),
+            log_scale + math.log(math.sqrt(2. * math.pi)),
+            name=name)
 
     def probs(self, value):
         """Probability density/mass function.
@@ -457,13 +463,11 @@ class Normal(Distribution):
 
         """
         name = self.name + '_probs'
-        # output = ops.exp(self.log_prob(value))
         var = self.scale * self.scale
-        output = ops.exp(-1. * ((value - self.loc) * (value - self.loc)) /
-                         (2. * var)) / (math.sqrt(2 * math.pi) * self.scale)
-        # output.name = name
-        return output
-        # return ops.exp(self.log_prob(value))
+        return elementwise_div(
+            ops.exp(-1. * ((value - self.loc) * (value - self.loc)) /
+                    (2. * var)), (math.sqrt(2 * math.pi) * self.scale),
+            name=name)
 
     def kl_divergence(self, other):
         """The KL-divergence between two normal distributions.
@@ -483,4 +487,5 @@ class Normal(Distribution):
         var_ratio = (var_ratio * var_ratio)
         t1 = (self.loc - other.loc) / other.scale
         t1 = (t1 * t1)
-        return 0.5 * (var_ratio + t1 - 1. - nn.log(var_ratio))
+        return elementwise_add(
+            0.5 * var_ratio, 0.5 * (t1 - 1. - nn.log(var_ratio)), name=name)
