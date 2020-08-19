@@ -56,6 +56,7 @@ __all__ = [
     'shard_index',
     'slice',
     'split',
+    'chunk'
     'squeeze',
     'stack',
     'strided_slice',
@@ -787,6 +788,53 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
+
+
+def chunk(x, chunks, axis=0, name=None):
+    """
+    Split the input tensor into multiple sub-Tensors.
+    
+    Args:
+        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        chunks(int): The number of tensor to be split along the certain axis.
+        axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type 
+            ``int`` or a ``Tensor`` with shape [1] and data type  ``int32`` or ``int64``.
+            If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+    Returns:
+        list(Tensor): The list of segmented Tensors.
+    Raises:
+        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
+        TypeError: ``chunks`` is not int.
+        TypeError: ``axis`` is not int or Tensor. the data type of ``axis`` must be int32 or int64 when it's a Tensor.
+    Example:
+        .. code-block:: python
+            
+            import numpy as np
+            import paddle
+            
+            paddle.disable_static()
+            # x is a Tensor which shape is [3, 9, 5]
+            x_np = np.random.random([3, 9, 5]).astype("int32")
+            x = paddle.to_variable(x_np)
+
+            out0, out1, out22 = paddle.chunk(x, chunks=3, axis=1)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
+
+            
+            # axis is negative, the real axis is (rank(x) + axis) which real
+            # value is 1.
+            out0, out1, out2 = paddle.chunk(x, chunks=3, axis=-2)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
+    """
+    check_type(chunks, 'chunks', (int), 'chunk')
+    return paddle.fluid.layers.split(
+        input=x, num_or_sections=chunks, dim=axis, name=name)
 
 
 def tile(x, repeat_times, name=None):

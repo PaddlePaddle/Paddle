@@ -123,8 +123,11 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, true, false);
   config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                 opt_input_shape);
+  AnalysisConfig* config_deser = new AnalysisConfig(config);
+
   std::vector<float> out_data;
-  run(config, &out_data);
+  run(config, &out_data);         // serialize
+  run(*config_deser, &out_data);  // deserialize
   for (size_t i = 0; i < out_data.size(); i++) {
     EXPECT_NEAR(result[i], out_data[i], 1e-6);
   }

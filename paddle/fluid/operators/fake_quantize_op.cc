@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fake_quantize_op.h"
+#include <algorithm>
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/clip_op.h"
@@ -39,13 +40,41 @@ template struct FindAbsMaxFunctor<platform::CPUDeviceContext, float>;
 
 template <typename T>
 struct FindChannelAbsMaxFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& ctx, const T* in,
-                  const int num, const int channel, T* out) {
-    const int channel_size = num / channel;
-    for (int i = 0; i < channel; i++) {
-      auto* start = in + i * channel_size;
-      auto* end = in + (i + 1) * channel_size;
-      out[i] = std::abs(*(std::max_element(start, end, Compare<T>())));
+  void operator()(const platform::CPUDeviceContext& ctx,
+                  const framework::Tensor& in_tensor, const int quant_axis,
+                  T* out_abs_max) {
+    // At present, channelwise quantization supports conv2d, depthwise_conv2d
+    // conv2d_transpose and mul
+    PADDLE_ENFORCE_EQ(
+        quant_axis == 0 || quant_axis == 1, true,
+        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                          "the received is %d",
+                                          quant_axis));
+    auto* in_data = in_tensor.data<T>();
+    auto in_dims = in_tensor.dims();
+    const int64_t channel = in_dims[quant_axis];
+    if (quant_axis == 0) {
+      const int64_t channel_size = in_tensor.numel() / channel;
+      for (int64_t i = 0; i < channel; i++) {
+        auto* start = in_data + i * channel_size;
+        auto* end = in_data + (i + 1) * channel_size;
+        out_abs_max[i] =
+            std::abs(*(std::max_element(start, end, Compare<T>())));
+      }
+    } else if (quant_axis == 1) {
+      for (int64_t i = 0; i < channel; i++) {
+        out_abs_max[i] = 0;
+      }
+      const int64_t step_i = in_tensor.numel() / in_dims[0];
+      const int64_t step_j = in_tensor.numel() / (in_dims[0] * in_dims[1]);
+      for (int64_t i = 0; i < in_dims[0]; i++) {
+        for (int64_t j = 0; j < in_dims[1]; j++) {
+          auto* start = in_data + i * step_i + j * step_j;
+          auto* end = in_data + i * step_i + (j + 1) * step_j;
+          T abs_max = std::abs(*(std::max_element(start, end, Compare<T>())));
+          out_abs_max[j] = std::max(out_abs_max[j], abs_max);
+        }
+      }
     }
   }
 };
@@ -92,26 +121,53 @@ template <typename T>
 struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, const int channel,
+                  const int bin_cnt, const int quant_axis,
                   framework::Tensor* out) {
+    // At present, channelwise quantization supports conv2d, depthwise_conv2d
+    // conv2d_transpose and mul
+    PADDLE_ENFORCE_EQ(
+        quant_axis == 0 || quant_axis == 1, true,
+        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                          "the received is %d",
+                                          quant_axis));
     auto* scale_data = scale.data<T>();
     auto* in_data = in.data<T>();
     auto* out_data = out->mutable_data<T>(ctx.GetPlace());
-    const int channel_size = in.numel() / channel;
+    auto in_dims = in.dims();
+    const int64_t channel = in_dims[quant_axis];
     platform::Transform<platform::CPUDeviceContext> trans;
-    for (int i = 0; i < channel; i++) {
-      T s = scale_data[i];
-      auto* start = in_data + i * channel_size;
-      auto* end = in_data + (i + 1) * channel_size;
-      trans(ctx, start, end, out_data + i * channel_size,
-            ClipFunctor<T>(-s, s));
-    }
-    for (int i = 0; i < channel; i++) {
-      T s = scale_data[i];
-      T inv_s = inverse(s);
-      framework::Tensor one_channel_out = out->Slice(i, i + 1);
-      auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-      out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
+    if (quant_axis == 0) {
+      const int64_t channel_size = in.numel() / channel;
+      for (int64_t i = 0; i < channel; i++) {
+        T s = scale_data[i];
+        auto* start = in_data + i * channel_size;
+        auto* end = in_data + (i + 1) * channel_size;
+        trans(ctx, start, end, out_data + i * channel_size,
+              ClipFunctor<T>(-s, s));
+      }
+      for (int64_t i = 0; i < channel; i++) {
+        T s = scale_data[i];
+        T inv_s = inverse(s);
+        framework::Tensor one_channel_out = out->Slice(i, i + 1);
+        auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+        out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
+      }
+    } else if (quant_axis == 1) {
+      const int64_t step_i = in.numel() / in_dims[0];
+      const int64_t step_j = in.numel() / (in_dims[0] * in_dims[1]);
+      for (int i = 0; i < in_dims[0]; i++) {
+        for (int j = 0; j < in_dims[1]; j++) {
+          T s = scale_data[j];
+          T inv_s = inverse(s);
+          auto* start = in_data + i * step_i + j * step_j;
+          auto* end = in_data + i * step_i + (j + 1) * step_j;
+          auto* cur_out_data = out_data + i * step_i + j * step_j;
+          trans(ctx, start, end, cur_out_data, ClipFunctor<T>(-s, s));
+          for (int k = 0; k < step_j; k++) {
+            cur_out_data[k] = std::round(bin_cnt * inv_s * cur_out_data[k]);
+          }
+        }
+      }
     }
   }
 };
@@ -247,8 +303,9 @@ class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
                    "FakeChannelWiseQuantizeAbsMax");
     OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
                    "FakeChannelWiseQuantizeAbsMax");
+    int quant_axis = ctx->Attrs().Get<int>("quant_axis");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->SetOutputDim("OutScale", {ctx->GetInputDim("X")[0]});
+    ctx->SetOutputDim("OutScale", {ctx->GetInputDim("X")[quant_axis]});
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -269,6 +326,18 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
               "(Tensor) Output of quantized low level tensor, "
               "but also saved as float data type.");
     AddOutput("OutScale", "(Tensor) Current channel wise scale");
+    AddAttr<int>("quant_axis",
+                 "(int, default 0) The axis for quantization. "
+                 "For conv2d, depthwise_conv2d, conv2d_transpose "
+                 "and mul, the quant_axis is equal to the cout axis.")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& quant_axis) {
+          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1, true,
+                            platform::errors::InvalidArgument(
+                                "'quant_axis' should be 0 or 1, but "
+                                "the received is %d",
+                                quant_axis));
+        });
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
