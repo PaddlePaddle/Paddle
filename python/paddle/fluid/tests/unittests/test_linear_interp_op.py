@@ -102,12 +102,17 @@ class TestLinearInterpOp(OpTest):
 
         self.attrs = {
             'out_w': self.out_w,
-            'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode,
             'data_layout': self.data_layout
         }
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
@@ -202,12 +207,17 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
 
         self.attrs = {
             'out_w': self.out_w,
-            'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode,
             'data_layout': self.data_layout
         }
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
 
@@ -331,11 +341,16 @@ class TestResizeLinearOpUint8(OpTest):
 
         self.attrs = {
             'out_w': self.out_w,
-            'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode
         }
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):

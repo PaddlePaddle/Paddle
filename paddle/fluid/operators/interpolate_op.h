@@ -788,16 +788,19 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
     auto new_size = get_new_shape(list_new_size_tensor);
     out_w = new_size[0];
   } else {
-    float scale;
+    float scale_w = -1.0;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-      scale = scale_data[0];
+      scale_w = scale_data[0];
     } else {
-      scale = ctx.Attr<float>("scale");
+      if (scale.size() > 0) {
+        scale_w = scale[0];
+      }
     }
-    if (scale > 0) {
-      out_w = static_cast<int>(in_w * scale);
+    if (scale_w > 0.) {
+      out_w = static_cast<int>(in_w * scale_w);
     }
     auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
@@ -854,17 +857,28 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
     out_h = new_size[0];
     out_w = new_size[1];
   } else {
-    float scale;
+    float scale_h = -1.0;
+    float scale_w = -1.0;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-      scale = scale_data[0];
+      if (scale_data.size() > 1) {
+        scale_h = scale_data[0];
+        scale_w = scale_data[1];
+      } else {
+        scale_h = scale_data[0];
+        scale_w = scale_data[0];
+      }
     } else {
-      scale = ctx.Attr<float>("scale");
+      if (scale.size() > 1) {
+        scale_h = scale[0];
+        scale_w = scale[1];
+      }
     }
-    if (scale > 0) {
-      out_h = static_cast<int>(in_h * scale);
-      out_w = static_cast<int>(in_w * scale);
+    if (scale_h > 0. && scale_w > 0.) {
+      out_h = static_cast<int>(in_h * scale_h);
+      out_w = static_cast<int>(in_w * scale_w);
     }
     auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
@@ -940,18 +954,33 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
     out_h = new_size[1];
     out_w = new_size[2];
   } else {
-    float scale;
+    float scale_d = -1.0;
+    float scale_h = -1.0;
+    float scale_w = -1.0;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-      scale = scale_data[0];
+      if (scale_data.size() > 1) {
+        scale_d = scale_data[0];
+        scale_h = scale_data[1];
+        scale_w = scale_data[2];
+      } else {
+        scale_d = scale_data[0];
+        scale_h = scale_data[0];
+        scale_w = scale_data[0];
+      }
     } else {
-      scale = ctx.Attr<float>("scale");
+      if (scale.size() > 1) {
+        scale_d = scale[0];
+        scale_h = scale[1];
+        scale_w = scale[2];
+      }
     }
-    if (scale > 0) {
-      out_d = static_cast<int>(in_d * scale);
-      out_h = static_cast<int>(in_h * scale);
-      out_w = static_cast<int>(in_w * scale);
+    if (scale_w > 0. && scale_h > 0. && scale_d > 0.) {
+      out_d = static_cast<int>(in_d * scale_d);
+      out_h = static_cast<int>(in_h * scale_h);
+      out_w = static_cast<int>(in_w * scale_w);
     }
     auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
@@ -1022,16 +1051,19 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
   int align_mode = ctx.Attr<int>("align_mode");
 
   int out_w = ctx.Attr<int>("out_w");
-  float scale;
+  float scale_w = -1.0;
   auto scale_tensor = ctx.Input<Tensor>("Scale");
+  auto scale = ctx.Attr<std::vector<float>>("scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-    scale = scale_data[0];
+    scale_w = scale_data[0];
   } else {
-    scale = ctx.Attr<float>("scale");
+    if (scale.size() > 0) {
+      scale_w = scale[0];
+    }
   }
-  if (scale > 0) {
-    out_w = static_cast<int>(in_w * scale);
+  if (scale_w > 0.) {
+    out_w = static_cast<int>(in_w * scale_w);
   }
   auto out_size = ctx.Input<Tensor>("OutSize");
   if (out_size != nullptr) {
@@ -1088,17 +1120,28 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
 
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale;
+  float scale_h = -1.0;
+  float scale_w = -1.0;
   auto scale_tensor = ctx.Input<Tensor>("Scale");
+  auto scale = ctx.Attr<std::vector<float>>("scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-    scale = scale_data[0];
+    if (scale_data.size() > 1) {
+      scale_h = scale_data[0];
+      scale_w = scale_data[1];
+    } else {
+      scale_w = scale_data[0];
+      scale_h = scale_data[0];
+    }
   } else {
-    scale = ctx.Attr<float>("scale");
+    if (scale.size() > 1) {
+      scale_h = scale[0];
+      scale_w = scale[1];
+    }
   }
-  if (scale > 0) {
-    out_h = static_cast<int>(in_h * scale);
-    out_w = static_cast<int>(in_w * scale);
+  if (scale_h > 0. && scale_w > 0.) {
+    out_h = static_cast<int>(in_h * scale_h);
+    out_w = static_cast<int>(in_w * scale_w);
   }
   auto out_size = ctx.Input<Tensor>("OutSize");
   if (out_size != nullptr) {
@@ -1173,18 +1216,33 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
   int out_d = ctx.Attr<int>("out_d");
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale;
+  float scale_d = -1.0;
+  float scale_h = -1.0;
+  float scale_w = -1.0;
   auto scale_tensor = ctx.Input<Tensor>("Scale");
+  auto scale = ctx.Attr<std::vector<float>>("scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-    scale = scale_data[0];
+    if (scale_data.size() > 1) {
+      scale_d = scale_data[0];
+      scale_h = scale_data[1];
+      scale_w = scale_data[2];
+    } else {
+      scale_d = scale_data[0];
+      scale_h = scale_data[0];
+      scale_w = scale_data[0];
+    }
   } else {
-    scale = ctx.Attr<float>("scale");
+    if (scale.size() > 1) {
+      scale_d = scale[0];
+      scale_h = scale[1];
+      scale_w = scale[2];
+    }
   }
-  if (scale > 0) {
-    out_d = static_cast<int>(in_d * scale);
-    out_h = static_cast<int>(in_h * scale);
-    out_w = static_cast<int>(in_w * scale);
+  if (scale_d > 0. && scale_h > 0. && scale_w > 0.) {
+    out_d = static_cast<int>(in_d * scale_d);
+    out_h = static_cast<int>(in_h * scale_h);
+    out_w = static_cast<int>(in_w * scale_w);
   }
   auto out_size = ctx.Input<Tensor>("OutSize");
   if (out_size != nullptr) {

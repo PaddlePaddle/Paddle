@@ -7475,7 +7475,9 @@ def image_resize(input,
         elif isinstance(scale, float) or isinstance(scale, int):
             if scale <= 0:
                 raise ValueError("Attr(scale) should be greater than zero.")
-            attrs['scale'] = float(scale)
+            for i in len(input.shape):
+                scale_list[i] = float(scale)
+            attrs['scale'] = scale_list
         else:
             raise TypeError(
                 "Attr(scale)'s type should be float, int or Variable.")

@@ -155,11 +155,16 @@ class TestBicubicInterpOp(OpTest):
         self.attrs = {
             'out_h': self.out_h,
             'out_w': self.out_w,
-            'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'data_layout': self.data_layout
         }
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):

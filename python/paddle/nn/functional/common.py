@@ -40,7 +40,8 @@ __all__ = [
     'unfold',
     #       'bilinear_tensor_product',
     'assign',
-    'interpolate'
+    'interpolate',
+    'upsample',
 ]
 
 
@@ -49,7 +50,7 @@ def interpolate(input,
                 scale_factor=None,
                 mode='nearest',
                 align_corners=False,
-                align_mode=1,
+                align_mode=0,
                 data_format='NCHW',
                 name=None):
     """
@@ -117,18 +118,12 @@ def interpolate(input,
                 W_out = W_{in} * scale_{factor}
         
         Nearest neighbor interpolation:
-          if:
+
               align_corners = False
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
               H_out = floor (H_{in} * scale_{factor})
               W_out = floor (W_{in} * scale_{factor})
-          else:
-              align_corners = True
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = round(H_{in} * scale_{factor})
-              W_out = round(W_{in} * scale_{factor})
 
         Bilinear interpolation:
           if:
@@ -194,15 +189,15 @@ def interpolate(input,
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Variable|None): The multiplier for the input height or width. At
+        scale_factor (float|Variable|list|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
+             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
-                               corner pixels.
+                               corner pixels.This only has an effect when 'linear', 'bilinear', 'bicubic' or 'trilinear'.
                                Default: False
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
@@ -319,7 +314,10 @@ def interpolate(input,
 
     if align_mode != 0 and align_mode != 1:
         raise ValueError("align_mode can only be 0 or 1")
-
+    if align_corners != 0 and resample == 'NEAREST':
+        raise ValueError(
+            "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
+        )
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
@@ -343,6 +341,9 @@ def interpolate(input,
         data_layout = 'NCHW'
     if data_format == 'NHWC' or data_format == 'NDHWC' or data_format == 'NWC':
         data_layout = 'NHWC'
+
+    if resample == 'NEAREST':
+        align_corners = False
 
     inputs = {"X": input}
     attrs = {
@@ -434,11 +435,20 @@ def interpolate(input,
         elif isinstance(scale, float) or isinstance(scale, int):
             if scale <= 0:
                 raise ValueError("Attr(scale) should be greater than zero.")
-            attrs['scale'] = float(scale)
+            scale = [scale, scale, scale]
+            attrs['scale'] = list(map(float, scale))
+        elif isinstance(scale, list):
+            if len(scale) != len(input.shape) - 2:
+                raise ValueError("scale_shape length should be {} for "
+                                 "input {}-D tensor.".format(
+                                     len(input.shape) - 2, len(input.shape)))
+            for value in scale:
+                if value <= 0:
+                    raise ValueError("Attr(scale) should be greater than zero.")
+            attrs['scale'] = list(map(float, scale))
         else:
             raise TypeError(
-                "Attr(scale)'s type should be float, int or Variable.")
-
+                "Attr(scale)'s type should be float, int, list or Variable.")
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='{}_interp'.format(resample_type),
@@ -446,3 +456,197 @@ def interpolate(input,
         outputs={"Out": out},
         attrs=attrs)
     return out
+
+
+def upsample(input,
+             size=None,
+             scale_factor=None,
+             mode='nearest',
+             align_corners=False,
+             align_mode=0,
+             data_format='NCHW',
+             name=None):
+    """
+    This op resizes a batch of images.
+    The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
+    or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
+    (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
+    and the resizing only applies on the three dimensions(depth, height and width).
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
+    future and only use :attr:`out_shape` instead.
+    Supporting resample methods:
+        'linear' : Linear interpolation
+        'bilinear' : Bilinear interpolation
+        'trilinear' : Trilinear interpolation
+        'nearest' : Nearest neighbor interpolation
+        'bicubic' : Bicubic interpolation
+    Linear interpolation is the method of using a line connecting two known quantities 
+    to determine the value of an unknown quantity between the two known quantities. 
+    
+    Nearest neighbor interpolation is to perform nearest neighbor interpolation
+    in both the 3rd dimension(in height direction) and the 4th dimension(in width
+    direction) on input tensor.
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this op) on a rectilinear 2D grid. The key idea is
+    to perform linear interpolation first in one direction, and then
+    again in the other direction.
+    
+    Bicubic interpolation is an extension of cubic interpolation for interpolating
+    data points on a two-dimensional regular grid. The interpolated surface is
+    smoother than corresponding surfaces obtained by bilinear interpolation or
+    nearest-neighbor interpolation.
+    Trilinear interpolation is an extension of linear interpolation for
+    interpolating functions of three variables (e.g. D-direction,
+    H-direction and W-direction in this op) on a rectilinear 3D grid.
+    The linear interpolation is performed on three directions.
+    Align_corners and align_mode are optional parameters,the calculation method
+    of interpolation can be selected by them.
+    Example:
+    .. code-block:: text
+        For scale_factor:
+            if align_corners = True && out_size > 1 :
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            else:
+              scale_factor = float(in_size/out_size)
+        Linear interpolation:
+            if:
+                align_corners = False , align_mode = 0
+                input : (N,C,W_in)
+                output: (N,C,W_out) where:
+                W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+            else:
+                input : (N,C,W_in)
+                output: (N,C,W_out) where:
+                W_out = W_{in} * scale_{factor}
+        Nearest neighbor interpolation:
+          if:
+              align_corners = False
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = floor (H_{in} * scale_{factor})
+              W_out = floor (W_{in} * scale_{factor})
+          else:
+              align_corners = True
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = round(H_{in} * scale_{factor})
+              W_out = round(W_{in} * scale_{factor})
+        
+        Bilinear interpolation:
+          if:
+              align_corners = False , align_mode = 0
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          else:
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+        Bicubic interpolation:
+          if:
+              align_corners = False
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          else:
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+        Trilinear interpolation:
+          if:
+              align_corners = False , align_mode = 0
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          else:
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              D_out = D_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+    https://en.wikipedia.org/wiki/Linear_interpolation.
+    For details of linear interpolation, please refer to Wikipedia:
+    
+    For details of nearest neighbor interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
+    
+    For details of bilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bilinear_interpolation.
+    
+    For details of bicubic interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bicubic_interpolation
+    
+    For details of trilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Trilinear_interpolation.
+    
+    Parameters:
+        input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        size (list|tuple|Variable|None): Output shape of image resize
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
+             If a Tensor Variable, its dimensions size should be a 1.
+        scale_factor (float|Variable|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
+             Default: None.
+        mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
+                       'bicubic' and 'trilinear' currently. Default: 'nearest'
+        align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
+                               input and output tensors are aligned, preserving the values at the
+                               corner pixels.
+                               Default: False
+        align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
+                            it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
+                            src_idx = scale_factor*dst_index.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
+            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+    Raises:
+        TypeError: size should be a list or tuple or Variable.
+        ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
+                    'trilinear', 'bicubic', or 'nearest' currently.
+        ValueError: 'linear' only support 3-D tensor.
+        ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
+        ValueError: 'trilinear' only support 5-D tensor.
+        ValueError: One of size and scale_factor must not be None.
+        ValueError: size length should be 1 for input 3-D tensor.
+        ValueError: size length should be 2 for input 4-D tensor.
+        ValueError: size length should be 3 for input 5-D tensor.
+        ValueError: scale_factor should be greater than zero.
+        TypeError: align_corners should be a bool value
+        ValueError: align_mode can only be '0' or '1'
+        ValueError: data_format can only be 'NCW', 'NWC', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            import paddle.fluid.dygraph as dg
+            upsample_op = paddle.nn.UpSample(size=[12,12])
+            input_data = np.random.rand(2,3,6,10).astype("float32")
+            place = paddle.fluid.CPUPlace()
+            with dg.guard(place) as g:
+                input = dg.to_variable(input_data)
+                output = upsample_op(input=input)
+                print(output.shape)
+                # [2L, 3L, 12L, 12L]
+    """
+    return interpolate(input, size, scale_factor, mode, align_corners,
+                       align_mode, data_format)
