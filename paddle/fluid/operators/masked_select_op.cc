@@ -63,6 +63,7 @@ class MaskedSelectOpGrad : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
                    "Input", "MaskedSelect");
     OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "MaskedSelect");
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
  protected:

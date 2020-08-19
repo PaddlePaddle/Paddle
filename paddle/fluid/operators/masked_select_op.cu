@@ -71,16 +71,17 @@ class MaskedSelectCUDAKernel : public framework::OpKernel<T> {
     auto* mask_data = mask->data<bool>();
     auto input_data = input->data<T>();
 
-    auto input_size = input->numel();
     auto mask_size = mask->numel();
+    auto input_dim = input->dims();
     auto mask_dim = mask->dims();
-    PADDLE_ENFORCE_EQ(input_size, mask_size,
-                      platform::errors::InvalidArgument(
-                          "The size of input and mask in OP(masked_selected) "
-                          "must be equal, but got input size:%ld, mask size: "
-                          "%ld. Please check input "
-                          "value.",
-                          input_size, mask_size));
+    PADDLE_ENFORCE_EQ(
+        input_dim, mask_dim,
+        platform::errors::InvalidArgument(
+            "The dim size of input and mask in OP(masked_selected) "
+            "must be equal, but got input dim:(%ld), mask dim: "
+            "(%ld). Please check input "
+            "value.",
+            input_dim, mask_dim));
 
     thrust::device_ptr<const bool> mask_dev_ptr =
         thrust::device_pointer_cast(mask_data);
@@ -125,15 +126,14 @@ class MaskedSelectGradCUDAKernel : public framework::OpKernel<T> {
     auto mask = ctx.Input<framework::Tensor>("Mask");
     auto out = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     auto* mask_data = mask->data<bool>();
-    auto input_data = input->data<T>();
+    auto* input_data = input->data<T>();
+    auto* out_data = out->mutable_data<T>(ctx.GetPlace());
 
     auto input_size = input->numel();
     auto mask_size = mask->numel();
     auto mask_dim = mask->dims();
 
     auto out_size = mask_size;
-    out->Resize(mask_dim);
-    auto out_data = out->mutable_data<T>(ctx.GetPlace());
 
     Tensor mask_array;
     Tensor mask_prefix_sum;

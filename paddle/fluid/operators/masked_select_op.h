@@ -33,15 +33,18 @@ class MaskedSelectKernel : public framework::OpKernel<T> {
     auto* mask_data = mask->data<bool>();
     auto input_data = input->data<T>();
 
-    auto input_size = input->numel();
     auto mask_size = mask->numel();
-    PADDLE_ENFORCE_EQ(input_size, mask_size,
-                      platform::errors::InvalidArgument(
-                          "The size of input and mask in OP(masked_selected) "
-                          "must be equal, but got input size:%ld, mask size: "
-                          "%ld. Please check input "
-                          "value.",
-                          input_size, mask_size));
+
+    auto input_dim = input->dims();
+    auto mask_dim = mask->dims();
+    PADDLE_ENFORCE_EQ(
+        input_dim, mask_dim,
+        platform::errors::InvalidArgument(
+            "The dim size of input and mask in OP(masked_selected) "
+            "must be equal, but got input dim:(%ld), mask dim: "
+            "(%ld). Please check input "
+            "value.",
+            input_dim, mask_dim));
 
     int out_size = 0;
     for (int i = 0; i < mask_size; i++) {
@@ -70,7 +73,6 @@ class MaskedSelectGradKernel : public framework::OpKernel<T> {
     auto mask = context.Input<framework::Tensor>("Mask");
     auto input = context.Input<framework::Tensor>(framework::GradVarName("Y"));
 
-    out->Resize(mask->dims());
     auto* mask_data = mask->data<bool>();
     auto* input_data = input->data<T>();
     auto* out_data = out->mutable_data<T>(context.GetPlace());
