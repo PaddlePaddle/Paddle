@@ -146,14 +146,14 @@ def avg_pool1d(x,
                 % str(padding))
         if padding == "VALID":
             padding_algorithm = "VALID"
-            padding = [0, 0]
+            padding = [0]
             if ceil_mode != False:
                 raise ValueError(
                     "When Attr(padding) is \"VALID\", Attr(ceil_mode) must be False. "
                     "Received ceil_mode: True.")
         elif padding == "SAME":
             padding_algorithm = "SAME"
-            padding = [0, 0]
+            padding = [0]
 
     padding = update_padding1d(padding, "avg")
 
@@ -281,14 +281,14 @@ def max_pool1d(x,
                 % str(padding))
         if padding == "VALID":
             padding_algorithm = "VALID"
-            padding = [0, 0]
+            padding = [0]
             if ceil_mode != False:
                 raise ValueError(
                     "When Attr(padding) is \"VALID\", Attr(ceil_mode) must be False. "
                     "Received ceil_mode: True.")
         elif padding == "SAME":
             padding_algorithm = "SAME"
-            padding = [0, 0]
+            padding = [0]
 
     padding = update_padding1d(padding, 'max')
 
