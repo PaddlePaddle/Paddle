@@ -53,7 +53,9 @@ class UniformNumpy(DistributionNumpy):
         return np.log(lb * ub) - np.log(self.high - self.low)
 
     def probs(self, value):
-        return np.exp(self.log_prob(value))
+        lb = np.less(self.low, value).astype('float32')
+        ub = np.less(value, self.high).astype('float32')
+        return (lb * ub) / (self.high - self.low)
 
     def entropy(self):
         return np.log(self.high - self.low)
@@ -75,7 +77,9 @@ class NormalNumpy(DistributionNumpy):
             2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
 
     def probs(self, value):
-        return np.exp(self.log_prob(value))
+        var = self.scale * self.scale
+        return np.exp(-1. * ((value - self.loc) * (value - self.loc)) /
+                      (2. * var)) / (math.sqrt(2 * math.pi) * self.scale)
 
     def entropy(self):
         return 0.5 + 0.5 * np.log(np.array(2. * math.pi).astype(
