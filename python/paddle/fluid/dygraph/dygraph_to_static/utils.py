@@ -19,7 +19,7 @@ import astor
 import atexit
 import copy
 import gast
-import imp
+import importlib
 import inspect
 import os
 import six
@@ -391,7 +391,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         atexit.register(lambda: remove_if_exit(f.name))
         atexit.register(lambda: remove_if_exit(f.name[:-3] + ".pyc"))
 
-    module = imp.load_source(module_name, f.name)
+    module = importlib.load_source(module_name, f.name)
     func_name = dyfunc.__name__
     if not hasattr(module, func_name):
         raise ValueError(
