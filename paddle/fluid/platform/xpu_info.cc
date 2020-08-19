@@ -46,7 +46,7 @@ static int GetXPUDeviceCountImpl() {
   int ret = xpu_device_count(&count);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU API return wrong value[%d], please check where "
+                        "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   return count;
@@ -62,7 +62,7 @@ int GetXPUCurrentDeviceId() {
   int ret = xpu_current_device(&dev_id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU API return wrong value[%d], please check where "
+                        "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
 
@@ -98,7 +98,7 @@ void SetXPUDeviceId(int id) {
   int ret = xpu_set_device(id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU API return wrong value[%d], please check where "
+                        "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
 }

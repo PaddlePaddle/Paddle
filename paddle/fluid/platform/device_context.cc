@@ -153,20 +153,20 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
   int ret = xpu_current_device(&dev_id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU API return wrong value[%d], please check where "
+                        "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   ret = xpu_set_device(place.device);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU API return wrong value[%d], please check where "
+                        "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   context_ = xpu::create_context();
   ret = xpu_set_device(dev_id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU API return wrong value[%d], please check where "
+                        "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
 }
@@ -175,7 +175,7 @@ void XPUDeviceContext::Wait() const {
   int ret = xpu_set_device(place_.device);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU API return wrong value[%d], please check where "
+                        "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   xpu_wait();

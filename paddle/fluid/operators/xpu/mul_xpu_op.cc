@@ -64,11 +64,12 @@ class MulXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int ret = xpu::fc_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k,
                             alpha, data_a, data_b, beta, data_c);
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU API return wrong value[%d], please check where "
-                          "Baidu Kunlun Card is properly installed.",
-                          ret));
+    PADDLE_ENFORCE_EQ(
+        ret, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            ret));
     if (z_dim.size() != 2) {
       z->Resize(z_dim);
     }
