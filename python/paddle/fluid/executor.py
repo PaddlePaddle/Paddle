@@ -145,7 +145,7 @@ def as_numpy(tensor):
             Please set the parameter 'return_numpy' as 'False' to \
             return LoDTensor itself directly.")
     if tensor._is_initialized():
-        return np.array(tensor)
+        return np.asarray(tensor)
     else:
         return None
 

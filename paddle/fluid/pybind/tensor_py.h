@@ -536,9 +536,11 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 
   if (!is_gpu_tensor) {
     if (!need_deep_copy) {
-      return py::array(py::buffer_info(
+      auto base = py::cast(std::move(tensor));
+      auto info = py::buffer_info(
           const_cast<void *>(tensor_buf_ptr), sizeof_dtype, py_dtype_str,
-          static_cast<size_t>(tensor.dims().size()), py_dims, py_strides));
+          static_cast<size_t>(tensor.dims().size()), py_dims, py_strides);
+      return py::array(pybind11::dtype(info), info.shape, info.strides, info.ptr, base);
     } else {
       py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
       PADDLE_ENFORCE_EQ(
