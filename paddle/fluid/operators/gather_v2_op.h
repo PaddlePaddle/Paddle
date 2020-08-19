@@ -26,19 +26,19 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T, typename U, typename V>
-void GatherV2Function(const Tensor* input, const Tensor* index,
-                      const Tensor* axis, Tensor* out,
+void GatherV2Function(const Tensor& input, const Tensor& index,
+                      const Tensor& axis, Tensor* out,
                       const paddle::platform::Place& place) {
-  auto* axis_data = axis->data<V>();
-  auto* index_data = index->data<U>();
+  auto* axis_data = axis.data<V>();
+  auto* index_data = index.data<U>();
 
-  int axis_size = axis->numel();
-  int index_size = index->numel();
-  int input_size = input->numel();
-  auto input_dim = input->dims();
-  auto* input_data = input->data<T>();
+  int axis_size = axis.numel();
+  int index_size = index.numel();
+  int input_size = input.numel();
+  auto input_dim = input.dims();
+  auto* input_data = input.data<T>();
 
-  if (input->numel() == 0) return;
+  if (input.numel() == 0) return;
   PADDLE_ENFORCE_EQ(axis_size, 1,
                     platform::errors::InvalidArgument(
                         "Axis size should be 1, but received %d", axis_size));
@@ -95,19 +95,19 @@ class GatherV2OpKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     if (index_type == framework::proto::VarType::INT32 &&
         axis_type == framework::proto::VarType::INT32) {
-      GatherV2Function<T, int32_t, int32_t>(input, index, axis, out, place);
+      GatherV2Function<T, int32_t, int32_t>(*input, *index, *axis, out, place);
     }
     if (index_type == framework::proto::VarType::INT32 &&
         axis_type == framework::proto::VarType::INT64) {
-      GatherV2Function<T, int32_t, int64_t>(input, index, axis, out, place);
+      GatherV2Function<T, int32_t, int64_t>(*input, *index, *axis, out, place);
     }
     if (index_type == framework::proto::VarType::INT64 &&
         axis_type == framework::proto::VarType::INT32) {
-      GatherV2Function<T, int64_t, int32_t>(input, index, axis, out, place);
+      GatherV2Function<T, int64_t, int32_t>(*input, *index, *axis, out, place);
     }
     if (index_type == framework::proto::VarType::INT64 &&
         axis_type == framework::proto::VarType::INT64) {
-      GatherV2Function<T, int64_t, int64_t>(input, index, axis, out, place);
+      GatherV2Function<T, int64_t, int64_t>(*input, *index, *axis, out, place);
     }
   }
 };
