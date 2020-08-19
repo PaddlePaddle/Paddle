@@ -107,7 +107,7 @@ class GlooWrapper {
  public:
   static std::shared_ptr<GlooWrapper> GetInstance() {
     if (nullptr == s_instance_) {
-      s_instance_.reset(new GlooWrapper());
+      s_instance_.reset(new paddle::framework::GlooWrapper());
     }
     return s_instance_;
   }
@@ -232,6 +232,7 @@ class GlooWrapper {
   int http_port_;
   std::string http_scope_;
 
+ private:
   static std::shared_ptr<GlooWrapper> s_instance_;
 };
 

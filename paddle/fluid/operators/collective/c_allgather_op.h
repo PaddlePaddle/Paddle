@@ -20,9 +20,20 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+
+#if defined(PADDLE_WITH_GLOO)
+#include <gloo/allgather.h>
+#include <gloo/barrier.h>
+#include <gloo/rendezvous/context.h>
+#include <gloo/rendezvous/file_store.h>
+#include <gloo/rendezvous/http_store.h>
+#include <gloo/rendezvous/prefix_store.h>
+#include <gloo/rendezvous/store.h>
+#include <gloo/transport/tcp/device.h>
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -41,7 +52,10 @@ class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     auto nranks = gloo->Rank();
-    // PADDLE_ENFOREC_EQ(gloo->IsInitialized(), true,
+    PADDLE_ENFORCE_EQ(
+        gloo->IsInitialized(), true,
+        platform::errors::InvalidArgument(
+            "You must initialize the gloo environment first to use it."));
     gloo::AllgatherOptions opts(gloo->GetContext());
     opts.setInput(const_cast<T*>(send_buff), send_numel);
     opts.setOutput(recv_buff, send_numel * nranks);

@@ -247,6 +247,8 @@ void ParallelConnectContext::connectFullMesh(
 namespace paddle {
 namespace framework {
 
+std::shared_ptr<GlooWrapper> s_instance_ = nullptr;
+
 void GlooWrapper::Init() {
   if (is_initialized_) {
     return;
