@@ -56,8 +56,38 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
     int seed = ctx.Attr<int>("seed");
 
+    int gate_size = 4 * hidden_size;
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
+
+    auto weight_ih = ctx.MultiOutput<framework::Tensor>("WeightIh");
+    auto weight_hh = ctx.MultiOutput<framework::Tensor>("WeightHh");
+    auto bias_ih = ctx.MultiOutput<framework::Tensor>("BiasIh");
+    auto bias_hh = ctx.MultiOutput<framework::Tensor>("BiasHh");
+
+    int offset = 0;
+    int n_direct = is_bidirec ? 2 : 1;
+    for (int i = 0; i < num_layers; ++i) {
+      for (int j = 0; j < n_direct; ++j) {
+        int weight_num = i * 4 + j;
+        int size = 0;
+        size = gate_size * input_size;
+        weight_ih[weight_num]=w->Slice(offset,size);
+        offset += size;
+
+        size = gate_size * hidden_size * n_direct;
+        weight_hh[weight_num]=w->Slice(offset,size);
+        offset += size;
+
+        size = gate_size * hidden_size;
+        bias_ih[weight_num]=w->Slice(offset,size);
+        offset += size;
+
+        size = gate_size;
+        bias_hh[weight_num]=w->Slice(offset,size);
+        offset += size;
+      }
+    }
 
     CudnnRNNCache *cudnn_rnn_cache = new CudnnRNNCache();
 
