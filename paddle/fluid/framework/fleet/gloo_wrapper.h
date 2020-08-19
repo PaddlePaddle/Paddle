@@ -107,9 +107,16 @@ class GlooWrapper {
  public:
   static std::shared_ptr<GlooWrapper> GetInstance() {
     if (nullptr == s_instance_) {
-      s_instance_.reset(new paddle::framework::GlooWrapper());
+      s_instance_.reset(new GlooWrapper());
     }
     return s_instance_;
+  }
+
+  static GlooWrapper Create() {
+    if (nullptr == s_instance_) {
+      s_instance_.reset(new GlooWrapper());
+    }
+    return *s_instance_;
   }
 
   GlooWrapper() {}
@@ -234,8 +241,6 @@ class GlooWrapper {
   // configs for http store
   int http_port_;
   std::string http_scope_;
-
-  DISABLE_COPY_AND_ASSIGN(GlooWrapper);
 };
 
 }  // namespace framework
