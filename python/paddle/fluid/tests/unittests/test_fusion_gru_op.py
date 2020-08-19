@@ -30,6 +30,7 @@ def fusion_gru(
         wh,  # D x 3D
         bias,  # 1 x 3D
         is_reverse,
+        origin_mode,
         act_state,
         act_gate):
     return gru(fc(x, wx, bias),
@@ -40,7 +41,8 @@ def fusion_gru(
                    (1, wh.shape[1]), dtype='float32'),
                is_reverse,
                act_state,
-               act_gate)
+               act_gate,
+               origin_mode=origin_mode)
 
 
 class TestFusionGRUOp(OpTest):
@@ -57,6 +59,8 @@ class TestFusionGRUOp(OpTest):
         self.with_bias = True
         self.act_state = 'tanh'
         self.act_gate = 'sigmoid'
+        self.origin_mode = False
+        self.use_mkldnn = False
         self.set_confs()
 
         T = sum(self.lod[0])
@@ -73,7 +77,7 @@ class TestFusionGRUOp(OpTest):
                 (N, self.D), dtype='float32')
 
         _, _, _, hidden = fusion_gru(
-            x, self.lod, h0, wx, wh, bias, self.is_reverse,
+            x, self.lod, h0, wx, wh, bias, self.is_reverse, self.origin_mode,
             ACTIVATION[self.act_state], ACTIVATION[self.act_gate])
 
         self.inputs = {'X': (x, self.lod), 'WeightX': wx, 'WeightH': wh}
@@ -89,7 +93,9 @@ class TestFusionGRUOp(OpTest):
         self.attrs = {
             'activation': self.act_state,
             'gate_activation': self.act_gate,
-            'is_reverse': self.is_reverse
+            'is_reverse': self.is_reverse,
+            'origin_mode': self.origin_mode,
+            'use_mkldnn': self.use_mkldnn
         }
 
     def test_check_output(self):

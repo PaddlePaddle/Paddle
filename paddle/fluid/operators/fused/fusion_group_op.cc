@@ -22,8 +22,14 @@ class FusionGroupOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    const size_t num_ins = ctx->Inputs("Inputs").size();
-    const size_t num_outs = ctx->Outputs("Outs").size();
+    OP_INOUT_CHECK(ctx->HasInputs("Inputs"), "Input", "Inputs", "FusionGroup");
+    OP_INOUT_CHECK(ctx->HasOutputs("Outs"), "Output", "Outs", "FusionGroup");
+
+    auto input_names = ctx->Inputs("Inputs");
+    auto output_names = ctx->Outputs("Outs");
+
+    const size_t num_ins = input_names.size();
+    const size_t num_outs = output_names.size();
 
     PADDLE_ENFORCE_GE(
         num_ins, 1UL,
@@ -42,9 +48,12 @@ class FusionGroupOp : public framework::OperatorWithKernel {
     std::vector<framework::DDim> x_dims = ctx->GetInputsDim("Inputs");
     if (type == 0) {
       for (size_t i = 1; i < num_ins; ++i) {
-        PADDLE_ENFORCE_EQ(x_dims[0], x_dims[i],
-                          platform::errors::InvalidArgument(
-                              "All the inputs' dims should be the same."));
+        PADDLE_ENFORCE_EQ(
+            x_dims[0], x_dims[i],
+            platform::errors::InvalidArgument(
+                "All the inputs' dims is expected to be the same. "
+                "But recieved [%s] (name: %s) vs [%s] (name: %s).",
+                x_dims[0], input_names[0], x_dims[i], input_names[i]));
       }
       std::vector<framework::DDim> out_dims;
       for (size_t j = 0; j < num_outs; ++j) {
@@ -76,11 +85,11 @@ class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Outs",
               "(std::vector<LoDTensor>) The outputs of fusion_group op.")
         .AsDuplicable();
-    AddAttr<std::vector<std::string>>(
-        "outs_data_type", "The data type of Outputs in fusion_group op.")
+    AddAttr<std::vector<int>>("outs_dtype",
+                              "The data type of Outputs in fusion_group op.")
         .SetDefault({});
-    AddAttr<std::vector<std::string>>(
-        "inputs_data_type", "The data type of Inputs in fusion_group op.")
+    AddAttr<std::vector<int>>("inputs_dtype",
+                              "The data type of Inputs in fusion_group op.")
         .SetDefault({});
     AddAttr<int>("type", "Fusion type.").SetDefault(0);
     AddAttr<std::string>("func_name", "Name of the generated functions.")

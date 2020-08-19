@@ -129,6 +129,45 @@ class Layer(core.Layer):
         for layer in self.sublayers():
             layer.eval()
 
+    def apply(self, fn):
+        """
+        Applies ``fn`` recursively to every sublayer (as returned by ``.sublayers()``)
+        as well as self. Typical use includes initializing the parameters of a model.
+
+        Parameters:
+            fn (function): a function to be applied to each sublayer
+
+        Returns:
+            Layer: self
+
+        Example::
+            .. code-block:: python
+
+              import paddle
+              import paddle.nn as nn
+              
+              paddle.disable_static()
+              
+              net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
+
+              def init_weights(layer):
+                  if type(layer) == nn.Linear:
+                      print('before init weight:', layer.weight.numpy())
+                      new_weight = paddle.fill_constant(layer.weight.shape, layer.weight.dtype, value=0.9)
+                      layer.weight.set_value(new_weight)
+                      print('after init weight:', layer.weight.numpy())
+
+              net.apply(init_weights)
+
+              print(net.state_dict())
+        """
+        for layer in self.children():
+            layer.apply(fn)
+
+        fn(self)
+
+        return self
+
     def full_name(self):
         """Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__
 
@@ -244,7 +283,7 @@ class Layer(core.Layer):
     def create_parameter(self,
                          shape,
                          attr=None,
-                         dtype='float32',
+                         dtype=None,
                          is_bias=False,
                          default_initializer=None):
         """Create parameters for this layer.
@@ -313,6 +352,56 @@ class Layer(core.Layer):
                 include_sublayers=include_sublayers)
         ]
         return ret
+
+    def children(self):
+        """Returns an iterator over immediate children layers.
+
+        Yields:
+            Layer: a child layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    
+                    layer_list = list(model.children())
+
+                    print(layer_list)
+
+        """
+        for _, layer in self.named_children():
+            yield layer
+
+    def named_children(self):
+        """Returns an iterator over immediate children layers, yielding both
+        the name of the layer as well as the layer itself.
+
+        Yields:
+            (string, Layer): Tuple containing a name and child layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    for prefix, layer in model.named_children():
+                        print(prefix, layer)
+
+        """
+        memo = set()
+        for name, layer in self._sub_layers.items():
+            if layer is not None and layer not in memo:
+                memo.add(layer)
+                yield name, layer
 
     def sublayers(self, include_sublayers=True):
         """Returns a list of sub layers.

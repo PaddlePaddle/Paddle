@@ -50,14 +50,19 @@ def monkey_patch_varbase():
                     static_var = var_base._to_static_var()
 
         """
+
+        # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph. 
+        # It will fail. So, for propery in dygraph only, should not let it getattr(self, attr, None).
+        attr_not_need_keys = ['grad']
         if isinstance(self, ParamBase):
             attr_kwargs = self.__dict__.copy()
         else:
-            attr_names = [
-                name for name in dir(self)
-                if not (inspect.ismethod(getattr(self, name)) or
-                        name.startswith('_'))
-            ]
+            attr_names = []
+            for name in dir(self):
+                if name not in attr_not_need_keys and not (
+                        inspect.ismethod(getattr(self, name)) or
+                        name.startswith('_')):
+                    attr_names.append(name)
             attr_kwargs = {name: getattr(self, name) for name in attr_names}
 
         attr_keys = ['block', 'shape', 'dtype', 'type', 'name', 'persistable']
@@ -124,7 +129,7 @@ def monkey_patch_varbase():
                                       framework._current_expected_place())
 
     @framework.dygraph_only
-    def backward(self, backward_strategy=None):
+    def backward(self, backward_strategy=None, retain_graph=False):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
@@ -133,6 +138,10 @@ def monkey_patch_varbase():
 
         Args:
             backward_strategy( :ref:`api_fluid_dygraph_BackwardStrategy` ): The Backward Strategy to run backward
+            retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
+            like to add more ops to the built graph after calling this method(`backward`), set the parameter
+            `retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+            Defaults to False.
 
         Returns:
             NoneType: None
@@ -164,7 +173,8 @@ def monkey_patch_varbase():
                 backward_strategy = BackwardStrategy()
                 backward_strategy.sort_sum_gradient = False
 
-            self._run_backward(backward_strategy, framework._dygraph_tracer())
+            self._run_backward(backward_strategy,
+                               framework._dygraph_tracer(), retain_graph)
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
@@ -211,6 +221,14 @@ def monkey_patch_varbase():
         else:
             return np.array(new_ivar.value().get_tensor())
 
+    @property
+    def grad(self):
+        """
+        The alias of gradient().
+        """
+
+        return self.gradient()
+
     def __str__(self):
         """
         Convert a VarBase object to a readable string.
@@ -221,7 +239,7 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                paddle.enable_imperative()
+                paddle.disable_static()
                 x = paddle.rand([1, 5])
                 print(x)
                 # Variable: eager_tmp_0
@@ -230,13 +248,13 @@ def monkey_patch_varbase():
                 #   - layout: NCHW
                 #   - dtype: float
                 #   - data: [0.645307 0.597973 0.732793 0.646921 0.540328]
-                paddle.disable_imperative()
+                paddle.enable_static()
         """
         tensor = self.value().get_tensor()
         if tensor._is_initialized():
-            return 'Variable: %s\n%s' % (self.name, str(tensor))
+            return 'Tensor: %s\n%s' % (self.name, str(tensor))
         else:
-            return 'Variable: %s, not initialized' % (self.name)
+            return 'Tensor: %s, not initialized' % (self.name)
 
     @property
     def block(self):
@@ -255,8 +273,9 @@ def monkey_patch_varbase():
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
-        ("block", block), ("backward", backward), ("gradient", gradient),
-        ("__str__", __str__)):
+        ("block", block), ("backward", backward), ("grad", grad),
+        ("gradient", gradient), ("__str__", __str__), ("__repr__", __str__),
+        ("__module__", "paddle"), ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase

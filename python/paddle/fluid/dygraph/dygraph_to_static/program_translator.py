@@ -13,30 +13,38 @@
 # limitations under the License.
 
 from __future__ import print_function
-import gast
+
+import collections
 import inspect
-import warnings
 import textwrap
 import threading
-import collections
+import warnings
+
+import gast
 import numpy as np
-from paddle.fluid import core, scope_guard
-from paddle.fluid import framework
+from paddle.fluid import core
 from paddle.fluid import executor
+from paddle.fluid import framework
+from paddle.fluid import scope_guard
 from paddle.fluid import unique_name
+from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.layers.utils import pack_sequence_as
+from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
+from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
+from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import create_and_update_origin_info_map
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import update_op_callstack_with_origin_info
+from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
+from paddle.fluid.layers.utils import flatten
+from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
-from paddle.fluid.dygraph.base import param_guard
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
-from paddle.fluid.annotations import deprecated
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
 
@@ -87,17 +95,25 @@ class FunctionCache(object):
         """
         # Note: In Python2, it will raise OSError when inspect function
         # with decorator directly and function.__wrapped__ holds the actual function.
-        func = getattr(func, '__wrapped__', func)
+        func = unwrap(func)
         source_code = func_to_source_code(func)
+
+        # TODO(liym27):
+        #  Consider this case: source_code in self._code_to_ast_caches,
+        #  but actually they are methods in different classes.
+        #  Maybe use (__class__, source_code) as key
         if source_code in self._code_to_ast_caches:
             root_wrapper = self._code_to_ast_caches[source_code]
         else:
             root = gast.parse(source_code)
+            root = attach_origin_info(root, func)
             root_wrapper = self._dygraph_to_static.get_static_ast(root)
             self._code_to_ast_caches[source_code] = root_wrapper
 
         # Get static function from AST
         static_func, file_name = ast_to_func(root_wrapper.node, func)
+
+        create_and_update_origin_info_map(root_wrapper.node, static_func)
         return static_func
 
     def exist(self, func):
@@ -126,6 +142,7 @@ class FunctionSpec(object):
         self._args = args
         self._kwargs = kwargs
 
+        # TODO(liym27): func has multi layer decorator
         dyfunc = getattr(func, '__wrapped__', func)
         self._dyfunc_code = inspect.getsource(dyfunc)
 
@@ -283,10 +300,18 @@ class ConcreteProgram(object):
                 # 3. Builds program only once and returns the output Variables.
                 with param_guard(func_spec.parameters(False)), param_guard(
                         func_spec.buffers(False)):
-                    outputs = static_func(*inputs)
+                    try:
+                        outputs = static_func(*inputs)
+                    except BaseException as e:
+                        # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
+                        attach_error_data(e)
+                        raise
+
                 if not isinstance(outputs,
                                   (tuple, list)) and outputs is not None:
                     outputs = [outputs]
+
+        main_program = update_op_callstack_with_origin_info(main_program)
 
         return ConcreteProgram(
             inputs=inputs,
@@ -484,12 +509,24 @@ class ProgramTranslator(object):
             return dygraph_func(*args, **kwargs)
 
         function_spec = FunctionSpec(dygraph_func, args, kwargs)
-        _, partial_program_layer = self._program_cache[function_spec]
+        concrete_program, partial_program_layer = self._program_cache[
+            function_spec]
 
         if args and isinstance(args[0], layers.Layer):
+            # Synchronize self.training attribute.
+            partial_program_layer.training = args[0].training
             args = args[1:]
+        try:
+            return partial_program_layer(args)
 
-        return partial_program_layer(args)
+        except BaseException as e:
+            # NOTE:
+            # 1. If e is raised in compile time, e should have been attached to ERROR_DATA before;
+            # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
+            if not hasattr(e, ERROR_DATA):
+                # runtime error
+                attach_error_data(e, in_runtime=True)
+            raise
 
     def get_func(self, dygraph_func):
         """
@@ -638,7 +675,9 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_code"
         # Gets AST from dygraph function
-        raw_code = inspect.getsource(dygraph_func)
+
+        unwrap_func = unwrap(dygraph_func)
+        raw_code = inspect.getsource(unwrap_func)
         code = textwrap.dedent(raw_code)
         root = gast.parse(code)
 
@@ -649,99 +688,6 @@ class ProgramTranslator(object):
         # Get source_code
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
-
-    @deprecated(since='2.0', instead="paddle.imperative.jit.save")
-    @switch_to_static_graph
-    def save_inference_model(self, dirname, feed=None, fetch=None):
-        """
-        Saves current model as the inference model. It will prune the main_program
-        to build a new program especially for inference, and then save it and all
-        related parameters to given `dirname` . The saved inference model can be
-        loaded by `:ref:`api_fluid_io_load_inference_model` or `C++ inference APIs.
-
-        Args:
-            dirname (str): the directory to save the inference model.
-            feed (list[int], optional): the indices of the input variables of the
-                dygraph functions which will be saved as input variables in
-                inference model. If None, all input variables of the dygraph function
-                would be the inputs of the saved inference model. Default None.
-            fetch (list[int], optional): the indices of the returned variable of the
-                dygraph functions which will be saved as output variables in
-                inference model. If None, all output variables of the dygraph function
-                would be the outputs of the saved inference model. Default None.
-        Returns:
-            None
-        Examples:
-            .. code-block:: python
-                import numpy as np
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph import Linear
-                from paddle.fluid.dygraph import declarative
-                from paddle.fluid.dygraph import ProgramTranslator
-
-                class SimpleNet(fluid.dygraph.Layer):
-                    def __init__(self, in_size, out_size):
-                        super(SimpleNet, self).__init__()
-                        self._linear = Linear(in_size, out_size)
-
-                    @declarative
-                    def forward(self, x):
-                        y = self._linear(x)
-                        z = self._linear(y)
-                        loss = fluid.layers.mean(z)
-                        return z, loss
-
-                with fluid.dygraph.guard(fluid.CPUPlace()):
-                    net = SimpleNet(8, 8)
-                    adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
-                    x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
-                    for i in range(10):
-                        loss, out = net(x)
-                        loss.backward()
-                        adam.minimize(loss)
-                        net.clear_gradients()
-                # Save inference model.
-                # Note that fetch=[0] means we set 'z' as the inference output.
-                prog_trans = ProgramTranslator()
-                prog_trans.save_inference_model("./dy2stat_infer_model", fetch=[0])
-
-                # In this example, the inference model will be pruned based on output (z).
-                # The pruned inference program is going to be saved in the folder
-                # "./dy2stat_infer_model" and parameters are going to be saved in separate
-                # files in the folder.
-        """
-
-        def get_feed_fetch(var_list, partial_vars, return_name=False):
-            vars = [
-                var for var in var_list if isinstance(var, framework.Variable)
-            ]
-            if partial_vars:
-                vars = [vars[idx] for idx in partial_vars]
-            if return_name:
-                vars = [var.name for var in vars]
-
-            return vars
-
-        func_spec, (concrete_program,
-                    partial_layer) = self._program_cache.last()
-        # share paramBase data with parameter
-        scope = core.Scope()
-        for param_base in concrete_program.parameters:
-            param_tensor = scope.var(param_base.name).get_tensor()
-            src_tensor = param_base.value().get_tensor()
-            param_tensor._share_data_with(src_tensor)
-
-        feed_var_names = get_feed_fetch(concrete_program.inputs, feed, True)
-        fetch_vars = get_feed_fetch(concrete_program.outputs, fetch)
-
-        from paddle.fluid.io import save_inference_model
-        with scope_guard(scope):
-            save_inference_model(
-                dirname=dirname,
-                feeded_var_names=feed_var_names,
-                target_vars=fetch_vars,
-                executor=executor.Executor(framework._current_expected_place()),
-                main_program=concrete_program.main_program.clone())
 
     def get_program_cache(self):
         """

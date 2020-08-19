@@ -28,7 +28,7 @@ from paddle.fluid.dygraph.base import to_variable
 
 import paddle.incubate.hapi as hapi
 from paddle.incubate.hapi import Model, Input
-from paddle.incubate.hapi.loss import CrossEntropy
+from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.incubate.hapi.metrics import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
 from paddle.incubate.hapi.vision.models import LeNet
@@ -36,7 +36,7 @@ from paddle.incubate.hapi.distributed import DistributedBatchSampler, prepare_di
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation='softmax'):
+    def __init__(self, num_classes=10, classifier_activation=None):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes
         self.features = Sequential(
@@ -97,7 +97,7 @@ def dynamic_train(model, dataloader):
     model.train()
     for inputs, labels in dataloader:
         outputs = model(inputs)
-        loss = fluid.layers.cross_entropy(outputs, labels)
+        loss = CrossEntropyLoss(reduction="sum")(outputs, labels)
         avg_loss = fluid.layers.reduce_sum(loss)
         avg_loss.backward()
         optim.minimize(avg_loss)
@@ -169,6 +169,12 @@ class TestModel(unittest.TestCase):
     def test_fit_static(self):
         self.fit(False)
 
+    def test_fit_dynamic_with_rank(self):
+        self.fit(True, 2, 0)
+
+    def test_fit_static_with_rank(self):
+        self.fit(False, 2, 0)
+
     def test_evaluate_dygraph(self):
         self.evaluate(True)
 
@@ -184,19 +190,19 @@ class TestModel(unittest.TestCase):
     def test_prepare_context(self):
         prepare_distributed_context()
 
-    def fit(self, dynamic):
+    def fit(self, dynamic, num_replicas=None, rank=None):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
         fluid.default_startup_program().random_seed = seed
         fluid.default_main_program().random_seed = seed
 
-        net = LeNet()
+        net = LeNet(classifier_activation=None)
         optim_new = fluid.optimizer.Adam(
             learning_rate=0.001, parameter_list=net.parameters())
         model = Model(net, inputs=self.inputs, labels=self.labels)
         model.prepare(
             optim_new,
-            loss_function=CrossEntropy(average=False),
+            loss_function=CrossEntropyLoss(reduction="sum"),
             metrics=Accuracy())
         model.fit(self.train_dataset, batch_size=64, shuffle=False)
 
@@ -204,9 +210,17 @@ class TestModel(unittest.TestCase):
         np.testing.assert_allclose(result['acc'], self.acc1)
 
         train_sampler = DistributedBatchSampler(
-            self.train_dataset, batch_size=64, shuffle=False)
+            self.train_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank)
         val_sampler = DistributedBatchSampler(
-            self.val_dataset, batch_size=64, shuffle=False)
+            self.val_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank)
 
         train_loader = fluid.io.DataLoader(
             self.train_dataset,
@@ -271,9 +285,9 @@ class TestModel(unittest.TestCase):
 
 
 class MyModel(fluid.dygraph.Layer):
-    def __init__(self):
+    def __init__(self, classifier_activation='softmax'):
         super(MyModel, self).__init__()
-        self._fc = Linear(20, 10, act='softmax')
+        self._fc = Linear(20, 10, act=classifier_activation)
 
     def forward(self, x):
         y = self._fc(x)
@@ -293,13 +307,12 @@ class TestModelFunction(unittest.TestCase):
         def get_expect():
             fluid.enable_dygraph(fluid.CPUPlace())
             self.set_seed()
-            m = MyModel()
+            m = MyModel(classifier_activation=None)
             optim = fluid.optimizer.SGD(learning_rate=0.001,
                                         parameter_list=m.parameters())
             m.train()
             output = m(to_variable(data))
-            l = to_variable(label)
-            loss = fluid.layers.cross_entropy(output, l)
+            loss = CrossEntropyLoss(reduction='sum')(output, to_variable(label))
             avg_loss = fluid.layers.reduce_sum(loss)
             avg_loss.backward()
             optim.minimize(avg_loss)
@@ -313,14 +326,15 @@ class TestModelFunction(unittest.TestCase):
             fluid.enable_dygraph(device) if dynamic else None
             self.set_seed()
 
-            net = MyModel()
+            net = MyModel(classifier_activation=None)
             optim2 = fluid.optimizer.SGD(learning_rate=0.001,
                                          parameter_list=net.parameters())
 
             inputs = [Input('x', [None, dim], 'float32')]
             labels = [Input('label', [None, 1], 'int64')]
             model = Model(net, inputs, labels)
-            model.prepare(optim2, loss_function=CrossEntropy(average=False))
+            model.prepare(
+                optim2, loss_function=CrossEntropyLoss(reduction="sum"))
             loss, = model.train_batch([data], [label])
 
             np.testing.assert_allclose(loss.flatten(), ref.flatten())
@@ -358,14 +372,15 @@ class TestModelFunction(unittest.TestCase):
         for dynamic in [True, False]:
             device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
-            net = MyModel()
+            net = MyModel(classifier_activation=None)
             inputs = [Input('x', [None, 20], 'float32')]
             labels = [Input('label', [None, 1], 'int64')]
             optim = fluid.optimizer.SGD(learning_rate=0.001,
                                         parameter_list=net.parameters())
             model = Model(net, inputs, labels)
             model.prepare(
-                optimizer=optim, loss_function=CrossEntropy(average=False))
+                optimizer=optim,
+                loss_function=CrossEntropyLoss(reduction="sum"))
             model.save(path + '/test')
             model.load(path + '/test')
             shutil.rmtree(path)
@@ -376,48 +391,48 @@ class TestModelFunction(unittest.TestCase):
         # dynamic saving
         device = hapi.set_device('cpu')
         fluid.enable_dygraph(device)
-        model = Model(MyModel())
+        model = Model(MyModel(classifier_activation=None))
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(
-            optimizer=optim, loss_function=CrossEntropy(average=False))
+            optimizer=optim, loss_function=CrossEntropyLoss(reduction="sum"))
         model.save(path + '/test')
         fluid.disable_dygraph()
 
         inputs = [Input('x', [None, 20], 'float32')]
         labels = [Input('label', [None, 1], 'int64')]
-        model = Model(MyModel(), inputs, labels)
+        model = Model(MyModel(classifier_activation=None), inputs, labels)
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(
-            optimizer=optim, loss_function=CrossEntropy(average=False))
+            optimizer=optim, loss_function=CrossEntropyLoss(reduction="sum"))
         model.load(path + '/test')
         shutil.rmtree(path)
 
     def test_static_save_dynamic_load(self):
         path = tempfile.mkdtemp()
 
-        net = MyModel()
+        net = MyModel(classifier_activation=None)
         inputs = [Input('x', [None, 20], 'float32')]
         labels = [Input('label', [None, 1], 'int64')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
         model.prepare(
-            optimizer=optim, loss_function=CrossEntropy(average=False))
+            optimizer=optim, loss_function=CrossEntropyLoss(reduction="sum"))
         model.save(path + '/test')
 
         device = hapi.set_device('cpu')
         fluid.enable_dygraph(device)  #if dynamic else None
 
-        net = MyModel()
+        net = MyModel(classifier_activation=None)
         inputs = [Input('x', [None, 20], 'float32')]
         labels = [Input('label', [None, 1], 'int64')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
         model.prepare(
-            optimizer=optim, loss_function=CrossEntropy(average=False))
+            optimizer=optim, loss_function=CrossEntropyLoss(reduction="sum"))
         model.load(path + '/test')
         shutil.rmtree(path)
         fluid.disable_dygraph()

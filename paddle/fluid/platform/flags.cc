@@ -473,3 +473,38 @@ DEFINE_double(local_exe_sub_scope_limit, 256.0,  // MBytes
               "each CUDAPlace. If you don't need to limit the memory, "
               "you should set FLAGS_local_exe_sub_scope_limit=-1. "
               "The default value is 256 MBytes.");
+
+/**
+ * MKLDNN related FLAG
+ * Name: use_mkldnn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note:
+ */
+DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+
+/**
+ * Debug related FLAG
+ * Name: FLAGS_call_stack_level
+ * Since Version: 2.0.0
+ * Value Range: int, default=2
+ * Example:
+ * Note: Used to debug. Determine the call stack to print when error or
+ * exeception happens.
+ * If FLAGS_call_stack_level == 0, only the error message summary will be shown.
+ * If FLAGS_call_stack_level == 1, the python stack and  error message summary
+ * will be shown.
+ * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
+ * message summary will be shown.
+ */
+DEFINE_int32(
+    call_stack_level, 2,
+    "Determine the call stack to print when error or exeception happens."
+    // TODO(zhiqiu): implement logic of FLAGS_call_stack_level==0
+    // "If FLAGS_call_stack_level == 0, only the error message summary will be "
+    // "shown. "
+    "If FLAGS_call_stack_level == 1, the python stack and error message "
+    "summary will be shown."
+    "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
+    "error message summary will be shown.");

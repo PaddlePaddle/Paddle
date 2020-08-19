@@ -21,6 +21,7 @@ from paddle.fluid import core
 from paddle.fluid import Linear
 from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
+from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 import paddle
 
 
@@ -205,27 +206,28 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
 
     def test_functional_paddle_imperative_dygraph_context(self):
-        self.assertFalse(paddle.imperative.enabled())
-        paddle.enable_imperative()
-        self.assertTrue(paddle.imperative.enabled())
+        self.assertFalse(paddle.in_dynamic_mode())
+        paddle.disable_static()
+        self.assertTrue(paddle.in_dynamic_mode())
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        var_inp = paddle.imperative.to_variable(np_inp)
+        var_inp = paddle.to_variable(np_inp)
         mlp = MLP(input_size=2)
         out = mlp(var_inp)
         dy_out1 = out.numpy()
         out.backward()
         dy_grad1 = mlp._linear1.weight.gradient()
-        paddle.disable_imperative()
-        self.assertFalse(paddle.imperative.enabled())
-        with paddle.imperative.guard():
-            self.assertTrue(paddle.imperative.enabled())
-            var_inp = paddle.imperative.to_variable(np_inp)
-            mlp = MLP(input_size=2)
-            out = mlp(var_inp)
-            dy_out2 = out.numpy()
-            out.backward()
-            dy_grad2 = mlp._linear1.weight.gradient()
-        self.assertFalse(paddle.imperative.enabled())
+        paddle.enable_static()
+        self.assertFalse(paddle.in_dynamic_mode())
+        paddle.disable_static()
+        self.assertTrue(paddle.in_dynamic_mode())
+        var_inp = paddle.to_variable(np_inp)
+        mlp = MLP(input_size=2)
+        out = mlp(var_inp)
+        dy_out2 = out.numpy()
+        out.backward()
+        dy_grad2 = mlp._linear1.weight.gradient()
+        paddle.enable_static()
+        self.assertFalse(paddle.in_dynamic_mode())
         self.assertTrue(np.array_equal(dy_out1, dy_out2))
         self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
 
@@ -281,7 +283,7 @@ class TestImperative(unittest.TestCase):
             l0 = fluid.Linear(2, 2)
             self.assertTrue(l0.weight._grad_ivar() is None)
             l1 = fluid.Linear(2, 2)
-            with paddle.imperative.no_grad():
+            with paddle.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
@@ -625,6 +627,16 @@ class TestDygraphUtils(unittest.TestCase):
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
             res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
+            res2 = fluid.layers.sigmoid(a)
+            self.assertTrue(np.allclose(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph3(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        helper = LayerObjectHelper(fluid.unique_name.generate("test"))
+        func = helper.append_activation
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, act="sigmoid", use_cudnn=True)
             res2 = fluid.layers.sigmoid(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 

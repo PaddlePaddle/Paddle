@@ -61,15 +61,15 @@ struct FindRangeAbsMaxFunctor {
 
 template <typename DeviceContext, typename T>
 struct FindChannelAbsMaxFunctor {
-  void operator()(const DeviceContext& ctx, const T* in, const int num,
-                  const int channel, T* out);
+  void operator()(const DeviceContext& ctx, const framework::Tensor& in_tensor,
+                  const int quant_axis, T* out_abs_max);
 };
 
 template <typename DeviceContext, typename T>
 struct ChannelClipAndFakeQuantFunctor {
   void operator()(const DeviceContext& ctx, const framework::Tensor& in,
                   const framework::Tensor& scale, const int bin_cnt,
-                  const int channel, framework::Tensor* out);
+                  const int quant_axis, framework::Tensor* out);
 };
 
 template <typename DeviceContext, typename T>
@@ -144,12 +144,13 @@ class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
 
     int bit_length = context.Attr<int>("bit_length");
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
+    int quant_axis = context.Attr<int>("quant_axis");
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    FindChannelAbsMaxFunctor<DeviceContext, T>()(
-        dev_ctx, in->data<T>(), in->numel(), in->dims()[0], out_scale_data);
+    FindChannelAbsMaxFunctor<DeviceContext, T>()(dev_ctx, *in, quant_axis,
+                                                 out_scale_data);
     ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
-        dev_ctx, *in, *out_scale, bin_cnt, in->dims()[0], out);
+        dev_ctx, *in, *out_scale, bin_cnt, quant_axis, out);
   }
 };
 
@@ -277,10 +278,7 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
 
     bool is_test = context.Attr<bool>("is_test");
     // testing
