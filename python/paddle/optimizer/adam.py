@@ -63,7 +63,7 @@ class Adam(Optimizer):
 	    :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
 	    If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
 	    the regularization setting here in optimizer will be ignored for this parameter. \
-	    Otherwis, the regularization setting here in optimizer will take effect. \
+	    Otherwise, the regularization setting here in optimizer will take effect. \
 	    Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
@@ -123,7 +123,7 @@ class Adam(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                # define beta decay variable
+                # define beta decay Tensor
                 def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate):
                     global_step = lr_scheduler._decay_step_counter()
 

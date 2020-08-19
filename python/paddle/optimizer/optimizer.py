@@ -434,7 +434,7 @@ class Optimizer(object):
                 # learning rate for different steps
                 ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
                 for i in range(12):
-                    adam.minimize(loss)
+                    adam.step()
                     lr = adam.current_step_lr()
                     np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
 

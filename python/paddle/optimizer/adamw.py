@@ -23,7 +23,7 @@ class DecoupledWeightDecay(object):
     def __init__(self, coeff=0.0, apply_decay_param_fun=None, **kwargs):
         if not isinstance(coeff, float) and \
                 not isinstance(coeff, framework.Variable):
-            raise TypeError("coeff should be float or Variable.")
+            raise TypeError("coeff should be float or Tensor.")
         self._params_name = set()
         self._apply_decay_param_fun = apply_decay_param_fun
         self._coeff = coeff
