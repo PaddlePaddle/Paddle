@@ -26,6 +26,9 @@ class MaskedSelectOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "Input", "MaskedSelect");
     OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "MaskedSelect");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Out", "MaskedSelect");
+    framework::DDim output_dims(ctx->GetInputDim("X"));
+    ctx->SetOutputDim("Y", output_dims);
+    ctx->ShareLoD("X", /*->*/ "Y");
   }
 
  protected:
@@ -64,6 +67,7 @@ class MaskedSelectOpGrad : public framework::OperatorWithKernel {
                    "Input", "MaskedSelect");
     OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "MaskedSelect");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*-->*/ framework::GradVarName("X"));
   }
 
  protected:
