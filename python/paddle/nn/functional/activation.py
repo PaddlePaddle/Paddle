@@ -36,13 +36,14 @@ __all__ = [
     'erf',
     'gelu',
     'hardshrink',
+    'hardtanh',
     'hard_sigmoid',
     'hard_swish',
     'hsigmoid',
     'leaky_relu',
     'logsigmoid',
     'maxout',
-    #       'prelu',
+    # 'prelu',
     'relu',
     'relu6',
     'selu',
@@ -218,6 +219,60 @@ def hardshrink(x, threshold=0.5, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'threshold': threshold})
+    return out
+
+
+def hardtanh(x, min=-1.0, max=1.0, name=None):
+    """
+    hardtanh activation
+
+    .. math::
+
+        hardtanh(x)=
+            \left\{
+            \begin{aligned}
+            &max, & & if \ x > max \\
+            &min, & & if \ x < min \\
+            &x, & & if \ others
+            \end{aligned}
+            \right.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        min (float, optional): The minimum value of the linear region range. . Default is -1.
+        max (float, optional): The maximum value of the linear region range. . Default is 1.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
+        out = F.hardtanh(x) # [-1., 0.3, 1.]
+    """
+    min = -1.0 if min is None else min
+    max = 1.0 if max is None else max
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hardtanh')
+
+    helper = LayerHelper('hardtanh', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='brelu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'t_min': min,
+               't_max': max})
     return out
 
 
@@ -423,7 +478,7 @@ def logsigmoid(x, name=None):
     return out
 
 
-def softmax(x, axis=-1, name=None):
+def softmax(x, axis=None, dtype=None, name=None):
     """
     This operator implements the softmax layer. The calculation process is as follows:
 
@@ -450,7 +505,7 @@ def softmax(x, axis=-1, name=None):
 
     .. math::
 
-        out[i, j] = \\frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+        softmax[i, j] = \\frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
 
     Example:
 
@@ -499,17 +554,24 @@ def softmax(x, axis=-1, name=None):
                          [0.26762315, 0.26762315, 0.26762315, 0.26762315],
                          [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
 
-    Args:
-        x (Tensor): The input multi-dimension Tensor with data type float32, float64.
-        axis (int, optional): The axis along which to perform softmax calculations.
-            It should be in range [-D, D), where D is the dimensions of ``x`` .
-            When ``axis`` < 0, it works the same way as :math:`axis + D` .
-            Default is -1.
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        axis (int, optional): The axis along which to perform log_softmax
+            calculations. It should be in range [-D, D), where D is the
+            dimensions of ``x`` . If ``axis`` < 0, it works the same way as
+            :math:`axis + D` . Default is -1.
+        dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
+            type of the output tensor. If dtype is specified, ``x`` is casted
+            to ``dtype`` before the operation is performed. This is useful for 
+            preventing data type overflows. Supported dtype: float32, float64.
+            If ``dtype`` is None, the output Tensor has the same dtype as x.
+            Default is None.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        A Tensor with the same data type and shape as ``x`` .
+        A Tensor with the same shape and data type (use ``dtype`` if it is
+        specified) as x.
 
     Examples:
 
@@ -528,7 +590,10 @@ def softmax(x, axis=-1, name=None):
                        [5.0, 6.0, 7.0, 8.0],
                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
         x = paddle.to_tensor(x)
-        out = F.softmax(x)
+        out1 = F.softmax(x)
+        out2 = F.softmax(x, dtype='float64')
+        # out1's data type is float32; out2's data type is float64
+        # out1 and out2's value is as follows:
         # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
@@ -536,7 +601,38 @@ def softmax(x, axis=-1, name=None):
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
     """
-    return paddle.fluid.layers.softmax(input=x, axis=axis, name=name)
+    axis = -1 if axis is None else axis
+    dtype = convert_np_dtype_to_dtype_(dtype) if dtype is not None else dtype
+    use_cudnn = True if axis is -1 else False
+
+    if in_dygraph_mode():
+        outs_cast = x if dtype is None \
+            else core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return core.ops.softmax(outs_cast, 'axis', axis, 'use_cudnn', use_cudnn)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'softmax')
+
+    helper = LayerHelper("softmax", **locals())
+    outs_cast = x
+    if dtype is not None:
+        outs_cast = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='cast',
+            inputs={'X': x},
+            outputs={'Out': outs_cast},
+            attrs={'in_dtype': x.dtype,
+                   'out_dtype': dtype})
+
+    outs_softmax = helper.create_variable_for_type_inference(outs_cast.dtype)
+    helper.append_op(
+        type='softmax',
+        inputs={'X': outs_cast},
+        outputs={'Out': outs_softmax},
+        attrs={'axis': axis,
+               'use_cudnn': use_cudnn})
+
+    return outs_softmax
 
 
 def log_softmax(x, axis=-1, dtype=None, name=None):

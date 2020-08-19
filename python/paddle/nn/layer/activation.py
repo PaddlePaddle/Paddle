@@ -18,11 +18,12 @@ __all__ = [
     'ELU',
     'GELU',
     'Hardshrink',
-    #       'PReLU',
+    'HardTanh',
+    # 'PReLU',
     'ReLU',
     'LeakyReLU',
     'Sigmoid',
-    #       'Softmax',
+    'Softmax',
     'LogSigmoid',
     'LogSoftmax',
     'HSigmoid'
@@ -176,6 +177,54 @@ class Hardshrink(layers.Layer):
 
     def forward(self, x):
         return F.hardshrink(x, self._threshold, self._name)
+
+
+class HardTanh(layers.Layer):
+    """
+    HardTanh Activation
+
+    .. math::
+
+        HardTanh(x)=
+            \left\{
+            \begin{aligned}
+            &max, & & if \ x > max \\
+            &min, & & if \ x < min \\
+            &x, & & if \ others
+            \end{aligned}
+            \right.
+
+    Parameters:
+        min (float, optional): The minimum value of the linear region range. . Default is -1.
+        max (float, optional): The maximum value of the linear region range. . Default is 1.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
+        m = paddle.nn.Hardshrink()
+        out = m(x) # # [-1., 0.3, 1.]
+    """
+
+    def __init__(self, min=-1.0, max=1.0, name=None):
+        super(HardTanh, self).__init__()
+        self._min = min
+        self._max = max
+        self._name = name
+
+    def forward(self, x):
+        return F.hardtanh(x, self._min, self._max, self._name)
 
 
 class HSigmoid(layers.Layer):
@@ -467,6 +516,83 @@ class LogSigmoid(layers.Layer):
 
     def forward(self, x):
         return F.logsigmoid(x, self._name)
+
+
+class Softmax(layers.Layer):
+    """
+    Softmax Activation.
+
+    1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
+
+    2. Then ``x`` will be logically flattened to a 2-D matrix. The matrix's second
+    dimension(row length) is the same as the dimension :attr:`axis` of ``x``,
+    and the first dimension(column length) is the product of all other dimensions
+    of ``x``. For each row of the matrix, the softmax operator squashes the
+    K-dimensional(K is the width of the matrix, which is also the size of ``x``'s
+    dimension :attr:`axis`) vector of arbitrary real values to a K-dimensional
+    vector of real values in the range [0, 1] that add up to 1.
+
+    3. After the softmax operation is completed, the inverse operations of steps 1 and 2
+    are performed to restore the two-dimensional matrix to the same dimension as the ``x`` .
+
+    It computes the exponential of the given dimension and the sum of exponential
+    values of all the other dimensions in the K-dimensional vector input.
+    Then the ratio of the exponential of the given dimension and the sum of
+    exponential values of all the other dimensions is the output of the softmax
+    operator.
+
+    For each row :math:`i` and each column :math:`j` in the matrix, we have:
+
+    .. math::
+
+        Softmax[i, j] = \\frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+
+    Parameters:
+        x (Tensor): The input multi-dimension Tensor with data type float32, float64.
+        axis (int, optional): The axis along which to perform softmax calculations.
+            It should be in range [-D, D), where D is the dimensions of ``x`` .
+            When ``axis`` < 0, it works the same way as :math:`axis + D` .
+            Default is -1.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = np.array([[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]], 'float32')
+        x = paddle.to_tensor(x)
+        out = F.softmax(x)
+        # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+        #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+        # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+    """
+
+    def __init__(self, axis=-1, name=None):
+        super(Softmax, self).__init__()
+        self._axis = axis
+        self._dtype = None
+        self._name = name
+
+    def forward(self, x):
+        return F.softmax(x, self._axis, self._dtype, self._name)
 
 
 class LogSoftmax(layers.Layer):

@@ -1188,6 +1188,7 @@ def chunk_eval(input,
             num_correct_chunks)
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.softmax")
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
     This operator implements the softmax layer. The calculation process is as follows:
@@ -8600,7 +8601,7 @@ def log(x, name=None):
     return out
 
 
-@templatedoc()
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.relu")
 def relu(x, name=None):
     """
     ${comment}
@@ -9261,7 +9262,7 @@ def pad2d(input,
     return out
 
 
-@templatedoc()
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.elu")
 def elu(x, alpha=1.0, name=None):
     """
     :alias_main: paddle.nn.functional.elu
@@ -9580,6 +9581,7 @@ def swish(x, beta=1.0, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.prelu")
 def prelu(x, mode, param_attr=None, name=None):
     """
     :api_attr: Static Graph
