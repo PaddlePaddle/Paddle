@@ -15,7 +15,8 @@
 # TODO: import framework api under this directory 
 __all__ = [
     'create_global_var', 'create_parameter', 'ParamAttr', 'Variable',
-    'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace'
+    'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace', 'get_default_dtype',
+    'set_default_dtype'
 ]
 
 __all__ += [
@@ -30,6 +31,8 @@ __all__ += [
 
 from . import random
 from .random import manual_seed
+from .framework import get_default_dtype
+from .framework import set_default_dtype
 
 from ..fluid.framework import Variable  #DEFINE_ALIAS
 from ..fluid.framework import ComplexVariable  #DEFINE_ALIAS
