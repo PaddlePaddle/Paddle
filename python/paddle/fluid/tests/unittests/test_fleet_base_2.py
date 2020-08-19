@@ -85,28 +85,16 @@ class TestFleetBase(unittest.TestCase):
             main_program=compiled_prog)
 
         self.assertRaises(
-            Exception,
-            fleet.save_persistables,
-            dirname='/tmp/',
-            feeded_var_names=['x', 'y'],
-            target_vars=[avg_cost],
-            executor=pe)
+            Exception, fleet.save_persistables, executor=pe, dirname='/tmp/')
+
+        self.assertRaises(
+            Exception, fleet.save_persistables, executor="exe", dirname='/tmp/')
 
         self.assertRaises(
             Exception,
             fleet.save_persistables,
-            dirname='/tmp/',
-            feeded_var_names=['x', 'y'],
-            target_vars=[avg_cost],
-            executor="exe")
-
-        self.assertRaises(
-            Exception,
-            fleet.save_persistables,
-            dirname='/tmp/',
-            feeded_var_names=['x', 'y'],
-            target_vars=[avg_cost],
             executor=exe,
+            dirname='/tmp/',
             main_program=compiled_prog)
 
 
