@@ -111,7 +111,7 @@ __all__ = [
         'min',
         'minimum',
         'mm',
-        'div',
+        'divide',
         'multiply',
         'add',
         'atan',
@@ -263,105 +263,55 @@ Examples:
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def div(x, y, name=None):
+def divide(x, y, name=None):
     """
 Examples:
 
-    .. code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        def gen_data():
-            return {
-                "x": np.array([2, 3, 4]).astype('float32'),
-                "y": np.array([1, 5, 2]).astype('float32')
-            }
-
-        x = fluid.data(name="x", shape=[3], dtype='float32')
-        y = fluid.data(name="y", shape=[3], dtype='float32')
-        z = paddle.div(x, y)
-        # z = x / y
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
-
-        print(z_value) # [2., 0.6, 2.]
-
-
-    .. code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        def gen_data():
-            return {
-                "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                "y": np.zeros((4, 5)).astype('float32')
-            }
-
-        x = fluid.data(name="x", shape=[2, 3, 4, 5], dtype='float32')
-        y = fluid.data(name="y", shape=[4, 5], dtype='float32')
-        z = paddle.div(x, y, name='z')
-        # z = x / y
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
-
-        print(z_value[0])
-        print(z_value[0].shape) # z.shape=[2,3,4,5]
-
-
     ..  code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import numpy as np
+        
+        paddle.disable_static()
 
-        def gen_data():
-            return {
-                "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
-                "y": np.random.randint(1, 5, size=[5]).astype('float32')
-            }
-
-        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.data(name="y", shape=[5], dtype='float32')
-        z = paddle.div(x, y)
-        # z = x / y
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
-        print(z_value[0])
-        print(z_value[0].shape) # z.shape=[2,3,4,5]
-
-
-    ..  code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        with fluid.dygraph.guard(fluid.CPUPlace()):
-            np_x = np.array([2, 3, 4]).astype('float64')
-            np_y = np.array([1, 5, 2]).astype('float64')
-            x = fluid.dygraph.to_variable(np_x)
-            y = fluid.dygraph.to_variable(np_y)
-            z = paddle.div(x, y)
-            np_z = z.numpy()
-            print(np_z)  # [2., 0.6, 2.]
+        np_x = np.array([2, 3, 4]).astype('float64')
+        np_y = np.array([1, 5, 2]).astype('float64')
+        x = paddle.to_tensor(np_x)
+        y = paddle.to_tensor(np_y)
+        z = paddle.divide(x, y)
+        print(z.numpy())  # [2., 0.6, 2.]
 
     """
     op_type = 'elementwise_div'
+    axis = -1
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def floor_divide(x, y, name=None):
+    """
+Examples:
+
+    ..  code-block:: python
+
+        import paddle
+        import numpy as np
+        
+        paddle.disable_static()
+
+        np_x = np.array([2, 3, 8, 7]).astype('float64')
+        np_y = np.array([1, 5, 3, 3]).astype('float64')
+        x = paddle.to_tensor(np_x)
+        y = paddle.to_tensor(np_y)
+        z = paddle.floor_divide(x, y)
+        print(z.numpy())  # [2., 0.0, 2.0, 2.0]
+
+    """
+    op_type = 'elementwise_floordiv'
     axis = -1
     act = None
     if in_dygraph_mode():
@@ -512,12 +462,18 @@ Examples:
 
 for func in [
         add,
-        div,
+        divide,
         maximum,
         minimum,
         multiply
 ]:
-    proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div', 'maximum': 'elementwise_max', 'minimum': 'elementwise_min', 'multiply': 'elementwise_mul'}
+    proto_dict = {'add': 'elementwise_add',
+            'divide': 'elementwise_div',
+            'floor_divide': 'elementwise_floordiv',
+            'maximum': 'elementwise_max',
+            'minimum': 'elementwise_min',
+            'multiply': 'elementwise_mul',
+            }
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
 
     additional_args_lines = [
