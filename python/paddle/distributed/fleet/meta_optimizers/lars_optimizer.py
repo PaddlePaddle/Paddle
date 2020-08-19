@@ -58,10 +58,7 @@ class LarsOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.lars = False
-        dist_strategy.lars_configs = {
-            'lars_coeff': 0.001,
-            'lars_weight_decay': 0.0005,
-        }
+        dist_strategy.lars_configs = {}
 
     def backward(self,
                  loss,

@@ -65,6 +65,7 @@ from .loss import BCELoss  #DEFINE_ALIAS
 from .loss import KLDivLoss  #DEFINE_ALIAS
 from .loss import MarginRankingLoss  #DEFINE_ALIAS
 from .norm import BatchNorm  #DEFINE_ALIAS
+from .norm import SyncBatchNorm  #DEFINE_ALIAS
 from .norm import GroupNorm  #DEFINE_ALIAS
 from .norm import LayerNorm  #DEFINE_ALIAS
 from .norm import SpectralNorm  #DEFINE_ALIAS
