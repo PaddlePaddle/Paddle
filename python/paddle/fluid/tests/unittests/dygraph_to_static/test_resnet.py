@@ -31,7 +31,8 @@ IMAGENET1000 = 1281167
 base_lr = 0.001
 momentum_rate = 0.9
 l2_decay = 1e-4
-batch_size = 8
+# NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
+batch_size = 2
 epoch_num = 1
 place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
     else fluid.CPUPlace()
