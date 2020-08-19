@@ -25,12 +25,13 @@ mkdir build
 cd /d build
 
 rem ------initialize the virtual environment------
-if not defined PYTHON_ROOT set PYTHON_ROOT=c:\Python37
+if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
+set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
+
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 %PYTHON_EXECUTABLE% -m pip install virtualenv
-if not exist paddle_winci (%PYTHON_EXECUTABLE% -m virtualenv paddle_winci)
+%PYTHON_EXECUTABLE% -m virtualenv paddle_winci
 call paddle_winci\Scripts\activate.bat
-if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
 rem ------pre install requirement----------
 where python
@@ -38,8 +39,11 @@ where pip
 pip install --upgrade pip
 pip install wheel
 pip install gym
-pip install -r %work_dir%\python\requirements.txt
-if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+pip install -U -r %work_dir%\python\requirements.txt
+if %ERRORLEVEL% NEQ 0 (
+    call paddle_winci\Scripts\deactivate.bat
+    exit /b %ERRORLEVEL%
+)
 
 rem ------initialize common variable------
 if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
@@ -57,7 +61,7 @@ dir %cache_dir%
 set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 if not exist %cache_dir%\tools (
-    git clone https://github.com/zhouwei25/tools %cache_dir%\tools
+    git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
     if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 )
 
@@ -124,7 +128,7 @@ goto:eof
 
 :cmake_error
 call paddle_winci\Scripts\deactivate.bat
-echo cmake failed!
+echo Cmake failed, will exit!
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
@@ -133,39 +137,41 @@ echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
 call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
-set build_times=1
 
+set build_times=1
 :build_tp
-echo BUILD THIRD_PARTY %build_times%
+echo Build third_party the %build_times% time:
 msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
-echo BUILD THIRD_PARTY RESULT %ERRORLEVEL%
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
     if %build_times% GTR 3 (
         exit /b 1
     ) else (
+        echo Build third_party failed, will retry!
         goto :build_tp
     )
 )
+echo Build third_party successfully!
 
 set build_times=1
 :build_paddle
-echo BUILD PADDLE %build_times%
-msbuild /m /p:Configuration=Release /verbosity:quiet paddle.sln
-echo BUILD PADDLE RESULT %ERRORLEVEL%
+echo Build Paddle the %build_times% time:
+msbuild /m /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 2 (
         exit /b 1
     ) else (
+        echo Build Paddle failed, will retry!
         goto :build_paddle
     )
 )
+echo Build Paddle successfully!
 goto:eof
 
 :build_error
 call paddle_winci\Scripts\deactivate.bat
-echo build paddle failed!
+echo Build Paddle failed, will exit!
 exit /b 7
 
 rem ---------------------------------------------------------------------------------------------
@@ -185,6 +191,7 @@ goto:eof
 
 :test_whl_pacakage_error
 call paddle_winci\Scripts\deactivate.bat
+echo Pip install whl package failed, will exit!
 exit /b 3
 
 rem ---------------------------------------------------------------------------------------------
@@ -206,6 +213,7 @@ goto:eof
 
 :unit_test_error
 call paddle_winci\Scripts\deactivate.bat
+echo Running unit tests failed, will exit!
 exit /b 8
 
 rem ---------------------------------------------------------------------------------------------
