@@ -280,7 +280,8 @@ class Accuracy(Metric):
         """
         res = []
         for t, c in zip(self.total, self.count):
-            res.append(float(t) / c)
+            r = float(t) / c if c > 0 else 0.
+            res.append(r)
         res = res[0] if len(self.topk) == 1 else res
         return res
 
