@@ -570,6 +570,7 @@ function generate_upstream_develop_api_spec() {
 }
 
 function generate_api_spec() {
+    set -e
     spec_kind=$2
     if [ "$spec_kind" != "PR" ] && [ "$spec_kind" != "DEV" ]; then
         echo "Not supported $2"
