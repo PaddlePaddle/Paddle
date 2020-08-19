@@ -60,6 +60,9 @@ class Fleet(object):
         self._util = None
 
     def init(self, role_maker):
+        if paddle.fluid.framework.in_dygraph_mode():
+            self.dy_strategy = paddle.fluid.dygraph.parallel.prepare_context()
+            return
         self._role_maker = role_maker
         self.strategy_compiler = StrategyCompiler()
 
@@ -226,11 +229,23 @@ class Fleet(object):
             optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         """
         self.user_defined_optimizer = optimizer
+        if paddle.fluid.framework.in_dygraph_mode():
+            return self
+
         if strategy == None:
             strategy = DistributedStrategy()
         self.user_defined_strategy = strategy
         self.valid_strategy = None
         return self
+
+    def build_distributed_model(self, model):
+        if not paddle.fluid.framework.in_dygraph_mode():
+            return model
+
+        assert model is not None
+        self.model = paddle.fluid.dygraph.parallel.DataParallel(
+            model, self.dy_strategy)
+        return self.model
 
     def minimize(self,
                  loss,
@@ -279,6 +294,11 @@ class Fleet(object):
             # for more examples, please reference https://github.com/PaddlePaddle/Fleet
 
         """
+        if paddle.fluid.framework.in_dygraph_mode():
+            # imitate target optimizer retrieval
+            target_opt = self.user_defined_optimizer
+            return target_opt.minimize(loss)
+
         context = {}
         # cache original feed forward program
         self.origin_main_program = loss.block.program
