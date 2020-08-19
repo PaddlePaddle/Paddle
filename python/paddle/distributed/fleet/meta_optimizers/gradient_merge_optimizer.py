@@ -21,17 +21,13 @@ class GradientMergeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(GradientMergeOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
-        self.wrapped_opt = GM(optimizer)
+        self.wrapped_opt = None
         self.meta_optimizers_white_list = []
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
         super(GradientMergeOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
-        self.wrapped_opt._set_k_steps(
-            self.user_defined_strategy.gradient_merge_configs["k_steps"])
-        self.wrapped_opt._set_avg(
-            self.user_defined_strategy.gradient_merge_configs["avg"])
 
     def _can_apply(self):
         can_apply = (self.user_defined_strategy.gradient_merge == True) and \
@@ -47,6 +43,11 @@ class GradientMergeOptimizer(MetaOptimizerBase):
                       startup_program=None,
                       parameter_list=None,
                       no_grad_set=None):
+        self.wrapped_opt = GM(self.inner_opt)
+        self.wrapped_opt._set_k_steps(
+            self.user_defined_strategy.gradient_merge_configs["k_steps"])
+        self.wrapped_opt._set_avg(
+            self.user_defined_strategy.gradient_merge_configs["avg"])
         optimize_ops, params_grads = \
             self.wrapped_opt.minimize(loss, startup_program,
                                       parameter_list, no_grad_set)

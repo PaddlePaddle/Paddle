@@ -100,8 +100,6 @@ class PipelineOptimizer(MetaOptimizerBase):
                         user_defined_strategy):
         super(PipelineOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
-        num_microbatches = user_defined_strategy.pipeline_configs['micro_batch']
-        self.wrapped_opt = PO(self.inner_opt, num_microbatches=num_microbatches)
 
     def _can_apply(self):
         if self.user_defined_strategy.pipeline == True:
@@ -117,6 +115,8 @@ class PipelineOptimizer(MetaOptimizerBase):
                       startup_program=None,
                       parameter_list=None,
                       no_grad_set=None):
+        num_microbatches = user_defined_strategy.pipeline_configs['micro_batch']
+        self.wrapped_opt = PO(self.inner_opt, num_microbatches=num_microbatches)
         optimize_ops, params_grads, prog_list = \
             self.wrapped_opt.minimize(loss, startup_program,
                                       parameter_list, no_grad_set)
