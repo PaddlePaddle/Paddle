@@ -80,9 +80,6 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_lookup_sparse_table_split_op)
     LIST(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
 
-    LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_sparse_embedding_ctr)
-    LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_gloo)
-
     # TODO: Fix these unittests failed on Windows
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
@@ -364,16 +361,19 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_base")
 
-    # FIXME(seiriosX) will readd after PR 22957  Merged
+
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_lars")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_train")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_save_load")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_simnet_bow")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_simnet_bow")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_text_classification")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
+
+    # FIXME(seiriosX) will fix this
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_sparse_embedding_ctr")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
