@@ -193,24 +193,22 @@ class DistributedBatchSampler(BatchSampler):
 
             import numpy as np
 
-            from paddle.incubate.hapi.datasets import MNIST
-            from paddle.incubate.hapi.distributed import DistributedBatchSampler
+            from paddle.io import DistributedBatchSampler
 
-            class MnistDataset(MNIST):
-                def __init__(self, mode, return_label=True):
-                    super(MnistDataset, self).__init__(mode=mode)
-                    self.return_label = return_label
-
+            # init with dataset
+            class RandomDataset(Dataset):
+                def __init__(self, num_samples):
+                    self.num_samples = num_samples
+            
                 def __getitem__(self, idx):
-                    img = np.reshape(self.images[idx], [1, 28, 28])
-                    if self.return_label:
-                        return img, np.array(self.labels[idx]).astype('int64')
-                    return img,
-
+                    image = np.random.random([784]).astype('float32')
+                    label = np.random.randint(0, 9, (1, )).astype('int64')
+                    return image, label
+                
                 def __len__(self):
-                    return len(self.images)
-
-            train_dataset = MnistDataset(mode='train')
+                    return self.num_samples
+  
+            train_dataset = RandomDataset(mode='train')
             dist_train_dataloader = DistributedBatchSampler(train_dataset, batch_size=64)
 
             for data in dist_train_dataloader:

@@ -117,7 +117,7 @@ class Callback(object):
 
         .. code-block:: python
             
-            from paddle.incubate.hapi.callbacks import Callback
+            import paddle.callbacks.Callback as Callback
 
             # build a simple model checkpoint callback
             class ModelCheckpoint(Callback):
@@ -147,12 +147,12 @@ class Callback(object):
           - 'verbose': an integer. Verbose mode is 0, 1 or 2.
              0 = silent, 1 = progress bar, 2 = one line per epoch.
           - 'metrics': a list of str. Names of metrics, including 'loss'
-              and the names of hapi.Metric.
+              and the names of paddle.metric.Metric.
         """
         self.params = params
 
     def set_model(self, model):
-        """model is instance of hapi.Model.
+        """model is instance of paddle.Model.
         """
         self.model = model
 
@@ -168,7 +168,7 @@ class Callback(object):
 
         Args:
             logs (dict): The logs is a dict or None. The keys of logs
-                passed by hapi.Model contains 'loss', metric names and
+                passed by paddle.Model contains 'loss', metric names and
                 `batch_size`.
         """
 
@@ -177,10 +177,10 @@ class Callback(object):
 
         Args:
             logs (dict): The logs is a dict or None. The keys of logs
-                passed by hapi.Model contains 'steps' and 'metrics',
+                passed by paddle.Model contains 'steps' and 'metrics',
                 The `steps` is number of total steps of validation dataset.
                 The `metrics` is a list of str including 'loss' and the names
-                of hapi.Metric.
+                of paddle.metric.Metric.
         """
 
     def on_eval_end(self, logs=None):
@@ -188,7 +188,7 @@ class Callback(object):
 
         Args:
             logs (dict): The logs is a dict or None. The `logs` passed by
-                hapi.Model is a dict contains 'loss', metrics and 'batch_size'
+                paddle.Model is a dict contains 'loss', metrics and 'batch_size'
                 of last batch of validation dataset.
         """
 
@@ -212,7 +212,7 @@ class Callback(object):
         Args:
             epoch (int): The index of epoch.
             logs (dict): The logs is a dict or None. The `logs` passed by
-                hapi.Model is None.
+                paddle.Model is None.
         """
 
     def on_epoch_end(self, epoch, logs=None):
@@ -221,7 +221,7 @@ class Callback(object):
         Args:
             epoch (int): The index of epoch.
             logs (dict): The logs is a dict or None. The `logs` passed by
-                hapi.Model is a dict, contains 'loss', metrics and 'batch_size'
+                paddle.Model is a dict, contains 'loss', metrics and 'batch_size'
                 of last batch.
         """
 
@@ -231,7 +231,7 @@ class Callback(object):
         Args:
             step (int): The index of step (or iteration).
             logs (dict): The logs is a dict or None. The `logs` passed by
-                hapi.Model is empty.
+                paddle.Model is empty.
         """
 
     def on_train_batch_end(self, step, logs=None):
@@ -240,7 +240,7 @@ class Callback(object):
         Args:
             step (int): The index of step (or iteration).
             logs (dict): The logs is a dict or None. The `logs` passed by
-                hapi.Model is a dict, contains 'loss', metrics and 'batch_size'
+                paddle.Model is a dict, contains 'loss', metrics and 'batch_size'
                 of current batch.
         """
 
@@ -250,7 +250,7 @@ class Callback(object):
         Args:
             step (int): The index of step (or iteration).
             logs (dict): The logs is a dict or None. The `logs` passed by
-                hapi.Model is empty.
+                paddle.Model is empty.
         """
 
     def on_eval_batch_end(self, step, logs=None):
@@ -259,7 +259,7 @@ class Callback(object):
         Args:
             step (int): The index of step (or iteration).
             logs (dict): The logs is a dict or None. The `logs` passed by
-                hapi.Model is a dict, contains 'loss', metrics and 'batch_size'
+                paddle.Model is a dict, contains 'loss', metrics and 'batch_size'
                 of current batch.
         """
 
@@ -292,23 +292,21 @@ class ProgBarLogger(Callback):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.incubate.hapi as hapi
 
-            inputs = [hapi.Input('image', [-1, 1, 28, 28], 'float32')]
-            labels = [hapi.Input('label', [None, 1], 'int64')]
+            inputs = [paddle.Input('image', [-1, 1, 28, 28], 'float32')]
+            labels = [paddle.Input('label', [None, 1], 'int64')]
 
-            train_dataset = hapi.datasets.MNIST(mode='train')
+            train_dataset = paddle.vision.datasets.MNIST(mode='train')
 
-            model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
+            model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
                 inputs, labels)
 
-            optim = fluid.optimizer.Adam(0.001)
+            optim = paddle.optimizer.Adam(0.001)
             model.prepare(optimizer=optim,
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
 
-            callback = hapi.callbacks.ProgBarLogger(log_freq=10)
+            callback = paddle.callbacks.ProgBarLogger(log_freq=10)
             model.fit(train_dataset, batch_size=64, callbacks=callback)
     """
 
@@ -428,23 +426,21 @@ class ModelCheckpoint(Callback):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.incubate.hapi as hapi
 
-            inputs = [hapi.Input('image', [-1, 1, 28, 28], 'float32')]
-            labels = [hapi.Input('label', [None, 1], 'int64')]
+            inputs = [paddle.Input('image', [-1, 1, 28, 28], 'float32')]
+            labels = [paddle.Input('label', [None, 1], 'int64')]
 
-            train_dataset = hapi.datasets.MNIST(mode='train')
+            train_dataset = paddle.vision.datasets.MNIST(mode='train')
 
-            model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
+            model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
                 inputs, labels)
 
-            optim = fluid.optimizer.Adam(0.001)
+            optim = paddle.optimizer.Adam(0.001)
             model.prepare(optimizer=optim,
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
 
-            callback = hapi.callbacks.ModelCheckpoint(save_dir='./temp')
+            callback = paddle.callbacks.ModelCheckpoint(save_dir='./temp')
             model.fit(train_dataset, batch_size=64, callbacks=callback)
     """
 

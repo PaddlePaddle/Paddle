@@ -227,7 +227,7 @@ class BasicLSTMCell(RNNCell):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import BasicLSTMCell, RNN
+            from paddle.text import BasicLSTMCell, RNN
 
             inputs = paddle.rand((2, 4, 32))
             cell = BasicLSTMCell(input_size=32, hidden_size=64)
@@ -358,7 +358,7 @@ class BasicGRUCell(RNNCell):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import BasicGRUCell, RNN
+            from paddle.text import BasicGRUCell, RNN
 
             inputs = paddle.rand((2, 4, 32))
             cell = BasicGRUCell(input_size=32, hidden_size=64)
@@ -495,7 +495,7 @@ class RNN(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import StackedLSTMCell, RNN
+            from paddle.text import StackedLSTMCell, RNN
 
             inputs = paddle.rand((2, 4, 32))
             cell = StackedLSTMCell(input_size=32, hidden_size=64)
@@ -648,7 +648,7 @@ class StackedRNNCell(RNNCell):
 
         .. code-block:: python
 
-            from paddle.incubate.hapi.text import BasicLSTMCell, StackedRNNCell
+            from paddle.text import BasicLSTMCell, StackedRNNCell
 
             cells = [BasicLSTMCell(32, 32), BasicLSTMCell(32, 32)]
             stack_rnn = StackedRNNCell(cells)
@@ -789,7 +789,7 @@ class StackedLSTMCell(RNNCell):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import StackedLSTMCell, RNN
+            from paddle.text import StackedLSTMCell, RNN
 
             inputs = paddle.rand((2, 4, 32))
             cell = StackedLSTMCell(input_size=32, hidden_size=64)
@@ -948,7 +948,7 @@ class LSTM(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import LSTM
+            from paddle.text import LSTM
 
             inputs = paddle.rand((2, 4, 32))
             lstm = LSTM(input_size=32, hidden_size=64, num_layers=2)
@@ -1023,7 +1023,7 @@ class BidirectionalRNN(Layer):
         .. code-block:: python
 
             import paddle
-            from paddle.incubate.hapi.text import StackedLSTMCell, BidirectionalRNN
+            from paddle.text import StackedLSTMCell, BidirectionalRNN
 
             inputs = paddle.rand((2, 4, 32))
             cell_fw = StackedLSTMCell(32, 64)
@@ -1215,7 +1215,7 @@ class BidirectionalLSTM(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import BidirectionalLSTM
+            from paddle.text import BidirectionalLSTM
 
             inputs = paddle.rand((2, 4, 32))
             bi_lstm = BidirectionalLSTM(input_size=32, hidden_size=64, num_layers=2)
@@ -1384,7 +1384,7 @@ class StackedGRUCell(RNNCell):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import StackedGRUCell, RNN
+            from paddle.text import StackedGRUCell, RNN
 
             inputs = paddle.rand((2, 4, 32))
             cell = StackedGRUCell(input_size=32, hidden_size=64)
@@ -1524,7 +1524,7 @@ class GRU(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import GRU
+            from paddle.text import GRU
 
             inputs = paddle.rand((2, 4, 32))
             gru = GRU(input_size=32, hidden_size=64, num_layers=2)
@@ -1644,7 +1644,7 @@ class BidirectionalGRU(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import BidirectionalGRU
+            from paddle.text import BidirectionalGRU
 
             inputs = paddle.rand((2, 4, 32))
             bi_gru = BidirectionalGRU(input_size=32, hidden_size=64, num_layers=2)
@@ -1802,7 +1802,7 @@ class DynamicDecode(Layer):
             import paddle
             import paddle.fluid as fluid
             from paddle.fluid.layers import BeamSearchDecoder
-            from paddle.incubate.hapi.text import StackedLSTMCell, DynamicDecode
+            from paddle.text import StackedLSTMCell, DynamicDecode
 
             paddle.disable_static()
 
@@ -2033,7 +2033,7 @@ class Conv1dPoolLayer(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import Conv1dPoolLayer
+            from paddle.text import Conv1dPoolLayer
 
             # input: [batch_size, num_channels, sequence_length]
             input = paddle.rand((2, 32, 4))
@@ -2162,7 +2162,7 @@ class CNNEncoder(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import CNNEncoder
+            from paddle.text import CNNEncoder
 
             # input: [batch_size, num_channels, sequence_length]
             input = paddle.rand((2, 32, 8))
@@ -2273,10 +2273,10 @@ class TransformerCell(RNNCell):
             import paddle
             import paddle.fluid as fluid
             from paddle.fluid.dygraph import Embedding, Linear
-            from paddle.incubate.hapi.text import TransformerDecoder
-            from paddle.incubate.hapi.text import TransformerCell
-            from paddle.incubate.hapi.text import TransformerBeamSearchDecoder
-            from paddle.incubate.hapi.text import DynamicDecode
+            from paddle.text import TransformerDecoder
+            from paddle.text import TransformerCell
+            from paddle.text import TransformerBeamSearchDecoder
+            from paddle.text import DynamicDecode
 
             paddle.disable_static()
 
@@ -2440,10 +2440,10 @@ class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
             import paddle
             import paddle.fluid as fluid
             from paddle.fluid.dygraph import Embedding, Linear
-            from paddle.incubate.hapi.text import TransformerDecoder
-            from paddle.incubate.hapi.text import TransformerCell
-            from paddle.incubate.hapi.text import TransformerBeamSearchDecoder
-            from paddle.incubate.hapi.text import DynamicDecode
+            from paddle.text import TransformerDecoder
+            from paddle.text import TransformerCell
+            from paddle.text import TransformerBeamSearchDecoder
+            from paddle.text import DynamicDecode
 
             paddle.disable_static()
 
@@ -2627,7 +2627,7 @@ class PrePostProcessLayer(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import PrePostProcessLayer
+            from paddle.text import PrePostProcessLayer
 
             # input: [batch_size, sequence_length, d_model]
             x = paddle.rand((2, 4, 32))
@@ -2709,7 +2709,7 @@ class MultiHeadAttention(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import MultiHeadAttention
+            from paddle.text import MultiHeadAttention
 
             # encoder input: [batch_size, sequence_length, d_model]
             query = paddle.rand((2, 4, 128))
@@ -2917,7 +2917,7 @@ class FFN(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import FFN
+            from paddle.text import FFN
 
             # input: [batch_size, sequence_length, d_model]
             x = paddle.rand((2, 4, 32))
@@ -2992,7 +2992,7 @@ class TransformerEncoderLayer(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import TransformerEncoderLayer
+            from paddle.text import TransformerEncoderLayer
 
             # encoder input: [batch_size, src_len, d_model]
             enc_input = paddle.rand((2, 4, 128))
@@ -3095,7 +3095,7 @@ class TransformerEncoder(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import TransformerEncoder
+            from paddle.text import TransformerEncoder
 
             # encoder input: [batch_size, src_len, d_model]
             enc_input = paddle.rand((2, 4, 128))
@@ -3206,7 +3206,7 @@ class TransformerDecoderLayer(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import TransformerDecoderLayer
+            from paddle.text import TransformerDecoderLayer
 
             # decoder input: [batch_size, trg_len, d_model]
             dec_input = paddle.rand((2, 4, 128))
@@ -3348,7 +3348,7 @@ class TransformerDecoder(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import TransformerDecoder
+            from paddle.text import TransformerDecoder
 
             # decoder input: [batch_size, trg_len, d_model]
             dec_input = paddle.rand((2, 4, 128))
@@ -3561,7 +3561,7 @@ class LinearChainCRF(Layer):
             import numpy as np
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import LinearChainCRF
+            from paddle.text import LinearChainCRF
 
             # emission: [batch_size, sequence_length, num_tags]
             emission = paddle.rand((2, 8, 5))
@@ -3689,7 +3689,7 @@ class CRFDecoding(Layer):
             import numpy as np
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import CRFDecoding
+            from paddle.text import CRFDecoding
 
             # emission: [batch_size, sequence_length, num_tags]
             emission = paddle.rand((2, 8, 5))
@@ -3858,7 +3858,7 @@ class SequenceTagging(Layer):
             import numpy as np
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import SequenceTagging
+            from paddle.text import SequenceTagging
 
             # word: [batch_size, sequence_length]
             # dummy input just for example

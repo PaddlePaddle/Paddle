@@ -94,7 +94,7 @@ class DatasetFolder(Dataset):
             import tempfile
             import shutil
             import numpy as np
-            from paddle.incubate.hapi.datasets import DatasetFolder
+            from paddle.vision.datasets import DatasetFolder
 
             def make_fake_dir():
                 data_dir = tempfile.mkdtemp()
@@ -224,7 +224,7 @@ class ImageFolder(Dataset):
             import tempfile
             import shutil
             import numpy as np
-            from paddle.incubate.hapi.datasets import ImageFolder
+            from paddle.vision.datasets import ImageFolder
 
             def make_fake_dir():
                 data_dir = tempfile.mkdtemp()

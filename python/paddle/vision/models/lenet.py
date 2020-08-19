@@ -30,7 +30,7 @@ class LeNet(fluid.dygraph.Layer):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import LeNet
+            from paddle.vision.models import LeNet
 
             model = LeNet()
     """

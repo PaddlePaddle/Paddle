@@ -163,7 +163,7 @@ class MobileNetV2(fluid.dygraph.Layer):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import MobileNetV2
+            from paddle.vision.models import MobileNetV2
 
             model = MobileNetV2()
     """
@@ -267,7 +267,7 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import mobilenet_v2
+            from paddle.vision.models import mobilenet_v2
 
             # build model
             model = mobilenet_v2()

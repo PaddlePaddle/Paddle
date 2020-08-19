@@ -76,7 +76,7 @@ class Compose(object):
     
         .. code-block:: python
 
-            from paddle.incubate.hapi.datasets import Flowers
+            from paddle.vision.datasets import Flowers
             from paddle.vision.transforms import Compose, ColorJitter, Resize
 
             transform = Compose([ColorJitter(), Resize(size=608)])
@@ -130,8 +130,8 @@ class BatchCompose(object):
             import numpy as np
             from paddle.io import DataLoader
 
-            from paddle.incubate.hapi import set_device
-            from paddle.incubate.hapi.datasets import Flowers
+            from paddle import set_device
+            from paddle.vision.datasets import Flowers
             from paddle.vision.transforms import Compose, BatchCompose, Resize
 
             class NormalizeBatch(object):

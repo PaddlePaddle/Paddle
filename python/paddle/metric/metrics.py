@@ -202,12 +202,11 @@ class Accuracy(Metric):
         .. code-block:: python
 
         import paddle
-        import paddle.incubate.hapi as hapi
 
         paddle.disable_static()
-        train_dataset = hapi.datasets.MNIST(mode='train')
+        train_dataset = paddle.vision.datasets.MNIST(mode='train')
 
-        model = hapi.Model(hapi.vision.LeNet(classifier_activation=None))
+        model = paddle.Model(paddle.vision.LeNet(classifier_activation=None))
         optim = paddle.optimizer.Adam(
             learning_rate=0.001, parameter_list=model.parameters())
         model.prepare(
@@ -336,7 +335,6 @@ class Precision(Metric):
         
         import paddle
         import paddle.nn as nn
-        import paddle.incubate.hapi as hapi
         
         class Data(paddle.io.Dataset):
             def __init__(self):
@@ -352,7 +350,7 @@ class Precision(Metric):
                 return self.n
   
         paddle.disable_static()
-        model = hapi.Model(nn.Sequential(
+        model = paddle.Model(nn.Sequential(
             nn.Linear(10, 1),
             nn.Sigmoid()
         ))
@@ -471,7 +469,6 @@ class Recall(Metric):
         
         import paddle
         import paddle.nn as nn
-        import paddle.incubate.hapi as hapi
         
         class Data(paddle.io.Dataset):
             def __init__(self):
@@ -487,7 +484,7 @@ class Recall(Metric):
                 return self.n
         
         paddle.disable_static()
-        model = hapi.Model(nn.Sequential(
+        model = paddle.Model(nn.Sequential(
             nn.Linear(10, 1),
             nn.Sigmoid()
         ))
@@ -617,7 +614,6 @@ class Auc(Metric):
         import numpy as np
         import paddle
         import paddle.nn as nn
-        import paddle.incubate.hapi as hapi
         
         class Data(paddle.io.Dataset):
             def __init__(self):
@@ -633,7 +629,7 @@ class Auc(Metric):
                 return self.n
         
         paddle.disable_static()
-        model = hapi.Model(nn.Sequential(
+        model = paddle.Model(nn.Sequential(
             nn.Linear(10, 2, act='softmax'),
         ))
         optim = paddle.optimizer.Adam(

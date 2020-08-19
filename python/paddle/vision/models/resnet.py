@@ -180,8 +180,8 @@ class ResNet(fluid.dygraph.Layer):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import ResNet
-            from paddle.incubate.hapi.vision.models.resnet import BottleneckBlock, BasicBlock
+            from paddle.vision.models import ResNet
+            from paddle.vision.models.resnet import BottleneckBlock, BasicBlock
 
             resnet50 = ResNet(BottleneckBlock, 50)
 
@@ -292,7 +292,7 @@ def resnet18(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import resnet18
+            from paddle.vision.models import resnet18
 
             # build model
             model = resnet18()
@@ -312,7 +312,7 @@ def resnet34(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import resnet34
+            from paddle.vision.models import resnet34
 
             # build model
             model = resnet34()
@@ -332,7 +332,7 @@ def resnet50(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import resnet50
+            from paddle.vision.models import resnet50
 
             # build model
             model = resnet50()
@@ -352,7 +352,7 @@ def resnet101(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import resnet101
+            from paddle.vision.models import resnet101
 
             # build model
             model = resnet101()
@@ -372,7 +372,7 @@ def resnet152(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import resnet152
+            from paddle.vision.models import resnet152
 
             # build model
             model = resnet152()
