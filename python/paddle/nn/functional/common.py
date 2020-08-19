@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import warnings
+from ...fluid import layers
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import Variable, fill_constant
 
