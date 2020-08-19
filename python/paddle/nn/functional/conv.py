@@ -16,6 +16,7 @@ from __future__ import print_function
 __all__ = ['conv2d', 'conv_transpose2d', 'conv3d', 'conv_transpose3d']
 
 import numpy as np
+from ...device import get_cudnn_version
 from ...fluid.framework import Variable, in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid.layers import nn, utils
@@ -499,7 +500,11 @@ def conv_transpose2d(x,
             "received: the channel of input is {}, the shape of input is {}"
             ", the groups is {}".format(num_channels, x.shape, groups))
 
-    use_cudnn = True if core.is_compiled_with_cuda() else False
+    cudnn_version = get_cudnn_version()
+
+    #TODO(LielinJiang): whether to use cudnn according to the version of cudnn
+    use_cudnn = True if (core.is_compiled_with_cuda() and
+                         cudnn_version is not None) else False
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
@@ -984,7 +989,11 @@ def conv_transpose3d(x,
         output_padding = utils.convert_to_list(output_padding, 3,
                                                'output_padding')
 
-    use_cudnn = True if core.is_compiled_with_cuda() else False
+    cudnn_version = get_cudnn_version()
+
+    #TODO(LielinJiang): whether to use cudnn according to the version of cudnn
+    use_cudnn = True if (core.is_compiled_with_cuda() and
+                         cudnn_version is not None) else False
 
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"
