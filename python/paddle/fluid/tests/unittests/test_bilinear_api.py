@@ -15,17 +15,22 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
-import paddle.fluid as fluid
 from op_test import OpTest
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import numpy as np
 
 
 class TestBilinearAPI(unittest.TestCase):
     def test_api(self):
         with fluid.program_guard(fluid.default_startup_program(),
                                  fluid.default_main_program()):
-            place = fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+            else:
+                place = core.CPUPlace()
             exe = fluid.Executor(place)
 
             data1 = fluid.data(name='X1', shape=[5, 5], dtype='float32')
@@ -47,15 +52,13 @@ class TestBilinearAPI(unittest.TestCase):
 
 class TestBilinearAPIDygraph(unittest.TestCase):
     def test_api(self):
-        with fluid.dygraph.guard():
-            layer1 = np.random.random((5, 5)).astype('float32')
-            layer2 = np.random.random((5, 4)).astype('float32')
-            bilinear = paddle.nn.Bilinear(
-                in1_features=5, in2_features=4, out_features=1000)
-            ret = bilinear(
-                fluid.dygraph.base.to_variable(layer1),
-                fluid.dygraph.base.to_variable(layer2))
-            self.assertEqual(ret.shape, [5, 1000])
+        paddle.disable_static()
+        layer1 = np.random.random((5, 5)).astype('float32')
+        layer2 = np.random.random((5, 4)).astype('float32')
+        bilinear = paddle.nn.Bilinear(
+            in1_features=5, in2_features=4, out_features=1000)
+        ret = bilinear(paddle.to_tensor(layer1), paddle.to_tensor(layer2))
+        self.assertEqual(ret.shape, [5, 1000])
 
 
 if __name__ == "__main__":
