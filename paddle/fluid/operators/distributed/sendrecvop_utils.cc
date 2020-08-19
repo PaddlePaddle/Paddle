@@ -100,7 +100,9 @@ TensorPayload::TensorPayload(std::shared_ptr<memory::Allocation> allocation)
 TensorPayload::TensorPayload(const framework::Tensor& tensor)
     : allocation_(tensor.Holder()),
       offset_(tensor.offset()),
-      memory_size_(tensor.numel() * framework::SizeOfType(tensor.type())) {}
+      memory_size_(tensor.numel() * framework::SizeOfType(tensor.type())) {
+  VLOG(2) << "TensorPayload memory_size_: " << memory_size_;
+}
 void* TensorPayload::ptr() const {
   return reinterpret_cast<void*>(
       reinterpret_cast<uintptr_t>(allocation_->ptr()) + offset_);

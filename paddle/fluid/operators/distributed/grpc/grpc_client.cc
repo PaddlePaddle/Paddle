@@ -527,6 +527,7 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
       VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO";
 
       auto* send_var = p_scope->FindVar(send_var_name_val);
+      send_var->GetMutable<framework::LoDTensor>()->set_lod({});
       ::grpc::ByteBuffer buf;
       VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO SerializeToByteBuffer";
       VLOG(2) << "SerializeToByteBuffer: send_var_name_val: "

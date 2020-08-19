@@ -87,9 +87,12 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   request.AppendToString(&header);
   auto buffer = std::unique_ptr<char[]>(new char[1024]);
   void* buf = buffer.get();
-  VLOG(2) << "SerializeToByteBuffer WriteRawBytes";
+  VLOG(2) << "SerializeToByteBuffer ProtoEncodeHelper begin";
+  VLOG(2) << "SerializeToByteBuffer ProtoEncodeHelper buf " << buf;
   ProtoEncodeHelper e(static_cast<char*>(buf), 1024);
+  VLOG(2) << "SerializeToByteBuffer ProtoEncodeHelper end";
   e.WriteRawBytes(std::string(header.data(), header.size()));
+  VLOG(2) << "SerializeToByteBuffer WriteRawBytes end";
 // NCCLID is copied directly to the message, return bytebuffer
 // with only one slice if serializing NCCLID.
 #ifdef PADDLE_WITH_NCCL
