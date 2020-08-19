@@ -357,6 +357,73 @@ class ZeroOptimizer(MetaOptimizerBase):
                         })
                 break
 
+    def _check_broadcast(self, block):
+        """
+        if a var is broadcasted, it should have a sync_comm before
+        this var is used, if not, raise error.
+        if the broadcasted var has a fill_constant op, the fill_constant
+        op should stay forward before the broadcast op, and before a
+        sync_calc op. Otherwise, raise error.
+        """
+        broadcast_vars = {}
+        for idx, op in enumerate(block.ops):
+            if op.type == "c_broadcast":
+                var_name = op.desc.input_arg_names()[0]
+                if "@BroadCast" in var_name:
+                    if var_name in broadcast_vars:
+                        print("error: var_name areadly exist: ", var_name)
+                        print("the old pos is ",
+                              broadcast_vars[var_name]["broadcast_pos"])
+                        print("the new pos is ", idx)
+                    assert (var_name not in broadcast_vars)
+                    broadcast_vars[var_name] = {
+                        "fill_constant_pos": -1,
+                        "broadcast_pos": idx,
+                    }
+
+        for idx, op in enumerate(block.ops):
+            if op.type == "fill_constant":
+                var_name = op.desc.output_arg_names()[0]
+                if var_name in broadcast_vars:
+                    broadcast_vars[var_name]["fill_constant_pos"] = idx
+                continue
+
+        last_sync_comm_op_idx = -1
+        last_sync_calc_op_idx = -1
+        for idx, op in enumerate(block.ops):
+            if op.type == "c_sync_comm_stream":
+                last_sync_comm_op_idx = idx
+                continue
+            if op.type == "c_sync_calc_stream":
+                last_sync_calc_op_idx = idx
+                continue
+            if op.type == "c_broadcast":
+                var_name = op.desc.input_arg_names()[0]
+                if "@BroadCast" in var_name:
+                    if broadcast_vars[var_name]["fill_constant_pos"] != -1:
+                        # print("before_broadcast: ", var_name, 
+                        #         broadcast_vars[var_name]["fill_constant_pos"],
+                        #         last_sync_calc_op_idx,
+                        #         broadcast_vars[var_name]["broadcast_pos"],
+                        #         )
+                        assert (last_sync_calc_op_idx != -1)
+                        assert (broadcast_vars[var_name]["fill_constant_pos"] <
+                                last_sync_calc_op_idx)
+                        assert (last_sync_calc_op_idx < idx)
+                    continue
+            for input_name in op.desc.input_arg_names():
+                if input_name in broadcast_vars:
+                    # print("after_broadcast: ",
+                    #         broadcast_vars[input_name]["broadcast_pos"],
+                    #         last_sync_comm_op_idx,
+                    #         idx)
+                    assert (broadcast_vars[input_name]["broadcast_pos"] != -1)
+                    assert (broadcast_vars[input_name]["broadcast_pos"] <
+                            last_sync_comm_op_idx)
+                    assert (last_sync_comm_op_idx < idx)
+        print("check done: ")
+        return
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
@@ -444,6 +511,7 @@ class ZeroOptimizer(MetaOptimizerBase):
         self._insert_allreduce_ops(main_block)
         main_block._sync_with_cpp()
         print("insert allreduce done")
+        self._check_broadcast(main_block)
         return optimize_ops, params_grads
 
     def _broadcast_params(self, block):
