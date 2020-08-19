@@ -21,6 +21,9 @@ __all__ = [
     #            'Transform',
     'DataLoader',
     'get_worker_info',
+    'Sampler',
+    'SequenceSampler',
+    'RandomSampler',
     'load',
     'save',
     'load_program_state',
@@ -39,8 +42,8 @@ __all__ = [
 ]
 
 from ..fluid.io import DataLoader
-from ..fluid.dataloader import Dataset, IterableDataset, get_worker_info
-from ..fluid.dataloader import BatchSampler, DistributedBatchSampler
+from ..fluid.dataloader import Dataset, IterableDataset, BatchSampler, get_worker_info, \
+        Sampler, SequenceSampler, RandomSampler, DistributedBatchSampler
 from ..fluid.io import load, save, load_program_state, set_program_state, \
         load_inference_model, save_inference_model, batch
 from ..reader import shuffle, buffered, cache, chain, firstn, compose, map_readers, xmap_readers

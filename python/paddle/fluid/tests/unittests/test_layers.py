@@ -283,6 +283,24 @@ class TestLayer(LayerTest):
             with self.assertRaises(ValueError):
                 lm(base.to_variable(inp))
 
+    def test_SyncBatchNorm(self):
+        if core.is_compiled_with_cuda():
+            with self.static_graph():
+                t = layers.data(name='t', shape=[-1, 3, 5, 5], dtype='float32')
+                my_sync_bn = nn.SyncBatchNorm(3)
+                ret = my_sync_bn(t)
+                static_ret = self.get_static_graph_result(
+                    feed={'t': np.ones(
+                        [3, 3, 5, 5], dtype='float32')},
+                    fetch_list=[ret])[0]
+
+            with self.dynamic_graph():
+                t = np.ones([3, 3, 5, 5], dtype='float32')
+                my_syncbn = paddle.nn.SyncBatchNorm(3)
+                dy_ret = my_syncbn(base.to_variable(t))
+                dy_ret_value = dy_ret.numpy()
+            self.assertTrue(np.array_equal(static_ret, static_ret))
+
     def test_relu(self):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
