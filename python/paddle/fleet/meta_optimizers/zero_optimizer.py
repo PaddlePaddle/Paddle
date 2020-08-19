@@ -16,6 +16,8 @@ from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper
 from .common import is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 from .meta_optimizer_base import MetaOptimizerBase
 from paddle.fluid import unique_name, core
+from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
+import paddle.fluid as fluid
 
 import math
 import re
@@ -287,7 +289,7 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         inserted_op_num = 0
         for idx, cache in enumerate(broadcast_caches):
-            prepend_comm_sync = False
+            prepend_comm_sync = True
             append_comm_sync = True
             cache["insert_idx"] += inserted_op_num
             inserted_op_num += _insert_cache(
@@ -430,7 +432,9 @@ class ZeroOptimizer(MetaOptimizerBase):
                       parameter_list=None,
                       no_grad_set=None):
         self._nrings = 10
-        optimize_ops, params_grads = self.inner_opt.minimize(
+
+        optimizer = fluid.contrib.mixed_precision.decorate(self.inner_opt)
+        optimize_ops, params_grads = optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
         if startup_program is None:
