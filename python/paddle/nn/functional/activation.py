@@ -43,7 +43,7 @@ __all__ = [
     'leaky_relu',
     'logsigmoid',
     'maxout',
-    # 'prelu',
+    'prelu',
     'relu',
     'relu6',
     'selu',
@@ -56,7 +56,7 @@ __all__ = [
     'swish',
     'tanh_shrink',
     'thresholded_relu',
-    'log_softmax'
+    'log_softmax',
 ]
 
 import warnings
@@ -73,7 +73,7 @@ def elu(x, alpha=1.0, name=None):
 
     ..  math::
 
-        elu(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
+        elu(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -119,10 +119,10 @@ def gelu(x, approximate=False, name=None):
 
     if approximate is True
     ..  math::
-        gelu(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+        gelu(x) = 0.5 * x * (1 + tanh(\sqrt{\frac{2}{\pi}} * (x + 0.044715x^{3})))
     else
     ..  math::
-        gelu(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
+        gelu(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
     
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -142,17 +142,9 @@ def gelu(x, approximate=False, name=None):
 
         paddle.disable_static()
 
-        data = np.random.randn(2, 3).astype("float32")
-        x = paddle.to_tensor(data)
-
-        out = F.gelu(x)
-
-        data
-        # array([[ 0.87165993, -1.0541513 , -0.37214822],
-        #         [ 0.15647964,  0.32496083,  0.33045998]], dtype=float32)
-        out
-        # array([[ 0.70456535, -0.15380788, -0.13207214],
-        #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
+        x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
+        out1 = F.gelu(x) # [-0.158655 0.345731 0.841345 1.39979]
+        out2 = F.gelu(x, True) # [-0.158808 0.345714 0.841192 1.39957]
     """
 
     if in_dygraph_mode():
@@ -203,7 +195,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([-1, 0.3, 2.5]))
+        x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
         out = F.hardshrink(x) # [-1., 0., 2.5]
 
     """
@@ -401,6 +393,71 @@ def hsigmoid(input,
     return out
 
 
+def prelu(x, weight, name=None):
+    """
+    prelu activation.
+
+    .. math::
+
+        prelu(x) = max(0, x) + \weight * min(0, x)
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        weight (Tensor): The learnable parameter with data type same as ``x``.
+            The weight shape is [1] or [in], where `in` is the input channel of ``x``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
+        weight = paddle.to_tensor(np.array([0.2]))
+        out = F.prelu(x, weight)
+        # [[-0.12642411  6.        ]
+        #  [ 1.          15.6      ]]
+    """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
+    check_variable_and_dtype(weight, 'weight',
+                             ['float16', 'float32', 'float64'], 'prelu')
+
+    helper = LayerHelper('prelu', **locals())
+    assert len(weight.shape
+               ) == 1, "The dim count of weight shape should be 1 in prelu()."
+
+    # NOTE(): The input of this API should be ``N,C,...`` format, 
+    # which means x.shape[0] is batch_size and x.shape[0] is channel.
+    mode = 'all'
+    if weight.shape[0] > 1:
+        assert len(
+            x.shape
+        ) > 1, "The dim count of x should be equal or larger than 2 in prelu() when weight shape is not [1]."
+        assert weight.shape[0] == x.shape[
+            1], "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+        mode = 'channel'
+
+    if in_dygraph_mode():
+        return core.ops.prelu(x, weight, 'mode', mode)
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type="prelu",
+        inputs={"X": x,
+                "Alpha": weight},
+        outputs={"Out": out},
+        attrs={"mode": mode})
+    return out
+
+
 def relu(x, name=None):
     """
     ReLU Activation.
@@ -507,7 +564,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
     .. math::
 
-        softmax[i, j] = \\frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+        softmax[i, j] = \frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
 
     Example:
 
@@ -650,7 +707,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
     .. math::
 
         Out[i, j] = log(softmax(x)) 
-                  = log(\\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
+                  = log(\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.

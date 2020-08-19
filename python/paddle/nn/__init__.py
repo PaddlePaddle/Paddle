@@ -55,7 +55,7 @@ from .layer.activation import ELU
 from .layer.activation import GELU
 from .layer.activation import Hardshrink
 from .layer.activation import HardTanh
-# from .layer.activation import PReLU        #DEFINE_ALIAS
+from .layer.activation import PReLU
 from .layer.activation import ReLU
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS

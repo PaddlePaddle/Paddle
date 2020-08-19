@@ -19,19 +19,21 @@ __all__ = [
     'GELU',
     'Hardshrink',
     'HardTanh',
-    # 'PReLU',
+    'PReLU',
     'ReLU',
     'LeakyReLU',
     'Sigmoid',
     'Softmax',
     'LogSigmoid',
     'LogSoftmax',
-    'HSigmoid'
+    'HSigmoid',
 ]
 
 from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
+from ...fluid.param_attr import ParamAttr
+from ...fluid.initializer import Constant
 from .. import functional as F
 
 
@@ -41,7 +43,7 @@ class ELU(layers.Layer):
 
     ..  math::
     
-        ELU(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
+        ELU(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
@@ -84,13 +86,13 @@ class GELU(layers.Layer):
 
     ..  math::
 
-        GELU(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+        GELU(x) = 0.5 * x * (1 + tanh(\sqrt{\frac{2}{\pi}} * (x + 0.044715x^{3})))
 
     else
 
     ..  math::
 
-        GELU(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
+        GELU(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
 
     Parameters:
         approximate (bool, optional): Wether to enable approximation. Default is False.
@@ -109,18 +111,13 @@ class GELU(layers.Layer):
 
         paddle.disable_static()
 
-        data = np.random.randn(2, 3).astype("float32")
-        x = paddle.to_tensor(data)
-
+        x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
+        
         m = paddle.nn.GELU()
-        out = m(x)
+        out = m(x) # [-0.158655 0.345731 0.841345 1.39979]
 
-        data
-        # array([[ 0.87165993, -1.0541513 , -0.37214822],
-        #         [ 0.15647964,  0.32496083,  0.33045998]], dtype=float32)
-        out
-        # array([[ 0.70456535, -0.15380788, -0.13207214],
-        #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
+        m = paddle.nn.GELU(True)
+        out = m(x) # [-0.158808 0.345714 0.841192 1.39957]
     """
 
     def __init__(self, approximate=False, name=None):
@@ -165,7 +162,7 @@ class Hardshrink(layers.Layer):
 
         paddle.disable_static()
 
-        x = paddle.to_variable(np.array([-1, 0.3, 2.5]))
+        x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
         m = paddle.nn.Hardshrink()
         out = m(x) # [-1., 0., 2.5]
     """
@@ -195,8 +192,8 @@ class HardTanh(layers.Layer):
             \right.
 
     Parameters:
-        min (float, optional): The minimum value of the linear region range. . Default is -1.
-        max (float, optional): The maximum value of the linear region range. . Default is 1.
+        min (float, optional): The value of min for HardTanh. Default is -1.
+        max (float, optional): The value of max for HardTanh. Default is 1.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
     
@@ -213,7 +210,7 @@ class HardTanh(layers.Layer):
         paddle.disable_static()
 
         x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
-        m = paddle.nn.Hardshrink()
+        m = paddle.nn.HardTanh()
         out = m(x) # # [-1., 0.3, 1.]
     """
 
@@ -363,6 +360,73 @@ class HSigmoid(layers.Layer):
         return out
 
 
+class PReLU(layers.Layer):
+    """
+    PReLU Activation.
+
+    .. math:
+
+        PReLU(x) = max(0, x) + \weight * min(0, x)
+
+    Parameters:
+        num_parameters (int, optional): Number of `weight` to learn. The supported values are:
+            1 - a single parameter `alpha` is used for all input channels; 
+            Number of channels - a seperate `alpha` is used for each input channel.
+            Default is 1.
+        init (float, optional): Init value of learnable `weight`. Default is 0.25.
+        weight_attr(ParamAttr, optional): The parameter attribute for the learnable `weight`. 
+            Default is None. For more information, please refer to :ref:`api_fluid_ParamAttr`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
+                           [ 3.0, -4.0,  5.0, -6.0],
+                           [-7.0, -8.0,  8.0,  9.0]],
+                          [[ 1.0, -2.0, -3.0,  4.0],
+                           [-5.0,  6.0,  7.0, -8.0],
+                           [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
+        x = paddle.to_tensor(data)
+        m = paddle.nn.PReLU(1, 0.25)
+        out = m(x)
+        # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
+        #    [ 3.  , -1.  ,  5.  , -1.5 ],
+        #    [-1.75, -2.  ,  8.  ,  9.  ]],
+        #   [[ 1.  , -0.5 , -0.75,  4.  ],
+        #    [-1.25,  6.  ,  7.  , -2.  ],
+        #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
+    """
+
+    def __init__(self, num_parameters=1, init=0.25, weight_attr=None,
+                 name=None):
+        super(PReLU, self).__init__()
+        self._num_parameters = num_parameters
+        self._init = init
+        self._weight_attr = weight_attr
+        self._name = name
+
+        self._weight = self.create_parameter(
+            attr=self._weight_attr,
+            shape=[num_parameters],
+            dtype='float32',
+            is_bias=False,
+            default_initializer=Constant(init))
+
+    def forward(self, x):
+        return F.prelu(x, self._weight)
+
+
 class ReLU(layers.Layer):
     """
     ReLU Activation.
@@ -446,7 +510,7 @@ class Sigmoid(layers.Layer):
     
     .. math::
 
-        output = \\frac{1}{1 + e^{-x}}
+        Sigmoid(x) = \frac{1}{1 + e^{-x}}
     
     Parameters:
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -467,7 +531,7 @@ class Sigmoid(layers.Layer):
           paddle.disable_static()
           input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
           m = paddle.nn.Sigmoid()
-          x = paddle.to_variable(input_data)
+          x = paddle.to_tensor(input_data)
           output = m(x)
           print(output.numpy()) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
@@ -545,7 +609,7 @@ class Softmax(layers.Layer):
 
     .. math::
 
-        Softmax[i, j] = \\frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+        Softmax[i, j] = \frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
 
     Parameters:
         x (Tensor): The input multi-dimension Tensor with data type float32, float64.
@@ -576,7 +640,8 @@ class Softmax(layers.Layer):
                        [5.0, 6.0, 7.0, 8.0],
                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
         x = paddle.to_tensor(x)
-        out = F.softmax(x)
+        m = paddle.nn.Softmax()
+        out = m(x)
         # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
@@ -602,7 +667,7 @@ class LogSoftmax(layers.Layer):
     .. math::
 
         Out[i, j] = log(softmax(x)) 
-                  = log(\\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
+                  = log(\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
 
     Parameters:
         axis (int, optional): The axis along which to perform log_softmax

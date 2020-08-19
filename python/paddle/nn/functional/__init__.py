@@ -37,7 +37,7 @@ from .activation import hsigmoid  #DEFINE_ALIAS
 from .activation import leaky_relu  #DEFINE_ALIAS
 from .activation import logsigmoid  #DEFINE_ALIAS
 from .activation import maxout  #DEFINE_ALIAS
-# from .activation import prelu        #DEFINE_ALIAS
+from .activation import prelu  #DEFINE_ALIAS
 from .activation import relu  #DEFINE_ALIAS
 from .activation import relu6  #DEFINE_ALIAS
 from .activation import selu  #DEFINE_ALIAS
