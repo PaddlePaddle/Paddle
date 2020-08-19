@@ -33,6 +33,7 @@ __all__ = [
 ParallelStrategy = core.ParallelStrategy
 
 
+@deprecated(since="2.0.0", update_to="paddle.init_parallel_env")
 def prepare_context(strategy=None):
     '''
     :api_attr: imperative
@@ -71,13 +72,15 @@ class ParallelEnvArgs(object):
         self.selected_gpus = None
 
 
-def init_parallel_env(trainer_id=-1, trainer_num=-1, backend='nccl', **kwargs):
+def init_parallel_env(rank=-1, backend='nccl', **kwargs):
     """
     Initialize parallel environments.
 
     Args:
+        rank(int, optional): Rank of current process. Default vaule is -1.
         backend(str, optional): The backend to communication between multiple devices.
             Now only support `nccl`. Default value is `nccl`.
+        **options(dict, optional): Other initial parallel execution environment configuration.
 
     Returns:
         ParallelStrategy

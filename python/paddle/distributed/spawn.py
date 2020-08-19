@@ -113,12 +113,12 @@ class MultiprocessContext(object):
 # The CUDA runtime does not support the fork start method, 
 # either the spawn or forkserver start method are required 
 # to use CUDA in subprocesses.
-def launch_processes(func,
-                     args=(),
-                     nprocs=1,
-                     join=True,
-                     daemon=False,
-                     start_method='spawn'):
+def start_processes(func,
+                    args=(),
+                    nprocs=1,
+                    join=True,
+                    daemon=False,
+                    start_method='spawn'):
     # NOTE(chenweihang): [ why only supports python3.4+? ]
     # Python has only supported setting the child process startup method
     # since 3.4. The previous version can only use the default startup 
@@ -157,5 +157,8 @@ def launch_processes(func,
         pass
 
 
-def run(func, args=(), nprocs=1, join=True, daemon=False, start_method='spawn'):
-    return launch_processes(func, args, nprocs, join, daemon, start_method)
+# NOTE(chenweihang): this method only supports start processes
+# by `spwan` method, if users want to start processes by other
+# method, they can use start_processes
+def spawn(func, args=(), nprocs=1, join=True, daemon=False):
+    return launch_processes(func, args, nprocs, join, daemon, 'spawn')

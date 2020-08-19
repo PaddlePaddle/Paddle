@@ -50,9 +50,9 @@ from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
 from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
 from ..fluid.dygraph.checkpoint import load_dygraph as load  #DEFINE_ALIAS
 from ..fluid.dygraph.checkpoint import save_dygraph as save  #DEFINE_ALIAS
-from ..fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
-from ..fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
-from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS
+from . import prepare_context
+from . import ParallelEnv
+from . import DataParallel
 
 from ..fluid.dygraph.learning_rate_scheduler import NoamDecay  #DEFINE_ALIAS
 from ..fluid.dygraph.learning_rate_scheduler import PiecewiseDecay  #DEFINE_ALIAS
