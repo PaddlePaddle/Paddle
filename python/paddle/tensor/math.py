@@ -303,20 +303,19 @@ Examples:
         
         paddle.disable_static()
 
-        np_x = np.array([2, 3, 8, 7]).astype('float64')
-        np_y = np.array([1, 5, 3, 3]).astype('float64')
+        np_x = np.array([2, 3, 8, 7])
+        np_y = np.array([1, 5, 3, 3])
         x = paddle.to_tensor(np_x)
         y = paddle.to_tensor(np_y)
         z = paddle.floor_divide(x, y)
-        print(z.numpy())  # [2., 0.0, 2.0, 2.0]
+        print(z.numpy())  # [2, 0, 2, 2]
 
     """
     op_type = 'elementwise_floordiv'
     axis = -1
-    act = None
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
+            x, y, axis=axis, op_name=op_type)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
