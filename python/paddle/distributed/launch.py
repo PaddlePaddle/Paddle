@@ -45,7 +45,6 @@ import six
 import copy
 from argparse import ArgumentParser, REMAINDER
 
-from paddle.fluid import core
 from paddle.distributed.utils import *
 from paddle.distributed import cloud_utils
 
@@ -166,6 +165,7 @@ def get_cluster_from_args(args, selected_gpus):
 
 def get_gpus(selected_gpus):
     if selected_gpus is None:
+        from paddle.fluid import core
         gpus_num = core.get_cuda_device_count()
         selected_gpus = [str(x) for x in range(0, gpus_num)]
     else:
