@@ -60,6 +60,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"sync_batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
+    {"unique_v2", {"Out", "Indices", "Inverse", "Counts"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
