@@ -153,8 +153,8 @@ class Uniform(Distribution):
     [broadcasting](https://www.paddlepaddle.org.cn/documentation/docs/en/develop/beginners_guide/basic_concept/broadcasting_en.html) (e.g., `high - low` is a valid operation).
 
     Args:
-        low(float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is float32
-        high(float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is float32
+        low(int|float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is float32
+        high(int|float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is float32
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -193,14 +193,20 @@ class Uniform(Distribution):
     """
 
     def __init__(self, low, high, name=None):
-        check_type(low, 'low', (float, np.ndarray, tensor.Variable, list),
+        check_type(low, 'low', (int, float, np.ndarray, tensor.Variable, list),
                    'Uniform')
-        check_type(high, 'high', (float, np.ndarray, tensor.Variable, list),
-                   'Uniform')
+        check_type(high, 'high',
+                   (int, float, np.ndarray, tensor.Variable, list), 'Uniform')
 
         self.all_arg_is_float = False
         self.batch_size_unknown = False
         self.name = name if name is not None else 'Uniform'
+
+        if isinstance(low, int):
+            low = float(low)
+        if isinstance(high, int):
+            high = float(high)
+
         if self._validate_args(low, high):
             self.batch_size_unknown = True
             self.low = low
@@ -318,8 +324,8 @@ class Normal(Distribution):
     * :math:`Z`: is the normalization constant.
 
     Args:
-        loc(float|list|numpy.ndarray|Tensor): The mean of normal distribution.The data type is float32.
-        scale(float|list|numpy.ndarray|Tensor): The std of normal distribution.The data type is float32.
+        loc(int|float|list|numpy.ndarray|Tensor): The mean of normal distribution.The data type is float32.
+        scale(int|float|list|numpy.ndarray|Tensor): The std of normal distribution.The data type is float32.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -361,14 +367,20 @@ class Normal(Distribution):
     """
 
     def __init__(self, loc, scale, name=None):
-        check_type(loc, 'loc', (float, np.ndarray, tensor.Variable, list),
+        check_type(loc, 'loc', (int, float, np.ndarray, tensor.Variable, list),
                    'Normal')
-        check_type(scale, 'scale', (float, np.ndarray, tensor.Variable, list),
-                   'Normal')
+        check_type(scale, 'scale',
+                   (int, float, np.ndarray, tensor.Variable, list), 'Normal')
 
         self.batch_size_unknown = False
         self.all_arg_is_float = False
         self.name = name if name is not None else 'Normal'
+
+        if isinstance(loc, int):
+            loc = float(loc)
+        if isinstance(scale, int):
+            scale = float(scale)
+
         if self._validate_args(loc, scale):
             self.batch_size_unknown = True
             self.loc = loc
