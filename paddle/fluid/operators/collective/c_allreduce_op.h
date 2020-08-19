@@ -71,12 +71,11 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
     T* recv_buff = out->data<T>();
     auto place = ctx.GetPlace();
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    auto nranks = gloo->Rank();
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,
         platform::errors::InvalidArgument(
             "You must initialize the gloo environment first to use it."));
-    gloo::AllReduceOptions opts(gloo->GetContext());
+    gloo::AllreduceOptions opts(gloo->GetContext());
     opts.setInput(const_cast<T*>(send_buff), send_numel);
     opts.setOutput(recv_buff, send_numel);
     switch (red_type) {
