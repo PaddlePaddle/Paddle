@@ -108,12 +108,12 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 
     Parameters:
 
-        x(tensor): 4-D tensor, the data type should be float32 or float64.
+        x(Tensor): 4-D tensor, the data type should be float32 or float64.
         upscale_factor(int): factor to increase spatial resolution.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
 
     Returns:
-        Out(Variable): Reshaped tensor according to the new dimension.
+        Out(tensor): Reshaped tensor according to the new dimension.
 
     Raises:
         ValueError: If the square of upscale_factor cannot divide the channels of input.
