@@ -43,9 +43,9 @@ from .common import Linear  #DEFINE_ALIAS
 from .common import Flatten  #DEFINE_ALIAS
 from .common import UpSample  #DEFINE_ALIAS
 from .conv import Conv2D  #DEFINE_ALIAS
-from .conv import Conv2DTranspose  #DEFINE_ALIAS
+from .conv import ConvTranspose2d  #DEFINE_ALIAS
 from .conv import Conv3D  #DEFINE_ALIAS
-from .conv import Conv3DTranspose  #DEFINE_ALIAS
+from .conv import ConvTranspose3d  #DEFINE_ALIAS
 # from .conv import TreeConv        #DEFINE_ALIAS
 # from .conv import Conv1D        #DEFINE_ALIAS
 from .extension import RowConv  #DEFINE_ALIAS
