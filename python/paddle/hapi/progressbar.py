@@ -66,6 +66,7 @@ class ProgressBar(object):
                     return terminal_size(80, 24)
 
         terminal_width, _ = get_terminal_size()
+        terminal_width = terminal_width if terminal_width > 0 else 80
         max_width = min(int(terminal_width * 0.6), terminal_width - 50)
         return max_width
 

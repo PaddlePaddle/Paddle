@@ -126,7 +126,7 @@ class TestModel(unittest.TestCase):
         if not fluid.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
         cls.device = paddle.set_device('gpu')
-        fluid.enable_dygraph(device)
+        fluid.enable_dygraph(cls.device)
 
         sp_num = 1280
         cls.train_dataset = MnistDataset(mode='train', sample_num=sp_num)

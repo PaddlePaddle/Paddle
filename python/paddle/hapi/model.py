@@ -154,7 +154,7 @@ def prepare_distributed_context(place=None):
         place = fluid.CUDAPlace(ParallelEnv().dev_id) if ParallelEnv().nranks > 1 \
             else fluid.CUDAPlace(0)
 
-    strategy = ParallelStrategy()
+    strategy = fluid.dygraph.parallel.ParallelStrategy()
     strategy.nranks = ParallelEnv().nranks
     strategy.local_rank = ParallelEnv().local_rank
     strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
