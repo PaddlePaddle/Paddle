@@ -247,36 +247,38 @@ function(parallel_bash_test_modules TARGET_NAME)
 
     set(options SERIAL)
     set(oneValueArgs TIMEOUT START_BASH)
-    set(multiValueArgs DEPS ENVS LABELS PARAL_UTS)
-    cmake_parse_arguments(bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(multiValueArgs DEPS ENVS LABELS UnitTests)
+    cmake_parse_arguments(parallel_bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
 
     set(timeout 120)
-    if(${bash_test_modules_TIMEOUT})
-        set(timeout ${bash_test_modules_TIMEOUT})
+    if(${parallel_bash_test_modules_TIMEOUT})
+        set(timeout ${parallel_bash_test_modules_TIMEOUT})
     endif()
+
+    list(JOIN  parallel_bash_test_modules_UnitTests " " uts_string)
 
     if(WITH_COVERAGE)
         add_test(NAME ${TARGET_NAME}
             COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
-            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
             WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
             COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
-            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
-            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
-    if (bash_test_modules_SERIAL)
+    if (parallel_bash_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
 
-    if(bash_test_modules_LABELS)
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout} LABELS ${bash_test_modules_LABELS})
+    if(parallel_bash_test_modules_LABELS)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout} LABELS ${parallel_bash_test_modules_LABELS})
     else()
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})
     endif()
@@ -505,9 +507,9 @@ if(NOT WIN32)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
-    parallel_bash_test_modules(test_acp START_BASH parallel_test.sh TIMEOUT 120 PARAL_UTS test_auto_checkpoint test_auto_checkpoint1 test_auto_checkpoint2 test_auto_checkpoint3)
-    parallel_bash_test_modules(test_acp2 START_BASH parallel_test.sh TIMEOUT 120 PARAL_UTS test_auto_checkpoint_multiple test_auto_checkpoint_dist_basic)
-    parallel_bash_test_modules(test_hdfs START_BASH parallel_test.sh TIMEOUT 120 PARAL_UTS test_hdfs1 test_hdfs2 test_hdfs3)
+    parallel_bash_test_modules(test_acp START_BASH parallel_test.sh TIMEOUT 120 UnitTests test_auto_checkpoint test_auto_checkpoint1 test_auto_checkpoint2 test_auto_checkpoint3)
+    parallel_bash_test_modules(test_acp2 START_BASH parallel_test.sh TIMEOUT 120 UnitTests test_auto_checkpoint_multiple test_auto_checkpoint_dist_basic)
+    parallel_bash_test_modules(test_hdfs START_BASH parallel_test.sh TIMEOUT 120 UnitTests test_hdfs1 test_hdfs2 test_hdfs3)
 endif()
 
 add_subdirectory(sequence)
