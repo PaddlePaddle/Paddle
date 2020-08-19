@@ -34,7 +34,6 @@ def pixel_shuffle_np(x, up_factor, data_format="NCHW"):
         return npresult
     else:
         n, h, w, c = x.shape
-
         new_shape = (n, h, w, c // (up_factor * up_factor), up_factor,
                      up_factor)
         # reshape to (num,h,w,output_channel,upscale_factor,upscale_factor)
@@ -82,19 +81,31 @@ class TestChannelLast(TestPixelShuffle):
 
 
 class TestPixelShuffleDygraph(unittest.TestCase):
-    def run_pixel_shuffle(self, up_factor):
-        x = np.random.rand(2, 9, 4, 4).astype(np.float32)
+    def run_pixel_shuffle(self, up_factor, data_format):
 
-        npresult = pixel_shuffle_np(x, up_factor)
+        n, c, h, w = 2, 9, 4, 4
+
+        if data_format == "NCHW":
+            shape = [n, c, h, w]
+        if data_format == "NHWC":
+            shape = [n, h, w, c]
+
+        x = np.random.random(shape).astype("float64")
+
+        npresult = pixel_shuffle_np(x, up_factor, data_format)
 
         paddle.disable_static()
-        pixel_shuffle = paddle.nn.PixelShuffle(up_factor)
-        result = pixel_shuffle(paddle.to_variable(x))
+        pixel_shuffle = paddle.nn.PixelShuffle(
+            up_factor, data_format=data_format)
+        result = pixel_shuffle(paddle.to_tensor(x))
 
         self.assertTrue(np.allclose(result.numpy(), npresult))
 
     def test_pixel_shuffle(self):
-        self.run_pixel_shuffle(3)
+        self.run_pixel_shuffle(3, "NCHW")
+
+    def test_channel_last(self):
+        self.run_pixel_shuffle(3, "NHWC")
 
 
 if __name__ == '__main__':

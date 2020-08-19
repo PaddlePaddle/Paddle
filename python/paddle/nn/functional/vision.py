@@ -136,7 +136,8 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.pixel_shuffle(x, upscale_factor, data_format)
+        return core.ops.pixel_shuffle(x, "upscale_factor", upscale_factor,
+                                      "data_format", data_format)
 
     helper = LayerHelper("pixel_shuffle", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_shuffle')
