@@ -34,7 +34,7 @@ __global__ void GatherGPUKernel(const T* input, const U* index, T* out,
     int input_dim_index = idx / outer_dim_size;
     int input_index = inner_dim_index * (outer_dim_size * index_dim_size) +
                       index[input_dim_index] * outer_dim_size + out_dim_index;
-    out[idx] = input[input_index];
+    out[idx] = input[0];
   }
 }
 
@@ -83,11 +83,13 @@ void GatherV2CUDAFunction(const Tensor* input, const Tensor* index,
 
   int inner_dim_size = 1;
   int outer_dim_size = 1;
-  std::vector<int> out_dim_vec{index_dim_size};
+  std::vector<int> out_dim_vec;
 
   for (int i = 0; i < axis_index; i++) {
     inner_dim_size *= input_dim[i];
+    out_dim_vec.push_back(input_dim[i]);
   }
+  out_dim_vec.push_back(index_size);
   for (int i = axis_index + 1; i < input_dim.size(); i++) {
     outer_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);

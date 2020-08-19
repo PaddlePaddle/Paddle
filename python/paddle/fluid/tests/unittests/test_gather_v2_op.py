@@ -39,7 +39,7 @@ class TestGatherOp(OpTest):
         self.outputs = {'Y': out}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.CPUPlace())
+        self.check_output()
 
     """
     def test_check_grad(self):

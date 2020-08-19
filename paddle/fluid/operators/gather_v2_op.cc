@@ -43,8 +43,8 @@ class GatherV2Op : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(index_dims.size() == 1 ||
                    (index_dims.size() == 2 && index_dims[1] == 1));
     framework::DDim output_dims(ctx->GetInputDim("X"));
-    ctx->SetOutputDim("Out", output_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("Y", output_dims);
+    ctx->ShareLoD("X", /*->*/ "Y");
   }
 
  protected:
