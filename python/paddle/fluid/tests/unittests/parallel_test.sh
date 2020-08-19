@@ -37,6 +37,7 @@ done
 FAIL=0
 for job in `jobs -p`
 do
+    echo "jobs -p result:" `jobs -p`
     echo $job
     wait $job || let FAIL=FAIL+1
 done

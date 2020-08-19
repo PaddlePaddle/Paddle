@@ -59,6 +59,10 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
         os.environ.clear()
         os.environ.update(self._old_environ)
 
+        file_name = os.path.basename(__file__)
+        base_name = os.path.splitext(file_name)[0]
+        print("runnng name:", base_name)
+
     def _run_normal(self):
         exe, main_prog, startup_prog = self._generate()
 

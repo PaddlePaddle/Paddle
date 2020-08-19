@@ -507,8 +507,8 @@ if(NOT WIN32)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
-    parallel_bash_test_modules(test_acp START_BASH parallel_test.sh TIMEOUT 120 UnitTests test_auto_checkpoint test_auto_checkpoint1 test_auto_checkpoint2 test_auto_checkpoint3)
-    parallel_bash_test_modules(test_acp2 START_BASH parallel_test.sh TIMEOUT 120 UnitTests test_auto_checkpoint_multiple test_auto_checkpoint_dist_basic)
+    parallel_bash_test_modules(test_acp START_BASH parallel_test.sh TIMEOUT 140 UnitTests test_auto_checkpoint test_auto_checkpoint1 test_auto_checkpoint2 test_auto_checkpoint3)
+    parallel_bash_test_modules(test_acp2 START_BASH parallel_test.sh TIMEOUT 140 UnitTests test_auto_checkpoint_multiple test_auto_checkpoint_dist_basic)
     parallel_bash_test_modules(test_hdfs START_BASH parallel_test.sh TIMEOUT 120 UnitTests test_hdfs1 test_hdfs2 test_hdfs3)
 endif()
 
