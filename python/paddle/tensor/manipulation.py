@@ -24,7 +24,6 @@ import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
-from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
 from ..fluid.layers import transpose  #DEFINE_ALIAS
@@ -788,6 +787,100 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
+
+
+def scatter(x, index, updates, overwrite=True, name=None):
+    """
+    **Scatter Layer**
+    Output is obtained by updating the input on selected indices based on updates.
+    
+    .. code-block:: python
+        import numpy as np
+        #input:
+        x = np.array([[1, 1], [2, 2], [3, 3]])
+        index = np.array([2, 1, 0, 1])
+        # shape of updates should be the same as x
+        # shape of updates with dim > 1 should be the same as input
+        updates = np.array([[1, 1], [2, 2], [3, 3], [4, 4]])
+        overwrite = False
+        # calculation:
+        if not overwrite:
+            for i in range(len(index)):
+                input[index[i]] = np.zeros((2))
+        for i in range(len(index)):
+            if (overwrite):
+                input[index[i]] = updates[i]
+            else:
+                input[index[i]] += updates[i]
+        # output:
+        out = np.array([[3, 3], [6, 6], [1, 1]])
+        out.shape # [3, 2]
+
+    **NOTICE**: When `overwrite` is True, `index` has repeated numbers and it runs on the GPU
+    device, the result of `scatter` can not meet expectations due to the asynchronous calculation.
+
+    Args:
+        x (Tensor): The input N-D Tensor with rank>=1. Data type can be float32, float64.
+        index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
+        updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
+        overwrite (bool): The mode that updating the output when there are same indices. 
+          If True, use the overwrite mode to update the output of the same index,
+	      if False, use the accumulate mode to update the output of the same index.Default value is True.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+ 
+    Returns:
+        Tensor: The output is a Tensor with the same shape as x.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+
+            x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float32)
+            
+            x = paddle.to_tensor(x_data)
+            index = paddle.to_tensor(index_data)
+            updates = paddle.to_tensor(update_data)
+  
+            output1 = paddle.scatter(x, index, updates, overwrite=False)
+            # [[3., 3.],
+            #  [6., 6.],
+            #  [1., 1.]]
+
+            output2 = paddle.scatter(x, index, updates, overwrite=True)
+            # CPU device:
+            # [[3., 3.],
+            #  [4., 4.],
+            #  [1., 1.]]
+            # GPU device maybe have two results because of the repeated numbers in index
+            # result 1:
+            # [[3., 3.],
+            #  [4., 4.],
+            #  [1., 1.]]
+            # result 2:
+            # [[3., 3.],
+            #  [2., 2.],
+            #  [1., 1.]]
+    """
+    if in_dygraph_mode():
+        return core.ops.scatter(x, index, updates, 'overwrite', overwrite)
+
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'scatter')
+    check_type(overwrite, 'overwrite', bool, 'scatter')
+    helper = LayerHelper('scatter', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type="scatter",
+        inputs={"X": x,
+                "Ids": index,
+                "Updates": updates},
+        attrs={'overwrite': overwrite},
+        outputs={"Out": out})
+    return out
 
 
 def chunk(x, chunks, axis=0, name=None):
