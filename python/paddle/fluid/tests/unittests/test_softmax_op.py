@@ -219,14 +219,14 @@ class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
         return [2, 3, 4, 5]
 
 
-class TestNNSoftmaxAPI(unittest.TestCase):
+class TestSoftmaxAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
         self.x_np = np.random.uniform(-1., 1., [2, 3, 4, 5]).astype('float32')
         self.out_ref = np.apply_along_axis(stable_softmax, -1, self.x_np)
 
-    def test_static_check(self, axis=None, dtype=None):
+    def static_check(self, axis=None, dtype=None):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', self.x_np.shape, 'float32')
             out1 = F.softmax(x, axis, dtype)
@@ -239,7 +239,7 @@ class TestNNSoftmaxAPI(unittest.TestCase):
         self.assertEqual(np.allclose(out_ref1, res[0]), True)
         self.assertEqual(np.allclose(out_ref2, res[1]), True)
 
-    def test_dygraph_check(self, axis=None, dtype=None):
+    def dygraph_check(self, axis=None, dtype=None):
         paddle.disable_static(self.place)
 
         x = paddle.to_tensor(self.x_np)
@@ -255,14 +255,14 @@ class TestNNSoftmaxAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_static_api(self):
-        self.test_static_check(None, None)
-        self.test_static_check(0, None)
-        self.test_static_check(None, np.float64)
+        self.static_check(None, None)
+        self.static_check(0, None)
+        self.static_check(None, np.float64)
 
     def test_dygraph_api(self):
-        self.test_dygraph_check(None, None)
-        self.test_dygraph_check(0, None)
-        self.test_dygraph_check(None, np.float64)
+        self.dygraph_check(None, None)
+        self.dygraph_check(0, None)
+        self.dygraph_check(None, np.float64)
 
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):

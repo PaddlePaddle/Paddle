@@ -239,8 +239,8 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
-        min (float, optional): The minimum value of the linear region range. . Default is -1.
-        max (float, optional): The maximum value of the linear region range. . Default is 1.
+        min (float, optional): The minimum value of the linear region range. Default is -1.
+        max (float, optional): The maximum value of the linear region range. Default is 1.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -262,6 +262,10 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
     """
     min = -1.0 if min is None else min
     max = 1.0 if max is None else max
+
+    if in_dygraph_mode():
+        return core.ops.brelu(x, 't_min', min, 't_max', max)
+
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardtanh')
 
@@ -478,7 +482,7 @@ def logsigmoid(x, name=None):
     return out
 
 
-def softmax(x, axis=None, dtype=None, name=None):
+def softmax(x, axis=-1, dtype=None, name=None):
     """
     This operator implements the softmax layer. The calculation process is as follows:
 
