@@ -67,8 +67,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
       dimension for the purpose of the batched matrix multiple and removed after. 
       The non-matrix (exclude the last two dimensions) dimensions are 
       broadcasted according the broadcast rule. 
-      For example, if input is a (j×1×n×m) tensor and the other is a (k×m×p) tensor, 
-      out will be a (j×k×n×p) tensor.
+      For example, if input is a (j, 1, n, m) tensor and the other is a (k, m, p) tensor, 
+      out will be a (j, k, n, p) tensor.
 
     Args:
         x (Tensor): The input tensor which is a Tensor or LoDTensor.
