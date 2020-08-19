@@ -150,3 +150,7 @@ class ErrorData(object):
 
         error_value_str = '\n'.join(error_value_lines)
         self.error_value = self.error_type(error_value_str)
+
+
+class TransformerError(Exception):
+    pass

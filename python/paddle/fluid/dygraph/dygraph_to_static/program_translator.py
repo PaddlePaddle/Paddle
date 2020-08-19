@@ -32,8 +32,10 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
-from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
 from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data
+from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
+from paddle.fluid.dygraph.dygraph_to_static.error import TransformerError
+from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import create_and_update_origin_info_map
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import update_op_callstack_with_origin_info
@@ -132,8 +134,14 @@ def convert_to_static(function):
         function(callable): The function with dygraph layers that will be converted into static layers.
     """
     with _CACHE_LOCK:
-        static_func = _FUNCTION_CACHE.convert_with_cache(function)
-        return static_func
+        try:
+            static_func = _FUNCTION_CACHE.convert_with_cache(function)
+            return static_func
+        except Exception as e:
+            translator_logger = TranslatorLogger()
+            translator_logger.error('Transform {} failed.'.format(function))
+            raise TransformerError("Transforming {}: {}".format(function,
+                                                                str(e)))
 
 
 class FunctionSpec(object):
