@@ -145,7 +145,7 @@ def argmax(x, axis=None, dtype=None, keepdim=False, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor or scalar, return the scalar if the axis is ``None``, otherwise will the tensor; return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
+        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
 
     Examples:
         .. code-block:: python
@@ -154,23 +154,18 @@ def argmax(x, axis=None, dtype=None, keepdim=False, name=None):
             import paddle
 
             paddle.disable_static()
-            data = np.array([[[5,8,9,5],
-                            [0,0,1,7],
-                            [6,9,2,4]],
-                            [[5,2,4,2],
-                            [4,7,7,9],
-                            [1,7,0,6]]])
-            x =  paddle.to_tensor(data)
+            data = np.array([[5,8,9,5],
+                             [0,0,1,7],
+                             [6,9,2,4]])
+            x =  paddle.to_variable(data)
             out1 = paddle.argmax(x)
-            print(out1.numpy()) # 2 
+            print(out1.numpy()) # 2
             out2 = paddle.argmax(x, axis=1)
-            print(out2.numpy())
-            # [[2 2 0 1]
-            #  [0 1 1 1]]
+            print(out2.numpy()) 
+            # [2 3 1]
             out3 = paddle.argmax(x, axis=-1)
-            print(out3.numpy())
-            # [[2 3 1]
-            #  [0 3 1]
+            print(out3.numpy()) 
+            # [2 3 1]
     """
     flatten = False
     if axis is None:
@@ -233,7 +228,7 @@ def argmin(x, axis=None, dtype=None, keepdim=False, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor or scalar, return the scalar if the axis is ``None``, otherwise will the tensor; return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
+        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
 
     Examples:
         .. code-block:: python
@@ -242,25 +237,18 @@ def argmin(x, axis=None, dtype=None, keepdim=False, name=None):
             import paddle
 
             paddle.disable_static()
-            data = np.array([[[5,8,9,5],
-                            [0,0,1,7],
-                            [6,9,2,4]],
-                            [[5,2,4,2],
-                            [4,7,7,9],
-                            [1,7,0,6]]])
-            x =  paddle.to_tensor(data)
+            data = np.array([[5,8,9,5],
+                             [0,0,1,7],
+                             [6,9,2,4]])
+            x =  paddle.to_variable(data)
             out1 = paddle.argmin(x)
             print(out1.numpy()) # 4
             out2 = paddle.argmin(x, axis=1)
-            print(out2.numpy())
-            # [[1 1 1 2]
-            #  [2 0 2 0]]
+            print(out2.numpy()) 
+            # [0 0 2]
             out3 = paddle.argmin(x, axis=-1)
-            print(out3.numpy())
-            # [[0 0 2]
-            #  [1 0 2]]
-            
-             
+            print(out3.numpy()) 
+            # [0 0 2]
     """
     flatten = False
     if axis is None:

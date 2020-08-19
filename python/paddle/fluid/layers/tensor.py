@@ -811,6 +811,7 @@ def fill_constant_batch_size_like(input,
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.argmin")
 def argmin(x, axis=0):
     """
 	:alias_main: paddle.argmin
@@ -878,6 +879,7 @@ def argmin(x, axis=0):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.argmax")
 def argmax(x, axis=0):
     """
     **argmax**

@@ -31,6 +31,7 @@ def create_kernel_case(op_type, numpy_op_type):
             self.axis = 0
 
         def setUp(self):
+            np.random.seed(123)
             self.initTestCase()
             self.dims = (4, 5, 6)
             self.dtype = "float64"
@@ -152,6 +153,7 @@ for op_type, numpy_op_type in zip(['arg_max_v2', 'arg_min_v2'],
 def create_test_case(op_type):
     class ArgMaxMinTestCase(unittest.TestCase):
         def setUp(self):
+            np.random.seed(123)
             self.input_data = np.random.rand(10, 10).astype("float32")
             self.places = []
             self.places.append(fluid.CPUPlace())
