@@ -81,11 +81,9 @@ class TestVarAPI_axis_list(TestVarAPI):
         self.axis = [1, 2]
 
 
-"""
 class TestVarAPI_axis_tuple(TestVarAPI):
     def set_attrs(self):
         self.axis = (1, 3)
-"""
 
 
 class TestVarAPI_keepdim(TestVarAPI):
