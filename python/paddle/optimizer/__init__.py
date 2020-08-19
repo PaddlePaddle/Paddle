@@ -13,24 +13,20 @@
 # limitations under the License.
 
 __all__ = [
-    'Adadelta', 'AdadeltaOptimizer', 'Adagrad', 'AdagradOptimizer', 'Adam',
-    'Adamax', 'DecayedAdagrad', 'AdamW'
-    'DecayedAdagradOptimizer', 'DGCMomentumOptimizer', 'Dpsgd',
-    'DpsgdOptimizer', 'ExponentialMovingAverage', 'Ftrl', 'FtrlOptimizer',
-    'LambOptimizer', 'LarsMomentum', 'LarsMomentumOptimizer',
-    'LookaheadOptimizer', 'ModelAverage', 'Momentum', 'MomentumOptimizer',
-    'PipelineOptimizer', 'RecomputeOptimizer', 'RMSPropOptimizer', 'SGD',
-    'SGDOptimizer', 'Optimizer'
+    'Adadelta', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'AdamW'
+    'DGCMomentumOptimizer', 'Dpsgd', 'DpsgdOptimizer',
+    'ExponentialMovingAverage', 'Ftrl', 'Lamb', 'LarsMomentum',
+    'LookaheadOptimizer', 'ModelAverage', 'Momentum', 'PipelineOptimizer',
+    'RecomputeOptimizer', 'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer'
 ]
 
 
 from ..fluid.optimizer import  SGD, Momentum, Adagrad, Dpsgd, DecayedAdagrad, \
-            Ftrl, SGDOptimizer, MomentumOptimizer, AdagradOptimizer, DpsgdOptimizer, \
-            DecayedAdagradOptimizer, RMSPropOptimizer, FtrlOptimizer, Adadelta, \
-            AdadeltaOptimizer, ModelAverage, LarsMomentum, \
-            LarsMomentumOptimizer, DGCMomentumOptimizer, LambOptimizer, \
+            Ftrl, Adadelta, Lamb, RMSProp, \
+            ModelAverage, LarsMomentum, DGCMomentumOptimizer, \
             ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, \
             RecomputeOptimizer
 
 from .optimizer import Optimizer
 from .adam import Adam
+from .adamw import AdamW

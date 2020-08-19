@@ -41,15 +41,7 @@ from functools import reduce
 from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 
-__all__ = [
-    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
-    'Ftrl', 'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer',
-    'AdamOptimizer', 'AdamaxOptimizer', 'DpsgdOptimizer',
-    'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
-    'AdadeltaOptimizer', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'LambOptimizer', 'ExponentialMovingAverage',
-    'PipelineOptimizer', 'LookaheadOptimizer', 'RecomputeOptimizer'
-]
+__all__ = ['Optimizer']
 
 
 class Optimizer(object):
@@ -62,7 +54,7 @@ class Optimizer(object):
     Args:
         learning_rate (float|Tensor): The learning rate used to update ``Parameter``.
             It can be a float value or a ``Tensor`` with a float type.
-        parameters (Iterable, optional): Iterable of ``Tensor`` names to update to minimize ``loss``. \
+        parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
@@ -70,7 +62,7 @@ class Optimizer(object):
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
-            Otherwis, the regularization setting here in optimizer will take effect. \
+            Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of \
             some derived class of ``GradientClipBase`` . There are three cliping strategies \
@@ -79,6 +71,9 @@ class Optimizer(object):
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
+
+    Returns:
+       Base class for optimizer. 
     """
 
     @imperative_base.no_grad()
@@ -105,7 +100,7 @@ class Optimizer(object):
                 for param in self._parameter_list:
                     if param.regularizer is not None:
                         logging.info(
-                            "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
+                            "If regularizer of a Parameter has been set by 'paddle.ParamAttr' or 'static.WeightNormParamAttr' already. "
                             "The weight_decay[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                             % weight_decay.__str__())
                         break
@@ -159,13 +154,12 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
                 import paddle
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                paddle.disable_static():
+                emb = paddle.nn.Embedding([10, 10])
 
-                    adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
-                    state_dict = adam.state_dict()
+                adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
+                state_dict = adam.state_dict()
 
         '''
         state_dict = {}
@@ -200,20 +194,20 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                paddle.disable_static():
+                emb = paddle.nn.Embedding([10, 10])
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                state_dict = emb.state_dict()
+                paddle.framework.save(state_dict, "paddle_dy")
 
-                    adam = paddle.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
-                                                parameters=emb.parameters())
-                    state_dict = adam.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                adam = paddle.optimizer.Adam(learning_rate=paddle.nn.functional.noam_decay( 100, 10000), 
+                                            parameters=emb.parameters())
+                state_dict = adam.state_dict()
+                paddle.framework.save(state_dict, "paddle_dy")
 
-                    para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
+                para_state_dict, opti_state_dict = paddle.framework.load( "paddle_dy")
 
-                    adam.set_state_dict(opti_state_dict)
+                adam.set_state_dict(opti_state_dict)
 
         '''
 
@@ -337,29 +331,28 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
                 import paddle
-                with fluid.dygraph.guard():
-                    linear = fluid.dygraph.nn.Linear(10, 10)
+                paddle.disable_static()
+                linear = paddle.nn.Linear(10, 10)
 
-                    adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+                adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
 
-                    # set learning rate manually by python float value
-                    lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
-                    for i in range(5):
-                        adam.set_lr(lr_list[i])
-                        lr = adam.current_step_lr()
-                        print("current lr is {}".format(lr))
-                    # Print:
-                    #    current lr is 0.2
-                    #    current lr is 0.3
-                    #    current lr is 0.4
-                    #    current lr is 0.5
-                    #    current lr is 0.6
+                # set learning rate manually by python float value
+                lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
+                for i in range(5):
+                    adam.set_lr(lr_list[i])
+                    lr = adam.current_step_lr()
+                    print("current lr is {}".format(lr))
+                # Print:
+                #    current lr is 0.2
+                #    current lr is 0.3
+                #    current lr is 0.4
+                #    current lr is 0.5
+                #    current lr is 0.6
 
 
                     # set learning rate manually by framework Tensor
-                    lr_var = fluid.layers.create_global_var(
+                    lr_var = paddle.create_global_var(
                         shape=[1], value=0.7, dtype='float32')
                     adam.set_lr(lr_var)
                     lr = adam.current_step_lr()
@@ -411,38 +404,37 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
                 import numpy as np
                 import paddle
                 # example1: LearningRateDecay is not used, return value is all the same
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
-                    adam = paddle.optimizer.Adam(0.001, parameters = emb.parameters())
-                    lr = adam.current_step_lr()
-                    print(lr) # 0.001
+                paddle.disable_static()
+                emb = paddle.nn.Embedding([10, 10])
+                adam = paddle.optimizer.Adam(0.001, parameters = emb.parameters())
+                lr = adam.current_step_lr()
+                print(lr) # 0.001
 
                 # example2: PiecewiseDecay is used, return the step learning rate
-                with fluid.dygraph.guard():
-                    inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
-                    linear = fluid.dygraph.nn.Linear(10, 10)
-                    inp = fluid.dygraph.to_variable(inp)
-                    out = linear(inp)
-                    loss = fluid.layers.reduce_mean(out)
-                    
-                    bd = [2, 4, 6, 8]
-                    value = [0.2, 0.4, 0.6, 0.8, 1.0]
-                    adam = paddle.optimizer.Adam(fluid.dygraph.PiecewiseDecay(bd, value, 0),
-                                           parameters=linear.parameters())
+                paddle.disable_static()
+                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+                linear = paddle.nn.Linear(10, 10)
+                inp = paddle.to_tensor(inp)
+                out = linear(inp)
+                loss = paddle.reduce_mean(out)
+                
+                bd = [2, 4, 6, 8]
+                value = [0.2, 0.4, 0.6, 0.8, 1.0]
+                adam = paddle.optimizer.Adam(paddle.PiecewiseDecay(bd, value, 0),
+                                       parameters=linear.parameters())
 
-                    # first step: learning rate is 0.2
-                    np.allclose(adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0) # True
+                # first step: learning rate is 0.2
+                np.allclose(adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0) # True
 
-                    # learning rate for different steps
-                    ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
-                    for i in range(12):
-                        adam.minimize(loss)
-                        lr = adam.current_step_lr()
-                        np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
+                # learning rate for different steps
+                ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
+                for i in range(12):
+                    adam.minimize(loss)
+                    lr = adam.current_step_lr()
+                    np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
 
         """
         current_lr = self._global_learning_rate()
@@ -732,7 +724,7 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameters``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameters (Iterable, optional): Iterable of ``Tensor`` or ``Tensor.name`` to update
+            parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Tensor``  or ``Tensor.name`` that don't need
@@ -771,7 +763,7 @@ class Optimizer(object):
             program = loss.block.program
             assert len(loss.shape) == 1 and loss.shape[0] == 1, \
                 "The loss.shape should be (1L,), but the current loss.shape is {}. " \
-                "Maybe that you should call fluid.layers.mean to process the current loss.".format(
+                "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape)
             parameter_list = parameters if parameters \
                 else self._parameter_list
@@ -799,7 +791,7 @@ class Optimizer(object):
 
                 import paddle
                 loss = network()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.1)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 params_grads = optimizer.backward(loss)
                 # you may append operations for params_grads here
                 # ...
@@ -869,20 +861,19 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
                 import numpy as np
                 import paddle
-                with fluid.dygraph.guard():
-                    value = np.arange(26).reshape(2, 13).astype("float32")
-                    a = fluid.dygraph.to_variable(value)
-                    linear = fluid.Linear(13, 5, dtype="float32")
-                    # This can be any optimizer supported by dygraph.
-                    adam = paddle.optimizer.Adam(learning_rate = 0.01, 
-                                                parameters = linear.parameters())
-                    out = linear(a)
-                    out.backward()
-                    adam.minimize(out)
-                    adam.clear_gradients()
+                paddle.disable_static()
+                value = np.arange(26).reshape(2, 13).astype("float32")
+                a = paddle.to_tensor(value)
+                linear = paddle.nn.Linear(13, 5, dtype="float32")
+                # This can be any optimizer supported by dygraph.
+                adam = paddle.optimizer.Adam(learning_rate = 0.01, 
+                                            parameters = linear.parameters())
+                out = linear(a)
+                out.backward()
+                adam.step()
+                adam.clear_gradients()
 
         """
         for p in self._parameter_list:
@@ -903,7 +894,7 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameters``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameters (Iterable, optional): Iterable of ``Tensor`` or ``Tensor.name`` to update
+            parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Tensor``  or ``Tensor.name`` that don't need
@@ -947,20 +938,18 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
                 import numpy as np
-
-                with fluie.dygraph.guard():
-                    value = np.arange(26).reshape(2, 13).astype("float32")
-                    a = fluid.dygraph.to_variable(value)
-                    linear = fluid.Linear(13, 5, dtype="float32")
-                    # This can be any optimizer supported by dygraph.
-                    adam = paddle.optimizer.Adam(learning_rate = 0.01, 
-                                                parameters = linear.parameters())
-                    out = linear(a)
-                    out.backward()
-                    adam.step()
-                    adam.clear_gradients()
+                paddle.disable_static()
+                value = np.arange(26).reshape(2, 13).astype("float32")
+                a = paddle.to_tensor(value)
+                linear = paddle.nn.Linear(13, 5, dtype="float32")
+                # This can be any optimizer supported by dygraph.
+                adam = paddle.optimizer.Adam(learning_rate = 0.01, 
+                                            parameters = linear.parameters())
+                out = linear(a)
+                out.backward()
+                adam.step()
+                adam.clear_gradients()
         """
         parameter_list = self._parameter_list
         self._dtype = None
