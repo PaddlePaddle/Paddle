@@ -14,7 +14,7 @@
 
 import paddle
 
-# TODO: define loss functions of neural network  
+# TODO: define loss functions of neural network
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -42,9 +42,11 @@ from ...fluid.layers import huber_loss  #DEFINE_ALIAS
 from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode
+from ...fluid.framework import _varbase_creator
 from ...fluid.framework import Variable
 
 __all__ = [
+    'binary_cross_entropy_with_logits',
     'bpr_loss',
     'center_loss',
     'cross_entropy',
@@ -72,6 +74,154 @@ __all__ = [
 ]
 
 
+def binary_cross_entropy_with_logits(logit,
+                                     label,
+                                     weight=None,
+                                     reduction='mean',
+                                     pos_weight=None,
+                                     name=None):
+    """
+    This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
+    layer and some reduce operations.
+
+    This measures the element-wise probability error in classification tasks
+    in which each class is independent.
+    This can be thought of as predicting labels for a data-point, where labels
+    are not mutually exclusive. For example, a news article can be about
+    politics, technology or sports at the same time or none of these.
+
+    First this operator calculate loss function as follows:
+
+    .. math::
+           $$Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))$$
+
+    We know that $$\\sigma(Logit) = \\frac{1}{1 + \\exp^{-Logit}} $$. By substituting this we get:
+
+    .. math::
+           $$Out = Logit - Logit * Labels + \\log(1 + \\exp^{-Logit})$$
+
+    For stability and to prevent overflow of $$\\exp^{-Logit}$$ when Logit < 0,
+    we reformulate the loss as follows:
+
+    .. math::
+           $$Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\exp^{-\|Logit\|})$$
+
+    Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
+    weight tensor on the loss `Out`. The ``weight`` tensor will attach different
+    weight on every items in the batch. The ``pos_weight`` will attach different
+    weight on the positive label of each class.
+
+    Finally, this operator applies reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is $$ Out = MEAN(Out) $$.
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is $$ Out = SUM(Out) $$.
+
+    Note that the target labels ``label`` should be numbers between 0 and 1.
+
+    Parameters:
+        logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
+            N is batch_size, `*` means number of additional dimensions. The ``logit``
+            is usually the output of Linear layer. Available dtype is float32, float64.
+        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+            ``input``. The target labels which values should be numbers between 0 and 1.
+            Available dtype is float32, float64.
+        weight (Tensor, optional): A manual rescaling weight given to the loss of each
+            batch element. If given, it has to be a 1D Tensor whose size is `[N, ]`,
+            The data type is float32, float64. Default is ``'None'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+        pos_weight (Tensor, optional): A weight of positive examples. Must be a vector
+            with length equal to the number of classes. The data type is float32, float64.
+            Default is ``'None'``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``input`` , else the shape of output is scalar.
+
+    Examples:
+
+        .. code-block:: python
+            import paddle
+            paddle.disable_static()
+            input = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
+            label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
+            output = paddle.nn.functional.binary_cross_entropy_with_logits(input, label)
+            print(output.numpy())  # [0.45618808]
+            paddle.enable_static()
+
+    """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in binary_cross_entropy_with_logits "
+            "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
+            % reduction)
+
+    if in_dygraph_mode():
+        one = _varbase_creator(dtype=logit.dtype)
+        core.ops.fill_constant(one, 'value',
+                               float(1.0), 'force_cpu', False, 'dtype',
+                               one.dtype, 'str_value', '1.0', 'shape', [1])
+        out = core.ops.sigmoid_cross_entropy_with_logits(logit, label)
+        if pos_weight is not None:
+            log_weight = core.ops.elementwise_add(
+                core.ops.elementwise_mul(
+                    label, core.ops.elementwise_sub(pos_weight, one)), one)
+            out = core.ops.elementwise_mul(out, log_weight)
+        if weight is not None:
+            out = core.ops.elementwise_mul(out, weight)
+
+        if reduction == "sum":
+            return core.ops.reduce_sum(out, 'reduce_all', True)
+        elif reduction == "mean":
+            return core.ops.mean(out)
+        else:
+            return out
+
+    fluid.data_feeder.check_variable_and_dtype(
+        logit, 'logit', ['float32', 'float64'],
+        'binary_cross_entropy_with_logits')
+    fluid.data_feeder.check_variable_and_dtype(
+        label, 'label', ['float32', 'float64'],
+        'binary_cross_entropy_with_logits')
+    sigmoid_name = None
+    if reduction == 'none' and pos_weight is None and weight is None:
+        sigmoid_name = name
+
+    out = paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+        logit, label, name=sigmoid_name)
+
+    one = paddle.fill_constant(shape=[1], value=1.0, dtype=logit.dtype)
+    if pos_weight is not None:
+        fluid.data_feeder.check_variable_and_dtype(
+            pos_weight, 'pos_weight', ['float32', 'float64'],
+            'binary_cross_entropy_with_logits')
+        log_weight = paddle.add(
+            paddle.multiply(label, paddle.elementwise_sub(pos_weight, one)),
+            one)
+        pos_weight_name = name if reduction == 'none' and weight is None else None
+        out = paddle.multiply(out, log_weight, name=pos_weight_name)
+
+    if weight is not None:
+        fluid.data_feeder.check_variable_and_dtype(
+            weight, 'weight', ['float32', 'float64'],
+            'binary_cross_entropy_with_logits')
+        weight_name = name if reduction == 'none' else None
+        out = paddle.multiply(out, weight, name=weight_name)
+
+    if reduction == "sum":
+        return paddle.sum(out, name=name)
+    elif reduction == "mean":
+        return paddle.mean(out, name=name)
+    return out
+
+
 def margin_ranking_loss(input,
                         other,
                         label,
@@ -80,9 +230,9 @@ def margin_ranking_loss(input,
                         name=None):
     """
 
-    This op the calcluate the the margin rank loss between the input, other and label, use the math function as follows. 
+    This op the calcluate the the margin rank loss between the input, other and label, use the math function as follows.
 
-    .. math:: 
+    .. math::
         margin\_rank\_loss = max(0, -label * (input - other) + margin)
 
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
@@ -100,7 +250,7 @@ def margin_ranking_loss(input,
     Parameters:
         input(Tensor): the first input tensor, it's data type should be float32, float64.
         other(Tensor): the second input tensor, it's data type should be float32, float64.
-        label(Tensor): the label value corresponding to input, it's data type should be float32, float64. 
+        label(Tensor): the label value corresponding to input, it's data type should be float32, float64.
         margin (float, optional): The margin value to add, default value is 0;
         reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -111,15 +261,15 @@ def margin_ranking_loss(input,
 
         .. code-block:: python
 
-            import numpy as np 
-            import paddle 
-            
+            import numpy as np
+            import paddle
+
             paddle.disable_static()
-             
+
             input = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype('float32'))
             other = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype('float32'))
             label = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype('float32'))
-            loss = paddle.nn.functional.margin_ranking_loss(input, other, label) 
+            loss = paddle.nn.functional.margin_ranking_loss(input, other, label)
             print(loss.numpy()) # [0.75]
     """
     if fluid.framework.in_dygraph_mode():
@@ -195,15 +345,15 @@ def l1_loss(input, label, reduction='mean', name=None):
     .. math::
         Out = SUM(\lvert input - label\rvert)
 
-    
+
     Parameters:
         input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
         label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
-        reduction (str, optional): Indicate the reduction to apply to the loss, 
+        reduction (str, optional): Indicate the reduction to apply to the loss,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If `reduction` is ``'none'``, the unreduced loss is returned; 
-            If `reduction` is ``'mean'``, the reduced mean loss is returned. 
-            If `reduction` is ``'sum'``, the reduced sum loss is returned. 
+            If `reduction` is ``'none'``, the unreduced loss is returned;
+            If `reduction` is ``'mean'``, the reduced mean loss is returned.
+            If `reduction` is ``'sum'``, the reduced sum loss is returned.
             Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -214,7 +364,7 @@ def l1_loss(input, label, reduction='mean', name=None):
         .. code-block:: python
             import paddle
             import numpy as np
-            
+
             paddle.disable_static()
             input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
             label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
@@ -222,16 +372,16 @@ def l1_loss(input, label, reduction='mean', name=None):
             label = paddle.to_variable(label_data)
 
             l1_loss = paddle.nn.functional.l1_loss(input, label)
-            print(l1_loss.numpy())  
+            print(l1_loss.numpy())
             # [0.35]
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
-            print(l1_loss.numpy())  
+            print(l1_loss.numpy())
             # [[0.20000005 0.19999999]
             # [0.2        0.79999995]]
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
-            print(l1_loss.numpy())  
+            print(l1_loss.numpy())
             # [1.4]
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -387,21 +537,21 @@ def kl_div(input, label, reduction='mean', name=None):
     While :math:`x` is input and :math:`y` is label.
 
     While :attr:`reduction` is :attr:`none`, output loss is in
-    the same shape as input, loss in each point is calculated 
+    the same shape as input, loss in each point is calculated
     seperately and no reduction is applied.
-    
+
     While :attr:`reduction` is :attr:`mean`, output loss is in
     shape of [1] and loss value is the mean value of all losses.
-    
+
     While :attr:`reduction` is :attr:`sum`, output loss is in
     shape of [1] and loss value is the sum value of all losses.
-    
-    While :attr:`reduction` is :attr:`batchmean`, output loss is 
+
+    While :attr:`reduction` is :attr:`batchmean`, output loss is
     in shape of [1] and loss value is the sum value of all losses
     divided by batch size.
 
     Args:
-        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means 
+        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means
              any number of additional dimensions. It's data type should be float32, float64.
         label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64.
         reduction (Tensor): Indicate how to average the loss,
@@ -411,7 +561,7 @@ def kl_div(input, label, reduction='mean', name=None):
              if `reduction` is ``'sum'``, the reduced sum loss is returned;
              if `reduction` is ``'none'``, no reduction will be apllied.
              Default is ``'mean'``.
-        name(str, optional): Name for the operation (optional, default is None). For more information, 
+        name(str, optional): Name for the operation (optional, default is None). For more information,
             please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -423,9 +573,9 @@ def kl_div(input, label, reduction='mean', name=None):
             import paddle
             import numpy as np
             import paddle.nn.functional as F
-            
+
             paddle.enable_imperative()
-            
+
             shape = (5, 20)
             input = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')
@@ -434,7 +584,7 @@ def kl_div(input, label, reduction='mean', name=None):
             pred_loss = F.kl_div(paddle.to_variable(input),
                                  paddle.to_variable(target), reduction='batchmean')
             # shape=[5]
-            
+
             # 'mean' reduction, loss shape will be [1]
             pred_loss = F.kl_div(paddle.to_variable(input),
                                  paddle.to_variable(target), reduction='mean')
@@ -508,7 +658,7 @@ def mse_loss(input, label, reduction='mean', name=None):
         Tensor: The tensor tensor storing the mean square error difference of input and label.
 
     Return type: Tensor.
-    
+
     Examples:
 
         .. code-block:: python

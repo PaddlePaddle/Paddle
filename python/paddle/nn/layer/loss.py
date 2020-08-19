@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define loss functions of neural network  
+# TODO: define loss functions of neural network
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -21,6 +21,7 @@ from .. import functional as F
 
 __all__ = [
     #       'NCELoss',
+    'BCEWithLogitsLoss',
     'CrossEntropyLoss',
     'MSELoss',
     'L1Loss',
@@ -29,6 +30,108 @@ __all__ = [
     'KLDivLoss',
     'MarginRankingLoss'
 ]
+
+
+class BCEWithLogitsLoss(fluid.dygraph.Layer):
+    """
+    This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
+    layer and some reduce operations.
+
+    This measures the element-wise probability error in classification tasks
+    in which each class is independent.
+    This can be thought of as predicting labels for a data-point, where labels
+    are not mutually exclusive. For example, a news article can be about
+    politics, technology or sports at the same time or none of these.
+
+    First this operator calculate loss function as follows:
+
+    .. math::
+           $$Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))$$
+
+    We know that $$\\sigma(Logit) = \\frac{1}{1 + \\exp^{-Logit}} $$. By substituting this we get:
+
+    .. math::
+           $$Out = Logit - Logit * Labels + \\log(1 + \\exp^{-Logit})$$
+
+    For stability and to prevent overflow of $$\\exp^{-Logit}$$ when Logit < 0,
+    we reformulate the loss as follows:
+
+    .. math::
+           $$Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\exp^{-\|Logit\|})$$
+
+    Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
+    weight tensor on the loss `Out`. The ``weight`` tensor will attach different
+    weight on every items in the batch. The ``pos_weight`` will attach different
+    weight on the positive label of each class.
+
+    Finally, this operator applies reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is $$ Out = MEAN(Out) $$.
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is $$ Out = SUM(Out) $$.
+
+    Note that the target labels ``label`` should be numbers between 0 and 1.
+
+    Parameters:
+        weight (Tensor, optional): A manual rescaling weight given to the loss of each
+            batch element. If given, it has to be a 1D Tensor whose size is `[N, ]`,
+            The data type is float32, float64. Default is ``'None'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+        pos_weight (Tensor, optional): A weight of positive examples. Must be a vector
+            with length equal to the number of classes. The data type is float32, float64.
+            Default is ``'None'``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shapes:
+        logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
+            N is batch_size, `*` means number of additional dimensions. The ``logit``
+            is usually the output of Linear layer. Available dtype is float32, float64.
+        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+            ``input``. The target labels which values should be numbers between 0 and 1.
+            Available dtype is float32, float64.
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``input`` , else the shape of output is scalar.
+
+    Examples:
+
+        .. code-block:: python
+            import paddle
+            paddle.disable_static()
+            input = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
+            label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
+            output = paddle.nn.functional.binary_cross_entropy_with_logits(input, label)
+            print(output.numpy())  # [0.45618808]
+            paddle.enable_static()
+
+    """
+
+    def __init__(self,
+                 weight=None,
+                 reduction='mean',
+                 pos_weight=None,
+                 name=None):
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in BCEWithLogitsLoss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction)
+
+        super(BCEWithLogitsLoss, self).__init__()
+        self.weight = weight
+        self.reduction = reduction
+        self.pos_weight = pos_weight
+        self.name = name
+
+    def forward(self, logit, label):
+        out = paddle.nn.functional.binary_cross_entropy_with_logits(
+            logit, label, self.weight, self.reduction, self.pos_weight,
+            self.name)
+        return out
 
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
@@ -60,8 +163,8 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
     Parameters:
         input (Variable): Input tensor, the data type is float32, float64. Shape is
 	    (N, C), where C is number of classes, and if shape is more than 2D, this
-	    is (N, C, D1, D2,..., Dk), k >= 1. 
-        label (Variable): Label tensor, the data type is int64. Shape is (N), where each 
+	    is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Variable): Label tensor, the data type is int64. Shape is (N), where each
 	    value is 0 <= label[i] <= C-1, and if shape is more than 2D, this is
 	    (N, D1, D2,..., Dk), k >= 1.
         weight (Variable, optional): Weight tensor, a manual rescaling weight given
@@ -179,9 +282,9 @@ class MSELoss(fluid.dygraph.layers.Layer):
         label (Variable): Label tensor, the data type is float32,
         reduction (string, optional): The reduction method for the output,
             could be 'none' | 'mean' | 'sum'.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. 
-            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned. 
-            If :attr:`reduction` is ``'none'``, the unreduced loss is returned. 
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned.
+            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
 
     Returns:
@@ -273,23 +376,23 @@ class L1Loss(fluid.dygraph.Layer):
     .. math::
         Out = SUM(\lvert input - label\rvert)
 
-    
+
     Parameters:
-        reduction (str, optional): Indicate the reduction to apply to the loss, 
+        reduction (str, optional): Indicate the reduction to apply to the loss,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If `reduction` is ``'none'``, the unreduced loss is returned; 
-            If `reduction` is ``'mean'``, the reduced mean loss is returned. 
-            If `reduction` is ``'sum'``, the reduced sum loss is returned. 
+            If `reduction` is ``'none'``, the unreduced loss is returned;
+            If `reduction` is ``'mean'``, the reduced mean loss is returned.
+            If `reduction` is ``'sum'``, the reduced sum loss is returned.
             Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
         label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
-        output (Tensor): The L1 Loss of ``input`` and ``label``. 
+        output (Tensor): The L1 Loss of ``input`` and ``label``.
             If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
             If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
-            
+
     Examples:
         .. code-block:: python
             import paddle
@@ -303,17 +406,17 @@ class L1Loss(fluid.dygraph.Layer):
 
             l1_loss = paddle.nn.loss.L1Loss()
             output = l1_loss(input, label)
-            print(output.numpy())  
+            print(output.numpy())
             # [0.35]
 
             l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
             output = l1_loss(input, label)
-            print(output.numpy())  
+            print(output.numpy())
             # [1.4]
 
             l1_loss = paddle.nn.loss.L1Loss(reduction='none')
             output = l1_loss(input, label)
-            print(output.numpy())  
+            print(output.numpy())
             # [[0.20000005 0.19999999]
             # [0.2        0.79999995]]
     """
@@ -338,7 +441,7 @@ class BCELoss(fluid.dygraph.Layer):
 	:alias: paddle.nn.BCELoss,paddle.nn.layer.BCELoss,paddle.nn.layer.loss.BCELoss
 
     This interface is used to construct a callable object of the ``BCELoss`` class.
-    The BCELoss layer measures the binary_cross_entropy loss between input predictions 
+    The BCELoss layer measures the binary_cross_entropy loss between input predictions
     and target labels. The binary_cross_entropy loss can be described as:
 
     If :attr:`weight` is set, the loss is:
@@ -363,25 +466,25 @@ class BCELoss(fluid.dygraph.Layer):
     .. math::
         Out = SUM(Out)
 
-    Note that the input predictions always be the output of sigmoid, and the target labels 
+    Note that the input predictions always be the output of sigmoid, and the target labels
     should be numbers between 0 and 1.
 
-    The shape of input predictions and target labels are [N, *], where N is batch_size and `*` 
-    means any number of additional dimensions. If ``reduction`` is ``'none'``, the shape of 
+    The shape of input predictions and target labels are [N, *], where N is batch_size and `*`
+    means any number of additional dimensions. If ``reduction`` is ``'none'``, the shape of
     output is scalar, else the shape of output is same as input.
 
     Parameters:
-        weight (Variable, optional): A manual rescaling weight given to the loss of each 
+        weight (Variable, optional): A manual rescaling weight given to the loss of each
             batch element. If given, has to be a Variable of size nbatch and the data type
             is float32, float64. Default is ``'None'``.
-        reduction (str, optional): Indicate how to average the loss by batch_size, 
+        reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'mean'``.
 
-    Returns: 
+    Returns:
         A callable object of BCELoss.
 
     Examples:
@@ -398,16 +501,16 @@ class BCELoss(fluid.dygraph.Layer):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-    
+
             input_data = np.array([0.5, 0.6, 0.7]).astype("float32")
             label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
             output_data = exe.run(fluid.default_main_program(),
                     feed={"input":input_data, "label":label_data},
                     fetch_list=[output],
                     return_numpy=True)
-    
+
             print(output_data)  # [array([0.65537095], dtype=float32)]
-            
+
             # imperative mode
             import paddle.fluid.dygraph as dg
             with dg.guard(place) as g:
@@ -467,18 +570,18 @@ class NLLLoss(fluid.dygraph.Layer):
 
     This class accepts input and target label and returns negative log likelihood
     cross error. It is useful to train a classification problem with C classes.
-     
+
     The input for the loss is epected to contain log-probabilities of
     each classes. It has to be a Tensor of size either (batch_size, C) or
     (batch_size, C, d1, d2, ..., dK) with K >= 1 for the K-dimensional case.
     The label for the loss should be a class index in the range [0, C-1]
     where C is the number of classes. If ignore_index is specified, the
     specified target value does not contribute to the input gradient.
-    
+
     If the optional argument `weight` is provided, it should be a 1D Tensor
     assigning weight to each of the classed. This is particularly useful
     when you have an unbalanced training set.
- 
+
     The loss is calculated as follows.
     The unreduced (i.e. with :attr:`reduction` set to ``'none'``) loss can be described as:
 
@@ -501,11 +604,11 @@ class NLLLoss(fluid.dygraph.Layer):
     Parameters:
         weight (Tensor, optional): Weight tensor, a manual rescaling weight given
             to each class. If given, it has to be a 1D Tensor whose size is `[C, ]`. Otherwise,
-            it treated as if having all ones. the data type is 
+            it treated as if having all ones. the data type is
             float32, float64, Default is ``'None'``.
         ignore_index (int64, optional): Specifies a target value that is ignored
             and does not contribute to the input gradient.
-        reduction (str, optional): Indicate how to average the loss, 
+        reduction (str, optional): Indicate how to average the loss,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
@@ -586,9 +689,9 @@ class KLDivLoss(fluid.dygraph.Layer):
     $$l(x, y) = y * (\log(y) - x)$$
 
     Parameters:
-        reduction (str, optional): Indicate how to average the loss, 
+        reduction (str, optional): Indicate how to average the loss,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             Default is ``'mean'``.
 
     Shape:
@@ -603,7 +706,7 @@ class KLDivLoss(fluid.dygraph.Layer):
             import paddle
             import numpy as np
             import paddle.nn as nn
-            
+
             paddle.enable_imperative()
 
             shape = (5, 20)
@@ -615,7 +718,7 @@ class KLDivLoss(fluid.dygraph.Layer):
             pred_loss = kldiv_criterion(paddle.to_variable(x),
                                         paddle.to_variable(target))
             # shape=[5]
-            
+
             # 'mean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
             pred_loss = kldiv_criterion(paddle.to_variable(x),
@@ -648,10 +751,10 @@ class MarginRankingLoss(fluid.dygraph.Layer):
     """
 
     This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
-    The MarginRankingLoss layer calculates the margin rank loss between the input, other and label 
+    The MarginRankingLoss layer calculates the margin rank loss between the input, other and label
     , use the math function as follows.
 
-    .. math:: 
+    .. math::
         margin\_rank\_loss = max(0, -label * (input - other) + margin)
 
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
@@ -671,7 +774,7 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Shape: 
+    Shape:
         input: N-D Tensor, the shape is [N, *], N is batch size and `*` means any number of additional dimensions., available dtype is float32, float64.
         other: N-D Tensor, `other` have the same shape and dtype as `input`.
         label: N-D Tensor, label have the same shape and dtype as `input`.
@@ -684,16 +787,16 @@ class MarginRankingLoss(fluid.dygraph.Layer):
 
         .. code-block:: python
 
-            import numpy as np 
-            import paddle 
-            
+            import numpy as np
+            import paddle
+
             paddle.disable_static()
-             
+
             input = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype("float32"))
             other = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype("float32"))
             label = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype("float32"))
             margin_rank_loss = paddle.nn.MarginRankingLoss()
-            loss = margin_rank_loss(input, other, label) 
+            loss = margin_rank_loss(input, other, label)
             print(loss.numpy()) # [0.75]
     """
 
