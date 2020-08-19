@@ -19,7 +19,7 @@ import os
 
 class TestStrategyConfig(unittest.TestCase):
     def test_amp(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.amp = True
         self.assertEqual(strategy.amp, True)
         strategy.amp = False
@@ -28,7 +28,7 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.amp, False)
 
     def test_amp_configs(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {
             "init_loss_scaling": 32768,
             "decr_every_n_nan_or_inf": 2,
@@ -41,7 +41,7 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.amp_configs["init_loss_scaling"], 32768)
 
     def test_recompute(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.recompute = True
         self.assertEqual(strategy.recompute, True)
         strategy.recompute = False
@@ -50,13 +50,13 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.recompute, False)
 
     def test_recompute_configs(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {"checkpoints": ["x", "y"]}
         strategy.recompute_configs = configs
         self.assertEqual(len(strategy.recompute_configs["checkpoints"]), 2)
 
     def test_pipeline(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.pipeline = True
         self.assertEqual(strategy.pipeline, True)
         strategy.pipeline = False
@@ -65,13 +65,13 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.pipeline, False)
 
     def test_pipeline_configs(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {"micro_batch": 4}
         strategy.pipeline_configs = configs
         self.assertEqual(strategy.pipeline_configs["micro_batch"], 4)
 
     def test_localsgd(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.localsgd = True
         self.assertEqual(strategy.localsgd, True)
         strategy.localsgd = False
@@ -80,13 +80,13 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.localsgd, False)
 
     def test_localsgd_configs(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {"k_steps": 4}
         strategy.localsgd_configs = configs
         self.assertEqual(strategy.localsgd_configs["k_steps"], 4)
 
     def test_dgc(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.dgc = True
         self.assertEqual(strategy.dgc, True)
         strategy.dgc = False
@@ -95,7 +95,7 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.dgc, False)
 
     def test_sync_nccl_allreduce(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.sync_nccl_allreduce = True
         self.assertEqual(strategy.sync_nccl_allreduce, True)
         strategy.sync_nccl_allreduce = False
@@ -104,14 +104,14 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.sync_nccl_allreduce, False)
 
     def test_nccl_comm_num(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.nccl_comm_num = 1
         self.assertEqual(strategy.nccl_comm_num, 1)
         strategy.nccl_comm_num = "2"
         self.assertEqual(strategy.nccl_comm_num, 1)
 
     def test_use_hierarchical_allreduce(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.use_hierarchical_allreduce = True
         self.assertEqual(strategy.use_hierarchical_allreduce, True)
         strategy.use_hierarchical_allreduce = False
@@ -120,14 +120,14 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.use_hierarchical_allreduce, False)
 
     def test_hierarchical_allreduce_inter_nranks(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.hierarchical_allreduce_inter_nranks = 8
         self.assertEqual(strategy.hierarchical_allreduce_inter_nranks, 8)
         strategy.hierarchical_allreduce_inter_nranks = "4"
         self.assertEqual(strategy.hierarchical_allreduce_inter_nranks, 8)
 
     def test_sync_batch_norm(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.sync_batch_norm = True
         self.assertEqual(strategy.sync_batch_norm, True)
         strategy.sync_batch_norm = False
@@ -136,7 +136,7 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.sync_batch_norm, False)
 
     def test_fuse_all_reduce_ops(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.fuse_all_reduce_ops = True
         self.assertEqual(strategy.fuse_all_reduce_ops, True)
         strategy.fuse_all_reduce_ops = False
@@ -145,21 +145,21 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.fuse_all_reduce_ops, False)
 
     def test_fuse_grad_size_in_MB(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.fuse_grad_size_in_MB = 50
         self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
         strategy.fuse_grad_size_in_MB = "40"
         self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
 
     def test_fuse_grad_size_in_TFLOPS(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy._fuse_grad_size_in_TFLOPS = 0.1
         self.assertGreater(strategy._fuse_grad_size_in_TFLOPS, 0.09)
         strategy._fuse_grad_size_in_TFLOPS = "0.3"
         self.assertGreater(strategy._fuse_grad_size_in_TFLOPS, 0.09)
 
     def test_gradient_merge(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.gradient_merge = True
         self.assertEqual(strategy.gradient_merge, True)
         strategy.gradient_merge = False
@@ -168,13 +168,13 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.gradient_merge, False)
 
     def test_gradient_merge_configs(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {"k_steps": 4}
         strategy.gradient_merge_configs = configs
         self.assertEqual(strategy.gradient_merge_configs["k_steps"], 4)
 
     def test_lars(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.lars = True
         self.assertEqual(strategy.lars, True)
         strategy.lars = False
@@ -183,7 +183,7 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.lars, False)
 
     def test_lamb(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.lamb = True
         self.assertEqual(strategy.lamb, True)
         strategy.lamb = False
@@ -192,7 +192,7 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.lamb, False)
 
     def test_a_sync(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         self.assertEqual(strategy.a_sync, True)
         strategy.a_sync = False
@@ -202,13 +202,13 @@ class TestStrategyConfig(unittest.TestCase):
             strategy.a_sync = "True"
 
     def test_a_sync_configs(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {"k_steps": 1000}
         strategy.a_sync_configs = configs
         self.assertEqual(strategy.a_sync_configs["k_steps"], 1000)
 
     def test_elastic(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.elastic = True
         self.assertEqual(strategy.elastic, True)
         strategy.elastic = False
@@ -217,7 +217,7 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.elastic, False)
 
     def test_auto(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.auto = True
         self.assertEqual(strategy.auto, True)
         strategy.auto = False
@@ -226,7 +226,7 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.auto, False)
 
     def test_strategy_prototxt(self):
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         strategy.localsgd = True
         strategy.dgc = True
@@ -255,7 +255,7 @@ class TestStrategyConfig(unittest.TestCase):
         exe_strategy.num_iteration_per_run = 10
         strategy.execution_strategy = exe_strategy
         strategy.save_to_prototxt("dist_strategy.prototxt")
-        strategy2 = paddle.fleet.DistributedStrategy()
+        strategy2 = paddle.distributed.fleet.DistributedStrategy()
         strategy2.load_from_prototxt("dist_strategy.prototxt")
         self.assertEqual(strategy.dgc, strategy2.dgc)
 
@@ -277,7 +277,7 @@ class TestStrategyConfig(unittest.TestCase):
         build_strategy.enable_backward_optimizer_op_deps = True
         build_strategy.trainers_endpoints = ["1", "2"]
 
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.build_strategy = build_strategy
 
     def test_execution_strategy(self):
@@ -286,8 +286,13 @@ class TestStrategyConfig(unittest.TestCase):
         exe_strategy.num_iteration_per_drop_scope = 10
         exe_strategy.num_iteration_per_run = 10
 
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.execution_strategy = exe_strategy
+
+    def test_unknown_strategy(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        with self.assertRaises(TypeError):
+            strategy.unknown_key = 'UNK'
 
 
 if __name__ == '__main__':

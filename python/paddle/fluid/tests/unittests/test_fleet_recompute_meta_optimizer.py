@@ -26,8 +26,8 @@ class TestFleetRecomputeMetaOptimizer(unittest.TestCase):
                        "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_recompute_optimizer(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+        import paddle.distributed.fleet as fleet
+        import paddle.distributed.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         input_x = paddle.fluid.layers.data(
@@ -41,9 +41,9 @@ class TestFleetRecomputeMetaOptimizer(unittest.TestCase):
             input=prediction, label=input_y)
         avg_cost = paddle.fluid.layers.mean(x=cost)
 
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.recompute = True
-        strategy.recompute_configs = {"checkpoints": ["fc2"]}
+        strategy.recompute_configs = {"checkpoints": ["fc_1.tmp_0"]}
 
         optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)

@@ -13,17 +13,99 @@
 # limitations under the License.
 
 # TODO: define statistical functions of a tensor  
-from ..fluid.layers import mean  #DEFINE_ALIAS
 from ..fluid.layers import reduce_mean  #DEFINE_ALIAS
 
 __all__ = ['mean', 'reduce_mean', 'std', 'var']
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import core, in_dygraph_mode
 from ..fluid import layers
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+import paddle
+
+
+def mean(x, axis=None, keepdim=False, name=None):
+    """
+    Computes the mean of the input tensor's elements along ``axis``.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64, int32,
+            int64.
+        axis (int|list|tuple, optional): The axis along which to perform mean
+            calculations. ``axis`` should be int, list(int) or tuple(int). If
+            ``axis`` is a list/tuple of dimension(s), mean is calculated along
+            all element(s) of ``axis`` . ``axis`` or element(s) of ``axis``
+            should be in range [-D, D), where D is the dimensions of ``x`` . If
+            ``axis`` or element(s) of ``axis`` is less than 0, it works the
+            same way as :math:`axis + D` . If ``axis`` is None, mean is
+            calculated along all elements of ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keep_dim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, results of average along ``axis`` of ``x``, with the same data
+        type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            x = np.array([[[1, 2, 3, 4],
+                           [5, 6, 7, 8],
+                           [9, 10, 11, 12]],
+                          [[13, 14, 15, 16],
+                           [17, 18, 19, 20],
+                           [21, 22, 23, 24]]], 'float32')
+            x = paddle.to_variable(x)
+            out1 = paddle.mean(x)
+            # [12.5]
+            out2 = paddle.mean(x, axis=-1)
+            # [[ 2.5  6.5 10.5]
+            #  [14.5 18.5 22.5]]
+            out3 = paddle.mean(x, axis=-1, keepdim=True)
+            # [[[ 2.5]
+            #   [ 6.5]
+            #   [10.5]]
+            #  [[14.5]
+            #   [18.5]
+            #   [22.5]]]
+            out4 = paddle.mean(x, axis=[0, 2])
+            # [ 8.5 12.5 16.5]
+    """
+
+    if isinstance(axis, int):
+        axis = [axis]
+    reduce_all = True if axis is None \
+        or len(axis)==0 \
+        or len(axis) == len(x.shape) else False
+    if axis is None or len(axis) == 0:
+        axis = [0]
+
+    if in_dygraph_mode():
+        return core.ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
+                                    'reduce_all', reduce_all)
+
+    check_variable_and_dtype(x, 'x/input',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'mean/reduce_mean')
+
+    helper = LayerHelper('mean', **locals())
+    attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='reduce_mean', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
+    return out
 
 
 def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):

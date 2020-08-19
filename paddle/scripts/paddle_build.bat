@@ -1,4 +1,4 @@
-@ECHO OFF
+@ECHO ON
 SETLOCAL
 
 rem Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
@@ -19,22 +19,70 @@ rem =================================================
 rem       Paddle CI Task On Windows Platform
 rem =================================================
 
-
 set work_dir=%cd%
+if exist build rmdir build /s/q
+mkdir build
+cd /d build
+
+rem ------initialize the virtual environment------
+if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
+set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
+
+set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
+%PYTHON_EXECUTABLE% -m pip install virtualenv
+%PYTHON_EXECUTABLE% -m virtualenv paddle_winci
+call paddle_winci\Scripts\activate.bat
+
+rem ------pre install requirement----------
+where python
+where pip
+pip install --upgrade pip
+pip install wheel
+pip install gym
+pip install -U -r %work_dir%\python\requirements.txt
+if %ERRORLEVEL% NEQ 0 (
+    call paddle_winci\Scripts\deactivate.bat
+    exit /b %ERRORLEVEL%
+)
+
+rem ------initialize common variable------
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
 if not defined BRANCH set BRANCH=develop
-if not defined PYTHON_ROOT set PYTHON_ROOT=c:\Python27
-if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
-if not defined WITH_AVX set WITH_AVX=ON
-if not defined WITH_GPU set WITH_GPU=OFF
 if not defined WITH_TESTING set WITH_TESTING=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=OFF
-if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=d:/.cache/inference_demo
-if not defined THIRD_PARTY_PATH set THIRD_PARTY_PATH=%work_dir:\=/%/build/third_party
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-dir d:\.cache
+if not defined WITH_TPCACHE set WITH_TPCACHE=ON
+
+rem ------set cache third_party------
+set cache_dir=%work_dir%\..\cache
+dir %cache_dir%
+set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
+
+if not exist %cache_dir%\tools (
+    git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
+    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+)
+
+if "%WITH_TPCACHE%"=="OFF" (
+    set THIRD_PARTY_PATH=%work_dir:\=/%/build/third_party
+    goto :CASE_%1
+)
+
+echo set -ex > cache.sh
+echo md5_content=$(cat %work_dir:\=/%/cmake/external/*.cmake  ^|md5sum ^| awk '{print $1}') >> cache.sh
+echo echo ${md5_content}^>md5.txt >> cache.sh
+
+%cache_dir%\tools\busybox64.exe cat cache.sh
+%cache_dir%\tools\busybox64.exe bash cache.sh
+
+set /p md5=< md5.txt
+if "%WITH_GPU%"=="ON" (
+    set THIRD_PARTY_PATH=%cache_dir:\=/%/third_party_GPU/%md5%
+) else (
+    set THIRD_PARTY_PATH=%cache_dir:\=/%/third_party/%md5%
+)
 
 goto :CASE_%1
 
@@ -45,6 +93,8 @@ echo "wincheck_openbals: run Windows OPENBLAS/CPU CI tasks on Windows"
 exit /b 1
 
 :CASE_wincheck_mkl
+set WITH_MKL=ON
+set WITH_GPU=OFF
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
@@ -54,6 +104,8 @@ call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 :CASE_wincheck_openblas
+set WITH_MKL=OFF
+set WITH_GPU=ON
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
@@ -70,13 +122,14 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
-mkdir build
-cd /d build
-cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0" -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH%
+echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH%
+cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH%
 goto:eof
 
 :cmake_error
-exit /b %ERRORLEVEL%
+call paddle_winci\Scripts\deactivate.bat
+echo Cmake failed, will exit!
+exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :build
@@ -84,38 +137,42 @@ echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
 call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
-set build_times=1
 
+set build_times=1
 :build_tp
-echo BUILD THIRD_PARTY %build_times%
+echo Build third_party the %build_times% time:
 msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
-echo BUILD THIRD_PARTY RESULT %ERRORLEVEL%
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
     if %build_times% GTR 3 (
         exit /b 1
     ) else (
+        echo Build third_party failed, will retry!
         goto :build_tp
     )
 )
+echo Build third_party successfully!
 
 set build_times=1
 :build_paddle
-echo BUILD PADDLE %build_times%
-msbuild /m /p:Configuration=Release /verbosity:quiet paddle.sln
-echo BUILD PADDLE RESULT %ERRORLEVEL%
+echo Build Paddle the %build_times% time:
+msbuild /m /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 2 (
         exit /b 1
     ) else (
+        echo Build Paddle failed, will retry!
         goto :build_paddle
     )
 )
+echo Build Paddle successfully!
 goto:eof
 
 :build_error
-exit /b %ERRORLEVEL%
+call paddle_winci\Scripts\deactivate.bat
+echo Build Paddle failed, will exit!
+exit /b 7
 
 rem ---------------------------------------------------------------------------------------------
 :test_whl_pacakage
@@ -124,20 +181,24 @@ echo    Step 3. Test pip install whl package ...
 echo    ========================================
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
-%PYTHON_EXECUTABLE% -m pip install -U %PADDLE_WHL_FILE_WIN%
+
+pip install -U %PADDLE_WHL_FILE_WIN%
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
 echo import paddle.fluid;print(paddle.__version__) > test_whl.py
-%PYTHON_EXECUTABLE% test_whl.py
+python test_whl.py
 goto:eof
 
 :test_whl_pacakage_error
-exit /b %ERRORLEVEL%
+call paddle_winci\Scripts\deactivate.bat
+echo Pip install whl package failed, will exit!
+exit /b 3
 
 rem ---------------------------------------------------------------------------------------------
 :unit_test
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
-%PYTHON_EXECUTABLE% -m pip install --upgrade pip
 
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
@@ -147,27 +208,29 @@ dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;%THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
-ctest.exe --output-on-failure -C Release -j 10
+ctest.exe --output-on-failure -C Release -j 7
 goto:eof
 
 :unit_test_error
-exit /b %ERRORLEVEL%
+call paddle_winci\Scripts\deactivate.bat
+echo Running unit tests failed, will exit!
+exit /b 8
 
 rem ---------------------------------------------------------------------------------------------
 :test_inference
 echo    ========================================
 echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
-if NOT EXIST "d:\.cache\tools" (
-  git clone https://github.com/zhouwei25/tools.git d:\.cache\tools
-)
+
 cd %work_dir%\paddle\fluid\inference\api\demo_ci
 
-d:\.cache\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% d:/.cache/inference_demo
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo
 goto:eof
 
 :test_inference_error
-exit /b %ERRORLEVEL%
+call paddle_winci\Scripts\deactivate.bats
+echo Testing fluid library for inference failed!
+exit /b 5
 
 rem ---------------------------------------------------------------------------------------------
 :check_change_of_unittest
@@ -205,7 +268,7 @@ echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_
 echo fi>>  check_change_of_unittest.sh
 echo git checkout -b origin_pr >>  check_change_of_unittest.sh
 echo git checkout -f $BRANCH >>  check_change_of_unittest.sh
-echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE:\=\\% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0" -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% >>  check_change_of_unittest.sh
+echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% >>  check_change_of_unittest.sh
 echo cat ^<^<EOF>>  check_change_of_unittest.sh
 echo     ============================================       >>  check_change_of_unittest.sh
 echo     Generate unit tests.spec of develop.               >>  check_change_of_unittest.sh
@@ -236,11 +299,12 @@ echo          exit 1 >>  check_change_of_unittest.sh
 echo     fi>>  check_change_of_unittest.sh
 echo fi>>  check_change_of_unittest.sh
 echo git checkout -f origin_pr >>  check_change_of_unittest.sh
-d:\.cache\tools\busybox64.exe bash check_change_of_unittest.sh
+%cache_dir%\tools\busybox64.exe bash check_change_of_unittest.sh
 goto:eof
 
 :check_change_of_unittest_error
-exit /b %ERRORLEVEL%
+call paddle_winci\Scripts\deactivate.bat
+exit /b 6
 
 
 rem ---------------------------------------------------------------------------------------------
@@ -258,6 +322,7 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
+call paddle_winci\Scripts\deactivate.bat
 echo Windows CI run successfully!
 exit /b 0
 

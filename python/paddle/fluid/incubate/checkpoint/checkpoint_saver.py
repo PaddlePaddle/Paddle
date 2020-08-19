@@ -79,7 +79,7 @@ class CheckpointSaver(object):
         tmp_path = "{}.tmp".format(real_path)
         saved_path = tmp_path
 
-        from paddle.fleet.utils.fs import LocalFS
+        from paddle.distributed.fleet.utils.fs import LocalFS
         local_fs = LocalFS()
 
         cache_path = None
@@ -134,7 +134,7 @@ class CheckpointSaver(object):
             assert isinstance(checkpoint_no, int)
             assert checkpoint_no >= 0
 
-        from paddle.fleet.utils.fs import LocalFS
+        from paddle.distributed.fleet.utils.fs import LocalFS
         local_fs = LocalFS()
         if self._fs.need_upload_download():
             cache_path = "{}/{}.{}.load_cache".format(

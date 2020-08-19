@@ -24,8 +24,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002"
 
     def test_pipeline_optimizer(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+        import paddle.distributed.fleet as fleet
+        import paddle.distributed.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         with paddle.fluid.device_guard("cpu"):
@@ -49,7 +49,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 input=prediction, label=input_y)
             avg_cost = paddle.fluid.layers.mean(x=cost)
 
-        strategy = paddle.fleet.DistributedStrategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.pipeline = True
         strategy.pipeline_configs = {'micro_batch': 2}
 
