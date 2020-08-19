@@ -39,6 +39,16 @@ from .activation import HSigmoid  #DEFINE_ALIAS
 from .common import BilinearTensorProduct  #DEFINE_ALIAS
 from .common import Pool2D  #DEFINE_ALIAS
 from .common import Pad2D  #DEFINE_ALIAS
+from .common import ReflectionPad1d  #DEFINE_ALIAS
+from .common import ReplicationPad1d  #DEFINE_ALIAS
+from .common import ConstantPad1d  #DEFINE_ALIAS
+from .common import ReflectionPad2d  #DEFINE_ALIAS
+from .common import ReplicationPad2d  #DEFINE_ALIAS
+from .common import ConstantPad2d  #DEFINE_ALIAS
+from .common import ZeroPad2d  #DEFINE_ALIAS
+from .common import ReplicationPad3d  #DEFINE_ALIAS
+from .common import ConstantPad3d  #DEFINE_ALIAS
+from .common import CosineSimilarity  #DEFINE_ALIAS
 from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
 from .common import Flatten  #DEFINE_ALIAS
@@ -70,6 +80,7 @@ from .loss import BCELoss  #DEFINE_ALIAS
 from .loss import KLDivLoss  #DEFINE_ALIAS
 from .loss import MarginRankingLoss  #DEFINE_ALIAS
 from .norm import BatchNorm  #DEFINE_ALIAS
+from .norm import SyncBatchNorm  #DEFINE_ALIAS
 from .norm import GroupNorm  #DEFINE_ALIAS
 from .norm import LayerNorm  #DEFINE_ALIAS
 from .norm import SpectralNorm  #DEFINE_ALIAS

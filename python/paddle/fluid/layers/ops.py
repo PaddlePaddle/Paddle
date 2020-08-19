@@ -645,6 +645,7 @@ __all__ += ['gelu']
 _gelu_ = generate_layer_fn('gelu')
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.gelu")
 def gelu(x, approximate=False):
     locals_var = locals().copy()
     kwargs = dict()
@@ -655,10 +656,6 @@ def gelu(x, approximate=False):
 
 
 gelu.__doc__ = """
-	:alias_main: paddle.nn.functional.gelu
-	:alias: paddle.nn.functional.gelu,paddle.nn.functional.activation.gelu
-	:old_api: paddle.fluid.layers.gelu
-
 :strong:`GeLU Activation Operator`
 For more details, see [Gaussian Error Linear Units](https://arxiv.org/abs/1606.08415).
 
