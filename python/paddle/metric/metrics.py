@@ -391,12 +391,12 @@ class Precision(Metric):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
         if isinstance(labels, paddle.Tensor):
-            labels = preds.numpy()
+            labels = labels.numpy()
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
 
         sample_num = labels.shape[0]
-        preds = np.rint(preds).astype("int32")
+        preds = np.floor(preds + 0.5).astype("int32")
 
         for i in range(sample_num):
             pred = preds[i]
@@ -526,7 +526,7 @@ class Recall(Metric):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
         if isinstance(labels, paddle.Tensor):
-            labels = preds.numpy()
+            labels = labels.numpy()
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
 
@@ -677,10 +677,15 @@ class Auc(Metric):
                 (batch_size, 1), labels[i] is either o or 1,
                 representing the label of the instance i.
         """
-        if not _is_numpy_(labels):
-            raise ValueError("The 'labels' must be a numpy ndarray.")
-        if not _is_numpy_(preds):
-            raise ValueError("The 'predictions' must be a numpy ndarray.")
+        if isinstance(labels, paddle.Tensor):
+            labels = labels.numpy()
+        elif not _is_numpy_(labels):
+            raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
+
+        if isinstance(preds, paddle.Tensor):
+            preds = preds.numpy()
+        elif not _is_numpy_(preds):
+            raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
         for i, lbl in enumerate(labels):
             value = preds[i, 1]

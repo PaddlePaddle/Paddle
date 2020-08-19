@@ -173,7 +173,7 @@ class TestPrecision(unittest.TestCase):
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
 
-        m = paddle.metric.Recall()
+        m = paddle.metric.Precision()
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 2. / 3.)
@@ -182,7 +182,7 @@ class TestPrecision(unittest.TestCase):
         y = paddle.to_tensor(np.array([1, 0, 1, 1, 1]))
         m.update(x, y)
         r = m.accumulate()
-        self.assertAlmostEqual(r, 4. / 7.)
+        self.assertAlmostEqual(r, 4. / 6.)
 
         paddle.enable_static()
 
@@ -192,7 +192,7 @@ class TestPrecision(unittest.TestCase):
         x = np.array([0.1, 0.5, 0.6, 0.7]).reshape(-1, 1)
         y = np.array([1, 0, 1, 1]).reshape(-1, 1)
 
-        m = paddle.metric.Recall()
+        m = paddle.metric.Precision()
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 2. / 3.)
@@ -201,7 +201,7 @@ class TestPrecision(unittest.TestCase):
         y = np.array([1, 0, 1, 1, 1]).reshape(-1, 1)
         m.update(x, y)
         r = m.accumulate()
-        self.assertAlmostEqual(r, 4. / 7.)
+        self.assertAlmostEqual(r, 4. / 6.)
 
         # check reset
         m.reset()
