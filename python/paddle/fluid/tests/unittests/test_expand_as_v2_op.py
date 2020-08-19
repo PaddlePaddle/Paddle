@@ -95,7 +95,7 @@ class TestExpandAsOpRank4(OpTest):
 
 class TestExpandAsV2Error(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(Program(), Program()):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
             x1 = fluid.layers.data(name='x1', shape=[4], dtype="uint8")
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint32")
             self.assertRaises(TypeError, paddle.tensor.expand_as, x1, x2)
