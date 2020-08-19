@@ -21,7 +21,6 @@ from ..fluid import core, layers
 from ..fluid.layers import argmin  #DEFINE_ALIAS
 from ..fluid.layers import has_inf  #DEFINE_ALIAS
 from ..fluid.layers import has_nan  #DEFINE_ALIAS
-from ..fluid.layers import topk  #DEFINE_ALIAS
 
 __all__ = [
     'argmax',
@@ -629,3 +628,68 @@ def index_sample(x, index):
                 'Index': index},
         outputs={'Out': out})
     return out
+
+
+def topk(x, k, axis=None, largest=True, sorted=True, name=None):
+    """
+    This OP is used to find values and indices of the k largest entries for the optional axis.
+    If the input is a 1-D Tensor, finds the k largest values and indices.
+    If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`descending`
+
+    Args:
+        x(Tensor): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8.
+        k(int|Tensor): The number of top elements to look for along the last dimension
+                           of input tensor.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is -1.
+        largest(bool, optional) : largest is a flag, if set to true,
+            algorithm will sort by descending order, else sort by
+            ascending order. Default is True.
+        sorted(bool, optional): controls whether to return the elements in sorted order, default value is True. In gpu device, it always return the sorted value. 
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
+
+    Returns:
+        tuple(Tensor), return the values and indices. values is the result that tensor's k largest or smallest elements along the ``axis``. The data type is the same as the input `x`. 
+        indices is the k largest or smallest elements alone the axis. The indice data type is int64.
+
+    Examples:
+        .. code-block:: python
+
+    """
+    if in_dygraph_mode():
+        k = k.numpy().item(0) if isinstance(k, Variable) else k
+        if axis is None:
+            out, indices = core.ops.top_k_v2(x, 'k',
+                                             int(k), 'largest', largest,
+                                             'sorted', sorted)
+        else:
+            out, indices = core.ops.top_k_v2(x, 'k',
+                                             int(k), 'axis', axis, 'largest',
+                                             largest, 'sorted', sorted)
+        return out, indices
+
+    helper = LayerHelper("top_k_v2", **locals())
+    inputs = {"X": [x]}
+    attrs = {}
+    if isinstance(k, Variable):
+        inputs['K'] = [k]
+    else:
+        attrs = {'k': k}
+    attrs['largest'] = largest
+    attrs['sorted'] = sorted
+    if axis is not None:
+        attrs['axis'] = axis
+
+    values = helper.create_variable_for_type_inference(dtype=x.dtype)
+    indices = helper.create_variable_for_type_inference(dtype="int64")
+
+    helper.append_op(
+        type="top_k_v2",
+        inputs=inputs,
+        outputs={"Out": [values],
+                 "Indices": [indices]},
+        attrs=attrs)
+    indices.stop_gradient = True
+    return values, indices
