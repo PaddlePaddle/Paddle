@@ -80,8 +80,8 @@ class TestNumelOoAPI(unittest.TestCase):
         x_2 = paddle.to_variable(input_2)
         out_1 = paddle.numel(x_1)
         out_2 = paddle.numel(x_2)
-        assert (np.array_equal(out_1, np.size(input_1)))
-        assert (np.array_equal(out_2, np.size(input_2)))
+        assert (np.array_equal(out_1.numpy().item(0), np.size(input_1)))
+        assert (np.array_equal(out_2.numpy().item(0), np.size(input_2)))
         paddle.enable_static()
 
     def test_error(self):

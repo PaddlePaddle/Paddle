@@ -253,13 +253,13 @@ def numel(x, name=None):
     or a scalar value in imperative mode
 
     Args:
-        input (Variable): The input variable.
+        x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
 
     Returns:
-        Variable: The number of elements for the input variable.
+        Tensor: The number of elements for the input Tensor.
     
     Raises:
-        TypeError: If ``x`` is not a Variable.
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
 
 
     Examples:
@@ -274,9 +274,7 @@ def numel(x, name=None):
 
     """
     if in_dygraph_mode():
-        out_tensor = core.ops.size(x)
-        out = out_tensor.numpy().item(0)
-        return out
+        return core.ops.size(x)
 
     if not isinstance(x, Variable):
         raise TypeError("x must be a Tensor in numel")
