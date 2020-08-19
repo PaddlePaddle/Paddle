@@ -273,9 +273,119 @@ class ScopedTensorDescriptor {
                       groups);
   }
 
+  inline cudnnTensorDescriptor_t descriptor(const cudnnDataType_t cudnn_type,
+                                            const std::vector<int>& dim,
+                                            const std::vector<int>& stride) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
+        desc_, cudnn_type, dim.size(), dim.data(), stride.data()));
+    return desc_;
+  }
+
+  template <typename T>
+  inline cudnnTensorDescriptor_t descriptor(const std::vector<int>& dim,
+                                            const std::vector<int>& stride) {
+    return descriptor(CudnnDataType<T>::type, dim, stride);
+  }
+
  private:
   cudnnTensorDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);
+};
+
+class ScopedRNNSeqTensorDescriptor {
+ public:
+  ScopedRNNSeqTensorDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateRNNDataDescriptor(&desc_));
+  }
+
+  ~ScopedRNNSeqTensorDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyRNNDataDescriptor(desc_));
+  }
+
+  inline cudnnRNNDataDescriptor_t descriptor(
+      const cudnnDataType_t cudnn_type, int max_seq_length, int batch_size,
+      int input_size, bool time_major, const std::vector<int>& seq_length) {
+    float padding_fill = 0.0f;
+    cudnnRNNDataLayout_t layout;
+
+    if (time_major) {
+      layout = CUDNN_RNN_DATA_LAYOUT_SEQ_MAJOR_UNPACKED;
+    } else {
+      layout = CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED;
+    }
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetRNNDataDescriptor(
+        desc_, cudnn_type, layout, max_seq_length, batch_size, input_size,
+        seq_length.data(), static_cast<void*>(&padding_fill)));
+
+    return desc_;
+  }
+
+  template <typename T>
+  inline cudnnRNNDataDescriptor_t descriptor(
+      int max_length, int batch_size, int input_size, bool time_major,
+      const std::vector<int>& seq_length) {
+    return descriptor(CudnnDataType<T>::type, max_length, batch_size,
+                      input_size, time_major, seq_length);
+  }
+
+ private:
+  cudnnRNNDataDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedRNNSeqTensorDescriptor);
+};
+
+class ScopedDropoutDescriptor {
+ public:
+  ScopedDropoutDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateDropoutDescriptor(&desc_));
+  }
+  ~ScopedDropoutDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyDropoutDescriptor(desc_));
+  }
+
+  inline cudnnDropoutDescriptor_t descriptor(const cudnnHandle_t& handle,
+                                             const platform::Place& place,
+                                             bool initialized,
+                                             float dropout_prob_,
+                                             framework::Tensor* dropout_state_,
+                                             int seed) {
+    size_t state_size;
+    if (!initialized) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnDropoutGetStatesSize(handle, &state_size));
+      dropout_state_->Resize({static_cast<int64_t>(state_size)});
+      auto* dropout_state_data = dropout_state_->mutable_data<uint8_t>(place);
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetDropoutDescriptor(
+          desc_, handle, dropout_prob_, dropout_state_data, state_size, seed));
+    } else {
+      auto* dropout_state_data = dropout_state_->data<uint8_t>();
+      auto dropout_state_dims = dropout_state_->dims();
+      state_size = dropout_state_dims[0];
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnRestoreDropoutDescriptor(
+          desc_, handle, dropout_prob_, dropout_state_data, state_size, 0));
+    }
+    return desc_;
+  }
+
+ private:
+  cudnnDropoutDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedDropoutDescriptor);
+};
+
+class ScopedRNNDescriptor {
+ public:
+  ScopedRNNDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateRNNDescriptor(&desc_));
+  }
+  ~ScopedRNNDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyRNNDescriptor(desc_));
+  }
+
+  inline cudnnRNNDescriptor_t descriptor() { return desc_; }
+
+ private:
+  cudnnRNNDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedRNNDescriptor);
 };
 
 class ScopedFilterDescriptor {

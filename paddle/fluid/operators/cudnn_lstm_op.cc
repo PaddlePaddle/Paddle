@@ -154,6 +154,12 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(0);
+    AddAttr<bool>("time_major",
+                  "Indicate the data layout of input and output tensors.")
+        .SetDefault(false);
+    AddAttr<std::vector<int>>(
+        "sequence_length",
+        "(list<int>) When the input data is padding, set this parameter.");
     AddComment(R"DOC(
 CUDNN LSTM implementation
 

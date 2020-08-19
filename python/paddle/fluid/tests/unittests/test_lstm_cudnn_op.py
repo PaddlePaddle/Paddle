@@ -155,6 +155,8 @@ class TestCUDNNLstmOp(OpTest):
             'input_size': hidden_size,
             'hidden_size': hidden_size,
             'num_layers': 1,
+            'time_major': True,
+            'sequence_length': [20,20,18,18,18]
         }
         self.outputs = {
             'Out': output,
