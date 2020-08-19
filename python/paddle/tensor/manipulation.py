@@ -806,12 +806,12 @@ def scatter(x, index, updates, overwrite=True, name=None):
         # calculation:
         if not overwrite:
             for i in range(len(index)):
-                input[index[i]] = np.zeros((2))
+                x[index[i]] = np.zeros((2))
         for i in range(len(index)):
             if (overwrite):
-                input[index[i]] = updates[i]
+                x[index[i]] = updates[i]
             else:
-                input[index[i]] += updates[i]
+                x[index[i]] += updates[i]
         # output:
         out = np.array([[3, 3], [6, 6], [1, 1]])
         out.shape # [3, 2]
