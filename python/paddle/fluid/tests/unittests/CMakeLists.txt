@@ -269,6 +269,16 @@ list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
+
+# setting timeout value for old unittests
+set_tests_properties(test_affine_channel_op PROPERTIES TIMEOUT 200)
+set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
+set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 150)
+set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
+set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
+set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
+set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
+
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
