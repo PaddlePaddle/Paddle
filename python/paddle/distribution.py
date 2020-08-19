@@ -25,6 +25,7 @@ from .fluid.layers import control_flow
 from .fluid.layers import tensor
 from .fluid.layers import ops
 from .fluid.layers import nn
+from .fluid.framework import in_dygraph_mode
 from .tensor.math import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
 import math
 import numpy as np
@@ -153,8 +154,8 @@ class Uniform(Distribution):
     [broadcasting](https://www.paddlepaddle.org.cn/documentation/docs/en/develop/beginners_guide/basic_concept/broadcasting_en.html) (e.g., `high - low` is a valid operation).
 
     Args:
-        low(int|float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is float32
-        high(int|float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is float32
+        low(int|float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is float32 or int
+        high(int|float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is float32 or int
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -193,10 +194,13 @@ class Uniform(Distribution):
     """
 
     def __init__(self, low, high, name=None):
-        check_type(low, 'low', (int, float, np.ndarray, tensor.Variable, list),
-                   'Uniform')
-        check_type(high, 'high',
-                   (int, float, np.ndarray, tensor.Variable, list), 'Uniform')
+        if not in_dygraph_mode():
+            check_type(low, 'low',
+                       (int, float, np.ndarray, tensor.Variable, list),
+                       'Uniform')
+            check_type(high, 'high',
+                       (int, float, np.ndarray, tensor.Variable, list),
+                       'Uniform')
 
         self.all_arg_is_float = False
         self.batch_size_unknown = False
@@ -227,8 +231,9 @@ class Uniform(Distribution):
           Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-        check_type(shape, 'shape', (list), 'sample')
-        check_type(seed, 'seed', (int), 'sample')
+        if not in_dygraph_mode():
+            check_type(shape, 'shape', (list), 'sample')
+            check_type(seed, 'seed', (int), 'sample')
 
         name = self.name + '_sample'
         batch_shape = list((self.low + self.high).shape)
@@ -263,10 +268,18 @@ class Uniform(Distribution):
           Tensor: log probability.The data type is same with value.
 
         """
+        name = self.name + '_log_prob'
+        if in_dygraph_mode():
+            lb_bool = self.low < value
+            ub_bool = value < self.high
+            lb = tensor.cast(lb_bool, dtype=value.dtype)
+            ub = tensor.cast(ub_bool, dtype=value.dtype)
+            return elementwise_sub(
+                nn.log(lb * ub), nn.log(self.high - self.low), name=name)
+
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                  'log_prob')
 
-        name = self.name + '_log_prob'
         lb_bool = control_flow.less_than(self.low, value)
         ub_bool = control_flow.less_than(value, self.high)
         lb = tensor.cast(lb_bool, dtype=value.dtype)
@@ -285,6 +298,16 @@ class Uniform(Distribution):
 
         """
         name = self.name + '_probs'
+        if in_dygraph_mode():
+            lb_bool = self.low < value
+            ub_bool = value < self.high
+            lb = tensor.cast(lb_bool, dtype=value.dtype)
+            ub = tensor.cast(ub_bool, dtype=value.dtype)
+            return elementwise_div((lb * ub), (self.high - self.low), name=name)
+
+        check_variable_and_dtype(value, 'value', ['float32', 'float64'],
+                                 'log_prob')
+
         lb_bool = control_flow.less_than(self.low, value)
         ub_bool = control_flow.less_than(value, self.high)
         lb = tensor.cast(lb_bool, dtype=value.dtype)
@@ -324,8 +347,8 @@ class Normal(Distribution):
     * :math:`Z`: is the normalization constant.
 
     Args:
-        loc(int|float|list|numpy.ndarray|Tensor): The mean of normal distribution.The data type is float32.
-        scale(int|float|list|numpy.ndarray|Tensor): The std of normal distribution.The data type is float32.
+        loc(int|float|list|numpy.ndarray|Tensor): The mean of normal distribution.The data type is float32 or int.
+        scale(int|float|list|numpy.ndarray|Tensor): The std of normal distribution.The data type is float32 or int.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -367,10 +390,13 @@ class Normal(Distribution):
     """
 
     def __init__(self, loc, scale, name=None):
-        check_type(loc, 'loc', (int, float, np.ndarray, tensor.Variable, list),
-                   'Normal')
-        check_type(scale, 'scale',
-                   (int, float, np.ndarray, tensor.Variable, list), 'Normal')
+        if not in_dygraph_mode():
+            check_type(loc, 'loc',
+                       (int, float, np.ndarray, tensor.Variable, list),
+                       'Normal')
+            check_type(scale, 'scale',
+                       (int, float, np.ndarray, tensor.Variable, list),
+                       'Normal')
 
         self.batch_size_unknown = False
         self.all_arg_is_float = False
@@ -401,9 +427,9 @@ class Normal(Distribution):
           Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-
-        check_type(shape, 'shape', (list), 'sample')
-        check_type(seed, 'seed', (int), 'sample')
+        if not in_dygraph_mode():
+            check_type(shape, 'shape', (list), 'sample')
+            check_type(seed, 'seed', (int), 'sample')
 
         batch_shape = list((self.loc + self.scale).shape)
         name = self.name + '_sample'
@@ -453,8 +479,9 @@ class Normal(Distribution):
           Tensor: log probability.The data type is same with value.
 
         """
-        check_variable_and_dtype(value, 'value', ['float32', 'float64'],
-                                 'log_prob')
+        if not in_dygraph_mode():
+            check_variable_and_dtype(value, 'value', ['float32', 'float64'],
+                                     'log_prob')
 
         name = self.name + '_log_prob'
         var = self.scale * self.scale
@@ -474,6 +501,10 @@ class Normal(Distribution):
           Tensor: probability.The data type is same with value.
 
         """
+        if not in_dygraph_mode():
+            check_variable_and_dtype(value, 'value', ['float32', 'float64'],
+                                     'log_prob')
+
         name = self.name + '_probs'
         var = self.scale * self.scale
         return elementwise_div(
@@ -491,8 +522,8 @@ class Normal(Distribution):
             Tensor: kl-divergence between two normal distributions.The data type is float32.
 
         """
-
-        check_type(other, 'other', Normal, 'kl_divergence')
+        if not in_dygraph_mode():
+            check_type(other, 'other', Normal, 'kl_divergence')
 
         name = self.name + '_kl_divergence'
         var_ratio = self.scale / other.scale
