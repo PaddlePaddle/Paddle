@@ -98,9 +98,9 @@ def mean(x, axis=None, keepdim=False, name=None):
     check_variable_and_dtype(x, 'x/input', ['float32', 'float64'],
                              'mean/reduce_mean')
     check_type(axis, 'axis/dim', (int, list, tuple), 'mean/reduce_mean')
-    if isinstance(axis, list, tuple):
+    if isinstance(axis, (list, tuple)):
         for item in axis:
-            check_type(item, 'elements of axis/dim', int, 'mean/reduce_mean')
+            check_type(item, 'elements of axis/dim', (int), 'mean/reduce_mean')
 
     helper = LayerHelper('mean', **locals())
     attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
