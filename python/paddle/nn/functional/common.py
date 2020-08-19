@@ -460,9 +460,6 @@ def dropout(x,
             mode="upscale_in_train",
             name=None):
     """
-    :alias_main: paddle.nn.functional.dropout
-	:alias: paddle.nn.functional.dropout,paddle.nn.functional.common.dropout
-
     dropout function.
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training. The dropout operator randomly sets the
@@ -649,17 +646,18 @@ def dropout(x,
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            scale = layers.fill_constant(
-                shape=[1], dtype='float32', value=1 / keep_prob)
-            scale_input = paddle.multiply(
-                x, scale) if mode == 'upscale_in_train' else x
+            if p == 1.:
+                return layers.scale(x, scale=0.)
+
+            scale_input = layers.scale(
+                x, scale=1 / keep_prob) if mode == 'upscale_in_train' else x
 
             #get mask shape
             input_shape = x.shape
             drop_axes = [axis] if isinstance(axis, int) else axis
             if max(drop_axes) > len(input_shape) - 1:
                 raise ValueError("axis value should less than dimensions of x:{}, but get drop_axes value:{} " \
-                    .format(len(input_shape), max(drop_axes)))
+                                 .format(len(input_shape), max(drop_axes)))
             if len(drop_axes) > len(input_shape):
                 raise ValueError(
                     "length of axis should not greater than dimensions of x:{}, but get length of drop axes: {}".
@@ -679,18 +677,13 @@ def dropout(x,
             ret = paddle.multiply(scale_input, keep_mask, name=name)
             return ret
         else:  # test
-            scale = layers.fill_constant(
-                shape=[1], dtype='float32', value=keep_prob)
-            ret = paddle.multiply(x,
-                                  scale) if mode == 'downscale_in_infer' else x
+            ret = layers.scale(
+                x, scale=keep_prob) if mode == 'downscale_in_infer' else x
             return ret
 
 
 def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     """
-    :alias_main: paddle.nn.functional.dropout2d
-	:alias: paddle.nn.functional.dropout2d,paddle.nn.functional.common.dropout2d
-
     dropout2d function.
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
@@ -748,9 +741,6 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
 
 def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     """
-    :alias_main: paddle.nn.functional.dropout3d
-	:alias: paddle.nn.functional.dropout3d,paddle.nn.functional.common.dropout3d
-
     dropout3d function.
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
     a channel is a 3D feature map with the shape `DHW`). Each channel will be zeroed out independently

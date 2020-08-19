@@ -347,9 +347,6 @@ class Pad2D(layers.Layer):
 
 class Dropout(layers.Layer):
     """
-        :alias_main: paddle.nn.Dropout
-        :alias: paddle.nn.Dropout,paddle.nn.layer.Dropout,paddle.nn.layer.common.Dropout
-
     Dropout Layer.
     This interface is used to construct a callable object of the `Dropout` class.
     Dropout is a regularization technique for reducing overfitting by preventing
@@ -416,9 +413,6 @@ class Dropout(layers.Layer):
 
 class Dropout2D(layers.Layer):
     """
-        :alias_main: paddle.nn.Dropout2D
-        :alias: paddle.nn.Dropout,paddle.nn.layer.Dropout2D,paddle.nn.layer.common.Dropout2D
-
     Dropout2D Layer.
     This interface is used to construct a callable object of the `Dropout2D` class.
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
@@ -479,9 +473,6 @@ class Dropout2D(layers.Layer):
 
 class Dropout3D(layers.Layer):
     """
-        :alias_main: paddle.nn.Dropout3D
-        :alias: paddle.nn.Dropout,paddle.nn.layer.Dropout3D,paddle.nn.layer.common.Dropout3D
-
     Dropout3D Layer.
     This interface is used to construct a callable object of the `Dropout3D` class.
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,

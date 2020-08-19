@@ -284,9 +284,11 @@ class TestDropoutFAPI(unittest.TestCase):
                 axis=[0, 1],
                 training=False,
                 mode='downscale_in_infer')
+            res10 = paddle.nn.functional.dropout(x=input, p=1., training=True)
 
             in_np = np.random.random([40, 40]).astype("float32")
             res_np = in_np
+            res_np2 = np.zeros_like(in_np)
 
             exe = fluid.Executor(place)
             res_list = [res1, res2, res3, res4, res5, res6, res7, res8, res9]
@@ -295,6 +297,10 @@ class TestDropoutFAPI(unittest.TestCase):
                                   feed={"input": in_np},
                                   fetch_list=[res])
                 self.assertTrue(np.allclose(fetches[0], res_np))
+            fetches2 = exe.run(fluid.default_main_program(),
+                               feed={"input": in_np},
+                               fetch_list=[res10])
+            self.assertTrue(np.allclose(fetches2[0], res_np2))
 
     def test_static(self):
         for place in self.places:
@@ -305,6 +311,7 @@ class TestDropoutFAPI(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 in_np = np.random.random([40, 40]).astype("float32")
                 res_np = in_np
+                res_np2 = np.zeros_like(in_np)
                 input = fluid.dygraph.to_variable(in_np)
 
                 res1 = paddle.nn.functional.dropout(
@@ -357,10 +364,13 @@ class TestDropoutFAPI(unittest.TestCase):
                     axis=[0, 1],
                     training=False,
                     mode='downscale_in_infer')
+                res10 = paddle.nn.functional.dropout(
+                    x=input, p=1., training=True)
 
             res_list = [res1, res2, res3, res4, res5, res6, res7, res8, res9]
             for res in res_list:
                 self.assertTrue(np.allclose(res.numpy(), res_np))
+            self.assertTrue(np.allclose(res10.numpy(), res_np2))
 
 
 class TestDropoutFAPIError(unittest.TestCase):
