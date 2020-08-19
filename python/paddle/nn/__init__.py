@@ -53,6 +53,7 @@ from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 from .layer.activation import ELU
 from .layer.activation import GELU
+from .layer.activation import Tanh
 from .layer.activation import Hardshrink
 # from .layer.activation import PReLU        #DEFINE_ALIAS
 from .layer.activation import ReLU
