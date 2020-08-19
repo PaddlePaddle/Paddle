@@ -260,8 +260,6 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
         x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
         out = F.hardtanh(x) # [-1., 0.3, 1.]
     """
-    min = -1.0 if min is None else min
-    max = 1.0 if max is None else max
 
     if in_dygraph_mode():
         return core.ops.brelu(x, 't_min', min, 't_max', max)
@@ -605,8 +603,9 @@ def softmax(x, axis=-1, dtype=None, name=None):
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
     """
-    axis = -1 if axis is None else axis
-    dtype = convert_np_dtype_to_dtype_(dtype) if dtype is not None else dtype
+
+    if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
+        dtype = convert_np_dtype_to_dtype_(dtype)
     use_cudnn = True if axis is -1 else False
 
     if in_dygraph_mode():
@@ -614,8 +613,12 @@ def softmax(x, axis=-1, dtype=None, name=None):
             else core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return core.ops.softmax(outs_cast, 'axis', axis, 'use_cudnn', use_cudnn)
 
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                             'softmax')
+    if dtype is None:
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'softmax')
+    else:
+        check_dtype(dtype, 'dtype', ['float32', 'float64'], 'softmax',
+                    'If dtype is not None, it only support float32 or float64.')
 
     helper = LayerHelper("softmax", **locals())
     outs_cast = x
@@ -696,8 +699,6 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
         #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
     """
 
-    if axis is None:
-        axis = -1
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 

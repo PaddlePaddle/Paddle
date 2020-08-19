@@ -226,43 +226,41 @@ class TestSoftmaxAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-1., 1., [2, 3, 4, 5]).astype('float32')
         self.out_ref = np.apply_along_axis(stable_softmax, -1, self.x_np)
 
-    def static_check(self, axis=None, dtype=None):
+    def test_static_check(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', self.x_np.shape, 'float32')
-            out1 = F.softmax(x, axis, dtype)
-            m = paddle.nn.Softmax(axis)
+            out1 = F.softmax(x)
+            m = paddle.nn.Softmax()
             out2 = m(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-        out_ref1 = ref_softmax(self.x_np, axis, dtype)
-        out_ref2 = ref_softmax(self.x_np, axis)
-        self.assertEqual(np.allclose(out_ref1, res[0]), True)
-        self.assertEqual(np.allclose(out_ref2, res[1]), True)
+        out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
 
-    def dygraph_check(self, axis=None, dtype=None):
+    def test_dygraph_check(self):
         paddle.disable_static(self.place)
 
         x = paddle.to_tensor(self.x_np)
-        out1 = F.softmax(x, axis, dtype)
-        m = paddle.nn.Softmax(axis)
+        out1 = F.softmax(x)
+        m = paddle.nn.Softmax()
         out2 = m(x)
+        out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
 
-        out_ref1 = ref_softmax(self.x_np, axis, dtype)
-        out_ref2 = ref_softmax(self.x_np, axis)
-        self.assertEqual(np.allclose(out_ref1, out1.numpy()), True)
-        self.assertEqual(np.allclose(out_ref2, out2.numpy()), True)
+        out1 = F.softmax(x, axis=0)
+        m = paddle.nn.Softmax(axis=0)
+        out2 = m(x)
+        out_ref = ref_softmax(self.x_np, axis=0, dtype=None)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+
+        out = F.softmax(x, dtype=np.float64)
+        out_ref = ref_softmax(self.x_np, axis=-1, dtype=np.float64)
+        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
 
         paddle.enable_static()
-
-    def test_static_api(self):
-        self.static_check(None, None)
-        self.static_check(0, None)
-        self.static_check(None, np.float64)
-
-    def test_dygraph_api(self):
-        self.dygraph_check(None, None)
-        self.dygraph_check(0, None)
-        self.dygraph_check(None, np.float64)
 
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
