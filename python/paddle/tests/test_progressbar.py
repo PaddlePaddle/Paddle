@@ -17,7 +17,7 @@ import unittest
 import random
 import time
 
-from paddle.incubate.hapi.progressbar import ProgressBar
+from paddle.hapi.progressbar import ProgressBar
 
 
 class TestProgressBar(unittest.TestCase):

@@ -20,7 +20,7 @@ import shutil
 
 from paddle import Model, Input
 from paddle.vision.models import LeNet
-from paddle.callbacks import config_callbacks
+from paddle.hapi.callbacks import config_callbacks
 
 
 class TestCallbacks(unittest.TestCase):

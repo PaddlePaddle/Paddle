@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.incubate.hapi.download import get_weights_path_from_url
+from paddle.utils.download import get_weights_path_from_url
 
 
 class TestDownload(unittest.TestCase):

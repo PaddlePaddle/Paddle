@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 
-from paddle.incubate.hapi.utils import to_list
+from paddle.hapi.model import to_list
 
 
 def accuracy(pred, label, topk=(1, )):
@@ -102,10 +102,10 @@ class TestAccuracyDynamic(unittest.TestCase):
             acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
             for _ in range(10):
                 label, pred = self.random_pred_label()
-                label_var = to_tensor(label)
-                pred_var = to_tensor(pred)
+                label_var = paddle.to_tensor(label)
+                pred_var = paddle.to_tensor(pred)
                 state = to_list(acc.compute(pred_var, label_var))
-                acc.update(* [s.numpy() for s in state])
+                acc.update(*[s.numpy() for s in state])
                 res_m = acc.accumulate()
                 res_f = accuracy(pred, label, self.topk)
                 assert np.all(np.isclose(np.array(res_m, dtype='float64'),

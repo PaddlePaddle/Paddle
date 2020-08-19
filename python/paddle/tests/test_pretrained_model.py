@@ -15,9 +15,8 @@
 import unittest
 import numpy as np
 
-import paddle.fluid as fluid
-import paddle.incubate.hapi.vision.models as models
-from paddle.incubate.hapi import Model, Input
+import paddle
+import paddle.vision.models as models
 
 
 # test the predicted resutls of static graph and dynamic graph are equal
@@ -25,16 +24,16 @@ from paddle.incubate.hapi import Model, Input
 class TestPretrainedModel(unittest.TestCase):
     def infer(self, x, arch, dygraph=True):
         if dygraph:
-            fluid.enable_dygraph()
+            paddle.disable_static()
 
         net = models.__dict__[arch](pretrained=True, classifier_activation=None)
-        inputs = [Input('image', [None, 3, 224, 224], 'float32')]
-        model = Model(network=net, inputs=inputs)
+        inputs = [paddle.Input('image', [None, 3, 224, 224], 'float32')]
+        model = paddle.Model(network=net, inputs=inputs)
         model.prepare()
         res = model.test_batch(x)
 
         if dygraph:
-            fluid.disable_dygraph()
+            paddle.enable_static()
         return res
 
     def test_models(self):

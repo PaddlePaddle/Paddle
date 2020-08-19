@@ -16,7 +16,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.container import Sequential
 
-from ...download import get_weights_path_from_url
+from paddle.utils.download import get_weights_path_from_url
 
 __all__ = [
     'VGG',

@@ -15,8 +15,8 @@
 import unittest
 import numpy as np
 
-import paddle.incubate.hapi.vision.models as models
-import paddle.incubate.hapi as hapi
+import paddle
+import paddle.vision.models as models
 
 
 class TestVisonModels(unittest.TestCase):
@@ -28,8 +28,8 @@ class TestVisonModels(unittest.TestCase):
         else:
             net = models.__dict__[arch](pretrained=pretrained)
 
-        input = hapi.Input('image', [None, 3, 224, 224], 'float32')
-        model = hapi.Model(net, input)
+        input = paddle.Input('image', [None, 3, 224, 224], 'float32')
+        model = paddle.Model(net, input)
         model.prepare()
 
         model.test_batch(x)
@@ -71,8 +71,8 @@ class TestVisonModels(unittest.TestCase):
         self.models_infer('resnet152')
 
     def test_lenet(self):
-        input = hapi.Input('x', [None, 1, 28, 28], 'float32')
-        lenet = hapi.Model(models.__dict__['LeNet'](), input)
+        input = paddle.Input('x', [None, 1, 28, 28], 'float32')
+        lenet = paddle.Model(models.__dict__['LeNet'](), input)
         lenet.prepare()
 
         x = np.array(np.random.random((2, 1, 28, 28)), dtype=np.float32)

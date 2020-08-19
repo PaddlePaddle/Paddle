@@ -21,7 +21,7 @@ import numpy as np
 import shutil
 import tempfile
 
-from paddle.incubate.hapi.logger import setup_logger
+from paddle.hapi.logger import setup_logger
 
 
 class TestSetupLogger(unittest.TestCase):

@@ -239,8 +239,6 @@ from .device import get_device
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensorArray        #DEFINE_ALIAS
 
-from . import incubate
-from .incubate import hapi
 from .fluid.dygraph.base import enable_dygraph as disable_static  #DEFINE_ALIAS
 from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
@@ -248,3 +246,10 @@ from .fluid.dygraph.base import no_grad  #DEFINE_ALIAS
 
 from . import jit
 from . import static
+
+# high-level api
+from .hapi import Model
+from .hapi import Input
+from .hapi import callbacks
+import paddle.text
+import paddle.vision

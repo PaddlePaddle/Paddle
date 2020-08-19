@@ -23,8 +23,8 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Linear, Layer
 from paddle.fluid.layers import BeamSearchDecoder
-from paddle.incubate.hapi import Model, Input, set_device
-from paddle.incubate.hapi.text import *
+from paddle import Model, Input, set_device
+from paddle.text import *
 
 
 class ModuleApiTest(unittest.TestCase):

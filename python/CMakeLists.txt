@@ -95,7 +95,6 @@ if (WITH_TESTING)
   add_subdirectory(paddle/fluid/tests)
   add_subdirectory(paddle/fluid/contrib/tests)
   add_subdirectory(paddle/fluid/contrib/slim/tests)
-  add_subdirectory(paddle/incubate/hapi/tests)
 endif()
 install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
     DESTINATION opt/paddle/share/wheels

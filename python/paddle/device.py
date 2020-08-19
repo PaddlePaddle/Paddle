@@ -84,7 +84,7 @@ def set_device(device):
             
         import paddle
         paddle.enable_imperative()
-        paddle.fluid.dygraph.set_device("gpu:0")
+        paddle.set_device("gpu:0")
         x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
         x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
         data = paddle.stack([x1,x2], axis=1)
@@ -93,7 +93,7 @@ def set_device(device):
     if lower_device == 'cpu':
         place = core.CPUPlace()
     elif lower_device == 'gpu':
-        if not fluid.is_compiled_with_cuda():
+        if not core.is_compiled_with_cuda():
             raise ValueError(
                 "The device should not be 'gpu', " \
                 "since PaddlePaddle is not compiled with CUDA")
@@ -102,7 +102,8 @@ def set_device(device):
         avaliable_device = re.match(r'gpu:\d+', lower_device)
         if not avaliable_device:
             raise ValueError(
-                "The device must be a string which is like 'cpu', 'gpu' or 'gpu:0'")
+                "The device must be a string which is like 'cpu', 'gpu' or 'gpu:0'"
+            )
         device_info_list = device.split(':', 1)
         device_id = device_info_list[1]
         device_id = int(device_id)
@@ -124,7 +125,7 @@ def get_device():
             
         import paddle
         paddle.enable_imperative()
-        device = paddle.fluid.dygraph.get_device()
+        device = paddle.get_device()
 
     """
     device = ''

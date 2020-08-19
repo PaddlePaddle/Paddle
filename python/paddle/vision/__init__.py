@@ -13,9 +13,14 @@
 # limitations under the License.
 
 from . import models
-from . import transforms
 from .models import *
+
+from . import transforms
 from .transforms import *
 
+from . import datasets
+from .datasets import *
+
 __all__ = models.__all__ \
-        + transforms.__all__
+        + transforms.__all__ \
+        + datasets.__all__

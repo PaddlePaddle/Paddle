@@ -26,7 +26,6 @@ import tarfile
 import zipfile
 import time
 from collections import OrderedDict
-from paddle.fluid.dygraph.parallel import ParallelEnv
 
 try:
     from tqdm import tqdm
@@ -156,6 +155,9 @@ def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
     Returns:
         str: a local path to save downloaded models & weights & datasets.
     """
+
+    from paddle.fluid.dygraph.parallel import ParallelEnv
+
     assert is_url(url), "downloading from {} not a url".format(url)
     # parse path after download to decompress under root_dir
     fullpath = _map_path(url, root_dir)

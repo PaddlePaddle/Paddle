@@ -19,8 +19,8 @@ import tempfile
 import shutil
 import cv2
 
-from paddle.incubate.hapi.datasets import *
-from paddle.incubate.hapi.datasets.utils import _check_exists_and_download
+from paddle.vision.datasets import *
+from paddle.vision.datasets.utils import _check_exists_and_download
 
 
 class TestFolderDatasets(unittest.TestCase):

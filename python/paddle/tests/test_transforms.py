@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# when test, you should add hapi root path to the PYTHONPATH,
-# export PYTHONPATH=PATH_TO_HAPI:$PYTHONPATH
 import unittest
 import os
 import tempfile
@@ -21,9 +19,9 @@ import cv2
 import shutil
 import numpy as np
 
-from paddle.incubate.hapi.datasets import DatasetFolder
-from paddle.incubate.hapi.vision.transforms import transforms
-import paddle.incubate.hapi.vision.transforms.functional as F
+from paddle.vision.datasets import DatasetFolder
+from paddle.vision.transforms import transforms
+import paddle.vision.transforms.functional as F
 
 
 class TestTransforms(unittest.TestCase):

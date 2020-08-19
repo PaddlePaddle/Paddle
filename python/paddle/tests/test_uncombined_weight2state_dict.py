@@ -21,13 +21,14 @@ import numpy as np
 import shutil
 import tempfile
 
+import paddle
 from paddle import fluid
 from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
 
 from paddle.incubate.hapi.utils import uncombined_weight_to_state_dict
 
 
-class LeNetDygraph(fluid.dygraph.Layer):
+class LeNetDygraph(paddle.nn.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes

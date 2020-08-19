@@ -77,7 +77,7 @@ class Compose(object):
         .. code-block:: python
 
             from paddle.incubate.hapi.datasets import Flowers
-            from paddle.incubate.hapi.vision.transforms import Compose, ColorJitter, Resize
+            from paddle.vision.transforms import Compose, ColorJitter, Resize
 
             transform = Compose([ColorJitter(), Resize(size=608)])
             flowers = Flowers(mode='test', transform=transform)
@@ -132,7 +132,7 @@ class BatchCompose(object):
 
             from paddle.incubate.hapi import set_device
             from paddle.incubate.hapi.datasets import Flowers
-            from paddle.incubate.hapi.vision.transforms import Compose, BatchCompose, Resize
+            from paddle.vision.transforms import Compose, BatchCompose, Resize
 
             class NormalizeBatch(object):
                 def __init__(self,
@@ -222,7 +222,7 @@ class Resize(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import Resize
+            from paddle.vision.transforms import Resize
 
             transform = Resize(size=224)
 
@@ -259,7 +259,7 @@ class RandomResizedCrop(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import RandomResizedCrop
+            from paddle.vision.transforms import RandomResizedCrop
 
             transform = RandomResizedCrop(224)
 
@@ -336,7 +336,7 @@ class CenterCropResize(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import CenterCropResize
+            from paddle.vision.transforms import CenterCropResize
 
             transform = CenterCropResize(224)
 
@@ -380,7 +380,7 @@ class CenterCrop(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import CenterCrop
+            from paddle.vision.transforms import CenterCrop
 
             transform = CenterCrop(224)
 
@@ -422,7 +422,7 @@ class RandomHorizontalFlip(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import RandomHorizontalFlip
+            from paddle.vision.transforms import RandomHorizontalFlip
 
             transform = RandomHorizontalFlip(224)
 
@@ -453,7 +453,7 @@ class RandomVerticalFlip(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import RandomVerticalFlip
+            from paddle.vision.transforms import RandomVerticalFlip
 
             transform = RandomVerticalFlip(224)
 
@@ -488,7 +488,7 @@ class Normalize(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import Normalize
+            from paddle.vision.transforms import Normalize
 
             normalize = Normalize(mean=[0.5, 0.5, 0.5], 
                                 std=[0.5, 0.5, 0.5])
@@ -530,7 +530,7 @@ class Permute(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import Permute
+            from paddle.vision.transforms import Permute
 
             transform = Permute()
 
@@ -569,7 +569,7 @@ class GaussianNoise(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import GaussianNoise
+            from paddle.vision.transforms import GaussianNoise
 
             transform = GaussianNoise()
 
@@ -603,7 +603,7 @@ class BrightnessTransform(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import BrightnessTransform
+            from paddle.vision.transforms import BrightnessTransform
 
             transform = BrightnessTransform(0.4)
 
@@ -642,7 +642,7 @@ class ContrastTransform(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import ContrastTransform
+            from paddle.vision.transforms import ContrastTransform
 
             transform = ContrastTransform(0.4)
 
@@ -682,7 +682,7 @@ class SaturationTransform(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import SaturationTransform
+            from paddle.vision.transforms import SaturationTransform
 
             transform = SaturationTransform(0.4)
 
@@ -723,7 +723,7 @@ class HueTransform(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import HueTransform
+            from paddle.vision.transforms import HueTransform
 
             transform = HueTransform(0.4)
 
@@ -775,7 +775,7 @@ class ColorJitter(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import ColorJitter
+            from paddle.vision.transforms import ColorJitter
 
             transform = ColorJitter(0.4)
 
@@ -822,7 +822,7 @@ class RandomCrop(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import RandomCrop
+            from paddle.vision.transforms import RandomCrop
 
             transform = RandomCrop(224)
 
@@ -909,7 +909,7 @@ class RandomErasing(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import RandomCrop
+            from paddle.vision.transforms import RandomCrop
 
             transform = RandomCrop(224)
 
@@ -995,7 +995,7 @@ class Pad(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import Pad
+            from paddle.vision.transforms import Pad
 
             transform = Pad(2)
 
@@ -1051,7 +1051,7 @@ class RandomRotate(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import RandomRotate
+            from paddle.vision.transforms import RandomRotate
 
             transform = RandomRotate(90)
 
@@ -1119,7 +1119,7 @@ class Grayscale(object):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms import Grayscale
+            from paddle.vision.transforms import Grayscale
 
             transform = Grayscale()
 

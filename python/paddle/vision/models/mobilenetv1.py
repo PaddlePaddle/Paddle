@@ -17,7 +17,7 @@ from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 
-from ...download import get_weights_path_from_url
+from paddle.utils.download import get_weights_path_from_url
 
 __all__ = ['MobileNetV1', 'mobilenet_v1']
 

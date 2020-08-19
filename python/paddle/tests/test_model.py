@@ -22,19 +22,21 @@ import numpy as np
 import shutil
 import tempfile
 
+import paddle
 from paddle import fluid
+from paddle import to_tensor
 from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
-from paddle.fluid.dygraph.base import to_variable
 
 from paddle import Model, Input
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
-from paddle.datasets import MNIST
+from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
-from paddle.distributed import DistributedBatchSampler, prepare_distributed_context
+from paddle.io import DistributedBatchSampler
+from paddle.hapi.model import prepare_distributed_context
 
 
-class LeNetDygraph(fluid.dygraph.Layer):
+class LeNetDygraph(paddle.nn.Layer):
     def __init__(self, num_classes=10, classifier_activation=None):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes
@@ -283,7 +285,7 @@ class TestModel(unittest.TestCase):
         fluid.disable_dygraph() if dynamic else None
 
 
-class MyModel(fluid.dygraph.Layer):
+class MyModel(paddle.nn.Layer):
     def __init__(self, classifier_activation='softmax'):
         super(MyModel, self).__init__()
         self._fc = Linear(20, 10, act=classifier_activation)
@@ -310,8 +312,8 @@ class TestModelFunction(unittest.TestCase):
             optim = fluid.optimizer.SGD(learning_rate=0.001,
                                         parameter_list=m.parameters())
             m.train()
-            output = m(to_variable(data))
-            loss = CrossEntropyLoss(reduction='sum')(output, to_variable(label))
+            output = m(to_tensor(data))
+            loss = CrossEntropyLoss(reduction='sum')(output, to_tensor(label))
             avg_loss = fluid.layers.reduce_sum(loss)
             avg_loss.backward()
             optim.minimize(avg_loss)
@@ -347,7 +349,7 @@ class TestModelFunction(unittest.TestCase):
             self.set_seed()
             m = MyModel()
             m.eval()
-            output = m(to_variable(data))
+            output = m(to_tensor(data))
             fluid.disable_dygraph()
             return output.numpy()
 

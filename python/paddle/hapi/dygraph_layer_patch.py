@@ -16,8 +16,7 @@ import warnings
 
 import paddle.fluid as fluid
 from paddle.fluid.framework import in_dygraph_mode
-
-from .device import _get_device
+from paddle.fluid.framework import _current_expected_place as _get_device
 
 
 def monkey_patch_layer():

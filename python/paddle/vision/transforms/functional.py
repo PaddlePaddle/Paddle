@@ -46,7 +46,7 @@ def flip(image, code):
         .. code-block:: python
 
             import numpy as np
-            from paddle.incubate.hapi.vision.transforms import functional as F
+            from paddle.vision.transforms import functional as F
 
             fake_img = np.random.rand(224, 224, 3)
 
@@ -75,7 +75,7 @@ def resize(img, size, interpolation=cv2.INTER_LINEAR):
         .. code-block:: python
 
             import numpy as np
-            from paddle.incubate.hapi.vision.transforms import functional as F
+            from paddle.vision.transforms import functional as F
 
             fake_img = np.random.rand(256, 256, 3)
 
@@ -135,7 +135,7 @@ def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms.functional import pad
+            from paddle.vision.transforms.functional import pad
 
             fake_img = np.random.rand(500, 500, 3).astype('float32')
 
@@ -222,7 +222,7 @@ def rotate(img,
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms.functional import rotate
+            from paddle.vision.transforms.functional import rotate
 
             fake_img = np.random.rand(500, 500, 3).astype('float32')
 
@@ -283,7 +283,7 @@ def to_grayscale(img, num_output_channels=1):
 
             import numpy as np
 
-            from paddle.incubate.hapi.vision.transforms.functional import to_grayscale
+            from paddle.vision.transforms.functional import to_grayscale
 
             fake_img = np.random.rand(500, 500, 3).astype('float32')
 
