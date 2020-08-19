@@ -318,5 +318,59 @@ class TestJitMultipleLoading(unittest.TestCase):
             name_set.add(var.name)
 
 
+class LinearNetReturnHidden(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetReturnHidden, self).__init__()
+        self._linear_1 = Linear(in_size, out_size)
+        self._linear_2 = Linear(in_size, out_size)
+
+    @declarative
+    def forward(self, x):
+        y = self._linear_1(x)
+        z = self._linear_2(y)
+        loss = fluid.layers.mean(z)
+        return y, loss
+
+
+class TestJitPruneModelAndLoad(unittest.TestCase):
+    def setUp(self):
+        self.linear_size = 4
+        self.model_path = "model.jit_multi_load"
+        # enable dygraph mode
+        fluid.enable_dygraph()
+        # config seed
+        fluid.default_main_program().random_seed = SEED
+
+    def test_load_pruned_model(self):
+        train_layer = LinearNetReturnHidden(8, 8)
+        adam = fluid.optimizer.AdamOptimizer(
+            learning_rate=0.1, parameter_list=train_layer.parameters())
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        for i in range(10):
+            hidden, loss = train_layer(x)
+            loss.backward()
+            adam.minimize(loss)
+            train_layer.clear_gradients()
+
+        model_path = "model.save_load_config.output_spec"
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        configs.output_spec = [hidden]
+        fluid.dygraph.jit.save(
+            layer=train_layer,
+            model_path=model_path,
+            input_spec=[x],
+            configs=configs)
+
+        train_layer.eval()
+        print(train_layer.state_dict())
+        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        print(infer_layer.state_dict())
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        self.assertTrue(
+            np.array_equal(train_layer(x)[0].numpy(), infer_layer(x).numpy()))
+
+
 if __name__ == '__main__':
     unittest.main()
