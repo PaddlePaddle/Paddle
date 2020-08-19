@@ -967,6 +967,7 @@ class CosineSimilarity(layers.Layer):
     def forward(self, x1, x2):
         return F.cosine_similarity(x1, x2, dim=self._dim, eps=self._eps)
 
+
 class AdaptiveAvgPool2d(layers.Layer):
     """
 
