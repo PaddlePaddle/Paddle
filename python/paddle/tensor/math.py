@@ -112,6 +112,10 @@ __all__ = [
         'minimum',
         'mm',
         'divide',
+        'floor_divide',
+        'remainder',
+        'mod',
+        'floor_mod',
         'multiply',
         'add',
         'atan',
@@ -320,6 +324,34 @@ Examples:
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+def remainder(x, y, name=None):
+    """
+Examples:
+
+    ..  code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        np_x = np.array([2, 3, 8, 7])
+        np_y = np.array([1, 5, 3, 3])
+        x = paddle.to_tensor(np_x)
+        y = paddle.to_tensor(np_y)
+        z = paddle.remainder(x, y)
+        print(z.numpy())  # [0, 3, 2, 1]
+
+    """
+    op_type = 'elementwise_mod'
+    axis = -1
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
 def multiply(x, y, axis=-1, name=None):
     """
 	:alias_main: paddle.multiply
@@ -464,14 +496,17 @@ for func in [
         divide,
         maximum,
         minimum,
-        multiply
+        multiply,
+        floor_divide,
+        remainder,
 ]:
     proto_dict = {'add': 'elementwise_add',
             'divide': 'elementwise_div',
-            'floor_divide': 'elementwise_floordiv',
             'maximum': 'elementwise_max',
             'minimum': 'elementwise_min',
             'multiply': 'elementwise_mul',
+            'floor_divide': 'elementwise_floordiv',
+            'remainder': 'elementwise_mod',
             }
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
 
@@ -487,6 +522,10 @@ for func in [
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
             "use_quantizer", "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
+
+
+mod = remainder  #DEFINE_ALIAS
+floor_mod = remainder  #DEFINE_ALIAS
 
 
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
