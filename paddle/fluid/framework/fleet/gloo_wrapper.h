@@ -211,6 +211,9 @@ class GlooWrapper {
     return std::move(ret);
   }
 
+ private:
+  static std::shared_ptr<GlooWrapper> s_instance_;
+
  protected:
   bool is_initialized_ = false;
 #ifdef PADDLE_WITH_GLOO
@@ -232,8 +235,7 @@ class GlooWrapper {
   int http_port_;
   std::string http_scope_;
 
- private:
-  static std::shared_ptr<GlooWrapper> s_instance_;
+  DISABLE_COPY_AND_ASSIGN(GlooWrapper);
 };
 
 }  // namespace framework

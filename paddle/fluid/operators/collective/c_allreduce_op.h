@@ -25,6 +25,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#if defined(PADDLE_WITH_GLOO)
+#include <gloo/allreduce.h>
+#include <gloo/barrier.h>
+#include <gloo/rendezvous/context.h>
+#include <gloo/rendezvous/file_store.h>
+#include <gloo/rendezvous/http_store.h>
+#include <gloo/rendezvous/prefix_store.h>
+#include <gloo/rendezvous/store.h>
+#include <gloo/transport/tcp/device.h>
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -50,7 +62,58 @@ template <ReduceType red_type, typename T>
 class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW("CAllReduce op do not support CPUKernel for now.");
+#if defined(PADDLE_WITH_GLOO)
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
+
+    int64_t send_numel = in->numel();
+    const T* send_buff = in->data<T>();
+    T* recv_buff = out->data<T>();
+    auto place = ctx.GetPlace();
+    auto gloo = paddle::framework::GlooWrapper::GetInstance();
+    auto nranks = gloo->Rank();
+    PADDLE_ENFORCE_EQ(
+        gloo->IsInitialized(), true,
+        platform::errors::InvalidArgument(
+            "You must initialize the gloo environment first to use it."));
+    gloo::AllReduceOptions opts(gloo->GetContext());
+    opts.setInput(const_cast<T*>(send_buff), send_numel);
+    opts.setOutput(recv_buff, send_numel);
+    switch (red_type) {
+      case kRedSum:
+        opts.setReduceFunction(
+            static_cast<void (*)(void*, const void*, const void*, size_t)>(
+                &gloo::sum<T>));
+        break;
+
+      case kRedMax:
+        opts.setReduceFunction(
+            static_cast<void (*)(void*, const void*, const void*, size_t)>(
+                &gloo::max<T>));
+        break;
+
+      case kRedMin:
+        opts.setReduceFunction(
+            static_cast<void (*)(void*, const void*, const void*, size_t)>(
+                &gloo::min<T>));
+        break;
+
+      case kRedProd:
+        opts.setReduceFunction(
+            static_cast<void (*)(void*, const void*, const void*, size_t)>(
+                &gloo::product<T>));
+        break;
+
+      default:
+        PADDLE_THROW("Invalid reduce type: %d", red_type);
+    }
+    gloo::allreduce(opts);
+#else
+    PADDLE_ENFORCE_EQ(
+        true, false,
+        platform::errors::Unavailable(
+            "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
+#endif
   }
 };
 
