@@ -17,7 +17,7 @@ __all__ = [
     'DGCMomentumOptimizer', 'Dpsgd', 'DpsgdOptimizer',
     'ExponentialMovingAverage', 'Ftrl', 'Lamb', 'LarsMomentum',
     'LookaheadOptimizer', 'ModelAverage', 'Momentum', 'PipelineOptimizer',
-    'RecomputeOptimizer', 'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer'
+    'RecomputeOptimizer', 'RMSProp', 'SGD', 'Optimizer'
 ]
 
 

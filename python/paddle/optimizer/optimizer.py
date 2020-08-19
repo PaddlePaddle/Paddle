@@ -157,7 +157,7 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static():
+                paddle.disable_static()
                 emb = paddle.nn.Embedding([10, 10])
 
                 adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
@@ -196,7 +196,7 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                paddle.disable_static():
+                paddle.disable_static()
                 emb = paddle.nn.Embedding([10, 10])
 
                 state_dict = emb.state_dict()
