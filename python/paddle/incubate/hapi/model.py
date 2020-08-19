@@ -1575,14 +1575,14 @@ class Model(object):
             device = hapi.set_device('gpu')
 
             # if use static graph, do not set
-            disable_static(device) if dynamic else None
+            paddle.disable_static(device) if dynamic else None
 
             # inputs and labels are not required for dynamic graph.
             input = hapi.Input('x', [None, 784], 'float32')
             label = hapi.Input('label', [None, 1], 'int64')
 
             model = hapi.Model(Mnist(), input, label)
-            optim = optimizer.SGD(learning_rate=1e-3,
+            optim = paddle.optimizer.SGD(learning_rate=1e-3,
                 parameter_list=model.parameters())
             model.prepare(optim,
                             paddle.nn.CrossEntropyLoss(),
