@@ -1,7 +1,7 @@
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
-  gloo_wrapper infer_io_utils heter_wrapper)
+  gloo_wrapper infer_io_utils heter_wrapper generator)
 
 if (WITH_NCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
@@ -37,7 +37,8 @@ set(PYBIND_SRCS
   data_set_py.cc
   imperative.cc
   ir.cc
-  inference_api.cc)
+  inference_api.cc
+  generator_py.cc)
 
 if (WITH_CRYPTO)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
