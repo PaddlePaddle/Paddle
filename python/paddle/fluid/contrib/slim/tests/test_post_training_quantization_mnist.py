@@ -27,8 +27,6 @@ from paddle.fluid.contrib.slim.quantization import PostTrainingQuantization
 
 random.seed(0)
 np.random.seed(0)
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-os.environ["CPU_NUM"] = "1"
 
 
 class TestPostTrainingQuantization(unittest.TestCase):
@@ -194,7 +192,7 @@ class TestPostTrainingKLForMnist(TestPostTrainingQuantization):
         is_full_quantize = False
         is_use_cache_file = False
         is_optimize_model = True
-        diff_threshold = 0.02
+        diff_threshold = 0.01
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
@@ -214,7 +212,7 @@ class TestPostTrainingAbsMaxForMnist(TestPostTrainingQuantization):
         is_full_quantize = True
         is_use_cache_file = False
         is_optimize_model = True
-        diff_threshold = 0.02
+        diff_threshold = 0.01
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 10
