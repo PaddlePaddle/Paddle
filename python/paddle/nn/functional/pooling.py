@@ -36,7 +36,7 @@ def check_input(x, dimension):
                          format(len(x.shape), type(x)))
 
 
-def update_padding(padding, pool_type='avg'):
+def update_padding1d(padding, pool_type='avg'):
     def is_list_or_tuple(ele):
         if isinstance(ele, list) or isinstance(ele, tuple):
             return True
@@ -92,16 +92,16 @@ def avg_pool1d(x,
             'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
             it could be the following forms: `[pad_left, pad_right]`. If padding is non-zero,
             then the input is implicitly zero-padded on both sides for padding number of points.
+        count_include_pad (bool): Whether to exclude padding points in average pooling
+                          mode, default is `true`.
         ceil_mode (bool): ${ceil_mode_comment}Whether to use the ceil function to calculate output height and width.
             If it is set to False, the floor function will be used. Default False
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-        count_include_pad (bool): Whether to exclude padding points in average pooling
-                          mode, default is `true`.
 
     Returns:
-        Variable: The output tensor of pooling result. The data type is same as input tensor.
+        Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
@@ -126,7 +126,7 @@ def avg_pool1d(x,
     """
     """NCL to NCHW"""
     data_format = "NCHW"
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'pool')
+    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'avg_pool1d')
     check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = utils.convert_to_list(kernel_size, 1, 'pool_size')
@@ -155,7 +155,7 @@ def avg_pool1d(x,
             padding_algorithm = "SAME"
             padding = [0, 0]
 
-    padding = update_padding(padding, "avg")
+    padding = update_padding1d(padding, "avg")
 
     if in_dygraph_mode():
         output = core.ops.pool2d(
@@ -196,13 +196,10 @@ def max_pool1d(x,
                kernel_size,
                stride=None,
                padding=0,
-               ceil_mode=False,
                return_indices=False,
+               ceil_mode=False,
                name=None):
     """
-    :alias_main: paddle.nn.functional.max_pool1d
-    :alias: paddle.nn.functional.pool2d,paddle.nn.functional.pooling.max_pool1d
-    :old_api: paddle.fluid.layers.max_pool1d
 
     Applies a 1D max pooling over an input signal composed of several input planes based
     on the input, output_size, return_indices parameters.
@@ -229,15 +226,15 @@ def max_pool1d(x,
         padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
             it could be the following forms: `[pad_left, pad_right]`.
+        return_indices (bool): Whether return the max indices along with the outputs. default is `False`.
         ceil_mode (bool): Whether to use the ceil function to calculate output height and width. False is the default.
-            If it is set to False, the floor function will be used. Default False
+            If it is set to False, the floor function will be used. Default False.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-        return_indices (bool): Whether return the max indices along with the outputs. default is `False`.
 
     Returns:
-        Variable: The output tensor of pooling result. The data type is same as input tensor.
+        Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Raises:
         TypeError: If `use_cudnn` is not a bool value.
@@ -266,7 +263,7 @@ def max_pool1d(x,
     """
     """NCL to NCHW"""
     data_format = "NCHW"
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'pool')
+    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'max_pool1d')
     check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = [1] + utils.convert_to_list(kernel_size, 1, 'pool_size')
@@ -293,7 +290,7 @@ def max_pool1d(x,
             padding_algorithm = "SAME"
             padding = [0, 0]
 
-    padding = update_padding(padding, 'max')
+    padding = update_padding1d(padding, 'max')
 
     if in_dygraph_mode():
         pool_out = core.ops.max_pool2d_with_index(
@@ -364,7 +361,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
                                  None by default.
 
         Returns:
-            Variable: The output tensor of adaptive average pooling result. The data type is same
+            Tensor: The output tensor of adaptive average pooling result. The data type is same
                       as input tensor.
 
         Raises:
@@ -445,7 +442,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
            Output(i) &= max(Input[lstart:lend])}
 
         Args:
-            x (Variable): The input tensor of pooling operator, which is a 3-D tensor
+            x (Tensor): The input tensor of pooling operator, which is a 3-D tensor
                               with shape [N, C, L].  The format of input tensor is NCL,
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
@@ -458,7 +455,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
                                  None by default.
 
         Returns:
-            Variable: The output tensor of adaptive pooling result. The data type is same
+            Tensor: The output tensor of adaptive pooling result. The data type is same
                       as input tensor.
 
         Raises:
@@ -494,7 +491,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
     """
     pool_type = 'max'
     check_variable_and_dtype(x, 'input', ['float32', 'float64'],
-                             'adaptive_pool2d')
+                             'adaptive_max_pool1d')
     check_input(x, 3)
     check_type(output_size, 'pool_size', (int), 'adaptive_max_pool1d')
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool1d')

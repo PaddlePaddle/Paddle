@@ -362,10 +362,6 @@ class AvgPool1d(layers.Layer):
 
 
     Args:
-        input (Tensor): The input tensor of pooling operator which is a 3-D tensor with
-                          shape [N, C, L]. The format of input tensor is `"NCL"` or
-                          `"NHL"`, where `N` is batch size, `C` is the number of channels,
-                          `L` is the length of the feature. The data type if float32 or float64.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain one integers.
         stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
@@ -374,16 +370,16 @@ class AvgPool1d(layers.Layer):
             'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
             it could be the following forms: `[pad_left, pad_right]`. If padding is non-zero,
             then the input is implicitly zero-padded on both sides for padding number of points.
-        ceil_mode (bool): ${ceil_mode_comment}Whether to use the ceil function to calculate output height and width.
-            If it is set to False, the floor function will be used. Default False
         count_include_pad (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
+        ceil_mode (bool): ${ceil_mode_comment}Whether to use the ceil function to calculate output height and width.
+            If it is set to False, the floor function will be used. Default False
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
     Returns:
-        Variable: The output tensor of pooling result. The data type is same as input tensor.
+        None.
 
     Raises:
         TypeError: If `use_cudnn` is not a bool value.
@@ -412,18 +408,20 @@ class AvgPool1d(layers.Layer):
                  kernel_size,
                  stride=None,
                  padding=0,
+                 count_include_pad=True,
                  ceil_mode=False,
-                 count_include_pad=True):
+                 name=None):
         super(AvgPool1d, self).__init__()
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
         self.ceil_mode = ceil_mode
         self.count_include_pad = count_include_pad
+        self.name = name
 
     def forward(self, x):
         out = F.avg_pool1d(x, self.kernel_size, self.stride, self.padding,
-                           self.ceil_mode, self.count_include_pad)
+                           self.count_include_pad, self.ceil_mode, self.name)
         return out
 
 
@@ -443,10 +441,6 @@ class MaxPool1d(layers.Layer):
        Output(N_i, C_i, l) &=  max(Input[N_i, C_i, stride \times l:stride \times l+k])}
 
     Args:
-        input (Tensor): The input tensor of pooling operator which is a 3-D tensor with
-                          shape [N, C, L]. The format of input tensor is `"NCL"` or
-                          `"NHL"`, where `N` is batch size, `C` is the number of channels,
-                          `L` is the length of the feature. The data type if float32 or float64.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain one integers.
         stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
@@ -454,16 +448,15 @@ class MaxPool1d(layers.Layer):
         padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
             it could be the following forms: `[pad_left, pad_right]`.
-        use_cudnn (bool): Only used in cudnn kernel, need install cudnn. Default False
+        return_indices (bool): Whether return the max indices along with the outputs. default is `False`.
         ceil_mode (bool): Whether to use the ceil function to calculate output height and width. False is the default.
             If it is set to False, the floor function will be used. Default False
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-        return_indices (bool): Whether return the max indices along with the outputs. default is `False`.
 
     Returns:
-        Variable: The output tensor of pooling result. The data type is same as input tensor.
+        None.
 
     Raises:
         TypeError: If `use_cudnn` is not a bool value.
@@ -497,18 +490,20 @@ class MaxPool1d(layers.Layer):
                  kernel_size,
                  stride=None,
                  padding=0,
+                 return_indices=False,
                  ceil_mode=False,
-                 return_indices=False):
+                 name=None):
         super(MaxPool1d, self).__init__()
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
         self.ceil_mode = ceil_mode
         self.return_indices = return_indices
+        self.name = name
 
     def forward(self, input):
         out = F.max_pool1d(input, self.kernel_size, self.stride, self.padding,
-                           self.ceil_mode, self.return_indices)
+                           self.return_indices, self.ceil_mode, self.name)
         return out
 
 
@@ -532,10 +527,6 @@ class AdaptiveAvgPool1d(layers.Layer):
        Output(i) &= \\frac{sum(Input[lstart:lend])}{(lstart - lend)}
 
     Args:
-        input (Tensor): The input tensor of pooling operator, which is a 3-D tensor
-                          with shape [N, C, L].  The format of input tensor is NCL,
-                          where N is batch size, C is the number of channels, L is the
-                          length of the feature. The data type is float32 or float64.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain one int.
         name(str, optional): For detailed information, please refer
@@ -543,8 +534,7 @@ class AdaptiveAvgPool1d(layers.Layer):
                              None by default.
 
     Returns:
-        Variable: The output tensor of adaptive average pooling result. The data type is same
-                  as input tensor.
+        None.
 
     Raises:
         ValueError: 'pool_size' should be a integer or list or tuple with length as 1.
@@ -574,12 +564,13 @@ class AdaptiveAvgPool1d(layers.Layer):
           # pool_out shape: [1, 3, 16]
     """
 
-    def __init__(self, output_size):
+    def __init__(self, output_size, name=None):
         super(AdaptiveAvgPool1d, self).__init__()
         self.output_size = output_size
+        self.name = name
 
     def forward(self, input):
-        return F.adaptive_avg_pool1d(input, self.output_size)
+        return F.adaptive_avg_pool1d(input, self.output_size, self.name)
 
 
 class AdaptiveMaxPool1d(layers.Layer):
@@ -602,10 +593,6 @@ class AdaptiveMaxPool1d(layers.Layer):
        Output(i) &= max(Input[lstart:lend])}
 
     Args:
-        input (Tensor): The input tensor of pooling operator, which is a 3-D tensor
-                          with shape [N, C, L].  The format of input tensor is NCL,
-                          where N is batch size, C is the number of channels, L is the
-                          length of the feature. The data type is float32 or float64.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain one int.
         return_indices (bool): If true, the index of max pooling point will be returned along
@@ -613,10 +600,8 @@ class AdaptiveMaxPool1d(layers.Layer):
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-
-    Returns:
-        Variable: The output tensor of adaptive pooling result. The data type is same
-                  as input tensor.
+    Returns: 
+        None.
 
     Raises:
         ValueError: 'pool_size' should be a integer or list or tuple with length as 1.
@@ -652,11 +637,12 @@ class AdaptiveMaxPool1d(layers.Layer):
 
     """
 
-    def __init__(self, output_size, return_indices=False):
+    def __init__(self, output_size, return_indices=False, name=None):
         super(AdaptiveMaxPool1d, self).__init__()
         self.output_size = output_size
         self.return_indices = return_indices
+        self.name = name
 
     def forward(self, input):
         return F.adaptive_max_pool1d(input, self.output_size,
-                                     self.return_indices)
+                                     self.return_indices, self.name)
