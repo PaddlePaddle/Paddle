@@ -126,7 +126,7 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   std::vector<float> out_data;
   run(config, &out_data);
   for (size_t i = 0; i < out_data.size(); i++) {
-    EXPECT_NEAR(result[i], out_data[i], 1e-6);
+    EXPECT_NEAR(result[i], out_data[i], 1e-5);
   }
 }
 
