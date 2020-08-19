@@ -126,14 +126,14 @@ class Optimizer(object):
         # the learning rate type should be inferenced from loss
         self._dtype = None
         # each program should have a independent learning rate
-        # program -> Variable(learning_rate)
+        # program -> tensor(learning_rate)
         self._learning_rate_map = dict()
         if isinstance(self._learning_rate, framework.Variable):
             self._learning_rate_map[framework.default_main_program(
             )] = self._learning_rate
         # Dictionary of accumulators. Some optimizer subclasses need to
-        # allocate and manage extra variables associated with the parameters
-        # to train. These variables are called accumulators.
+        # allocate and manage extra tensors associated with the parameters
+        # to train. These tensors are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
@@ -145,7 +145,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def state_dict(self):
         '''
-        Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
+        Get state dict information from optimizer. It contain all the tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
         If the optimizer never be called(minimize function), the state_dict is empty.
 
         Args: 
@@ -274,7 +274,7 @@ class Optimizer(object):
 
     def _create_global_learning_rate(self):
         if imperative_base.enabled():
-            # create learning rate Variable
+            # create learning rate tensor
             if isinstance(self._learning_rate, float):
                 lr = self._global_learning_rate()
 
@@ -473,7 +473,7 @@ class Optimizer(object):
         )
 
     def _create_param_lr(self, param_and_grad):
-        # create learning rate variable for every parameter
+        # create learning rate tensor for every parameter
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
         if type(param_lr) == Variable:
@@ -491,8 +491,8 @@ class Optimizer(object):
         """Create all accumulators needed by the parameters
 
         Args:
-            block: the block in which the loss variable is present
-            parameters: list of parameter variables for the optimizer
+            block: the block in which the loss tensor is present
+            parameters: list of parameter tensors for the optimizer
         """
         pass
 
@@ -501,8 +501,8 @@ class Optimizer(object):
            before completing an optimization step
 
         Args:
-            block: the block in which the loss variable is present
-            parameters: list of parameter variables for the optimizer
+            block: the block in which the loss tensor is present
+            parameters: list of parameter tensors for the optimizer
 
         Returns:
             None
@@ -520,11 +520,11 @@ class Optimizer(object):
         """Utility function to add an accumulator for a parameter
 
         Args:
-            block: the block in which the loss variable is present
+            block: the block in which the loss tensor is present
             name: name of the accumulator
-            param: parameter variable for which accumulator is to be added
-            dtype: data type of the accumulator variable
-            fill_value: value to initialize the accumulator variable
+            param: parameter tensor for which accumulator is to be added
+            dtype: data type of the accumulator tensor
+            fill_value: value to initialize the accumulator tensor
         """
         if self._name is not None:
             name = self._name + "_" + name
@@ -569,10 +569,10 @@ class Optimizer(object):
 
         Args:
             name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
+            param: parameter tensor for which accumulator is to be fetched
 
         Returns:
-            accumulator variable for the parameter
+            accumulator tensor for the parameter
         """
         if self._name is not None:
             name = self._name + "_" + name
@@ -603,11 +603,11 @@ class Optimizer(object):
         return device
 
     def _create_optimization_pass(self, parameters_and_grads):
-        """Add optimization operators to update gradients to variables.
+        """Add optimization operators to update gradients to tensors.
 
         Args:
           parameters_and_grads(list(tuple(Tensor, Tensor))):
-            a list of (variable, gradient) pair to update.
+            a list of (tensor, gradient) pair to update.
 
         Returns:
           return_op_list: a list of operators that will complete one step of
@@ -676,7 +676,7 @@ class Optimizer(object):
         and avoid to add regularization and other op for it, and add sgd optimize op
         for it independently.
         :param param_grads(list((Var, Var))): list of (param, grad) pair.
-        :param loss: the loss variable.
+        :param loss: the loss tensor.
         :param startup_program: the startup program
         """
         program = framework.default_main_program()
@@ -725,7 +725,7 @@ class Optimizer(object):
         the current program.
 
         Args:
-            loss (Tensor): ``loss`` variable to run optimizations.
+            loss (Tensor): ``loss`` tensor to run optimizations.
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameters``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
@@ -738,7 +738,7 @@ class Optimizer(object):
                 operator for one parameter. The default value is None.
 
         Return:
-            list: list of (param, grad) variable pairs, param is ``Parameter``,
+            list: list of (param, grad) tensor pairs, param is ``Parameter``,
                 grad is the gradient value corresponding to the parameter.
 
         Examples:
@@ -757,7 +757,7 @@ class Optimizer(object):
                 if not param.trainable:
                     continue
                 if param._grad_ivar() is not None:
-                    # create gradient variable
+                    # create gradient tensor
                     grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
         else:
@@ -831,7 +831,7 @@ class Optimizer(object):
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
         Args:
-            loss (Tensor): loss variable to run optimizations.
+            loss (Tensor): loss tensor to run optimizations.
             startup_program (Program): startup_program for initializing parameters
                 in `parameters`.
             params_grads (list): list of (param, grad) pair to do optimization.
@@ -914,7 +914,7 @@ class Optimizer(object):
 
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
-            by minimize and a list of (param, grad) variable pairs, param is
+            by minimize and a list of (param, grad) tensor pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
             The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
             indicate program pruning. If so, the program will be pruned by ``feed`` and 
