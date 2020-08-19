@@ -56,7 +56,7 @@ class FleetDistRunnerBase(object):
         if args.role.upper() == "PSERVER":
             role = role_maker.UserDefinedRoleMaker(
                 is_collective=False,
-                init_gloo=True,
+                init_gloo=False,
                 path=args.gloo_path,
                 current_id=args.current_id,
                 role=role_maker.Role.SERVER,
@@ -65,7 +65,7 @@ class FleetDistRunnerBase(object):
         else:
             role = role_maker.UserDefinedRoleMaker(
                 is_collective=False,
-                init_gloo=True,
+                init_gloo=False,
                 path=args.gloo_path,
                 current_id=args.current_id,
                 role=role_maker.Role.WORKER,
