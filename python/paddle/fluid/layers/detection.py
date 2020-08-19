@@ -2985,7 +2985,14 @@ def generate_proposals(scores,
         dtype=bbox_deltas.dtype)
     rpn_roi_probs = helper.create_variable_for_type_inference(
         dtype=scores.dtype)
-    rpn_rois_num = helper.create_variable_for_type_inference(dtype='int32')
+    outputs = {
+        'RpnRois': rpn_rois,
+        'RpnRoiProbs': rpn_roi_probs,
+    }
+    if return_rois_num:
+        rpn_rois_num = helper.create_variable_for_type_inference(dtype='int32')
+        rpn_rois_num.stop_gradient = True
+        outputs['RpnRoisNum'] = rpn_rois_num
 
     helper.append_op(
         type="generate_proposals",
@@ -3003,14 +3010,9 @@ def generate_proposals(scores,
             'min_size': min_size,
             'eta': eta
         },
-        outputs={
-            'RpnRois': rpn_rois,
-            'RpnRoiProbs': rpn_roi_probs,
-            'RpnRoisNum': rpn_rois_num
-        })
+        outputs=outputs)
     rpn_rois.stop_gradient = True
     rpn_roi_probs.stop_gradient = True
-    rpn_rois_num.stop_gradient = True
 
     if return_rois_num:
         return rpn_rois, rpn_roi_probs, rpn_rois_num
@@ -3606,21 +3608,27 @@ def distribute_fpn_proposals(fpn_rois,
     multi_rois = [
         helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
     ]
-    rois_num_per_level = [
-        helper.create_variable_for_type_inference(dtype='int32')
-        for i in range(num_lvl)
-    ]
 
     restore_ind = helper.create_variable_for_type_inference(dtype='int32')
+
+    inputs = {'FpnRois': fpn_rois}
+    outputs = {
+        'MultiFpnRois': multi_rois,
+        'RestoreIndex': restore_ind,
+    }
+
+    if rois_num is not None:
+        inputs['RoisNum'] = rois_num
+        rois_num_per_level = [
+            helper.create_variable_for_type_inference(dtype='int32')
+            for i in range(num_lvl)
+        ]
+        outputs['MultiLevelRoIsNum'] = rois_num_per_level
+
     helper.append_op(
         type='distribute_fpn_proposals',
-        inputs={'FpnRois': fpn_rois,
-                'RoisNum': rois_num},
-        outputs={
-            'MultiFpnRois': multi_rois,
-            'RestoreIndex': restore_ind,
-            'MultiLevelRoisNum': rois_num_per_level
-        },
+        inputs=inputs,
+        outputs=outputs,
         attrs={
             'min_level': min_level,
             'max_level': max_level,
@@ -3790,18 +3798,22 @@ def collect_fpn_proposals(multi_rois,
     input_rois = multi_rois[:num_lvl]
     input_scores = multi_scores[:num_lvl]
     output_rois = helper.create_variable_for_type_inference(dtype)
-    rois_num = helper.create_variable_for_type_inference(dtype='int32')
     output_rois.stop_gradient = True
-    rois_num.stop_gradient = True
+
+    inputs = {
+        'MultiLevelRois': input_rois,
+        'MultiLevelScores': input_scores,
+    }
+    outputs = {'FpnRois': output_rois}
+    if rois_num_per_level is not None:
+        inputs['MultiLevelRoIsNum'] = rois_num_per_level
+        rois_num = helper.create_variable_for_type_inference(dtype='int32')
+        rois_num.stop_gradient = True
+        outputs['RoisNum'] = rois_num
     helper.append_op(
         type='collect_fpn_proposals',
-        inputs={
-            'MultiLevelRois': input_rois,
-            'MultiLevelScores': input_scores,
-            'MultiLevelRoIsNum': rois_num_per_level
-        },
-        outputs={'FpnRois': output_rois,
-                 'RoisNum': rois_num},
+        inputs=inputs,
+        outputs=outputs,
         attrs={'post_nms_topN': post_nms_top_n})
     if rois_num_per_level is not None:
         return output_rois, rois_num

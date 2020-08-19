@@ -6808,7 +6808,7 @@ def roi_pool(input,
         pooled_height (int, optional): The pooled output height, data type is int32. Default: 1
         pooled_width (int, optional): The pooled output height, data type is int32. Default: 1
         spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
-        rois_num (Variable): The number of RoIs in each image. Default: None
+        rois_num (Tensor): The number of RoIs in each image. Default: None
 
     Returns:
         Variable: The pooled feature, 4D-Tensor with the shape of [num_rois, C, pooled_height, pooled_width].
@@ -6828,11 +6828,11 @@ def roi_pool(input,
 
         input_data = np.array([i for i in range(1,17)]).reshape(1,1,4,4).astype(DATATYPE)
         roi_data =fluid.create_lod_tensor(np.array([[1., 1., 2., 2.], [1.5, 1.5, 3., 3.]]).astype(DATATYPE),[[2]], place)
-        rois_num_data = np.array([2])
+        rois_num_data = np.array([2]).astype('int32')
 
         x = fluid.data(name='input', shape=[None,1,4,4], dtype=DATATYPE)
         rois = fluid.data(name='roi', shape=[None,4], dtype=DATATYPE)
-        rois_num = fluid.data(name='rois_num', shape=[None], dtype='int64')
+        rois_num = fluid.data(name='rois_num', shape=[None], dtype='int32')
 
         pool_out = fluid.layers.roi_pool(
                 input=x,
@@ -6853,11 +6853,16 @@ def roi_pool(input,
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
     argmaxes = helper.create_variable_for_type_inference(dtype='int32')
+
+    inputs = {
+        "X": input,
+        "ROIs": rois,
+    }
+    if rois_num is not None:
+        inputs['RoisNum'] = rois_num
     helper.append_op(
         type="roi_pool",
-        inputs={"X": input,
-                "ROIs": rois,
-                "RoisNum": rois_num},
+        inputs=inputs,
         outputs={"Out": pool_out,
                  "Argmax": argmaxes},
         attrs={
@@ -6875,8 +6880,8 @@ def roi_align(input,
               pooled_width=1,
               spatial_scale=1.0,
               sampling_ratio=-1,
-              name=None,
-              rois_num=None):
+              rois_num=None,
+              name=None):
     """
     :alias_main: paddle.nn.functional.roi_align
 	:alias: paddle.nn.functional.roi_align,paddle.nn.functional.vision.roi_align
@@ -6895,10 +6900,10 @@ def roi_align(input,
         pooled_width (int32, optional): ${pooled_width_comment} Default: 1
         spatial_scale (float32, optional): ${spatial_scale_comment} Default: 1.0
         sampling_ratio(int32, optional): ${sampling_ratio_comment} Default: -1
+        rois_num (Tensor): The number of RoIs in each image. Default: None
         name(str, optional): For detailed information, please refer
             to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
-        rois_num (Variable): The number of RoIs in each image. Default: None
 
     Returns:
         Variable:
@@ -6914,7 +6919,7 @@ def roi_align(input,
                 name='data', shape=[None, 256, 32, 32], dtype='float32')
             rois = fluid.data(
                 name='rois', shape=[None, 4], dtype='float32')
-            rois_num = fluid.data(name='rois_num', shape=[None], dtype='int64')
+            rois_num = fluid.data(name='rois_num', shape=[None], dtype='int32')
             align_out = fluid.layers.roi_align(input=x,
                                                rois=rois,
                                                pooled_height=7,
@@ -6929,11 +6934,15 @@ def roi_align(input,
     helper = LayerHelper('roi_align', **locals())
     dtype = helper.input_dtype()
     align_out = helper.create_variable_for_type_inference(dtype)
+    inputs = {
+        "X": input,
+        "ROIs": rois,
+    }
+    if rois_num is not None:
+        inputs['RoisNum'] = rois_num
     helper.append_op(
         type="roi_align",
-        inputs={"X": input,
-                "ROIs": rois,
-                "RoisNum": rois_num},
+        inputs=inputs,
         outputs={"Out": align_out},
         attrs={
             "pooled_height": pooled_height,
