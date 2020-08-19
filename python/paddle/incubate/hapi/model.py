@@ -687,13 +687,12 @@ class Model(object):
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import paddle.incubate.hapi as hapi
         
         class MyNet(paddle.nn.Layer):
             def __init__(self, classifier_act=None):
                 super(MyNet, self).__init__()
-                self._fc1 = fluid.dygraph.Linear(784, 200, act=classifier_act)
+                self._fc1 = paddle.nn.Linear(784, 200, act=classifier_act)
 
             def forward(self, x):
                 y = self._fc1(x)
@@ -708,7 +707,7 @@ class Model(object):
         label = hapi.Input('label', [None, 1], 'int64')
         
         model = hapi.Model(MyNet(), input, label)
-        optim = fluid.optimizer.SGD(learning_rate=1e-3,
+        optim = paddle.optimizer.SGD(learning_rate=1e-3,
             parameter_list=model.parameters())
         model.prepare(optim,
                       paddle.nn.CrossEntropyLoss(),
@@ -772,13 +771,12 @@ class Model(object):
             
               import numpy as np
               import paddle
-              import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
               class MyNet(paddle.nn.Layer):
                   def __init__(self, classifier_act=None):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 10, act=classifier_act)
+                      self._fc = paddle.nn.Linear(784, 10, act=classifier_act)
 
                   def forward(self, x):
                       y = self._fc(x)
@@ -790,7 +788,7 @@ class Model(object):
               input = hapi.Input('x', [None, 784], 'float32')
               label = hapi.Input('label', [None, 1], 'int64')
               model = hapi.Model(MyNet(), input, label)
-              optim = fluid.optimizer.SGD(learning_rate=1e-3,
+              optim = paddle.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim, paddle.nn.CrossEntropyLoss())
               data = np.random.random(size=(4,784)).astype(np.float32)
@@ -821,13 +819,12 @@ class Model(object):
             
               import numpy as np
               import paddle
-              import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
               class MyNet(paddle.nn.Layer):
                   def __init__(self, classifier_act=None):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 10, act=classifier_act)
+                      self._fc = paddle.nn.Linear(784, 10, act=classifier_act)
 
                   def forward(self, x):
                       y = self._fc(x)
@@ -839,7 +836,7 @@ class Model(object):
               input = hapi.Input('x', [None, 784], 'float32')
               label = hapi.Input('label', [None, 1], 'int64')
               model = hapi.Model(MyNet(), input, label)
-              optim = fluid.optimizer.SGD(learning_rate=1e-3,
+              optim = paddle.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim,
                             paddle.nn.CrossEntropyLoss())
@@ -867,13 +864,13 @@ class Model(object):
             .. code-block:: python
             
               import numpy as np
-              import paddle.fluid as fluid
+              import paddle
               import paddle.incubate.hapi as hapi
 
               class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                      self._fc = paddle.nn.Linear(784, 1, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
@@ -915,13 +912,13 @@ class Model(object):
 
             .. code-block:: python
             
-              import paddle.fluid as fluid
+              import paddle
               import paddle.incubate.hapi as hapi
               
               class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                      self._fc = paddle.nn.Linear(784, 1, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
@@ -967,13 +964,13 @@ class Model(object):
 
             .. code-block:: python
             
-              import paddle.fluid as fluid
+              import paddle
               import paddle.incubate.hapi as hapi
               
               class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                      self._fc = paddle.nn.Linear(784, 1, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
@@ -1042,13 +1039,13 @@ class Model(object):
 
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               from paddle.incubate.hapi import Model
 
               class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(20, 10, act='softmax')
+                      self._fc = paddle.nn.Linear(20, 10, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
@@ -1183,7 +1180,6 @@ class Model(object):
             .. code-block:: python
 
               import paddle
-              import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
               dynamic = True
@@ -1198,7 +1194,7 @@ class Model(object):
            
               model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
                   input, label)
-              optim = fluid.optimizer.Adam(
+              optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameter_list=model.parameters())
               model.prepare(
                   optim,
@@ -1216,7 +1212,6 @@ class Model(object):
             .. code-block:: python
 
               import paddle
-              import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
               dynamic = True
@@ -1224,10 +1219,10 @@ class Model(object):
               paddle.disable_static(device) if dynamic else None
            
               train_dataset = hapi.datasets.MNIST(mode='train')
-              train_loader = fluid.io.DataLoader(train_dataset,
+              train_loader = paddle.io.DataLoader(train_dataset,
                   places=device, batch_size=64)
               val_dataset = hapi.datasets.MNIST(mode='test')
-              val_loader = fluid.io.DataLoader(val_dataset,
+              val_loader = paddle.io.DataLoader(val_dataset,
                   places=device, batch_size=64)
            
               input = hapi.Input('image', [None, 1, 28, 28], 'float32')
@@ -1235,7 +1230,7 @@ class Model(object):
            
               model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
                   input, label)
-              optim = fluid.optimizer.Adam(
+              optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameter_list=model.parameters())
               model.prepare(
                   optim,
@@ -1353,7 +1348,6 @@ class Model(object):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
             # declarative mode
@@ -1446,7 +1440,7 @@ class Model(object):
         .. code-block:: python
 
             import numpy as np
-            import paddle.fluid as fluid
+            import paddle
             import paddle.incubate.hapi as hapi
 
             class MnistDataset(hapi.datasets.MNIST):
@@ -1545,7 +1539,6 @@ class Model(object):
         Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
             input = hapi.Input('image', [-1, 1, 28, 28], 'float32')
