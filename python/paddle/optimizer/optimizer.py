@@ -147,8 +147,10 @@ class Optimizer(object):
         Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
         If the optimizer never be called(minimize function), the state_dict is empty.
 
-        Args: None
-        Return:
+        Args: 
+            None
+
+        Returns:
             state_dict(dict) : dict contains all the Tensor used by optimizer
         
         Examples:
@@ -465,7 +467,9 @@ class Optimizer(object):
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
         """
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "Class \"Optimizer\" connot be used directly as an optimizer, please use its subclasses such as \"Adam\""
+        )
 
     def _create_param_lr(self, param_and_grad):
         # create learning rate variable for every parameter
