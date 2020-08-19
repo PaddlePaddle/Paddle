@@ -30,5 +30,5 @@ from ..fluid.optimizer import  SGD, Momentum, Adagrad, Dpsgd, DecayedAdagrad, \
 from .optimizer import Optimizer
 from .adam import Adam
 from .adamw import AdamW
-from .adamax import adamax
+from .adamax import Adamax
 from .rmsprop import RMSProp
