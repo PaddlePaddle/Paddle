@@ -335,9 +335,10 @@ def ref_tanhshrink(x):
 class TestTanhshrink(TestActivation):
     def setUp(self):
         self.op_type = "tanh_shrink"
+        self.x_shape = [10, 17]
         self.init_dtype()
 
-        x = np.random.uniform(10, 20, [10, 17]).astype(self.dtype)
+        x = np.random.uniform(10, 20, self.x_shape).astype(self.dtype)
         out = ref_tanhshrink(x)
 
         self.inputs = {'X': x}
@@ -352,13 +353,15 @@ class TestTanhshrink(TestActivation):
 class TestTanhshrinkAPI(unittest.TestCase):
     # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink
     def setUp(self):
-        self.x_np = np.random.uniform(10, 20, [10, 17]).astype('float32')
+        self.x_shape = [10, 17]
+        self.dtype = np.float64
+        self.x_np = np.random.uniform(10, 20, self.x_shape).astype(self.dtype)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape)
+            x = paddle.data('X', self.x_shape, self.dtype)
             out1 = F.tanhshrink(x)
             tanhshrink = paddle.nn.Tanhshrink()
             out2 = tanhshrink(x)
@@ -381,7 +384,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape)
+            x = fluid.data('X', self.x_shape, self.dtype)
             out = fluid.layers.tanh_shrink(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -816,9 +819,10 @@ def ref_relu6(x, threshold=6.0):
 class TestRelu6(TestActivation):
     def setUp(self):
         self.op_type = "relu6"
+        self.x_shape = [10, 12]
         self.init_dtype()
 
-        x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
+        x = np.random.uniform(-1, 10, self.x_shape).astype(self.dtype)
         x[np.abs(x) < 0.005] = 0.02
         out = ref_relu6(x)
 
@@ -835,14 +839,16 @@ class TestRelu6(TestActivation):
 class TestRelu6API(unittest.TestCase):
     # test paddle.nn.ReLU6, paddle.nn.functional.relu6
     def setUp(self):
-        self.x_np = np.random.uniform(-1, 10, [10, 12]).astype('float32')
+        self.x_shape = [10, 12]
+        self.dtype = np.float64
+        self.x_np = np.random.uniform(-1, 10, self.x_shape).astype(self.dtype)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape)
+            x = paddle.data('X', self.x_shape, self.dtype)
             out1 = F.relu6(x)
             relu6 = paddle.nn.ReLU6()
             out2 = relu6(x)
@@ -865,7 +871,7 @@ class TestRelu6API(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape)
+            x = fluid.data('X', self.x_shape, self.dtype)
             out = fluid.layers.relu6(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -882,126 +888,6 @@ class TestRelu6API(unittest.TestCase):
             # support the input dtype is float16
             x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
             F.relu6(x_fp16)
-
-
-def ref_selu(x,
-             scale=1.0507009873554804934193349852946,
-             alpha=1.6732632423543772848170429916717):
-    out = np.copy(x)
-    out_flat = out.flatten()
-    for i in range(out_flat.size):
-        if out_flat[i] < 0:
-            out_flat[i] = alpha * np.exp(out_flat[i]) - alpha
-        out_flat[i] = scale * out_flat[i]
-    out = out_flat.reshape(x.shape)
-    return out
-
-
-class TestSELU(TestActivation):
-    def setUp(self):
-        self.op_type = "selu"
-        self.init_dtype()
-
-        scale = 1.5
-        alpha = 2.0
-
-        x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
-        x[np.abs(x) < 0.005] = 0.02
-        out = ref_selu(x, scale, alpha)
-        self.inputs = {'X': x}
-        self.attrs = {'scale': scale, "alpha": alpha}
-        self.outputs = {'Out': out}
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out')
-
-
-class TestSELUAPI(unittest.TestCase):
-    # test paddle.nn.SELU, paddle.nn.functional.selu
-    def setUp(self):
-        self.x_np = np.random.uniform(-1, 10, [10, 12]).astype('float32')
-        self.x_np[np.abs(self.x_np) < 0.005] = 0.02
-        self.scale = 1.5
-        self.alpha = 2.0
-        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
-            else paddle.CPUPlace()
-
-    def test_static_api(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape)
-            out1 = F.selu(x, self.scale, self.alpha)
-            selu = paddle.nn.SELU(self.scale, self.alpha)
-            out2 = selu(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-        out_ref = ref_selu(self.x_np, self.scale, self.alpha)
-        for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
-
-    def test_static_api_default_options(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape)
-            out1 = F.selu(x)
-            selu = paddle.nn.SELU()
-            out2 = selu(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-        out_ref = ref_selu(self.x_np)
-        for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
-
-    def test_dygraph_api(self):
-        paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.selu(x, self.scale, self.alpha)
-        selu = paddle.nn.SELU(self.scale, self.alpha)
-        out2 = selu(x)
-        out_ref = ref_selu(self.x_np, self.scale, self.alpha)
-        for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
-        paddle.enable_static()
-
-    def test_dygraph_api_default_options(self):
-        paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.selu(x)
-        selu = paddle.nn.SELU()
-        out2 = selu(x)
-        out_ref = ref_selu(self.x_np)
-        for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
-        paddle.enable_static()
-
-    def test_fluid_api(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape)
-            out = fluid.layers.selu(x, self.scale, self.alpha)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_selu(self.x_np, self.scale, self.alpha)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-    def test_fluid_api_default_options(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape)
-            out = fluid.layers.selu(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_selu(self.x_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-    def test_errors(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            # The input type must be Variable.
-            self.assertRaises(TypeError, F.selu, 1)
-            # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, F.selu, x_int32)
-            # support the input dtype is float16
-            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            F.selu(x_fp16)
 
 
 class TestHardSwish(TestActivation):
@@ -1352,12 +1238,13 @@ def ref_softplus(x, beta=1, threshold=20):
 class TestSoftplus(TestActivation):
     def setUp(self):
         self.op_type = "softplus"
+        self.x_shape = [10, 12]
         self.init_dtype()
 
         beta = 2
         threshold = 15
 
-        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
         out = ref_softplus(x, beta, threshold)
         self.inputs = {'X': x}
         self.attrs = {'beta': beta, "threshold": threshold}
@@ -1372,15 +1259,17 @@ class TestSoftplus(TestActivation):
 class TestSoftplusAPI(unittest.TestCase):
     # test paddle.nn.Softplus, paddle.nn.functional.softplus
     def setUp(self):
-        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.x_shape = [10, 12]
+        self.dtype = np.float64
         self.beta = 2
         self.threshold = 15
+        self.x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape)
+            x = paddle.data('X', self.x_shape, self.dtype)
             out1 = F.softplus(x, self.beta, self.threshold)
             softplus = paddle.nn.Softplus(self.beta, self.threshold)
             out2 = softplus(x)
@@ -1392,7 +1281,7 @@ class TestSoftplusAPI(unittest.TestCase):
 
     def test_static_api_default_options(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape)
+            x = paddle.data('X', self.x_shape, self.dtype)
             out1 = F.softplus(x)
             softplus = paddle.nn.Softplus()
             out2 = softplus(x)
@@ -1426,7 +1315,7 @@ class TestSoftplusAPI(unittest.TestCase):
 
     def test_fluid_api_default_options(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape)
+            x = fluid.data('X', self.x_shape, self.dtype)
             out = fluid.layers.softplus(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -1455,11 +1344,12 @@ def ref_softshrink(x, threshold=0.5):
 class TestSoftshrink(TestActivation):
     def setUp(self):
         self.op_type = "softshrink"
+        self.x_shape = [10, 12]
         self.init_dtype()
 
         threshold = 0.8
 
-        x = np.random.uniform(0.25, 10, [10, 12]).astype(self.dtype)
+        x = np.random.uniform(0.25, 10, self.x_shape).astype(self.dtype)
         out = ref_softshrink(x, threshold)
         self.inputs = {'X': x}
         self.attrs = {"lambda": threshold}
@@ -1474,14 +1364,16 @@ class TestSoftshrink(TestActivation):
 class TestSoftshrinkAPI(unittest.TestCase):
     # test paddle.nn.Softshrink, paddle.nn.functional.softshrink
     def setUp(self):
-        self.x_np = np.random.uniform(0.25, 10, [10, 12]).astype('float32')
+        self.x_shape = [10, 12]
+        self.dtype = np.float64
         self.threshold = 0.8
+        self.x_np = np.random.uniform(0.25, 10, self.x_shape).astype(self.dtype)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape)
+            x = paddle.data('X', self.x_shape, self.dtype)
             out1 = F.softshrink(x, self.threshold)
             softshrink = paddle.nn.Softshrink(self.threshold)
             out2 = softshrink(x)
@@ -1493,7 +1385,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 
     def test_static_api_default_options(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape)
+            x = paddle.data('X', self.x_shape, self.dtype)
             out1 = F.softshrink(x)
             softshrink = paddle.nn.Softshrink()
             out2 = softshrink(x)
@@ -1527,7 +1419,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape)
+            x = fluid.data('X', self.x_shape, self.dtype)
             out = fluid.layers.softshrink(x, self.threshold)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -1536,7 +1428,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 
     def test_fluid_api_default_options(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape)
+            x = fluid.data('X', self.x_shape, self.dtype)
             out = fluid.layers.softshrink(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -1563,9 +1455,10 @@ def ref_softsign(x):
 class TestSoftsign(TestActivation):
     def setUp(self):
         self.op_type = "softsign"
+        self.x_shape = [10, 12]
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
         out = ref_softsign(x)
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
@@ -1579,13 +1472,15 @@ class TestSoftsign(TestActivation):
 class TestSoftsignAPI(unittest.TestCase):
     # test paddle.nn.Softsign, paddle.nn.functional.softsign
     def setUp(self):
-        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.x_shape = [10, 12]
+        self.dtype = np.float64
+        self.x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape)
+            x = paddle.data('X', self.x_shape, self.dtype)
             out1 = F.softsign(x)
             softsign = paddle.nn.Softsign()
             out2 = softsign(x)
@@ -1608,7 +1503,7 @@ class TestSoftsignAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape)
+            x = fluid.data('X', self.x_shape, self.dtype)
             out = fluid.layers.softsign(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
