@@ -135,6 +135,7 @@ class TestCUDANormal(unittest.TestCase):
 
 class TestError(unittest.TestCase):
     def test_bad_input(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
 
             def test_isinf_bad_x():
