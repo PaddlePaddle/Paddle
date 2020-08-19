@@ -22,7 +22,7 @@ from scipy.special import expit, erf
 import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
-import paddle.nn.functional as functional
+import paddle.nn.functional as F
 from paddle.fluid import compiler, Program, program_guard
 
 
@@ -118,13 +118,55 @@ class TestLogSigmoid(TestActivation):
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = np.log(1 / (1 + np.exp(-x)))
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
+
+
+class TestLogSigmoidAPI(unittest.TestCase):
+    # test paddle.nn.LogSigmoid, paddle.nn.functional.logsigmoid
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [11, 17])
+            out1 = F.logsigmoid(x)
+            m = paddle.nn.LogSigmoid()
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.logsigmoid(x)
+        m = paddle.nn.LogSigmoid()
+        out2 = m(x)
+        out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.logsigmoid, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.data(name='x_int32', shape=[11, 17], dtype='int32')
+            self.assertRaises(TypeError, F.logsigmoid, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[11, 17], dtype='float16')
+            F.logsigmoid(x_fp16)
 
 
 class TestTanh(TestActivation, TestParameter):
@@ -344,6 +386,12 @@ class TestTanhShrink(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+def ref_hardshrink(x, threshold):
+    out = np.copy(x)
+    out[(out >= -threshold) & (out <= threshold)] = 0
+    return out
+
+
 class TestHardShrink(TestActivation):
     def setUp(self):
         self.op_type = "hard_shrink"
@@ -351,11 +399,10 @@ class TestHardShrink(TestActivation):
 
         threshold = 0.5
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype) * 10
-        out = np.copy(x)
-        out[(out >= -threshold) & (out <= threshold)] = 0
+        out = ref_hardshrink(x, threshold)
 
-        self.attrs = {'lambda': threshold}
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {'threshold': threshold}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
@@ -364,17 +411,62 @@ class TestHardShrink(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestHardShrinkOpError(unittest.TestCase):
+class TestHardShrinkAPI(unittest.TestCase):
+    # test paddle.nn.Hardshrink, paddle.nn.functional.hardshrink
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12])
+            out1 = F.hardshrink(x)
+            hd = paddle.nn.Hardshrink()
+            out2 = hd(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_hardshrink(self.x_np, 0.5)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_variable(self.x_np)
+        out1 = F.hardshrink(x)
+        hd = paddle.nn.Hardshrink()
+        out2 = hd(x)
+        out_ref = ref_hardshrink(self.x_np, 0.5)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+
+        out1 = F.hardshrink(x, 0.6)
+        hd = paddle.nn.Hardshrink(0.6)
+        out2 = hd(x)
+        out_ref = ref_hardshrink(self.x_np, 0.6)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', [10, 12])
+            out = fluid.layers.hard_shrink(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_hardshrink(self.x_np, 0.5)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
     def test_errors(self):
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.hard_shrink, 1)
+            self.assertRaises(TypeError, F.hardshrink, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.hard_shrink, x_int32)
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.hardshrink, x_int32)
             # support the input dtype is float16
-            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.hard_shrink(x_fp16)
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.hardshrink(x_fp16)
 
 
 class TestSoftShrink(TestActivation):
@@ -594,7 +686,7 @@ class TestRelu(TestActivation):
         x[np.abs(x) < 0.005] = 0.02
         out = np.maximum(x, 0)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
@@ -603,18 +695,46 @@ class TestRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestReluOpError(unittest.TestCase):
+class TestReluAPI(unittest.TestCase):
+    # test paddle.nn.ReLU, paddle.nn.functional.relu
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12])
+            out1 = F.relu(x)
+            m = paddle.nn.ReLU()
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = np.maximum(self.x_np, 0)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.relu(x)
+        m = paddle.nn.ReLU()
+        out2 = m(x)
+        out_ref = np.maximum(self.x_np, 0)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
     def test_errors(self):
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.relu, 1)
+            self.assertRaises(TypeError, F.relu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.relu, x_int32)
+            x_int32 = paddle.data(name='x_int32', shape=[10, 12], dtype='int32')
+            self.assertRaises(TypeError, F.relu, x_int32)
             # support the input dtype is float16
-            x_fp16 = fluid.layers.data(
-                name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.relu(x_fp16)
+            x_fp16 = paddle.data(name='x_fp16', shape=[10, 12], dtype='float16')
+            F.relu(x_fp16)
 
 
 class TestLeakyRelu(TestActivation):
@@ -667,7 +787,7 @@ class TestGeluApproximate(TestActivation):
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = gelu(x, approximate)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"approximate": approximate}
 
@@ -685,7 +805,7 @@ class TestGelu(TestActivation):
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = gelu(x, approximate)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"approximate": approximate}
 
@@ -693,6 +813,55 @@ class TestGelu(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestGELUAPI(unittest.TestCase):
+    # test paddle.nn.GELU, paddle.nn.functional.gelu
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [11, 17])
+            out1 = F.gelu(x)
+            m = paddle.nn.GELU()
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = gelu(self.x_np, False)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.gelu(x)
+        m = paddle.nn.GELU()
+        out2 = m(x)
+        out_ref = gelu(self.x_np, False)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+
+        out1 = F.gelu(x, True)
+        m = paddle.nn.GELU(True)
+        out2 = m(x)
+        out_ref = gelu(self.x_np, True)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.gelu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.data(name='x_int32', shape=[11, 17], dtype='int32')
+            self.assertRaises(TypeError, F.gelu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[11, 17], dtype='float16')
+            F.gelu(x_fp16)
 
 
 class TestBRelu(TestActivation):
@@ -844,6 +1013,11 @@ class TestSoftReluOpError(unittest.TestCase):
             fluid.layers.soft_relu(x_fp16)
 
 
+def elu(x, alpha):
+    out_ref = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
+    return out_ref.astype(x.dtype)
+
+
 class TestELU(TestActivation):
     def setUp(self):
         self.op_type = "elu"
@@ -851,7 +1025,7 @@ class TestELU(TestActivation):
 
         x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
         alpha = 1.
-        out = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
+        out = elu(x, alpha)
         # Note: unlike other Relu extensions, point 0 on standard ELU function (i.e. alpha = 1)
         # is differentiable, so we can skip modifications like x[np.abs(x) < 0.005] = 0.02 here
         self.inputs = {'X': x}
@@ -864,16 +1038,53 @@ class TestELU(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestELUOpError(unittest.TestCase):
+class TestELUAPI(unittest.TestCase):
+    # test paddle.nn.ELU, paddle.nn.functional.elu
+    def setUp(self):
+        self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12])
+            out1 = F.elu(x)
+            m = paddle.nn.ELU()
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = elu(self.x_np, 1.0)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.elu(x)
+        m = paddle.nn.ELU()
+        out2 = m(x)
+        out_ref = elu(self.x_np, 1.0)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+
+        out1 = F.elu(x, 0.2)
+        m = paddle.nn.ELU(0.2)
+        out2 = m(x)
+        out_ref = elu(self.x_np, 0.2)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of elu_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.elu, x1)
-            # The input dtype of elu_op must be float16 float32 or float64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.elu, x2)
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.elu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.data(name='x_int32', shape=[10, 12], dtype='int32')
+            self.assertRaises(TypeError, F.elu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[10, 12], dtype='float16')
+            F.elu(x_fp16)
 
 
 class TestReciprocal(TestActivation):
@@ -1371,141 +1582,6 @@ create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish)
-
-
-class TestNNReluAPI(unittest.TestCase):
-    def setUp(self):
-        self.init_data()
-
-    def init_data(self):
-        self.x_shape = [10, 12]
-        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.y = self.ref_forward(self.x)
-
-    def ref_forward(self, x):
-        return np.maximum(x, 0)
-
-    def ref_backward(self, y, dy):
-        y_t = y.copy()
-        y_t[y_t > 0] = 1
-        return y_t * dy
-
-    def check_api(self, place=fluid.CPUPlace(), inplace=False):
-        main_program = Program()
-        myrelu = nn.ReLU(inplace)
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            x.stop_gradient = False
-            y = myrelu(x)
-            fluid.backward.append_backward(fluid.layers.mean(y))
-        exe = fluid.Executor(place)
-        out = exe.run(main_program,
-                      feed={'x': self.x},
-                      fetch_list=[y, y.grad_name, x.grad_name])
-        self.assertTrue(np.allclose(out[0], self.y))
-        self.assertTrue(np.allclose(out[2], self.ref_backward(self.y, out[1])))
-
-        with fluid.dygraph.guard(place):
-            x = fluid.dygraph.to_variable(self.x)
-            y = myrelu(x)
-        self.assertTrue(np.allclose(y.numpy(), self.y))
-
-    def test_check_api(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for place in places:
-            for inplace in [True, False]:
-                self.check_api(place, inplace)
-
-
-class TestNNFunctionalReluAPI(unittest.TestCase):
-    def setUp(self):
-        self.init_data()
-
-    def init_data(self):
-        self.x_shape = [10, 12]
-        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.y = self.ref_forward(self.x)
-
-    def ref_forward(self, x):
-        return np.maximum(x, 0)
-
-    def test_check_api(self):
-        main_program = Program()
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            y = functional.relu(x)
-        exe = fluid.Executor(fluid.CPUPlace())
-        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
-        self.assertTrue(np.allclose(out[0], self.y))
-
-
-class TestNNSigmoidAPI(unittest.TestCase):
-    def setUp(self):
-        self.init_data()
-
-    def init_data(self):
-        self.x_shape = [10, 15]
-        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.y = self.ref_forward(self.x)
-
-    def ref_forward(self, x):
-        return 1 / (1 + np.exp(-x))
-
-    def ref_backward(self, y, dy):
-        return dy * y * (1 - y)
-
-    def check_api(self, place=fluid.CPUPlace(), inplace=False):
-        main_program = Program()
-        mysigmoid = nn.Sigmoid(inplace)
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            x.stop_gradient = False
-            y = mysigmoid(x)
-            fluid.backward.append_backward(fluid.layers.mean(y))
-        exe = fluid.Executor(place)
-        out = exe.run(main_program,
-                      feed={'x': self.x},
-                      fetch_list=[y, y.grad_name, x.grad_name])
-        self.assertTrue(np.allclose(out[0], self.y))
-        self.assertTrue(np.allclose(out[2], self.ref_backward(self.y, out[1])))
-
-        with fluid.dygraph.guard(place):
-            x = fluid.dygraph.to_variable(self.x)
-            y = mysigmoid(x)
-        self.assertTrue(np.allclose(y.numpy(), self.y))
-
-    def test_check_api(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for place in places:
-            for inplace in [True, False]:
-                self.check_api(place, inplace)
-
-
-class TestNNFunctionalSigmoidAPI(unittest.TestCase):
-    def setUp(self):
-        self.init_data()
-
-    def init_data(self):
-        self.x_shape = [10, 15]
-        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.y = self.ref_forward(self.x)
-
-    def ref_forward(self, x):
-        return 1 / (1 + np.exp(-x))
-
-    def test_check_api(self):
-        main_program = Program()
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            y = functional.sigmoid(x)
-        exe = fluid.Executor(fluid.CPUPlace())
-        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
-        self.assertTrue(np.allclose(out[0], self.y))
-
 
 if __name__ == "__main__":
     unittest.main()

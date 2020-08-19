@@ -452,21 +452,18 @@ def dist(x, y, p=2):
 
 def dot(x, y, name=None):
     """
-	:alias_main: paddle.dot
-	:alias: paddle.dot,paddle.tensor.dot,paddle.tensor.linalg.dot
-
     This operator calculates inner product for vectors.
    
     .. note::
        Only support 1-d Tensor(vector).
 
     Parameters:
-        x(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
-        y(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        x(Tensor): 1-D ``Tensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
+        y(Tensor): 1-D ``Tensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
-        Variable: the calculated result Tensor/LoDTensor.
+        Variable: the calculated result Tensor.
 
     Examples:
 
@@ -475,12 +472,14 @@ def dot(x, y, name=None):
         import paddle
         import paddle.fluid as fluid
         import numpy as np
-        
-        with fluid.dygraph.guard():
-          x = fluid.dygraph.to_variable(np.random.uniform(0.1, 1, [10]).astype(np.float32))
-          y = fluid.dygraph.to_variable(np.random.uniform(1, 3, [10]).astype(np.float32))
-          z = paddle.dot(x, y)
-          print(z.numpy())
+
+        paddle.disable_static()
+        x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
+        y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
+        z = paddle.dot(x, y)
+        print(z.numpy())
 
     """
     op_type = 'dot'
@@ -605,10 +604,10 @@ def cross(x, y, axis=None, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle.imperative import to_variable
+            from paddle import to_variable
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             data_x = np.array([[1.0, 1.0, 1.0],
                                [2.0, 2.0, 2.0],
@@ -651,11 +650,8 @@ def cross(x, y, axis=None, name=None):
     return out
 
 
-def cholesky(x, upper=False):
+def cholesky(x, upper=False, name=None):
     """
-	:alias_main: paddle.cholesky
-	:alias: paddle.cholesky,paddle.tensor.cholesky,paddle.tensor.linalg.cholesky
-
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrice. 
     
@@ -680,21 +676,22 @@ def cholesky(x, upper=False):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
-            with fluid.dygraph.guard():
-                a = np.random.rand(3, 3)
-                a_t = np.transpose(a, [1, 0])
-                x = np.matmul(a, a_t) + 1e-03
-                x = fluid.dygraph.to_variable(x)
-                out = paddle.cholesky(x, upper=False)
-                print(out.numpy())
-                # [[1.190523   0.         0.        ]
-                #  [0.9906703  0.27676893 0.        ]
-                #  [1.25450498 0.05600871 0.06400121]]
+            paddle.disable_static()
+            a = np.random.rand(3, 3)
+            a_t = np.transpose(a, [1, 0])
+            x_data = np.matmul(a, a_t) + 1e-03
+            x = paddle.to_variable(x_data)
+            out = paddle.cholesky(x, upper=False)
+            print(out.numpy())
+            # [[1.190523   0.         0.        ]
+            #  [0.9906703  0.27676893 0.        ]
+            #  [1.25450498 0.05600871 0.06400121]]
 
     """
+    if in_dygraph_mode():
+        return core.ops.cholesky(x, "upper", upper)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
     helper = LayerHelper('cholesky', **locals())
@@ -735,10 +732,10 @@ def bmm(x, y, name=None):
         input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
         input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
 
-        paddle.enable_imperative()
+        paddle.disable_static()
         
-        x = paddle.imperative.to_variable(input1)
-        y = paddle.imperative.to_variable(input2)
+        x = paddle.to_variable(input1)
+        y = paddle.to_variable(input2)
         out = paddle.bmm(x, y)
         #output size: (2, 2, 2)
         #output value:
@@ -782,13 +779,13 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            startup_program = paddle.Program()
-            train_program = paddle.Program()
-            with paddle.program_guard(train_program, startup_program):
+            startup_program = paddle.static.Program()
+            train_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
                 inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
                 output = paddle.histogram(inputs, bins=5, min=1, max=5)
                 place = paddle.CPUPlace()
-                exe = paddle.Executor(place)
+                exe = paddle.static.Executor(place)
                 exe.run(startup_program)
                 img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
                 res = exe.run(train_program,
@@ -800,11 +797,12 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            with paddle.imperative.guard(paddle.CPUPlace()):
-                inputs_np = np.array([1, 2, 1]).astype(np.float)
-                inputs = paddle.imperative.to_variable(inputs_np)
-                result = paddle.histogram(inputs, bins=4, min=0, max=3)
-                print(result) # [0, 2, 1, 0]
+            paddle.disable_static(paddle.CPUPlace())
+            inputs_np = np.array([1, 2, 1]).astype(np.float)
+            inputs = paddle.to_variable(inputs_np)
+            result = paddle.histogram(inputs, bins=4, min=0, max=3)
+            print(result) # [0, 2, 1, 0]
+            paddle.enable_static()
     """
     if in_dygraph_mode():
         return core.ops.histogram(input, "bins", bins, "min", min, "max", max)
