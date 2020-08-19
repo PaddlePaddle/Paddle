@@ -17,20 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-class CReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("c_broadcast");
-    retv->SetInput("X", this->OutputGrad("Out"));
-    retv->SetOutput("Out", this->InputGrad("X"));
-    retv->SetAttrMap(this->Attrs());
-  }
-};
-
 class CReduceSumOpMaker : public CReduceOpMaker {
  protected:
   std::string GetName() const override { return "Sum"; }
@@ -42,10 +28,8 @@ class CReduceSumOpMaker : public CReduceOpMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_reduce_sum, ops::CReduceOp,
-                  ops::CReduceSumOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CReduceSumOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CReduceSumOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(c_reduce_sum, ops::CReduceOp,
+                             ops::CReduceSumOpMaker);
 
 REGISTER_OP_CPU_KERNEL(c_reduce_sum,
                        ops::CReduceOpCPUKernel<ops::kRedSum, float>,

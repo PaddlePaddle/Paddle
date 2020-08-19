@@ -26,6 +26,9 @@ class TestCReduceOp(TestDistBase):
     def test_reduce(self):
         self.check_with_place("collective_reduce_op.py", "reduce")
 
+    def test_reduce_calc_stream(self):
+        self.check_with_place("collective_reduce_op_calc_stream.py", "reduce")
+
 
 if __name__ == '__main__':
     unittest.main()
