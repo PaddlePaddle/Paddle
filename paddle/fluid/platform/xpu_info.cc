@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -44,9 +44,11 @@ static int GetXPUDeviceCountImpl() {
 
   int count = 0;
   int ret = xpu_device_count(&count);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::External("XPU API return wrong value[%d]", ret));
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check where "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
   return count;
 }
 
@@ -58,9 +60,11 @@ int GetXPUDeviceCount() {
 int GetXPUCurrentDeviceId() {
   int dev_id;
   int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::External("XPU API return wrong value[%d]", ret));
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check where "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
 
   if (dev_id >= 64) {
     // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
@@ -92,9 +96,11 @@ void SetXPUDeviceId(int id) {
       id, GetXPUDeviceCount(),
       platform::errors::InvalidArgument("id must less than XPU count"));
   int ret = xpu_set_device(id);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::External("XPU API return wrong value[%d]", ret));
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check where "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
 }
 
 }  // namespace platform

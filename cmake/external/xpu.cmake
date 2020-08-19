@@ -48,10 +48,7 @@ set_property(TARGET shared_xpuapi PROPERTY IMPORTED_LOCATION "${XPU_API_LIB}")
 
 # generate a static dummy target to track xpulib dependencies
 # for cc_library(xxx SRCS xxx.c DEPS xpulib)
-SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/xpulib_dummy.c)
-FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
-ADD_LIBRARY(xpulib STATIC ${dummyfile})
+generate_dummy_static_lib(LIB_NAME "xpulib" GENERATOR "xpu.cmake")
 
 TARGET_LINK_LIBRARIES(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_SIM_LIB})
-
-#ADD_DEPENDENCIES(xpuapi ${XPU_PROJECT})
+ADD_DEPENDENCIES(xpulib ${XPU_PROJECT})

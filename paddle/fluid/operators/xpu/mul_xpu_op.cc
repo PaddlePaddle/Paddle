@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,9 +64,11 @@ class MulXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int ret = xpu::fc_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k,
                             alpha, data_a, data_b, beta, data_c);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External("XPU API return wrong value[%d]", ret));
+    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                      platform::errors::External(
+                          "XPU API return wrong value[%d], please check where "
+                          "Baidu Kunlun Card is properly installed.",
+                          ret));
     if (z_dim.size() != 2) {
       z->Resize(z_dim);
     }
@@ -126,9 +128,11 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       int ret =
           xpu::gemm_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k, alpha,
                           data_a, lda, data_b, ldb, beta, data_c, ldc);
-      PADDLE_ENFORCE_EQ(
-          ret, XPU_SUCCESS,
-          platform::errors::External("XPU API return wrong value[%d]", ret));
+      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                        platform::errors::External(
+                            "XPU API return wrong value[%d], please check "
+                            "where Baidu Kunlun Card is properly installed.",
+                            ret));
     }
 
     if (dy) {
@@ -157,9 +161,11 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       int ret =
           xpu::gemm_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k, alpha,
                           data_a, lda, data_b, ldb, beta, data_c, ldc);
-      PADDLE_ENFORCE_EQ(
-          ret, XPU_SUCCESS,
-          platform::errors::External("XPU API return wrong value[%d]", ret));
+      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                        platform::errors::External(
+                            "XPU API return wrong value[%d], please check "
+                            "where Baidu Kunlun Card is properly installed.",
+                            ret));
     }
   }
 };

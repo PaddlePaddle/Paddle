@@ -251,7 +251,7 @@ if(WITH_GPU)
 endif(WITH_GPU)
 
 if(WITH_XPU)
-    include(external/xpu)          # download, build, install pslib
+    include(external/xpu)          # download, build, install xpu
     list(APPEND third_party_deps extern_xpu)
 endif(WITH_XPU)
 

@@ -111,29 +111,37 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
   void *p = nullptr;
   int dev_id = -1;
   int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::External("XPU API return wrong value[%d]", ret));
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check where "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
   if (dev_id >= 64) {
     // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
     dev_id -= 64;
   }
   ret = xpu_set_device(place.device);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::External("XPU API return wrong value[%d]", ret));
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check where "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
   ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::External("XPU API return wrong value[%d]", ret));
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check where "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
   if (FLAGS_init_allocated_mem) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "xpu memory FLAGS_init_allocated_mem is not implemented."));
   }
   ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::External("XPU API return wrong value[%d]", ret));
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check where "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
   VLOG(10) << "  pointer=" << p;
   return p;
 #else
@@ -151,22 +159,28 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   int dev_id = -1;
   int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::External("XPU API return wrong value[%d]", ret));
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check where "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
   if (dev_id >= 64) {
     // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
     dev_id -= 64;
   }
   ret = xpu_set_device(place.device);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::External("XPU API return wrong value[%d]", ret));
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check where "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
   xpu_free(p);
   ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
-      platform::errors::External("XPU API return wrong value[%d]", ret));
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check where "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
