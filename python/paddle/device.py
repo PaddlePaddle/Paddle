@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: define the functions to manipulate devices 
 from paddle.fluid import core
 from paddle.fluid import framework
 import re
+
 __all__ = [
+    'get_cudnn_version',
     'set_device',
     'get_device'
     #            'cpu_places',
@@ -26,6 +29,40 @@ __all__ = [
     #            'CUDAPlace',
     #            'is_compiled_with_cuda'
 ]
+
+_cudnn_version = None
+
+
+def get_cudnn_version():
+    """
+    This funciton return the version of cudnn. the retuen value is int which represents the 
+    cudnn version. For example, if it return 7600, it represents the version of cudnn is 7.6.
+    
+    Returns:
+        int: A int value which represents the cudnn version. If cudnn version is not installed, it return None.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+
+            cudnn_version = get_cudnn_version()
+
+
+
+    """
+    global _cudnn_version
+    if not core.is_compiled_with_cuda():
+        return None
+    if _cudnn_version is None:
+        cudnn_version = int(core.cudnn_version())
+        _cudnn_version = cudnn_version
+        if _cudnn_version < 0:
+            return None
+        else:
+            return cudnn_version
+    else:
+        return _cudnn_version
 
 
 def set_device(device):
