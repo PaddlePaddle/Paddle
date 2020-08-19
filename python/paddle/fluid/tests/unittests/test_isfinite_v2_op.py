@@ -38,7 +38,7 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
 
 def run_dygraph(x_np, op_str, use_gpu=True):
     place = paddle.CPUPlace()
-    if use_gpu:
+    if use_gpu and fluid.core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
     x = paddle.to_variable(x_np)
