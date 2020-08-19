@@ -347,9 +347,6 @@ class Pad2D(layers.Layer):
 
 class AlphaDropout(layers.Layer):
     """
-        :alias_main: paddle.nn.AlphaDropout
-        :alias: paddle.nn.AlphaDropout,paddle.nn.layer.AlphaDropout,paddle.nn.layer.common.AlphaDropout
-
     AlphaDropout Layer.
     This interface is used to construct a callable object of the `AlphaDropout` class.
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
@@ -361,7 +358,7 @@ class AlphaDropout(layers.Layer):
     [Self-Normalizing Neural Networks](https://arxiv.org/abs/1706.02515)
     `paddle.nn.functional.alpha_dropout`
 
-    In dygraph mode, please use ``eval()`` to indicate whether it is in test phrase or not.
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
         p (float, optional): Probability of setting units to zero. Default: 0.5

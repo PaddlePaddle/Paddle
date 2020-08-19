@@ -456,9 +456,6 @@ def interpolate(input,
 
 def alpha_dropout(x, p=0.5, training=True, name=None):
     """
-    :alias_main: paddle.nn.functional.alpha_dropout
-	:alias: paddle.nn.functional.alpha_dropout,paddle.nn.functional.common.alpha_dropout
-
     alpha_dropout function.
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
     zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
@@ -520,12 +517,12 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
             keep_mask)
 
         #apply mask
-        alpha_p = layers.fill_constant(shape=[1], dtype=dtype, value=alpha_p)
-        a = layers.fill_constant(shape=[1], dtype=dtype, value=a)
         b = layers.fill_constant(shape=[1], dtype=dtype, value=b)
         y = layers.elementwise_add(
-            paddle.multiply(x, keep_mask), paddle.multiply(alpha_p, drop_mask))
-        res = layers.elementwise_add(paddle.multiply(a, y), b, name=name)
+            paddle.multiply(x, keep_mask),
+            layers.scale(
+                drop_mask, scale=alpha_p))
+        res = layers.elementwise_add(layers.scale(y, scale=a), b, name=name)
         return res
     else:  # test
         return x
