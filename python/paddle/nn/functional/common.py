@@ -14,21 +14,26 @@
 
 import warnings
 from ...fluid import layers
+from ...fluid.framework import in_dygraph_mode, core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.tensor import Variable, fill_constant
+from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 
 # TODO: define the common functions to build a neural network  
 from ...fluid.layers import dropout  #DEFINE_ALIAS
 from ...fluid.layers import label_smooth  #DEFINE_ALIAS
 from ...fluid import one_hot  #DEFINE_ALIAS
-from ...fluid.layers import pad  #DEFINE_ALIAS
 from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
 from ...fluid.layers import assign  #DEFINE_ALIAS
+from ...fluid.layers import squeeze  #DEFINE_ALIAS
+from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
+from ...fluid.layers import elementwise_mul  #DEFINE_ALIAS
+from ...tensor import clamp  #DEFINE_ALIAS
+from ...tensor import sum  #DEFINE_ALIAS
+from ...tensor import sqrt  #DEFINE_ALIAS
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
 from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
-from ...fluid.framework import in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype
 
 import paddle
@@ -46,7 +51,8 @@ __all__ = [
     'unfold',
     #       'bilinear_tensor_product',
     'assign',
-    'interpolate'
+    'interpolate',
+    'cosine_similarity',
 ]
 
 
@@ -526,3 +532,235 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         return res
     else:  # test
         return x
+
+
+def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
+    """
+    Pad tensor according to 'pad' and 'mode'.
+    If mode is 'reflect', pad[0] and pad[1] must be no greater
+    than width-1. The height and depth dimension has the same condition.
+
+    Parameters:
+        x (Tensor): The input tensor with data type float32/double/int32/int64_t.
+        pad (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+            of input will be padded. 1. If input dimension is 3, then the pad has the form (pad_left,
+            pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
+            pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
+            (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
+            
+        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+            When in 'constant' mode, this op uses a constant value to pad the input tensor.
+            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+            When in 'replicate' mode, uses input boundaries to pad the input tensor.
+            When in 'circular' mode, uses circular input to pad the input tensor.
+            Default is 'constant'
+        value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
+        data_format (str): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
+           the input data.
+           Default is  "NCHW"
+        name (str, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+                    
+    Returns: a Tensor padded according to pad and mode and data type is same as input.
+    Return Type: Tensor
+
+    Examples:
+        .. code-block:: text
+
+            x = [[[[[1., 2., 3.],
+                    [4., 5., 6.]]]]]
+
+            Case 0:
+                pad = [2, 2, 1, 1, 0, 0],
+                mode = 'constant'
+                value = 0
+                Out = [[[[[0. 0. 0. 0. 0. 0. 0.]
+                          [0. 0. 1. 2. 3. 0. 0.]
+                          [0. 0. 4. 5. 6. 0. 0.]
+                          [0. 0. 0. 0. 0. 0. 0.]]]]]
+
+            Case 1:
+                pad = [2, 2, 1, 1, 0, 0],
+                mode = 'reflect'
+                Out = [[[[[6. 5. 4. 5. 6. 5. 4.]
+                          [3. 2. 1. 2. 3. 2. 1.]
+                          [6. 5. 4. 5. 6. 5. 4.]
+                          [3. 2. 1. 2. 3. 2. 1.]]]]]
+
+            Case 2:
+                pad = [2, 2, 1, 1, 0, 0],
+                mode = 'replicate'
+                Out = [[[[[1. 1. 1. 2. 3. 3. 3.]
+                          [1. 1. 1. 2. 3. 3. 3.]
+                          [4. 4. 4. 5. 6. 6. 6.]
+                          [4. 4. 4. 5. 6. 6. 6.]]]]]
+
+            Case 3:
+                pad = [2, 2, 1, 1, 0, 0],
+                mode = 'circular'
+                Out = [[[[[5. 6. 4. 5. 6. 4. 5.]
+                          [2. 3. 1. 2. 3. 1. 2.]
+                          [5. 6. 4. 5. 6. 4. 5.]
+                          [2. 3. 1. 2. 3. 1. 2.]]]]]
+
+    Code Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            
+            paddle.disable_static()
+            
+            # example 1
+            x_shape = (1, 1, 3)
+            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
+            tensor_x = paddle.to_tensor(x)
+            y = F.pad(tensor_x, pad=[2, 3], value=1, mode='constant')
+            print(y.numpy())
+            # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
+            
+            # example 2
+            x_shape = (1, 1, 2, 3)
+            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
+            tensor_x = paddle.to_tensor(x)
+            y = F.pad(tensor_x, pad=[1, 2, 1, 1], value=1, mode='circular')
+            print(y.numpy())
+            # [[[[6. 4. 5. 6. 4. 5.]
+            #    [3. 1. 2. 3. 1. 2.]
+            #    [6. 4. 5. 6. 4. 5.]
+            #    [3. 1. 2. 3. 1. 2.]]]]
+    """
+    assert mode in ['reflect', 'replicate', 'constant', 'circular'], \
+            "mode should be one of constant, reflect, replicate, circular, but got {}.".format(mode)
+
+    data_format = data_format.upper()
+    assert data_format in ["NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC"], \
+        "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], " \
+        "but got {}".format(data_format)
+
+    x_dim = len(x.shape)
+
+    original_data_format = data_format
+    unsqueezed_dim = []
+
+    if isinstance(pad, Variable):
+        if data_format in ["NCL", "NCHW", "NCDHW"]:
+            data_format = "NCDHW"
+            if x_dim == 3:
+                pad = concat([zeros((4, ), dtype="int32"), pad], axis=0)
+                unsqueezed_dim = [3, 4]
+                x = unsqueeze(x, axes=unsqueezed_dim)
+            elif x_dim == 4:
+                pad = concat([pad, zeros((2, ), dtype="int32")], axis=0)
+                unsqueezed_dim = [2]
+                x = unsqueeze(x, axes=unsqueezed_dim)
+        elif data_format in ["NLC", "NHWC", "NDHWC"]:
+            data_format = "NDHWC"
+            if x_dim == 3:
+                pad = concat([zeros((4, ), dtype="int32"), pad], axis=0)
+                unsqueezed_dim = [2, 3]
+                x = unsqueeze(x, axes=unsqueezed_dim)
+            elif x_dim == 4:
+                pad = concat([pad, zeros((2, ), dtype="int32")], axis=0)
+                unsqueezed_dim = [1]
+                x = unsqueeze(x, axes=unsqueezed_dim)
+    else:
+        if data_format in ["NCL", "NCHW", "NCDHW"]:
+            data_format = "NCDHW"
+            if x_dim == 3:
+                pad = [0, 0, 0, 0] + pad
+                unsqueezed_dim = [3, 4]
+                x = unsqueeze(x, axes=unsqueezed_dim)
+            elif x_dim == 4:
+                pad = pad + [0, 0]
+                unsqueezed_dim = [2]
+                x = unsqueeze(x, axes=unsqueezed_dim)
+        elif data_format in ["NLC", "NHWC", "NDHWC"]:
+            data_format = "NDHWC"
+            if x_dim == 3:
+                pad = [0, 0, 0, 0] + pad
+                unsqueezed_dim = [2, 3]
+                x = unsqueeze(x, axes=unsqueezed_dim)
+            elif x_dim == 4:
+                pad = pad + [0, 0]
+                unsqueezed_dim = [1]
+                x = unsqueeze(x, axes=unsqueezed_dim)
+
+    if in_dygraph_mode():
+        if isinstance(pad, Variable):
+            pad = pad.numpy()
+        out = core.ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
+                             "data_format", data_format, "name", name)
+    else:
+        attrs = {'mode': mode, 'value': value, 'data_format': data_format}
+        inputs = {'X': [x]}
+        if isinstance(pad, Variable):
+            inputs['Paddings'] = [pad]
+            attrs['paddings'] = []
+        else:
+            attrs['paddings'] = pad
+
+        helper = LayerHelper('pad3d', **locals())
+
+        dtype = helper.input_dtype(input_param_name='input')
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
+
+    if len(unsqueezed_dim) != 0:
+        out = squeeze(out, axes=unsqueezed_dim)
+
+    return out
+
+
+def cosine_similarity(x1, x2, dim=1, eps=1e-8):
+    """
+    Compute cosine similarity between x1 and x2 along dim.
+
+    Parameters:
+        x1 (Tensor): First input. float32/double.
+        x2 (Tensor): Second input. float32/double.
+        dim (int): Dimension of vectors to compute cosine similarity. Default is 1.
+        eps(float): Small value to avoid division by zero. Default is 1e-8.
+                    
+    Returns: a Tensor representing cosine similarity between x1 and x2 along dim.
+    Return Type: Tensor
+
+    Examples:
+        .. code-block:: text
+            Case 0:
+                x1 = [[0.8024077  0.9927354  0.27238318 0.8344984 ]
+                     [0.48949873 0.5797396  0.65444374 0.66510963]
+                     [0.1031398  0.9614342  0.08365563 0.6796464 ]
+                     [0.10760343 0.7461209  0.7726148  0.5801006 ]]
+                x2 = [[0.62913156 0.1536727  0.9847992  0.04591406]
+                     [0.9098952  0.15715368 0.8671125  0.3156102 ]
+                     [0.4427798  0.54136837 0.5276275  0.32394758]
+                     [0.3769419  0.8535014  0.48041078 0.9256797 ]]
+                dim = 1
+                eps = 1e-8
+                Out: [0.5275037  0.8368967  0.75037485 0.9245899]
+
+    Code Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.nn as nn
+            import numpy as np
+            paddle.disable_static()
+
+            np.random.seed(0)
+            x1 = np.random.rand(2,3)
+            x2 = np.random.rand(2,3)
+            x1 = paddle.to_tensor(x1)
+            x2 = paddle.to_tensor(x2)
+            result = paddle.nn.functional.cosine_similarity(x1, x2, dim=0)
+            print(result.numpy())
+            # [0.99806249 0.9817672  0.94987036]
+            
+    """
+    w12 = sum(elementwise_mul(x1, x2), dim=dim)
+    w1 = sum(elementwise_mul(x1, x1), dim=dim)
+    w2 = sum(elementwise_mul(x2, x2), dim=dim)
+    n12 = sqrt(clamp(w1 * w2, min=eps * eps))
+    cos_sim = w12 / n12
+    return cos_sim
