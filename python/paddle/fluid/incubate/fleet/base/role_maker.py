@@ -93,15 +93,13 @@ class RoleMakerBase(object):
         """
         return is_worker() of current process
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def is_server(self):
         """
         return is_server() of current process
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def is_first_worker(self):
         """
@@ -110,8 +108,7 @@ class RoleMakerBase(object):
             bool: True if this is the first node of worker,
                   False if not.
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def worker_num(self):
         """
@@ -120,8 +117,7 @@ class RoleMakerBase(object):
         Returns:
             int: worker number
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def role_id(self):
         return self.worker_index() if self.is_worker() else self.server_index()
@@ -133,8 +129,7 @@ class RoleMakerBase(object):
         Returns:
             int: node id
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def server_index(self):
         """
@@ -143,8 +138,7 @@ class RoleMakerBase(object):
         Returns:
             int: node id
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def get_trainer_endpoints(self):
         """
@@ -206,8 +200,7 @@ class RoleMakerBase(object):
 
         This function only implement in PaddleCloudRoleMaker currently
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def _heter_worker_num(self):
         """
@@ -218,8 +211,7 @@ class RoleMakerBase(object):
         Returns:
             int: worker number
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def _get_heter_worker_endpoints(self):
         """
@@ -233,7 +225,8 @@ class RoleMakerBase(object):
         return Corresponding heter equipment's endpoint
         """
         assert self._heter_trainer_endpoints != []
-        return self._heter_trainer_endpoints[(self._current_id+1) % self._heter_worker_num()]
+        return self._heter_trainer_endpoints[(self._current_id + 1) %
+                                             self._heter_worker_num()]
 
     def _get_heter_worker_device(self):
         """
@@ -314,8 +307,7 @@ class MPIRoleMaker(RoleMakerBase):
         """
         generate_role() should be called to identify current process's role
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
 
 class MPISymetricRoleMaker(MPIRoleMaker):
@@ -561,19 +553,25 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
                     training_role = os.environ["TRAINING_ROLE"]
 
-                    if training_role not in ["TRAINER", "PSERVER", "HETER_TRAINER"]:
+                    if training_role not in [
+                            "TRAINER", "PSERVER", "HETER_TRAINER"
+                    ]:
                         raise ValueError(
-                            "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER")
+                            "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER"
+                        )
 
-                    heter_trainer_eplist = os.environ["PADDLE_HETER_TRAINER_IP_PORT_LIST"]
-                    heter_trainer_device = os.environ["PADDLE_HETER_TRAINER_DEVICE"]
+                    heter_trainer_eplist = os.getenv(
+                        "PADDLE_HETER_TRAINER_IP_PORT_LIST", None)
+                    heter_trainer_device = os.getenv(
+                        "PADDLE_HETER_TRAINER_DEVICE", None)
                     if heter_trainer_eplist and heter_trainer_device:
                         try:
-                            heter_trainer_eplist = os.environ["PADDLE_HETER_TRAINER_IP_PORT_LIST"].split(
-                                ",")
+                            heter_trainer_eplist = os.environ[
+                                "PADDLE_HETER_TRAINER_IP_PORT_LIST"].split(",")
                         except:
                             raise ValueError(
-                                "Can not Find PADDLE_HETER_TRAINER_IP_PORT_LIST in env or its format does not match the requirement.")
+                                "Can not Find PADDLE_HETER_TRAINER_IP_PORT_LIST in env or its format does not match the requirement."
+                            )
 
                         self.is_heter_parameter_server = True
                         heter_trainers_num = len(heter_trainer_eplist)
@@ -586,7 +584,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                             self._heter_trainer_device = Device.XPU
                         else:
                             raise ValueError(
-                                "Heter Trainer doesn't support {} now, please use cpu / gpu / xpu".format(heter_trainer_device))
+                                "Heter Trainer doesn't support {} now, please use cpu / gpu / xpu".
+                                format(heter_trainer_device))
                     else:
                         self.is_heter_parameter_server = False
                         heter_trainers_num = 0
@@ -608,7 +607,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                         current_id = heter_trainer_eplist.index(curr_endpoint)
                     else:
                         raise ValueError(
-                            "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER")
+                            "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER"
+                        )
                 except ValueError as ve:
                     raise ValueError(
                         "something wrong with PaddleCloud, please check environment"
@@ -722,8 +722,7 @@ class GeneralRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
             training_role = os.environ["TRAINING_ROLE"]
-            worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(
-                ",")
+            worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(",")
             trainers_num = len(worker_endpoints)
             if training_role not in ["TRAINER", "PSERVER"]:
                 raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
