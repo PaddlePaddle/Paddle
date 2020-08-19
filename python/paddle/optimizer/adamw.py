@@ -183,33 +183,52 @@ class AdamW(DecoupledWeightDecay, Adam):
 
     Examples:
         .. code-block:: python
+            import paddle
+            import numpy as np
 
-          import paddle.fluid as fluid
-          import paddle
-          import numpy
+            paddle.disable_static()
+            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            linear = paddle.nn.Linear(10, 10)
+            inp = paddle.to_tensor(inp)
+            out = linear(inp)
+            loss = paddle.mean(out)
 
-          # First create the Executor.
-          place = fluid.CPUPlace() # fluid.CUDAPlace(0)
-          exe = fluid.Executor(place)
+            beta1 = paddle.to_tensor([0.9], dtype="float32")
+            beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-          train_program = fluid.Program()
-          startup_program = fluid.Program()
-          with fluid.program_guard(train_program, startup_program):
-              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-              hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
-              adam = paddle.optimizer.AdamW(learning_rate=0.2)
-              adam.minimize(loss)
+            adam = paddle.optimizer.AdamW(learning_rate=0.1,
+                    parameters=linear.parameters(),
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01)
+            out.backward()
+            adam.step()
+            adam.clear_grad()
 
-          # Run the startup program once and only once.
-          exe.run(startup_program)
-
-          x = numpy.random.random(size=(10, 1)).astype('float32')
-          outs = exe.run(program=train_program,
-                        feed={'X': x},
-                         fetch_list=[loss.name])
     """
 
-    def __init__(self, weight_decay, apply_decay_param_fun=None, **kwargs):
+    def __init__(self,
+                 weight_decay,
+                 apply_decay_param_fun=None,
+                 learning_rate=0.001,
+                 parameters=None,
+                 beta1=0.9,
+                 beta2=0.999,
+                 epsilon=1e-8,
+                 grad_clip=None,
+                 name=None,
+                 lazy_mode=False):
+        args_dict = {
+            "learning_rate": learning_rate,
+            "parameters": parameters,
+            "beta1": beta1,
+            "beta2": beta2,
+            "epsilon": epsilon,
+            "grad_clip": grad_clip,
+            "name": name,
+            "lazy_mode": lazy_mode
+        }
         super(AdamW, self).__init__(
-            weight_decay, apply_decay_param_fun=apply_decay_param_fun, **kwargs)
+            weight_decay,
+            apply_decay_param_fun=apply_decay_param_fun,
+            **args_dict)

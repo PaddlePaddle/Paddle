@@ -84,87 +84,45 @@ class Adam(Optimizer):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import numpy as np
 
-            place = fluid.CPUPlace()
-            main = fluid.Program()
-            with fluid.program_guard(main):
-                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
-                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-                y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
-
-                adam_optimizer = paddle.optimizer.Adam(0.01)
-                adam_optimizer.minimize(avg_cost)
-
-                fetch_list = [avg_cost]
-                train_reader = paddle.batch(
-                    paddle.dataset.uci_housing.train(), batch_size=1)
-                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-                exe = fluid.Executor(place)
-                exe.run(fluid.default_startup_program())
-                for data in train_reader():
-                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+            paddle.disable_static()
+            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            linear = paddle.nn.Linear(10, 10)
+            inp = paddle.to_tensor(inp)
+            out = linear(inp)
+            loss = paddle.mean(out)
+            adam = paddle.optimizer.Adam(learning_rate=0.1,
+                    parameters=linear.parameters())
+            out.backward()
+            adam.step()
+            adam.clear_grad()
 
         .. code-block:: python
 
-            # Adam with beta1/beta2 as Tensor
+            # Adam with beta1/beta2 as Tensor and weight_decay as float
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
+            import numpy as np
 
-            place = fluid.CPUPlace()
-            main = fluid.Program()
-            with fluid.program_guard(main):
-                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
-                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-                y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+            paddle.disable_static()
+            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            linear = paddle.nn.Linear(10, 10)
+            inp = paddle.to_tensor(inp)
+            out = linear(inp)
+            loss = paddle.mean(out)
 
-                # define beta decay Tensor
-                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate):
-                    global_step = lr_scheduler._decay_step_counter()
+            beta1 = paddle.to_tensor([0.9], dtype="float32")
+            beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-                    beta1 = fluid.layers.create_global_var(
-                        shape=[1],
-                        value=float(beta1_init),
-                        dtype='float32',
-                        # set persistable for save checkpoints and resume
-                        persistable=True,
-                        name="beta1")
-                    beta2 = fluid.layers.create_global_var(
-                        shape=[1],
-                        value=float(beta2_init),
-                        dtype='float32',
-                        # set persistable for save checkpoints and resume
-                        persistable=True,
-                        name="beta2")
+            adam = paddle.optimizer.Adam(learning_rate=0.1,
+                    parameters=linear.parameters(),
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01)
+            out.backward()
+            adam.step()
+            adam.clear_grad()
 
-                    div_res = global_step / decay_steps
-                    decayed_beta1 = beta1_init * (decay_rate**div_res)
-                    decayed_beta2 = beta2_init * (decay_rate**div_res)
-                    fluid.layers.assign(decayed_beta1, beta1)
-                    fluid.layers.assign(decayed_beta2, beta2)
-
-                    return beta1, beta2
-
-                beta1, beta2 = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
-                adam_optimizer = paddle.optimizer.Adam(
-                                                    learning_rate=0.01,
-                                                    beta1=beta1,
-                                                    beta2=beta2)
-                adam_optimizer.minimize(avg_cost)
-
-                fetch_list = [avg_cost]
-                train_reader = paddle.batch(
-                    paddle.dataset.uci_housing.train(), batch_size=1)
-                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-                exe = fluid.Executor(place)
-                exe.run(fluid.default_startup_program())
-                for data in train_reader():
-                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"

@@ -140,6 +140,7 @@ class Optimizer(object):
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
+        self.clear_grad = self.clear_gradients
 
     @framework.dygraph_only
     def state_dict(self):
