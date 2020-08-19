@@ -239,7 +239,9 @@ class TensorDataset(Dataset):
         Dataset: a Dataset instance wrapping tensors.
 
     Examples:
+
         .. code-block:: python
+
 	    import numpy as np
 	    import paddle.fluid as fluid
 	    from paddle.io import TensorDataset
