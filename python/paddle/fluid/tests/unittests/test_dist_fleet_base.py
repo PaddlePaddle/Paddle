@@ -32,8 +32,8 @@ import tempfile
 import unittest
 
 import paddle.fluid as fluid
-import paddle.fleet.base.role_maker as role_maker
-from paddle.fleet.base.util_factory import fleet_util
+import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.base.util_factory import fleet_util
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
@@ -278,6 +278,23 @@ class TestFleetBase(unittest.TestCase):
 
         tr0_ret = tr0.returncode
         tr1_ret = tr0.returncode
+        if tr0_ret != 0:
+            print(
+                "========================Error tr0_err begin==========================="
+            )
+            os.system("cat {}".format(tempfile.gettempdir() + "/tr0_err.log"))
+            print(
+                "========================Error tr0_err end==========================="
+            )
+
+        if tr1_ret != 0:
+            print(
+                "========================Error tr1_err begin==========================="
+            )
+            os.system("cat {}".format(tempfile.gettempdir() + "/tr1_err.log"))
+            print(
+                "========================Error tr1_err end==========================="
+            )
 
         self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
         self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")

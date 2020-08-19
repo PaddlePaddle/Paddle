@@ -195,6 +195,12 @@ function cmake_base() {
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     grpc_flag=${WITH_GRPC:-${distibuted_flag}}
 
+    if [ "$SYSTEM" == "Darwin" ]; then
+        gloo_flag="OFF"
+    else
+        gloo_flag=${distibuted_flag}
+    fi
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -219,6 +225,7 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
+	    -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DLITE_GIT_TAG=develop
     ========================================
@@ -249,6 +256,7 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
+	    -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
         -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
@@ -562,6 +570,7 @@ function generate_upstream_develop_api_spec() {
 }
 
 function generate_api_spec() {
+    set -e
     spec_kind=$2
     if [ "$spec_kind" != "PR" ] && [ "$spec_kind" != "DEV" ]; then
         echo "Not supported $2"
@@ -572,7 +581,8 @@ function generate_api_spec() {
     cd ${PADDLE_ROOT}/build/.check_api_workspace
     virtualenv .${spec_kind}_env
     source .${spec_kind}_env/bin/activate
-    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    pip install -r ${PADDLE_ROOT}/python/requirements.txt
+    pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
 
@@ -1267,9 +1277,13 @@ EOF
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+    EXIT_CODE=$?
     fluid_endTime_s=`date +%s`
     echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
     ./clean.sh
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
 }
 
 function test_fluid_lib_train() {
@@ -1281,9 +1295,13 @@ EOF
     fluid_train_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/train/demo
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
+    EXIT_CODE=$?
     fluid_train_endTime_s=`date +%s`
     echo "test_fluid_lib_train Total Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
     ./clean.sh
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
 }
 
 function build_document_preview() {
@@ -1387,7 +1405,7 @@ function main() {
       test_inference)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
-        test_fluid_lib_train
+        #test_fluid_lib_train
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}

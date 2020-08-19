@@ -13,5 +13,46 @@
 # limitations under the License.
 
 # TODO: define framework api 
-# __all__ = ['set_default_dtype',
-#            'get_default_dtype']
+from paddle.fluid.layer_helper_base import LayerHelperBase
+from paddle.fluid.data_feeder import convert_dtype
+
+__all__ = ['set_default_dtype', 'get_default_dtype']
+
+
+def set_default_dtype(d):
+    """
+    Set default dtype. The default dtype is initially float32
+
+    Args:
+        d(string|np.dtype): the dtype to make the default
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.set_default_dtype("float32")
+
+    """
+    d = convert_dtype(d)
+    LayerHelperBase.set_default_dtype(d)
+
+
+def get_default_dtype():
+    """
+    Get the current default dtype. The default dtype is initially float32
+
+    Args:
+        None.
+    Returns:
+        The default dtype.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.get_default_dtype()
+    """
+    return LayerHelperBase.get_default_dtype()

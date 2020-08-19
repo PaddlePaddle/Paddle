@@ -14,6 +14,8 @@
 
 import unittest
 import paddle
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
 import os
 
 
@@ -26,67 +28,49 @@ class TestFleetBase(unittest.TestCase):
                        "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_init(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
 
     def test_is_first_worker(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         if fleet.is_first_worker():
             print("test fleet first worker done.")
 
     def test_worker_index(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         print(fleet.worker_index())
 
     def test_worker_num(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         print(fleet.worker_num())
 
     def test_is_worker(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         if fleet.is_worker():
             print("test fleet is worker")
 
     def test_worker_endpoints(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         print(fleet.worker_endpoints(to_string=True))
 
     def test_server_num(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         if fleet.is_server():
             print("fleet server num: {}".format(fleet.server_num()))
 
     def test_server_index(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         if fleet.is_server():
             print("fleet server index: {}".format(fleet.server_index()))
 
     def test_server_endpoints(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         if fleet.is_server():
@@ -94,66 +78,48 @@ class TestFleetBase(unittest.TestCase):
                 fleet.server_endpoints(to_string=True)))
 
     def test_is_server(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         if fleet.is_server():
             print("test fleet is server")
 
     def test_util(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         self.assertEqual(fleet.util, None)
 
     def test_barrier_worker(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         if fleet.is_worker():
             fleet.barrier_worker()
 
     def test_init_worker(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         if fleet.is_worker():
             fleet.init_worker()
 
     def test_run_server(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         if fleet.is_worker():
             fleet.run_worker()
 
     def test_stop_worker(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         if fleet.is_worker():
             fleet.stop_worker()
 
     def test_distributed_optimizer(self):
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        strategy = fleet.DistributedStrategy()
+
         optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer = fleet.distributed_optimizer(optimizer)
 
     def test_minimize(self):
-        import paddle
-        import paddle.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')

@@ -41,9 +41,9 @@ class TestMultiplyAPI(unittest.TestCase):
             return res
 
     def __run_dynamic_graph_case(self, x_data, y_data, axis=-1):
-        paddle.enable_imperative()
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        paddle.disable_static()
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         res = paddle.multiply(x, y, axis=axis)
         return res.numpy()
 
@@ -107,7 +107,7 @@ class TestMultiplyError(unittest.TestCase):
     def test_errors(self):
         """test_errors."""
         # test static computation graph: dtype can not be int8
-        paddle.disable_imperative()
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x = paddle.nn.data(name='x', shape=[100], dtype=np.int8)
             y = paddle.nn.data(name='y', shape=[100], dtype=np.int8)
@@ -121,18 +121,18 @@ class TestMultiplyError(unittest.TestCase):
 
         np.random.seed(7)
         # test dynamic computation graph: dtype can not be int8
-        paddle.enable_imperative()
+        paddle.disable_static()
         x_data = np.random.randn(200).astype(np.int8)
         y_data = np.random.randn(200).astype(np.int8)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
 
         # test dynamic computation graph: inputs must be broadcastable
         x_data = np.random.rand(200, 5)
         y_data = np.random.rand(200)
-        x = paddle.imperative.to_variable(x_data)
-        y = paddle.imperative.to_variable(y_data)
+        x = paddle.to_variable(x_data)
+        y = paddle.to_variable(y_data)
         self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
 
 

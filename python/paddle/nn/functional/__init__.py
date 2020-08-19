@@ -29,7 +29,7 @@ from .activation import brelu  #DEFINE_ALIAS
 from .activation import elu  #DEFINE_ALIAS
 from .activation import erf  #DEFINE_ALIAS
 from .activation import gelu  #DEFINE_ALIAS
-from .activation import hard_shrink  #DEFINE_ALIAS
+from .activation import hardshrink  #DEFINE_ALIAS
 from .activation import hard_sigmoid  #DEFINE_ALIAS
 from .activation import hard_swish  #DEFINE_ALIAS
 from .activation import hsigmoid  #DEFINE_ALIAS
@@ -60,6 +60,7 @@ from .common import one_hot  #DEFINE_ALIAS
 from .common import pad  #DEFINE_ALIAS
 from .common import pad_constant_like  #DEFINE_ALIAS
 from .common import pad2d  #DEFINE_ALIAS
+from .common import cosine_similarity  #DEFINE_ALIAS
 from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
 from .common import assign  #DEFINE_ALIAS
@@ -128,10 +129,12 @@ from .loss import dice_loss  #DEFINE_ALIAS
 from .loss import edit_distance  #DEFINE_ALIAS
 from .loss import huber_loss  #DEFINE_ALIAS
 from .loss import iou_similarity  #DEFINE_ALIAS
-from .loss import kldiv_loss  #DEFINE_ALIAS
+from .loss import kl_div  #DEFINE_ALIAS
+from .loss import l1_loss  #DEFINE_ALIAS
 from .loss import log_loss  #DEFINE_ALIAS
-from .loss import margin_rank_loss  #DEFINE_ALIAS
+from .loss import margin_ranking_loss  #DEFINE_ALIAS
 from .loss import mse_loss  #DEFINE_ALIAS
+from .loss import nll_loss  #DEFINE_ALIAS
 # from .loss import nce        #DEFINE_ALIAS
 from .loss import npair_loss  #DEFINE_ALIAS
 from .loss import rank_loss  #DEFINE_ALIAS
@@ -150,6 +153,7 @@ from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 from .norm import l2_normalize  #DEFINE_ALIAS
 # from .norm import layer_norm        #DEFINE_ALIAS
 from .norm import lrn  #DEFINE_ALIAS
+from .norm import normalize  #DEFINE_ALIAS
 # from .norm import spectral_norm        #DEFINE_ALIAS
 from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
