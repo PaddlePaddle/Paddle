@@ -82,11 +82,9 @@ class SeluTest(OpTest):
 class TestSeluAPI(unittest.TestCase):
     # test paddle.nn.SELU, paddle.nn.functional.selu
     def setUp(self):
-        self.x_shape = [3, 5, 5, 10]
-        self.dtype = np.float64
         self.scale = 1.5
         self.alpha = 2.0
-        self.x_np = np.random.normal(size=self.x_shape).astype(self.dtype)
+        self.x_np = np.random.normal(size=[3, 5, 5, 10]).astype(np.float64)
         # Since zero point in selu is not differentiable, avoid randomize
         # zero.
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
@@ -95,7 +93,7 @@ class TestSeluAPI(unittest.TestCase):
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_shape, self.dtype)
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.selu(x, self.scale, self.alpha)
             selu = paddle.nn.SELU(self.scale, self.alpha)
             out2 = selu(x)
@@ -118,7 +116,7 @@ class TestSeluAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_shape, self.dtype)
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.selu(x, self.scale, self.alpha)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])

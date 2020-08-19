@@ -377,10 +377,9 @@ def ref_tanhshrink(x):
 class TestTanhshrink(TestActivation):
     def setUp(self):
         self.op_type = "tanh_shrink"
-        self.x_shape = [10, 17]
         self.init_dtype()
 
-        x = np.random.uniform(10, 20, self.x_shape).astype(self.dtype)
+        x = np.random.uniform(10, 20, [10, 17]).astype(self.dtype)
         out = ref_tanhshrink(x)
 
         self.inputs = {'X': x}
@@ -395,15 +394,13 @@ class TestTanhshrink(TestActivation):
 class TestTanhshrinkAPI(unittest.TestCase):
     # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink
     def setUp(self):
-        self.x_shape = [10, 17]
-        self.dtype = np.float64
-        self.x_np = np.random.uniform(10, 20, self.x_shape).astype(self.dtype)
+        self.x_np = np.random.uniform(10, 20, [10, 17]).astype(np.float64)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_shape, self.dtype)
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.tanhshrink(x)
             tanhshrink = paddle.nn.Tanhshrink()
             out2 = tanhshrink(x)
@@ -426,7 +423,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_shape, self.dtype)
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.tanh_shrink(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -538,12 +535,11 @@ def ref_softshrink(x, threshold=0.5):
 class TestSoftshrink(TestActivation):
     def setUp(self):
         self.op_type = "softshrink"
-        self.x_shape = [10, 12]
         self.init_dtype()
 
         threshold = 0.8
 
-        x = np.random.uniform(0.25, 10, self.x_shape).astype(self.dtype)
+        x = np.random.uniform(0.25, 10, [10, 12]).astype(self.dtype)
         out = ref_softshrink(x, threshold)
         self.inputs = {'X': x}
         self.attrs = {"lambda": threshold}
@@ -558,16 +554,14 @@ class TestSoftshrink(TestActivation):
 class TestSoftshrinkAPI(unittest.TestCase):
     # test paddle.nn.Softshrink, paddle.nn.functional.softshrink
     def setUp(self):
-        self.x_shape = [10, 12]
-        self.dtype = np.float64
         self.threshold = 0.8
-        self.x_np = np.random.uniform(0.25, 10, self.x_shape).astype(self.dtype)
+        self.x_np = np.random.uniform(0.25, 10, [10, 12]).astype(np.float64)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_shape, self.dtype)
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.softshrink(x, self.threshold)
             softshrink = paddle.nn.Softshrink(self.threshold)
             out2 = softshrink(x)
@@ -590,7 +584,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_shape, self.dtype)
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.softshrink(x, self.threshold)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -1019,10 +1013,9 @@ def ref_relu6(x, threshold=6.0):
 class TestRelu6(TestActivation):
     def setUp(self):
         self.op_type = "relu6"
-        self.x_shape = [10, 12]
         self.init_dtype()
 
-        x = np.random.uniform(-1, 10, self.x_shape).astype(self.dtype)
+        x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
         x[np.abs(x) < 0.005] = 0.02
         out = ref_relu6(x)
 
@@ -1039,16 +1032,14 @@ class TestRelu6(TestActivation):
 class TestRelu6API(unittest.TestCase):
     # test paddle.nn.ReLU6, paddle.nn.functional.relu6
     def setUp(self):
-        self.x_shape = [10, 12]
-        self.dtype = np.float64
-        self.x_np = np.random.uniform(-1, 10, self.x_shape).astype(self.dtype)
+        self.x_np = np.random.uniform(-1, 10, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_shape, self.dtype)
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.relu6(x)
             relu6 = paddle.nn.ReLU6()
             out2 = relu6(x)
@@ -1071,7 +1062,7 @@ class TestRelu6API(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_shape, self.dtype)
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.relu6(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -1480,13 +1471,12 @@ def ref_softplus(x, beta=1, threshold=20):
 class TestSoftplus(TestActivation):
     def setUp(self):
         self.op_type = "softplus"
-        self.x_shape = [10, 12]
         self.init_dtype()
 
         beta = 2
         threshold = 15
 
-        x = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = ref_softplus(x, beta, threshold)
         self.inputs = {'X': x}
         self.attrs = {'beta': beta, "threshold": threshold}
@@ -1501,17 +1491,15 @@ class TestSoftplus(TestActivation):
 class TestSoftplusAPI(unittest.TestCase):
     # test paddle.nn.Softplus, paddle.nn.functional.softplus
     def setUp(self):
-        self.x_shape = [10, 12]
-        self.dtype = np.float64
         self.beta = 2
         self.threshold = 15
-        self.x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_shape, self.dtype)
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.softplus(x, self.beta, self.threshold)
             softplus = paddle.nn.Softplus(self.beta, self.threshold)
             out2 = softplus(x)
@@ -1534,7 +1522,7 @@ class TestSoftplusAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_shape, self.dtype)
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.softplus(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -1561,10 +1549,9 @@ def ref_softsign(x):
 class TestSoftsign(TestActivation):
     def setUp(self):
         self.op_type = "softsign"
-        self.x_shape = [10, 12]
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = ref_softsign(x)
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
@@ -1578,15 +1565,13 @@ class TestSoftsign(TestActivation):
 class TestSoftsignAPI(unittest.TestCase):
     # test paddle.nn.Softsign, paddle.nn.functional.softsign
     def setUp(self):
-        self.x_shape = [10, 12]
-        self.dtype = np.float64
-        self.x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_shape, self.dtype)
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.softsign(x)
             softsign = paddle.nn.Softsign()
             out2 = softsign(x)
@@ -1609,7 +1594,7 @@ class TestSoftsignAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_shape, self.dtype)
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.softsign(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
