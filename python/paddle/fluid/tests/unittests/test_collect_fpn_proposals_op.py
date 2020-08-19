@@ -34,7 +34,7 @@ class TestCollectFPNProposalstOp(OpTest):
         self.inputs = {
             'MultiLevelRois': inputs_x,
             "MultiLevelScores": self.scores_input,
-            'MultiLevelNums': []
+            'MultiLevelRoIsNum': []
         }
         self.attrs = {'post_nms_topN': self.post_nms_top_n, }
         self.outputs = {
@@ -118,7 +118,7 @@ class TestCollectFPNProposalstOpWithRoisNum(TestCollectFPNProposalstOp):
         self.inputs = {
             'MultiLevelRois': inputs_x,
             "MultiLevelScores": self.scores_input,
-            'MultiLevelNums': rois_num_per_level
+            'MultiLevelRoIsNum': rois_num_per_level
         }
         self.attrs = {'post_nms_topN': self.post_nms_top_n, }
         self.outputs = {

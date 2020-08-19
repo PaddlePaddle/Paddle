@@ -160,7 +160,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < fpn_rois_num; ++i) {
       restore_index_data[restore_index_inter[i]] = i;
     }
-    auto multi_rois_num = context.MultiOutput<Tensor>("MultiRoisNum");
+    auto multi_rois_num = context.MultiOutput<Tensor>("MultiLevelRoIsNum");
     if (multi_rois_num.size() > 0) {
       int batch_size = fpn_rois_lod.size() - 1;
       for (int i = 0; i < num_level; ++i) {

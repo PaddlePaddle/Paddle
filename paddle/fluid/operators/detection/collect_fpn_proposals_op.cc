@@ -61,7 +61,7 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
       // in Kernel.
       context->ShareLoD("MultiLevelRois", "FpnRois");
     }
-    if (context->IsRuntime() && !context->HasInputs("MultiLevelNums")) {
+    if (context->IsRuntime() && !context->HasInputs("MultiLevelRoIsNum")) {
       std::vector<framework::InferShapeVarPtr> roi_inputs =
           context->GetInputVarPtrs("MultiLevelRois");
       std::vector<framework::InferShapeVarPtr> score_inputs =
@@ -103,7 +103,7 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
              " (N, 1), N is the number of RoIs.")
         .AsDuplicable();
     AddInput(
-        "MultiLevelNums",
+        "MultiLevelRoIsNum",
         "(List of Tensor) The RoIs' number of each image on multiple levels."
         "The number on each level has the shape of (N), N is the number of "
         "images.")

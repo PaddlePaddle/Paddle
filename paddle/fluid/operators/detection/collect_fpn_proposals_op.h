@@ -66,7 +66,7 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     auto multi_layer_scores =
         context.MultiInput<paddle::framework::LoDTensor>("MultiLevelScores");
-    auto multi_rois_num = context.MultiInput<Tensor>("MultiLevelNums");
+    auto multi_rois_num = context.MultiInput<Tensor>("MultiLevelRoIsNum");
     int num_size = multi_rois_num.size();
 
     auto* fpn_rois = context.Output<paddle::framework::LoDTensor>("FpnRois");

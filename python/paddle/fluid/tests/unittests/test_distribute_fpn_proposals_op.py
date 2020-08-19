@@ -143,7 +143,7 @@ class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
         self.outputs = {
             'MultiFpnRois': output,
             'RestoreIndex': self.rois_idx_restore.reshape(-1, 1),
-            'MultiRoisNum': rois_num_per_level
+            'MultiLevelRoIsNum': rois_num_per_level
         }
 
 

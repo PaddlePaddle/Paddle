@@ -81,7 +81,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int lod_size;
     auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
-    auto multi_rois_num = ctx.MultiInput<Tensor>("MultiLevelNums");
+    auto multi_rois_num = ctx.MultiInput<Tensor>("MultiLevelRoIsNum");
     for (size_t i = 0; i < roi_ins.size(); ++i) {
       auto roi_in = roi_ins[i];
       auto score_in = score_ins[i];

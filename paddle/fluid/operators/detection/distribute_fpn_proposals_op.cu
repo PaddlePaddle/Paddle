@@ -166,7 +166,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
         restore_idx_data, roi_num);
 
     int start = 0;
-    auto multi_rois_num = ctx.MultiOutput<Tensor>("MultiRoisNum");
+    auto multi_rois_num = ctx.MultiOutput<Tensor>("MultiLevelRoIsNum");
 
     for (int i = 0; i < num_level; ++i) {
       Tensor sub_lod = sub_lod_list.Slice(i, i + 1);
