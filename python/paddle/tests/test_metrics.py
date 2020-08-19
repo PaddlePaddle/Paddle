@@ -39,7 +39,8 @@ def accuracy(pred, label, topk=(1, )):
 
 
 def convert_to_one_hot(y, C):
-    oh = np.random.random((y.shape[0], C)).astype('float32') * .5
+    oh = np.random.choice(np.arange(C), C, replace=False).astype('float32') / C
+    oh = np.tile(oh[np.newaxis, :], (y.shape[0], 1))
     for i in range(y.shape[0]):
         oh[i, int(y[i])] = 1.
     return oh
@@ -172,16 +173,16 @@ class TestPrecision(unittest.TestCase):
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
 
-        m = paddle.metric.Recall()
+        m = paddle.metric.Precision()
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 2. / 3.)
 
-        x = np.array([0.1, 0.5, 0.6, 0.7, 0.2])
-        y = np.array([1, 0, 1, 1, 1])
+        x = paddle.to_tensor(np.array([0.1, 0.5, 0.6, 0.7, 0.2]))
+        y = paddle.to_tensor(np.array([1, 0, 1, 1, 1]))
         m.update(x, y)
         r = m.accumulate()
-        self.assertAlmostEqual(r, 4. / 7.)
+        self.assertAlmostEqual(r, 4. / 6.)
 
         paddle.enable_static()
 
@@ -191,7 +192,7 @@ class TestPrecision(unittest.TestCase):
         x = np.array([0.1, 0.5, 0.6, 0.7]).reshape(-1, 1)
         y = np.array([1, 0, 1, 1]).reshape(-1, 1)
 
-        m = paddle.metric.Recall()
+        m = paddle.metric.Precision()
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 2. / 3.)
@@ -200,7 +201,13 @@ class TestPrecision(unittest.TestCase):
         y = np.array([1, 0, 1, 1, 1]).reshape(-1, 1)
         m.update(x, y)
         r = m.accumulate()
-        self.assertAlmostEqual(r, 4. / 7.)
+        self.assertAlmostEqual(r, 4. / 6.)
+
+        # check reset
+        m.reset()
+        self.assertEqual(m.tp, 0.0)
+        self.assertEqual(m.fp, 0.0)
+        self.assertEqual(m.accumulate(), 0.0)
 
         paddle.enable_static()
 
@@ -217,17 +224,22 @@ class TestRecall(unittest.TestCase):
         r = m.accumulate()
         self.assertAlmostEqual(r, 2. / 3.)
 
-        x = np.array([0.1, 0.5, 0.6, 0.7])
-        y = np.array([1, 0, 0, 1])
+        x = paddle.to_tensor(np.array([0.1, 0.5, 0.6, 0.7]))
+        y = paddle.to_tensor(np.array([1, 0, 0, 1]))
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 3. / 5.)
 
+        # check reset
+        m.reset()
+        self.assertEqual(m.tp, 0.0)
+        self.assertEqual(m.fn, 0.0)
+        self.assertEqual(m.accumulate(), 0.0)
         paddle.enable_static()
 
 
 class TestAuc(unittest.TestCase):
-    def test_auc(self):
+    def test_auc_numpy(self):
         paddle.disable_static()
         x = np.array([[0.78, 0.22], [0.62, 0.38], [0.55, 0.45], [0.30, 0.70],
                       [0.14, 0.86], [0.59, 0.41], [0.91, 0.08], [0.16, 0.84]])
@@ -236,6 +248,26 @@ class TestAuc(unittest.TestCase):
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 0.8125)
+
+        m.reset()
+        self.assertEqual(m.accumulate(), 0.0)
+
+        paddle.enable_static()
+
+    def test_auc_tensor(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            np.array([[0.78, 0.22], [0.62, 0.38], [0.55, 0.45], [0.30, 0.70],
+                      [0.14, 0.86], [0.59, 0.41], [0.91, 0.08], [0.16, 0.84]]))
+        y = paddle.to_tensor(np.array([[0], [1], [1], [0], [1], [0], [0], [1]]))
+        m = paddle.metric.Auc()
+        m.update(x, y)
+        r = m.accumulate()
+        self.assertAlmostEqual(r, 0.8125)
+
+        m.reset()
+        self.assertEqual(m.accumulate(), 0.0)
+
         paddle.enable_static()
 
 
