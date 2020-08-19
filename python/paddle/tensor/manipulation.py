@@ -793,7 +793,7 @@ def tile(x, repeat_times, name=None):
     """
 
     Construct a new Tensor by repeating ``x`` the number of times given by ``repeat_times``.
-    After tiling, the number of elements of the i'th dimension of the output is equal to ``x.dims[i] * repeat_times[i]``.
+    After tiling, the value of the i'th dimension of the output is equal to ``x.shape[i]*repeat_times[i]``.
 
     Both the number of dimensions of ``x`` and the number of elements in ``repeat_times`` should be less than or equal to 6.
 
@@ -814,9 +814,9 @@ def tile(x, repeat_times, name=None):
 
             paddle.disable_static()
             np_data = np.array([1, 2, 3]).astype('int32')
-            data = paddle.to_variable(np_data)
+            data = paddle.to_tensor(np_data)
             out = paddle.tile(data, repeat_times=[2, 1])
-			np_out = out1.numpy()
+			np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
 
             out = paddle.tile(data, repeat_times=[2, 2])
@@ -824,7 +824,7 @@ def tile(x, repeat_times, name=None):
             # [[1, 2, 3, 1, 2, 3], [1, 2, 3, 1, 2, 3]]
 
             np_repeat_times = np.array([2, 1]).astype("int32")
-            repeat_times = paddle.to_variable(np_repeat_times)
+            repeat_times = paddle.to_tensor(np_repeat_times)
             out = paddle.tile(data, repeat_times=repeat_times)
 			np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
@@ -836,9 +836,12 @@ def tile(x, repeat_times, name=None):
         raise ValueError(
             "When the date type is bool for the input 'x' of tile op, you "
             "must set its stop_gradient to be True by "
-            "some_var.stop_gradient == True supporting some_var as the input.")
+            "some_var.stop_gradient == True supporting some_var is the input.")
 
-    helper = LayerHelper('tile', input=x, **locals())
+    if in_dygraph_mode():
+        return core.ops.tile(x, 'repeat_times', repeat_times)
+
+    helper = LayerHelper('tile', **locals())
 
     inputs = {"X": [x]}
     attrs = {}
@@ -880,7 +883,7 @@ def expand_as(x, y, name=None):
 
     Args:
         x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
-        y (Tensor): The input tensor gives the shape that ``x`` to expand to.
+        y (Tensor): The input tensor that gives the shape to expand to.
         name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -894,10 +897,10 @@ def expand_as(x, y, name=None):
 
             paddle.disable_static()
 
-            np_data_x = np.array([1, 2, 3]).astype=('int32)
-            np_data_y = np.array([[1, 2, 3], [4, 5, 6]]).astype=('int32)
-            data_x = paddle.to_variable(np_data_x)
-            data_y = paddle.to_variable(np_data_y)
+            np_data_x = np.array([1, 2, 3]).astype('int32')
+            np_data_y = np.array([[1, 2, 3], [4, 5, 6]]).astype('int32')
+            data_x = paddle.to_tensor(np_data_x)
+            data_y = paddle.to_tensor(np_data_y)
             out = paddle.expand_as(data_x, data_y)
 			np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
@@ -914,7 +917,10 @@ def expand_as(x, y, name=None):
             "some_var as the input 'x'.")
     inputs = {"X": [x], "target_tensor": [y]}
 
-    helper = LayerHelper('expand_as', input=x, **locals())
+    if in_dygraph_mode():
+        return core.ops.expand_as_v2(x, y)
+
+    helper = LayerHelper('expand_as', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type='expand_as_v2', inputs=inputs, outputs={'Out': out})
@@ -946,16 +952,16 @@ def expand(x, shape, name=None):
             import paddle
 
             paddle.disable_static()
-            np_data = np.array([1, 2, 3]).astype=('int32)
-            data = paddle.to_variable(np_data)
+            np_data = np.array([1, 2, 3]).astype('int32')
+            data = paddle.to_tensor(np_data)
             out = paddle.expand(data, shape=[2, 3])
 			out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
 
-            np_shape = np.array([2, 3]).astype=('int32)
-            shape = paddle.to_variable(np_shape)
+            np_shape = np.array([2, 3]).astype('int32')
+            shape = paddle.to_tensor(np_shape)
             out = paddle.expand(data, shape=shape)
-			out = out.numpy
+			out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_variable_and_dtype(
@@ -970,7 +976,10 @@ def expand(x, shape, name=None):
                          "some_var.stop_gradient = True, supporting "
                          "some_var as the input.")
 
-    helper = LayerHelper('expand', input=x, **locals())
+    if in_dygraph_mode():
+        return core.ops.expand_v2(x, 'shape', shape)
+
+    helper = LayerHelper('expand', **locals())
 
     def get_attr_expand_shape(list_expand_shape):
         attrs_expand_shape = []
