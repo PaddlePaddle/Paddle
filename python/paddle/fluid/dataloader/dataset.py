@@ -245,14 +245,14 @@ class TensorDataset(Dataset):
 	    import numpy as np
 	    import paddle.fluid as fluid
 	    from paddle.io import TensorDataset
-	    from paddle.fluid.dygraph.base import to_variable
+	    from paddle.fluid.dygraph.base import to_tensor
 
 	    place = fluid.CPUPlace()
 	    with fluid.dygraph.guard(place):
 		input_np = np.random.random([2, 3, 4]).astype('float32')
-		input = to_variable(input_np)
+		input = to_tensor(input_np)
 		label_np = np.random.random([2, 1]).astype('int32')
-		label = to_variable(label_np)
+		label = to_tensor(label_np)
 
 		dataset = TensorDataset([input, label])
 
