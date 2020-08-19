@@ -27,23 +27,19 @@ import types
 import numpy
 import six
 
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
+from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticLayer
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.layers import Layer
-from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 
-DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
 
+translator_logger = TranslatorLogger()
 
 def is_builtin(func):
     if isinstance(func, types.BuiltinFunctionType):
         return True
     elif func in six.moves.builtins.__dict__.values():
-        return True
-    # Other built-in modules
-    # TODO(liym27): A better way to do this.
-    elif any(func in m.__dict__.values()
-             for m in (collections, pdb, copy, inspect, re, six, numpy)):
         return True
     else:
         return False
@@ -58,6 +54,25 @@ def is_builtin_len(func):
 def is_paddle_func(func):
     m = inspect.getmodule(func)
     return m is not None and m.__name__.startswith("paddle")
+
+
+def is_unsupported(func):
+    # Other built-in modules
+    # TODO(liym27): A better way to do this.
+    if any(func in m.__dict__.values()
+           for m in (collections, pdb, copy, inspect, re, six, numpy)):
+        translator_logger.log(
+            2,
+            "Whitelist: {} is part of built-in module and does not have to be transformed.".
+            format(func))
+        return True
+
+    if is_paddle_func(func):
+        translator_logger.log(
+            2,
+            "Whitelist: {} is part of Paddle module and does not have to be transformed.".
+            format(func))
+        return True
 
 
 def convert_call(func):
@@ -94,6 +109,7 @@ def convert_call(func):
           #  [1. 1. 1.]]
 
     """
+    translator_logger.log(1, "Convert call: convert {}.".format(func))
     func_self = None
     converted_call = None
 
@@ -109,7 +125,7 @@ def convert_call(func):
     if is_builtin_len(func):
         return convert_len
 
-    if is_builtin(func) or is_paddle_func(func):
+    if is_builtin(func) or is_unsupported(func):
         return func
 
     if inspect.isfunction(func):
@@ -139,6 +155,14 @@ def convert_call(func):
             if func in global_functions:
                 converted_call = convert_to_static(func)
                 func_self = getattr(func, '__self__', None)
+            else:
+                # NOTE:
+                # If func is not in __globals__, it does not need to be transformed
+                # because it has been transformed before.
+                translator_logger.warn(
+                    "{} doesn't have to be transformed to static function because it has been transformed before, it will be run as-is."
+                    .format(func))
+                converted_call = func
         except AttributeError:
             # NOTE:
             # If func is not in __globals__, it does not need to be transformed
@@ -177,8 +201,13 @@ def convert_call(func):
                 # If `func` is a class which is being initialized, for example `convert_call(Foo)()`,
                 # it doesn't need to be transformed
                 func_self = None if func_self else func_self
+    else:
+        raise NotImplementedError
 
     if converted_call is None:
+        translator_logger.warn(
+            "{} doesn't have to be transformed to static function, and it will be run as-is."
+            .format(func))
         return func
 
     if func_self:

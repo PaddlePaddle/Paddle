@@ -30,8 +30,10 @@ from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import DygraphToStaticAst
-from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
 from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data
+from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
+from paddle.fluid.dygraph.dygraph_to_static.error import TransformerError
+from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import create_and_update_origin_info_map
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import update_op_callstack_with_origin_info
@@ -40,7 +42,6 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec
@@ -137,8 +138,14 @@ def convert_to_static(function):
         function(callable): The function with dygraph layers that will be converted into static layers.
     """
     with _CACHE_LOCK:
-        static_func = _FUNCTION_CACHE.convert_with_cache(function)
-        return static_func
+        try:
+            static_func = _FUNCTION_CACHE.convert_with_cache(function)
+            return static_func
+        except Exception as e:
+            translator_logger = TranslatorLogger()
+            translator_logger.error('Transform {} failed.'.format(function))
+            raise TransformerError("Transforming {}: {}".format(function,
+                                                                str(e)))
 
 
 class CacheKey(object):

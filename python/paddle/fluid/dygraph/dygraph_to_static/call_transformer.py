@@ -62,6 +62,12 @@ class CallTransformer(gast.NodeTransformer):
             return node
 
         func_str = ast_to_source_code(node.func).strip()
+
+        # NOTE(liym27): Don't convert `pad.set_trace` even if the convertion doesn't work finally, because
+        # it is clearer to see where it is called from.git
+        if "pdb.set_trace" in func_str:
+            return node
+
         new_func_str = "fluid.dygraph.dygraph_to_static.convert_call({})".format(
             func_str)
         new_func_ast = gast.parse(new_func_str).body[0].value
