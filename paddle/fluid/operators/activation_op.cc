@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+
 #include <memory>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
 #ifdef PADDLE_WITH_CUDA
@@ -199,7 +202,7 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
-.. math:: out=\sqrt x=x^{1/2}
+.. math:: out=\\sqrt{x}=x^{1/2}
 
 **Note**:
   input value must be greater than or equal to zero.
@@ -211,12 +214,12 @@ Rsqrt Activation Operator.
 
 Please make sure input is legal in case of numeric errors.
 
-$$out = \frac{1}{\sqrt{x}}$$
+$$out = \\frac{1}{\\sqrt{x}}$$
 
 )DOC";
 
 UNUSED constexpr char AbsDoc[] = R"DOC(
-Abs Activation Operator.
+Abs Operator.
 
 $$out = |x|$$
 
@@ -239,6 +242,9 @@ $$out = \\left \\lfloor x \\right \\rfloor$$
 UNUSED constexpr char CosDoc[] = R"DOC(
 Cosine Operator. Computes cosine of x element-wise.
 
+Input range is `(-inf, inf)` and output range is `[-1,1]`.
+Return `nan` if input is out of boundary.
+
 $$out = cos(x)$$
 
 )DOC";
@@ -247,6 +253,20 @@ UNUSED constexpr char SinDoc[] = R"DOC(
 Sine Activation Operator.
 
 $$out = sin(x)$$
+
+)DOC";
+
+UNUSED constexpr char SinhDoc[] = R"DOC(
+Sinh Activation Operator.
+
+$$out = sinh(x)$$
+
+)DOC";
+
+UNUSED constexpr char CoshDoc[] = R"DOC(
+Cosh Activation Operator.
+
+$$out = cosh(x)$$
 
 )DOC";
 
@@ -317,7 +337,7 @@ class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of acos operator");
     AddOutput("Out", "Output of acos operator");
     AddComment(R"DOC(
-Arccosine Activation Operator.
+Arccosine Operator.
 
 $$out = \cos^{-1}(x)$$
 
@@ -331,7 +351,7 @@ class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of asin operator");
     AddOutput("Out", "Output of asin operator");
     AddComment(R"DOC(
-Arcsine Activation Operator.
+Arcsine Operator.
 
 $$out = \sin^{-1}(x)$$
 
@@ -345,9 +365,9 @@ class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of atan operator");
     AddOutput("Out", "Output of atan operator");
     AddComment(R"DOC(
-Arctanh Activation Operator.
+Arctangent Operator.
 
-$$out = \tanh^{-1}(x)$$
+$$out = \tan^{-1}(x)$$
 
 )DOC");
   }
@@ -490,6 +510,9 @@ class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("threshold",
                    "The threshold value of Relu6. Default is 6.0. ")
         .SetDefault(6.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Relu6 Activation Operator.
 
@@ -642,6 +665,8 @@ REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cos, CosDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
+REGISTER_ACTIVATION_OP_MAKER(Sinh, SinhDoc);
+REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);

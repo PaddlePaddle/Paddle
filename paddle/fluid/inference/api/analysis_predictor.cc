@@ -465,6 +465,9 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
     argument_.SetLitePassesFilter(config_.lite_passes_filter_);
     argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
+    argument_.SetLiteZeroCopy(config_.lite_zero_copy_);
+    argument_.SetUseXpu(config_.use_xpu_);
+    argument_.SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
@@ -826,6 +829,25 @@ bool AnalysisPredictor::LoadParameters() {
   VLOG(3) << "get " << scope_->LocalVarNames().size() << " vars after load";
 
   return true;
+}
+
+void AnalysisPredictor::ClearIntermediateTensor() {
+  PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
+                          platform::errors::PreconditionNotMet(
+                              "The inference program should be loaded first."));
+  const auto &global_block = inference_program_->MutableBlock(0);
+  for (auto *var : global_block->AllVars()) {
+    if (!IsPersistable(var)) {
+      const std::string name = var->Name();
+      auto *variable = executor_->scope()->FindVar(name);
+      if (variable != nullptr && variable->IsType<framework::LoDTensor>() &&
+          name != "feed" && name != "fetch") {
+        VLOG(3) << "Clear Intermediate Tensor: " << name;
+        auto *t = variable->GetMutable<framework::LoDTensor>();
+        t->clear();
+      }
+    }
+  }
 }
 
 #if PADDLE_WITH_TENSORRT

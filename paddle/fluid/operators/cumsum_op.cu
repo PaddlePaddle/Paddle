@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/device_ptr.h>
+#include <thrust/device_vector.h>
+#include <thrust/reverse.h>
+#include <thrust/scan.h>
 #include "paddle/fluid/operators/cum_op.h"
 #include "paddle/fluid/platform/gpu_launch_param_config.h"
 
@@ -251,33 +255,61 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     int axis = context.Attr<int>("axis");
     bool exclusive = context.Attr<bool>("exclusive");
     bool reverse = context.Attr<bool>("reverse");
-    auto in_dims = in->dims();
+    auto out_dims = out->dims();
     auto size = in->numel();
 
-    if (axis == -1) {
-      axis = in_dims.size() - 1;
-    }
-    PADDLE_ENFORCE_LT(
-        axis, in_dims.size(),
-        platform::errors::InvalidArgument("axis(%d) should be less than the "
-                                          "dimension(%d) of the input tensor.",
-                                          axis, in_dims.size()));
-
-    int scan_dim_size = in_dims[axis];
-    bool optimize_condition = (axis == (in_dims.size() - 1)) ? true : false;
-    int outer_dim_size = 1;
-    int inner_dim_size = 1;
-    // treat all dim index < axis as outer_dim_size
-    for (size_t i = 0; i < axis; i++) {
-      outer_dim_size *= in_dims[i];
-    }
-    // treat all dim index > axis as innner_dim_size
-    for (size_t i = axis + 1; i < in_dims.size(); i++) {
-      inner_dim_size *= in_dims[i];
+    PADDLE_ENFORCE_EQ(
+        axis < out_dims.size() && axis >= (0 - out_dims.size()), true,
+        platform::errors::OutOfRange(
+            "Attr(axis) is out of range, It's expected "
+            "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
+            out_dims.size(), out_dims.size() - 1, axis));
+    if (axis < 0) {
+      axis += out_dims.size();
     }
 
     T* out_data = out->mutable_data<T>(context.GetPlace());
     const T* in_data = in->data<T>();
+
+    // Use thrust for parallel acceleration when the input size is equal to the
+    // length of the ‘axis’ dimension.
+    if (size == out_dims[axis]) {
+      if (reverse) {
+        thrust::device_ptr<const T> dev_ptr =
+            thrust::device_pointer_cast(in_data);
+        thrust::device_vector<T> vec(dev_ptr, dev_ptr + size);
+        if (exclusive) {
+          thrust::exclusive_scan(thrust::device, vec.rbegin(), vec.rend(),
+                                 out_data);
+        } else {
+          thrust::inclusive_scan(thrust::device, vec.rbegin(), vec.rend(),
+                                 out_data);
+        }
+        thrust::reverse(thrust::device, out_data, out_data + size);
+      } else {
+        if (exclusive) {
+          thrust::exclusive_scan(thrust::device, in_data, in_data + size,
+                                 out_data);
+        } else {
+          thrust::inclusive_scan(thrust::device, in_data, in_data + size,
+                                 out_data);
+        }
+      }
+      return;
+    }
+
+    const int& scan_dim_size = out_dims[axis];
+    bool optimize_condition = (axis == (out_dims.size() - 1)) ? true : false;
+    int outer_dim_size = 1;
+    int inner_dim_size = 1;
+    // treat all dim index < axis as outer_dim_size
+    for (size_t i = 0; i < axis; i++) {
+      outer_dim_size *= out_dims[i];
+    }
+    // treat all dim index > axis as innner_dim_size
+    for (size_t i = axis + 1; i < out_dims.size(); i++) {
+      inner_dim_size *= out_dims[i];
+    }
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     if (optimize_condition) {

@@ -76,10 +76,11 @@ class TestCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36002"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         role_maker = GeneralRoleMaker()
-        role_maker.generate_role()
+        #print("init rolemaker")
+        #role_maker.generate_role()
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        fleet.init(role_maker)
+        #fleet.init(role_maker)
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()

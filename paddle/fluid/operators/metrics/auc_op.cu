@@ -23,9 +23,6 @@ namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 
 __global__ void ClearObsoleteDataKernel(int64_t *pos, int64_t *neg,
                                         const int bucket_length,

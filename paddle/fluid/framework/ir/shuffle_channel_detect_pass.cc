@@ -47,7 +47,9 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
                      Graph* g) {
     GET_NODES;
 
-    PADDLE_ENFORCE(subgraph.count(x));
+    PADDLE_ENFORCE_GT(
+        subgraph.count(x), 0,
+        platform::errors::NotFound("Detector did not find input X."));
     auto* input_node = subgraph.at(x);
     auto reshape1_desc = reshape1_op->Op();
     auto reshape2_desc = reshape2_op->Op();

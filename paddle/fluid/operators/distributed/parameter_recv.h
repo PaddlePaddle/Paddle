@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/distributed/rpc_common.h"
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +26,10 @@ namespace distributed {
 
 template <typename T>
 struct ParameterRecv {
-  void operator()(const RpcContext &rpc_ctx, const framework::Scope &scope);
+  void operator()(const CommContext &rpc_ctx, const framework::Scope &scope,
+                  bool barrier);
+
+  void operator()(const CommContext &rpc_ctx, const framework::Scope &scope);
 };
 
 };  // namespace distributed

@@ -150,4 +150,5 @@ REGISTER_OP_CPU_KERNEL(
     ops::SplitOpKernel<plat::CPUDeviceContext, float>,
     ops::SplitOpKernel<plat::CPUDeviceContext, int64_t>,
     ops::SplitOpKernel<plat::CPUDeviceContext, int>,
+    ops::SplitOpKernel<plat::CPUDeviceContext, bool>,
     ops::SplitOpKernel<plat::CPUDeviceContext, plat::float16>);

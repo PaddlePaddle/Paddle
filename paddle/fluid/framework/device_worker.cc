@@ -111,6 +111,7 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
     writer_ << os.str();
   }
 }
+
 void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
   bool enable_random_dump = desc.enable_random_dump();
   if (!enable_random_dump) {
