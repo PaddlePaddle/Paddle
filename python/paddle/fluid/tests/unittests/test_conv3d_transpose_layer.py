@@ -21,24 +21,21 @@ import unittest
 
 
 class Conv3DTransposeTestCase(unittest.TestCase):
-    def __init__(
-            self,
-            methodName='runTest',
-            batch_size=2,
-            spartial_shape=(8, 8, 8),
-            num_channels=6,
-            num_filters=8,
-            filter_size=3,
-            output_size=None,
-            padding=0,
-            stride=1,
-            dilation=1,
-            groups=1,
-            #  act=None,
-            no_bias=False,
-            #  use_cudnn=True,
-            data_format="NCDHW",
-            dtype="float32"):
+    def __init__(self,
+                 methodName='runTest',
+                 batch_size=2,
+                 spartial_shape=(8, 8, 8),
+                 num_channels=6,
+                 num_filters=8,
+                 filter_size=3,
+                 output_size=None,
+                 padding=0,
+                 stride=1,
+                 dilation=1,
+                 groups=1,
+                 no_bias=False,
+                 data_format="NCDHW",
+                 dtype="float32"):
         super(Conv3DTransposeTestCase, self).__init__(methodName)
         self.batch_size = batch_size
         self.num_channels = num_channels
@@ -51,9 +48,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
         self.stride = stride
         self.dilation = dilation
         self.groups = groups
-        # self.act = act
         self.no_bias = no_bias
-        # self.use_cudnn = use_cudnn
         self.data_format = data_format
         self.dtype = dtype
 
@@ -105,8 +100,6 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     groups=self.groups,
                     param_attr=weight_attr,
                     bias_attr=bias_attr,
-                    # use_cudnn=self.use_cudnn,
-                    # act=self.act,
                     data_format=self.data_format)
         feed_dict = {"input": self.input}
         exe = fluid.Executor(place)
@@ -135,8 +128,6 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     stride=self.stride,
                     dilation=self.dilation,
                     groups=self.groups,
-                    # act=self.act,
-                    # use_cudnn=self.use_cudnn,
                     data_format=self.data_format)
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
