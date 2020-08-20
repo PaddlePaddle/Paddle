@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import paddle
 from .framework import Program, program_guard, unique_name, cuda_places, cpu_places
 from .param_attr import ParamAttr
 from .initializer import Constant

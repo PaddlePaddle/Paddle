@@ -23,6 +23,8 @@ from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
 
+from predictor_utils import PredictorTools
+
 program_translator = ProgramTranslator()
 place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 )
@@ -152,6 +154,12 @@ def predict_dygraph_jit(data):
         return pred_res
 
 
+def predict_analysis_inference(data):
+    output = PredictorTools(MODEL_SAVE_PATH, VARIABLE_FILENAME, data)
+    out = output()
+    return out
+
+
 class TestBert(unittest.TestCase):
     def setUp(self):
         self.bert_config = get_bert_config()
@@ -178,9 +186,11 @@ class TestBert(unittest.TestCase):
             dygraph_pred_res = predict_dygraph(self.bert_config, data)
             static_pred_res = predict_static(data)
             dygraph_jit_pred_res = predict_dygraph_jit(data)
+            predictor_pred_res = predict_analysis_inference(data)
 
-            for dy_res, st_res, dy_jit_res in zip(
-                    dygraph_pred_res, static_pred_res, dygraph_jit_pred_res):
+            for dy_res, st_res, dy_jit_res, predictor_res in zip(
+                    dygraph_pred_res, static_pred_res, dygraph_jit_pred_res,
+                    predictor_pred_res):
                 self.assertTrue(
                     np.allclose(st_res, dy_res),
                     "dygraph_res: {},\n static_res: {}".format(
@@ -191,6 +201,11 @@ class TestBert(unittest.TestCase):
                     "dygraph_jit_res: {},\n static_res: {}".format(
                         dy_jit_res[~np.isclose(st_res, dy_jit_res)],
                         st_res[~np.isclose(st_res, dy_jit_res)]))
+                self.assertTrue(
+                    np.allclose(st_res, predictor_res),
+                    "dygraph_jit_res: {},\n static_res: {}".format(
+                        predictor_res[~np.isclose(st_res, predictor_res)],
+                        st_res[~np.isclose(st_res, predictor_res)]))
             break
 
 

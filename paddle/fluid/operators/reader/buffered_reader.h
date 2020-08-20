@@ -35,7 +35,8 @@ class BufferedReader : public framework::DecoratedReader {
 
  public:
   BufferedReader(const std::shared_ptr<framework::ReaderBase>& reader,
-                 const platform::Place& place, size_t buffer_size);
+                 const platform::Place& place, size_t buffer_size,
+                 bool pin_memory = false);
 
   ~BufferedReader() override;
 
@@ -53,6 +54,7 @@ class BufferedReader : public framework::DecoratedReader {
   ThreadPool thread_pool_;
   platform::Place place_;
   const size_t buffer_size_;
+  bool pin_memory_;
 
   std::queue<std::future<size_t>> position_;
 
@@ -63,8 +65,13 @@ class BufferedReader : public framework::DecoratedReader {
   // buffers and prevent alloc every time.
   bool is_same_place_;
   std::vector<TensorVec> cpu_buffer_;
-  std::vector<TensorVec> cuda_pinned_buffer_;
+  std::vector<TensorVec> cuda_buffer_;
   size_t prev_pos_{-1UL};
+#ifdef PADDLE_WITH_CUDA
+  cudaStream_t compute_stream_;
+  std::shared_ptr<platform::CudaStreamObject> stream_;
+  std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
+#endif
 };
 
 }  // namespace reader

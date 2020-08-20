@@ -13,7 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+import numpy as np
+
 from ..fluid.framework import Variable
+from ..fluid.framework import unique_name
+from ..fluid.framework import _current_expected_place
+from ..fluid.framework import dygraph_only
 from ..fluid.initializer import Constant
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
@@ -21,23 +26,18 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
 from ..fluid.layers import fill_constant
 from paddle.common_ops_import import *
-import paddle
 
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
 from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
-from ..fluid.layers import create_tensor  #DEFINE_ALIAS
 from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
 
 __all__ = [
-    'create_tensor',
-    #       'create_lod_tensor',
-    #       'create_random_int_lodtensor',
+    'to_tensor',
     'crop_tensor',
     'diag',
-    'eye',
     'fill_constant',
     #       'get_tensor_from_selected_rows',
     'linspace',
@@ -53,6 +53,170 @@ __all__ = [
     'tril',
     'meshgrid'
 ]
+
+
+@dygraph_only
+def to_tensor(data, dtype=None, place=None, stop_gradient=True):
+    """
+    Constructs a ``paddle.Tensor`` or ``paddle.ComplexTensor`` from ``data`` , 
+    which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
+
+    If the ``data`` is already a tensor, and ``dtype`` or ``place`` does't change, no copy 
+    will be performed and return origin tensor, otherwise a new tensor will be constructed
+    and returned. Similarly, if the data is an numpy\.ndarray of with the same ``dtype`` 
+    and the current place is cpu, no copy will be performed.
+
+    The ``ComplexTensor`` is a unique type of paddle. If x is ``ComplexTensor``, then 
+    ``x.real`` is the real part, and ``x.imag`` is the imaginary part.
+
+    Args:
+        data(scalar|tuple|list|ndarray|Tensor|ComplexTensor): Initial data for the tensor.
+            Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
+        dtype(str, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' , 
+            'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8'. And
+            'complex64' , 'complex128' only for ComplexTensor.
+            Default: None, infers data type from ``data`` .
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace, optional): The place to allocate Tensor. Can be  
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place.
+        stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
+
+    Returns:
+        Tensor: A Tensor or ComplexTensor constructed from ``data``.
+
+    Raises:
+        TypeError: If the data type of ``data`` is not scalar, list, tuple, numpy.ndarray, paddle.Tensor, paddle.ComplexTensor
+        ValueError: If ``data`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]
+        TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
+        ValueError: If ``place`` is not paddle.Place, paddle.CUDAPinnedPlace, paddle.CUDAPlace
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import numpy as np
+        paddle.enable_imperative()
+                
+        type(paddle.to_tensor(1))
+        # <class 'paddle.Tensor'>
+
+        paddle.to_tensor(1)
+        # Tensor: generated_tensor_0
+        # - place: CUDAPlace(0)   # allocate on global default place CPU:0
+        # - shape: [1]
+        # - layout: NCHW
+        # - dtype: int64_t
+        # - data: [1]
+
+        x = paddle.to_tensor(1)
+        paddle.to_tensor(x, dtype='int32', place=paddle.CPUPlace()) # A new tensor will be constructed due to different dtype or place
+        # Tensor: generated_tensor_01
+        # - place: CPUPlace
+        # - shape: [1]
+        # - layout: NCHW
+        # - dtype: int
+        # - data: [1]
+
+        paddle.to_tensor((1.1, 2.2), place=paddle.CUDAPinnedPlace())
+        # Tensor: generated_tensor_1
+        #   - place: CUDAPinnedPlace
+        #   - shape: [2]
+        #   - layout: NCHW
+        #   - dtype: double
+        #   - data: [1.1 2.2]
+
+        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CUDAPlace(0), stop_gradient=False)
+        # Tensor: generated_tensor_2
+        #   - place: CUDAPlace(0)
+        #   - shape: [2, 2]
+        #   - layout: NCHW
+        #   - dtype: double
+        #   - data: [0.1 0.2 0.3 0.4]
+
+        type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]]), , dtype='complex64')
+        # <class 'paddle.ComplexTensor'>
+
+        paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
+        # ComplexTensor[real]: generated_tensor_0.real
+        #   - place: CUDAPlace(0)
+        #   - shape: [2, 2]
+        #   - layout: NCHW
+        #   - dtype: float
+        #   - data: [1 2 3 4]
+        # ComplexTensor[imag]: generated_tensor_0.imag
+        #   - place: CUDAPlace(0)
+        #   - shape: [2, 2]
+        #   - layout: NCHW
+        #   - dtype: float
+        #   - data: [1 0 2 0]
+    """
+
+    if place is None:
+        place = _current_expected_place()
+    elif not isinstance(place,
+                        (core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
+        raise ValueError(
+            "'place' must be any of paddle.Place, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
+        )
+
+    #Todo(zhouwei): Support allocate tensor on any other specified card
+    if isinstance(place, core.CUDAPlace) and isinstance(
+            _current_expected_place(), core.CUDAPlace) and place._get_device_id(
+            ) != _current_expected_place()._get_device_id():
+        place = _current_expected_place()
+
+    if not isinstance(data, np.ndarray):
+        if np.isscalar(data) and not isinstance(data, str):
+            data = np.array([data])
+        elif isinstance(data, (list, tuple)):
+            data = np.array(data)
+            if data.dtype == np.object:
+                raise ValueError(
+                    "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
+                    "this means the input data contains nested lists with different lengths. "
+                )
+        elif isinstance(data, paddle.Tensor):
+            data.stop_gradient = stop_gradient
+            if not data.place._equals(place):
+                data = data._copy_to(place, False)
+            if dtype:
+                if convert_dtype(dtype) != convert_dtype(data.dtype):
+                    return data.astype(convert_dtype(dtype))
+            return data
+        elif isinstance(data, paddle.ComplexTensor):
+            return data
+        else:
+            raise TypeError(
+                "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor|paddle.ComplexTensor".
+                format(type(data)))
+
+    if dtype:
+        dtype = convert_dtype(dtype)
+        if dtype != data.dtype:
+            data = data.astype(dtype)
+
+    if not np.iscomplexobj(data):
+        return paddle.Tensor(
+            value=data,
+            place=place,
+            persistable=False,
+            zero_copy=True,
+            stop_gradient=stop_gradient)
+    else:
+        name = unique_name.generate('generated_tensor')
+        real_tensor = paddle.Tensor(
+            value=data.real,
+            place=place,
+            zero_copy=True,
+            name=name + ".real",
+            stop_gradient=stop_gradient)
+        imag_tensor = paddle.Tensor(
+            value=data.imag,
+            place=place,
+            zero_copy=True,
+            name=name + ".imag",
+            stop_gradient=stop_gradient)
+        return paddle.ComplexTensor(real_tensor, imag_tensor)
 
 
 def full_like(x, fill_value, dtype=None, name=None):
@@ -84,7 +248,7 @@ def full_like(x, fill_value, dtype=None, name=None):
           import paddle
           import numpy as np
           
-          paddle.enable_imperative()  # Now we are in imperative mode 
+          paddle.disable_static()  # Now we are in imperative mode 
           input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
           output = paddle.full_like(input, 2.0)
           # [[2. 2. 2.]
@@ -144,7 +308,7 @@ def ones(shape, dtype=None, name=None):
         .. code-block:: python
 
           import paddle 
-          paddle.enable_imperative()
+          paddle.disable_static()
           
           # default dtype for ones OP
           data1 = paddle.ones(shape=[3, 2]) 
@@ -200,9 +364,9 @@ def ones_like(x, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
-        x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
+        x = paddle.to_tensor(np.array([1,2,3], dtype='float32'))
         out1 = paddle.zeros_like(x) # [1., 1., 1.]
         out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
 
@@ -237,7 +401,7 @@ def zeros(shape, dtype=None, name=None):
 
           import paddle
           
-          paddle.enable_imperative()  # Now we are in imperative mode
+          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.zeros(shape=[3, 2], dtype='float32') 
           # [[0. 0.]
           #  [0. 0.]
@@ -248,7 +412,7 @@ def zeros(shape, dtype=None, name=None):
           
           # shape is a Tensor
           shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
-          data3 = paddle.ones(shape=shape, dtype='int32') 
+          data3 = paddle.zeros(shape=shape, dtype='int32') 
           # [[0 0]
           #  [0 0]]
     """
@@ -290,9 +454,9 @@ def zeros_like(x, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
-        x = paddle.imperative.to_variable(np.array([1,2,3], dtype='float32'))
+        x = paddle.to_tensor(np.array([1,2,3], dtype='float32'))
         out1 = paddle.zeros_like(x) # [0., 0., 0.]
         out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
 
@@ -329,7 +493,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
           
           import paddle
 
-          paddle.enable_imperative()  # Now we are in imperative mode
+          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.eye(3, dtype='int32')
           # [[1 0 0]
           #  [0 1 0]
@@ -383,7 +547,7 @@ def full(shape, fill_value, dtype=None, name=None):
 
           import paddle
 
-          paddle.enable_imperative()  # Now we are in imperative mode
+          paddle.disable_static()  # Now we are in imperative mode
           data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
           #[[0]
           # [0]]
@@ -460,7 +624,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         out1 = paddle.arange(5)
         # [0, 1, 2, 3, 4]
@@ -472,7 +636,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         out3 = paddle.arange(4.999, dtype='float32')
         # [0., 1., 2., 3., 4.]
 
-        start_var = paddle.imperative.to_variable(np.array([3]))
+        start_var = paddle.to_tensor(np.array([3]))
         out4 = paddle.arange(start_var, 7)
         # [3, 4, 5, 6]
              
@@ -490,14 +654,13 @@ def _tril_triu_op(helper):
     """Base op of tril_op and triu_op
     """
     op_type = helper.layer_type
-    x = helper.kwargs.get('input', None)
+    x = helper.kwargs.get('x', None)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              op_type)
     if len(x.shape) < 2:
-        raise ValueError("input shape in {} must be at least 2-D".format(
-            op_type))
+        raise ValueError("x shape in {} must be at least 2-D".format(op_type))
     diagonal = helper.kwargs.get('diagonal', 0)
     if not isinstance(diagonal, (int, )):
         raise TypeError("diagonal in {} must be a python Int".format(op_type))
@@ -521,18 +684,18 @@ def _tril_triu_op(helper):
     return out
 
 
-def tril(input, diagonal=0, name=None):
+def tril(x, diagonal=0, name=None):
     """
 	:alias_main: paddle.tril
 	:alias: paddle.tril,paddle.tensor.tril,paddle.tensor.creation.tril
 
     This op returns the lower triangular part of a matrix (2-D tensor) or batch
-    of matrices :attr:`input`, the other elements of the result tensor are set 
+    of matrices :attr:`x`, the other elements of the result tensor are set 
     to 0. The lower triangular part of the matrix is defined as the elements 
     on and below the diagonal.
 
     Args:
-        input (Variable): The input variable which is a Tensor.
+        x (Variable): The input variable x which is a Tensor.
             Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
@@ -545,47 +708,41 @@ def tril(input, diagonal=0, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Tensor, results of lower triangular operation by the specified diagonal of input tensor,
-        it's data type is the same as input's Tensor.
+        Variable: Tensor, results of lower triangular operation by the specified diagonal of input tensor x,
+        it's data type is the same as x's Tensor.
 
     Raises:
         TypeError: diagonal is not a int type.
-        ValueError: dimension of :attr:`input` is less than 2.
+        ValueError: dimension of :attr:`x` is less than 2.
 
     Examples:
         .. code-block:: python
 
             import numpy as np
-            import paddle.tensor as tensor
-            import paddle.fluid as fluid
+            import paddle
 
             data = np.arange(1, 13, dtype="int64").reshape(3,-1)
             # array([[ 1,  2,  3,  4],
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
-            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
-            exe = fluid.Executor(fluid.CPUPlace())
 
-            # example 1, default diagonal
-            tril = tensor.tril(x)
-            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[tril], return_numpy=True)
+            paddle.disable_static()
+
+            x = paddle.to_variable(data)
+            
+            tril1 = paddle.tensor.tril(x)
             # array([[ 1,  0,  0,  0],
             #        [ 5,  6,  0,  0],
             #        [ 9, 10, 11,  0]])
 
             # example 2, positive diagonal value
-            tril = tensor.tril(x, diagonal=2)
-            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[tril], return_numpy=True)
+            tril2 = paddle.tensor.tril(x, diagonal=2)
             # array([[ 1,  2,  3,  0], 
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
 
             # example 3, negative diagonal value
-            tril = tensor.tril(x, diagonal=-1)
-            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[tril], return_numpy=True)
+            tril3 = paddle.tensor.tril(x, diagonal=-1)
             # array([[ 0,  0,  0,  0],
             #        [ 5,  0,  0,  0],
             #        [ 9, 10,  0,  0]])
@@ -593,23 +750,23 @@ def tril(input, diagonal=0, name=None):
     """
     if in_dygraph_mode():
         op = getattr(core.ops, 'tril_triu')
-        return op(input, 'diagonal', diagonal, "lower", True)
+        return op(x, 'diagonal', diagonal, "lower", True)
 
     return _tril_triu_op(LayerHelper('tril', **locals()))
 
 
-def triu(input, diagonal=0, name=None):
+def triu(x, diagonal=0, name=None):
     """
 	:alias_main: paddle.triu
 	:alias: paddle.triu,paddle.tensor.triu,paddle.tensor.creation.triu
 
     This op returns the upper triangular part of a matrix (2-D tensor) or batch of matrices
-    :attr:`input`, the other elements of the result tensor are set to 0.
+    :attr:`x`, the other elements of the result tensor are set to 0.
     The upper triangular part of the matrix is defined as the elements on and
     above the diagonal.
 
     Args:
-        input (Variable): The input variable which is a Tensor.
+        x (Variable): The input variable x which is a Tensor.
             Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and above the main diagonal are
@@ -622,47 +779,41 @@ def triu(input, diagonal=0, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Tensor, results of upper triangular operation by the specified diagonal of input tensor,
-        it's data type is the same as input's Tensor.
+        Variable: Tensor, results of upper triangular operation by the specified diagonal of input tensor x,
+        it's data type is the same as x's Tensor.
 
     Raises:
         TypeError: diagonal is not a int type.
-        ValueError: dimension of :attr:`input` is less than 2.
+        ValueError: dimension of :attr:`x` is less than 2.
 
     Examples:
         .. code-block:: python
 
             import numpy as np
-            import paddle.fluid as fluid
-            import paddle.tensor as tensor
+            import paddle
 
             data = np.arange(1, 13, dtype="int64").reshape(3,-1)
             # array([[ 1,  2,  3,  4],
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
-            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
-            exe = fluid.Executor(fluid.CPUPlace())
+
+            paddle.disable_static()
 
             # example 1, default diagonal
-            triu = tensor.triu(x)
-            triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[triu], return_numpy=True)
+            x = paddle.to_variable(data)
+            triu1 = paddle.tensor.triu(x)
             # array([[ 1,  2,  3,  4],
             #        [ 0,  6,  7,  8],
             #        [ 0,  0, 11, 12]])
 
             # example 2, positive diagonal value
-            triu = tensor.triu(x, diagonal=2)
-            triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[triu], return_numpy=True)
+            triu2 = paddle.tensor.triu(x, diagonal=2)
             # array([[0, 0, 3, 4],
             #        [0, 0, 0, 8],
             #        [0, 0, 0, 0]])
 
             # example 3, negative diagonal value
-            triu = tensor.triu(x, diagonal=-1)
-            triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-                fetch_list=[triu], return_numpy=True)
+            triu3 = paddle.tensor.triu(x, diagonal=-1)
             # array([[ 1,  2,  3,  4],
             #        [ 5,  6,  7,  8],
             #        [ 0, 10, 11, 12]])
@@ -670,7 +821,7 @@ def triu(input, diagonal=0, name=None):
     """
     if in_dygraph_mode():
         op = getattr(core.ops, 'tril_triu')
-        return op(input, 'diagonal', diagonal, "lower", False)
+        return op(x, 'diagonal', diagonal, "lower", False)
 
     return _tril_triu_op(LayerHelper('triu', **locals()))
 
@@ -723,12 +874,12 @@ def meshgrid(*args, **kwargs):
           import paddle
           import numpy as np
           
-          paddle.enable_imperative()
+          paddle.disable_static()
 
           input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
           input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          tensor_3 = paddle.imperative.to_variable(input_3)
-          tensor_4 = paddle.imperative.to_variable(input_4)
+          tensor_3 = paddle.to_tensor(input_3)
+          tensor_4 = paddle.to_tensor(input_4)
           grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
           #the shape of grid_x is (100, 200)

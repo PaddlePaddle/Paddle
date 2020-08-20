@@ -368,9 +368,15 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     TODO: If only decorate one of inner function instead of decorating the main
     function, the other inner functions are invisible for the decorated function.
     """
+
+    def remove_if_exit(filepath):
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
     source = ast_to_source_code(ast_root)
     import_fluid = "import paddle.fluid as fluid\n"
     source = import_fluid + source
+
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -382,7 +388,9 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         f.write(source)
 
     if delete_on_exit:
-        atexit.register(lambda: os.remove(f.name))
+        atexit.register(lambda: remove_if_exit(f.name))
+        atexit.register(lambda: remove_if_exit(f.name[:-3] + ".pyc"))
+
     module = imp.load_source(module_name, f.name)
     func_name = dyfunc.__name__
     if not hasattr(module, func_name):
@@ -1045,3 +1053,19 @@ class SplitAssignTransformer(gast.NodeTransformer):
             value_node = target
 
         return new_nodes
+
+
+# NOTE: inspect.unwrap() exits in PY3 but not in PY2.
+def unwrap(func):
+    """
+    Returns the object wrapped by decorators.
+    """
+
+    def _is_wrapped(f):
+        return hasattr(f, '__wrapped__')
+
+    unwrapped_f = func
+    while (_is_wrapped(unwrapped_f)):
+        unwrapped_f = unwrapped_f.__wrapped__
+
+    return unwrapped_f
