@@ -107,16 +107,10 @@ class GlooWrapper {
  public:
   static std::shared_ptr<GlooWrapper> GetInstance() {
     if (nullptr == s_instance_) {
+      VLOG(0) << "Get Instance.";
       s_instance_.reset(new GlooWrapper());
     }
     return s_instance_;
-  }
-
-  static GlooWrapper Create() {
-    if (nullptr == s_instance_) {
-      s_instance_.reset(new GlooWrapper());
-    }
-    return *s_instance_;
   }
 
   GlooWrapper() {}

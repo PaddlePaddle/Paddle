@@ -28,6 +28,8 @@ __all__ = [
     'broadcast',
     'all_reduce',
     'reduce',
+    'all_gather',
+    'scatter',
     'ReduceOp',
     'init_process_group',
 ]
@@ -40,6 +42,15 @@ class ReduceOp:
     MAX = 1
     MIN = 2
     PROD = 3
+
+
+class Group():
+    def __init__(self, rank, rank_num):
+        self.rank = rank
+        self.nranks = rank_num
+
+
+_default_group = Group(0, 1)
 
 
 def init_process_group(backend,
@@ -80,6 +91,8 @@ def init_process_group(backend,
         raise RuntimeError("The default process group has been initialized.")
 
     _default_backend = backend
+    _default_group.rank = rank
+    _default_group.nranks = rank_num
 
     if rank_num < 2:
         raise ValueError(
@@ -94,7 +107,11 @@ def init_process_group(backend,
         gloo = fluid.core.Gloo()
         gloo.set_rank(rank)
         gloo.set_size(rank_num)
-        #gloo.set_http_store()
+        gloo.set_prefix("")
+        gloo.set_iface('lo')
+        gloo.set_timeout_seconds(timeout, timeout)
+        gloo.set_hdfs_store('/tmp/tmp0', "", "")
+        gloo.init()
     else:
         raise ValueError("Unknow backend: %s" % backend)
 
@@ -294,18 +311,18 @@ def all_gather(tensor_list, tensor, group=0, async_op=False):
         raise ValueError(
             "The type of 'async_op' for all_gather should be bool.")
     helper = LayerHelper(op_type, **locals())
-    temp = paddle.concat(tensor_list)
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
     helper.append_op(
         type=op_type,
         inputs={'X': [tensor]},
-        outputs={'Out': [temp]},
+        outputs={'Out': [out]},
         attrs={
             'ring_id': group,
-            'use_calc_stream': False if async_op else True
+            'use_calc_stream': False if async_op else True,
+            'nranks': _default_group.nranks
         })
-    temp = paddle.split(temp, len(tensor_list), 0)
-    for i in range(len(temp)):
-        tensor_list[i] = temp[i]
+
+    tensor_list.extend(paddle.split(out, _default_group.nranks, 0))
 
 
 def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
@@ -328,13 +345,17 @@ def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
     Examples:
     """
     op_type = 'c_scatter'
-    if not isinstance(tensor_list, list):
-        raise ValueError("The type of 'tensor_list' for all_gather "
-                         "should be list.")
-    for elem in tensor_list:
-        check_variable_and_dtype(
-            elem, 'tensor_list',
-            ['float16', 'float32', 'float64', 'int32', 'int64'], 'all_gather')
+    global _default_group
+    rank = _default_group.rank
+    nranks = _default_group.nranks
+    if rank == src:
+        if not isinstance(tensor_list, list):
+            raise ValueError("The type of 'tensor_list' for all_gather "
+                             "should be list for src.")
+    else:
+        if tensor_list:
+            raise ValueError("'tensor_list' for all_gather "
+                             "should be None for others.")
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'all_reduce')
@@ -345,6 +366,10 @@ def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
         raise ValueError(
             "The type of 'async_op' for all_gather should be bool.")
     helper = LayerHelper(op_type, **locals())
+    if rank != src:
+        tensor_list = []
+        for _ in range(nranks):
+            tensor_list.append(tensor)
     temp = paddle.concat(tensor_list)
     helper.append_op(
         type=op_type,
@@ -352,6 +377,7 @@ def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
         outputs={'Out': [tensor]},
         attrs={
             'ring_id': group,
-            'root_id': src,
+            'root': src,
+            'nranks': nranks,
             'use_calc_stream': False if async_op else True
         })
