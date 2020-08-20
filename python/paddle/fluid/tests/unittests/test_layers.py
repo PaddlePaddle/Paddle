@@ -3243,9 +3243,8 @@ class TestBook(LayerTest):
             x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
             rois = layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
-            rois_lod = layers.data(
-                name="rois_lod", shape=[None, ], dtype="int", lod_level=1)
-            output = layers.roi_pool(x, rois, 7, 7, 0.6, rois_lod)
+            rois_num = fluid.data(name="rois_num", shape=[None], dtype="int32")
+            output = layers.roi_pool(x, rois, 7, 7, 0.6, rois_num)
             return (output)
 
     def test_sequence_enumerate(self):
@@ -3260,10 +3259,9 @@ class TestBook(LayerTest):
             x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
             rois = layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
-            rois_lod = layers.data(
-                name="rois_lod", shape=[None, ], dtype="int", lod_level=1)
-            output = layers.roi_align(x, rois, 14, 14, 0.5, 2, 'roi_align',
-                                      rois_lod)
+            rois_num = fluid.data(name="rois_lod", shape=[None], dtype="int32")
+            output = layers.roi_align(
+                x, rois, 14, 14, 0.5, 2, rois_num=rois_num, name='roi_align')
             return (output)
 
     def test_roi_perspective_transform(self):
