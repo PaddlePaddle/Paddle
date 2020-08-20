@@ -354,33 +354,35 @@ class Pad2D(layers.Layer):
 
 class Dropout(layers.Layer):
     """
-    Dropout Layer.
-    This interface is used to construct a callable object of the `Dropout` class.
     Dropout is a regularization technique for reducing overfitting by preventing
-    neuron co-adaption during training as described in the paper [Improving neural networks
-    by preventing co-adaptation of feature detectors](https://arxiv.org/abs/1207.0580).
+    neuron co-adaption during training as described in the paper:
+    `Improving neural networks by preventing co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_ 
     The dropout operator randomly sets the outputs of some units to zero, while upscale others
     according to the given dropout probability.
 
-    See `paddle.nn.functional.dropout` for more details.
+    See ``paddle.nn.functional.dropout`` for more details.
     In dygraph mode, please use ``eval()`` to indicate whether it is in test phrase or not.
 
     Parameters:
-        p (float, optional): Probability of setting units to zero. Default: 0.5
-        axis (int|list): The axis along which the dropout is performed. Default None.
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
-        mode(string, optional): ['upscale_in_train'(default)|'downscale_in_infer']
-                                       1. upscale_in_train(default), upscale the outcome at training time
-                                          - train: out = input * mask / ( 1.0 - p )
-                                          - inference: out = input
-                                       2. downscale_in_infer, downgrade the outcome at inference
-                                          - train: out = input * mask
-                                          - inference: out = input * (1.0 - p)
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        axis (int | list): The axis along which the dropout is performed. Default None.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
+
+                               1. upscale_in_train(default), upscale the output at training time
+
+                                  - train: out = input * mask / ( 1.0 - p )
+                                  - inference: out = input
+
+                               2. downscale_in_infer, downscale the output at inference
+
+                                  - train: out = input * mask
+                                  - inference: out = input * (1.0 - p)
 
     Shape:
         - input: N-D tensor.
         - output: N-D tensor, the same shape as input.
+
     Examples:
         .. code-block:: python
             import paddle
@@ -425,24 +427,24 @@ class Dropout2D(layers.Layer):
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
-    As described in the paper [Efficient Object Localization Using Convolutional
-    Networks](https://arxiv.org/abs/1411.4280), Dropout2d will help promote independence between
-    feature maps.
+    Dropout2d will help promote independence between feature maps as described in the paper: 
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_ 
 
-    See `paddle.nn.functional.dropout2d` for more details.
+    See ``paddle.nn.functional.dropout2d`` for more details.
 
     Please use ``eval()`` to indicate whether it is in test phrase or not.
     Parameters:
         p (float, optional): Probability of setting units to zero. Default: 0.5
         data_format (str, optional): Specify the data format of the input, and the data format of the output
                                      will be consistent with that of the input. An optional string from:
-                                    "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is
+                                    `NCHW`, `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is
                                      stored in the order of: [batch_size, input_channels, input_height, input_width].
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Shape:
         - input: 4-D tensor.
         - output: 4-D tensor, the same shape as input.
+
     Examples:
         .. code-block:: python
             import paddle
@@ -464,7 +466,6 @@ class Dropout2D(layers.Layer):
         super(Dropout2D, self).__init__()
 
         self.p = p
-        self.training = _dygraph_tracer()._train_mode
         self.data_format = data_format
         self.name = name
 
@@ -480,29 +481,27 @@ class Dropout2D(layers.Layer):
 
 class Dropout3D(layers.Layer):
     """
-    Dropout3D Layer.
-    This interface is used to construct a callable object of the `Dropout3D` class.
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
-    a channel is a 3D feature map with the shape `DHW`). Each channel will be zeroed out independently
+    a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
-    As described in the paper [Efficient Object Localization Using Convolutional
-    Networks](https://arxiv.org/abs/1411.4280), Dropout3d will help promote independence between
-    feature maps.
+    Dropout3d will help promote independence between feature maps as described in the paper: 
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_ 
 
-    See `paddle.nn.functional.dropout3d` for more details.
+    See ``paddle.nn.functional.dropout3d`` for more details.
 
     Please use ``eval()`` to indicate whether it is in test phrase or not.
     Parameters:
-        p (float, optional): Probability of setting units to zero. Default: 0.5
+        p (float | int): Probability of setting units to zero. Default: 0.5
         data_format (str, optional): Specify the data format of the input, and the data format of the output
                                      will be consistent with that of the input. An optional string from:
-                                    "NCDHW", "NDHWC". The default is "NCDHW". When it is "NCDHW", the data is
+                                    `NCDHW`, `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is
                                      stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Shape:
         - input: 5-D tensor.
         - output: 5-D tensor, the same shape as input.
+
     Examples:
         .. code-block:: python
             import paddle

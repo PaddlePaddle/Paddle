@@ -466,7 +466,6 @@ def dropout(x,
             mode="upscale_in_train",
             name=None):
     """
-    dropout function.
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training. The dropout operator randomly sets the
     outputs of some units to zero, while upscale others according to the given
@@ -474,24 +473,28 @@ def dropout(x,
 
     Args:
         x (Tensor): The input tensor. The data type is float32 or float64.
-        p (float): Probability of setting units to zero. Default 0.5.
-        axis (int|list): The axis along which the dropout is performed. Default None.
+        p (float | int): Probability of setting units to zero. Default 0.5.
+        axis (int | list): The axis along which the dropout is performed. Default None.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
-        mode(string): ['upscale_in_train'(default)|'downscale_in_infer']
-                                        1. upscale_in_train(default), upscale the outcome at training time
-                                           - train: out = input * mask / ( 1.0 - dropout_prob )
-                                           - inference: out = input
-                                        2. downscale_in_infer, downgrade the outcome at inference
-                                           - train: out = input * mask
-                                           - inference: out = input * (1.0 - dropout_prob)
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        mode(str): ['upscale_in_train'(default) | 'downscale_in_infer']
+
+                           1. upscale_in_train(default), upscale the output at training time
+
+                              - train: out = input * mask / ( 1.0 - dropout_prob )
+                              - inference: out = input
+
+                           2. downscale_in_infer, downscale the output at inference
+
+                              - train: out = input * mask
+                              - inference: out = input * (1.0 - dropout_prob)
 
     Returns:
-        A Tensor representing the dropout, has same shape and data type with `x`.
+        A Tensor representing the dropout, has same shape and data type as `x` .
+
     Examples:
-        We use `p=0.5` in the following description for simplicity.
-        1. When `axis=None` , this is commonly used dropout, which dropout each element of x randomly.
+        We use ``p=0.5`` in the following description for simplicity.
+        1. When ``axis=None`` , this is commonly used dropout, which dropout each element of x randomly.
             Let's see a simple case when x is a 2d tensor with shape 2*3:
             [[1 2 3]
              [4 5 6]]
@@ -502,14 +505,14 @@ def dropout(x,
             So the output is obtained from elementwise multiply of x and mask:
             [[0 2 0]
              [4 0 6]]
-            Using default setting, i.e. `mode='upscale_in_train'` ,
+            Using default setting, i.e. ``mode='upscale_in_train'`` ,
             if in training phase, the final upscale output is:
             [[0 4 0 ]
              [8 0 12]]
             if in test phase, the output is the same as input:
             [[1 2 3]
              [4 5 6]]
-            we can also set `mode='downscale_in_infer'` , then
+            we can also set ``mode='downscale_in_infer'`` , then
             if in training phase, the final output is:
             [[0 2 0]
              [4 0 6]]
@@ -517,24 +520,11 @@ def dropout(x,
             [[0.5 1.  1.5]
              [2.  2.5 3. ]]
 
-        .. code-block:: python
-            import paddle
-            import numpy as np
-
-            paddle.disable_static()
-            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
-            x = paddle.to_tensor(x)
-            y_train = paddle.nn.functional.dropout(x, 0.5)
-            y_test = paddle.nn.functional.dropout(x, 0.5, training=False) #test
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
-
-        2. When `axis!=None` , this is useful for dropping whole channels from an image or sequence.
+        2. When ``axis!=None`` , this is useful for dropping whole channels from an image or sequence.
             Let's see the simple case when x is a 2d tensor with shape 2*3 again:
             [[1 2 3]
              [4 5 6]]
-            (1) If `axis=0` , this means the dropout is only performed in axis `0` .
+            (1) If ``axis=0`` , this means the dropout is only performed in axis `0` .
                 we generate mask with the shape 2*1. Only in axis `0` the value is randomly selected.
                 For example, we may get such mask:
                 [[1]
@@ -547,7 +537,7 @@ def dropout(x,
                 [[1 2 3]
                  [0 0 0]]
                 then we can do upscale or downscale according to the setting of other arguments.
-            (2) If `axis=1` , this means the dropout is only performed in axis `1` .
+            (2) If ``axis=1`` , this means the dropout is only performed in axis `1` .
                 we generate mask with the shape 1*3. Only in axis `1` the value is randomly selected.
                 For example, we may get such mask:
                 [[1 0 1]]
@@ -557,8 +547,8 @@ def dropout(x,
                 and the result after elementwise multiply is:
                 [[1 0 3]
                  [4 0 6]]
-            (3) What about `axis=[0, 1]` ? This means the dropout is performed in all axes of x,
-                which is the same case as default setting `axis=None`.
+            (3) What about ``axis=[0, 1]`` ? This means the dropout is performed in all axes of x,
+                which is the same case as default setting ``axis=None`` .
             (4) You may note that logically `axis=None` means the dropout is performed in no axis of x,
                 We generate mask with the shape 1*1. Whole input is randomly selected or dropped.
                 For example, we may get such mask:
@@ -570,13 +560,13 @@ def dropout(x,
                 [[0 0 0]
                  [0 0 0]]
                 Actually this is not what we want because all elements may set to zero~
-            When x is a 4d tensor with shape `NCHW`, we can set `axis=[0,1]` and the dropout will be performed
+            When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed
             in channel `N` and `C`, `H` and `W` is tied, i.e.
-            dropout(x, p, axis=[0,1])
-            This is something we called dropout2d. Please refer to `paddle.nn.functional.dropout2d`
+            paddle.nn.dropout(x, p, axis=[0,1])
+            This is something we called dropout2d. Please refer to ``paddle.nn.functional.dropout2d``
             for more details.
-            Similarly, when x is a 5d tensor with shape `NCDHW`, we can set `axis=[0,1]` to perform
-            dropout3d. Please refer to `paddle.nn.functional.dropout3d` for more details.
+            Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform
+            dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
 
         .. code-block:: python
             import paddle
@@ -585,10 +575,14 @@ def dropout(x,
             paddle.disable_static()
             x = np.array([[1,2,3], [4,5,6]]).astype('float32')
             x = paddle.to_tensor(x)
+            y_train = paddle.nn.functional.dropout(x, 0.5)
+            y_test = paddle.nn.functional.dropout(x, 0.5, training=False) 
             y_0 = paddle.nn.functional.dropout(x, axis=0)
             y_1 = paddle.nn.functional.dropout(x, axis=1)
             y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
             print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
             print(y_0.numpy())
             print(y_1.numpy())
             print(y_01.numpy())
@@ -690,12 +684,11 @@ def dropout(x,
 
 def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     """
-    dropout2d function.
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
-    a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
+    a channel is a 2D feature map with the shape `HW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
 
-    See `paddle.nn.functional.dropout` for more details.
+    See ``paddle.nn.functional.dropout`` for more details.
 
     Args:
         x (Tensor):  The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C].
@@ -704,12 +697,13 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
                                      will be consistent with that of the input. An optional string from:
-                                    "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is
+                                    `NCHW` , `NHWC` . The default is `NCHW` . When it is `NCHW` , the data is
                                     stored in the order of: [batch_size, input_channels, input_height, input_width].
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
-        A Tensor representing the dropout, has same shape and data type with `x`.
+        A Tensor representing the dropout2d, has same shape and data type as `x` .
+
     Examples:
         .. code-block:: python
             import paddle
@@ -723,7 +717,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
             for i in range(2):
                 for j in range(3):
                     print(x.numpy()[i,j,:,:])
-                    print(y_train.numpy()[i,j,:,:])
+                    print(y_train.numpy()[i,j,:,:]) # may all 0
                     print(y_test.numpy()[i,j,:,:])
     """
     input_shape = x.shape
@@ -747,12 +741,11 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
 
 def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     """
-    dropout3d function.
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
-    a channel is a 3D feature map with the shape `DHW`). Each channel will be zeroed out independently
+    a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
 
-    See `paddle.nn.functional.dropout` for more details.
+    See ``paddle.nn.functional.dropout`` for more details.
 
     Args:
         x (Tensor):  The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C].
@@ -761,12 +754,13 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
                                      will be consistent with that of the input. An optional string from:
-                                    "NCDHW", "NDHWC". The default is "NCDHW". When it is "NCDHW", the data is
+                                    ``NCDHW``, ``NDHWC``. The default is ``NCDHW`` . When it is ``NCDHW`` , the data is
                                     stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
-        A Tensor representing the dropout, has same shape and data type with `x`.
+        A Tensor representing the dropout3d, has same shape and data type with `x` .
+
     Examples:
         .. code-block:: python
             import paddle
@@ -778,7 +772,7 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
             y_train = paddle.nn.functional.dropout3d(x)  #train
             y_test = paddle.nn.functional.dropout3d(x, training=False) #test
             print(x.numpy()[0,0,:,:,:])
-            print(y_train.numpy()[0,0,:,:,:])
+            print(y_train.numpy()[0,0,:,:,:]) # may all 0
             print(y_test.numpy()[0,0,:,:,:])
     """
 
