@@ -509,7 +509,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   mkldnn::engine engine_;
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
-  bool block_next_cache_clearing = false;
+  bool block_next_cache_clearing_ = false;
 };
 #endif
 

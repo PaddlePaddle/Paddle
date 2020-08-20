@@ -413,18 +413,20 @@ MKLDNNDeviceContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
 }
 
 void MKLDNNDeviceContext::ResetBlobMap() {
-  if (!block_next_cache_clearing) {
+  std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
+  if (!block_next_cache_clearing_) {
     VLOG(3) << "Clearing DNNL cache.";
     p_blobmap_->clear();
   } else {
     VLOG(3) << "Prevented Clearing DNNL cache.";
-    block_next_cache_clearing = false;
+    block_next_cache_clearing_ = false;
   }
 }
 
 void MKLDNNDeviceContext::BlockNextCacheClearing() {
+  std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
   VLOG(3) << "Next DNNL cache clearing has been blocked.";
-  block_next_cache_clearing = true;
+  block_next_cache_clearing_ = true;
 }
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {
