@@ -90,7 +90,7 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
 
             # example 1:
             # attr shape is a list which doesn't contain Tensor.
-            result_1 = paddle.tensor.random.uniform_random(shape=[3, 4])
+            result_1 = paddle.tensor.random.uniform(shape=[3, 4])
             # [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357],
             #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249],
             #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]]
@@ -99,7 +99,7 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
             # attr shape is a list which contains Tensor.
             dim_1 = paddle.fill_constant([1], "int64", 2)
             dim_2 = paddle.fill_constant([1], "int32", 3)
-            result_2 = paddle.tensor.random.uniform_random(shape=[dim_1, dim_2])
+            result_2 = paddle.tensor.random.uniform(shape=[dim_1, dim_2])
             # [[-0.9951253,   0.30757582, 0.9899647 ],
             #  [ 0.5864527,   0.6607096,  -0.8886161 ]]
 
@@ -108,7 +108,7 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
             shape = np.array([2, 3])
             shape_tensor = paddle.to_tensor(shape)
 
-            result_3 = paddle.tensor.random.uniform_random(shape_tensor)
+            result_3 = paddle.tensor.random.uniform(shape_tensor)
             # if shape_tensor's value is [2, 3]
             # result_3 is:
             # [[-0.8517412,  -0.4006908,   0.2551912 ],
