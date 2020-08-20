@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import six
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear, BatchNorm, Embedding, GRUUnit

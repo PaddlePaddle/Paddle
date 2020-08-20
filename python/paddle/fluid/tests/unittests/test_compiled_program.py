@@ -63,8 +63,7 @@ class TestCompiledProgram(unittest.TestCase):
 
     def test_compiled_program_with_data_parallel(self):
         with new_program_scope():
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            paddle.manual_seed(self.seed)
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
             exe = fluid.Executor(place)
