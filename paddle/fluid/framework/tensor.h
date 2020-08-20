@@ -150,6 +150,8 @@ class Tensor {
 
   void set_layout(const DataLayout layout) { layout_ = layout; }
 
+  void set_offset(const size_t offset) { offset_ = offset; }
+
   void clear() {
     holder_ = nullptr;
     offset_ = 0;

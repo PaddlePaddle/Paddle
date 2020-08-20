@@ -53,11 +53,50 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     bool is_bidirec = ctx.Attr<bool>("is_bidirec");
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
+    int input_size = ctx.Attr<int>("input_size");
     bool is_test = ctx.Attr<bool>("is_test");
     int seed = ctx.Attr<int>("seed");
 
+    int gate_size = 4 * hidden_size;
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
+
+    auto weight_ih = ctx.MultiOutput<framework::Tensor>("WeightIh");
+    auto weight_hh = ctx.MultiOutput<framework::Tensor>("WeightHh");
+    auto bias_ih = ctx.MultiOutput<framework::Tensor>("BiasIh");
+    auto bias_hh = ctx.MultiOutput<framework::Tensor>("BiasHh");
+
+    int offset = 0;
+    int n_direct = is_bidirec ? 2 : 1;
+    for (int i = 0; i < num_layers; ++i) {
+      for (int j = 0; j < n_direct; ++j) {
+        int weight_num = i * n_direct + j;
+        int size = 0;
+        size = gate_size * input_size;
+        weight_ih[weight_num]->ShareDataWith(*w);
+        weight_ih[weight_num]->set_offset(offset);
+        weight_ih[weight_num]->Resize({size});
+        offset += size * sizeof(T);
+
+        size = gate_size * hidden_size * n_direct;
+        weight_hh[weight_num]->ShareDataWith(*w);
+        weight_hh[weight_num]->set_offset(offset);
+        weight_hh[weight_num]->Resize({size});
+        offset += size * sizeof(T);
+
+        size = gate_size * hidden_size;
+        bias_ih[weight_num]->ShareDataWith(*w);
+        bias_ih[weight_num]->set_offset(offset);
+        bias_ih[weight_num]->Resize({size});
+        offset += size * sizeof(T);
+
+        size = gate_size;
+        bias_hh[weight_num]->ShareDataWith(*w);
+        bias_hh[weight_num]->set_offset(offset);
+        bias_hh[weight_num]->Resize({size});
+        offset += size * sizeof(T);
+      }
+    }
 
     CudnnRNNCache *cudnn_rnn_cache = new CudnnRNNCache();
 

@@ -137,6 +137,16 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "is_bidirec is False"
               "and When is_bidirect is True, the shape will be (num_layers*2 x "
               "batch_size x hidden_size*2)");
+    AddOutput("WeightHh",
+              "(Tensor List), stores weight_hh and share data with W. ")
+        .AsDuplicable();
+    AddOutput("WeightIh",
+              "(Tensor List), stores weight_ih and share data with W.")
+        .AsDuplicable();
+    AddOutput("BiasHh", "(Tensor List), stores bias_hh and share data with W.")
+        .AsDuplicable();
+    AddOutput("BiasIh", "(Tensor List), stores bias_ih and share data with W. ")
+        .AsDuplicable();
     AddAttr<float>(
         "dropout_prob",
         "dropout prob of the dropout op"

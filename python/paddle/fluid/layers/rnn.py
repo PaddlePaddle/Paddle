@@ -2281,23 +2281,19 @@ def lstm(input,
     input_shape = list(input.shape)
     input_size = input_shape[-1]
     weight_size = 0
+    n_direction = 2 if is_bidirec else 1
+    gate_size = hidden_size * 4
+
     for i in range(num_layers):
         if i == 0:
-            input_weight_size = (input_size * hidden_size) * 4
+            input_weight_size = gate_size * input_size
         else:
-            if is_bidirec:
-                input_weight_size = (hidden_size * 2 * hidden_size) * 4
-            else:
-                input_weight_size = (hidden_size * hidden_size) * 4
+            input_weight_size = gate_size * hidden_size * n_direction
 
-        hidden_weight_size = (hidden_size * hidden_size) * 4
+        hidden_weight_size = gate_size * hidden_size
 
-        if is_bidirec:
-            weight_size += (input_weight_size + hidden_weight_size) * 2
-            weight_size += hidden_size * 8 * 2
-        else:
-            weight_size += input_weight_size + hidden_weight_size
-            weight_size += hidden_size * 8
+        weight_size += (input_weight_size + hidden_weight_size)
+        weight_size += gate_size * 2
 
     weight = helper.create_parameter(
         attr=helper.param_attr,
@@ -2308,6 +2304,22 @@ def lstm(input,
     out = helper.create_variable_for_type_inference(dtype)
     last_h = helper.create_variable_for_type_inference(dtype)
     last_c = helper.create_variable_for_type_inference(dtype)
+    weight_ih = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(num_layers * n_direction)
+    ]
+    weight_hh = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(num_layers * n_direction)
+    ]
+    bias_ih = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(num_layers * n_direction)
+    ]
+    bias_hh = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(num_layers * n_direction)
+    ]
     reserve = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
     state_out = helper.create_variable_for_type_inference(
@@ -2326,6 +2338,10 @@ def lstm(input,
             'Out': out,
             'LastH': last_h,
             'LastC': last_c,
+            'WeightIh': weight_ih,
+            'WeightHh': weight_hh,
+            'BiasIh': bias_ih,
+            'BiasHh': bias_hh,
             'Reserve': reserve,
             'StateOut': state_out,
         },
