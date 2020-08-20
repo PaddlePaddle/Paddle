@@ -101,6 +101,7 @@ from .tensor.logic import equal_all  #DEFINE_ALIAS
 from .tensor.manipulation import cast  #DEFINE_ALIAS
 from .tensor.manipulation import concat  #DEFINE_ALIAS
 from .tensor.manipulation import expand  #DEFINE_ALIAS
+from .tensor.manipulation import broadcast_to  #DEFINE_ALIAS
 from .tensor.manipulation import expand_as  #DEFINE_ALIAS
 from .tensor.manipulation import tile  #DEFINE_ALIAS
 from .tensor.manipulation import flatten  #DEFINE_ALIAS
@@ -125,6 +126,7 @@ from .tensor.manipulation import unstack  #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
 from .tensor.manipulation import unbind  #DEFINE_ALIAS
 from .tensor.manipulation import roll  #DEFINE_ALIAS
+from .tensor.manipulation import chunk  #DEFINE_ALIAS
 from .tensor.math import abs  #DEFINE_ALIAS
 from .tensor.math import acos  #DEFINE_ALIAS
 from .tensor.math import asin  #DEFINE_ALIAS
@@ -181,6 +183,7 @@ from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clamp  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
 from .tensor.math import kron  #DEFINE_ALIAS
+from .tensor.math import prod  #DEFINE_ALIAS
 # from .tensor.random import uniform        #DEFINE_ALIAS
 from .tensor.random import standard_normal
 from .tensor.random import normal
@@ -226,6 +229,8 @@ from .framework import ExponentialDecay  #DEFINE_ALIAS
 from .framework import InverseTimeDecay  #DEFINE_ALIAS
 from .framework import PolynomialDecay  #DEFINE_ALIAS
 from .framework import CosineDecay  #DEFINE_ALIAS
+from .framework import set_default_dtype  #DEFINE_ALIAS
+from .framework import get_default_dtype  #DEFINE_ALIAS
 
 from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.stat import mean  #DEFINE_ALIAS

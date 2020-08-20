@@ -51,8 +51,11 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
   }
 
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new SkipLayerNormPluginDynamic(
+    auto ptr = new SkipLayerNormPluginDynamic(
         bias_.data(), scale_.data(), bias_size_, scale_size_, eps_, ban_fp16_);
+    ptr->bias_gpu_ = bias_gpu_;
+    ptr->scale_gpu_ = bias_gpu_;
+    return ptr;
   }
 
   const char* getPluginType() const override { return "skip_layernorm_plugin"; }
