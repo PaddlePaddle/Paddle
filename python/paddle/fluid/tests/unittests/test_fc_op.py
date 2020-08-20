@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
@@ -135,10 +136,9 @@ class TestFCOpWithPadding(TestFCOp):
 
 class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
     def test_api(self):
+        paddle.manual_seed(SEED)
         startup_program = Program()
         main_program = Program()
-        startup_program.random_seed = SEED
-        main_program.random_seed = SEED
 
         with program_guard(main_program, startup_program):
             input = np.random.random([2, 2, 25]).astype("float32")

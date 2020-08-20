@@ -57,8 +57,7 @@ class LayerTest(unittest.TestCase):
     @contextlib.contextmanager
     def static_graph(self):
         with new_program_scope():
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            paddle.manual_seed(self.seed)
             yield
 
     def get_static_graph_result(self,
@@ -77,8 +76,7 @@ class LayerTest(unittest.TestCase):
     def dynamic_graph(self, force_to_use_cpu=False):
         with fluid.dygraph.guard(
                 self._get_place(force_to_use_cpu=force_to_use_cpu)):
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            paddle.manual_seed(self.seed)
             yield
 
 

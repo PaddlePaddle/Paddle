@@ -64,8 +64,7 @@ def train(args, place, to_static):
     env.seed(SEED)
 
     with fluid.dygraph.guard(place):
-        fluid.default_main_program().random_seed = SEED
-        fluid.default_startup_program().random_seed = SEED
+        paddle.manual_seed(SEED)
         local_random = np.random.RandomState(SEED)
 
         policy = Policy()

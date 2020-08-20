@@ -401,9 +401,8 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 dtype='int64').reshape([1, Config.max_length])))
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            paddle.manual_seed(seed)
             ocr_attention = OCRAttention()
 
             if Config.learning_rate_decay == "piecewise_decay":
@@ -453,8 +452,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                         dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             ocr_attention = OCRAttention()
