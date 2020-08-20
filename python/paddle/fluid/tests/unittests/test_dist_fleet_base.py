@@ -57,7 +57,7 @@ class FleetDistRunnerBase(object):
         if args.role.upper() == "PSERVER":
             role = role_maker.UserDefinedRoleMaker(
                 is_collective=False,
-                init_gloo=True,
+                init_gloo=False,
                 path=args.gloo_path,
                 current_id=args.current_id,
                 role=role_maker.Role.SERVER,
@@ -66,7 +66,7 @@ class FleetDistRunnerBase(object):
         else:
             role = role_maker.UserDefinedRoleMaker(
                 is_collective=False,
-                init_gloo=True,
+                init_gloo=False,
                 path=args.gloo_path,
                 current_id=args.current_id,
                 role=role_maker.Role.WORKER,
@@ -160,7 +160,13 @@ class TestFleetBase(unittest.TestCase):
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
 
+    def tearDown(self):
+        t = time.time() - self.startTime
+        print('%s: %.3f' % (self.__class__.__name__, t))
+
     def setUp(self):
+        self.startTime = time.time()
+
         self._mode = "sync"
         self._reader = "pyreader"
         self._trainers = 2
