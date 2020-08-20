@@ -8643,11 +8643,9 @@ def relu(x, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.selu")
 def selu(x, scale=None, alpha=None, name=None):
     """
-    :alias_main: paddle.nn.functional.selu
-	:alias: paddle.nn.functional.selu,paddle.nn.functional.activation.selu
-	:old_api: paddle.fluid.layers.selu
 
     Selu Operator.
 
@@ -9304,12 +9302,9 @@ def elu(x, alpha=1.0, name=None):
     return out
 
 
-@templatedoc()
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.relu6")
 def relu6(x, threshold=6.0, name=None):
     """
-    :alias_main: paddle.nn.functional.relu6
-	:alias: paddle.nn.functional.relu6,paddle.nn.functional.activation.relu6
-	:old_api: paddle.fluid.layers.relu6
 
     ${comment}
 
