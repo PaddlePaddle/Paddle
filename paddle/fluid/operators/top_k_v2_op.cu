@@ -105,7 +105,8 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
                 input_width, static_cast<int>(k), gridx, input_height,
                 largest));
         default:
-          PADDLE_THROW("Error");
+          PADDLE_THROW(platform::errors::Fatal(
+              "the input data shape has error in the topk cuda kernel."));
       }
     } else {
       // if get topK not from the last axis, will tranpose the tensor and get
@@ -173,7 +174,8 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
                 trans_input.data<T>(), input_width, input_width,
                 static_cast<int>(k), gridx, input_height, largest));
         default:
-          PADDLE_THROW("Error");
+          PADDLE_THROW(platform::errors::Fatal(
+              "the input data shape has error in the topk cuda kernel."));
       }
 
       // last step, tranpose back the indices and output

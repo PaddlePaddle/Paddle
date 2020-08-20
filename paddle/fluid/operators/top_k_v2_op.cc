@@ -35,18 +35,20 @@ class TopkV2Op : public framework::OperatorWithKernel {
     const int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
     int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
     PADDLE_ENFORCE_EQ((axis < dim_size) && (axis >= (-1 * dim_size)), true,
-                      "the axis"
+                      "the axis of topk"
                       "must be [-%d, %d), but you set axis is %d",
                       dim_size, dim_size, axis);
 
     if (axis < 0) axis += dim_size;
 
-    PADDLE_ENFORCE_GE(k, 1, "k must >= 1");
-    PADDLE_ENFORCE_GE(input_dims.size(), 1, "input must have >= 1d shape");
+    PADDLE_ENFORCE_GE(k, 1, "the attribute of k in the topk must >= 1");
+    PADDLE_ENFORCE_GE(input_dims.size(), 1,
+                      "input of topk must have >= 1d shape");
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_GE(input_dims[input_dims.size() - 1], k,
-                        "input must have >= k columns");
+      PADDLE_ENFORCE_GE(
+          input_dims[axis], k,
+          "input of topk op must have >= %d columns in axis of %d", k, axis);
     }
 
     framework::DDim dims = input_dims;
