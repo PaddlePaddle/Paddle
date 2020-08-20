@@ -84,9 +84,14 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
     ids_num += recv_t.rows().size();
     width = recv_t.value().dims()[1];
 
-    std::transform(recv_t.rows().begin(), recv_t.rows().end(),
-                   std::back_inserter(all_ids),
-                   [&](int64_t id) { return id * pserver_num + i; });
+    if (rpc_ctx.is_distributed) {
+      std::copy(recv_t.rows().begin(), recv_t.rows().end(),
+                std::back_inserter(all_ids));
+    } else {
+      std::transform(recv_t.rows().begin(), recv_t.rows().end(),
+                     std::back_inserter(all_ids),
+                     [&](int64_t id) { return i * pserver_num + id; });
+    }
   }
 
   auto *var = scope.FindVar(rpc_ctx.var_name);

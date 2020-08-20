@@ -628,9 +628,7 @@ void GeoCommunicator::RecvByCommunicator() {
       if (recv_ctx.is_sparse) {
         RecvSparse(var_name);
       } else {
-        VLOG(1) << "recv dense " << var_name << " begin";
         RecvDense(var_name);
-        VLOG(1) << "recv dense " << var_name << " done";
       }
     };
     tasks.emplace_back(send_threadpool_->enqueue(std::move(recv_task)));
