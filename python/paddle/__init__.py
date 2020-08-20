@@ -237,6 +237,7 @@ from .tensor.stat import reduce_mean  #DEFINE_ALIAS
 from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 from .fluid.data import data
+from .tensor.stat import numel  #DEFINE_ALIAS
 from .device import get_cudnn_version
 from .device import set_device
 from .device import get_device
