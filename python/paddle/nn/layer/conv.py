@@ -45,10 +45,10 @@ class Conv1D(layers.Layer):
     For more details, refer to code examples.
     The convolution1D layer calculates the output based on the input, filter
     and stride, padding, dilation, groups parameters. Input and
-    Output are in NCL format, where N is batch size, C is the number of
+    Output are in NCL format or NLC format, where N is batch size, C is the number of
     the feature map, L is the length of the feature map.
-    Filter's shape is [MCL] , where M is the number of output feature map,
-    C is the number of input feature map, L is the size of the filter. 
+    Filter's shape is [MCK] , where M is the number of output feature map,
+    C is the number of input feature map, K is the size of the kernel. 
     If the groups is greater than 1, C will equal the number of input feature map divided by the groups.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
@@ -62,8 +62,8 @@ class Conv1D(layers.Layer):
 
     Where:
 
-    * :math:`X`: Input value, a ``Tensor`` with NCL format.
-    * :math:`W`: Filter value, a ``Tensor`` with shape [MCL] .
+    * :math:`X`: Input value, a ``Tensor`` with 'NCL' format or 'NLC' format.
+    * :math:`W`: Filter value, a ``Tensor`` with shape [MCK] .
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
     * :math:`\\sigma`: Activation function.
@@ -75,7 +75,7 @@ class Conv1D(layers.Layer):
 
           Input shape: :math:`(N, C_{in}, L_{in})`
 
-          Filter shape: :math:`(C_{out}, C_{in}, L_f)`
+          Kernel shape: :math:`(C_{out}, C_{in}, K)`
 
         - Output:
 
@@ -93,6 +93,8 @@ class Conv1D(layers.Layer):
             feature map.
         kernel_size (int or tuple): The filter size. If kernel_size is a tuple,
             it must contain one integer, (kernel_size).
+        stride (int or tuple, optional): The stride size. If stride is a tuple, it must
+            contain one integer, (stride_size). Default: 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means the feature map is zero paded by size of `padding` on both sides.
@@ -100,23 +102,22 @@ class Conv1D(layers.Layer):
             4. a list[int] or tuple[int] whose length is 2. It has the form  [pad_before, pad_after].
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
-        stride (int or tuple, optional): The stride size. If stride is a tuple, it must
-            contain one integers, (stride_size). Default: 1.
         dilation (int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain one integer, (dilation_size). Default: 1.
-        groups (int, optional): The groups number of the Conv2d Layer. According to grouped
+        groups (int, optional): The groups number of the conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: 1.
+        bias(bool, optional): Whether to use bias. Default: True.
         param_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
-            of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
+            of conv1d. If it is set to None or one attribute of ParamAttr, conv1d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
             and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        bias_attr (ParamAttr or bool, optional): The attribute for the bias of conv2d.
+        bias_attr (ParamAttr or bool, optional): The attribute for the bias of conv1d.
             If it is set to False, no bias will be added to the output units.
-            If it is set to None or one attribute of ParamAttr, conv2d
+            If it is set to None or one attribute of ParamAttr, conv1d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
 
@@ -126,8 +127,8 @@ class Conv1D(layers.Layer):
         **bias** (Parameter or None): the learnable bias of this layer.
 
     Shape:
-        - input: 3-D tensor with shape: (batch, in_channels, length), i.e.: HCL.
-        - input: 3-D tensor with shape: (batch, in_channels, new_length).
+        - x: 3-D tensor with shape: (batch, in_channels, length) or (batch, length, in_channels).
+        - output: 3-D tensor with same shape as input x.
     
     Raises:
         None
@@ -165,14 +166,17 @@ class Conv1D(layers.Layer):
                  in_channels,
                  out_channels,
                  kernel_size,
-                 padding=0,
                  stride=1,
+                 padding=0,
                  dilation=1,
                  groups=1,
-                 param_attr=None,
-                 bias_attr=None):
+                 bias=True,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format="NCL",
+                 name=None):
         super(Conv1D, self).__init__()
-        assert param_attr is not False, "param_attr should not be False here."
+        assert weight_attr is not False, "param_attr should not be False here."
         self._in_channels = in_channels
         self._out_channels = out_channels
         self._groups = groups
@@ -181,18 +185,18 @@ class Conv1D(layers.Layer):
         self._kernel_size = utils.convert_to_list(kernel_size, 1, 'kernel_size')
         self._stride = utils.convert_to_list(stride, 1, 'stride')
         self._dilation = utils.convert_to_list(dilation, 1, 'dilation')
-        channel_last = False
-        self._padding = padding  # leave it to F.conv2d
-
-        self._param_attr = param_attr
+        self._padding = padding  # leave it to F.conv1d
+        self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._data_format = data_format
+        self._name = name
 
         num_filter_channels = in_channels // groups
         filter_shape = [self._out_channels, num_filter_channels
                         ] + self._kernel_size
 
         self.weight = self.create_parameter(
-            attr=self._param_attr,
+            attr=self._weight_attr,
             shape=filter_shape,
             dtype=get_default_dtype(),
             default_initializer=_get_default_param_initializer(
@@ -201,17 +205,19 @@ class Conv1D(layers.Layer):
             attr=self._bias_attr,
             shape=[self._out_channels],
             dtype=get_default_dtype(),
-            is_bias=True)
+            is_bias=True) if bias else None
 
-    def forward(self, input):
+    def forward(self, x):
         out = F.conv1d(
-            input,
+            x,
             self.weight,
             bias=self.bias,
             padding=self._padding,
             stride=self._stride,
             dilation=self._dilation,
-            groups=self._groups)
+            groups=self._groups,
+            data_format=self._data_format,
+            name=self._name)
         return out
 
 

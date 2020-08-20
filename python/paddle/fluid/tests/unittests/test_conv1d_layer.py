@@ -33,27 +33,30 @@ class Conv1DTestCase(unittest.TestCase):
                  stride=1,
                  dilation=1,
                  groups=1,
-                 act=None,
                  no_bias=False,
-                 use_cudnn=True,
-                 dtype="float32"):
+                 dtype="float32",
+                 data_format="NCL"):
         super(Conv1DTestCase, self).__init__(methodName)
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters
         self.spartial_shape = spartial_shape
         self.filter_size = filter_size
+        self.data_format = data_format
+        self.channel_last = (self.data_format == "NHWC")
 
         self.padding = padding
         self.stride = stride
         self.dilation = dilation
         self.groups = groups
-        self.act = act
         self.no_bias = no_bias
         self.dtype = dtype
 
     def setUp(self):
-        input_shape = (self.batch_size, self.num_channels) + self.spartial_shape
+        input_shape = (self.batch_size, self.num_channels
+                       ) + self.spartial_shape if not self.channel_last else (
+                           self.batch_size, ) + self.spartial_shape + (
+                               self.num_channels, )
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
@@ -75,7 +78,9 @@ class Conv1DTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                input_shape = (-1, self.num_channels, -1)
+                input_shape = (-1, self.num_channels,
+                               -1) if not self.channel_last else (
+                                   -1, -1, self.num_channels)
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
                 w_var = fluid.data(
                     "weight", self.weight_shape, dtype=self.dtype)
@@ -88,7 +93,8 @@ class Conv1DTestCase(unittest.TestCase):
                     padding=self.padding,
                     stride=self.stride,
                     dilation=self.dilation,
-                    groups=self.groups)
+                    groups=self.groups,
+                    data_format=self.data_format)
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
@@ -106,7 +112,8 @@ class Conv1DTestCase(unittest.TestCase):
             padding=self.padding,
             stride=self.stride,
             dilation=self.dilation,
-            groups=self.groups)
+            groups=self.groups,
+            data_format=self.data_format)
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
@@ -143,7 +150,7 @@ def add_cases(suite):
     suite.addTest(Conv1DTestCase(methodName='runTest', stride=2, dilation=(1)))
     suite.addTest(
         Conv1DTestCase(
-            methodName='runTest', padding="same", no_bias=True, act="sigmoid"))
+            methodName='runTest', padding="same", no_bias=True))
     suite.addTest(
         Conv1DTestCase(
             methodName='runTest', filter_size=3, padding='valid'))
@@ -165,12 +172,13 @@ def add_cases(suite):
             num_filters=6,
             num_channels=3,
             groups=3,
-            use_cudnn=False,
-            act="sigmoid",
             padding="valid"))
 
 
 def add_error_cases(suite):
+    suite.addTest(
+        Conv1DErrorTestCase(
+            methodName='runTest', data_format="VALID"))
     suite.addTest(
         Conv1DErrorTestCase(
             methodName='runTest', num_channels=5, groups=2))
