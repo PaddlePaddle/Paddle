@@ -69,8 +69,8 @@ class DecoupledWeightDecay(object):
     def backward(self, **kargs):
         return super(DecoupledWeightDecay, self).backward(**kargs)
 
-    def apply_optimize(self, **kargs):
-        return super(DecoupledWeightDecay, self).apply_optimize(**kargs)
+    def _apply_optimize(self, **kargs):
+        return super(DecoupledWeightDecay, self)._apply_optimize(**kargs)
 
     def minimize(self,
                  loss,
@@ -91,7 +91,7 @@ class DecoupledWeightDecay(object):
                     x=param, y=scaled_param)
                 paddle.fluid.layers.assign(input=updated_param, output=param)
 
-        optimize_ops = self.apply_optimize(
+        optimize_ops = self._apply_optimize(
             loss=loss,
             params_grads=params_grads,
             startup_program=startup_program)
@@ -117,7 +117,7 @@ class DecoupledWeightDecay(object):
                 updated_param = paddle.fluid.layers.elementwise_sub(
                     x=param, y=scaled_param)
                 paddle.fluid.layers.assign(input=updated_param, output=param)
-        optimize_ops = self.apply_optimize(
+        optimize_ops = self._apply_optimize(
             loss=None, startup_program=None, params_grads=params_grads)
 
     def __str__(self):

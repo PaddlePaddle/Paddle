@@ -742,7 +742,21 @@ class Optimizer(object):
                 grad is the gradient value corresponding to the parameter.
 
         Examples:
-            See examples in ``apply_gradients``.
+            .. code-block:: python
+
+                import paddle
+                import numpy as np
+                paddle.disable_static()
+                value = np.arange(26).reshape(2, 13).astype("float32")
+                a = paddle.to_tensor(value)
+                linear = paddle.nn.Linear(13, 5, dtype="float32")
+                # This can be any optimizer supported by dygraph.
+                adam = paddle.optimizer.Adam(learning_rate = 0.01, 
+                                            parameters = linear.parameters())
+                out = linear(a)
+                out.backward()
+                adam.step()
+                adam.clear_gradients()
         """
         act_no_grad_set = None
         if framework.in_dygraph_mode():
@@ -826,7 +840,7 @@ class Optimizer(object):
         optimize_ops = self._create_optimization_pass(params_grads)
         return optimize_ops
 
-    def apply_optimize(self, loss, startup_program, params_grads):
+    def _apply_optimize(self, loss, startup_program, params_grads):
         """
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
@@ -921,7 +935,31 @@ class Optimizer(object):
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
-            Please refer to the example of current Optimizer.
+            .. code-bloack:: python
+                import paddle
+                import paddle.fluid as fluid
+
+                place = fluid.CPUPlace()
+                main = fluid.Program()
+                with fluid.program_guard(main):
+                    x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+                    y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                    y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                    avg_cost = fluid.layers.mean(cost)
+
+                    adam_optimizer = paddle.optimizer.AdamOptimizer(0.01)
+                    adam_optimizer.minimize(avg_cost)
+
+                    fetch_list = [avg_cost]
+                    train_reader = paddle.batch(
+                        paddle.dataset.uci_housing.train(), batch_size=1)
+                    feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                    exe = fluid.Executor(place)
+                    exe.run(fluid.default_startup_program())
+                    for data in train_reader():
+                        exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
         """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
 
@@ -933,7 +971,7 @@ class Optimizer(object):
             parameters=parameter_list,
             no_grad_set=no_grad_set)
 
-        optimize_ops = self.apply_optimize(
+        optimize_ops = self._apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
 
         return optimize_ops, params_grads
@@ -973,5 +1011,5 @@ class Optimizer(object):
                 grad_var = param._grad_ivar()
                 params_grads.append((param, grad_var))
 
-        optimize_ops = self.apply_optimize(
+        optimize_ops = self._apply_optimize(
             loss=None, startup_program=None, params_grads=params_grads)
