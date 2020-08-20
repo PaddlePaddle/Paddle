@@ -249,16 +249,16 @@ class TensorDataset(Dataset):
 
 	    place = fluid.CPUPlace()
 	    with fluid.dygraph.guard(place):
-		input_np = np.random.random([2, 3, 4]).astype('float32')
-		input = to_tensor(input_np)
-		label_np = np.random.random([2, 1]).astype('int32')
-		label = to_tensor(label_np)
+                input_np = np.random.random([2, 3, 4]).astype('float32')
+                input = to_tensor(input_np)
+                label_np = np.random.random([2, 1]).astype('int32')
+                label = to_tensor(label_np)
+                
+                dataset = TensorDataset([input, label])
 
-		dataset = TensorDataset([input, label])
-
-		for i in range(len(dataset)):
-		    input, label = dataset[i]
-		    print(input, label)
+                for i in range(len(dataset)):
+                    input, label = dataset[i]
+                    print(input, label)
 
     """
 
