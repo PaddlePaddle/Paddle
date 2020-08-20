@@ -22,7 +22,7 @@ from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOpt
 
 
 class TestFleetMetaOptimizerBase(unittest.TestCase):
-    def net(self, main_prog, startup_prog):
+    def net(main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
             with fluid.unique_name.guard():
                 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
@@ -43,12 +43,15 @@ class TestFleetMetaOptimizerBase(unittest.TestCase):
                     input=prediction, label=input_y)
                 avg_cost = paddle.fluid.layers.mean(x=cost)
 
-                opt = MetaOptimizerBase()
+                optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+                opt = MetaOptimizerBase(optimizer)
                 opt_ops, params_grads = opt.minimize(avg_cost)
                 opt.apply_optimize(avg_cost,
                                    paddle.static.default_startup_program(),
                                    params_grads)
         return None
+
+    net(fluid.default_startup_program(), fluid.default_main_program())
 
 
 if __name__ == "__main__":

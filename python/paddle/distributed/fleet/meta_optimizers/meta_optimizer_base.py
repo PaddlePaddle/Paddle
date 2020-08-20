@@ -59,9 +59,8 @@ class MetaOptimizerBase(Optimizer):
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
-        self.inner_opt.backward(loss, startup_program, parameter_list,
-                                no_grad_set, callbacks)
-        return params_grads
+        return self.inner_opt.backward(loss, startup_program, parameter_list,
+                                       no_grad_set, callbacks)
 
     def apply_optimize(self, loss, startup_program, params_grads):
         return self.inner_opt.apply_optimize(
