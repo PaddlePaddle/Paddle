@@ -22,7 +22,6 @@ from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.layers.nn import _elementwise_op_in_dygraph
 from ...fluid.layers import bpr_loss  #DEFINE_ALIAS
 from ...fluid.layers import center_loss  #DEFINE_ALIAS
-#from ...fluid.layers import cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import dice_loss  #DEFINE_ALIAS
 from ...fluid.layers import iou_similarity  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
@@ -599,13 +598,13 @@ def cross_entropy(input,
         \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{input}_i)\\right)), j = 1,..., K
 
     Parameters:
-        input (Variable): Input tensor, the data type is float32, float64. Shape is
+        input (Tensor): Input tensor, the data type is float32, float64. Shape is
 	    (N, C), where C is number of classes, and if shape is more than 2D, this
 	    is (N, C, D1, D2,..., Dk), k >= 1. 
-        label (Variable): Label tensor, the data type is int64. Shape is (N), where each 
+        label (Tensor): Label tensor, the data type is int64. Shape is (N), where each 
 	    value is 0 <= label[i] <= C-1, and if shape is more than 2D, this is
 	    (N, D1, D2,..., Dk), k >= 1.
-        weight (Variable, optional): Weight tensor, a manual rescaling weight given
+        weight (Tensor, optional): Weight tensor, a manual rescaling weight given
             to each class and the shape is (C). It has the same dimensions as class
 	    number and the data type is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -620,7 +619,7 @@ def cross_entropy(input,
     Returns:
         The tensor variable storing the cross_entropy_loss of input and label.
 
-    Return type: Variable.
+    Return type: Tensor.
 
     Examples:
         .. code-block:: python
