@@ -22,6 +22,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
 list(APPEND MIXED_DIST_TEST_OPS test_recv_save_op)
 list(APPEND MIXED_DIST_TEST_OPS test_transpiler_ops)
 list(APPEND MIXED_DIST_TEST_OPS test_launch)
+list(APPEND MIXED_DIST_TEST_OPS test_c_comm_init_op)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_ps)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
@@ -39,6 +40,8 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_gradient_merge_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_localsgd_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_lars_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_lamb_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_dgc_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_executor)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
@@ -85,6 +88,10 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
 endif()
 
+
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
+LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 if(APPLE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_hdfs)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
@@ -99,6 +106,8 @@ if (NOT ${WITH_GPU})
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_se_resnext)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sync_batch_norm)
+    LIST(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
@@ -183,15 +192,17 @@ function(py_test_modules TARGET_NAME)
   endif()
 endfunction()
 
+
 function(bash_test_modules TARGET_NAME)
     if(NOT WITH_TESTING)
         return()
     endif()
 
     set(options SERIAL)
-    set(oneValueArgs "")
-    set(multiValueArgs MODULES DEPS ENVS LABELS)
+    set(oneValueArgs TIMEOUT START_BASH)
+    set(multiValueArgs DEPS ENVS LABELS)
     cmake_parse_arguments(bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
 
     set(timeout 350)
     if(${bash_test_modules_TIMEOUT})
@@ -203,13 +214,13 @@ function(bash_test_modules TARGET_NAME)
             COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
             WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
             COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
             TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
-            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
@@ -258,6 +269,7 @@ list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
+list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
@@ -270,6 +282,7 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dynamic)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_iterable_dataset)
 endif()
 
 if(NOT WITH_GPU OR WIN32 OR APPLE)
@@ -344,7 +357,6 @@ if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
 
     #not need
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
@@ -380,6 +392,7 @@ if(WITH_DISTRIBUTE)
         if(NOT WIN32)
             py_test_modules(test_fleet_localsgd_meta_optimizer MODULES test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
             py_test_modules(test_fleet_lars_meta_optimizer MODULES test_fleet_lars_meta_optimizer ENVS ${dist_ENVS})
+            py_test_modules(test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS ${dist_ENVS})
         endif(NOT WIN32)
     endif(NOT APPLE)
     if(WITH_DGC)
@@ -388,6 +401,7 @@ if(WITH_DISTRIBUTE)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
         py_test_modules(test_dgc_momentum_op MODULES test_dgc_momentum_op)
         py_test_modules(test_dgc_optimizer MODULES test_dgc_optimizer)
+        py_test_modules(test_fleet_dgc_meta_optimizer MODULES test_fleet_dgc_meta_optimizer)
     else()
         # if not with dgc, must close all dgc tests
         list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
@@ -396,15 +410,17 @@ if(WITH_DISTRIBUTE)
     if(NOT APPLE)
         if(WITH_GPU)
             # NOTE. test_launch only work in gpu collective mode
-            bash_test_modules(test_launch MODULES test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+            bash_test_modules(test_launch START_BASH test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+            bash_test_modules(test_c_comm_init_op START_BASH test_c_comm_init_op.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
             py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
         endif()
-        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-        bash_test_modules(test_fleet_launch MODULES test_fleet_launch.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+
+        bash_test_modules(test_launch_ps START_BASH test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_launch START_BASH test_fleet_launch.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
         set(dist_ut_port 20001)
         foreach(TEST_OP ${DIST_TEST_OPS})
-            bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+            bash_test_modules(${TEST_OP} START_BASH dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
             MATH(EXPR dist_ut_port "${dist_ut_port}+50")
         endforeach(TEST_OP)
     endif(NOT APPLE)
@@ -438,6 +454,12 @@ if(NOT WIN32)
     # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
     py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
     set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
+endif()
+
+if(NOT APPLE AND NOT WIN32)
+    bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 600)
+    bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 600)
+    bash_test_modules(test_checkpoint_saver START_BASH dist_test.sh TIMEOUT 600)
 endif()
 
 add_subdirectory(sequence)
@@ -479,4 +501,6 @@ if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_multiprocess_dataloader_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_multiprocess_dataloader_dynamic PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_multiprocess_dataloader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+    set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+    set_tests_properties(test_multiprocess_dataloader_iterable_dataset_dynamic PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 endif()

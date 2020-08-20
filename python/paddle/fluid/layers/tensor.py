@@ -317,7 +317,7 @@ def concat(input, axis=0, name=None):
     if in_dygraph_mode():
         if isinstance(axis, Variable):
             axis = axis.numpy()
-            axis = axis[0]
+            axis = axis.item(0)
         return core.ops.concat(input, 'axis', axis)
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
@@ -685,8 +685,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     """
 
     attrs = {'force_cpu': force_cpu}
+    dtype = convert_dtype(dtype)
     if not isinstance(value, Variable):
-        if convert_dtype(dtype) in ['int64', 'int32']:
+        if dtype in ['int64', 'int32']:
             attrs['str_value'] = str(int(value))
         else:
             attrs['str_value'] = str(float(value))
@@ -697,10 +698,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             out = _varbase_creator(dtype=dtype)
 
         if isinstance(value, Variable):
-            if convert_dtype(dtype) in ['int64', 'int32']:
-                attrs['str_value'] = str(int(value.numpy()))
+            if dtype in ['int64', 'int32']:
+                attrs['str_value'] = str(int(value.numpy().item(0)))
             else:
-                attrs['str_value'] = str(float(value.numpy()))
+                attrs['str_value'] = str(float(value.numpy().item(0)))
 
         core.ops.fill_constant(out, 'value',
                                float(value), 'force_cpu', force_cpu, 'dtype',
@@ -712,6 +713,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     helper = LayerHelper("fill_constant", **locals())
     inputs = {}
     if isinstance(value, Variable):
+        if convert_dtype(value.dtype) != dtype:
+            value = cast(value, dtype)
         inputs['ValueTensor'] = value
 
     check_dtype(dtype, 'dtype',

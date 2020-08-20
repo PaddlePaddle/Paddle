@@ -13,30 +13,38 @@
 # limitations under the License.
 
 from __future__ import print_function
-import gast
+
+import collections
 import inspect
-import warnings
 import textwrap
 import threading
-import collections
+import warnings
+
+import gast
 import numpy as np
-from paddle.fluid import core, scope_guard
-from paddle.fluid import framework
+from paddle.fluid import core
 from paddle.fluid import executor
+from paddle.fluid import framework
+from paddle.fluid import scope_guard
 from paddle.fluid import unique_name
+from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.layers.utils import pack_sequence_as
+from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
+from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
+from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import create_and_update_origin_info_map
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import update_op_callstack_with_origin_info
+from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
+from paddle.fluid.layers.utils import flatten
+from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
-from paddle.fluid.dygraph.base import param_guard
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
-from paddle.fluid.annotations import deprecated
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
 
@@ -87,17 +95,25 @@ class FunctionCache(object):
         """
         # Note: In Python2, it will raise OSError when inspect function
         # with decorator directly and function.__wrapped__ holds the actual function.
-        func = getattr(func, '__wrapped__', func)
+        func = unwrap(func)
         source_code = func_to_source_code(func)
+
+        # TODO(liym27):
+        #  Consider this case: source_code in self._code_to_ast_caches,
+        #  but actually they are methods in different classes.
+        #  Maybe use (__class__, source_code) as key
         if source_code in self._code_to_ast_caches:
             root_wrapper = self._code_to_ast_caches[source_code]
         else:
             root = gast.parse(source_code)
+            root = attach_origin_info(root, func)
             root_wrapper = self._dygraph_to_static.get_static_ast(root)
             self._code_to_ast_caches[source_code] = root_wrapper
 
         # Get static function from AST
         static_func, file_name = ast_to_func(root_wrapper.node, func)
+
+        create_and_update_origin_info_map(root_wrapper.node, static_func)
         return static_func
 
     def exist(self, func):
@@ -126,6 +142,7 @@ class FunctionSpec(object):
         self._args = args
         self._kwargs = kwargs
 
+        # TODO(liym27): func has multi layer decorator
         dyfunc = getattr(func, '__wrapped__', func)
         self._dyfunc_code = inspect.getsource(dyfunc)
 
@@ -283,10 +300,18 @@ class ConcreteProgram(object):
                 # 3. Builds program only once and returns the output Variables.
                 with param_guard(func_spec.parameters(False)), param_guard(
                         func_spec.buffers(False)):
-                    outputs = static_func(*inputs)
+                    try:
+                        outputs = static_func(*inputs)
+                    except BaseException as e:
+                        # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
+                        attach_error_data(e)
+                        raise
+
                 if not isinstance(outputs,
                                   (tuple, list)) and outputs is not None:
                     outputs = [outputs]
+
+        main_program = update_op_callstack_with_origin_info(main_program)
 
         return ConcreteProgram(
             inputs=inputs,
@@ -484,14 +509,24 @@ class ProgramTranslator(object):
             return dygraph_func(*args, **kwargs)
 
         function_spec = FunctionSpec(dygraph_func, args, kwargs)
-        _, partial_program_layer = self._program_cache[function_spec]
+        concrete_program, partial_program_layer = self._program_cache[
+            function_spec]
 
         if args and isinstance(args[0], layers.Layer):
             # Synchronize self.training attribute.
             partial_program_layer.training = args[0].training
             args = args[1:]
+        try:
+            return partial_program_layer(args)
 
-        return partial_program_layer(args)
+        except BaseException as e:
+            # NOTE:
+            # 1. If e is raised in compile time, e should have been attached to ERROR_DATA before;
+            # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
+            if not hasattr(e, ERROR_DATA):
+                # runtime error
+                attach_error_data(e, in_runtime=True)
+            raise
 
     def get_func(self, dygraph_func):
         """
@@ -640,7 +675,9 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_code"
         # Gets AST from dygraph function
-        raw_code = inspect.getsource(dygraph_func)
+
+        unwrap_func = unwrap(dygraph_func)
+        raw_code = inspect.getsource(unwrap_func)
         code = textwrap.dedent(raw_code)
         root = gast.parse(code)
 

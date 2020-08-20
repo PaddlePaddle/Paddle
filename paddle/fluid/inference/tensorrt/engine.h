@@ -83,7 +83,12 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
     } else if (shape.size() == 3UL) {
       return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
     }
-    return nvinfer1::Dims4(shape[0], shape[1], 1, 1);
+    nvinfer1::Dims dims;
+    dims.nbDims = shape.size();
+    for (size_t i = 0; i < shape.size(); i++) {
+      dims.d[i] = shape[i];
+    }
+    return dims;
   }
 }
 }  // NOLINT

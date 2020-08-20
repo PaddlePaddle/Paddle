@@ -130,8 +130,6 @@ class PartialProgramLayer(layers.Layer):
         self._check_params_all_inited(main_program)
         # 2. Prune the parameters not used anywhere in the program.
         self._prune_unused_params(main_program)
-        # 3. Remove op's python call stack with redundant low-level error messages.
-        main_program = self._remove_op_call_stack(main_program)
 
         return main_program
 
