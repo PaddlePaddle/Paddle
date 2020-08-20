@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import paddle
 from paddle import fluid, nn
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
@@ -87,9 +88,7 @@ class Conv1DTestCase(unittest.TestCase):
                     padding=self.padding,
                     stride=self.stride,
                     dilation=self.dilation,
-                    groups=self.groups,
-                    act=self.act,
-                    use_cudnn=self.use_cudnn)
+                    groups=self.groups)
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
@@ -178,7 +177,6 @@ def add_error_cases(suite):
     suite.addTest(
         Conv1DErrorTestCase(
             methodName='runTest', num_filters=8, num_channels=15, groups=3))
-    suite.addTest(Conv1DErrorTestCase(methodName='runTest', num_channels=-4))
     suite.addTest(
         Conv1DErrorTestCase(
             methodName='runTest', padding=[1, 2, 3, 4, 5]))

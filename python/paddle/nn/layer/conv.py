@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 import numpy as np
-
+from ...framework import get_default_dtype
 from ...fluid.dygraph import layers
 from ...fluid.initializer import Normal
 from .. import functional as F
@@ -136,19 +136,29 @@ class Conv1D(layers.Layer):
         .. code-block:: python
 
           import paddle
+          from paddle.nn import Conv1D
           import numpy as np
-          from paddle import nn
-
+          x = np.array([[[4, 8, 1, 9],
+            [7, 2, 0, 9],
+            [6, 9, 2, 6]]]).astype(np.float32)
+          w=np.array(
+          [[[9, 3, 4],
+            [0, 0, 7],
+            [2, 5, 6]],
+           [[0, 3, 4],
+            [2, 9, 7],
+            [5, 6, 8]]]).astype(np.float32)
           paddle.disable_static()
-          x = np.random.uniform(-1, 1, (2, 4, 8)).astype('float32')
-          place = paddle.CPUPlace()
-          x_var = paddle.to_tensor(x)
-          conv = nn.Conv1D(4, 6, (3))
-          y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          
-          # (2, 6, 6)
+          x_t = paddle.to_tensor(x)
+          conv = Conv1D(3, 2, 3)
+          conv.weight.set_value(w)
+          y_t = conv(x_t)
+          y_np = y_t.numpy()
+          print(y_np)
+
+          # [[[133. 238.]
+          #   [160. 211.]]]
+
     """
 
     def __init__(self,
@@ -168,14 +178,6 @@ class Conv1D(layers.Layer):
         self._groups = groups
         if in_channels % groups != 0:
             raise ValueError("in_channels must be divisible by groups.")
-        if not isinstance(use_cudnn, bool):
-            raise ValueError("use_cudnn should be True or False")
-
-        if check_cudnn_version():
-            self._use_cudnn = True
-        else:
-            self._use_cudnn = False
-
         self._kernel_size = utils.convert_to_list(kernel_size, 1, 'kernel_size')
         self._stride = utils.convert_to_list(stride, 1, 'stride')
         self._dilation = utils.convert_to_list(dilation, 1, 'dilation')

@@ -192,17 +192,25 @@ def conv1d(input,
           import paddle
           import paddle.nn.functional as F
           import numpy as np
-
-          x = np.random.randn(2, 3, 8).astype(np.float32)
-          w = np.random.randn(6, 3, 3).astype(np.float32)
+          x = np.array([[[4, 8, 1, 9],
+            [7, 2, 0, 9],
+            [6, 9, 2, 6]]]).astype(np.float32)
+          w=np.array(
+          [[[9, 3, 4],
+            [0, 0, 7],
+            [2, 5, 6]],
+           [[0, 3, 4],
+            [2, 9, 7],
+            [5, 6, 8]]]).astype(np.float32)
           paddle.disable_static()
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
           y_var = F.conv1d(x_var, w_var)
           y_np = y_var.numpy()
-          print(y_np.shape)
-
-          # (2, 6, 6)
+          print(y_np)
+          
+          # [[[133. 238.]
+          #   [160. 211.]]]
     """
     if get_cudnn_version():
         use_cudnn = True
@@ -269,7 +277,7 @@ def conv1d(input,
                  padding_algorithm, "data_format", data_format)
         out = getattr(core.ops, l_type)(input, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = nn.elementwise_add(out, bias, axis=channel_dim)
     else:
         inputs = {'Input': [input], 'Filter': [weight]}
         attrs = {
