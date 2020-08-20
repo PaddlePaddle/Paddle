@@ -22,9 +22,7 @@ from __future__ import print_function
 from .random import randperm
 from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
-from .creation import create_tensor  #DEFINE_ALIAS
-# from .creation import create_lod_tensor        #DEFINE_ALIAS
-# from .creation import create_random_int_lodtensor        #DEFINE_ALIAS
+from .creation import to_tensor  #DEFINE_ALIAS
 from .creation import crop_tensor  #DEFINE_ALIAS
 from .creation import diag  #DEFINE_ALIAS
 from .creation import eye  #DEFINE_ALIAS
@@ -76,6 +74,7 @@ from .logic import equal_all  #DEFINE_ALIAS
 from .manipulation import cast  #DEFINE_ALIAS
 from .manipulation import concat  #DEFINE_ALIAS
 from .manipulation import expand  #DEFINE_ALIAS
+from .manipulation import broadcast_to  #DEFINE_ALIAS
 from .manipulation import expand_as  #DEFINE_ALIAS
 from .manipulation import tile  #DEFINE_ALIAS
 from .manipulation import flatten  #DEFINE_ALIAS
@@ -100,6 +99,7 @@ from .manipulation import unstack  #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 from .manipulation import unbind  #DEFINE_ALIAS
 from .manipulation import roll  #DEFINE_ALIAS
+from .manipulation import chunk  #DEFINE_ALIAS
 from .math import abs  #DEFINE_ALIAS
 from .math import acos  #DEFINE_ALIAS
 from .math import asin  #DEFINE_ALIAS
@@ -111,6 +111,7 @@ from .math import cumsum  #DEFINE_ALIAS
 from .math import elementwise_add  #DEFINE_ALIAS
 from .math import elementwise_div  #DEFINE_ALIAS
 from .math import elementwise_floordiv  #DEFINE_ALIAS
+from .math import elementwise_mul  #DEFINE_ALIAS
 from .math import elementwise_mod  #DEFINE_ALIAS
 from .math import elementwise_pow  #DEFINE_ALIAS
 from .math import elementwise_sub  #DEFINE_ALIAS
@@ -179,6 +180,5 @@ from .stat import mean  #DEFINE_ALIAS
 from .stat import reduce_mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
 from .stat import var  #DEFINE_ALIAS
-# from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS

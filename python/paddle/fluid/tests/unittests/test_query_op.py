@@ -12,10 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define input placeholders of neural network  
-from ..fluid import data  #DEFINE_ALIAS
+from __future__ import print_function
 
-__all__ = [
-    'data',
-    #       'Input'
-]
+import unittest
+import paddle
+from paddle.fluid import core
+
+
+class TestCudnnVersion(unittest.TestCase):
+    def test_no_cudnn(self):
+        cudnn_version = paddle.get_cudnn_version()
+        if not core.is_compiled_with_cuda():
+            self.assertEqual((cudnn_version is None), True)
+        else:
+            self.assertEqual((isinstance(cudnn_version, int)), True)
+
+
+if __name__ == '__main__':
+    unittest.main()

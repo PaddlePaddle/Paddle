@@ -161,7 +161,7 @@ class Layer(core.Layer):
 
               print(net.state_dict())
         """
-        for layer in self.sublayers():
+        for layer in self.children():
             layer.apply(fn)
 
         fn(self)
@@ -283,7 +283,7 @@ class Layer(core.Layer):
     def create_parameter(self,
                          shape,
                          attr=None,
-                         dtype='float32',
+                         dtype=None,
                          is_bias=False,
                          default_initializer=None):
         """Create parameters for this layer.
@@ -352,6 +352,56 @@ class Layer(core.Layer):
                 include_sublayers=include_sublayers)
         ]
         return ret
+
+    def children(self):
+        """Returns an iterator over immediate children layers.
+
+        Yields:
+            Layer: a child layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    
+                    layer_list = list(model.children())
+
+                    print(layer_list)
+
+        """
+        for _, layer in self.named_children():
+            yield layer
+
+    def named_children(self):
+        """Returns an iterator over immediate children layers, yielding both
+        the name of the layer as well as the layer itself.
+
+        Yields:
+            (string, Layer): Tuple containing a name and child layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    for prefix, layer in model.named_children():
+                        print(prefix, layer)
+
+        """
+        memo = set()
+        for name, layer in self._sub_layers.items():
+            if layer is not None and layer not in memo:
+                memo.add(layer)
+                yield name, layer
 
     def sublayers(self, include_sublayers=True):
         """Returns a list of sub layers.
@@ -503,7 +553,10 @@ class Layer(core.Layer):
                 "The name of buffer should be a string, but received {}.".
                 format(type(name).__name__))
         elif '.' in name:
-            raise KeyError("The name of buffer can not contain \".\"")
+            raise KeyError(
+                "The name of buffer can not contain `.`, "
+                "because when you access the newly added buffer in the "
+                "form of `self.**.**`, it will cause AttributeError.")
         elif name == '':
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
@@ -686,20 +739,38 @@ class Layer(core.Layer):
         Returns:
             Parameter: the parameter passed in.
         """
-        if parameter is None:
-            self._parameters[name] = None
-        elif not isinstance(parameter, framework.Parameter):
+        if '_parameters' not in self.__dict__:
+            raise RuntimeError(
+                "super(YourLayer, self).__init__() should be called firstly.")
+        elif not isinstance(name, six.string_types):
             raise TypeError(
-                "parameter assignment requires Parameter or None, but got '{}'"
-                .format(type(parameter).__name__))
+                "The name of parameter should be a string, but received {}.".
+                format(type(name).__name__))
+        elif '.' in name:
+            raise KeyError(
+                "The name of parameter can not contain `.`, "
+                "because when you access the newly added parameter in the "
+                "form of `self.**.**`, it will cause AttributeError.")
+        elif name == '':
+            raise KeyError("The name of parameter can not be empty.")
+        elif hasattr(self, name) and name not in self._parameters:
+            raise KeyError("The parameter '{}' already exists.".format(name))
+        elif parameter is not None and not isinstance(parameter,
+                                                      framework.Parameter):
+            raise TypeError(
+                "The parameter to be added should be a Parameter, but received {}.".
+                format(type(parameter).__name__))
+        else:
+            if parameter is None:
+                self._parameters[name] = None
 
-        if len(self._loaddict_holder) > 0:
-            assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
-                parameter.name)
+            if len(self._loaddict_holder) > 0:
+                assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in state_dict".format(
+                    parameter.name)
 
-            parameter.set_value(self._loaddict_holder[parameter.name])
+                parameter.set_value(self._loaddict_holder[parameter.name])
 
-        self._parameters[name] = parameter
+            self._parameters[name] = parameter
         return parameter
 
     def __getattr__(self, name):

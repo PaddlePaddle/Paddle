@@ -22,9 +22,11 @@ namespace operators {
 class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "The first input tensor to compare.");
-    AddInput("Other", "The second input tensor to compare.");
-    AddOutput("Out", "The output tensor of allclose op.");
+    AddInput("Input",
+             "The input tensor, it's data type should be float32, float64.");
+    AddInput("Other",
+             "The input tensor, it's data type should be float32, float64.");
+    AddOutput("Out", "The output tensor, it's data type is bool.");
 
     AddAttr<float>("rtol", "The relative tolerance. Default: :math:`1e-5` .")
         .SetDefault(1e-5);
@@ -36,11 +38,12 @@ class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
 
     AddComment(R"DOC( 
-This operator checks if all :math:`input` and :math:`other` satisfy the condition:
+This operator checks if all :math:`x` and :math:`y` satisfy the condition:
 
-:math:`\left| input - other \right| \leq atol + rtol \times \left| other \right|`
+.. math::
+    \left| x - y \right| \leq atol + rtol \times \left| y \right|
 
-elementwise, for all elements of :math:`input` and :math:`other`. The behaviour of this
+elementwise, for all elements of :math:`x` and :math:`y`. The behaviour of this
 operator is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
 two tensors are elementwise equal within a tolerance.
 )DOC");
