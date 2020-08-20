@@ -125,7 +125,7 @@ class TestRandintAPI(unittest.TestCase):
             out4 = paddle.randint(
                 low=-100, high=100, shape=[dim_1, 5, dim_2], dtype='int32')
             # shape is a tensor and dtype is 'float64'
-            var_shape = paddle.nn.data(
+            var_shape = paddle.static.data(
                 name='var_shape', shape=[2], dtype="int64")
             out5 = paddle.randint(
                 low=1, high=1000, shape=var_shape, dtype='int64')

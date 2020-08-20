@@ -20,8 +20,14 @@ import paddle
 from .. import functional as F
 
 __all__ = [
-    'CrossEntropyLoss', 'MSELoss', 'L1Loss', 'NLLLoss', 'BCELoss', 'KLDivLoss',
-    'MarginRankingLoss'
+    'CrossEntropyLoss',
+    'MSELoss',
+    'L1Loss',
+    'NLLLoss',
+    'BCELoss',
+    'KLDivLoss',
+    'MarginRankingLoss',
+    'SmoothL1Loss',
 ]
 
 
@@ -688,7 +694,7 @@ class MarginRankingLoss(fluid.dygraph.Layer):
     def __init__(self, margin=0.0, reduction='mean', name=None):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
-                "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
+                "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
                 "received %s, which is not allowed." % reduction)
         super(MarginRankingLoss, self).__init__()
         self.margin = margin
@@ -699,3 +705,79 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         out = paddle.nn.functional.margin_ranking_loss(
             input, other, label, self.margin, self.reduction, self.name)
         return out
+
+
+class SmoothL1Loss(fluid.dygraph.Layer):
+    """
+    This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
+    term if the absolute element-wise error falls below 1 and an L1 term otherwise.
+    In some cases it can prevent exploding gradients and it is more robust and less
+    sensitivity to outliers. Also known as the Huber loss:
+
+    .. math::
+
+         loss(x,y)=\\frac{1}{n}\\sum_{i}z_i
+
+    where z_i is given by:
+
+    .. math::
+
+         \\mathop{z_i}=\\left\\{\\begin{array}{rcl}
+        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\\\
+        delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
+        \\end{array} \\right.
+
+    Parameters:
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
+            Default is ``'mean'``.
+        delta (float, optional): Specifies the hyperparameter delta to be used. 
+            The value determines how large the errors need to be to use L1. Errors
+            smaller than delta are minimized with L2. Parameter is ignored for
+            negative/zero values. Default = 1.0
+        name (str, optional): Name for the operation (optional, default is
+            None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Call Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is
+            (N, C), where C is number of classes, and if shape is more than 2D, this
+            is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor, the data type is float32 or float64. The shape of label
+            is the same as the shape of input.
+
+    Returns:
+        The tensor variable storing the smooth_l1_loss of input and label.
+
+    Return type: Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            input_data = np.random.rand(3,3).astype("float32")
+            label_data = np.random.rand(3,3).astype("float32")
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
+            loss = paddle.nn.SmoothL1Loss()
+            output = loss(input, label)
+            print(output.numpy())
+    """
+
+    def __init__(self, reduction='mean', delta=1.0, name=None):
+        super(SmoothL1Loss, self).__init__()
+        self.reduction = reduction
+        self.delta = delta
+        self.name = name
+
+    def forward(self, input, label):
+        return F.smooth_l1_loss(
+            input,
+            label,
+            reduction=self.reduction,
+            delta=self.delta,
+            name=self.name)

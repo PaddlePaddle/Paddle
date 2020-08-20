@@ -49,7 +49,6 @@ from .decode import beam_search_decode  #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
 # from .decode import dynamic_decode        #DEFINE_ALIAS
 from .decode import gather_tree  #DEFINE_ALIAS
-from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 from .layer.activation import ELU
 from .layer.activation import GELU
@@ -101,6 +100,7 @@ from .layer.loss import NLLLoss  #DEFINE_ALIAS
 from .layer.loss import BCELoss  #DEFINE_ALIAS
 from .layer.loss import KLDivLoss  #DEFINE_ALIAS
 from .layer.loss import MarginRankingLoss  #DEFINE_ALIAS
+from .layer.loss import SmoothL1Loss  #DEFINE_ALIAS
 from .layer.norm import BatchNorm  #DEFINE_ALIAS
 from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
 from .layer.norm import GroupNorm  #DEFINE_ALIAS
