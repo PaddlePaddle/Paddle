@@ -173,6 +173,16 @@ class MarginRakingLossError(unittest.TestCase):
 
         self.assertRaises(ValueError, test_margin_value_error)
 
+        def test_functional_margin_value_error():
+            x = paddle.nn.data(name="x", shape=[10, 10], dtype="float64")
+            y = paddle.nn.data(name="y", shape=[10, 10], dtype="float64")
+            label = paddle.nn.data(
+                name="label", shape=[10, 10], dtype="float64")
+            result = paddle.nn.functional.margin_ranking_loss(
+                x, y, label, margin=0.1, reduction="reduction_mean")
+
+        self.assertRaises(ValueError, test_functional_margin_value_error)
+
 
 if __name__ == "__main__":
     unittest.main()
