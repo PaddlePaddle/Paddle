@@ -37,8 +37,10 @@ struct Generator {
   Generator() {
     GeneratorState default_gen_state_cpu;
     default_gen_state_cpu.device = -1;
-    default_gen_state_cpu.current_seed = 34342423252;
-    std::seed_seq seq({34342423252});
+    std::random_device rnd;
+    uint64_t init_seed = (((uint64_t)rnd()) << 32) + rnd();
+    default_gen_state_cpu.current_seed = init_seed;
+    std::seed_seq seq({init_seed});
     default_gen_state_cpu.cpu_engine = std::mt19937_64(seq);
     this->state_ = std::make_shared<GeneratorState>(default_gen_state_cpu);
   }
