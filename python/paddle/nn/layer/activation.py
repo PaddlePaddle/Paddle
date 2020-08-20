@@ -366,7 +366,7 @@ class PReLU(layers.Layer):
 
     .. math:
 
-        PReLU(x) = max(0, x) + \weight * min(0, x)
+        PReLU(x) = max(0, x) + weight * min(0, x)
 
     Parameters:
         num_parameters (int, optional): Number of `weight` to learn. The supported values are:

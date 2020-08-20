@@ -399,7 +399,7 @@ def prelu(x, weight, name=None):
 
     .. math::
 
-        prelu(x) = max(0, x) + \weight * min(0, x)
+        prelu(x) = max(0, x) + weight * min(0, x)
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -420,11 +420,21 @@ def prelu(x, weight, name=None):
 
         paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
-        weight = paddle.to_tensor(np.array([0.2]))
-        out = F.prelu(x, weight)
-        # [[-0.12642411  6.        ]
-        #  [ 1.          15.6      ]]
+        data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
+                        [ 3.0, -4.0,  5.0, -6.0],
+                        [-7.0, -8.0,  8.0,  9.0]],
+                        [[ 1.0, -2.0, -3.0,  4.0],
+                        [-5.0,  6.0,  7.0, -8.0],
+                        [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
+        x = paddle.to_tensor(data)
+        w = paddle.to_tensor(np.array([0.25]).astype('float32'))
+        out = F.prelu(x, w)
+        # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
+        #    [ 3.  , -1.  ,  5.  , -1.5 ],
+        #    [-1.75, -2.  ,  8.  ,  9.  ]],
+        #   [[ 1.  , -0.5 , -0.75,  4.  ],
+        #    [-1.25,  6.  ,  7.  , -2.  ],
+        #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
     """
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
     check_variable_and_dtype(weight, 'weight',
