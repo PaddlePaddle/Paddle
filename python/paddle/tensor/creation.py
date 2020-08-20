@@ -361,14 +361,14 @@ def ones_like(x, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([1,2,3], dtype='float32'))
-        out1 = paddle.zeros_like(x) # [1., 1., 1.]
-        out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
+            x = paddle.to_tensor(np.array([1,2,3], dtype='float32'))
+            out1 = paddle.zeros_like(x) # [1., 1., 1.]
+            out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
 
     """
     return full_like(x=x, fill_value=1, dtype=dtype, name=name)
@@ -451,14 +451,14 @@ def zeros_like(x, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([1,2,3], dtype='float32'))
-        out1 = paddle.zeros_like(x) # [0., 0., 0.]
-        out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
+            x = paddle.to_tensor(np.array([1,2,3], dtype='float32'))
+            out1 = paddle.zeros_like(x) # [0., 0., 0.]
+            out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
 
     """
     return full_like(x=x, fill_value=0, dtype=dtype, name=name)

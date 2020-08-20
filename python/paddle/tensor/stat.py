@@ -67,7 +67,7 @@ def mean(x, axis=None, keepdim=False, name=None):
                           [[13, 14, 15, 16],
                            [17, 18, 19, 20],
                            [21, 22, 23, 24]]], 'float32')
-            x = paddle.to_variable(x)
+            x = paddle.to_tensor(x)
             out1 = paddle.mean(x)
             # [12.5]
             out2 = paddle.mean(x, axis=-1)
