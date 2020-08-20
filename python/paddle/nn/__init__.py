@@ -107,6 +107,7 @@ from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
 from .layer.norm import SpectralNorm  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm  #DEFINE_ALIAS
+from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS

@@ -27,6 +27,7 @@ from ...fluid.framework import in_dygraph_mode
 
 from ...fluid.initializer import Constant
 from ...fluid.param_attr import ParamAttr
+from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid import core, dygraph_utils
 
 __all__ = [
