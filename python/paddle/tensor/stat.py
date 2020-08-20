@@ -42,7 +42,7 @@ def mean(x, axis=None, keepdim=False, name=None):
             same way as :math:`axis + D` . If ``axis`` is None, mean is
             calculated over all elements of ``x``. Default is None.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
-            in the output Tensor. If ``keep_dim`` is True, the dimensions of
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
@@ -128,7 +128,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             :math:`N - 1`, where :math:`N` represents the number of elements
             along ``axis`` , otherwise the divisor is :math:`N`. Default is True.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
-            in the output Tensor. If ``keep_dim`` is True, the dimensions of
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
@@ -191,7 +191,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             number of elements along ``axis`` , otherwise the divisor is
             :math:`N`. Default is True.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
-            in the output Tensor. If ``keep_dim`` is True, the dimensions of
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
