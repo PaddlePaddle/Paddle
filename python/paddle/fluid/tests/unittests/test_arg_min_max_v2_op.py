@@ -165,7 +165,7 @@ def create_test_case(op_type):
         def run_static(self, place):
             paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):
-                data_var = paddle.nn.data(
+                data_var = paddle.static.data(
                     name="data", shape=[10, 10], dtype="float32")
                 op = eval("paddle.%s" % (op_type))
                 result = op(data_var)
@@ -177,7 +177,7 @@ def create_test_case(op_type):
                                 True)
 
             with paddle.static.program_guard(paddle.static.Program()):
-                data_var = paddle.nn.data(
+                data_var = paddle.static.data(
                     name="data", shape=[10, 10], dtype="float32")
                 op = eval("paddle.%s" % (op_type))
                 result = op(data_var, axis=1)
@@ -188,7 +188,7 @@ def create_test_case(op_type):
                 self.assertTrue((result_data == expected_data).all(), True)
 
             with paddle.static.program_guard(paddle.static.Program()):
-                data_var = paddle.nn.data(
+                data_var = paddle.static.data(
                     name="data", shape=[10, 10], dtype="float32")
                 op = eval("paddle.%s" % (op_type))
                 result = op(data_var, axis=-1)
@@ -199,7 +199,7 @@ def create_test_case(op_type):
                 self.assertTrue((result_data == expected_data).all(), True)
 
             with paddle.static.program_guard(paddle.static.Program()):
-                data_var = paddle.nn.data(
+                data_var = paddle.static.data(
                     name="data", shape=[10, 10], dtype="float32")
 
                 op = eval("paddle.%s" % (op_type))
@@ -213,7 +213,7 @@ def create_test_case(op_type):
 
             with paddle.static.program_guard(paddle.static.Program()):
                 op = eval("paddle.%s" % (op_type))
-                data_var = paddle.nn.data(
+                data_var = paddle.static.data(
                     name="data", shape=[10, 10], dtype="float32")
                 result = op(data_var, axis=-1, name="test_arg_api")
                 self.assertTrue("test_arg_api" in result.name)
@@ -296,14 +296,14 @@ class TestArgMinMaxOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_argmin_x_type)
 
             def test_argmax_attr_type():
-                data = paddle.nn.data(
+                data = paddle.static.data(
                     name="test_argmax", shape=[10], dtype="float32")
                 output = paddle.argmax(x=data, dtype="float32")
 
             self.assertRaises(ValueError, test_argmax_attr_type)
 
             def test_argmin_attr_type():
-                data = paddle.nn.data(
+                data = paddle.static.data(
                     name="test_argmax", shape=[10], dtype="float32")
                 output = paddle.argmin(x=data, dtype="float32")
 
