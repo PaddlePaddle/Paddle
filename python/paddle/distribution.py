@@ -274,8 +274,9 @@ class Uniform(Distribution):
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            if not isinstance(value.dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(value.dtype)
+            dtype = value.dtype
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
             lb = core.ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
                                dtype)
             ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
@@ -306,8 +307,10 @@ class Uniform(Distribution):
         if in_dygraph_mode():
             lb_bool = self.low < value
             ub_bool = value < self.high
-            if not isinstance(value.dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(value.dtype)
+
+            dtype = value.dtype
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
             lb = core.ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
                                dtype)
             ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
