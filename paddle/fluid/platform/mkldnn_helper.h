@@ -129,6 +129,16 @@ inline void ClearMKLDNNCache(const platform::Place& place) {
   }
 }
 
+inline void DontClearMKLDNNCache(const platform::Place& place) {
+  // Clear mkl-dnn cache,
+  if (platform::is_cpu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    dev_ctx->BlockNextCacheClearing();
+  }
+}
+
 template <typename Type>
 mkldnn::memory::data_type MKLDNNGetDataType() {
   return mkldnn::memory::data_type::undef;

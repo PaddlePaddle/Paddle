@@ -487,7 +487,10 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   const mkldnn::engine& GetEngine() const { return engine_; }
 
   // Remove all entries from the blob map
-  void ResetBlobMap() const;
+  void ResetBlobMap();
+
+  // Prevent next ResetBlobMap()
+  void BlockNextCacheClearing();
 
   // Get the ShapeBlob size in cur_mkldnn_session_id.
   size_t GetShapeBlobSize() const;
@@ -506,6 +509,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   mkldnn::engine engine_;
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
+  bool block_next_cache_clearing = false;
 };
 #endif
 

@@ -412,9 +412,19 @@ MKLDNNDeviceContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
 }
 
-void MKLDNNDeviceContext::ResetBlobMap() const {
-  VLOG(3) << "Clearing DNNL cache.";
-  p_blobmap_->clear();
+void MKLDNNDeviceContext::ResetBlobMap() {
+  if (!block_next_cache_clearing) {
+    VLOG(3) << "Clearing DNNL cache.";
+    p_blobmap_->clear();
+  } else {
+    VLOG(3) << "Prevented Clearing DNNL cache.";
+    block_next_cache_clearing = false;
+  }
+}
+
+void MKLDNNDeviceContext::BlockNextCacheClearing() {
+  VLOG(3) << "Next DNNL cache clearing has been blocked.";
+  block_next_cache_clearing = true;
 }
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {
