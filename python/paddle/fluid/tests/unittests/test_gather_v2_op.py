@@ -34,8 +34,8 @@ class TestGatherOp(OpTest):
         axis_np = np.array(self.axis).astype(self.index_type)
         index_np = np.array(self.index).astype(self.index_type)
         self.inputs = {'X': xnp, 'Index': index_np, 'Axis': axis_np}
-        out = gather_numpy(xnp, axis_np, index_np)
-        print(out.shape)
+        out = xnp[:, self.index, :]
+        print(out)
         self.outputs = {'Y': out}
 
     def test_check_output(self):
@@ -48,9 +48,9 @@ class TestGatherOp(OpTest):
         """
         For multi-dimension input
         """
-        self.x_shape = (3, 20, 3)
+        self.x_shape = (3, 88, 3)
         self.x_type = "float64"
-        self.index = [1, 3, 5]
+        self.index = [1, 1, 1]
         self.index_type = "int32"
         self.axis = [1]
         self.axis_type = "int32"
