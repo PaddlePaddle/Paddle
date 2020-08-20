@@ -54,24 +54,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   std::vector<std::string> Outputs(const std::string &name) const override;
 
   std::string GetInputNameByIdx(size_t idx) const override {
-    auto input_names = op_.OrderedInputNames();
-    PADDLE_ENFORCE_LT(idx, input_names.size(),
-                      platform::errors::OutOfRange(
-                          "The index should be less than the size of inputs of "
-                          "operator %s, but got index is %d and size is %d",
-                          op_.Type(), idx, input_names.size()));
-    return input_names[idx];
+    return op_.GetInputNameByIdx(idx);
   }
 
   std::string GetOutputNameByIdx(size_t idx) const override {
-    auto output_names = op_.OrderedOutputNames();
-    PADDLE_ENFORCE_LT(
-        idx, output_names.size(),
-        platform::errors::OutOfRange(
-            "The index should be less than the size of outputs of "
-            "operator %s, but got index is %d and size is %d",
-            op_.Type(), idx, output_names.size()));
-    return output_names[idx];
+    return op_.GetOutputNameByIdx(idx);
   }
 
   void ShareDim(const std::string &in, const std::string &out, size_t i = 0,

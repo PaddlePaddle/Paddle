@@ -175,6 +175,25 @@ class OpDesc {
     }
   }
 
+  std::string GetInputNameByIdx(size_t idx) const {
+    PADDLE_ENFORCE_LT(idx, input_names_.size(),
+                      platform::errors::OutOfRange(
+                          "The index should be less than the size of inputs of "
+                          "operator %s, but got index is %d and size is %d",
+                          Type(), idx, input_names_.size()));
+    return input_names_[idx];
+  }
+
+  std::string GetOutputNameByIdx(size_t idx) const {
+    PADDLE_ENFORCE_LT(
+        idx, output_names_.size(),
+        platform::errors::OutOfRange(
+            "The index should be less than the size of outputs of "
+            "operator %s, but got index is %d and size is %d",
+            Type(), idx, output_names_.size()));
+    return output_names_[idx];
+  }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
