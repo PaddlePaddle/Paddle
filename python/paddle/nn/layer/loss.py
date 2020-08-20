@@ -20,13 +20,7 @@ import paddle
 from .. import functional as F
 
 __all__ = [
-    #       'NCELoss',
-    'CrossEntropyLoss',
-    'MSELoss',
-    'L1Loss',
-    'NLLLoss',
-    'BCELoss',
-    'KLDivLoss',
+    'CrossEntropyLoss', 'MSELoss', 'L1Loss', 'NLLLoss', 'BCELoss', 'KLDivLoss',
     'MarginRankingLoss'
 ]
 
