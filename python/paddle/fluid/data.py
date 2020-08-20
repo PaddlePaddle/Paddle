@@ -24,11 +24,6 @@ __all__ = ['data']
 
 def data(name, shape, dtype='float32', lod_level=0):
     """
-    :api_attr: Static Graph
-	:alias_main: paddle.static.data
-	:alias: paddle.static.data
-	:old_api: paddle.fluid.data
-
     **Data Layer**
 
     This function creates a variable on the global block. The global variable
@@ -88,7 +83,7 @@ def data(name, shape, dtype='float32', lod_level=0):
 
           z = x + y
 
-          # In this example, we will feed x and y with np-ndarry "1"
+          # In this example, we will feed x and y with np-ndarray "1"
           # and fetch z, like implementing "1 + 1 = 2" in PaddlePaddle
           feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
 
