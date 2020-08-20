@@ -43,15 +43,20 @@ message GradientMergeConfig {
   optional bool avg = 2 [ default = true ];
 }
 
+message DGCConfig {
+  optional int32 rampup_begin_step = 1 [ default = 0 ];
+  optional int32 rampup_step = 2 [ default = 1 ];
+  repeated float sparsity = 3;
+}
+
 message LarsConfig {
   optional float lars_coeff = 1 [ default = 0.001 ];
   optional float lars_weight_decay = 2 [ default = 0.0005 ];
 }
 
 message LambConfig {
-  optional float beta1 = 1 [ default = 0.001 ];
-  optional float beta2 = 2 [ default = 0.999 ];
-  optional float epsilon = 3 [ default = 0.000001 ];
+  optional float lamb_weight_decay = 1 [ default = 0.01 ];
+  repeated string exclude_from_weight_decay = 2;
 }
 
 message BuildStrategy {
@@ -74,7 +79,7 @@ message ExecutionStrategy {
 }
 
 message AsyncConfig {
-  optional int32 k_steps = 1 [ default = 1 ];
+  optional int32 k_steps = 1 [ default = -1 ];
   optional int32 max_merge_var_num = 2 [ default = 1 ];
   optional int32 send_queue_size = 3 [ default = 16 ];
   optional bool independent_recv_thread = 4 [ default = false ];
@@ -114,6 +119,7 @@ message DistributedStrategy {
   optional AMPConfig amp_configs = 102;
   optional LocalSGDConfig localsgd_configs = 103;
   optional GradientMergeConfig gradient_merge_configs = 104;
+  optional DGCConfig dgc_configs = 105;
   optional PipelineConfig pipeline_configs = 106;
   optional AsyncConfig a_sync_configs = 107;
   optional LarsConfig lars_configs = 108;

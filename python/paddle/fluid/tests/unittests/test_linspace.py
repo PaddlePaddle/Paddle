@@ -82,15 +82,16 @@ class TestLinspaceAPI(unittest.TestCase):
         assert np.array_equal(res_1, res_2)
 
     def test_name(self):
-        with paddle.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             out = paddle.linspace(
                 0, 10, 5, dtype='float32', name='linspace_res')
             assert 'linspace_res' in out.name
 
     def test_imperative(self):
-        with paddle.imperative.guard():
-            out = paddle.linspace(0, 10, 5, dtype='float32')
-            np_out = np.linspace(0, 10, 5, dtype='float32')
+        paddle.disable_static()
+        out = paddle.linspace(0, 10, 5, dtype='float32')
+        np_out = np.linspace(0, 10, 5, dtype='float32')
+        paddle.enable_static()
         self.assertEqual((out.numpy() == np_out).all(), True)
 
 
