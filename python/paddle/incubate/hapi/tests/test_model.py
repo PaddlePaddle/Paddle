@@ -169,6 +169,12 @@ class TestModel(unittest.TestCase):
     def test_fit_static(self):
         self.fit(False)
 
+    def test_fit_dynamic_with_rank(self):
+        self.fit(True, 2, 0)
+
+    def test_fit_static_with_rank(self):
+        self.fit(False, 2, 0)
+
     def test_evaluate_dygraph(self):
         self.evaluate(True)
 
@@ -184,7 +190,7 @@ class TestModel(unittest.TestCase):
     def test_prepare_context(self):
         prepare_distributed_context()
 
-    def fit(self, dynamic):
+    def fit(self, dynamic, num_replicas=None, rank=None):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
         fluid.default_startup_program().random_seed = seed
@@ -204,9 +210,17 @@ class TestModel(unittest.TestCase):
         np.testing.assert_allclose(result['acc'], self.acc1)
 
         train_sampler = DistributedBatchSampler(
-            self.train_dataset, batch_size=64, shuffle=False)
+            self.train_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank)
         val_sampler = DistributedBatchSampler(
-            self.val_dataset, batch_size=64, shuffle=False)
+            self.val_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank)
 
         train_loader = fluid.io.DataLoader(
             self.train_dataset,

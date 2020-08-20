@@ -37,6 +37,7 @@ class AMPOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.amp = False
+        dist_strategy.amp_configs = {}
 
     def minimize_impl(self,
                       loss,

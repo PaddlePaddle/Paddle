@@ -4866,7 +4866,7 @@ def split(input, num_or_sections, dim=-1, name=None):
 
     check_variable_and_dtype(
         input, 'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'in64'], 'split')
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'split')
     check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
     check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):
@@ -11414,7 +11414,12 @@ Examples:
     """
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_add')
+            x,
+            y,
+            axis=axis,
+            act=act,
+            op_name='elementwise_add',
+            use_mkldnn=core.globals()["FLAGS_use_mkldnn"])
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
@@ -12049,8 +12054,8 @@ def logical_and(x, y, out=None, name=None):
             paddle.disable_static()
             x_data = np.array([True, True, False, False], dtype=np.bool)
             y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_variable(x_data)
-            y = paddle.to_variable(y_data)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
             res = paddle.logical_and(x, y)
             print(res.numpy()) # [True False False False]
     """

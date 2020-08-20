@@ -23,8 +23,6 @@ from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import expand  #DEFINE_ALIAS
-from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import reshape  #DEFINE_ALIAS
 from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
@@ -45,6 +43,7 @@ __all__ = [
     'cast',
     'concat',
     'expand',
+    'broadcast_to',
     'expand_as',
     'flatten',
     'gather',
@@ -57,6 +56,7 @@ __all__ = [
     'shard_index',
     'slice',
     'split',
+    'chunk'
     'squeeze',
     'stack',
     'strided_slice',
@@ -68,6 +68,7 @@ __all__ = [
     'flip',
     'unbind',
     'roll',
+    'tile',
 ]
 
 
@@ -787,3 +788,263 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
+
+
+def chunk(x, chunks, axis=0, name=None):
+    """
+    Split the input tensor into multiple sub-Tensors.
+    
+    Args:
+        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        chunks(int): The number of tensor to be split along the certain axis.
+        axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type 
+            ``int`` or a ``Tensor`` with shape [1] and data type  ``int32`` or ``int64``.
+            If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+    Returns:
+        list(Tensor): The list of segmented Tensors.
+    Raises:
+        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
+        TypeError: ``chunks`` is not int.
+        TypeError: ``axis`` is not int or Tensor. the data type of ``axis`` must be int32 or int64 when it's a Tensor.
+    Example:
+        .. code-block:: python
+            
+            import numpy as np
+            import paddle
+            
+            paddle.disable_static()
+            # x is a Tensor which shape is [3, 9, 5]
+            x_np = np.random.random([3, 9, 5]).astype("int32")
+            x = paddle.to_variable(x_np)
+
+            out0, out1, out22 = paddle.chunk(x, chunks=3, axis=1)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
+
+            
+            # axis is negative, the real axis is (rank(x) + axis) which real
+            # value is 1.
+            out0, out1, out2 = paddle.chunk(x, chunks=3, axis=-2)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
+    """
+    check_type(chunks, 'chunks', (int), 'chunk')
+    return paddle.fluid.layers.split(
+        input=x, num_or_sections=chunks, dim=axis, name=name)
+
+
+def tile(x, repeat_times, name=None):
+    """
+
+    Construct a new Tensor by repeating ``x`` the number of times given by ``repeat_times``.
+    After tiling, the number of elements of the i'th dimension of the output is equal to ``x.dims[i] * repeat_times[i]``.
+
+    Both the number of dimensions of ``x`` and the number of elements in ``repeat_times`` should be less than or equal to 6.
+
+    Args:
+        x (Tensor): The input tensor, its data type should be bool, float32, float64, int32 or int64.
+        repeat_times (Tensor|tuple|list): The number of repeating times. If repeat_times is a list or tuple, all its elements
+            should be integers or 1-D Tensors with the data type int32. If repeat_times is a Tensor, it should be an 1-D Tensor with the data type int32.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. The data type is the same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            np_data = np.array([1, 2, 3]).astype('int32')
+            data = paddle.to_variable(np_data)
+            out = paddle.tile(data, repeat_times=[2, 1])
+			np_out = out1.numpy()
+            # [[1, 2, 3], [1, 2, 3]]
+
+            out = paddle.tile(data, repeat_times=[2, 2])
+			np_out = out.numpy()
+            # [[1, 2, 3, 1, 2, 3], [1, 2, 3, 1, 2, 3]]
+
+            np_repeat_times = np.array([2, 1]).astype("int32")
+            repeat_times = paddle.to_variable(np_repeat_times)
+            out = paddle.tile(data, repeat_times=repeat_times)
+			np_out = out.numpy()
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
+    check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+        raise ValueError(
+            "When the date type is bool for the input 'x' of tile op, you "
+            "must set its stop_gradient to be True by "
+            "some_var.stop_gradient == True supporting some_var as the input.")
+
+    helper = LayerHelper('tile', input=x, **locals())
+
+    inputs = {"X": [x]}
+    attrs = {}
+
+    def get_attr_repeat_times(list_repeat_times):
+        attrs_repeat_times = []
+        for idx, times in enumerate(list_repeat_times):
+            if isinstance(times, Variable):
+                attrs_repeat_times.append(-1)
+            else:
+                attrs_repeat_times.append(times)
+                assert times > 0, (
+                    "All elements in repeat_times must be positive for tile.")
+        return attrs_repeat_times
+
+    if isinstance(repeat_times, Variable):
+        repeat_times.stop_gradient = True
+        inputs['RepeatTimes'] = repeat_times
+        attrs['repeat_times'] = [-1]
+    elif isinstance(repeat_times, (list, tuple)):
+        attrs['repeat_times'] = get_attr_repeat_times(repeat_times)
+        if utils._contain_var(repeat_times):
+            inputs['repeat_times_tensor'] = utils._convert_to_tensor_list(
+                repeat_times)
+
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='tile', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
+
+
+def expand_as(x, y, name=None):
+    """
+
+    Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
+
+    Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greather than or equal to that of ``x``. The dimension to expand must have a value of 1.
+
+    Args:
+        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        y (Tensor): The input tensor gives the shape that ``x`` to expand to.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor: A Tensor with the same shape as ``y``. The data type is the same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            paddle.disable_static()
+
+            np_data_x = np.array([1, 2, 3]).astype=('int32)
+            np_data_y = np.array([[1, 2, 3], [4, 5, 6]]).astype=('int32)
+            data_x = paddle.to_variable(np_data_x)
+            data_y = paddle.to_variable(np_data_y)
+            out = paddle.expand_as(data_x, data_y)
+			np_out = out.numpy()
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
+    check_type(y, 'y', Variable, 'expand_as')
+
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+        raise ValueError(
+            "When the data type of input 'x' for expand_as is bool, "
+            "you must set its stop_gradient to be False by "
+            "some_var.stop_gradient = True, supporting "
+            "some_var as the input 'x'.")
+    inputs = {"X": [x], "target_tensor": [y]}
+
+    helper = LayerHelper('expand_as', input=x, **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type='expand_as_v2', inputs=inputs, outputs={'Out': out})
+    return out
+
+
+def expand(x, shape, name=None):
+    """
+
+    Expand the input tensor to a given shape.
+
+    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. The dimension to expand must have a value 1.
+
+
+    Args:
+        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
+            should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32. 
+            The value -1 in shape means keeping the corresponding dimension unchanged.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        N-D Tensor: A Tensor with the given shape. The data type is the same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            paddle.disable_static()
+            np_data = np.array([1, 2, 3]).astype=('int32)
+            data = paddle.to_variable(np_data)
+            out = paddle.expand(data, shape=[2, 3])
+			out = out.numpy()
+            # [[1, 2, 3], [1, 2, 3]]
+
+            np_shape = np.array([2, 3]).astype=('int32)
+            shape = paddle.to_variable(np_shape)
+            out = paddle.expand(data, shape=shape)
+			out = out.numpy
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
+    check_type(shape, 'shape', (list, tuple, Variable), 'expand')
+
+    inputs = {"X": [x]}
+    attrs = {}
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+        raise ValueError("When the data type of input 'x' for expand is bool, "
+                         "you must set its stop_gradient to be False by "
+                         "some_var.stop_gradient = True, supporting "
+                         "some_var as the input.")
+
+    helper = LayerHelper('expand', input=x, **locals())
+
+    def get_attr_expand_shape(list_expand_shape):
+        attrs_expand_shape = []
+        for idx, shape in enumerate(list_expand_shape):
+            if isinstance(shape, Variable):
+                attrs_expand_shape.append(-1)
+            else:
+                attrs_expand_shape.append(shape)
+                assert shape > 0 or shape == -1, (
+                    "All elements in shape of expand must be positive or -1.")
+        return attrs_expand_shape
+
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        inputs['Shape'] = shape
+    elif isinstance(shape, (list, tuple)):
+        attrs['shape'] = get_attr_expand_shape(shape)
+        if utils._contain_var(shape):
+            inputs['expand_shapes_tensor'] = utils._convert_to_tensor_list(
+                shape)
+
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
+
+
+broadcast_to = expand
