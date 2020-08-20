@@ -211,10 +211,10 @@ class AdamW(DecoupledWeightDecay, Adam):
                  weight_decay,
                  apply_decay_param_fun=None,
                  learning_rate=0.001,
-                 parameters=None,
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
+                 parameters=None,
                  grad_clip=None,
                  name=None,
                  lazy_mode=False):
