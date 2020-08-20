@@ -110,7 +110,7 @@ class PipelineOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.pipeline = False
-        dist_strategy.pipeline_configs = {"micro_batch": 1}
+        dist_strategy.pipeline_configs = {}
 
     def minimize_impl(self,
                       loss,

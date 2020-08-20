@@ -58,6 +58,7 @@ from .common import one_hot  #DEFINE_ALIAS
 from .common import pad  #DEFINE_ALIAS
 from .common import pad_constant_like  #DEFINE_ALIAS
 from .common import pad2d  #DEFINE_ALIAS
+from .common import cosine_similarity  #DEFINE_ALIAS
 from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
 from .common import assign  #DEFINE_ALIAS
@@ -127,7 +128,7 @@ from .loss import dice_loss  #DEFINE_ALIAS
 from .loss import edit_distance  #DEFINE_ALIAS
 from .loss import huber_loss  #DEFINE_ALIAS
 from .loss import iou_similarity  #DEFINE_ALIAS
-from .loss import kldiv_loss  #DEFINE_ALIAS
+from .loss import kl_div  #DEFINE_ALIAS
 from .loss import l1_loss  #DEFINE_ALIAS
 from .loss import log_loss  #DEFINE_ALIAS
 from .loss import margin_ranking_loss  #DEFINE_ALIAS
@@ -140,6 +141,7 @@ from .loss import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
 from .loss import sigmoid_focal_loss  #DEFINE_ALIAS
 from .loss import smooth_l1  #DEFINE_ALIAS
+from .loss import smooth_l1_loss  #DEFINE_ALIAS
 from .loss import softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import square_error_cost  #DEFINE_ALIAS
 from .loss import ssd_loss  #DEFINE_ALIAS
@@ -151,6 +153,7 @@ from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 from .norm import l2_normalize  #DEFINE_ALIAS
 # from .norm import layer_norm        #DEFINE_ALIAS
 from .norm import lrn  #DEFINE_ALIAS
+from .norm import normalize  #DEFINE_ALIAS
 # from .norm import spectral_norm        #DEFINE_ALIAS
 from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
@@ -196,3 +199,4 @@ from .vision import shuffle_channel  #DEFINE_ALIAS
 from .vision import space_to_depth  #DEFINE_ALIAS
 from .vision import yolo_box  #DEFINE_ALIAS
 from .vision import yolov3_loss  #DEFINE_ALIAS
+from .input import one_hot  #DEFINE_ALIAS

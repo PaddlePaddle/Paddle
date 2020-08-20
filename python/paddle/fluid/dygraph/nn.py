@@ -35,7 +35,7 @@ __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
     'GRUUnit', 'InstanceNorm', 'LayerNorm', 'NCE', 'PRelu',
     'BilinearTensorProduct', 'Conv2DTranspose', 'Conv3DTranspose', 'GroupNorm',
-    'SpectralNorm', 'TreeConv', 'Flatten'
+    'SpectralNorm', 'TreeConv', 'Flatten', 'SyncBatchNorm'
 ]
 
 
@@ -180,6 +180,7 @@ class Conv2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
         self._filter_size = filter_size
         self._num_filters = num_filters
         self._param_attr = param_attr
@@ -187,7 +188,8 @@ class Conv2D(layers.Layer):
         self._dtype = dtype
 
         if (self._num_channels == self._groups and
-                num_filters % self._num_channels == 0 and not self._use_cudnn):
+                num_filters % self._num_channels == 0 and
+                not self._use_cudnn and not self._use_mkldnn):
             self._l_type = 'depthwise_conv2d'
         else:
             self._l_type = 'conv2d'
@@ -224,14 +226,15 @@ class Conv2D(layers.Layer):
         if in_dygraph_mode() and self._l_type == 'conv2d':
             attrs = ('strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups
-                     if self._groups else 1, 'use_cudnn', self._use_cudnn)
+                     if self._groups else 1, 'use_cudnn', self._use_cudnn,
+                     'use_mkldnn', self._use_mkldnn)
             out = core.ops.conv2d(input, self.weight, *attrs)
             pre_bias = out
 
-            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
-                                                            1)
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
+            pre_act = dygraph_utils._append_bias_in_dygraph(
+                pre_bias, self.bias, 1, use_mkldnn=self._use_mkldnn)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
         inputs = {
             'Input': [input],
             'Filter': [self.weight],
@@ -242,7 +245,7 @@ class Conv2D(layers.Layer):
             'dilations': self._dilation,
             'groups': self._groups if self._groups else 1,
             'use_cudnn': self._use_cudnn,
-            'use_mkldnn': False,
+            'use_mkldnn': self._use_mkldnn,
         }
 
         check_variable_and_dtype(input, 'input',
@@ -267,7 +270,8 @@ class Conv2D(layers.Layer):
                 inputs={'X': [pre_bias],
                         'Y': [self.bias]},
                 outputs={'Out': [pre_act]},
-                attrs={'axis': 1})
+                attrs={'axis': 1,
+                       'use_mkldnn': self._use_mkldnn})
         else:
             pre_act = pre_bias
 
@@ -828,6 +832,8 @@ class Pool2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
 
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
@@ -853,8 +859,8 @@ class Pool2D(layers.Layer):
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
                      'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
-                     'use_mkldnn', False, 'exclusive', self._exclusive,
-                     'data_format', self._data_format)
+                     'use_mkldnn', self._use_mkldnn, 'exclusive',
+                     self._exclusive, 'data_format', self._data_format)
             return core.ops.pool2d(input, *attrs)
 
         check_variable_and_dtype(
@@ -869,7 +875,7 @@ class Pool2D(layers.Layer):
             "paddings": self._pool_padding,
             "use_cudnn": self._use_cudnn,
             "ceil_mode": self._ceil_mode,
-            "use_mkldnn": False,
+            "use_mkldnn": self._use_mkldnn,
             "exclusive": self._exclusive,
             "data_format": self._data_format,
         }
@@ -958,16 +964,22 @@ class Linear(layers.Layer):
         self.bias = self.create_parameter(
             shape=[output_dim], attr=bias_attr, dtype=dtype, is_bias=True)
 
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+
     def forward(self, input):
         if in_dygraph_mode():
             pre_bias = _varbase_creator(dtype=input.dtype)
             core.ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
-                            'transpose_Y', False, "alpha", 1)
+                            'transpose_Y', False, "alpha", 1, "use_mkldnn",
+                            self._use_mkldnn)
             pre_act = dygraph_utils._append_bias_in_dygraph(
-                pre_bias, self.bias, axis=len(input.shape) - 1)
+                pre_bias,
+                self.bias,
+                axis=len(input.shape) - 1,
+                use_mkldnn=self._use_mkldnn)
 
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
 
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], "Linear")
@@ -976,6 +988,7 @@ class Linear(layers.Layer):
             "transpose_X": False,
             "transpose_Y": False,
             "alpha": 1,
+            "use_mkldnn": self._use_mkldnn,
         }
         inputs = {"X": [input], "Y": [self.weight]}
 
@@ -990,7 +1003,10 @@ class Linear(layers.Layer):
                 inputs={'X': [tmp],
                         'Y': [self.bias]},
                 outputs={'Out': [pre_activation]},
-                attrs={'axis': len(input.shape) - 1})
+                attrs={
+                    'axis': len(input.shape) - 1,
+                    'use_mkldnn': self._use_mkldnn
+                })
         else:
             pre_activation = tmp
         return self._helper.append_activation(pre_activation, act=self._act)
@@ -1250,6 +1266,7 @@ class BatchNorm(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
@@ -1314,8 +1331,8 @@ class BatchNorm(layers.Layer):
         if in_dygraph_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
-                     self._data_layout, "use_mkldnn", False, "fuse_with_relu",
-                     self._fuse_with_relu, "use_global_stats",
+                     self._data_layout, "use_mkldnn", self._use_mkldnn,
+                     "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
             batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
@@ -1323,7 +1340,7 @@ class BatchNorm(layers.Layer):
                 mean_out, variance_out, *attrs)
 
             return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act)
+                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], 'BatchNorm')
@@ -3183,6 +3200,220 @@ class TreeConv(layers.Layer):
         else:
             pre_activation = out
         return self._helper.append_activation(pre_activation, act=self._act)
+
+
+class SyncBatchNorm(layers.Layer):
+    """
+    This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
+    It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
+    be used as a normalizer function for other operations, such as conv2d and fully connected 
+    operations.
+    The data is normalized by the mean and variance of the channel based on whole mini-batch
+    , which including data in all gpus.
+    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
+    for more details.
+
+    When model in training mode, the :math:`\\mu_{\\beta}` 
+    and :math:`\\sigma_{\\beta}^{2}` are the statistics of whole mini-batch data in all gpus.
+    Calculated as follows:
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+
+    - :math:`x` : whole mini-batch data in all gpus
+    - :math:`m` : the size of the whole mini-batch data
+
+    When model in evaluation mode, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are global statistics (moving_mean and moving_variance, 
+    which usually got from the pre-trained model). Global statistics calculated as follows:
+
+    .. math::
+        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global mean \\
+        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global variance \\
+
+    The formula of normalization is as follows:
+ 
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\eps}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    - :math:`\\eps` : add a smaller value to the variance to prevent division by zero
+    - :math:`\\gamma` : trainable scale parameter vector
+    - :math:`\\beta` : trainable shift parameter vector 
+
+    Parameters:
+        num_features(int): Indicate the number of channels of the input ``Tensor``.
+        epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
+        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
+        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
+             of this layer. If it is set to None or one attribute of ParamAttr, this layerr
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. If it is set to False, 
+             this layer will not have trainable scale parameter. Default: None.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of this layer.
+             If it is set to None or one attribute of ParamAttr, this layer
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. If it is set to False, this layer will not 
+             have trainable bias parameter. Default: None.
+        track_running_stats(bool, optional): Whether to compute global stats, which including running mean and 
+             running variance. Default: True.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import paddle.nn as nn
+          import numpy as np
+
+          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
+          paddle.disable_static()
+          x = paddle.to_tensor(x)
+          if paddle.fluid.is_compiled_with_cuda():
+              sync_batch_norm = nn.SyncBatchNorm(2)
+              hidden1 = sync_batch_norm(x)
+              print(hidden1.numpy())
+              # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
+    """
+
+    def __init__(self,
+                 num_features,
+                 epsilon=1e-05,
+                 momentum=0.9,
+                 track_running_stats=True,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCHW',
+                 name=None):
+        super(SyncBatchNorm, self).__init__()
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+        self._num_features = num_features
+        self._data_layout = data_format
+        self._momentum = momentum
+        self._epsilon = epsilon
+        self._track_running_stats = track_running_stats
+
+        if self._track_running_stats == False:
+            logging.warn(
+                "moving mean and moving variance will be calculated whether `track_running_stats` is set to `True` or `False`, we will fix it in the next version."
+            )
+
+        param_shape = [self._num_features]
+
+        # create parameter
+        if weight_attr == False:
+            self.weight = self.create_parameter(
+                attr=None, shape=param_shape, default_initializer=Constant(1.0))
+            self.weight.stop_gradient = True
+        else:
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=param_shape,
+                default_initializer=Constant(1.0))
+            self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
+
+        if bias_attr == False:
+            self.bias = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                default_initializer=Constant(0.0),
+                is_bias=True)
+            self.bias.stop_gradient = True
+        else:
+            self.bias = self.create_parameter(
+                attr=self._bias_attr, shape=param_shape, is_bias=True)
+            self.bias.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
+
+        self._mean = self.create_parameter(
+            attr=ParamAttr(
+                name=None,
+                initializer=Constant(0.0),
+                trainable=False,
+                do_model_average=True),
+            shape=param_shape,
+            dtype=self._dtype)
+        self._mean.stop_gradient = True
+
+        self._variance = self.create_parameter(
+            attr=ParamAttr(
+                name=None,
+                initializer=Constant(1.0),
+                trainable=False,
+                do_model_average=True),
+            shape=param_shape,
+            dtype=self._dtype)
+        self._variance.stop_gradient = True
+
+    def forward(self, x):
+        # create output
+        # mean and mean_out share the same memory
+        mean_out = self._mean
+        # variance and variance out share the same memory
+        variance_out = self._variance
+
+        ### train mode: use mini-batch stats, eval mode: use global stats
+        if in_dygraph_mode():
+            attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
+                     "is_test", not self.training, "data_layout",
+                     self._data_layout, "use_mkldnn", False, "fuse_with_relu",
+                     False, "use_global_stats", not self.training,
+                     'trainable_statistics', False)
+            sync_batch_norm_out, _, _, _, _, _ = core.ops.sync_batch_norm(
+                x, self.weight, self.bias, self._mean, self._variance, mean_out,
+                variance_out, *attrs)
+
+            return sync_batch_norm_out
+
+        check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                                 'BatchNorm')
+
+        attrs = {
+            "momentum": self._momentum,
+            "epsilon": self._epsilon,
+            "is_test": not self.training,
+            "data_layout": self._data_layout,
+            "use_mkldnn": False,
+            "fuse_with_relu": False,
+            "use_global_stats": not self.training,
+            "trainable_statistics": False,
+        }
+
+        inputs = {
+            "X": [x],
+            "Scale": [self.weight],
+            "Bias": [self.bias],
+            "Mean": [self._mean],
+            "Variance": [self._variance]
+        }
+
+        saved_mean = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        saved_variance = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        sync_batch_norm_out = self._helper.create_variable_for_type_inference(
+            self._dtype)
+
+        outputs = {
+            "Y": [sync_batch_norm_out],
+            "MeanOut": [mean_out],
+            "VarianceOut": [variance_out],
+            "SavedMean": [saved_mean],
+            "SavedVariance": [saved_variance]
+        }
+
+        self._helper.append_op(
+            type="sync_batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
+        return sync_batch_norm_out
 
 
 class Flatten(layers.Layer):
