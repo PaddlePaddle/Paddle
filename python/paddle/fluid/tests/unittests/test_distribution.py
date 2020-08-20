@@ -293,6 +293,10 @@ class DistributionTestError(unittest.TestCase):
         self.assertRaises(NotImplementedError, distribution.sample)
         self.assertRaises(NotImplementedError, distribution.entropy)
 
+        uniform = Uniform(0.0, 1.0)
+        self.assertRaises(NotImplementedError, distribution.kl_divergence,
+                          uniform)
+
         value_npdata = np.array([0.8], dtype="float32")
         value_tensor = layers.create_tensor(dtype="float32")
         self.assertRaises(NotImplementedError, distribution.log_prob,
