@@ -150,12 +150,11 @@ class TestCUDNNLstmOp(OpTest):
             'InitC': init_c
         }
         self.attrs = {
-            'dropout_prob': 0.1,
+            'dropout_prob': 0.0,
             'is_bidirec': False,
             'input_size': hidden_size,
             'hidden_size': hidden_size,
             'num_layers': 1,
-            'time_major': True,
             'sequence_length': [20, 20, 20, 20, 20]
         }
         self.outputs = {
