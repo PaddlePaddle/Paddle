@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <random>
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -159,7 +160,14 @@ void ReservoirSampling(const int num, std::vector<int>* inds,
   if (len > static_cast<size_t>(num)) {
     if (use_random) {
       for (size_t i = num; i < len; ++i) {
-        int rng_ind = std::floor(uniform(engine) * i);
+        int rng_ind =
+            framework::Generator::GetInstance()->is_init_py
+                ? std::floor(
+                      uniform(
+                          framework::Generator::GetInstance()->GetCPUEngine()) *
+                      i)
+                : std::floor(uniform(engine) * i);
+        // int rng_ind = std::floor(uniform(engine) * i);
         if (rng_ind < num)
           std::iter_swap(inds->begin() + rng_ind, inds->begin() + i);
       }
