@@ -54,5 +54,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(size, ops::SizeKernel<int>, ops::SizeKernel<int32_t>,
+                       ops::SizeKernel<paddle::platform::float16>,
                        ops::SizeKernel<float>, ops::SizeKernel<double>,
                        ops::SizeKernel<bool>);
