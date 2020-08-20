@@ -157,16 +157,18 @@ void AsyncCommunicator::MainThread() {
   }
 
   while (running_) {
-    int meet = Meet();
+    int batches = BatchesCounter();
 
-    VLOG(1) << "async_meet: " << meet;
-
-    SendGlobalStep(meet);
-    SendByCommunicator(meet);
-    BarrierSend();
-    RecvByCommunicator();
-    BarrierRecv();
-    BarrierWeakUp();
+    if (batches > 0) {
+      SendGlobalStep(batches);
+      SendByCommunicator(batches);
+      BarrierSend();
+      RecvByCommunicator();
+      BarrierRecv();
+      BarrierWeakUp();
+    } else {
+      VLOG(1) << "get nothing from sending queue, will skip send/recv";
+    }
   }
   VLOG(1) << "communicator stopped, send thread exit";
 }
@@ -197,7 +199,7 @@ void AsyncCommunicator::RecvNoBarrier() {
   }
 }
 
-int AsyncCommunicator::Meet() {
+int AsyncCommunicator::BatchesCounter() {
   auto &step_queue = send_varname_to_queue_.at(STEP_COUNTER);
 
   size_t merged_var_num = 0;
@@ -316,7 +318,7 @@ void HalfAsyncCommunicator::Clean() {
   }
 }
 
-int HalfAsyncCommunicator::Meet() {
+int HalfAsyncCommunicator::BatchesCounter() {
   while (running_) {
     if (barrier_counter_.load() >= barrier_trigger_.load() &&
         barrier_trigger_.load() != 0) {

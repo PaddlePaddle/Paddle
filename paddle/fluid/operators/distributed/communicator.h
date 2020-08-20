@@ -293,7 +293,7 @@ class AsyncCommunicator : public Communicator {
 
   virtual void RecvNoBarrier();
 
-  virtual int Meet();
+  virtual int BatchesCounter();
 
   virtual void BarrierSend() {}
 
@@ -350,7 +350,7 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
 
   void BarrierTriggerReset(int initial_val) override;
 
-  int Meet();
+  int BatchesCounter();
 
   void BarrierWeakUp();
 
