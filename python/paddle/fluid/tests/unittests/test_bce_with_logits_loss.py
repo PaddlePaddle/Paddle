@@ -243,7 +243,7 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
         paddle.disable_static()
         self.assertRaises(
             ValueError,
-            paddle.nn.loss.BCEWithLogitsLoss,
+            paddle.nn.BCEWithLogitsLoss,
             reduction="unsupport reduction")
         logit = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
         label = paddle.to_tensor([[0.0, 1.0]], dtype='float32')

@@ -95,18 +95,18 @@ def binary_cross_entropy_with_logits(logit,
     First this operator calculate loss function as follows:
 
     .. math::
-           $$Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))$$
+           Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))
 
-    We know that $$\\sigma(Logit) = \\frac{1}{1 + \\exp^{-Logit}} $$. By substituting this we get:
+    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\exp^{-Logit}}`. By substituting this we get:
 
     .. math::
-           $$Out = Logit - Logit * Labels + \\log(1 + \\exp^{-Logit})$$
+           Out = Logit - Logit * Labels + \\log(1 + \\exp^{-Logit})
 
-    For stability and to prevent overflow of $$\\exp^{-Logit}$$ when Logit < 0,
+    For stability and to prevent overflow of :math:`\\exp^{-Logit}` when Logit < 0,
     we reformulate the loss as follows:
 
     .. math::
-           $$Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\exp^{-\|Logit\|})$$
+           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\exp^{-\|Logit\|})
 
     Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
@@ -115,17 +115,17 @@ def binary_cross_entropy_with_logits(logit,
 
     Finally, this operator applies reduce operation on the loss.
     If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
-    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is $$ Out = MEAN(Out) $$.
-    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is $$ Out = SUM(Out) $$.
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
 
     Note that the target labels ``label`` should be numbers between 0 and 1.
 
-    Parameters:
+    Args:
         logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
             N is batch_size, `*` means number of additional dimensions. The ``logit``
             is usually the output of Linear layer. Available dtype is float32, float64.
         label (Tensor): The target labels tensor. 2-D tensor with the same shape as
-            ``input``. The target labels which values should be numbers between 0 and 1.
+            ``logit``. The target labels which values should be numbers between 0 and 1.
             Available dtype is float32, float64.
         weight (Tensor, optional): A manual rescaling weight given to the loss of each
             batch element. If given, it has to be a 1D Tensor whose size is `[N, ]`,
@@ -144,18 +144,18 @@ def binary_cross_entropy_with_logits(logit,
 
     Returns:
         output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is scalar.
+            same as ``logit`` , else the shape of output is scalar.
 
     Examples:
 
         .. code-block:: python
+
             import paddle
             paddle.disable_static()
-            input = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
+            logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
             label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
-            output = paddle.nn.functional.binary_cross_entropy_with_logits(input, label)
+            output = paddle.nn.functional.binary_cross_entropy_with_logits(logit, label)
             print(output.numpy())  # [0.45618808]
-            paddle.enable_static()
 
     """
     if reduction not in ['sum', 'mean', 'none']:
