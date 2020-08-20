@@ -54,16 +54,16 @@ class ELU(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
-        m = paddle.nn.ELU(0.2)
-        out = m(x) 
-        # [[-0.12642411  6.        ]
-        #  [ 1.          15.6      ]]
+            x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
+            m = paddle.nn.ELU(0.2)
+            out = m(x) 
+            # [[-0.12642411  6.        ]
+            #  [ 1.          15.6      ]]
     """
 
     def __init__(self, alpha=1.0, name=None):
@@ -103,23 +103,23 @@ class GELU(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        data = np.random.randn(2, 3).astype("float32")
-        x = paddle.to_tensor(data)
+            data = np.random.randn(2, 3).astype("float32")
+            x = paddle.to_tensor(data)
 
-        m = paddle.nn.GELU()
-        out = m(x)
+            m = paddle.nn.GELU()
+            out = m(x)
 
-        data
-        # array([[ 0.87165993, -1.0541513 , -0.37214822],
-        #         [ 0.15647964,  0.32496083,  0.33045998]], dtype=float32)
-        out
-        # array([[ 0.70456535, -0.15380788, -0.13207214],
-        #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
+            data
+            # array([[ 0.87165993, -1.0541513 , -0.37214822],
+            #         [ 0.15647964,  0.32496083,  0.33045998]], dtype=float32)
+            out
+            # array([[ 0.70456535, -0.15380788, -0.13207214],
+            #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
     """
 
     def __init__(self, approximate=False, name=None):
@@ -159,14 +159,14 @@ class Hardshrink(layers.Layer):
 
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_variable(np.array([-1, 0.3, 2.5]))
-        m = paddle.nn.Hardshrink()
-        out = m(x) # [-1., 0., 2.5]
+            x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
+            m = paddle.nn.Hardshrink()
+            out = m(x) # [-1., 0., 2.5]
     """
 
     def __init__(self, threshold=0.5, name=None):
@@ -333,14 +333,14 @@ class ReLU(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
-        m = paddle.nn.ReLU()
-        out = m(x) # [0., 0., 1.]
+            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+            m = paddle.nn.ReLU()
+            out = m(x) # [0., 0., 1.]
     """
 
     def __init__(self, name=None):
@@ -418,15 +418,15 @@ class Sigmoid(layers.Layer):
 
         .. code-block:: python
 
-          import numpy as np
-          import paddle
+            import numpy as np
+            import paddle
 
-          paddle.disable_static()
-          input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
-          m = paddle.nn.Sigmoid()
-          x = paddle.to_variable(input_data)
-          output = m(x)
-          print(output.numpy()) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+            paddle.disable_static()
+            input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
+            m = paddle.nn.Sigmoid()
+            x = paddle.to_tensor(input_data)
+            output = m(x)
+            print(output.numpy()) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
     def __init__(self, name=None):
@@ -457,14 +457,14 @@ class LogSigmoid(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
-        m = paddle.nn.LogSigmoid()
-        out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+            x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
+            m = paddle.nn.LogSigmoid()
+            out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
     def __init__(self, name=None):
@@ -499,26 +499,26 @@ class LogSoftmax(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = np.array([[[-2.0, 3.0, -4.0, 5.0],
-                        [3.0, -4.0, 5.0, -6.0],
-                        [-7.0, -8.0, 8.0, 9.0]],
-                        [[1.0, -2.0, -3.0, 4.0],
-                        [-5.0, 6.0, 7.0, -8.0],
-                        [6.0, 7.0, 8.0, 9.0]]])
-        m = paddle.nn.LogSoftmax()
-        x = paddle.to_tensor(x)
-        out = m(x)
-        # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
-        #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
-        #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
-        #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
-        #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
-        #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
+            x = np.array([[[-2.0, 3.0, -4.0, 5.0],
+                            [3.0, -4.0, 5.0, -6.0],
+                            [-7.0, -8.0, 8.0, 9.0]],
+                            [[1.0, -2.0, -3.0, 4.0],
+                            [-5.0, 6.0, 7.0, -8.0],
+                            [6.0, 7.0, 8.0, 9.0]]])
+            m = paddle.nn.LogSoftmax()
+            x = paddle.to_tensor(x)
+            out = m(x)
+            # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
+            #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
+            #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
+            #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
+            #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
+            #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
     """
 
     def __init__(self, axis=-1, name=None):
