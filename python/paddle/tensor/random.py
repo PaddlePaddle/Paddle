@@ -27,7 +27,7 @@ from ..fluid.layers.tensor import fill_constant
 from ..fluid.io import shuffle  #DEFINE_ALIAS
 
 __all__ = [
-    #   'gaussian',
+    #       'gaussin',
     'uniform',
     'shuffle',
     'randn',
@@ -83,8 +83,10 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
     Examples:
         .. code-block:: python
             
+            import numpy as np
             import paddle
-            import paddle.fluid as fluid
+
+            paddle.disable_static()
 
             # example 1:
             # attr shape is a list which doesn't contain Tensor.
@@ -95,20 +97,24 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
 
             # example 2:
             # attr shape is a list which contains Tensor.
-            dim_1 = fluid.layers.fill_constant([1], "int64", 2)
-            dim_2 = fluid.layers.fill_constant([1], "int32", 3)
+            dim_1 = paddle.fill_constant([1], "int64", 2)
+            dim_2 = paddle.fill_constant([1], "int32", 3)
             result_2 = paddle.tensor.random.uniform_random(shape=[dim_1, dim_2])
             # [[-0.9951253,   0.30757582, 0.9899647 ],
             #  [ 0.5864527,   0.6607096,  -0.8886161 ]]
 
             # example 3:
             # attr shape is a Tensor, the data type must be int64 or int32.
-            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
-            result_3 = paddle.tensor.random.uniform_random(var_shape)
-            # if var_shape's value is [2, 3]
+            shape = np.array([2, 3])
+            shape_tensor = paddle.to_tensor(shape)
+
+            result_3 = paddle.tensor.random.uniform_random(shape_tensor)
+            # if shape_tensor's value is [2, 3]
             # result_3 is:
             # [[-0.8517412,  -0.4006908,   0.2551912 ],
             #  [ 0.3364414,   0.36278176, -0.16085452]]
+
+            paddle.enable_static()
 
     """
     if not isinstance(dtype, core.VarDesc.VarType):
