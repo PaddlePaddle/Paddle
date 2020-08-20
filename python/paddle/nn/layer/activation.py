@@ -15,12 +15,21 @@
 # TODO: define activation functions of neural network
 
 __all__ = [
+    'ELU',
+    'GELU',
     'Hardshrink',
     #       'PReLU',
     'ReLU',
+    'ReLU6',
+    'SELU',
     'LeakyReLU',
     'Sigmoid',
     #       'Softmax',
+    'Softplus',
+    'Softshrink',
+    'Softsign',
+    'Tanhshrink',
+    'LogSigmoid',
     'LogSoftmax',
     'HSigmoid'
 ]
@@ -29,6 +38,103 @@ from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
+
+
+class ELU(layers.Layer):
+    """
+    ELU Activation.
+
+    ..  math::
+    
+        ELU(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
+
+    Parameters:
+        alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
+        m = paddle.nn.ELU(0.2)
+        out = m(x) 
+        # [[-0.12642411  6.        ]
+        #  [ 1.          15.6      ]]
+    """
+
+    def __init__(self, alpha=1.0, name=None):
+        super(ELU, self).__init__()
+        self._alpha = alpha
+        self._name = name
+
+    def forward(self, x):
+        return F.elu(x, self._alpha, self._name)
+
+
+class GELU(layers.Layer):
+    """
+    GELU Activation.
+
+    If approximate is True
+
+    ..  math::
+
+        GELU(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+
+    else
+
+    ..  math::
+
+        GELU(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
+
+    Parameters:
+        approximate (bool, optional): Wether to enable approximation. Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        data = np.random.randn(2, 3).astype("float32")
+        x = paddle.to_tensor(data)
+
+        m = paddle.nn.GELU()
+        out = m(x)
+
+        data
+        # array([[ 0.87165993, -1.0541513 , -0.37214822],
+        #         [ 0.15647964,  0.32496083,  0.33045998]], dtype=float32)
+        out
+        # array([[ 0.70456535, -0.15380788, -0.13207214],
+        #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
+    """
+
+    def __init__(self, approximate=False, name=None):
+        super(GELU, self).__init__()
+        self._approximate = approximate
+        self._name = name
+
+    def forward(self, x):
+        return F.gelu(x, self._approximate, self._name)
 
 
 class Hardshrink(layers.Layer):
@@ -216,44 +322,124 @@ class HSigmoid(layers.Layer):
 
 class ReLU(layers.Layer):
     """
-	:alias_main: paddle.nn.ReLU
-	:alias: paddle.nn.ReLU,paddle.nn.layer.ReLU,paddle.nn.layer.activation.ReLU
-
     ReLU Activation.
 
     .. math:
 
-        out = max(x, 0)
+        ReLU(x) = max(x, 0)
 
     Parameters:
-        inplace (bool, optional): If inplace is True, the input and output of 
-            ``ReLU`` are the same variable. Otherwise, the input and output of
-            ``ReLU`` are different variables. Default False. Note that if x is
-            more than one OPs' input, inplace must be False.
-    
-    Returns:
-        None
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
     
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import paddle.nn as nn
-          import numpy as np
+        import paddle
+        import numpy as np
 
-          data = np.array([-2, 0, 1]).astype('float32')
-          my_relu = nn.ReLU()
-          with fluid.dygraph.guard():
-              data = fluid.dygraph.to_variable(data)
-              res = my_relu(data)  # [0, 0, 1]
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+        m = paddle.nn.ReLU()
+        out = m(x) # [0., 0., 1.]
     """
 
-    def __init__(self, inplace=False):
+    def __init__(self, name=None):
         super(ReLU, self).__init__()
-        self._inplace = inplace
+        self._name = name
 
-    def forward(self, input):
-        return F.relu(input, self._inplace)
+    def forward(self, x):
+        return F.relu(x, self._name)
+
+
+class ReLU6(layers.Layer):
+    """
+    ReLU6 Activation
+
+    .. math::
+
+        \text{ReLU6}(x) = \min(\max(0,x), 6)
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
+        m = paddle.nn.ReLU6()
+        out = m(x) # [0, 0.3, 6]
+    """
+
+    def __init__(self, name=None):
+        super(ReLU6, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.relu6(x, self._name)
+
+
+class SELU(layers.Layer):
+    """
+    SELU Activation
+
+    .. math::
+
+        \text{SELU}(x) = scale * (\max(0,x) + \min(0, \alpha * (\exp(x) - 1))), \\
+        with\,alpha=1.6732632423543772848170429916717 and \\
+        scale=1.0507009873554804934193349852946
+
+    Parameters:
+        scale (float, optional): The value of scale for SELU. Default is 1.0507009873554804934193349852946
+        alpha (float, optional): The value of alpha for SELU. Default is 1.6732632423543772848170429916717
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([[0, 1],[2, 3]]))
+        m = paddle.nn.SELU()
+        out = m(x) # [[0, 1.050701],[2.101402, 3.152103]]
+    """
+
+    def __init__(self,
+                 scale=1.0507009873554804934193349852946,
+                 alpha=1.6732632423543772848170429916717,
+                 name=None):
+        super(SELU, self).__init__()
+        self._scale = scale
+        self._alpha = alpha
+        self._name = name
+
+    def forward(self, x):
+        return F.selu(x, self._scale, self._alpha, self._name)
 
 
 class LeakyReLU(layers.Layer):
@@ -334,6 +520,205 @@ class Sigmoid(layers.Layer):
 
     def forward(self, x):
         return F.sigmoid(x, self.name)
+
+
+class Softplus(layers.Layer):
+    """
+    Softplus Activation
+
+    .. math::
+
+        \text{Softplus}(x) = \frac{1}{\beta} * \log(1 + \exp(\beta * x)) \\
+        \text{For numerical stability, the implementation reverts to the linear function when :}\,x \times \beta > threshold.
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        m = paddle.nn.Softplus()
+        out = m(x) # [0.513015, 0.598139, 0.744397, 0.854355]
+
+    """
+
+    def __init__(self, beta=1, threshold=20, name=None):
+        super(Softplus, self).__init__()
+        self._beta = beta
+        self._threshold = threshold
+        self._name = name
+
+    def forward(self, x):
+        return F.softplus(x, self._beta, self._threshold, self._name)
+
+
+class Softshrink(layers.Layer):
+    """
+    Softshrink Activation
+
+    .. math::
+
+        \text{Softshrink}(x) =
+        \begin{cases}
+        x - threshold, & \text{ if } x > threshold \\
+        x + threshold, & \text{ if } x < -threshold \\
+        0, & \text{ otherwise }
+        \end{cases}
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
+        m = paddle.nn.Softshrink()
+        out = m(x) # [-0.4, 0, 0, 0.3]
+    """
+
+    def __init__(self, threshold=0.5, name=None):
+        super(Softshrink, self).__init__()
+        self._threshold = threshold
+        self._name = name
+
+    def forward(self, x):
+        return F.softshrink(x, self._threshold, self._name)
+
+
+class Softsign(layers.Layer):
+    """
+    Softsign Activation
+
+    .. math::
+
+        \text{Softsign}(x) = \frac{x}{1 + |x|}
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        m = paddle.nn.Softsign()
+        out = m(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
+    """
+
+    def __init__(self, name=None):
+        super(Softsign, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.softsign(x, self._name)
+
+
+class Tanhshrink(layers.Layer):
+    """
+    Tanhshrink Activation
+
+    .. math::
+
+        \text{Tanhshrink}(x) = x - \text{Tanh}(x)
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        m = paddle.nn.Tanhshrink()
+        out = m(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
+    """
+
+    def __init__(self, name=None):
+        super(Tanhshrink, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.tanhshrink(x, self._name)
+
+
+class LogSigmoid(layers.Layer):
+    """
+    LogSigmoid Activation.
+    
+    .. math:
+
+        LogSigmoid(x) = \log \frac{1}{1 + e^{-x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, or float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
+        m = paddle.nn.LogSigmoid()
+        out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+    """
+
+    def __init__(self, name=None):
+        super(LogSigmoid, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.logsigmoid(x, self._name)
 
 
 class LogSoftmax(layers.Layer):

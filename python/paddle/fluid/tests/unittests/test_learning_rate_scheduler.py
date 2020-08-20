@@ -348,7 +348,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 lr = fluid.dygraph.LambdaDecay(learning_rate, "test")
 
 
-class TestLearningRateDecay(object):
+class TestLearningRateDecay(unittest.TestCase):
     def check_decay(self, python_decay_fn, fluid_decay_fn, kwargs):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -432,7 +432,7 @@ class TestLearningRateDecay(object):
                 self.check_decay(py_decay_fn, fluid_decay_fn, kwargs)
 
 
-class TestLinearWamrupLearningRateDecay(object):
+class TestLinearWamrupLearningRateDecay(unittest.TestCase):
     def check_decay_with_place(self, place, python_decay_fn, fluid_decay_fn,
                                kwargs):
         main_prog = fluid.Program()
@@ -469,7 +469,7 @@ class TestLinearWamrupLearningRateDecay(object):
                        str(step), str(python_decayed_lr), str(lr_val[0])))
 
 
-class TestLinearWamrupLearningRateDecayWithScalarInput(object):
+class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
     def run_scalar_lr(self, place, lr, start_lr, end_lr):
         main_prog = fluid.Program()
         startup_prog = fluid.Program()
