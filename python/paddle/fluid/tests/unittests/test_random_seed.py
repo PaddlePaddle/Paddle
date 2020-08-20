@@ -32,19 +32,23 @@ class TestGeneratorSeed(unittest.TestCase):
 
     def test_generator_uniform_random_dygraph(self):
         """Test Generator seed."""
-        gen = generator.Generator()
 
         fluid.enable_dygraph()
 
-        gen.manual_seed(12312321111)
+        gen = paddle.manual_seed(12312321111)
+        print(gen.initial_seed())
         x = fluid.layers.uniform_random([10], dtype="float32", min=0.0, max=1.0)
         st1 = gen.get_state()
+        print(st1)
         x1 = fluid.layers.uniform_random(
             [10], dtype="float32", min=0.0, max=1.0)
+        print(gen.initial_seed())
         gen.set_state(st1)
+        print(gen.get_state())
         x2 = fluid.layers.uniform_random(
             [10], dtype="float32", min=0.0, max=1.0)
-        gen.manual_seed(12312321111)
+        print(gen.initial_seed())
+        paddle.manual_seed(12312321111)
         x3 = fluid.layers.uniform_random(
             [10], dtype="float32", min=0.0, max=1.0)
         x_np = x.numpy()
@@ -227,6 +231,65 @@ class TestGeneratorSeed(unittest.TestCase):
             print(">>>>>>> randint dygraph >>>>>>>")
             self.assertTrue(np.allclose(x1_np, x2_np))
             self.assertTrue(np.allclose(x_np, x3_np))
+
+    def test_generator_uniform_random_static(self):
+
+        fluid.disable_dygraph()
+
+        gen = generator.Generator()
+        gen.manual_seed(123123143)
+
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            # example 1:
+            # attr shape is a list which doesn't contain tensor Variable.
+            result_1 = fluid.layers.uniform_random(shape=[3, 4])
+            result_2 = fluid.layers.uniform_random(shape=[3, 4])
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(startup_program)
+            out1 = exe.run(train_program,
+                           feed={},
+                           fetch_list=[result_1, result_2])
+            #gen.set_state(cur_state)
+            gen.manual_seed(123123143)
+            out2 = exe.run(train_program,
+                           feed={},
+                           fetch_list=[result_1, result_2])
+
+            out1_res1 = np.array(out1[0])
+            out1_res2 = np.array(out1[1])
+            out2_res1 = np.array(out2[0])
+            out2_res2 = np.array(out2[1])
+
+            if not core.is_compiled_with_cuda():
+                self.assertTrue(np.allclose(out1_res1, out2_res1))
+                self.assertTrue(np.allclose(out1_res2, out2_res2))
+                self.assertTrue(not np.allclose(out1_res2, out1_res1))
+
+    def test_generator_randint_dygraph(self):
+        """Test Generator seed."""
+        gen = generator.Generator()
+
+        fluid.enable_dygraph()
+
+        gen.manual_seed(12312321111)
+        x = paddle.randint(low=1)
+        st1 = gen.get_state()
+        x1 = paddle.randint(low=1)
+        gen.set_state(st1)
+        x2 = paddle.randint(low=1)
+        gen.manual_seed(12312321111)
+        x3 = paddle.randint(low=1)
+        x_np = x.numpy()
+        x1_np = x1.numpy()
+        x2_np = x2.numpy()
+        x3_np = x3.numpy()
+        if not core.is_compiled_with_cuda():
+            self.assertTrue(np.allclose(x1_np, x2_np))
+            self.assertTrue(np.allclose(x_np, x3_np))
+
 
     def test_generator_ranint_static(self):
 

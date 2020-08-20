@@ -14,30 +14,35 @@
 
 # TODO: define random api
 import paddle.fluid as fluid
+from paddle.fluid import core
 
 __all__ = ['manual_seed']
 
 
 def manual_seed(seed):
     """
-	:alias_main: paddle.manual_seed
-	:alias: paddle.manual_seed,paddle.framework.random.manual_seed
 
-    Set global manual seed for program
+    Sets global seed for generating random numbers.
 
     Args:
-        manual_seed(int): random seed for program
+        seed(int): The random seed to set. It is recommend to set a large int number.
 
     Returns:
-        None.
+        Generator: a generator object.
 
     Examples:
         .. code-block:: python
 
-            from paddle.framework import manual_seed
-            manual_seed(102)
+            import paddle
+            paddle.manual_seed(102)
+
     """
+    #TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade
+    # 2. support gpu generator by global device 
+
+    seed = int(seed)
+
     fluid.default_main_program().random_seed = seed
     fluid.default_startup_program().random_seed = seed
-    program = fluid.Program()
-    program.global_seed(seed)
+
+    return core.default_cpu_generator().manual_seed(seed)

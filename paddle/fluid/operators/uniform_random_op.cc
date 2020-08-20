@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/uniform_random_op.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -62,7 +64,7 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     std::uniform_real_distribution<T> dist(
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
-    auto gen_ptr = framework::Generator::GetInstance();
+    auto gen_ptr = framework::DefaultCPUGenerator();
     if (gen_ptr->is_init_py) {
       std::mt19937_64 &gen_engine = gen_ptr->GetCPUEngine();
       // auto gen_engine = gen_ptr_->GetCPUEngine();

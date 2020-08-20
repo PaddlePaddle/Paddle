@@ -12,18 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/generator.h"
+
 #include <deque>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
-#include "paddle/fluid/framework/generator.h"
-
 namespace paddle {
 namespace framework {
 
-std::shared_ptr<Generator> Generator::gen_instance_ = NULL;
+const std::shared_ptr<Generator>& DefaultCPUGenerator() {
+  static auto default_cpu_generator =
+      std::make_shared<Generator>(GetRandomSeed());
+  return default_cpu_generator;
+}
 
 GeneratorState* Generator::GetState() {
   std::lock_guard<std::mutex> lock(this->mutex);

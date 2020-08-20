@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
 #include <atomic>
 #include <deque>
 #include <iostream>  // temp for debug
@@ -27,6 +28,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+static uint64_t GetRandomSeed() {
+  std::random_device rd;
+  // double has 53 bit significant, so limit uint64 to 53 bits
+  return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
+}
+
 struct GeneratorState {
   int64_t device = -1;
   uint64_t current_seed = 34342423252;
@@ -37,8 +44,16 @@ struct Generator {
   Generator() {
     GeneratorState default_gen_state_cpu;
     default_gen_state_cpu.device = -1;
-    default_gen_state_cpu.current_seed = 34342423252;
-    std::seed_seq seq({34342423252});
+    default_gen_state_cpu.current_seed = GetRandomSeed();
+    std::seed_seq seq({default_gen_state_cpu.current_seed});
+    default_gen_state_cpu.cpu_engine = std::mt19937_64(seq);
+    this->state_ = std::make_shared<GeneratorState>(default_gen_state_cpu);
+  }
+  explicit Generator(uint64_t seed) {
+    GeneratorState default_gen_state_cpu;
+    default_gen_state_cpu.device = -1;
+    default_gen_state_cpu.current_seed = seed;
+    std::seed_seq seq({seed});
     default_gen_state_cpu.cpu_engine = std::mt19937_64(seq);
     this->state_ = std::make_shared<GeneratorState>(default_gen_state_cpu);
   }
@@ -67,30 +82,15 @@ struct Generator {
 
   bool is_init_py = false;
 
-  // CPU Generator singleton
-  static std::shared_ptr<Generator> GetInstance() {
-    if (NULL == gen_instance_) {
-      gen_instance_.reset(new paddle::framework::Generator());
-    }
-    return gen_instance_;
-  }
-
-  static std::shared_ptr<Generator> GetInstanceX() {
-    if (NULL == gen_instance_) {
-      gen_instance_.reset(new paddle::framework::Generator());
-    }
-    gen_instance_->is_init_py = true;
-    return gen_instance_;
-  }
-
  private:
-  static std::shared_ptr<Generator> gen_instance_;
   std::shared_ptr<GeneratorState> state_;
   mutable std::mutex mutex;
 
   Generator(const Generator& other, const std::lock_guard<std::mutex>&)
       : state_(std::make_shared<GeneratorState>(*(other.state_))) {}
 };
+
+const std::shared_ptr<Generator>& DefaultCPUGenerator();
 
 }  // namespace framework
 }  // namespace paddle
