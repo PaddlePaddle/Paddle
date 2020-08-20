@@ -513,7 +513,9 @@ void BindImperative(py::module *m_ptr) {
     Attribute:
         **sort_sum_gradient**:
 
-        If framework will sum the gradient by the reverse order of trace. eg. x_var ( :ref:`api_guide_Variable` ) will be the input of multiple OP such as :ref:`api_fluid_layers_scale` , this attr will decide if framework will sum gradient of `x_var` by the reverse order.
+        If framework will sum gradients by the reverse order of the forward execution sequence. 
+        For instance, x_var ( :ref:`api_guide_Variable` ) will be the input of multiple OP such as :ref:`api_fluid_layers_scale` ,
+        this attr will decide if framework will sum gradient of `x_var` by the reverse order.
 
         By Default: False
 
@@ -521,20 +523,20 @@ void BindImperative(py::module *m_ptr) {
             .. code-block:: python
 
                 import numpy as np
-                import paddle.fluid as fluid
+                import paddle
+                paddle.disable_static()
 
                 x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    x_var = fluid.dygraph.to_variable(x)
-                    sums_inputs = []
-                    # x_var will be multi-scales' input here
-                    for _ in range(10):
-                        sums_inputs.append(fluid.layers.scale(x_var))
-                    ret2 = fluid.layers.sums(sums_inputs)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                x_var = paddle.to_variable(x)
+                sums_inputs = []
+                # x_var will be multi-scales' input here
+                for _ in range(10):
+                    sums_inputs.append(paddle.scale(x_var))
+                ret2 = paddle.sums(sums_inputs)
+                loss2 = paddle.reduce_sum(ret2)
+                backward_strategy = paddle.BackwardStrategy()
+                backward_strategy.sort_sum_gradient = True
+                loss2.backward(backward_strategy)
       )DOC");
   backward_strategy.def(py::init())
       .def_property("sort_sum_gradient",
