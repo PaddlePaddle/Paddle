@@ -147,6 +147,9 @@ class AdamW(DecoupledWeightDecay, Adam):
     Args:
         learning_rate (float|Tensor, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a ``Tensor`` with a float type. The default value is 0.001.
+	parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+	    This parameter is required in dygraph mode. \
+	    The default value is None in static mode, at this time all parameters will be updated.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.9.
@@ -154,12 +157,8 @@ class AdamW(DecoupledWeightDecay, Adam):
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
+        weight_decay (float|Tensor): The weight decay coefficient, it can be float or Tensor. The default value is 0.0.
             The default value is 1e-08.
-	parameters (Iterable, optional): Iterable of ``Tensor`` names to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. \
-	    The default value is None in static mode, at this time all parameters will be updated.
-        weight_decay (float|Tensor): The weight decay coefficient, it can be
-            float or Tensor.
         apply_decay_param_fun (function|None): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor)==True 
             will be updated. It only works when we want to specify tensors.
@@ -208,13 +207,13 @@ class AdamW(DecoupledWeightDecay, Adam):
     """
 
     def __init__(self,
-                 weight_decay,
-                 apply_decay_param_fun=None,
                  learning_rate=0.001,
+                 parameters=None,
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
-                 parameters=None,
+                 weight_decay=0.0,
+                 apply_decay_param_fun=None,
                  grad_clip=None,
                  name=None,
                  lazy_mode=False):

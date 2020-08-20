@@ -55,7 +55,7 @@ class Adam(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-	parameters (Iterable, optional): Iterable of ``Tensor`` names to update to minimize ``loss``. \
+	parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. \
 	    The default value is None in static mode, at this time all parameters will be updated.
 	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
