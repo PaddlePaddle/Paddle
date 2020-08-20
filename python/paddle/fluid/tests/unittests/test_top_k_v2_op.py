@@ -28,9 +28,13 @@ def numpy_topk(x, k=1, axis=-1, largest=True):
         indices = np.argsort(-x, axis=axis)
     else:
         indices = np.argsort(x, axis=axis)
+    if largest:
+        value = -np.sort(-x, axis=axis)
+    else:
+        value = np.sort(x, axis=axis)
     indices = indices.take(indices=range(0, k), axis=axis)
-    result = np.take_along_axis(x, indices, axis=axis)
-    return result, indices
+    value = value.take(indices=range(0, k), axis=axis)
+    return value, indices
 
 
 class TestTopkOp(OpTest):
@@ -177,11 +181,11 @@ class TestTopKAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            input_tensor = paddle.nn.data(
+            input_tensor = paddle.static.data(
                 name="x", shape=[6, 7, 8], dtype="float64")
-            large_input_tensor = paddle.nn.data(
+            large_input_tensor = paddle.static.data(
                 name="large_x", shape=[2, 1030], dtype="float64")
-            k_tensor = paddle.nn.data(name="k", shape=[1], dtype="int32")
+            k_tensor = paddle.static.data(name="k", shape=[1], dtype="int32")
             result1 = paddle.topk(input_tensor, k=2)
             result2 = paddle.topk(input_tensor, k=2, axis=-1)
             result3 = paddle.topk(input_tensor, k=k_tensor, axis=1)
