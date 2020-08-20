@@ -156,9 +156,8 @@ from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
 from .pooling import adaptive_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_pool3d  #DEFINE_ALIAS
-# from .rnn import gru_unit        #DEFINE_ALIAS
-# from .rnn import lstm        #DEFINE_ALIAS
-# from .rnn import lstm_unit        #DEFINE_ALIAS
+from .rnn import rnn  #DEFINE_ALIAS
+from .rnn import birnn  #DEFINE_ALIAS
 from .vision import affine_channel  #DEFINE_ALIAS
 from .vision import affine_grid  #DEFINE_ALIAS
 from .vision import anchor_generator  #DEFINE_ALIAS

@@ -438,24 +438,22 @@ def rnn(cell,
         is_reverse=False,
         **kwargs):
     """
-	:api_attr: Static Graph
-
     rnn creates a recurrent neural network specified by RNNCell `cell`,
-    which performs :code:`cell.call()` repeatedly until reaches to the maximum
-    length of `inputs`.
+    which performs :code:`cell.call()` (for dygraph mode :code:`cell.forward`) 
+    repeatedly until reaches to the maximum length of `inputs`.
 
-    Parameters:
-        cell(RNNCell): An instance of `RNNCell`.
-        inputs(Variable): A (possibly nested structure of) tensor variable[s]. 
+    Arguments:
+        cell(RNNCellBase): An instance of `RNNCellBase`.
+        inputs(Tensor): A (possibly nested structure of) tensor[s]. 
             The shape of tensor should be `[batch_size, sequence_length, ...]`
             for `time_major == False` or `[sequence_length, batch_size, ...]`
             for `time_major == True`. It represents the inputs to be unrolled
             in RNN.
-        initial_states(Variable, optional): A (possibly nested structure of)
-            tensor variable[s], representing the initial state for RNN. 
+        initial_states(Tensor, optional): A (possibly nested structure of)
+            tensor[s], representing the initial state for RNN. 
             If not provided, `cell.get_initial_states` would be used to produce
             the initial state. Default None.
-        sequence_length(Variable, optional): A tensor with shape `[batch_size]`.
+        sequence_length(Tensor, optional): A tensor with shape `[batch_size]`.
             It stores real length of each instance, thus enables users to extract
             the last valid state when past a batch element's sequence length for
             correctness. If not provided, the paddings would be treated same as
@@ -470,30 +468,33 @@ def rnn(cell,
         **kwargs: Additional keyword arguments. Arguments passed to `cell.call`. 
 
     Returns:
-        tuple: A tuple( :code:`(final_outputs, final_states)` ) including the final \
-            outputs and states, both are Tensor or nested structure of Tensor. \
-            `final_outputs` has the same structure and data types as \
-            the returned `outputs` of :code:`cell.call` , and each Tenser in `final_outputs` \
-            stacks all time steps' counterpart in `outputs` thus has shape `[batch_size, sequence_length, ...]` \
-            for `time_major == False` or `[sequence_length, batch_size, ...]` for `time_major == True`. \
-            `final_states` is the counterpart at last time step of initial states, \
-            thus has the same structure with it and has tensors with same shapes \
-            and data types.
+        (outputs, final_states)
+        outputs (Tensor|list|tuple): the output sequence. Tensor or nested 
+            structure of Tensor.
+            If `time_major` is True, the shape of each tensor in outpus is 
+            `[time_steps, batch_size, hidden_size]`, else 
+            `[batch_size, time_steps, hidden_size]`.
+        final_states (Tensor|list|tuple): final states. A (possibly nested structure of)
+            tensor[s], representing the final state for RNN. It has the same 
+            structure of intial state. Each tensor in final states has the same
+            shape and dtype as the corresponding tensor in initial states.
             
 
     Examples:
 
         .. code-block:: python
-            
-            import paddle.fluid as fluid
 
-            inputs = fluid.data(name="inputs",
-                                shape=[-1, 32, 128],
-                                dtype="float32")
-            cell = fluid.layers.GRUCell(hidden_size=128)
-            outputs = fluid.layers.rnn(cell=cell, inputs=inputs)
+            import paddle
+            paddle.disable_static()
+
+            cell = paddle.nn.SimpleRNNCell(16, 32)
+
+            inputs = paddle.rand((4, 23, 16))
+            prev_h = paddle.randn((4, 32))
+            outputs, final_states = paddle.nn.functional.rnn(cell, inputs, prev_h) 
+
     """
-    if in_dygraph_mode:
+    if in_dygraph_mode():
         return _rnn_dynamic_graph(cell, inputs, initial_states, sequence_length,
                                   time_major, is_reverse, **kwargs)
     else:
@@ -529,7 +530,6 @@ def _rnn_dynamic_graph(cell,
                        time_major=False,
                        is_reverse=False,
                        **kwargs):
-
     time_step_index = 0 if time_major else 1
     flat_inputs = flatten(inputs)
     time_steps = flat_inputs[0].shape[time_step_index]
@@ -589,16 +589,6 @@ def _rnn_static_graph(cell,
                                      ['float32', 'float64'], 'rnn')
     check_type(initial_states, 'initial_states',
                (Variable, list, tuple, type(None)), 'rnn')
-    if isinstance(initial_states, (list, tuple)):
-        states = map_structure(lambda x: x, initial_states)[0]
-        for i, state in enumerate(states):
-            if isinstance(state, (list, tuple)):
-                for j, state_j in enumerate(state):
-                    check_variable_and_dtype(state_j, 'state_j[' + str(j) + ']',
-                                             ['float32', 'float64'], 'rnn')
-            else:
-                check_variable_and_dtype(state, 'states[' + str(i) + ']',
-                                         ['float32', 'float64'], 'rnn')
 
     check_type(sequence_length, 'sequence_length', (Variable, type(None)),
                'rnn')
@@ -659,6 +649,83 @@ def _rnn_static_graph(cell,
         final_outputs = map_structure(_transpose_batch_time, final_outputs)
 
     return (final_outputs, final_states)
+
+
+def birnn(cell_fw, cell_bw, inputs, initial_states, sequence_length,
+          time_major):
+    """
+    birnn creates a bidirectional recurrent neural network specified by 
+    RNNCell `cell_fw` and `cell_bw`, which performs :code:`cell.call()` 
+    (for dygraph mode :code:`cell.forward`) repeatedly until reaches to 
+    the maximum length of `inputs` and then concat the ouputs for both RNNs
+    along the last axis.
+
+    Arguments:
+        cell(RNNCellBase): An instance of `RNNCellBase`.
+        inputs(Tensor): A (possibly nested structure of) tensor[s]. 
+            The shape of tensor should be `[batch_size, sequence_length, ...]`
+            for `time_major == False` or `[sequence_length, batch_size, ...]`
+            for `time_major == True`. It represents the inputs to be unrolled
+            in RNN.
+        initial_states(tuple, optional): A tuple of 
+            If not provided, `cell.get_initial_states` would be used to produce
+            the each initial state. Defaults to None.
+        sequence_length(Tensor, optional): A tensor with shape `[batch_size]`.
+            It stores real length of each instance, thus enables users to extract
+            the last valid state when past a batch element's sequence length for
+            correctness. If not provided, the paddings would be treated same as
+            non-padding inputs. Default None.
+        time_major(bool, optional): Indicate the data layout of Tensor included
+            in `input` and `output` tensors. If `False`, the data layout would
+            be batch major with shape `[batch_size, time_steps, ...]`.  If
+            `True`, the data layout would be time major with shape
+            `[time_steps, batch_size, ...]`. Default: `False`.
+        **kwargs: Additional keyword arguments. Arguments passed to `cell.call`. 
+
+    Returns:
+        outputs (Tensor): A (possibly nested structure of) tensor variable[s],
+            the outputs of the bidirectional RNN. It is the concatenation 
+            of the outputs for both the forward RNN and backward RNN along
+            the last axis. 
+            The shape of tensor should be `[batch_size, time_steps, ...]`
+            for `time_major == False` or `[time_steps, batch_size, ...]`
+            for `time_major == True`.
+        final_states (tuple): A tuple of the final states of the forward 
+            cell and backward cell. 
+            
+
+    Examples:
+
+        .. code-block:: python
+            
+            import paddle
+            paddle.disable_static()
+
+            cell_fw = LSTMCell(16, 32)
+            cell_bw = LSTMCell(16, 32)
+            inputs = paddle.rand((2, 23, 16))
+            outputs, final_states = paddle.nn.functional.birnn(cell_fw, cell_bw, inputs)
+        
+    """
+    states_fw, states_bw = initial_states
+    outputs_fw, states_fw = rnn(cell_fw,
+                                inputs,
+                                states_fw,
+                                sequence_length,
+                                time_major=time_major)
+
+    outputs_bw, states_bw = rnn(cell_bw,
+                                inputs,
+                                states_bw,
+                                sequence_length,
+                                time_major=time_major,
+                                is_reverse=True)
+
+    outputs = map_structure(lambda x, y: tensor.concat([x, y], -1), outputs_fw,
+                            outputs_bw)
+
+    final_states = (states_fw, states_bw)
+    return outputs, final_states
 
 
 class Decoder(object):

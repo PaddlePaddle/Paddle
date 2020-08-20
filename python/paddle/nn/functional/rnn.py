@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define function of recurrent neural network  
+from paddle.fluid.layers.rnn import rnn, birnn
 
-__all__ = [
-    #       'gru_unit',
-    #       'lstm',
-    #       'lstm_unit'
-]
+__all__ = ['rnn', 'birnn']
