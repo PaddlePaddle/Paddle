@@ -26,6 +26,8 @@ from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
+from predictor_utils import PredictorTools
+
 SEED = 2020
 IMAGENET1000 = 1281167
 base_lr = 0.001
@@ -307,6 +309,12 @@ def predict_dygraph_jit(data):
         return pred_res.numpy()
 
 
+def predict_analysis_inference(data):
+    output = PredictorTools(MODEL_SAVE_PATH, VARIABLE_FILENAME, [data])
+    out = output()
+    return out
+
+
 class TestResnet(unittest.TestCase):
     def train(self, to_static):
         program_translator.enable(to_static)
@@ -317,12 +325,17 @@ class TestResnet(unittest.TestCase):
         dy_pre = predict_dygraph(image)
         st_pre = predict_static(image)
         dy_jit_pre = predict_dygraph_jit(image)
+        predictor_pre = predict_analysis_inference(image)
         self.assertTrue(
             np.allclose(dy_pre, st_pre),
             msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
         self.assertTrue(
             np.allclose(dy_jit_pre, st_pre),
             msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre, st_pre))
+        self.assertTrue(
+            np.allclose(predictor_pre, st_pre),
+            msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(predictor_pre,
+                                                              st_pre))
 
     def test_resnet(self):
         static_loss = self.train(to_static=True)
