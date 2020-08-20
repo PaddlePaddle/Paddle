@@ -384,7 +384,7 @@ class MultiheadAttention(Layer):
             outs.append(weights)
         if cache is not None:
             outs.append(cache)
-        return out if len(outs) else tuple(outs)
+        return out if len(outs) == 1 else tuple(outs)
 
 
 class TransformerEncoderLayer(Layer):
@@ -455,6 +455,7 @@ class TransformerEncoderLayer(Layer):
                  bias_attr=None):
         self._config = locals()
         self._config.pop("self")
+        self._config.pop("__class__", None)
 
         super(TransformerEncoderLayer, self).__init__()
         attn_dropout = dropout if attn_dropout is None else attn_dropout
@@ -561,7 +562,7 @@ class TransformerEncoder(Layer):
     def __init__(self, encoder_layer, num_layers, norm=None):
         super(TransformerEncoder, self).__init__()
         self.layers = LayerList([(encoder_layer if i == 0 else
-                                  type(encoder_layer)(encoder_layer._config))
+                                  type(encoder_layer)(**encoder_layer._config))
                                  for i in range(num_layers)])
         self.num_layers = num_layers
         self.norm = norm
@@ -680,7 +681,7 @@ class TransformerDecoderLayer(Layer):
                  bias_attr=None):
         self._config = locals()
         self._config.pop("self")
-
+        self._config.pop("__class__", None)
         super(TransformerDecoderLayer, self).__init__()
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
@@ -867,7 +868,7 @@ class TransformerDecoder(Layer):
     def __init__(self, decoder_layer, num_layers, norm=None):
         super(TransformerDecoder, self).__init__()
         self.layers = LayerList([(decoder_layer if i == 0 else
-                                  type(decoder_layer)(decoder_layer._config))
+                                  type(decoder_layer)(**decoder_layer._config))
                                  for i in range(num_layers)])
         self.num_layers = num_layers
         self.norm = norm
@@ -1117,7 +1118,7 @@ class Transformer(Layer):
             Variable: It is a tensor that has the same shape and data type \
                 as `tgt`, representing the output of Transformer decoder.
         """
-        memory = self.encoder(src, mask=src_mask)
+        memory = self.encoder(src, src_mask=src_mask)
         output = self.decoder(
             tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask)
         return output
