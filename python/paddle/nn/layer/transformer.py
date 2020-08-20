@@ -456,11 +456,8 @@ class TransformerEncoderLayer(Layer):
                  bias_attr=None):
         self._config = locals()
         self._config.pop("self")
-<<<<<<< HEAD
         self._config.pop("__class__", None)
-=======
         self._config.pop("__class__", None)  # py3
->>>>>>> 8637eeeb0430f6f5ede3a2668212a0b2b5733a06
 
         super(TransformerEncoderLayer, self).__init__()
         attn_dropout = dropout if attn_dropout is None else attn_dropout
