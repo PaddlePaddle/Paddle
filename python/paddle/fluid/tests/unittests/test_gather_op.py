@@ -21,6 +21,13 @@ import paddle
 import paddle.fluid as fluid
 
 
+def gather_numpy(x, index, axis):
+    x_transpose = np.swapaxes(x, 0, axis)
+    tmp_gather = x_transpose[index, ...]
+    gather = np.swapaxes(tmp_gather, 0, axis)
+    return gather
+
+
 class TestGatherOp(OpTest):
     def setUp(self):
         self.op_type = "gather"
@@ -106,6 +113,61 @@ class TestCase6(TestGatherOp):
         self.x_type = "float64"
         self.index = [1, 3]
         self.index_type = "int32"
+
+
+class TestGatherOp1(OpTest):
+    def setUp(self):
+        self.op_type = "gather"
+        self.config()
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
+        axis_np = np.array(self.axis).astype(self.index_type)
+        index_np = np.array(self.index).astype(self.index_type)
+        out = gather_numpy(xnp, index_np, axis_np[0])
+        self.inputs = {'X': xnp, 'Index': index_np, 'Axis': axis_np}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (3, 88, 3)
+        self.x_type = "float64"
+        self.index = [1, 3, 5]
+        self.index_type = "int32"
+        self.axis = [1]
+        self.axis_type = "int32"
+
+
+class TestGatherOp2(TestGatherOp1):
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (10, 88, 10)
+        self.x_type = "float64"
+        self.index = [1, 3, 5]
+        self.index_type = "int64"
+        self.axis = [0]
+        self.axis_type = "int32"
+
+
+class TestGatherOp2(TestGatherOp1):
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (3, 88, 10)
+        self.x_type = "float64"
+        self.index = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        self.index_type = "int64"
+        self.axis = [0]
+        self.axis_type = "int32"
 
 
 class API_TestGather(unittest.TestCase):

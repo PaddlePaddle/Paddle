@@ -712,15 +712,17 @@ def gather(x, index, axis=None, name=None):
                 output = paddle.gather(input, index)
                 # expected output: [[1,2],[3,4]]
     """
+    if in_dygraph_mode():
+        return core.ops.gather(x, index, axis)
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="gather",
-        inputs={"X": input,
-                "Index": index},
-        outputs={"Out": out},
-        attrs={'overwrite': overwrite})
+        inputs={"X": x,
+                "Index": index,
+                "Axis": axis},
+        outputs={"Out": out})
     return out
 
 
