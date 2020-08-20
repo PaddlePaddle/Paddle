@@ -24,16 +24,14 @@ from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
-from paddle.distributed.launch import get_cluster_and_pod, _print_arguments
+from paddle.utils import deprecated
 
-__all__ = [
-    "prepare_context", "init_parallel_env", "ParallelEnv", "DataParallel"
-]
+__all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
 ParallelStrategy = core.ParallelStrategy
 
 
-@deprecated(since="2.0.0", update_to="paddle.init_parallel_env")
+@deprecated(since="2.0.0", update_to="paddle.distributed.init_parallel_env")
 def prepare_context(strategy=None):
     '''
     :api_attr: imperative
@@ -59,162 +57,6 @@ def prepare_context(strategy=None):
             # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
             assert ("Only support CUDAPlace for now.")
         parallel_helper._init_parallel_ctx()
-    return strategy
-
-
-class ParallelEnvArgs(object):
-    def __init__(self):
-        self.cluster_node_ips = None
-        self.node_ip = None
-        self.use_paddlecloud = None
-        self.started_port = None
-        self.print_config = True
-        self.selected_gpus = None
-
-
-def init_parallel_env(rank=-1, backend='nccl', **kwargs):
-    """
-    Initialize parallel environments.
-
-    Args:
-        rank(int, optional): Rank of current process. Default vaule is -1.
-        backend(str, optional): The backend to communication between multiple devices.
-            Now only support `nccl`. Default value is `nccl`.
-        **options(dict, optional): Other initial parallel execution environment configuration.
-
-    Returns:
-        ParallelStrategy
-        
-    Examples:
-        
-    """
-
-    # NOTE(chenweihang): if trainer_id or trainer_num is default value,
-    # users should config parallel environment by module `paddle.distributed.launch`,
-    # so here we skip the environment variables config phase
-    if trainer_id != -1 or trainer_num != -1:
-        # 1. input check
-        if not isinstance(trainer_id, six.integer_types):
-            raise TypeError(
-                "input `trainer_id` type error, expected type is integer, "
-                "but received type is %s." % type(trainer_id))
-        if not isinstance(trainer_num, six.integer_types):
-            raise TypeError(
-                "input `trainer_num` type error, expected type is integer, "
-                "but received type is %s." % type(trainer_id))
-        if not isinstance(backend, six.string_types):
-            raise TypeError("input `backend` type error, expected type is str, "
-                            "but received type is %s." % type(trainer_id))
-
-        if trainer_id < 0:
-            raise ValueError("input `trainer_id` should be greater than 0, "
-                             "but received %d." % trainer_id)
-        if trainer_num < 0:
-            raise ValueError("input `trainer_num` should be greater than 0, "
-                             "but received %d." % trainer_num)
-        if trainer_id >= trainer_num:
-            raise ValueError(
-                "input `trainer_id` should be less than or equal to `trainer_num`, "
-                "but `trainer_id` is %d, `trainer_num` is %d." %
-                (trainer_id, trainer_num))
-        if cpt.to_text(backend) != 'nccl':
-            raise ValueError(
-                "backend `%s` is not supported, now only supports `nccl` backend."
-                % backend)
-
-        # 2. check and prepare environment variables
-        # The necessary environment variables include:
-        # - PADDLE_TRAINER_ID
-        # - PADDLE_TRAINERS_NUM
-        # - PADDLE_CURRENT_ENDPOINT
-        # - PADDLE_TRAINER_ENDPOINTS
-
-        # get args from kwargs
-        args = ParallelEnvArgs()
-        args.cluster_node_ips = kwargs.get('cluster_node_ips', None)
-        args.node_ip = kwargs.get('node_ip', None)
-        if args.cluster_node_ips is not None and args.node_ip is None:
-            raise ValueError("please input current node ip, "
-                             "cannot `cluster_node_ips`.")
-        default_node_ip = os.environ.get("PADDLE_MASTER_IPADDR", None)
-        default_node_ip = "127.0.0.1" if default_node_ip else default_node_ip
-        if args.node_ip is None:
-            args.node_ip = default_node_ip
-        if args.cluster_node_ips is None:
-            args.cluster_node_ips = default_node_ip
-
-        # NOTE(chenweihang): Here should set started_port before
-        # `get_cluster_and_pod` and keep each process's started_port
-        # is same, see [ why need set default master info before run? ]
-        args.started_port = kwargs.get('started_port', None)
-        if args.started_port is None:
-            default_port = os.environ.get("PADDLE_MASTER_PORT", None)
-            if default_port is None:
-                raise RuntimeError(
-                    "please input start port of parallel training by `started_port=**`."
-                )
-            args.started_port = int(default_port)
-
-        args.use_paddlecloud = kwargs.get('use_paddlecloud', False)
-        args.print_config = kwargs.get('print_config', False)
-        args.selected_gpus = ",".join(
-            [str(g) for g in [x for x in range(0, trainer_num)]])
-
-        # reuse code of launch.py
-        cluster, pod = get_cluster_and_pod(args)
-
-        # remove useless env vars
-        os.environ.pop("http_proxy", None)
-        os.environ.pop("https_proxy", None)
-
-        # update env vars
-        if trainer_num != cluster.trainers_nranks():
-            raise RuntimeError(
-                "The number of trainers does not meet expectations, expected number is %d, but actual number is %d."
-                % (trainer_num, cluster.trainers_nranks()))
-        trainer = pod.get_trainer(trainer_id)
-        if trainer is None:
-            raise RuntimeError(
-                "The expected trainer is not exists, its trainer id is %d" %
-                trainer_id)
-        # why trainer.gpus? here only one device?
-        proc_env = {
-            "FLAGS_selected_gpus":
-            "%s" % ",".join([str(g) for g in trainer.gpus]),
-            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
-        }
-        os.environ.update(proc_env)
-
-        # print config
-        if args.print_config and trainer_id == 0:
-            _print_arguments(args)
-
-    # 3. init ParallelStrategy
-    strategy = ParallelStrategy()
-    if cpt.to_text(backend) == 'nccl':
-        strategy.nranks = ParallelEnv().nranks
-        strategy.local_rank = ParallelEnv().local_rank
-        strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-        strategy.current_endpoint = ParallelEnv().current_endpoint
-        if strategy.nranks < 2:
-            return
-        # NOTE: [ why config global place here? ]
-        # the dygraph mode will be set to default mode, 
-        # users will not call `dygraph.guard` or `enable_dygraph`
-        # directly, if they want to switch detault place,
-        # they need to call a function to change default place,
-        # here just set correctly place to users
-        place = core.CUDAPlace(ParallelEnv().dev_id)
-        framework._switch_current_place(place)
-
-        # init nccl context
-        parallel_helper._set_parallel_ctx(
-            core.NCCLParallelContext(strategy, place))
-        parallel_helper._init_parallel_ctx()
-
     return strategy
 
 
@@ -283,13 +125,10 @@ class ParallelEnv(object):
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
-        self.__aliases__ = {
-            'local_rank': 'trainer_id',
-            'nranks': 'trainer_num',
-        }
+        self.__aliases__ = {'local_rank': 'rank', }
 
     @property
-    def trainer_id(self):
+    def rank(self):
         """
         The current trainer number.
 
@@ -302,13 +141,13 @@ class ParallelEnv(object):
             import paddle.fluid as fluid
             
             env = fluid.dygraph.ParallelEnv()
-            print("The trainer id is %d" % env.trainer_id)
-            # The trainer id is 0
+            print("The rank is %d" % env.rank)
+            # The rank is 0
         """
         return self._local_rank
 
     @property
-    def trainer_num(self):
+    def nranks(self):
         """
         The number of trainers, generally refers to the number of GPU cards used in training.
 
@@ -321,8 +160,8 @@ class ParallelEnv(object):
             import paddle.fluid as fluid
             
             env = fluid.dygraph.ParallelEnv()
-            print("The trainer num is %d" % env.trainer_num)
-            # The trainer num is 4
+            print("The nranks is %d" % env.nranks)
+            # The nranks is 4
         """
         return self._nranks
 

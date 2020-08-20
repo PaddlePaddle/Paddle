@@ -12,8 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# start multiprocess apis
+__all__ = ["spawn", "start_processes"]
+
+# dygraph parallel apis
+__all__ += [
+    "prepare_context", "init_parallel_env", "ParallelEnv", "DataParallel"
+]
+
 from . import spawn
-from .spawn import spwan
+from .spawn import spawn
 from .spawn import start_processes
 
-__all__ = ["spawn", "start_processes"]
+from . import parallel
+from .parallel import init_parallel_env
+from paddle.fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
+from paddle.fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
+from paddle.fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS

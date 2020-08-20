@@ -216,9 +216,6 @@ from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
 from .framework import save  #DEFINE_ALIAS
 from .framework import load  #DEFINE_ALIAS
-from .framework import prepare_context  #DEFINE_ALIAS
-from .framework import ParallelEnv  #DEFINE_ALIAS
-from .framework import DataParallel  #DEFINE_ALIAS
 
 from .framework import NoamDecay  #DEFINE_ALIAS
 from .framework import PiecewiseDecay  #DEFINE_ALIAS

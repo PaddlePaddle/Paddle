@@ -20,7 +20,6 @@ import signal
 import sys
 import warnings
 
-import paddle.fluid as fluid
 from paddle.distributed.utils import find_free_ports
 
 
@@ -33,7 +32,7 @@ def _py_supported_check():
             "`paddle.distributed.launch` instead.")
 
 
-def _set_default_master_env():
+def _set_default_assist_env(nprocs):
     # set default master trainer ip addr
     os.environ['PADDLE_MASTER_IPADDR'] = '127.0.0.1'
     # set default master trainer port
@@ -41,6 +40,14 @@ def _set_default_master_env():
     if port_set is None:
         raise RuntimeError("no free port can be used to parallel training now.")
     os.environ['PADDLE_MASTER_PORT'] = str(list(port_set)[0])
+    # set default selected_gpus
+    # e.g. if the nprocs is 4, the selected_gpus="0,1,2,3"
+    # NOTE(chenweihang): [ why not use FLAGS_selected_gpus directly? ]
+    # because the FLAGS_selected_gpus may be used in other place,
+    # if we set FLAGS_selected_gpus are `0,1,2,3`, it may cause error
+    # when using `ParallelEnv`
+    os.environ['PADDLE_CUDA_VISIBLE_DEVICES'] = ",".join(
+        [str(x) for x in range(0, nprocs)])
 
 
 def _func_wrapper(func, i, args, error_queue):
@@ -132,7 +139,7 @@ def start_processes(func,
     # inner subprocess, if each process find free port for itself,
     # the started port may be different, it will cause endpoints is
     # different in different subprocesses
-    _set_default_master_env()
+    _set_default_assist_env(nprocs)
 
     # start processes
     mp = multiprocessing.get_context(start_method)
@@ -161,4 +168,4 @@ def start_processes(func,
 # by `spwan` method, if users want to start processes by other
 # method, they can use start_processes
 def spawn(func, args=(), nprocs=1, join=True, daemon=False):
-    return launch_processes(func, args, nprocs, join, daemon, 'spawn')
+    return start_processes(func, args, nprocs, join, daemon, 'spawn')
