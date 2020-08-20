@@ -15,9 +15,9 @@
 # TODO: define classes of convolutional neural network
 
 __all__ = [
-    'Conv2D',
+    'Conv2d',
     'Conv2DTranspose',
-    'Conv3D',
+    'Conv3d',
     'Conv3DTranspose',
     #       'TreeConv',
     #       'Conv1D'
@@ -38,7 +38,16 @@ def _get_default_param_initializer(num_channels, filter_size):
     return Normal(0.0, std, 0)
 
 
-class Conv2D(layers.Layer):
+def _reverse_repeat_tuple(t, n):
+    """Reverse the order of `t` and repeat each element for `n` times.
+
+    This can be used to translate padding arg used by Conv and Pooling modules
+    to the ones used by `F.pad`.
+    """
+    return tuple(x for x in reversed(t) for _ in range(n))
+
+
+class Conv2d(layers.Layer):
     """
 	:alias_main: paddle.nn.Conv2D
 	:alias: paddle.nn.Conv2D,paddle.nn.layer.Conv2D,paddle.nn.layer.conv.Conv2D
@@ -129,13 +138,8 @@ class Conv2D(layers.Layer):
             If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True.
-        act (str, optional): Activation type, if it is set to None, activation is not appended.
-            Default: None.
         data_format (str, optional): Data format that specifies the layout of input.
             It can be "NCHW" or "NHWC". Default: "NCHW".
-        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Attribute:
         **weight** (Parameter): the learnable weights of filter of this layer.
@@ -144,9 +148,6 @@ class Conv2D(layers.Layer):
 
     Returns:
         None
-    
-    Raises:
-        ValueError: if ``use_cudnn`` is not a bool value.
 
     Examples:
         .. code-block:: python
@@ -169,69 +170,86 @@ class Conv2D(layers.Layer):
     """
 
     def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
                  padding=0,
                  stride=1,
                  dilation=1,
                  groups=1,
+                 padding_mode='zeros',
                  param_attr=None,
                  bias_attr=None,
-                 use_cudnn=True,
-                 act=None,
-                 data_format="NCHW",
-                 dtype='float32'):
-        super(Conv2D, self).__init__()
+                 data_format="NCHW"):
+        super(Conv2d, self).__init__()
         assert param_attr is not False, "param_attr should not be False here."
-        self._num_channels = num_channels
-        self._num_filters = num_filters
+        self._in_channels = in_channels
+        self._out_channels = out_channels
         self._groups = groups
-        if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
-        self._act = act
-        self._data_format = data_format
-        self._dtype = dtype
-        if not isinstance(use_cudnn, bool):
-            raise ValueError("use_cudnn should be True or False")
-        self._use_cudnn = use_cudnn
+        self._padding_mode = padding_mode
 
-        self._filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
+        if in_channels % groups != 0:
+            raise ValueError("num_channels must be divisible by groups.")
+
+        valid_padding_modes = {'zeros', 'reflect', 'replicate', 'circular'}
+        if padding_mode not in valid_padding_modes:
+            raise ValueError(
+                "padding_mode must be one of {}, but got padding_mode='{}'".
+                format(valid_padding_modes, padding_mode))
+
+        if padding_mode in {'reflect', 'replicate', 'circular'
+                            } and not isinstance(padding, np.int):
+            raise TypeError(
+                "when padding_mode in ['reflect', 'replicate', 'circular'], type of padding must be int"
+            )
+
+        self._data_format = data_format
+
+        self._kernel_size = utils.convert_to_list(kernel_size, 2, 'kernel_size')
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
+
+        if padding_mode in {'reflect', 'replicate', 'circular'}:
+            _paired_padding = utils.convert_to_list(padding, 2, 'padding')
+            self._reversed_padding_repeated_twice = _reverse_repeat_tuple(
+                _paired_padding, 2)
+
         channel_last = (data_format == "NHWC")
         self._padding = padding  # leave it to F.conv2d
 
         self._param_attr = param_attr
         self._bias_attr = bias_attr
 
-        num_filter_channels = num_channels // groups
-        filter_shape = [self._num_filters, num_filter_channels
-                        ] + self._filter_size
+        num_filter_channels = in_channels // groups
+        filter_shape = [self._out_channels, num_filter_channels
+                        ] + self._kernel_size
 
         self.weight = self.create_parameter(
             attr=self._param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer(
-                self._num_channels, filter_shape))
+                self._in_channels, filter_shape))
         self.bias = self.create_parameter(
             attr=self._bias_attr,
-            shape=[self._num_filters],
+            shape=[self._out_channels],
             dtype=self._dtype,
             is_bias=True)
 
-    def forward(self, input):
+    def forward(self, x):
+        if self._padding_mode != 'zeros':
+            pass
+            # TODO: when pad is ready
+            # F.pad(input, self._reversed_padding_repeated_twice, mode=self._padding_mode)
+
         out = F.conv2d(
-            input,
+            x,
             self.weight,
             bias=self.bias,
             padding=self._padding,
             stride=self._stride,
             dilation=self._dilation,
             groups=self._groups,
-            use_cudnn=self._use_cudnn,
-            act=self._act,
             data_format=self._data_format)
         return out
 
@@ -435,10 +453,8 @@ class Conv2DTranspose(layers.Layer):
         return out
 
 
-class Conv3D(layers.Layer):
+class Conv3d(layers.Layer):
     """
-	:alias_main: paddle.nn.Conv3D
-	:alias: paddle.nn.Conv3D,paddle.nn.layer.Conv3D,paddle.nn.layer.conv.Conv3D
 
     **Convlution3D Layer**
 
@@ -487,8 +503,8 @@ class Conv3D(layers.Layer):
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Parameters:
-        num_channels(int): The number of channels in the input image.
-        num_filters(int): The number of filter. It is as same as the output image channel.
+        in_channels(int): The number of input channels in the input image.
+        out_channels(int): The number of output channels. It is as same as the output image channel.
         filter_size (int|tuple, optional): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
             Otherwise, the filter will be a square, filter_size_depth = filter_size_height
@@ -553,7 +569,7 @@ class Conv3D(layers.Layer):
           place = fluid.CPUPlace()
           with dg.guard(place):
               x_var = dg.to_variable(x)
-              conv = nn.Conv3D(4, 6, (3, 3, 3))
+              conv = nn.Conv3d(4, 6, (3, 3, 3))
               y_var = conv(x_var)
               y_np = y_var.numpy()
               print(y_np.shape)
@@ -562,68 +578,75 @@ class Conv3D(layers.Layer):
     """
 
     def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
                  padding=0,
                  stride=1,
                  dilation=1,
                  groups=1,
-                 param_attr=None,
+                 padding_mode='zeros',
+                 weight_attr=None,
                  bias_attr=None,
-                 use_cudnn=True,
-                 act=None,
-                 data_format="NCDHW",
-                 dtype='float32'):
-        super(Conv3D, self).__init__()
-        assert param_attr is not False, "param_attr should not be False here."
-        self._num_channels = num_channels
-        self._num_filters = num_filters
+                 data_format="NCDHW"):
+        super(Conv3d, self).__init__()
+        assert weight_attr is not False, "weight_attr should not be False here."
+        self._in_channels = in_channels
+        self._out_channels = out_channels
         self._groups = groups
-        self._act = act
-        self._use_cudnn = use_cudnn
-        self._dtype = dtype
+        self._padding_mode = padding_mode
+
         self._data_format = data_format
 
         self._stride = utils.convert_to_list(stride, 3, 'stride')
         self._dilation = utils.convert_to_list(dilation, 3, 'dilation')
-        self._filter_size = utils.convert_to_list(filter_size, 3, 'filter_size')
+        self._kernel_size = utils.convert_to_list(kernel_size, 3, 'kernel_size')
+
+        if padding_mode in {'reflect', 'replicate', 'circular'}:
+            _paired_padding = utils.convert_to_list(padding, 2, 'padding')
+            self._reversed_padding_repeated_twice = _reverse_repeat_tuple(
+                _paired_padding, 2)
+
         channel_last = (data_format == "NDHWC")
         self._padding = padding
 
-        self._param_attr = param_attr
+        self._param_attr = weight_attr
         self._bias_attr = bias_attr
 
-        if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
-        num_filter_channels = num_channels // groups
+        self._use_cudnn = True
 
-        filter_shape = [num_filters, num_filter_channels] + self._filter_size
+        if in_channels % groups != 0:
+            raise ValueError("num_channels must be divisible by groups.")
+        num_filter_channels = in_channels // groups
+
+        filter_shape = [out_channels, num_filter_channels] + self._kernel_size
 
         self.weight = self.create_parameter(
             attr=self._param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer(
-                self._num_channels, self._filter_size))
+                self._in_channels, self._kernel_size))
 
         self.bias = self.create_parameter(
             attr=self._bias_attr,
-            shape=[self._num_filters],
+            shape=[self._out_channels],
             dtype=self._dtype,
             is_bias=True)
 
-    def forward(self, input):
+    def forward(self, x):
+        if self._padding_mode != 'zeros':
+            pass
+            # TODO: when pad is ready
+            # F.pad(x, self._reversed_padding_repeated_twice, mode=self._padding_mode)
         out = F.conv3d(
-            input,
+            x,
             self.weight,
             bias=self.bias,
             padding=self._padding,
             stride=self._stride,
             dilation=self._dilation,
             groups=self._groups,
-            use_cudnn=self._use_cudnn,
-            act=self._act,
             data_format=self._data_format)
         return out
 

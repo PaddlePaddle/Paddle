@@ -16,7 +16,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
+from paddle.nn import Conv2d, Pool2D, BatchNorm, Linear
 
 from ...download import get_weights_path_from_url
 
@@ -42,16 +42,14 @@ class ConvBNLayer(fluid.dygraph.Layer):
         super(ConvBNLayer, self).__init__()
 
         tmp_param = ParamAttr(name=self.full_name() + "_weights")
-        self._conv = Conv2D(
+        self._conv = Conv2d(
             num_channels=num_channels,
             num_filters=num_filters,
-            filter_size=filter_size,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             groups=num_groups,
-            act=None,
-            use_cudnn=use_cudnn,
-            param_attr=tmp_param,
+            weight_attr=tmp_param,
             bias_attr=False)
 
         self._batch_norm = BatchNorm(
