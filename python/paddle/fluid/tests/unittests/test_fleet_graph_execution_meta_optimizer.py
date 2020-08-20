@@ -58,7 +58,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             avg_cost = paddle.fluid.layers.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy)
             optimizer.minimize(avg_cost)
@@ -111,7 +111,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.nccl_comm_num = 2
             strategy.sync_nccl_allreduce = True
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = paddle.fluidoptimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy)
             optimizer.minimize(avg_cost)

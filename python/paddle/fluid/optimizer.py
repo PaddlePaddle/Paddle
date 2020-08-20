@@ -40,6 +40,7 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
+import paddle
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -3690,7 +3691,8 @@ class PipelineOptimizer(object):
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
-        if not isinstance(optimizer, Optimizer):
+        if not isinstance(optimizer, Optimizer) and not isinstance(
+                optimizer, paddle.optimizer.Optimizer):
             raise ValueError("The 'optimizer' parameter for "
                              "PipelineOptimizer must be an instance of "
                              "Optimizer, but the given type is {}.".format(

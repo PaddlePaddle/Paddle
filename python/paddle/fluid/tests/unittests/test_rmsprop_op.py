@@ -20,6 +20,7 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
+import paddle
 
 
 def create_selected_rows_and_tensor(scope, place, height, row_num,
