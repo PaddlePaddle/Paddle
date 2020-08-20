@@ -212,7 +212,7 @@ class TestTransformer(unittest.TestCase):
     def test_multi_head_attention(self):
         def multihead_attention_test_helper(self_attention, cache):
             paddle.framework.manual_seed(2020)
-            # 分四种情况:self_attention|cross_attention, cache|No cache
+            # self_attention|cross_attention, cache|No cache
             with fluid.dygraph.guard(fluid.CPUPlace()):
 
                 # generate params for multi_head_attention
