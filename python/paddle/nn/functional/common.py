@@ -28,9 +28,9 @@ from ...fluid.layers import assign  #DEFINE_ALIAS
 from ...fluid.layers import squeeze  #DEFINE_ALIAS
 from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
 from ...fluid.layers import elementwise_mul  #DEFINE_ALIAS
-from ...tensor import clamp  #DEFINE_ALIAS
-from ...tensor import sum  #DEFINE_ALIAS
-from ...tensor import sqrt  #DEFINE_ALIAS
+from ...tensor import clamp
+from ...tensor import sum
+from ...tensor import sqrt
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
 from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
@@ -635,17 +635,17 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     return out
 
 
-def cosine_similarity(x1, x2, dim=1, eps=1e-8):
+def cosine_similarity(x1, x2, axis=1, eps=1e-8):
     """
-    Compute cosine similarity between x1 and x2 along dim.
+    Compute cosine similarity between x1 and x2 along axis.
 
     Parameters:
         x1 (Tensor): First input. float32/double.
         x2 (Tensor): Second input. float32/double.
-        dim (int): Dimension of vectors to compute cosine similarity. Default is 1.
+        axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float): Small value to avoid division by zero. Default is 1e-8.
                     
-    Returns: a Tensor representing cosine similarity between x1 and x2 along dim.
+    Returns: a Tensor representing cosine similarity between x1 and x2 along axis.
     Return Type: Tensor
 
     Examples:
@@ -659,7 +659,7 @@ def cosine_similarity(x1, x2, dim=1, eps=1e-8):
                      [0.9098952  0.15715368 0.8671125  0.3156102 ]
                      [0.4427798  0.54136837 0.5276275  0.32394758]
                      [0.3769419  0.8535014  0.48041078 0.9256797 ]]
-                dim = 1
+                axis = 1
                 eps = 1e-8
                 Out: [0.5275037  0.8368967  0.75037485 0.9245899]
 
@@ -675,14 +675,14 @@ def cosine_similarity(x1, x2, dim=1, eps=1e-8):
             x2 = np.random.rand(2,3)
             x1 = paddle.to_tensor(x1)
             x2 = paddle.to_tensor(x2)
-            result = paddle.nn.functional.cosine_similarity(x1, x2, dim=0)
+            result = paddle.nn.functional.cosine_similarity(x1, x2, axis=0)
             print(result.numpy())
             # [0.99806249 0.9817672  0.94987036]
             
     """
-    w12 = sum(elementwise_mul(x1, x2), axis=dim)
-    w1 = sum(elementwise_mul(x1, x1), axis=dim)
-    w2 = sum(elementwise_mul(x2, x2), axis=dim)
+    w12 = sum(elementwise_mul(x1, x2), axis=axis)
+    w1 = sum(elementwise_mul(x1, x1), axis=axis)
+    w2 = sum(elementwise_mul(x2, x2), axis=axis)
     n12 = sqrt(clamp(w1 * w2, min=eps * eps))
     cos_sim = w12 / n12
     return cos_sim
