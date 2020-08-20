@@ -159,7 +159,7 @@ from .math import trace  #DEFINE_ALIAS
 from .math import kron  #DEFINE_ALIAS
 from .math import prod  #DEFINE_ALIAS
 # from .random import gaussin        #DEFINE_ALIAS
-# from .random import uniform        #DEFINE_ALIAS
+from .random import uniform  #DEFINE_ALIAS
 from .random import shuffle  #DEFINE_ALIAS
 from .random import randn  #DEFINE_ALIAS
 from .random import rand  #DEFINE_ALIAS
