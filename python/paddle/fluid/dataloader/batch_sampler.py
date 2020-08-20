@@ -16,6 +16,7 @@ from __future__ import print_function
 from __future__ import division
 
 import numpy as np
+import math
 
 from .sampler import Sampler, SequenceSampler
 from .dataset import Dataset, IterableDataset
