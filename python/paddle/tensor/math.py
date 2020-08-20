@@ -63,6 +63,7 @@ from ..fluid.layers import tanh    #DEFINE_ALIAS
 from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
 from ..fluid.layers import sums    #DEFINE_ALIAS
+from ..fluid import layers
 
 __all__ = [
         'abs',
@@ -85,6 +86,7 @@ __all__ = [
         'log',
         'mul',
         'multiplex',
+        'prod',
         'pow',
         'reciprocal',
         'reduce_max',
@@ -1632,3 +1634,85 @@ def cumsum(x, axis=None, dtype=None, name=None):
             kwargs[name] = val
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
+
+def prod(x, axis=None, keepdim=False, dtype=None, name=None):
+    """
+    Compute the product of tensor elements over the given axis.
+
+    Args:
+        x(Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
+            multiply all elements of `x` and return a Tensor with a single element, 
+            otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
+            the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
+        dtype(str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
+            int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
+            This is very useful for avoiding data type overflows. The default value is None, the dtype 
+            of output is the same as input Tensor `x`.
+        keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
+            tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
+        name(string, optional): The default value is None. Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor, result of product on the specified dim of input tensor.
+
+    Raises:
+        ValueError: The :attr:`dtype` must be float32, float64, int32 or int64.
+        TypeError: The type of :attr:`axis` must be int, list or tuple.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            # the axis is a int element
+            data_x = np.array([[0.2, 0.3, 0.5, 0.9],
+                         [0.1, 0.2, 0.6, 0.7]]).astype(np.float32)
+            x = paddle.to_tensor(data_x)
+            out1 = paddle.prod(x)
+            print(out1.numpy())
+            # [0.0002268]
+
+            out2 = paddle.prod(x, -1)
+            print(out2.numpy())
+            # [0.027  0.0084]
+
+            out3 = paddle.prod(x, 0)
+            print(out3.numpy())
+            # [0.02 0.06 0.3  0.63]
+            print(out3.numpy().dtype)
+            # float32
+
+            out4 = paddle.prod(x, 0, keepdim=True)
+            print(out4.numpy())
+            # [[0.02 0.06 0.3  0.63]]
+
+            out5 = paddle.prod(x, 0, dtype='int64')
+            print(out5.numpy())
+            # [0 0 0 0]
+            print(out5.numpy().dtype)
+            # int64
+
+            # the axis is list
+            data_y = np.array([[[1.0, 2.0], [3.0, 4.0]],
+                               [[5.0, 6.0], [7.0, 8.0]]])
+            y = paddle.to_tensor(data_y)
+            out6 = paddle.prod(y, [0, 1])
+            print(out6.numpy())
+            # [105. 384.]
+
+            out7 = paddle.prod(y, (1, 2))
+            print(out7.numpy())
+            # [  24. 1680.]
+
+    """
+    if dtype is not None:
+        check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'prod')
+        if x.dtype != convert_np_dtype_to_dtype_(dtype):
+            x = layers.cast(x, dtype)
+
+    return layers.reduce_prod(input=x, dim=axis, keep_dim=keepdim, name=name)
