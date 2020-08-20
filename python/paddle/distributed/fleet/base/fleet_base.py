@@ -74,7 +74,7 @@ class Fleet(object):
         if isinstance(role_maker, RoleMakerBase):
             self._role_maker = role_maker
         elif role_maker == None:
-            if isinstance(is_collective, boolen):
+            if isinstance(is_collective, bool):
                 self._is_collective = is_collective
                 self._role_maker = PaddleCloudRoleMaker(
                     is_collective=self._is_collective)
