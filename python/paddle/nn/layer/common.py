@@ -23,23 +23,10 @@ from .. import functional as F
 
 __all__ = [
     'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
-    'Pad2D', 'Bilinear',
-    'BilinearTensorProduct',
-    'Pool2D',
-    'Embedding',
-    'Linear',
-    'UpSample',
-    'Pad2D',
-    'ReflectionPad1d',
-    'ReplicationPad1d',
-    'ConstantPad1d',
-    'ReflectionPad2d',
-    'ReplicationPad2d',
-    'ConstantPad2d',
-    'ZeroPad2d',
-    'ConstantPad3d',
-    'ReplicationPad3d',
-    'CosineSimilarity'
+    'Pad2D', 'Bilinear', 'BilinearTensorProduct', 'Pool2D', 'Embedding',
+    'Linear', 'UpSample', 'Pad2D', 'ReflectionPad1d', 'ReplicationPad1d',
+    'ConstantPad1d', 'ReflectionPad2d', 'ReplicationPad2d', 'ConstantPad2d',
+    'ZeroPad2d', 'ConstantPad3d', 'ReplicationPad3d', 'CosineSimilarity'
 ]
 
 
@@ -349,6 +336,7 @@ class Pad2D(layers.Layer):
             pad_value=self._pad_value,
             data_format=self._data_format)
 
+
 class Bilinear(layers.Layer):
     """
 
@@ -435,6 +423,7 @@ class Bilinear(layers.Layer):
 
     def forward(self, x1, x2):
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
+
 
 class ReflectionPad1d(layers.Layer):
     """

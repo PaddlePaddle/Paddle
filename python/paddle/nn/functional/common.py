@@ -459,6 +459,7 @@ def interpolate(input,
         attrs=attrs)
     return out
 
+
 def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
