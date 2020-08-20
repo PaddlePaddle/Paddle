@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+import inspect
 import decorator
 import contextlib
-import functools
 import sys
 import numpy as np
 from paddle.fluid import core
@@ -23,15 +23,11 @@ from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
 import objgraph
+from ..data_feeder import convert_dtype
 
 __all__ = [
-    'no_grad',
-    'grad',
-    'guard',
-    'enable_dygraph',
-    'disable_dygraph',
-    'enabled',
-    'to_variable',
+    'no_grad', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph', 'enabled',
+    'to_variable'
 ]
 
 
@@ -64,17 +60,26 @@ _functional_dygraph_context_manager = None
 
 @signature_safe_contextmanager
 def param_guard(parameters):
-    # Note: parameters is a reference of self._parameters
+    # Note: parameters is a reference of self._parameters or self._buffers
     if not framework.in_dygraph_mode() and parameters:
         origin_parameters = parameters.copy()
         for name, var_base in parameters.items():
             if isinstance(var_base, core.VarBase):
-                new_var = framework.Parameter(
-                    var_base.block,
-                    var_base.shape,
-                    var_base.dtype,
-                    var_base.type,
-                    name=var_base.name)
+                # Convert ParamBase into Parameter with same attributes in dy2stat.
+                if isinstance(var_base, framework.ParamBase):
+                    new_var = var_base._to_static_var(to_parameter=True)
+                else:
+                    # Check whether has been created before.
+                    if var_base.name in var_base.block.vars:
+                        new_var = var_base.block.vars[var_base.name]
+                    # Note(Aurelius84): Convert VarBase in self._buffers into Variabe with
+                    # same attributes and set persistable=True to allow saving this var.
+                    # Because users can create a VarBase in `__init__`  like a
+                    # `mask` Tensor or `hidden_0` in RNN layers, which is equivalent to a Parameter
+                    # and necessary for inferring. It will be pruned if it's not necessary for inferring.
+                    else:
+                        new_var = var_base._to_static_var(
+                            to_parameter=False, persistable=True)
                 parameters[name] = new_var
         yield
         parameters.update(origin_parameters)
@@ -111,10 +116,6 @@ def enabled():
 
 def enable_dygraph(place=None):
     """
-    :alias_main: paddle.enable_dygraph
-	:alias: paddle.enable_dygraph,paddle.enable_imperative.enable_dygraph
-	:old_api: paddle.fluid.dygraph.base.enable_dygraph
-
     This function enables dynamic graph mode.
 
     Parameters:
@@ -145,10 +146,6 @@ def enable_dygraph(place=None):
 
 def disable_dygraph():
     """
-    :alias_main: paddle.disable_dygraph
-	:alias: paddle.disable_dygraph,paddle.disable_imperative.disable_dygraph
-	:old_api: paddle.fluid.dygraph.base.disable_dygraph
-
     This function disables dynamic graph mode.
 
     return:
@@ -170,28 +167,15 @@ def disable_dygraph():
         _functional_dygraph_context_manager = None
 
 
-@signature_safe_contextmanager
-def _switch_tracer_mode_guard_(is_train=True):
-    tracer = framework._dygraph_tracer()
-    if tracer:
-        mode = tracer._train_mode
-        tracer._train_mode = is_train
-        try:
-            yield
-        finally:
-            tracer._train_mode = mode
-    else:
-        yield
-
-
-def no_grad(func=None):
+class no_grad:
     """
     :api_attr: imperative
 
     Create a context which disables dygraph gradient calculation.
-    In this mode, the result of every computation will have `stop_gradient=True`.
+    In this mode, the result of every computation will have `stop_gradient` set
+    to `True`.
 
-    Also functions as a decorator. (Make sure to instantiate without parenthesis.)
+    Also functions as a decorator. (Make sure to use an instance.)
 
     Examples:
 
@@ -200,47 +184,65 @@ def no_grad(func=None):
         import numpy as np
         import paddle.fluid as fluid
 
+        paddle.enable_imperative()
+
         # use as generator
 
         data = np.array([[2, 3], [4, 5]]).astype('float32')
-        with fluid.dygraph.guard():
-            l0 = fluid.Linear(2, 2)  # l0.weight.gradient() is None
-            l1 = fluid.Linear(2, 2)
-            with fluid.dygraph.no_grad():
-                # l1.weight.stop_gradient is False
-                tmp = l1.weight * 2  # tmp.stop_gradient is True
-            x = fluid.dygraph.to_variable(data)
-            y = l0(x) + tmp
-            o = l1(y)
-            o.backward()
-            print(tmp.gradient() is None)  # True
-            print(l0.weight.gradient() is None)  # False
+        l0 = fluid.Linear(2, 2)  # l0.weight.gradient() is None
+        l1 = fluid.Linear(2, 2)
+        with fluid.no_grad():
+            # l1.weight.stop_gradient is False
+            tmp = l1.weight * 2  # tmp.stop_gradient is True
+        x = fluid.dygraph.to_variable(data)
+        y = l0(x) + tmp
+        o = l1(y)
+        o.backward()
+        print(tmp.gradient() is None)  # True
+        print(l0.weight.gradient() is None)  # False
 
         # use as decorator
 
-        @fluid.dygraph.no_grad
+        @fluid.no_grad()
         def test_layer():
-            with fluid.dygraph.guard():
-                inp = np.ones([3, 1024], dtype='float32')
-                t = fluid.dygraph.base.to_variable(inp)
-                linear1 = fluid.Linear(1024, 4, bias_attr=False)
-                linear2 = fluid.Linear(4, 4)
-                ret = linear1(t)
-                dy_ret = linear2(ret)
+            inp = np.ones([3, 1024], dtype='float32')
+            t = fluid.dygraph.base.to_variable(inp)
+            linear1 = fluid.Linear(1024, 4, bias_attr=False)
+            linear2 = fluid.Linear(4, 4)
+            ret = linear1(t)
+            dy_ret = linear2(ret)
 
         test_layer()
-
     """
-    if func is None:
-        return _switch_tracer_mode_guard_(is_train=False)
-    else:
 
+    def __call__(self, func):
         @decorator.decorator
-        def __impl__(func, *args, **kwargs):
-            with _switch_tracer_mode_guard_(is_train=False):
+        def _decorate_function(func, *args, **kwargs):
+            with self:
                 return func(*args, **kwargs)
 
-        return __impl__(func)
+        @decorator.decorator
+        def _decorate_generator(func, *args, **kwargs):
+            gen = func(*args, **kwargs)
+            with self:
+                for x in gen:
+                    yield x
+
+        if inspect.isgeneratorfunction(func):
+            return _decorate_generator(func)
+        else:
+            return _decorate_function(func)
+
+    def __enter__(self):
+        tracer = framework._dygraph_tracer()
+        if tracer:
+            self.orig = tracer._train_mode
+            tracer._train_mode = False
+
+    def __exit__(self, *args):
+        tracer = framework._dygraph_tracer()
+        if tracer:
+            tracer._train_mode = self.orig
 
 
 @signature_safe_contextmanager
@@ -278,12 +280,11 @@ def guard(place=None):
     tracer = Tracer()
     VarBase = core.VarBase
 
-    if place is None:
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-    tracer._expected_place = place
+    if place is not None:
+        expected_place = place
+    else:
+        expected_place = framework._current_expected_place()
+    tracer._expected_place = expected_place
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
@@ -530,28 +531,34 @@ def grad(outputs,
 
 
 @framework.dygraph_only
-def to_variable(value, name=None, zero_copy=None):
+def to_variable(value, name=None, zero_copy=None, dtype=None):
     """
     :api_attr: imperative
 
     The API will create a ``Variable`` or ``ComplexVariable`` object from 
-    numpy\.ndarray, Variable or ComplexVariable object.
+    tuple, list, numpy\.ndarray, Variable or ComplexVariable object.
 
     Parameters:
-        value(ndarray|Variable|ComplexVariable): The numpy\.ndarray, Variable 
-            or ComplexVariable object that needs to be converted, it can be 
-            multi-dimension, and the data type is one of numpy\.{float16, 
-            float32, float64, int16, int32, int64, uint8, uint16, complex64, 
-            complex128}.
+        value(tuple|list|ndarray|Variable|Tensor|ComplexVariable): Initial data. 
+            Can be a list, tuple, NumPy ndarray, Variable, Tensor, ComplexVariable. 
+            The shape can be multi-dimensional. The data type is one of 
+            numpy\.{float16, float32, float64, int16, int32, int64, 
+            uint8, uint16, complex64, complex128}.
         name(str, optional): The default value is None. Normally there is no 
             need for user to set this property. For more information, please 
             refer to :ref:`api_guide_Name` .
         zero_copy(bool, optional): Whether to share memory with the input numpy 
             array. This parameter only works with CPUPlace and will be set to 
             True when it is None. Default: None.
+        dtype(str, optional): The desired data type of returned ``Variable`` .
+            Can be 'bool' , 'float16' , 'float32' , 'float64' , 'int8' , 'int16' , 
+            'int32' , 'int64' , 'uint8' . Default: None.
 
     Returns:
-        Variable or ComplexVariable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable or ComplexVariable object, just return ``value``.
+        Variable or ComplexVariable: If ``value`` is a tuple/list/numpy\.ndarray object, 
+            return ``Tensor`` created from the corresponding numpy\.ndarray object, which has 
+            same data type and shape with ``value``. If ``value`` is a Variable or ComplexVariable 
+            object, just return ``value``.
 
 
     Examples:
@@ -573,17 +580,41 @@ def to_variable(value, name=None, zero_copy=None):
             z = fluid.dygraph.to_variable(c)
             z.numpy() # array([2.+1.j, 2.+0.j])
             z.dtype # 'complex128'
+
+            y = fluid.dygraph.to_variable([[0.1, 1.2], [2.2, 3.1], [4.9, 5.2]])
+            y.shape     # [3L, 2L]
+
+            y = fluid.dygraph.to_variable(((0.1, 1.2), (2.2, 3.1), (4.9, 5.2)), dtype='int32')
+            y.shape     # [3L, 2L]
+
     """
-    if isinstance(value, np.ndarray):
-        assert framework.in_dygraph_mode(
-        ), "to_variable could only be called in dygraph mode"
+    support_type = (list, tuple, np.ndarray, core.VarBase, framework.Variable,
+                    framework.ComplexVariable, core.Tensor, core.LoDTensor)
+    if not isinstance(value, support_type):
+        raise TypeError(
+            "The type of 'value' in fluid.dygraph.to_variable must be %s, but received %s."
+            % (support_type, type(value)))
+    if isinstance(value, (core.VarBase, framework.Variable,
+                          framework.ComplexVariable)):
+        return value
+    elif isinstance(value, (core.Tensor, core.LoDTensor)):
+        return core.VarBase(value)
+    else:
         if isinstance(framework._current_expected_place(),
                       framework.core.CPUPlace):
             if zero_copy is None:
                 zero_copy = True
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
-            zero_copy = False
+
+        if not isinstance(value, np.ndarray):
+            value = np.array(value)
+
+        if dtype is not None:
+            dtype = convert_dtype(dtype)
+            if value.dtype != dtype:
+                value = value.astype(dtype)
+
         if np.iscomplexobj(value):
             if not name:
                 name = framework.unique_name.generate('_generated_var')
@@ -608,10 +639,3 @@ def to_variable(value, name=None, zero_copy=None):
                 zero_copy=zero_copy,
                 name=name if name else '')
             return py_var
-    elif isinstance(value, (core.VarBase, framework.Variable,
-                            framework.ComplexVariable)):
-        return value
-    else:
-        raise TypeError(
-            "The type of input value is invalid, expected type is 'ndarray', "
-            "'Variable' or 'ComplexVariable', but received %s." % type(value))

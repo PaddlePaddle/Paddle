@@ -117,7 +117,9 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
       dt = py::dtype::of<float>();
       break;
     default:
-      LOG(FATAL) << "unsupported dtype";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type. Now only supports INT32, INT64 and "
+          "FLOAT32."));
   }
 
   return dt;
@@ -150,7 +152,9 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
       size = sizeof(float);
       break;
     default:
-      LOG(FATAL) << "unsupported dtype";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type. Now only supports INT32, INT64 and "
+          "FLOAT32."));
   }
   return size;
 }
@@ -172,7 +176,9 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
       tensor.copy_to_cpu<float>(static_cast<float *>(array.mutable_data()));
       break;
     default:
-      LOG(FATAL) << "unsupported dtype";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type. Now only supports INT32, INT64 and "
+          "FLOAT32."));
   }
   return array;
 }
@@ -252,7 +258,9 @@ void BindPaddleBuf(py::module *m) {
                auto size = self.length() / sizeof(float);
                l = py::cast(std::vector<float>(data, data + size));
              } else {
-               LOG(FATAL) << "unsupported dtype";
+               PADDLE_THROW(platform::errors::Unimplemented(
+                   "Unsupported data type. Now only supports INT32, INT64 and "
+                   "FLOAT32."));
              }
              return l;
            })
@@ -371,7 +379,8 @@ void BindAnalysisConfig(py::module *m) {
       .value("Half", AnalysisConfig::Precision::kHalf)
       .export_values();
 
-  analysis_config.def(py::init<const AnalysisConfig &>())
+  analysis_config.def(py::init<>())
+      .def(py::init<const AnalysisConfig &>())
       .def(py::init<const std::string &>())
       .def(py::init<const std::string &, const std::string &>())
       .def("set_model", (void (AnalysisConfig::*)(const std::string &)) &
@@ -424,6 +433,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
+           py::arg("zero_copy") = false,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("passes_filter") = std::vector<std::string>(),
            py::arg("ops_filter") = std::vector<std::string>())
@@ -441,6 +451,8 @@ void BindAnalysisConfig(py::module *m) {
 #ifdef PADDLE_WITH_MKLDNN
       .def("quantizer_config", &AnalysisConfig::mkldnn_quantizer_config,
            py::return_value_policy::reference)
+      .def("set_mkldnn_cache_capacity", &AnalysisConfig::SetMkldnnCacheCapacity,
+           py::arg("capacity") = 0)
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
@@ -492,6 +504,8 @@ void BindAnalysisPredictor(py::module *m) {
       .def("get_output_names", &AnalysisPredictor::GetOutputNames)
       .def("get_input_tensor_shape", &AnalysisPredictor::GetInputTensorShape)
       .def("zero_copy_run", &AnalysisPredictor::ZeroCopyRun)
+      .def("clear_intermediate_tensor",
+           &AnalysisPredictor::ClearIntermediateTensor)
       .def("create_feed_fetch_var", &AnalysisPredictor::CreateFeedFetchVar)
       .def("prepare_feed_fetch", &AnalysisPredictor::PrepareFeedFetch)
       .def("prepare_argument", &AnalysisPredictor::PrepareArgument)

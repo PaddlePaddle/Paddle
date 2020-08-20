@@ -14,10 +14,75 @@
 
 from __future__ import print_function
 import numpy as np
+import logging
+
+from paddle.fluid import log_helper
 from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+from paddle.fluid.layers.utils import flatten
+from paddle.fluid.layers.utils import pack_sequence_as
 import paddle.compat as cpt
+
+_logger = log_helper.get_logger(
+    __name__, logging.WARNING, fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+
+class NestSequence(object):
+    """
+    A wrapper class that easily to flatten and restore the nest structure of
+    given sequence.
+    """
+
+    def __init__(self, raw_input, need_check=False):
+        self.__raw_input = raw_input
+        self.__var_ids = self._get_var_ids()
+        self._check_non_variable(need_check)
+
+    def tolist(self):
+        """
+        Flattens the nested sequences into single list.
+        """
+        return flatten(self.__raw_input)
+
+    def restore(self, value_list):
+        """
+        Restores the nested sequence from value list.
+        """
+        assert len(self.tolist()) == len(value_list)
+        return pack_sequence_as(self.__raw_input, value_list)
+
+    def _get_var_ids(self):
+        var_ids = []
+        for idx, var in enumerate(self.tolist()):
+            if isinstance(var, (framework.Variable, core.VarBase)):
+                var_ids.append(idx)
+
+        return var_ids
+
+    def _check_non_variable(self, need_check):
+        """
+        Raises warning if output of traced function contains non-tensor type values.
+        """
+        if need_check:
+            warning_types = set()
+            for var in self.tolist():
+                if not isinstance(var, (framework.Variable, core.VarBase)):
+                    warning_types.add(type(var))
+            if warning_types:
+                _logger.warning(
+                    "Output of traced function contains non-tensor type values: {}. "
+                    "Currently, We don't support to update them while training and will return "
+                    "what we first saw. Please try to return them as tensor.".
+                    format(list(warning_types)))
+
+    @property
+    def var_ids(self):
+        return self.__var_ids
+
+    def __getitem__(self, item):
+        return self.tolist()[item]
 
 
 class PartialProgramLayer(layers.Layer):
@@ -43,29 +108,36 @@ class PartialProgramLayer(layers.Layer):
 
     def __init__(self, main_program, inputs, outputs, parameters=None):
         super(PartialProgramLayer, self).__init__()
-        self.inputs = inputs
-        self.outputs = outputs
+        self._inputs = NestSequence(inputs)
+        self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
-        # Check all params from main program can be found in self._params:
-        # 1. parameter in self._params should be type `framework.ParamBase` which are created in dygraph.
-        # 2. parameter from transformed program shall be found in self._params.
-        #    Because they share same data with ParamBase of original dygraph.
-        self._check_params_all_inited(main_program)
 
-        self._infer_program = main_program
-        self._train_program = self._append_backward_desc()
-        # Switch infer or train by train() and eval()
-        self._trace_program = None
+        main_program = self._verify_program(main_program)
+        self._infer_program = self._clone_for_test(main_program)
+        self._train_program = self._append_backward_desc(main_program)
+
         self._set_grad_type(self._params)
         self._inner_scope = core.Scope()
         # Set default mode to train
-        self.train()
+        self.training = True
+
+    def _verify_program(self, main_program):
+        """
+        Verify that the program parameter is initialized, prune some unused params,
+        and remove redundant op callstack.
+        """
+        # 1. Check all params from main program can be found in self._params
+        self._check_params_all_inited(main_program)
+        # 2. Prune the parameters not used anywhere in the program.
+        self._prune_unused_params(main_program)
+
+        return main_program
 
     @switch_to_static_graph
-    def _append_backward_desc(self):
-        program = self._infer_program.clone()
+    def _append_backward_desc(self, main_program):
+        program = main_program.clone()
         targets = []
-        for out in self.outputs:
+        for out in self._outputs.tolist():
             if isinstance(out, framework.Variable):
                 targets.append(program.global_block().var(out.name))
 
@@ -74,14 +146,22 @@ class PartialProgramLayer(layers.Layer):
 
         return program
 
-    def train(self):
-        # self.training is inherited from layers.Layer
-        self.training = True
-        self._trace_program = self._train_program
+    def _prune_unused_params(self, program):
+        """
+        Prune the parameters not used anywhere in the program.
+        The `@declarative` may only decorated a sub function which
+        contains some unused parameters created in `__init__`.
+        So prune these parameters to avoid unnecessary operations in
+        `run_program_op`.
+        """
+        required_params = []
+        for param in self._params:
+            for block in program.blocks:
+                if param.name in block.vars:
+                    required_params.append(param)
+                    break
 
-    def eval(self):
-        self.training = False
-        self._trace_program = self._infer_program
+        self._params = required_params
 
     def forward(self, inputs):
         in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
@@ -95,43 +175,48 @@ class PartialProgramLayer(layers.Layer):
             outputs={'Out': valid_vars(out_vars),
                      'OutScope': tmp_scope_vec},
             attrs={
-                'global_block': self._trace_program.desc.block(0),
+                'global_block': self.program.desc.block(0),
                 'start_op_index': 0,
                 'end_op_index': self._infer_program.desc.block(0).op_size(),
                 'is_test': not self.training
             })
 
-        outs = out_vars
-        if len(outs) == 1:
-            outs = outs[0]
-        return outs
+        restored_nest_out = self._restore_out(out_vars)
+        return self._remove_no_value(restored_nest_out)
+
+    @property
+    def program(self):
+        return self._train_program if self.training else self._infer_program
 
     def _prepare(self, inputs):
         """
         Prepare inputs, outputs, attrs.
         """
         assert isinstance(inputs, (tuple, list))
+        # Flatten inputs with nested structure into single list.
+        flatten_inputs = flatten(inputs)
         # Convert variable into VarBase and feed in training data.
         input_vars = []
-        for i, value in enumerate(inputs):
+        for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = core.VarBase(
                     value=value,
-                    name=self.inputs[i].desc.name(),
+                    name=self._inputs[i].desc.name(),
                     persistable=False,
                     place=framework._current_expected_place(),
                     zero_copy=True)
             elif isinstance(value, core.VarBase):
                 var = value
-                var.name = self.inputs[i].desc.name()
+                var.name = self._inputs[i].desc.name()
             else:
                 continue
             input_vars.append(var)
+
         # Create VarBase to receive output data.
         out_vars = []
-        for var in self.outputs:
-            if not isinstance(var, framework.Variable):
-                continue
+        for idx in self._outputs.var_ids:
+            var = self._outputs[idx]
+            assert isinstance(var, framework.Variable)
             var_desc = var.desc
             var_base = core.VarBase(var_desc.dtype(),
                                     var_desc.shape(),
@@ -146,6 +231,57 @@ class PartialProgramLayer(layers.Layer):
         tmp_scope_vec.value().set_scope(self._inner_scope)
 
         return input_vars, out_vars, tmp_scope_vec
+
+    def _restore_out(self, out_vars):
+        """
+        Restores same nested outputs by only replacing the Variable with VarBase.
+        """
+
+        flatten_outputs = self._outputs.tolist()
+        for i, idx in enumerate(self._outputs.var_ids):
+            flatten_outputs[idx] = out_vars[i]
+        outs = self._outputs.restore(flatten_outputs)
+        if outs is not None and len(outs) == 1:
+            outs = outs[0]
+
+        return outs
+
+    @switch_to_static_graph
+    def _clone_for_test(self, main_program):
+        return main_program.clone(for_test=True)
+
+    def _is_no_value(self, var):
+        if isinstance(var, core.VarBase):
+            if var.shape == [1] and var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
+                return True
+        return False
+
+    def _remove_no_value(self, out_vars):
+        """
+        Removes invalid value for various-length return statement
+        """
+        if isinstance(out_vars, core.VarBase):
+            if self._is_no_value(out_vars):
+                return None
+            return out_vars
+        elif isinstance(out_vars, (tuple, list)):
+            if isinstance(out_vars, tuple):
+                res = tuple(
+                    var for var in out_vars if not self._is_no_value(var))
+            else:
+                # isinstance(out_vars, list)
+                res = [var for var in out_vars if not self._is_no_value(var)]
+
+            has_removed = (len(out_vars) > len(res))
+            # len(out_vars) > len(res) means we have removed var. This is
+            # preventing out_vars is empty or just one element at the beginning
+            if len(res) == 0 and has_removed:
+                return None
+            elif len(res) == 1 and has_removed:
+                return res[0]
+            return res
+
+        return out_vars
 
     def _set_grad_type(self, params):
         # NOTE: if user set sparse gradient mode, the param's gradient
@@ -163,6 +299,19 @@ class PartialProgramLayer(layers.Layer):
                 continue
             param._set_grad_type(grad_var.type())
 
+    def _remove_op_call_stack(self, main_program):
+        """
+        Remove op's python call stack with redundant low-level error messages related to
+        transforamtions to avoid confusing users.
+        """
+        assert isinstance(main_program, framework.Program)
+        for block in main_program.blocks:
+            for op in block.ops:
+                if op.has_attr("op_callstack"):
+                    op._remove_attr("op_callstack")
+
+        return main_program
+
     def _check_params_all_inited(self, main_program):
         """
         Check all params from main program are already initialized, see details as follows:
@@ -175,18 +324,19 @@ class PartialProgramLayer(layers.Layer):
                 "Type of self._params in PartialProgramLayer should be list or tuple, but received %s."
                 % type(self._params))
 
-        params_name_set = set()
-        for i, param in enumerate(self._params):
-            if not isinstance(param, framework.ParamBase):
+        param_and_buffer_names_set = set()
+        for i, var in enumerate(self._params):
+            # self._params constains parameters and buffers with persistable=True.
+            if not isinstance(var, core.VarBase):
                 raise TypeError(
-                    'Type of self._params[{}] in PartialProgramLayer should be framework.ParamBase, but received {}.'.
-                    format(i, type(param)))
-            params_name_set.add(param.name)
+                    'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.
+                    format(i, type(var)))
+            param_and_buffer_names_set.add(var.name)
 
         for block in main_program.blocks:
             for name, var in block.vars.items():
                 if isinstance(var, framework.Parameter):
-                    if name not in params_name_set:
+                    if name not in param_and_buffer_names_set:
                         raise ValueError(
                             "\n\tWe don't support to define layer with parameters in the function "
                             "decorated by `@declarative`.\n\tBecause that will re-defined parameters "

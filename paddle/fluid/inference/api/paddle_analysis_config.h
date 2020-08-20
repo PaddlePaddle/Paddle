@@ -31,9 +31,9 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle_infer_declare.h"  // NOLINT
 
 /*! \file */
-
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
@@ -60,7 +60,7 @@ struct MkldnnQuantizerConfig;
 /// AnalysisConfig,
 /// and loading it into AnalysisPredictor.
 ///
-struct AnalysisConfig {
+struct PD_INFER_DECL AnalysisConfig {
   AnalysisConfig() = default;
   ///
   /// \brief Construct a new AnalysisConfig from another
@@ -176,6 +176,8 @@ struct AnalysisConfig {
   ///
   ///
   void DisableGpu();
+
+  void EnableXpu(int l3_workspace_size = 0xfffc00);
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -319,6 +321,7 @@ struct AnalysisConfig {
   ///
   void EnableLiteEngine(
       AnalysisConfig::Precision precision_mode = Precision::kFloat32,
+      bool zero_copy = false,
       const std::vector<std::string>& passes_filter = {},
       const std::vector<std::string>& ops_filter = {});
 
@@ -579,8 +582,11 @@ struct AnalysisConfig {
   std::vector<std::string> lite_passes_filter_;
   std::vector<std::string> lite_ops_filter_;
   Precision lite_precision_mode_;
+  bool lite_zero_copy_;
 
   bool thread_local_stream_{false};
+  bool use_xpu_{false};
+  int xpu_l3_workspace_size_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};

@@ -53,7 +53,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchIrDebug();
   cfg->SwitchSpecifyInputNames(false);
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,

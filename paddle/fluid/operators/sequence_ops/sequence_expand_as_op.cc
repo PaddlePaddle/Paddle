@@ -181,10 +181,10 @@ class SequenceExpandAsOpGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceExpandAsOpNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceExpandAsOpNoNeedBufferVarsInferer,
                                     "Y");
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(
-    SequenceExpandAsGradOpNoNeedBufferVarsInference, "X", "Y");
+    SequenceExpandAsGradOpNoNeedBufferVarsInferer, "X", "Y");
 
 }  // namespace operators
 }  // namespace paddle
@@ -194,9 +194,9 @@ REGISTER_OPERATOR(
     sequence_expand_as, ops::SequenceExpandAsOp, ops::SequenceExpandAsOpMaker,
     ops::SequenceExpandAsOpGradOpMaker<paddle::framework::OpDesc>,
     ops::SequenceExpandAsOpGradOpMaker<paddle::imperative::OpBase>,
-    ops::SequenceExpandAsOpNoNeedBufferVarsInference);
+    ops::SequenceExpandAsOpNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(sequence_expand_as_grad, ops::SequenceExpandAsOpGrad,
-                  ops::SequenceExpandAsGradOpNoNeedBufferVarsInference);
+                  ops::SequenceExpandAsGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_expand_as,
     ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, float>,

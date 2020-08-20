@@ -37,10 +37,7 @@ def monkey_patch_math_varbase():
     The difference is, in dygraph mode, use auto-generated op functions for better performance.
     """
 
-    def safe_get_dtype(var):
-        return var.dtype
-
-    @no_grad
+    @no_grad()
     def create_tensor(value, dtype, shape):
         out = _varbase_creator(dtype=dtype)
         out = core.ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
@@ -96,8 +93,9 @@ def monkey_patch_math_varbase():
                     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
 
         """
-        return core.ops.cast(self, 'in_dtype', self.dtype, 'out_dtype',
-                             convert_np_dtype_to_dtype_(dtype))
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        return core.ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
         return core.ops.scale(var, 'scale', scale, 'bias', bias)
@@ -175,7 +173,7 @@ def monkey_patch_math_varbase():
                 elif isinstance(other_var, int):
                     return scalar_method(self, float(other_var))
 
-            lhs_dtype = safe_get_dtype(self)
+            lhs_dtype = self.dtype
 
             if not isinstance(other_var, core.VarBase):
                 if reverse:
@@ -185,7 +183,7 @@ def monkey_patch_math_varbase():
                     # add fill_op 
                     other_var = create_scalar(value=other_var, dtype=lhs_dtype)
 
-            rhs_dtype = safe_get_dtype(other_var)
+            rhs_dtype = other_var.dtype
             if lhs_dtype != rhs_dtype:
                 other_var = astype(other_var, lhs_dtype)
             if reverse:

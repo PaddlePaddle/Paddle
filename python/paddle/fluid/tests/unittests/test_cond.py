@@ -468,7 +468,7 @@ class TestCondBackward(unittest.TestCase):
         for use_parallel_exe in [False, True]:
             if use_parallel_exe and os.name == "nt":
                 print(
-                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE and control flow under Windows"
+                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
                 )
                 continue
 
@@ -495,7 +495,7 @@ class TestCondBackward(unittest.TestCase):
         for use_parallel_exe in [False, True]:
             if use_parallel_exe and os.name == "nt":
                 print(
-                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE and control flow under Windows"
+                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
                 )
                 continue
 
@@ -528,7 +528,7 @@ class TestCondBackward(unittest.TestCase):
         for use_parallel_exe in [False, True]:
             if use_parallel_exe and os.name == "nt":
                 print(
-                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE and control flow under Windows"
+                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
                 )
                 continue
             self.backward_value_helper(cond_func,

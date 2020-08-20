@@ -8,6 +8,8 @@ function(CheckCompilerCXX11Flag)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.8)
             message(FATAL_ERROR "Unsupported GCC version. GCC >= 4.8 required.")
+        elseif(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.2)
+            message(WARNING "Found GCC ${CMAKE_CXX_COMPILER_VERSION} which is too high, recommended to use GCC 8.2")
         endif()
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
@@ -76,7 +78,7 @@ macro(safe_set_nvflag flag_name)
     CHECK_C_COMPILER_FLAG(${flag_name} C_COMPILER_SUPPORT_FLAG_${safe_name})
     set(safe_name C_COMPILER_SUPPORT_FLAG_${safe_name})
     if(${safe_name})
-        LIST(APPEND CUDA_NVCC_FLAGS -Xcompiler ${flag_name})
+        set(SAFE_GPU_COMMON_FLAGS "${SAFE_GPU_COMMON_FLAGS} -Xcompiler=\"${flag_name}\"")
     endif()
 endmacro()
 
@@ -169,7 +171,7 @@ if(NOT APPLE)
                 -Wno-error=nonnull-compare # Warning in boost gcc 8.2
                 -Wno-error=address # Warning in boost gcc 8.2
                 -Wno-ignored-qualifiers # Warning in boost gcc 8.2
-                -Wno-ignored-attributes # Warning in Eigen gcc 8.3 
+                -Wno-ignored-attributes # Warning in Eigen gcc 8.3
                 -Wno-parentheses # Warning in Eigen gcc 8.3
                 )
     endif()
@@ -187,7 +189,7 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
-if (NOT WITH_NV_JETSON) 
+if (NOT WITH_NV_JETSON AND NOT WITH_ARM)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 endif()
 endif(NOT WIN32)
@@ -212,19 +214,27 @@ foreach(flag ${COMMON_FLAGS})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
 endforeach()
 
+set(SAFE_GPU_COMMON_FLAGS "")
 foreach(flag ${GPU_COMMON_FLAGS})
     safe_set_nvflag(${flag})
 endforeach()
 
-if(WIN32 AND MSVC_STATIC_CRT)
-# windows build turn off warnings.
-safe_set_static_flag()
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${SAFE_GPU_COMMON_FLAGS}")
+
+
+if(WIN32)
+    # windows build turn off warnings.
+    if(MSVC_STATIC_CRT)
+        safe_set_static_flag()
+    endif()
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
-        string(REGEX REPLACE "(^| )/W[0-9]( |$)" " " ${flag_var} "${${flag_var}}")
-        set(flag_var "${flag_var} /w")
+        string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
+    endforeach(flag_var)
+    foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
+        set(${flag_var} "${${flag_var}} /w")
     endforeach(flag_var)
 endif()

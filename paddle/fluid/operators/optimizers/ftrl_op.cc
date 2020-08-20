@@ -32,20 +32,6 @@ class FTRLOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "FTRL");
     OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
                    "FTRL");
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Param").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->Inputs("Param").front(),
-            ctx->GetInputsVarType("Param").front()));
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Grad").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->Inputs("Grad").front(),
-            ctx->GetInputsVarType("Grad").front()));
 
     OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "ParamOut", "FTRL");
     OP_INOUT_CHECK(ctx->HasOutput("SquaredAccumOut"), "Output",

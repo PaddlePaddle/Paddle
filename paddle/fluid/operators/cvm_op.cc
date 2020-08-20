@@ -27,19 +27,11 @@ class CVMOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CVM");
-    OP_INOUT_CHECK(ctx->HasInput("CVM"), "Input", "CVM", "CVM");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "CVM");
 
     auto x_dims = ctx->GetInputDim("X");
-    auto cvm_dims = ctx->GetInputDim("CVM");
     PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, platform::errors::InvalidArgument(
                                               "Input(X)'s rank should be 2."));
-    PADDLE_ENFORCE_EQ(
-        cvm_dims.size(), 2UL,
-        platform::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
-    PADDLE_ENFORCE_EQ(cvm_dims[1], 2UL, platform::errors::InvalidArgument(
-                                            "The 2nd dimension of "
-                                            "Input(CVM) should be 2."));
 
     if (ctx->Attrs().Get<bool>("use_cvm")) {
       ctx->SetOutputDim("Y", {x_dims[0], x_dims[1]});
@@ -153,8 +145,8 @@ class CVMGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMNoNeedBufferVarInference, "CVM");
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMNoNeedBufferVarInferer, "CVM");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -163,10 +155,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(cvm, ops::CVMOp, ops::CVMOpMaker,
                   ops::CVMGradOpMaker<paddle::framework::OpDesc>,
                   ops::CVMGradOpMaker<paddle::imperative::OpBase>,
-                  ops::CVMNoNeedBufferVarInference);
+                  ops::CVMNoNeedBufferVarInferer);
 
 REGISTER_OPERATOR(cvm_grad, ops::CVMGradientOp,
-                  ops::CVMGradNoNeedBufferVarInference);
+                  ops::CVMGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(cvm, ops::CVMOpKernel<float>, ops::CVMOpKernel<double>);
 

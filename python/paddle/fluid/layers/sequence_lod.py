@@ -320,7 +320,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             where 1.=1., 5.=3. + 2., 4.=4., 0.0=pad_value, 12.=6. + 5. + 1.
 
     Args:
-        input (variable): LoDTensor with lod_level no more than 2. The data type should be float32.
+        input (variable): LoDTensor with lod_level no more than 2. The data type should be float32 or float64.
         pool_type (str): The pooling type that supports average, sum, sqrt, max, last or first.
         is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tenosr maxIndex is
             created to record the index information corresponding to the maximum value, which is used for backward
@@ -328,7 +328,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
         pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0
 
     Returns:
-        Variable: LoDTensor after pooling with data type float32.
+        Variable: LoDTensor after pooling with data type float32 or float64.
 
     Examples:
 
@@ -346,7 +346,8 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
-    check_variable_and_dtype(input, 'input', ['float32'], 'sequence_pool')
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'sequence_pool')
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -471,10 +472,10 @@ def sequence_first_step(input):
             where 1.=first(1.), 3.=first(3., 2.), 4.=first(4.), 0.0 = pad_value, 6.=first(6., 5., 1.)
 
     Args:
-        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
+        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32 or float64.
 
     Returns:
-        Variable: LoDTensor consist of the sequence's first step vector. The data type is float32.
+        Variable: LoDTensor consist of the sequence's first step vector. The data type is float32 or float64.
 
     Examples:
 
@@ -484,6 +485,8 @@ def sequence_first_step(input):
              x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'sequence_first_step')
     return sequence_pool(input=input, pool_type="first")
 
 
@@ -539,6 +542,8 @@ def sequence_last_step(input):
              x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_last_step = fluid.layers.sequence_last_step(input=x)
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'sequence_last_step')
     return sequence_pool(input=input, pool_type="last")
 
 

@@ -168,8 +168,8 @@ class SequenceScatterGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(
-    SequenceScatterGradNoNeedBufferVarsInference, "Updates");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceScatterGradNoNeedBufferVarsInferer,
+                                    "Updates");
 
 }  // namespace operators
 }  // namespace paddle
@@ -180,7 +180,7 @@ REGISTER_OPERATOR(sequence_scatter, ops::SequenceScatterOp,
                   ops::SequenceScatterGradMaker<paddle::framework::OpDesc>,
                   ops::SequenceScatterGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_scatter_grad, ops::SequenceScatterGradOp,
-                  ops::SequenceScatterGradNoNeedBufferVarsInference);
+                  ops::SequenceScatterGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(sequence_scatter, ops::SequenceScatterOpKernel<float>,
                        ops::SequenceScatterOpKernel<double>,
                        ops::SequenceScatterOpKernel<int>,

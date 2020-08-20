@@ -170,7 +170,7 @@ class ScatterNdAddGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterNdAddGradNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterNdAddGradNoNeedBufferVarsInferer,
                                     "Updates");
 
 }  // namespace operators
@@ -183,7 +183,7 @@ REGISTER_OPERATOR(scatter_nd_add, ops::ScatterNdAddOp, ops::ScatterNdAddOpMaker,
                   ops::ScatterNdAddGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(scatter_nd_add_grad, ops::ScatterNdAddGradOp,
-                  ops::ScatterNdAddGradNoNeedBufferVarsInference);
+                  ops::ScatterNdAddGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(scatter_nd_add, ops::ScatterNdAddOpKernel<float>,
                        ops::ScatterNdAddOpKernel<double>,

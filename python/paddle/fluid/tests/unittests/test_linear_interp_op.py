@@ -211,35 +211,58 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
         self.outputs = {'Out': output_np}
 
 
-class TestLinearInterpOpAPI(unittest.TestCase):
+class TestResizeLinearAPI(unittest.TestCase):
     def test_case(self):
-        x = fluid.data(name="x", shape=[1, 3, 128], dtype="float32")
+        x = fluid.data(name="x", shape=[1, 3, 64], dtype="float32")
+
+        dim = fluid.data(name="dim", shape=[1], dtype="int32")
         shape_tensor = fluid.data(name="shape_tensor", shape=[1], dtype="int32")
+        actual_size = fluid.data(name="actual_size", shape=[1], dtype="int32")
         scale_tensor = fluid.data(
             name="scale_tensor", shape=[1], dtype="float32")
-        dim = fluid.data(name="dim", shape=[1], dtype="int32")
-        actual_size = fluid.data(name='actual_size', shape=[1], dtype='int32')
 
         out1 = fluid.layers.resize_linear(
-            x, out_shape=[256, ], align_mode=1, align_corners=False)
+            x, out_shape=[128, ], align_mode=1, align_corners=False)
         out2 = fluid.layers.resize_linear(
-            x, out_shape=shape_tensor, align_mode=1, align_corners=False)
+            x, out_shape=[128], align_mode=1, align_corners=False)
         out3 = fluid.layers.resize_linear(
-            x, scale=scale_tensor, align_mode=1, align_corners=False)
+            x, out_shape=shape_tensor, align_mode=1, align_corners=False)
         out4 = fluid.layers.resize_linear(
-            x, out_shape=[dim, ], align_mode=1, align_corners=False)
-        out5 = fluid.layers.resize_linear(
             x,
-            out_shape=[256, ],
+            out_shape=[128, ],
             actual_shape=actual_size,
             align_mode=1,
             align_corners=False)
+        out5 = fluid.layers.resize_linear(
+            x, scale=scale_tensor, align_mode=1, align_corners=False)
 
-        x_data = np.random.random((1, 3, 128)).astype("float32")
-        shape_data = np.array([256, ]).astype("int32")
-        scale_data = np.array([2.0, ]).astype("float32")
-        dim_data = np.array([256, ]).astype("int32")
-        actual_size_data = np.array([256, ]).astype("int32")
+        out6 = interpolate(
+            x,
+            scale_factor=scale_tensor,
+            mode='linear',
+            align_mode=1,
+            align_corners=False,
+            data_format='NCW')
+        out7 = interpolate(
+            x,
+            size=[128, ],
+            mode='linear',
+            align_mode=1,
+            align_corners=False,
+            data_format='NCW')
+        out8 = interpolate(
+            x,
+            size=shape_tensor,
+            mode='linear',
+            align_mode=1,
+            align_corners=False,
+            data_format='NCW')
+
+        x_data = np.random.random((1, 3, 64)).astype("float32")
+        dim_data = np.array([128]).astype("int32")
+        shape_data = np.array([128, ]).astype("int32")
+        actual_size_data = np.array([128, ]).astype("int32")
+        scale_data = np.array([2.0]).astype("float32")
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -247,91 +270,20 @@ class TestLinearInterpOpAPI(unittest.TestCase):
             place = core.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        results = exe.run(fluid.default_main_program(),
-                          feed={
-                              "x": x_data,
-                              "shape_tensor": shape_data,
-                              "scale_tensor": scale_data,
-                              "dim": dim_data,
-                              'actual_size': actual_size_data,
-                          },
-                          fetch_list=[out1, out2, out3, out4, out5],
-                          return_numpy=True)
+        results = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "x": x_data,
+                "dim": dim_data,
+                "shape_tensor": shape_data,
+                "actual_size": actual_size_data,
+                "scale_tensor": scale_data
+            },
+            fetch_list=[out1, out2, out3, out4, out5, out6, out7, out8],
+            return_numpy=True)
 
         expect_res = linear_interp_np(
-            x_data, out_w=256, align_mode=1, align_corners=False)
-
-        for res in results:
-            self.assertTrue(np.allclose(res, expect_res))
-
-
-class TestLinearInterpOpAPI2_Func(unittest.TestCase):
-    def test_case(self):
-        x = fluid.data(name="x", shape=[1, 3, 128], dtype="float32")
-        shape_tensor = fluid.data(name="shape_tensor", shape=[1], dtype="int32")
-        scale_tensor = fluid.data(
-            name="scale_tensor", shape=[1], dtype="float32")
-        dim = fluid.data(name="dim", shape=[1], dtype="int32")
-        actual_size = fluid.data(name='actual_size', shape=[1], dtype='int32')
-
-        out1 = interpolate(
-            x,
-            out_shape=[256, ],
-            align_mode=1,
-            align_corners=False,
-            resample='LINEAR')
-        out2 = interpolate(
-            x,
-            out_shape=shape_tensor,
-            align_mode=1,
-            align_corners=False,
-            resample='LINEAR')
-        out3 = interpolate(
-            x,
-            scale=scale_tensor,
-            align_mode=1,
-            align_corners=False,
-            resample='LINEAR')
-        out4 = interpolate(
-            x,
-            out_shape=[dim, ],
-            align_mode=1,
-            align_corners=False,
-            resample='LINEAR')
-        out5 = interpolate(
-            x,
-            out_shape=[256, ],
-            actual_shape=actual_size,
-            align_mode=1,
-            align_corners=False,
-            resample='LINEAR')
-
-        x_data = np.random.random((1, 3, 128)).astype("float32")
-        shape_data = np.array([256, ]).astype("int32")
-        scale_data = np.array([2.0, ]).astype("float32")
-        dim_data = np.array([256, ]).astype("int32")
-        actual_size_data = np.array([256, ]).astype("int32")
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        results = exe.run(fluid.default_main_program(),
-                          feed={
-                              "x": x_data,
-                              "shape_tensor": shape_data,
-                              "scale_tensor": scale_data,
-                              "dim": dim_data,
-                              'actual_size': actual_size_data,
-                          },
-                          fetch_list=[out1, out2, out3, out4, out5],
-                          return_numpy=True)
-
-        expect_res = linear_interp_np(
-            x_data, out_w=256, align_mode=1, align_corners=False)
-
+            x_data, out_w=128, align_mode=1, align_corners=False)
         for res in results:
             self.assertTrue(np.allclose(res, expect_res))
 
@@ -342,10 +294,11 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
         # dygraph 
         x_data = np.random.random((1, 3, 128)).astype("float32")
         us_1 = paddle.nn.UpSample(
-            out_shape=[64, ],
-            resample='LINEAR',
+            size=[64, ],
+            mode='linear',
             align_mode=1,
-            align_corners=False)
+            align_corners=False,
+            data_format='NCW')
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(x_data)
             interp = us_1(x)
@@ -356,7 +309,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             self.assertTrue(np.allclose(interp.numpy(), expect))
 
 
-class TestLinearInterpOpUint8(OpTest):
+class TestResizeLinearOpUint8(OpTest):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
@@ -433,24 +386,22 @@ class TestLinearInterpOpError(unittest.TestCase):
             def input_shape_error():
                 x1 = fluid.data(name="x1", shape=[1], dtype="float32")
                 out1 = paddle.nn.UpSample(
-                    out_shape=[256, ], data_format='NCW', resample='LINEAR')
+                    size=[256, ], data_format='NCW', mode='linear')
                 out1_res = out1(x1)
 
             def data_format_error():
                 x2 = fluid.data(name="x2", shape=[1, 3, 128], dtype="float32")
                 out2 = paddle.nn.UpSample(
-                    out_shape=[256, ], data_format='NHWCD', resample='LINEAR')
+                    size=[256, ], data_format='NHWCD', mode='linear')
                 out2_res = out2(x2)
 
             def out_shape_error():
                 x3 = fluid.data(name="x3", shape=[1, 3, 128], dtype="float32")
                 out3 = paddle.nn.UpSample(
-                    out_shape=[
+                    size=[
                         256,
                         256,
-                    ],
-                    data_format='NHWC',
-                    resample='LINEAR')
+                    ], data_format='NHWC', mode='linear')
                 out3_res = out3(x3)
 
             self.assertRaises(ValueError, input_shape_error)

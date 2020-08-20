@@ -19,35 +19,18 @@ import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
-from paddle.fluid.framework import core, default_main_program, Variable
+from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
+from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import array_length, array_read, array_write, create_array
-from paddle.fluid.layers import assign, cast, fill_constant, slice
+from paddle.fluid.layers import assign, fill_constant, slice
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
-
-
-def create_array_in_parent_blcok(null_array):
-    # TODO(liym27): Create a null tensor_array with the same name in parent block to avoid a bug in control flow,
-    #  because in `null_array = create_array("float32")`, `null_array` is not a output of a real OP.
-    #  See class ConditionalBlock for details.
-    prog = default_main_program()
-    parent_idx = prog.current_block().parent_idx
-    while parent_idx != -1:
-        parent_block = prog.block(parent_idx)
-        parent_block.create_var(
-            name=null_array.name,
-            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-            dtype="float32")
-        parent_idx = parent_block.parent_idx
 
 
 # TODO(liym27): A better way to slice tensor array.
 #  Maybe support start == end for slice op.
 def slice_tensor_array(array, start, end):
-    end = cast(end, "int32")
-
     def true_fn():
         null_array = create_array("float32")
-        create_array_in_parent_blcok(null_array)
         return null_array
 
     def false_fn(array, start, end):
@@ -126,6 +109,7 @@ class ListTransformer(gast.NodeTransformer):
         self.scope_var_type_dict = var_env.get_scope_var_type()
 
     def transform(self):
+        SplitAssignTransformer(self.root).transform()
         self.visit(self.root)
         self.replace_list_with_tensor_array(self.root)
 
@@ -229,27 +213,29 @@ class ListTransformer(gast.NodeTransformer):
         if value_name not in self.list_name_to_updated:
             return False
 
-        # 3. The arg of append() is one `Tensor`
+        # 3. The number of arg of append() is one
         # Only one argument is supported in Python list.append()
         if len(node.args) != 1:
             return False
-        arg = node.args[0]
-        if isinstance(arg, gast.Name):
-            # TODO: `arg.id` may be not in scope_var_type_dict if `arg.id` is the arg of decorated function
-            # Need a better way to confirm whether `arg.id` is a Tensor.
-            try:
-                var_type_set = self.scope_var_type_dict[arg.id]
-            except KeyError:
-                return False
 
-            if NodeVarType.NUMPY_NDARRAY in var_type_set:
-                return False
-            if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
-                return False
-        # else:
-        # Todo: Consider that `arg` may be a gast.Call about Paddle Api.
-        # eg: list_a.append(fluid.layers.reshape(x))
-        # return True
+        # TODO(liym27): The arg of append() should be Tensor. But because the type of arg is often wrong with static analysis,
+        #   the arg is not required to be Tensor here.
+        # 4. The arg of append() is Tensor
+        # arg = node.args[0]
+        # if isinstance(arg, gast.Name):
+        #     # TODO: `arg.id` may be not in scope_var_type_dict if `arg.id` is the arg of decorated function
+        #     # Need a better way to confirm whether `arg.id` is a Tensor.
+        #     try:
+        #         var_type_set = self.scope_var_type_dict[arg.id]
+        #     except KeyError:
+        #         return False
+        #     if NodeVarType.NUMPY_NDARRAY in var_type_set:
+        #         return False
+        #     if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
+        #         return False
+        # # TODO: Consider that `arg` may be a gast.Call about Paddle Api. eg: list_a.append(fluid.layers.reshape(x))
+        # # else:
+        # # return True
         self.list_name_to_updated[value_name.strip()] = True
         return True
 
@@ -282,7 +268,7 @@ class ListTransformer(gast.NodeTransformer):
     def _update_list_name_to_updated(self, node):
         assert isinstance(node, gast.Assign)
         target_node = node.targets[0]
-        # TODO: Consider node has more than one target. eg: x, y = a, []
+        # NOTE: Code like `x, y = a, []` has been transformed to `x=a; y=[]`
         try:
             target_id = target_node.id
         except AttributeError:

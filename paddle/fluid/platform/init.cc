@@ -39,6 +39,16 @@ DEFINE_int32(multiple_of_cupti_buffer_size, 1,
              "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
+namespace platform {
+
+void ParseCommandLineFlags(int argc, char **argv, bool remove) {
+  google::ParseCommandLineFlags(&argc, &argv, remove);
+}
+
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 
 #ifdef _WIN32
@@ -48,9 +58,8 @@ namespace framework {
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
 std::once_flag p2p_init_flag;
-std::once_flag glog_warning_once_flag;
 
-bool InitGflags(std::vector<std::string> argv) {
+bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
   std::call_once(gflags_init_flag, [&]() {
     FLAGS_logtostderr = true;
@@ -59,20 +68,23 @@ bool InitGflags(std::vector<std::string> argv) {
     // commandline strings from idx 1.
     // The reason is, it assumes that the first one (idx 0) is
     // the filename of executable file.
-    argv.insert(argv.begin(), "dummy");
-    int argc = argv.size();
-    char **arr = new char *[argv.size()];
+    args.insert(args.begin(), "dummy");
+    std::vector<char *> argv;
     std::string line;
-    for (size_t i = 0; i < argv.size(); i++) {
-      arr[i] = &argv[i][0];
-      line += argv[i];
+    int argc = args.size();
+    for (auto &arg : args) {
+      argv.push_back(const_cast<char *>(arg.data()));
+      line += arg;
       line += ' ';
     }
     VLOG(1) << "Before Parse: argc is " << argc
             << ", Init commandline: " << line;
+
+    char **arr = argv.data();
     google::ParseCommandLineFlags(&argc, &arr, true);
-    VLOG(1) << "After Parse: argc is " << argc;
     successed = true;
+
+    VLOG(1) << "After Parse: argc is " << argc;
   });
   return successed;
 }
@@ -85,9 +97,8 @@ void InitP2P(std::vector<int> devices) {
       for (int j = 0; j < count; ++j) {
         if (devices[i] == devices[j]) continue;
         int can_acess = -1;
-        PADDLE_ENFORCE(
-            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]),
-            "Failed to test P2P access.");
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]));
         if (can_acess != 1) {
           LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
                        << " to " << devices[j];
@@ -105,14 +116,18 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                 \
-  {                                                               \
-    PADDLE_ENFORCE(!platform::dynload::cuptiActivityGetAttribute( \
-        attr, &attrValueSize, &attrValue));                       \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
-    PADDLE_ENFORCE(!platform::dynload::cuptiActivitySetAttribute( \
-        attr, &attrValueSize, &attrValue));                       \
+#define MULTIPLY_ATTR_VALUE(attr)                                            \
+  {                                                                          \
+    PADDLE_ENFORCE_EQ(                                                       \
+        !platform::dynload::cuptiActivityGetAttribute(attr, &attrValueSize,  \
+                                                      &attrValue),           \
+        true, platform::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                        \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";                \
+    PADDLE_ENFORCE_EQ(                                                       \
+        !platform::dynload::cuptiActivitySetAttribute(attr, &attrValueSize,  \
+                                                      &attrValue),           \
+        true, platform::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
@@ -150,13 +165,15 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
       LOG(WARNING) << "Invalid devices id.";
       continue;
     }
-
     places.emplace_back(platform::CUDAPlace(devices[i]));
   }
   if (init_p2p) {
     InitP2P(devices);
   }
   places.emplace_back(platform::CPUPlace());
+#ifdef PADDLE_WITH_CUDA
+  places.emplace_back(platform::CUDAPinnedPlace());
+#endif
   platform::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_MKLDNN
@@ -171,12 +188,12 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
 
 // Throw some informations when CPU instructions mismatch.
-#define AVX_GUIDE(compiletime, runtime)                                     \
-  LOG(FATAL)                                                                \
-      << "This version is compiled on higher instruction(" #compiletime     \
-         ") system, you may encounter illegal instruction error running on" \
-         " your local CPU machine. Please reinstall the " #runtime          \
-         " version or compile from source code."
+#define AVX_GUIDE(compiletime, runtime)                                  \
+  PADDLE_THROW(platform::errors::Unavailable(                            \
+      "This version is compiled on higher instruction(" #compiletime     \
+      ") system, you may encounter illegal instruction error running on" \
+      " your local CPU machine. Please reinstall the " #runtime          \
+      " version or compile from source code."))
 
 #ifdef __AVX512F__
   if (!platform::MayIUse(platform::avx512f)) {
@@ -211,25 +228,66 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 }
 
 #ifndef _WIN32
-void SignalHandle(const char *data, int size) {
-  auto file_path = string::Sprintf("/tmp/paddle.%d.dump_info", ::getpid());
-  try {
-    // The signal is coming line by line but we print general guide just once
-    std::call_once(glog_warning_once_flag, [&]() {
-      LOG(WARNING) << "Warning: PaddlePaddle catches a failure signal, it may "
-                      "not work properly\n";
-      LOG(WARNING) << "You could check whether you killed PaddlePaddle "
-                      "thread/process accidentally or report the case to "
-                      "PaddlePaddle\n";
-      LOG(WARNING) << "The detail failure signal is:\n\n";
-    });
+// Description Quoted from
+// https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html
+const struct {
+  const char *name;
+  const char *error_string;
+} SignalErrorStrings[] = {
+    {"SIGSEGV", "Segmentation fault"},
+    {"SIGILL", "Illegal instruction"},
+    {"SIGFPE", "Erroneous arithmetic operation"},
+    {"SIGABRT", "Process abort signal"},
+    {"SIGBUS", "Access to an undefined portion of a memory object"},
+    {"SIGTERM", "Termination signal"},
+};
 
-    LOG(WARNING) << std::string(data, size);
-    std::ofstream dump_info;
-    dump_info.open(file_path, std::ios::app);
-    dump_info << std::string(data, size);
-    dump_info.close();
+bool StartsWith(const char *str, const char *prefix) {
+  size_t len_prefix = strlen(prefix);
+  size_t len_str = strlen(str);
+  return len_str < len_prefix ? false : memcmp(prefix, str, len_prefix) == 0;
+}
+
+const char *ParseSignalErrorString(const std::string &str) {
+  for (size_t i = 0;
+       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings))); ++i) {
+    if (std::string::npos != str.find(SignalErrorStrings[i].name)) {
+      return SignalErrorStrings[i].error_string;
+    }
+  }
+  return "Unknown signal";
+}
+
+// Handle SIGSEGV, SIGILL, SIGFPE, SIGABRT, SIGBUS, and SIGTERM.
+void SignalHandle(const char *data, int size) {
+  try {
+    // NOTE1: The glog FailureSignalHandler dumped messages
+    //   are deal with line by line
+    auto signal_msg_dunmer_ptr = SignalMessageDumper::Instance().Get();
+    // NOTE2: we only deal with the time info ane signal info,
+    //   the stack trace will generated by paddle self
+    if (StartsWith(data, "*** Aborted at")) {
+      *signal_msg_dunmer_ptr << "  [TimeInfo: " << std::string(data, size - 1)
+                             << "]\n";
+    } else if (StartsWith(data, "***")) {
+      std::string signal_info(data, size - 1);
+      std::string useless_substr("; stack trace:");
+      size_t start_pos = signal_info.rfind(useless_substr);
+      signal_info.replace(start_pos, useless_substr.length(), "");
+      *signal_msg_dunmer_ptr << "  [SignalInfo: " << signal_info << "]\n";
+      // NOTE3: Here does not throw an exception,
+      // otherwise it will casue "terminate called recursively"
+      auto exp = platform::EnforceNotMet(
+          platform::errors::Fatal(
+              "A serious error (%s) is detected by the operating system.",
+              ParseSignalErrorString(signal_info)),
+          __FILE__, __LINE__);
+      std::cout << exp.what() << (*signal_msg_dunmer_ptr).str() << std::endl;
+    }
   } catch (...) {
+    // Since the program has already triggered a system error,
+    // no further processing is required here, glog FailureSignalHandler
+    // will Kill program by the default signal handler
   }
 }
 #endif

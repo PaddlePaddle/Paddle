@@ -16,6 +16,7 @@
 #include <unordered_set>
 #include <utility>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -53,15 +54,37 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     attr_checker->Check(&attrs, true);
   }
 
-  OpBase::Run(*op, ins, outs, attrs, place);
+  NameVarBaseMap new_ins = ins;
+  if (enable_autocast_) {
+    VLOG(5) << "Auto mixed precision run operator: " << type;
+    new_ins = AutoCastInputs(type, ins);
+  }
+
+  try {
+    OpBase::Run(*op, new_ins, outs, attrs, place);
+  } catch (platform::EnforceNotMet& exception) {
+    framework::AppendErrorOpHint(type, &exception);
+    throw std::move(exception);
+  } catch (std::exception& ex) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Operator %s raises an %s exception.\n"
+        "The exception content is\n:%s.",
+        type, platform::demangle(typeid(ex).name()), ex.what()));
+  } catch (...) {
+    // NOTE: this branch represents a very serious bug with
+    // low probability of occurrence, and we can't get its
+    // exception content here.
+    PADDLE_THROW(platform::errors::Fatal(
+        "Operator %s raises an unknown exception.", type));
+  }
 
   if (enable_program_desc_tracing_) {
     VLOG(5) << "Trace op " << type << " into ProgramDesc";
-    program_desc_tracer_->InsertOp(type, ins, outs, attrs);
+    program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
   }
 
-  if (ComputeRequiredGrad(ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, ins, outs, attrs, place);
+  if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
+    CreateGradOpNode(*op, new_ins, outs, attrs, place);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }

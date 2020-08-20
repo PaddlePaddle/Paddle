@@ -137,7 +137,7 @@ class SequenceSliceGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceSliceGradNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceSliceGradNoNeedBufferVarsInferer,
                                     "X");
 
 }  // namespace operators
@@ -149,7 +149,7 @@ REGISTER_OPERATOR(sequence_slice, ops::SequenceSliceOp,
                   ops::SequenceSliceGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceSliceGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp,
-                  ops::SequenceSliceGradNoNeedBufferVarsInference);
+                  ops::SequenceSliceGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice,
     ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>,

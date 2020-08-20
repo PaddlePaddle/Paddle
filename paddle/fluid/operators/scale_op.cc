@@ -104,7 +104,7 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(ScaleOpInplace, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ScaleOpInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
@@ -113,7 +113,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
                   ops::ScaleGradMaker<paddle::framework::OpDesc>,
                   ops::ScaleGradMaker<paddle::imperative::OpBase>,
-                  ops::ScaleOpVarTypeInference, ops::ScaleOpInplace);
+                  ops::ScaleOpVarTypeInference, ops::ScaleOpInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,

@@ -216,8 +216,8 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInToOut, {"X", "Y"});
-DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInToOut,
+DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInferer, {"X", "Y"});
+DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInferer,
                            {framework::GradVarName("Y"),
                             framework::GradVarName("X")});
 
@@ -239,9 +239,9 @@ REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
                   ops::GroupNormOpInferVarType,
                   ops::GroupNormGradMaker<paddle::framework::OpDesc>,
                   ops::GroupNormGradMaker<paddle::imperative::OpBase>,
-                  ops::GroupNormInplaceInToOut);
+                  ops::GroupNormInplaceInferer);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
-                  ops::GroupNormGradInplaceInToOut);
+                  ops::GroupNormGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     group_norm, ops::GroupNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GroupNormKernel<paddle::platform::CPUDeviceContext, double>);

@@ -13,15 +13,12 @@
 #limitations under the License.
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Pool2D, Linear
-from paddle.fluid.dygraph.container import Sequential
-
-from ...model import Model
+from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
 
 __all__ = ['LeNet']
 
 
-class LeNet(Model):
+class LeNet(fluid.dygraph.Layer):
     """LeNet model from
     `"LeCun Y, Bottou L, Bengio Y, et al. Gradient-based learning applied to document recognition[J]. Proceedings of the IEEE, 1998, 86(11): 2278-2324.`_
 
@@ -44,9 +41,11 @@ class LeNet(Model):
         self.features = Sequential(
             Conv2D(
                 1, 6, 3, stride=1, padding=1),
+            ReLU(),
             Pool2D(2, 'max', 2),
             Conv2D(
                 6, 16, 5, stride=1, padding=0),
+            ReLU(),
             Pool2D(2, 'max', 2))
 
         if num_classes > 0:

@@ -166,7 +166,7 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePoolGradOpNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePoolGradOpNoNeedBufferVarsInferer,
                                     "X");
 
 }  // namespace operators
@@ -177,10 +177,13 @@ REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
                   ops::SequencePoolGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequencePoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
-                  ops::SequencePoolGradOpNoNeedBufferVarsInference);
+                  ops::SequencePoolGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_pool,
-    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, double>);
+
 REGISTER_OP_CPU_KERNEL(
     sequence_pool_grad,
-    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, double>);

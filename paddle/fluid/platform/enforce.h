@@ -19,9 +19,11 @@ limitations under the License. */
 #endif               // __GNUC__
 
 #if !defined(_WIN32)
-#include <dlfcn.h>    // dladdr
-#else                 // _WIN32
-#define NOMINMAX      // msvc max/min macro conflict with std::min/max
+#include <dlfcn.h>  // dladdr
+#else               // _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>  // GetModuleFileName
 #endif
 
@@ -31,6 +33,8 @@ limitations under the License. */
 #include <curand.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
+
+#include "paddle/fluid/platform/cuda_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
 #include <fstream>
@@ -45,7 +49,6 @@ limitations under the License. */
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"
-#include "paddle/fluid/platform/cuda_error.pb.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/port.h"
@@ -62,6 +65,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
+
+// Note: these headers for simplify demangle type string
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/imperative/type_defs.h"
+
+DECLARE_int32(call_stack_level);
 
 namespace paddle {
 namespace platform {
@@ -191,28 +200,56 @@ struct BinaryCompareMessageConverter<false> {
 };
 }  // namespace details
 
-template <typename StrType>
-inline std::string GetTraceBackString(StrType&& what, const char* file,
-                                      int line) {
+template <typename T>
+inline std::string ReplaceComplexTypeStr(std::string str,
+                                         const std::string& type_name) {
+  auto demangle_type_str = demangle(typeid(T).name());
+  size_t start_pos = 0;
+  while ((start_pos = str.find(demangle_type_str, start_pos)) !=
+         std::string::npos) {
+    str.replace(start_pos, demangle_type_str.length(), type_name);
+    start_pos += type_name.length();
+  }
+  return str;
+}
+
+#define __REPLACE_COMPLEX_TYPE_STR__(__TYPENAME, __STR)                       \
+  do {                                                                        \
+    __STR = paddle::platform::ReplaceComplexTypeStr<__TYPENAME>(__STR,        \
+                                                                #__TYPENAME); \
+  } while (0)
+
+inline std::string SimplifyDemangleStr(std::string str) {
+  // the older is important, you have to put complex types in front
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::framework::AttributeMap, str);
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::framework::Attribute, str);
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameVariableWrapperMap, str);
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameVarBaseMap, str);
+  __REPLACE_COMPLEX_TYPE_STR__(std::string, str);
+  return str;
+}
+
+inline std::string GetCurrentTraceBackString() {
   static constexpr int TRACE_STACK_LIMIT = 100;
   std::ostringstream sout;
 
-  sout << "\n\n--------------------------------------------\n";
-  sout << "C++ Call Stacks (More useful to developers):";
-  sout << "\n--------------------------------------------\n";
+  sout << "\n\n--------------------------------------\n";
+  sout << "C++ Traceback (most recent call last):";
+  sout << "\n--------------------------------------\n";
 #if !defined(_WIN32)
   void* call_stack[TRACE_STACK_LIMIT];
   auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
   auto symbols = backtrace_symbols(call_stack, size);
   Dl_info info;
   int idx = 0;
-  for (int i = 0; i < size; ++i) {
+  for (int i = size - 1; i >= 0; --i) {
     if (dladdr(call_stack[i], &info) && info.dli_sname) {
       auto demangled = demangle(info.dli_sname);
       std::string path(info.dli_fname);
       // C++ traceback info are from core.so
       if (path.substr(path.length() - 3).compare(".so") == 0) {
-        sout << string::Sprintf("%-3d %s\n", idx++, demangled);
+        sout << string::Sprintf("%-3d %s\n", idx++,
+                                SimplifyDemangleStr(demangled));
       }
     }
   }
@@ -220,22 +257,36 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 #else
   sout << "Windows not support stack backtrace yet.\n";
 #endif
+  return sout.str();
+}
+
+template <typename StrType>
+inline std::string GetErrorSumaryString(StrType&& what, const char* file,
+                                        int line) {
+  std::ostringstream sout;
   sout << "\n----------------------\nError Message "
           "Summary:\n----------------------\n";
-  sout << string::Sprintf("%s at (%s:%d)", std::forward<StrType>(what), file,
+  sout << string::Sprintf("%s (at %s:%d)", std::forward<StrType>(what), file,
                           line)
        << std::endl;
   return sout.str();
 }
 
+template <typename StrType>
+inline std::string GetTraceBackString(StrType&& what, const char* file,
+                                      int line) {
+  if (FLAGS_call_stack_level > 1) {
+    // FLAGS_call_stack_level>1 means showing c++ call stack
+    return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
+  } else {
+    return GetErrorSumaryString(what, file, line);
+  }
+}
+
 inline bool is_error(bool stat) { return !stat; }
 
 inline void throw_on_error(bool stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 // Note: This Macro can only be used within enforce.h
@@ -395,7 +446,7 @@ struct EnforceNotMet : public std::exception {
  *
  * Examples:
  *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
-*/
+ */
 #define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                   \
   (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {          \
     auto* __ptr = (__PTR);                                                  \
@@ -431,7 +482,7 @@ struct EnforceNotMet : public std::exception {
  *
  * Examples:
  *    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
-*/
+ */
 #define OP_INOUT_CHECK(__EXPR, __ROLE, __NAME, __OP_TYPE)                   \
   do {                                                                      \
     PADDLE_ENFORCE_EQ(__EXPR, true, paddle::platform::errors::NotFound(     \
@@ -459,7 +510,7 @@ struct EnforceNotMet : public std::exception {
  * Note: GCC 4.8 cannot select right overloaded function here, so need
  *    to define different functions and macros here, after we upgreade
  *    CI gcc version, we can only define one BOOST_GET macro.
-*/
+ */
 namespace details {
 
 #define DEFINE_SAFE_BOOST_GET(__InputType, __OutputType, __OutputTypePtr,      \
@@ -626,11 +677,7 @@ inline std::string build_nvidia_error_msg(cudaError_t e) {
 }
 
 inline void throw_on_error(cudaError_t e, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /** curand ERROR **/
@@ -677,12 +724,8 @@ inline std::string build_nvidia_error_msg(curandStatus_t stat) {
 }
 
 inline void throw_on_error(curandStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
                              msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /***** CUDNN ERROR *****/
@@ -696,11 +739,7 @@ inline std::string build_nvidia_error_msg(cudnnStatus_t stat) {
 }
 
 inline void throw_on_error(cudnnStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /***** CUBLAS ERROR *****/
@@ -739,11 +778,7 @@ inline std::string build_nvidia_error_msg(cublasStatus_t stat) {
 }
 
 inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /***** CUSOLVER ERROR *****/
@@ -777,11 +812,7 @@ inline std::string build_nvidia_error_msg(cusolverStatus_t stat) {
 }
 
 inline void throw_on_error(cusolverStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /****** NCCL ERROR ******/
@@ -796,11 +827,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
 }
 
 inline void throw_on_error(ncclResult_t nccl_result, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 

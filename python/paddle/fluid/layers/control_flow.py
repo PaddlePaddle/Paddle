@@ -925,6 +925,49 @@ class WhileGuard(BlockGuard):
         return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
 
 
+def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
+                                helper):
+    """
+    Find inputs and outputs in current control flow block.
+    :param current_block: Current control flow block.
+    :param inner_inputs: Input var name of ops in current block.
+    :param inner_outputs: Output var name of ops in current block.
+    :return: inner_inputs, inner_outputs
+    """
+
+    # Step1: update inner_inputs and inner_outputs
+    # NOTE: Here assumes that all variables are input or output of Ops,
+    # but some variables are created without appendding a real op.
+    # For example, in `arr = create_array(dtype)`, `arr` is not a output of a op.
+    for op in current_block.ops:
+        assert isinstance(op, Operator)
+        for iname in op.input_names:
+            for in_var_name in op.input(iname):
+                if in_var_name not in inner_outputs:
+                    inner_inputs.add(in_var_name)
+
+        for oname in op.output_names:
+            for out_var_name in op.output(oname):
+                inner_outputs.add(out_var_name)
+
+    # Step2: Remove LOD_TENSOR_ARRAY created in current control flow block.
+    remove_inner_inputs = set()
+    parent_block = helper.main_program.block(current_block.parent_idx)
+
+    for in_var_name in inner_inputs:
+        parent_block_var = parent_block._find_var_recursive(in_var_name)
+        current_block_var = None
+        if current_block.has_var(in_var_name):
+            current_block_var = current_block.var(in_var_name)
+        if not parent_block_var and current_block_var and \
+                current_block_var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            remove_inner_inputs.add(in_var_name)
+
+    inner_inputs = inner_inputs - remove_inner_inputs
+
+    return inner_inputs, inner_outputs
+
+
 class While(object):
     """
     :api_attr: Static Graph
@@ -1023,15 +1066,8 @@ class While(object):
 
         inner_outputs = {self.cond_var.name}
         x_name_list = set()
-        for op in while_block.ops:
-            for iname in op.input_names:
-                for in_var_name in op.input(iname):
-                    if in_var_name not in inner_outputs:
-                        x_name_list.add(in_var_name)
-
-            for oname in op.output_names:
-                for out_var_name in op.output(oname):
-                    inner_outputs.add(out_var_name)
+        x_name_list, inner_outputs = get_inputs_outputs_in_block(
+            while_block, x_name_list, inner_outputs, self.helper)
 
         out_vars = []
         for inner_out_name in inner_outputs:
@@ -1057,12 +1093,18 @@ class While(object):
                    "is_test": self.is_test})
 
 
-def assign_skip_lod_tensor_array(inputs, outputs):
+def assign_skip_lod_tensor_array(input, output):
     """
-    Skip the process of copying LoDTensorArray.
+    Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
-    if inputs.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-        assign(inputs, outputs)
+    if input.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        main_program = input.block.program
+        parent_block = main_program.block(main_program.current_block()
+                                          .parent_idx)
+        if parent_block and not parent_block._find_var_recursive(input.name):
+            assign(input, output)
+    else:
+        assign(input, output)
 
 
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
@@ -1469,7 +1511,7 @@ def array_write(x, i, array=None):
         assert i.shape == [
             1
         ], "The shape of index 'i' should be [1] in dygraph mode"
-        i = i.numpy()[0]
+        i = i.numpy().item(0)
         if array is None:
             array = create_array(x.dtype)
         assert isinstance(
@@ -1538,7 +1580,7 @@ def create_array(dtype):
 
 
 @templatedoc()
-def less_than(x, y, force_cpu=None, cond=None):
+def less_than(x, y, force_cpu=None, cond=None, name=None):
     """
     :alias_main: paddle.less_than
 	:alias: paddle.less_than,paddle.tensor.less_than,paddle.tensor.logic.less_than
@@ -1553,6 +1595,8 @@ def less_than(x, y, force_cpu=None, cond=None):
         cond(Variable, optional): Optional output which can be any created Variable
             that meets the requirements to store the result of *less_than*.
             if cond is None, a new Varibale will be created to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         ${out_comment}.
 
@@ -1607,7 +1651,7 @@ def less_than(x, y, force_cpu=None, cond=None):
 
 
 @templatedoc()
-def less_equal(x, y, cond=None):
+def less_equal(x, y, cond=None, name=None):
     """
     :alias_main: paddle.less_equal
 	:alias: paddle.less_equal,paddle.tensor.less_equal,paddle.tensor.logic.less_equal
@@ -1620,6 +1664,8 @@ def less_equal(x, y, cond=None):
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *less_equal*.
             if cond is None, a new Varibale will be created to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
@@ -1659,7 +1705,7 @@ def less_equal(x, y, cond=None):
 
 
 @templatedoc()
-def greater_than(x, y, cond=None):
+def greater_than(x, y, cond=None, name=None):
     """
     :alias_main: paddle.greater_than
 	:alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
@@ -1672,6 +1718,8 @@ def greater_than(x, y, cond=None):
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_than*.
             if cond is None, a new Varibale will be created to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x` .
@@ -1710,7 +1758,7 @@ def greater_than(x, y, cond=None):
 
 
 @templatedoc()
-def greater_equal(x, y, cond=None):
+def greater_equal(x, y, cond=None, name=None):
     """
     :alias_main: paddle.greater_equal
 	:alias: paddle.greater_equal,paddle.tensor.greater_equal,paddle.tensor.logic.greater_equal
@@ -1723,6 +1771,8 @@ def greater_equal(x, y, cond=None):
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_equal*.
             if cond is None, a new Varibale will be created to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
@@ -1762,7 +1812,7 @@ def greater_equal(x, y, cond=None):
     return cond
 
 
-def equal(x, y, cond=None):
+def equal(x, y, cond=None, name=None):
     """
     This layer returns the truth value of :math:`x == y` elementwise.
 
@@ -1772,6 +1822,8 @@ def equal(x, y, cond=None):
         cond(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of *equal*.
             if cond is None, a new Varibale will be created to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: output Tensor, it's shape is the same as the input's Tensor,
@@ -1807,7 +1859,7 @@ def equal(x, y, cond=None):
     return cond
 
 
-def not_equal(x, y, cond=None):
+def not_equal(x, y, cond=None, name=None):
     """
     :alias_main: paddle.not_equal
 	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
@@ -1820,6 +1872,8 @@ def not_equal(x, y, cond=None):
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *not_equal*.
             if cond is None, a new Varibale will be created to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
@@ -1922,7 +1976,7 @@ def array_read(array, i):
         assert i.shape == [
             1
         ], "The shape of index 'i' should be [1] in dygraph mode"
-        i = i.numpy()[0]
+        i = i.numpy().item(0)
         return array[i]
 
     check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
@@ -2111,21 +2165,8 @@ class ConditionalBlock(object):
 
         intermediate = set()
         params = set()
-
-        # NOTE: Here assumes that all variables are input or output of Ops,
-        # but some variables are created without appendding a real op.
-        # For example, in `arr = create_array(dtype)`, `arr` is not a output of a op.
-        for each_op in inside_block.ops:
-            assert isinstance(each_op, Operator)
-            for iname in each_op.input_names:
-                for in_var_name in each_op.input(iname):
-                    if in_var_name not in intermediate:
-                        params.add(in_var_name)
-
-            for oname in each_op.output_names:
-                for out_var_name in each_op.output(oname):
-                    intermediate.add(out_var_name)
-        input_set = set([ipt.name for ipt in self.inputs])
+        params, intermediate = get_inputs_outputs_in_block(
+            inside_block, params, intermediate, helper=self.helper)
 
         # Todo(liym27) Here assume that all params are in recursive parent block
         # but when minimize() called in control flow, some params may be in

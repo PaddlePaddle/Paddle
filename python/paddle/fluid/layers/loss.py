@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 from functools import partial, reduce
+from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
@@ -725,7 +726,7 @@ def nce(input,
 
             window_size = 5
             words = []
-            for i in xrange(window_size):
+            for i in range(window_size):
                 words.append(fluid.data(
                     name='word_{0}'.format(i), shape=[-1, 1], dtype='int64'))
 
@@ -733,7 +734,7 @@ def nce(input,
             label_word = int(window_size / 2) + 1
 
             embs = []
-            for i in xrange(window_size):
+            for i in range(window_size):
                 if i == label_word:
                     continue
 
@@ -746,14 +747,14 @@ def nce(input,
                       num_total_classes=dict_size, param_attr='nce.w_0',
                       bias_attr='nce.b_0')
 
-             #or use custom distribution
-             dist = np.array([0.05,0.5,0.1,0.3,0.05])
-             loss = fluid.layers.nce(input=embs, label=words[label_word],
-                       num_total_classes=5, param_attr='nce.w_1',
-                       bias_attr='nce.b_1',
-                       num_neg_samples=3,
-                       sampler="custom_dist",
-                       custom_dist=dist)
+            #or use custom distribution
+            dist = np.array([0.05,0.5,0.1,0.3,0.05])
+            loss = fluid.layers.nce(input=embs, label=words[label_word],
+                    num_total_classes=5, param_attr='nce.w_1',
+                    bias_attr='nce.b_1',
+                    num_neg_samples=3,
+                    sampler="custom_dist",
+                    custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'nce')
@@ -1536,9 +1537,11 @@ def teacher_student_sigmoid_loss(input,
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
 
     """
-    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+    check_variable_and_dtype(input, "input",
+                             ['float32', 'float64', 'int32', 'int64'],
                              'teacher_student_sigmoid_loss')
-    check_variable_and_dtype(label, "label", ['float32', 'float64'],
+    check_variable_and_dtype(label, "label",
+                             ['float32', 'float64', 'int32', 'int64'],
                              'teacher_student_sigmoid_loss')
 
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
@@ -1617,6 +1620,7 @@ def huber_loss(input, label, delta):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.kl_div")
 @templatedoc()
 def kldiv_loss(x, target, reduction='mean', name=None):
     """

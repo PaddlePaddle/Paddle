@@ -78,7 +78,10 @@ class ReadInferVarType : public framework::StaticGraphVarTypeInference {
       std::string reader_name = Input(ctx, "Reader")[0];
       auto& out_names = Output(ctx, "Out");
       auto dtypes = GetDataTypes(ctx, reader_name);
-      PADDLE_ENFORCE_EQ(dtypes.size(), out_names.size());
+      PADDLE_ENFORCE_EQ(dtypes.size(), out_names.size(),
+                        platform::errors::InvalidArgument(
+                            "The number of input reader's dtypes do not match "
+                            "the output variable number."));
       for (size_t i = 0; i < dtypes.size(); ++i) {
         SetType(ctx, out_names[i], framework::proto::VarType::LOD_TENSOR);
         SetDataType(ctx, out_names[i], dtypes[i]);

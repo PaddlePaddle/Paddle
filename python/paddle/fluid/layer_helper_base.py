@@ -21,9 +21,15 @@ from .framework import Variable, default_main_program, default_startup_program, 
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
+from .initializer import _global_weight_initializer, _global_bias_initializer
+
+__all__ = ['LayerHelperBase']
 
 
 class LayerHelperBase(object):
+    # global dtype
+    __dtype = "float32"
+
     def __init__(self, name, layer_type):
         self._layer_type = layer_type
         self._name = name
@@ -43,6 +49,14 @@ class LayerHelperBase(object):
     @property
     def startup_program(self):
         return default_startup_program()
+
+    @classmethod
+    def set_default_dtype(cls, dtype):
+        cls.__dtype = dtype
+
+    @classmethod
+    def get_default_dtype(cls):
+        return cls.__dtype
 
     def to_variable(self, value, name=None):
         """
@@ -276,7 +290,7 @@ class LayerHelperBase(object):
     def create_parameter(self,
                          attr,
                          shape,
-                         dtype,
+                         dtype=None,
                          is_bias=False,
                          default_initializer=None,
                          stop_gradient=False,
@@ -298,7 +312,18 @@ class LayerHelperBase(object):
         if not attr:
             return None
         assert isinstance(attr, ParamAttr)
-        suffix = 'b' if is_bias else 'w'
+        # set global dtype
+        if not dtype:
+            dtype = self.__dtype
+        if is_bias:
+            suffix = 'b'
+            default_initializer = _global_bias_initializer(
+            ) if _global_bias_initializer() is not None else default_initializer
+        else:
+            suffix = 'w'
+            default_initializer = _global_weight_initializer(
+            ) if _global_weight_initializer(
+            ) is not None else default_initializer
         if attr.name is None:
             attr.name = unique_name.generate(".".join([self.name, suffix]))
 
@@ -363,6 +388,9 @@ class LayerHelperBase(object):
             based on operator's `VarTypeInference` implementation in
             infer_var_type.
         """
+        # set global dtype
+        if not dtype:
+            dtype = self.__dtype
         return self.main_program.current_block().create_var(
             name=unique_name.generate_with_ignorable_key(".".join(
                 [self.name, 'tmp'])),

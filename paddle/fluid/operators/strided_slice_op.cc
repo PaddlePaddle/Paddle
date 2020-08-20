@@ -304,7 +304,7 @@ class StridedSliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInferer,
                                     "Input");
 
 }  // namespace operators
@@ -315,7 +315,7 @@ REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
                   ops::StridedSliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::StridedSliceOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
-                  ops::StridedSliceOpGradNoNeedBufferVarsInference);
+                  ops::StridedSliceOpGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     strided_slice,

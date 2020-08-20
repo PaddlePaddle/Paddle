@@ -175,8 +175,9 @@ void DeleteUnusedTensors(
         garbages.emplace_back(t.MoveMemoryHolder());
       }
     } else {
-      PADDLE_THROW("Type %s of %s is not supported eager deletion",
-                   framework::ToTypeName(var->Type()), var_name);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Type %s of variable %s is not supported eager deletion.",
+          framework::ToTypeName(var->Type()), var_name));
     }
   }
 

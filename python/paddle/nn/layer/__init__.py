@@ -20,6 +20,7 @@ from . import conv
 from . import extension
 from . import activation
 from . import norm
+from . import distance
 
 from .activation import *
 from .loss import *
@@ -29,14 +30,27 @@ from .activation import *
 from .norm import *
 # from .activation import PReLU        #DEFINE_ALIAS
 from .activation import ReLU  #DEFINE_ALIAS
+from .activation import LeakyReLU  #DEFINE_ALIAS
 from .activation import Sigmoid  #DEFINE_ALIAS
 # from .activation import Softmax        #DEFINE_ALIAS
 from .activation import LogSoftmax  #DEFINE_ALIAS
 from .activation import HSigmoid  #DEFINE_ALIAS
 from .common import BilinearTensorProduct  #DEFINE_ALIAS
 from .common import Pool2D  #DEFINE_ALIAS
+from .common import Pad2D  #DEFINE_ALIAS
+from .common import ReflectionPad1d  #DEFINE_ALIAS
+from .common import ReplicationPad1d  #DEFINE_ALIAS
+from .common import ConstantPad1d  #DEFINE_ALIAS
+from .common import ReflectionPad2d  #DEFINE_ALIAS
+from .common import ReplicationPad2d  #DEFINE_ALIAS
+from .common import ConstantPad2d  #DEFINE_ALIAS
+from .common import ZeroPad2d  #DEFINE_ALIAS
+from .common import ReplicationPad3d  #DEFINE_ALIAS
+from .common import ConstantPad3d  #DEFINE_ALIAS
+from .common import CosineSimilarity  #DEFINE_ALIAS
 from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
+from .common import Flatten  #DEFINE_ALIAS
 from .common import UpSample  #DEFINE_ALIAS
 from .conv import Conv2D  #DEFINE_ALIAS
 from .conv import Conv2DTranspose  #DEFINE_ALIAS
@@ -58,7 +72,10 @@ from .loss import MSELoss  #DEFINE_ALIAS
 from .loss import L1Loss  #DEFINE_ALIAS
 from .loss import NLLLoss  #DEFINE_ALIAS
 from .loss import BCELoss  #DEFINE_ALIAS
+from .loss import KLDivLoss  #DEFINE_ALIAS
+from .loss import MarginRankingLoss  #DEFINE_ALIAS
 from .norm import BatchNorm  #DEFINE_ALIAS
+from .norm import SyncBatchNorm  #DEFINE_ALIAS
 from .norm import GroupNorm  #DEFINE_ALIAS
 from .norm import LayerNorm  #DEFINE_ALIAS
 from .norm import SpectralNorm  #DEFINE_ALIAS
@@ -66,3 +83,4 @@ from .norm import InstanceNorm  #DEFINE_ALIAS
 # from .rnn import RNNCell        #DEFINE_ALIAS
 # from .rnn import GRUCell        #DEFINE_ALIAS
 # from .rnn import LSTMCell        #DEFINE_ALIAS
+from .distance import PairwiseDistance  #DEFINE_ALIAS

@@ -51,10 +51,10 @@ class TestCloudRoleMaker(unittest.TestCase):
             init_timeout_seconds=100,
             run_timeout_seconds=100,
             http_ip_port="127.0.0.1:36003")
-        role_maker.generate_role()
+        #role_maker.generate_role()
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        fleet.init(role_maker)
+        #fleet.init(role_maker)
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
@@ -78,6 +78,21 @@ class TestCloudRoleMaker(unittest.TestCase):
         except:
             print("do not support pslib test, skip")
             return
+
+        from paddle.fluid.incubate.fleet.base.role_maker import MockBarrier
+        mb = MockBarrier()
+        mb.barrier()
+        mb.barrier_all()
+        mb.all_reduce(1)
+        mb.all_gather(1)
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36005"
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36005"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36006"
+        os.environ["PADDLE_IS_BARRIER_ALL_ROLE"] = "0"
+        role_maker = GeneralRoleMaker(path="test_mock1")
+        role_maker.generate_role()
 
 
 if __name__ == "__main__":

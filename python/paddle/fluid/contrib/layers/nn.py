@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,21 +11,42 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Copyright(c) 2019 PaddlePaddle Authors.All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0(the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http:  // www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Contrib layers just related to the neural network.
 """
 
 from __future__ import print_function
 
-import numpy as np
-import six
 import os
+import six
+import warnings
 import inspect
+
+import numpy as np
+
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+
+from paddle.fluid import core
+from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
+
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
 import warnings
@@ -34,7 +55,8 @@ __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
-    'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler', 'batch_fc'
+    'sparse_embedding', 'partial_sum', 'tdm_child', 'rank_attention',
+    'tdm_sampler', 'batch_fc', '_pull_box_extended_sparse', 'bilateral_slice'
 ]
 
 
@@ -149,7 +171,8 @@ def var_conv_2d(input,
             of var_conv2d. If it is set to None or one attribute of ParamAttr, var_conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
-            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{
+  0.5}`. Default: None.
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None
         dtype ('float32'): The data type of parameter and output.
@@ -385,10 +408,8 @@ def tree_conv(nodes_vector,
               name=None):
     """
     ${comment}
-
-    Args:
-        nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
-        edge_set(${edge_set_type}): ${edge_set_comment}
+Args : nodes_vector(${nodes_vector_type}) : $ { nodes_vector_comment }
+edge_set(${edge_set_type}) : $ { edge_set_comment }
         output_size(int): output feature width
         num_filters(int): number of filters, Default 1
         max_depth(int): max depth of filters, Default 2
@@ -398,12 +419,15 @@ def tree_conv(nodes_vector,
         name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
 
     Returns:
-        out(${out_type}): ${out_comment}
+        out(${out_type}): ${
+          out_comment
+        }
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
+
           # 10 for max_node_size of dataset, 5 for vector width
           nodes_vector = fluid.layers.data(
               name='vectors', shape=[10, 5], dtype='float32')
@@ -414,10 +438,10 @@ def tree_conv(nodes_vector,
           # the shape of output will be [10, 6, 1],
           # 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
           out_vector = fluid.layers.tree_conv(nodes_vector, edge_set, 6, 1, 2)
-          # After reshape, output tensor could be nodes_vector for next tree convolution
+#After reshape, output tensor could be nodes_vector for next tree convolution
           out_vector = fluid.layers.reshape(out_vector, shape=[-1, 10, 6])
           out_vector_2 = fluid.layers.tree_conv(out_vector, edge_set, 3, 4, 2)
-          # also output tensor could be pooling(the pooling in paper called global pooling)
+#also output tensor could be pooling(the pooling in paper called global pooling)
           pooled = fluid.layers.reduce_max(out_vector, dim=2) # global pooling
     """
     check_type(nodes_vector, 'nodes_vector', (Variable), 'tree_conv')
@@ -626,7 +650,6 @@ def multiclass_nms2(bboxes,
             'score_threshold': score_threshold,
             'nms_top_k': nms_top_k,
             'nms_threshold': nms_threshold,
-            'nms_eta': nms_eta,
             'keep_top_k': keep_top_k,
             'nms_eta': nms_eta,
             'normalized': normalized
@@ -936,6 +959,59 @@ def partial_sum(input, start_index=0, length=-1):
     helper.append_op(
         type='partial_sum', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
+
+
+def sparse_embedding(input,
+                     size,
+                     padding_idx=None,
+                     is_test=False,
+                     entry=None,
+                     param_attr=None,
+                     dtype='float32'):
+    helper = LayerHelper('sparse_embedding', **locals())
+
+    check_variable_and_dtype(input, 'input', ['int64'],
+                             'fluid.contrib.layers.sparse_embedding')
+
+    check_dtype(dtype, 'dtype', ['float32'],
+                'fluid.contrib.layers.sparse_embedding')
+
+    w = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=size,
+        type=core.VarDesc.VarType.SELECTED_ROWS,
+        dtype=dtype,
+        is_bias=False)
+
+    tmp = helper.create_variable_for_type_inference(dtype)
+
+    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+        size[0] + padding_idx)
+
+    entry_str = "none"
+
+    if entry is not None:
+        if not isinstance(entry, ProbabilityEntry) and not isinstance(
+                entry, CountFilterEntry):
+            raise ValueError(
+                "entry must be instance in [ProbabilityEntry, CountFilterEntry]")
+        entry_str = entry.to_attr()
+
+    helper.append_op(
+        type='lookup_table',
+        inputs={'Ids': input,
+                'W': w},
+        outputs={'Out': tmp},
+        attrs={
+            'padding_idx': padding_idx,
+            'is_sparse': True,
+            'is_distributed': True,
+            'remote_prefetch': True,
+            'is_test': is_test,
+            'entry': entry_str
+        })
+
+    return tmp
 
 
 def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
@@ -1361,3 +1437,112 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
                 "Bias": b},
         outputs={"Out": pre_act})
     return helper.append_activation(pre_act)
+
+
+def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
+    """
+    **Pull Box Extended Sparse Layer**
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    BoxPS lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of
+            each embedding vector respectively.
+        extend_size(int): The embedding size parameter in extended dim, 
+            which indicates the size of each embedding vector respectively.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+      float32 now.
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb, emb_ex = fluid.contrib.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
+    """
+    helper = LayerHelper('pull_box_extended_sparse', **locals())
+    helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    outs_extend = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    helper.append_op(
+        type='pull_box_extended_sparse',
+        inputs={'Ids': inputs},
+        outputs={'Out': outs,
+                 'OutExtend': outs_extend},
+        attrs={'emb_size': size,
+               'emb_extended_size': extend_size})
+    if len(outs) == 1:
+        return outs[0], outs_extend[0]
+    return outs, outs_extend
+
+
+def bilateral_slice(x, guide, grid, has_offset, name=None):
+    """
+    :alias_main: paddle.nn.functional.bilateral_slice
+	:alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
+	:old_api: paddle.fluid.layers.bilateral_slice
+
+    This operation implements bilateral slicing on the input according to the guide map.
+    For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_
+
+    Args:
+        x(Variable): The input tensor, which is a 4-D tensor with shape
+                     [N, C, H, W], N is the batch size, C is the channel
+                     number, H and W is the feature height and width.
+                     The data type is float32 and float64.
+        guide(Variable): Input grid tensor of shape [N, H, W]. The
+                        data type is float32 and float64.
+        grid(Variable): Input grid tensor of shape [N, C, D, H, W]. The
+                        data type is float32 and float64.
+        has_offset(bool): Whether to slice with affine offset.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Variable: Output of shape [N, C, H, W]. The data type is same as input tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x = fluid.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
+            guide = fluid.data(name='guide', shape=[None, 101, 60], dtype='float32')
+            grid = fluid.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
+
+            # without offset
+            output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=False)
+            
+            # has offset
+            output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=True)
+
+    """
+    helper = LayerHelper("bilateral_slice", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'bilateral_slice')
+    check_variable_and_dtype(guide, 'guide', ['float32', 'float64'],
+                             'bilateral_slice')
+    check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
+                             'bilateral_slice')
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    inputs = {'X': x, 'Guide': guide, 'Grid': grid}
+
+    helper.append_op(
+        type='bilateral_slice',
+        inputs=inputs,
+        attrs={'has_offset': has_offset},
+        outputs={'Out': out})
+    return out

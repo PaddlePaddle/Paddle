@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/operator.h"
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
@@ -20,13 +22,13 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
@@ -604,6 +606,29 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return op_.Outputs(name);
   }
 
+  std::string GetInputNameByIdx(size_t idx) const override {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
+    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
+                      platform::errors::OutOfRange(
+                          "The index should be less than the size of inputs of "
+                          "operator %s, but got index is %d and size is %d",
+                          op_.Type(), idx, op_proto->inputs().size()));
+    return op_proto->inputs()[idx].name();
+  }
+
+  std::string GetOutputNameByIdx(size_t idx) const override {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
+    PADDLE_ENFORCE_LT(
+        idx, op_proto->outputs().size(),
+        platform::errors::OutOfRange(
+            "The index should be less than the size of outputs of "
+            "operator %s, but got index is %d and size is %d",
+            op_.Type(), idx, op_proto->outputs().size()));
+    return op_proto->outputs()[idx].name();
+  }
+
   void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) override {
     auto in_it = ctx_.inputs.find(in);
@@ -1050,7 +1075,16 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
       expected_kernel_key.place_ = platform::CPUPlace();
-    } else if (Attr<std::string>("op_device") == "gpu") {
+    } else if (Attr<std::string>("op_device").find("gpu") !=
+               std::string::npos) {
+      auto device = Attr<std::string>("op_device");
+      size_t pos = device.find(':');
+      if (pos != std::string::npos) {
+        device = device.substr(0, pos);
+        LOG_FIRST_N(WARNING, 1)
+            << "Device index is only supported under pipeline parallelism, "
+            << "so it will be ignored.";
+      }
       // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
       // will be executed and a warning will be given at the same time.
       if (SupportGPU()) {

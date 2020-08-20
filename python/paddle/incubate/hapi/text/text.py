@@ -254,7 +254,8 @@ class BasicLSTMCell(RNNCell):
         # TODO(guosheng): find better way to resolve constants in __init__
         self._forget_bias = layers.create_global_var(
             shape=[1], dtype=dtype, value=forget_bias, persistable=True)
-        self._forget_bias.stop_gradient = True
+        # TODO(guosheng): refine this if recurrent_op removes gradient require
+        self._forget_bias.stop_gradient = False
         self._dtype = dtype
         self._input_size = input_size
 
@@ -1803,7 +1804,7 @@ class DynamicDecode(Layer):
             from paddle.fluid.layers import BeamSearchDecoder
             from paddle.incubate.hapi.text import StackedLSTMCell, DynamicDecode
 
-            paddle.enable_dygraph()
+            paddle.disable_static()
 
             vocab_size, d_model, = 100, 32
             encoder_output = paddle.rand((2, 4, d_model))
@@ -2277,7 +2278,7 @@ class TransformerCell(RNNCell):
             from paddle.incubate.hapi.text import TransformerBeamSearchDecoder
             from paddle.incubate.hapi.text import DynamicDecode
 
-            paddle.enable_dygraph()
+            paddle.disable_static()
 
             class Embedder(fluid.dygraph.Layer):
                 def __init__(self):
@@ -2444,7 +2445,7 @@ class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
             from paddle.incubate.hapi.text import TransformerBeamSearchDecoder
             from paddle.incubate.hapi.text import DynamicDecode
 
-            paddle.enable_dygraph()
+            paddle.disable_static()
 
             class Embedder(fluid.dygraph.Layer):
                 def __init__(self):

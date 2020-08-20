@@ -1,11 +1,15 @@
 ﻿
-# PaddlePaddle
+<p align="center">
+<img align="center" src="doc/imgs/logo.png", width=1600>
+<p>
+    
+--------------------------------------------------------------------------------
 
 English | [简体中文](./README_cn.md)
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org.cn/documentation/docs/en/1.7/beginners_guide/index_en.html)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.7/beginners_guide/index_cn.html)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/beginners_guide/index_en.html)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/beginners_guide/index_cn.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
@@ -18,7 +22,7 @@ PaddlePaddle is originated from industrial practices with dedication and commitm
 
 ## Installation
 
-### Latest PaddlePaddle Release: [v1.7](https://github.com/PaddlePaddle/Paddle/tree/release/1.7)
+### Latest PaddlePaddle Release: [v1.8](https://github.com/PaddlePaddle/Paddle/tree/release/1.8)
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest features of PaddlePaddle.
@@ -29,7 +33,7 @@ pip install paddlepaddle
 # Linux GPU cuda10cudnn7
 pip install paddlepaddle-gpu
 # Linux GPU cuda9cudnn7
-pip install paddlepaddle-gpu==1.7.2.post97
+pip install paddlepaddle-gpu==1.8.4.post97
 
 ```
 It is recommended to read [this doc](https://www.paddlepaddle.org.cn/documentation/docs/en/beginners_guide/install/index_en.html) on our website.
@@ -63,8 +67,8 @@ Now our developers can acquire Tesla V100 online computing resources for free. I
 
 ## Documentation
 
-We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.7/beginners_guide/index_en.html) and
-[Chinese](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.7/beginners_guide/index_cn.html) documentation.
+We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/beginners_guide/index_en.html) and
+[Chinese](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/beginners_guide/index_cn.html) documentation.
 
 - [Basic Deep Learning Models](https://www.paddlepaddle.org.cn/documentation/docs/en/beginners_guide/basics/index_en.html#basic-deep-learning-models)
 
@@ -86,7 +90,7 @@ We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.7/be
    Our new API enables much shorter programs.
 
 
-- [How to Contribute](http://paddlepaddle.org.cn/documentation/docs/en/1.7/advanced_usage/development/contribute_to_paddle/index_en.html)
+- [How to Contribute](http://paddlepaddle.org.cn/documentation/docs/en/1.8/advanced_usage/development/contribute_to_paddle/index_en.html)
 
    We appreciate your contributions!
 

@@ -431,13 +431,16 @@ class Reshape2OpMaker : public ReshapeOpMaker {
               "XShape is just used to store the shape and lod of X, which will "
               "be used in FlattenGradOp.")
         .AsIntermediate();
-    /* int8 parameters */
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. "
-                  "Used only on CPU.")
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
   }
 };
 
@@ -545,12 +548,12 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(ReshapeOpInplaceInToOut, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInToOut,
+DECLARE_INPLACE_OP_INFERER(ReshapeOpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-DECLARE_INPLACE_OP_INFERER(ReshapeDoubleGradInplaceInToOut, {"DDX", "DDOut"});
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReshapeDoubleGradOpNoNeedBufferVarInference,
+DECLARE_INPLACE_OP_INFERER(ReshapeDoubleGradInplaceInferer, {"DDX", "DDOut"});
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReshapeDoubleGradOpNoNeedBufferVarInferer,
                                     "DOut");
 
 }  // namespace operators
@@ -562,9 +565,9 @@ REGISTER_OPERATOR(
     reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
-    ops::ReshapeOpInplaceInToOut);
+    ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp,
-                  ops::ReshapeGradInplaceInToOut);
+                  ops::ReshapeGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int, ops::ReshapeKernel,
@@ -576,14 +579,14 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
 REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
-                  ops::ReshapeOpInplaceInToOut);
+                  ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
                   ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
-                  ops::ReshapeGradInplaceInToOut);
+                  ops::ReshapeGradInplaceInferer);
 REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
-                  ops::ReshapeDoubleGradInplaceInToOut,
-                  ops::ReshapeDoubleGradOpNoNeedBufferVarInference);
+                  ops::ReshapeDoubleGradInplaceInferer,
+                  ops::ReshapeDoubleGradOpNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int8_t, ops::ReshapeKernel,

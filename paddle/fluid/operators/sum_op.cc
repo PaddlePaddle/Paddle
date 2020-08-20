@@ -299,7 +299,7 @@ class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(SumInplace, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(SumInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
 }  // namespace paddle
@@ -308,7 +308,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradDescMaker,
                   ops::SumGradOpBaseMaker, ops::SumOpVarTypeInference,
-                  ops::SumInplace);
+                  ops::SumInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     sum, ops::SumKernel<paddle::platform::CPUDeviceContext, float>,

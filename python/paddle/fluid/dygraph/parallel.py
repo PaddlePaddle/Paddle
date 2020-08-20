@@ -19,7 +19,6 @@ from .. import core
 from . import layers
 from . import parallel_helper
 from .. import framework
-from ..layers import collective
 from . import to_variable, no_grad
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
@@ -243,41 +242,38 @@ class DataParallel(layers.Layer):
     Examples:
         .. code-block:: python
 
-           import numpy as np
-           import paddle.fluid as fluid
-           import paddle.fluid.dygraph as dygraph
-           from paddle.fluid.optimizer import AdamOptimizer
-           from paddle.fluid.dygraph.nn import Linear
-           from paddle.fluid.dygraph.base import to_variable
+            import numpy as np
+            import paddle.fluid as fluid
 
-           place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-           with fluid.dygraph.guard(place=place):
+            place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+            with fluid.dygraph.guard(place):
 
-               # prepare the data parallel context
-               strategy=dygraph.prepare_context()
+                # prepare the data parallel context
+                strategy = fluid.dygraph.prepare_context()
 
-               linear = Linear(1, 10, act="softmax")
-               adam = fluid.optimizer.AdamOptimizer()
+                linear = fluid.dygraph.Linear(1, 10, act="softmax")
+                adam = fluid.optimizer.AdamOptimizer(
+                    learning_rate=0.001, parameter_list=linear.parameters())
 
-               # make the module become the data parallelism module
-               linear = dygraph.DataParallel(linear, strategy)
+                # make the module become the data parallelism module
+                linear = fluid.dygraph.DataParallel(linear, strategy)
 
-               x_data = np.random.random(size=[10, 1]).astype(np.float32)
-               data = to_variable(x_data)
+                x_data = np.random.random(size=[10, 1]).astype(np.float32)
+                data = fluid.dygraph.to_variable(x_data)
 
-               hidden = linear(data)
-               avg_loss = fluid.layers.mean(hidden)
+                hidden = linear(data)
+                avg_loss = fluid.layers.mean(hidden)
 
-               # scale the loss according to the number of trainers.
-               avg_loss = linear.scale_loss(avg_loss)
+                # scale the loss according to the number of trainers.
+                avg_loss = linear.scale_loss(avg_loss)
 
-               avg_loss.backward()
+                avg_loss.backward()
 
-               # collect the gradients of trainers.
-               linear.apply_collective_grads()
+                # collect the gradients of trainers.
+                linear.apply_collective_grads()
 
-               adam.minimize(avg_loss)
-               linear.clear_gradients()
+                adam.minimize(avg_loss)
+                linear.clear_gradients()
     """
 
     def __init__(self, layers, strategy):
@@ -307,20 +303,23 @@ class DataParallel(layers.Layer):
 
                 import numpy as np
                 import paddle.fluid as fluid
-                import paddle.fluid.dygraph as dygraph
-                from paddle.fluid.optimizer import AdamOptimizer
-                from paddle.fluid.dygraph.nn import Linear
-                from paddle.fluid.dygraph.base import to_variable
 
-                place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-                with fluid.dygraph.guard(place=place):
-                    strategy=dygraph.prepare_context()
-                    linear = Linear(1, 10, act="softmax")
-                    adam = fluid.optimizer.AdamOptimizer()
-                    linear = dygraph.DataParallel(linear, strategy)
+                place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+                with fluid.dygraph.guard(place):
+
+                    # prepare the data parallel context
+                    strategy = fluid.dygraph.prepare_context()
+
+                    linear = fluid.dygraph.Linear(1, 10, act="softmax")
+                    adam = fluid.optimizer.AdamOptimizer(
+                        learning_rate=0.001, parameter_list=linear.parameters())
+
+                    # make the module become the data parallelism module
+                    linear = fluid.dygraph.DataParallel(linear, strategy)
 
                     x_data = np.random.random(size=[10, 1]).astype(np.float32)
-                    data = to_variable(x_data)
+                    data = fluid.dygraph.to_variable(x_data)
+
                     hidden = linear(data)
                     avg_loss = fluid.layers.mean(hidden)
 
@@ -328,6 +327,8 @@ class DataParallel(layers.Layer):
                     avg_loss = linear.scale_loss(avg_loss)
 
                     avg_loss.backward()
+
+                    # collect the gradients of trainers.
                     linear.apply_collective_grads()
 
                     adam.minimize(avg_loss)
@@ -381,7 +382,7 @@ class DataParallel(layers.Layer):
                 self._reshape_inplace(x=g_var, shape=g_shape)
                 assert g_var.shape == g_shape
 
-    @no_grad
+    @no_grad()
     def apply_collective_grads(self):
         """
         AllReduce the Parameters' gradient.
@@ -391,23 +392,29 @@ class DataParallel(layers.Layer):
 
                 import numpy as np
                 import paddle.fluid as fluid
-                import paddle.fluid.dygraph as dygraph
-                from paddle.fluid.optimizer import AdamOptimizer
-                from paddle.fluid.dygraph.nn import Linear
-                from paddle.fluid.dygraph.base import to_variable
 
-                place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-                with fluid.dygraph.guard(place=place):
-                    strategy=dygraph.prepare_context()
-                    linear = Linear(1, 10, act="softmax")
-                    adam = fluid.optimizer.AdamOptimizer()
-                    linear = dygraph.DataParallel(linear, strategy)
+                place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+                with fluid.dygraph.guard(place):
+
+                    # prepare the data parallel context
+                    strategy = fluid.dygraph.prepare_context()
+
+                    linear = fluid.dygraph.Linear(1, 10, act="softmax")
+                    adam = fluid.optimizer.AdamOptimizer(
+                        learning_rate=0.001, parameter_list=linear.parameters())
+
+                    # make the module become the data parallelism module
+                    linear = fluid.dygraph.DataParallel(linear, strategy)
 
                     x_data = np.random.random(size=[10, 1]).astype(np.float32)
-                    data = to_variable(x_data)
+                    data = fluid.dygraph.to_variable(x_data)
+
                     hidden = linear(data)
                     avg_loss = fluid.layers.mean(hidden)
+
+                    # scale the loss according to the number of trainers.
                     avg_loss = linear.scale_loss(avg_loss)
+
                     avg_loss.backward()
 
                     # collect the gradients of trainers.
@@ -421,13 +428,22 @@ class DataParallel(layers.Layer):
 
         grad_var_set = set()
         grad_vars = []
+        sparse_grad_vars = []
         for param in self._layers.parameters():
             # NOTE(zcd): The grad_ivar maybe no generated.
             if param.trainable and (param._grad_ivar() is not None):
                 g_var = param._grad_ivar()
+                if g_var._is_sparse():
+                    sparse_grad_vars.append(g_var)
+                    continue
                 grad_vars.append(g_var)
                 assert g_var not in grad_var_set
                 grad_var_set.add(g_var)
+
+        if sparse_grad_vars:
+            sparse_grad_vars.sort(key=lambda x: x.name)
+            for grad_var in sparse_grad_vars:
+                grad_var._allreduce(self._strategy)
 
         # FIXME(zcd): the type of the var should be LoDTensor, i.e
         # the gradients should be dense, otherwise, the following
@@ -450,9 +466,8 @@ class DataParallel(layers.Layer):
 
         coalesced_grads_and_vars = self._coalesce_tensors(grad_var_groups)
 
-        for coalesced_grad, g_vars, g_shapes in coalesced_grads_and_vars:
-            collective._allreduce(
-                coalesced_grad, coalesced_grad, sync_mode=False)
+        for coalesced_grad, _, _ in coalesced_grads_and_vars:
+            coalesced_grad._allreduce(self._strategy)
 
         self._split_tensors(coalesced_grads_and_vars)
 

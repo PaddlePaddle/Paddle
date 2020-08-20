@@ -88,7 +88,8 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SquaredL2DistanceGradOpNoBuffer, "X", "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SquaredL2DistanceGradOpNoBufferVarsInferer,
+                                    "X", "Y");
 
 template <typename T>
 class SquaredL2DistanceGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -192,7 +193,7 @@ REGISTER_OPERATOR(
     ops::SquaredL2DistanceGradOpMaker<paddle::framework::OpDesc>,
     ops::SquaredL2DistanceGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp,
-                  ops::SquaredL2DistanceGradOpNoBuffer);
+                  ops::SquaredL2DistanceGradOpNoBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_distance,
     ops::SquaredL2DistanceKernel<paddle::platform::CPUDeviceContext, float>);

@@ -135,8 +135,7 @@ class WhereOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(WhereGradNoNeedBufferVarsInference, "X",
-                                    "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(WhereGradNoNeedBufferVarsInferer, "X", "Y");
 }  // namespace operators
 }  // namespace paddle
 
@@ -146,7 +145,7 @@ REGISTER_OPERATOR(where, ops::WhereOp, ops::WhereOpMaker,
                   ops::WhereOpGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(where_grad, ops::WhereGradOp,
-                  ops::WhereGradNoNeedBufferVarsInference);
+                  ops::WhereGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     where, ops::WhereKernel<paddle::platform::CPUDeviceContext, float>,
     ops::WhereKernel<paddle::platform::CPUDeviceContext, double>,

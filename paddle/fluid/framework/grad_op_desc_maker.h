@@ -18,7 +18,9 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/imperative/dygraph_grad_maker.h"
@@ -94,14 +96,14 @@ class GradOpDescMakerBase {
     if (!drop_empty_grad) {
       return ret_val;
     }
-    PADDLE_ENFORCE_LE(var_names.size(), 1UL,
-                      "BUG from operator developer:"
-                      " for input argument with a list of variables, "
-                      " drop_empty_grad is not allowed because it makes"
-                      " the correspondence bewteen a variable and its gradient"
-                      " ambiguous."
-                      " Op type %s",
-                      fwd_op_.Type());
+    PADDLE_ENFORCE_LE(
+        var_names.size(), 1UL,
+        platform::errors::Unavailable(
+            "BUG from operator developer:"
+            " for input argument with a list of variables, "
+            " drop_empty_grad is not allowed because it makes"
+            " the correspondence bewteen a variable and its gradient"
+            " ambiguous."));
 
     std::vector<std::string> dropped_ret_val;
     dropped_ret_val.reserve(ret_val.size());
@@ -155,7 +157,8 @@ class GradOpDescMakerBase {
   const Attribute& GetAttr(const std::string& name) const {
     auto& map = fwd_op_.GetAttrMap();
     auto it = map.find(name);
-    PADDLE_ENFORCE(it != map.end(), "Cannot find attribute %s", name);
+    PADDLE_ENFORCE_NE(it, map.end(), platform::errors::NotFound(
+                                         "Cannot find attribute (%s).", name));
     return it->second;
   }
 
@@ -195,7 +198,14 @@ class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
   std::vector<std::unique_ptr<OpDesc>> operator()() const final {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(new OpDesc());
-    this->Apply(retv.front().get());
+    try {
+      this->Apply(retv.front().get());
+    } catch (platform::EnforceNotMet& exception) {
+      framework::AppendErrorOpHint(retv.front().get()->Type(), &exception);
+      throw std::move(exception);
+    } catch (...) {
+      std::rethrow_exception(std::current_exception());
+    }
     return retv;
   }
 
@@ -213,7 +223,14 @@ class SingleGradOpMaker<imperative::OpBase>
     auto node = this->NewGradNode();
     {
       imperative::TracedGradOp traced_grad_op(node);
-      this->Apply(&traced_grad_op);
+      try {
+        this->Apply(&traced_grad_op);
+      } catch (platform::EnforceNotMet& exception) {
+        framework::AppendErrorOpHint(traced_grad_op.Type(), &exception);
+        throw std::move(exception);
+      } catch (...) {
+        std::rethrow_exception(std::current_exception());
+      }
     }
     return node->empty() ? nullptr : node;
   }

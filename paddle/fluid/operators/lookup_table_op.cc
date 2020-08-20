@@ -92,31 +92,49 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
         .SetDefault(kNoPadding);
-    // NOTE(minqiyang): grad_inplace is an temporal attribute,
-    // please do NOT set this attribute in python layer.
-    AddAttr<bool>("grad_inplace",
-                  "(boolean, default false) "
-                  "If the grad op reuse the input's variable.")
+
+    // for parameter training config
+    AddAttr<bool>("remote_prefetch",
+                  "pull sparse params from parameters, this can only be used "
+                  "in distributed training")
         .SetDefault(false);
 
-    // for parameter prefetch
-    AddAttr<bool>("remote_prefetch", "").SetDefault(false);
-    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::vector<int64_t>>("height_sections",
-                                  "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int64_t>({}));
-    AddAttr<std::vector<std::string>>(
-        "epmap",
-        "(string vector, default 127.0.0.1:6164)"
-        "Server endpoints in the order of input variables for mapping")
-        .SetDefault({});
+    AddAttr<std::string>("entry_config",
+                         "embedding sparse feature entry config, "
+                         " probability entry / counting "
+                         " this can only be used in distributed training"
+                         "entry")
+        .SetDefault("");
+
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training.")
+        .SetDefault(false);
+
+    AddAttr<std::string>("entry",
+                         "(std::string, default "
+                         ") for entry attribute.")
+        .SetDefault("none");
+
     AddAttr<std::vector<std::string>>(
         "table_names",
         "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});
-
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<bool>("grad_inplace",
+                  "(boolean, default false) "
+                  "If the grad op reuse the input's variable.")
+        .SetDefault(false);
+    AddAttr<std::vector<std::string>>(
+        "epmap",
+        "(string vector, default 127.0.0.1:6164)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
     AddComment(R"DOC(
 Lookup Table Operator.
 
@@ -130,7 +148,7 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(LookupTableGradOpNoBuffer, "W");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LookupTableGradOpNoBufferVarsInferer, "W");
 
 template <typename T>
 class LookupTableGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -198,7 +216,7 @@ REGISTER_OPERATOR(lookup_table, ops::LookupTableOp, ops::LookupTableOpMaker,
                   ops::LookupTableGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
-                  ops::LookupTableGradOpNoBuffer,
+                  ops::LookupTableGradOpNoBufferVarsInferer,
                   ops::LookupTableOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,

@@ -116,7 +116,7 @@ class ArgsortGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ArgsortGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ArgsortGradNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -126,7 +126,7 @@ REGISTER_OPERATOR(argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
                   ops::ArgsortGradOpMaker<paddle::framework::OpDesc>,
                   ops::ArgsortGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(argsort_grad, ops::ArgsortGradOp,
-                  ops::ArgsortGradNoNeedBufferVarInference);
+                  ops::ArgsortGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(argsort,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, float>,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, double>,

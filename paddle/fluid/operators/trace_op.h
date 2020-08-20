@@ -24,10 +24,10 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct DiagFunctor {
-  DiagFunctor(const T* input, const int64_t* diag_stride,
-              const int64_t* ret_strides, int64_t pos, int64_t dim_size,
-              T* diag)
+struct DiagonalFunctor {
+  DiagonalFunctor(const T* input, const int64_t* diag_stride,
+                  const int64_t* ret_strides, int64_t pos, int64_t dim_size,
+                  T* diag)
       : input_(input),
         diag_stride_(diag_stride),
         ret_strides_(ret_strides),
@@ -157,8 +157,8 @@ framework::Tensor Diagonal(const framework::ExecutionContext& context,
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, diag.numel());
-    DiagFunctor<T> functor(input_data, diag_arr, ret_arr, pos, dim_size,
-                           diag_data);
+    DiagonalFunctor<T> functor(input_data, diag_arr, ret_arr, pos, dim_size,
+                               diag_data);
     for_range(functor);
     return diag;
   } else {
@@ -174,8 +174,8 @@ class TraceKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
 
     const int64_t offset = context.Attr<int>("offset");
-    const int64_t dim1 = context.Attr<int>("dim1");
-    const int64_t dim2 = context.Attr<int>("dim2");
+    const int64_t dim1 = context.Attr<int>("axis1");
+    const int64_t dim2 = context.Attr<int>("axis2");
 
     auto output_dims = out->dims();
 
@@ -205,8 +205,8 @@ class TraceGradKernel : public framework::OpKernel<T> {
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
 
     int64_t offset = context.Attr<int>("offset");
-    int64_t dim1 = context.Attr<int>("dim1");
-    int64_t dim2 = context.Attr<int>("dim2");
+    int64_t dim1 = context.Attr<int>("axis1");
+    int64_t dim2 = context.Attr<int>("axis2");
 
     auto input_dims = d_x->dims();
     auto input_stride = framework::stride(input_dims);

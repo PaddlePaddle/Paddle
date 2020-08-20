@@ -22,9 +22,7 @@ from __future__ import print_function
 from .random import randperm
 from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
-from .creation import create_tensor  #DEFINE_ALIAS
-# from .creation import create_lod_tensor        #DEFINE_ALIAS
-# from .creation import create_random_int_lodtensor        #DEFINE_ALIAS
+from .creation import to_tensor  #DEFINE_ALIAS
 from .creation import crop_tensor  #DEFINE_ALIAS
 from .creation import diag  #DEFINE_ALIAS
 from .creation import eye  #DEFINE_ALIAS
@@ -55,6 +53,7 @@ from .linalg import cross  #DEFINE_ALIAS
 from .linalg import cholesky  #DEFINE_ALIAS
 # from .linalg import tensordot        #DEFINE_ALIAS
 from .linalg import bmm  #DEFINE_ALIAS
+from .linalg import histogram  #DEFINE_ALIAS
 from .logic import equal  #DEFINE_ALIAS
 from .logic import greater_equal  #DEFINE_ALIAS
 from .logic import greater_than  #DEFINE_ALIAS
@@ -70,17 +69,19 @@ from .logic import not_equal  #DEFINE_ALIAS
 from .logic import reduce_all  #DEFINE_ALIAS
 from .logic import reduce_any  #DEFINE_ALIAS
 from .logic import allclose  #DEFINE_ALIAS
-from .logic import elementwise_equal  #DEFINE_ALIAS
+from .logic import equal_all  #DEFINE_ALIAS
 # from .logic import isnan        #DEFINE_ALIAS
 from .manipulation import cast  #DEFINE_ALIAS
 from .manipulation import concat  #DEFINE_ALIAS
 from .manipulation import expand  #DEFINE_ALIAS
+from .manipulation import broadcast_to  #DEFINE_ALIAS
 from .manipulation import expand_as  #DEFINE_ALIAS
+from .manipulation import tile  #DEFINE_ALIAS
 from .manipulation import flatten  #DEFINE_ALIAS
 from .manipulation import gather  #DEFINE_ALIAS
 from .manipulation import gather_nd  #DEFINE_ALIAS
 from .manipulation import reshape  #DEFINE_ALIAS
-from .manipulation import reverse  #DEFINE_ALIAS
+from .manipulation import flip as reverse  #DEFINE_ALIAS
 from .manipulation import scatter  #DEFINE_ALIAS
 from .manipulation import scatter_nd_add  #DEFINE_ALIAS
 from .manipulation import scatter_nd  #DEFINE_ALIAS
@@ -98,27 +99,26 @@ from .manipulation import unstack  #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 from .manipulation import unbind  #DEFINE_ALIAS
 from .manipulation import roll  #DEFINE_ALIAS
+from .manipulation import chunk  #DEFINE_ALIAS
 from .math import abs  #DEFINE_ALIAS
 from .math import acos  #DEFINE_ALIAS
 from .math import asin  #DEFINE_ALIAS
 from .math import atan  #DEFINE_ALIAS
 from .math import ceil  #DEFINE_ALIAS
 from .math import cos  #DEFINE_ALIAS
+from .math import cosh  #DEFINE_ALIAS
 from .math import cumsum  #DEFINE_ALIAS
 from .math import elementwise_add  #DEFINE_ALIAS
 from .math import elementwise_div  #DEFINE_ALIAS
 from .math import elementwise_floordiv  #DEFINE_ALIAS
-from .math import elementwise_max  #DEFINE_ALIAS
-from .math import elementwise_min  #DEFINE_ALIAS
-from .math import elementwise_mod  #DEFINE_ALIAS
 from .math import elementwise_mul  #DEFINE_ALIAS
+from .math import elementwise_mod  #DEFINE_ALIAS
 from .math import elementwise_pow  #DEFINE_ALIAS
 from .math import elementwise_sub  #DEFINE_ALIAS
 from .math import exp  #DEFINE_ALIAS
 from .math import floor  #DEFINE_ALIAS
 from .math import increment  #DEFINE_ALIAS
 from .math import log  #DEFINE_ALIAS
-from .math import mul  #DEFINE_ALIAS
 from .math import multiplex  #DEFINE_ALIAS
 from .math import pow  #DEFINE_ALIAS
 from .math import reciprocal  #DEFINE_ALIAS
@@ -131,6 +131,7 @@ from .math import rsqrt  #DEFINE_ALIAS
 from .math import scale  #DEFINE_ALIAS
 from .math import sign  #DEFINE_ALIAS
 from .math import sin  #DEFINE_ALIAS
+from .math import sinh  #DEFINE_ALIAS
 from .math import sqrt  #DEFINE_ALIAS
 from .math import square  #DEFINE_ALIAS
 from .math import stanh  #DEFINE_ALIAS
@@ -139,9 +140,12 @@ from .math import sums  #DEFINE_ALIAS
 from .math import tanh  #DEFINE_ALIAS
 from .math import elementwise_sum  #DEFINE_ALIAS
 from .math import max  #DEFINE_ALIAS
+from .math import maximum  #DEFINE_ALIAS
 from .math import min  #DEFINE_ALIAS
+from .math import minimum  #DEFINE_ALIAS
 from .math import mm  #DEFINE_ALIAS
 from .math import div  #DEFINE_ALIAS
+from .math import multiply  #DEFINE_ALIAS
 from .math import add  #DEFINE_ALIAS
 from .math import atan  #DEFINE_ALIAS
 from .math import logsumexp  #DEFINE_ALIAS
@@ -176,6 +180,5 @@ from .stat import mean  #DEFINE_ALIAS
 from .stat import reduce_mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
 from .stat import var  #DEFINE_ALIAS
-# from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS

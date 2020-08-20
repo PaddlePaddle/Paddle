@@ -123,8 +123,7 @@ class SeqConcatGradOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SeqConcatGradNoNeedBufferVarsInference,
-                                    "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SeqConcatGradNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -140,7 +139,7 @@ REGISTER_OP_CPU_KERNEL(sequence_concat, Kernel<float>, Kernel<double>,
                        Kernel<int>, Kernel<int64_t>);
 
 REGISTER_OPERATOR(sequence_concat_grad, op::SeqConcatGradOp,
-                  op::SeqConcatGradNoNeedBufferVarsInference);
+                  op::SeqConcatGradNoNeedBufferVarsInferer);
 template <typename T>
 using GradKernel =
     op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, T>;

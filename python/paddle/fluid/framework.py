@@ -64,9 +64,8 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_dygraph_current_expected_place_ = None
+_global_expected_place_ = None
 _current_device = None
-
 global_prog_seed = 0
 
 
@@ -248,7 +247,26 @@ def _dygraph_tracer():
 
 
 def _current_expected_place():
-    return _dygraph_current_expected_place_
+    global _global_expected_place_
+    if _global_expected_place_ is None:
+        if core.is_compiled_with_cuda():
+            _global_expected_place_ = core.CUDAPlace(0)
+        else:
+            _global_expected_place_ = core.CPUPlace()
+
+    return _global_expected_place_
+
+
+def _set_dygraph_tracer_expected_place(place):
+    global _dygraph_tracer_
+    if _dygraph_tracer_ is not None:
+        _dygraph_tracer_._expected_place = place
+
+
+def _set_expected_place(place):
+    global _global_expected_place_
+    _global_expected_place_ = place
+    _set_dygraph_tracer_expected_place(place)
 
 
 # TODO(zhiqiu): remove this function.
@@ -1690,33 +1708,39 @@ def get_all_op_protos():
 
 class ComplexVariable(object):
     """
-    The Variable defined on the complex number domain. It contains two common 
-    real number Variables as its members, :attr:`real` and :attr:`imag` 
+    The ComplexTensor defined on the complex number domain. It contains two common 
+    real number Tensor as its members, :attr:`real` and :attr:`imag` 
     holding the real part and imaginary part of complex numbers respectively.
     
     **Notes**:
-        **The constructor of ComplexVariable should not be invoked directly.**
+        **The constructor of ComplexTensor should not be invoked directly.**
 
-        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph ComplexVariable with complex number data.**
+        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph ComplexTensor with complex number data.**
 
     Args:
-        real (Variable): The Variable holding real-part data.
-        imag (Variable): The Variable holding imaginery-part data.
+        real (Tensor): The Tensor holding real-part data.
+        imag (Tensor): The Tensor holding imaginery-part data.
     
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
-            a = np.array([1.0+2.0j, 0.2])
-            with fluid.dygraph.guard():
-                var = fluid.dygraph.to_variable(a, name="new_var")
-                print(var.name, var.dtype, var.shape)
-                # ({'real': u'new_var.real', 'imag': u'new_var.imag'}, 'complex128', [2L]) 
-                print(var.numpy())
-                # [1. +2.j 0.2+0.j]
+            paddle.enable_imperative()
+            x = paddle.to_tensor([1.0+2.0j, 0.2])
+            print(x.name, x.dtype, x.shape)
+            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, 'complex128', [2L])
+            print(x.numpy())
+            # [1. +2.j 0.2+0.j]
+            print(type(x))
+            # <class 'paddle.ComplexTensor'>
     """
+
+    def __new__(cls, *arg, **kwargs):
+        cls.__module__ = "paddle"
+        cls.__name__ = "ComplexTensor"
+        return super(ComplexVariable, cls).__new__(cls)
 
     def __init__(self, real, imag):
         assert real.shape == imag.shape, "The real part and imaginary part " \
@@ -1764,7 +1788,9 @@ class ComplexVariable(object):
         return self.real.numpy() + 1j * self.imag.numpy()
 
     def __str__(self):
-        return "REAL: " + self.real.__str__() + "IMAG: " + self.imag.__str__()
+        return "ComplexTensor[real]: %s\n%s\nComplexTensor[imag]: %s\n%s" % (
+            self.real.name, str(self.real.value().get_tensor()), self.imag.name,
+            str(self.imag.value().get_tensor()))
 
     __repr__ = __str__
 
@@ -1867,7 +1893,7 @@ class Operator(object):
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
         'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream'
+        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue'
     }
 
     def __init__(self,
@@ -1914,8 +1940,13 @@ class Operator(object):
                     "`type` to initialized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
-                op_attrs[callstack_var_name] = list(
-                    reversed(traceback.format_stack()))[1:]
+                op_attrs[callstack_var_name] = []
+                for frame in traceback.extract_stack():
+                    op_attrs[callstack_var_name].append(
+                        '  File "{}", line {}, in {}'.format(frame[0], frame[1],
+                                                             frame[2]))
+                    op_attrs[callstack_var_name].append('    {}'.format(frame[
+                        3]))
 
             self.desc.set_type(type)
             proto = OpProtoHolder.instance().get_op_proto(type)
@@ -1954,7 +1985,7 @@ class Operator(object):
                         in_proto.name)
                     if found:
                         in_args = inputs[in_proto.name]
-                        if not isinstance(in_args, list):
+                        if not isinstance(in_args, (list, tuple)):
                             in_args = [in_args]
                         if not in_proto.duplicable and len(in_args) > 1:
                             raise ValueError(
@@ -2381,11 +2412,28 @@ class Operator(object):
     def _is_optimize_op(self):
         op_maker = core.op_proto_and_checker_maker
         OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+
+        if not self.desc.has_attr(op_maker.kOpRoleAttrName()):
+            return False
+
         op_role = self.desc.attr(op_maker.kOpRoleAttrName())
         if op_role & int(OPTIMIZE):
             return True
-        else:
+
+        return False
+
+    def _is_backward_op(self):
+        op_maker = core.op_proto_and_checker_maker
+        BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
+
+        if not self.desc.has_attr(op_maker.kOpRoleAttrName()):
             return False
+
+        op_role = self.desc.attr(op_maker.kOpRoleAttrName())
+        if op_role & int(BACKWARD):
+            return True
+
+        return False
 
 
 class Block(object):
@@ -2979,7 +3027,8 @@ class Block(object):
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
-                    lod_level=v.lod_level,
+                    lod_level=v.lod_level
+                    if v.type == core.VarDesc.VarType.LOD_TENSOR else None,
                     stop_gradient=p.stop_gradient,
                     trainable=p.trainable,
                     optimize_attr=p.optimize_attr,
@@ -3341,8 +3390,6 @@ class IrOpNode(IrNode):
         """
         assert self.node.op() is not None, \
             "The node operator description can not be None."
-        print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
-        ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
 
     def input(self, name):
@@ -3565,6 +3612,12 @@ class IrGraph(object):
         var_desc.set_shape(shape)
         var_desc.set_dtype(var_dtype)
         return IrVarNode(self.graph.create_var_node(var_desc))
+
+    def create_control_dep_var(self):
+        """
+        create a control var
+        """
+        return IrVarNode(self.graph.create_control_dep_var())
 
     def create_var_node_from_desc(self, var_desc):
         """
@@ -3932,6 +3985,13 @@ class Program(object):
 
         # appending gradients times
         self._appending_grad_times = 0
+
+        # identifier for auto checkpoint
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_program__")
+
+        # compiled program, i.e. Graph
+        self._graph = None
 
     def global_seed(self, seed=0):
         """
@@ -5059,12 +5119,13 @@ class Parameter(Variable):
 
 class ParamBase(core.VarBase):
     """
-    ParamBase is derived from VarBase( Which is the Variable in Dygraph Mode ). A ParamBase is a persistable
-    VarBase, and will be updated by optimizers after each iteration.
+    ParamBase is derived from Tensor( Which is the concept in Dygraph Mode). 
+    A ParamBase is a persistable Tensor, and will be updated by optimizers 
+    after each iteration.
     The training of a neural network is essentially the updating of
     its ParamBase.
 
-    Relative to a general Variable, a ParamBase has several its own
+    Relative to a general Tensor, a ParamBase has several its own
     member variables:
 
     Args:
@@ -5107,7 +5168,8 @@ class ParamBase(core.VarBase):
                                         list(shape) if shape else [], name,
                                         core.VarDesc.VarType.LOD_TENSOR, True)
 
-        self.trainable = kwargs.get('trainable', True)
+        trainable = kwargs.get('trainable', True)
+        self.stop_gradient = not trainable
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
@@ -5116,41 +5178,44 @@ class ParamBase(core.VarBase):
         self.do_model_average = kwargs.get('do_model_average', None)
 
         self.is_distributed = False
-
         # self.block = default_main_program().global_block()
 
+    @property
+    def trainable(self):
+        return not self.stop_gradient
+
+    @trainable.setter
+    def trainable(self, trainable):
+        if isinstance(trainable, bool):
+            self.stop_gradient = not trainable
+        else:
+            raise ValueError(
+                "The type of trainable MUST be bool, but the type is ",
+                type(trainable))
+
     def __str__(self):
-        return self.to_string(True)
-
-    def to_string(self, throw_on_error, with_details=False):
         """
-        To debug string.
+        Convert a ParamBase object to a readable string.
 
-        Args:
-            throw_on_error(bool): raise exception when self is not initialized
-                when throw_on_error is True
-            with_details(bool): more details about variables and parameters
-                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
-
-        Returns(str): The debug string.
+        Returns(str): A readable string.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                rlt = fluid.layers.data("fake_data", shape=[1,1], dtype='float32')
-                debug_str = prog.to_string(throw_on_error=True, with_details=False)
-                print(debug_str)
+                import paddle
+                paddle.disable_static()
+                conv = paddle.nn.Conv2D(3, 3, 5)
+                print(conv.weight)
+                # Parameter: conv2d_0.w_0
+                #   - place: CUDAPlace(0)
+                #   - shape: [3, 3, 5, 5]
+                #   - layout: NCHW
+                #   - dtype: float
+                #   - data: [...] 
+                paddle.enable_static()
         """
-        assert isinstance(throw_on_error, bool) and isinstance(with_details,
-                                                               bool)
-        tensor = self.value().get_tensor()
-        if tensor._is_initialized():
-            return 'Parameter: %s\n%s' % (self.name, str(tensor))
-        else:
-            return 'Parameter: %s, not initialized' % (self.name)
+        return "Parameter containing:\n  {}\n  - stop_gradient: {}".format(
+            super(ParamBase, self).__str__(), self.stop_gradient)
 
     __repr__ = __str__
 
@@ -5371,14 +5436,14 @@ def _dygraph_guard(tracer):
 
 @signature_safe_contextmanager
 def _dygraph_place_guard(place):
-    global _dygraph_current_expected_place_
-    tmp_place = _dygraph_current_expected_place_
-    _dygraph_current_expected_place_ = place
+    global _global_expected_place_
+    tmp_place = _global_expected_place_
+    _global_expected_place_ = place
 
     try:
         yield
     finally:
-        _dygraph_current_expected_place_ = tmp_place
+        _global_expected_place_ = tmp_place
 
 
 def load_op_library(lib_filename):
@@ -5455,10 +5520,17 @@ def device_guard(device=None):
             result = exe.run(fetch_list=[out])
     """
 
+    index = None
+    if device and ':' in device:
+        device, index = device.split(':')
+        if device == 'cpu':
+            raise ValueError("Should not set device id for cpu.")
     if device not in ['cpu', 'gpu', '', None]:
         raise ValueError(
             "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
+    if index:
+        device = ":".join([device, index])
     pre_device = switch_device(device)
     try:
         yield

@@ -345,7 +345,7 @@ class LinearChainCRFGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(LinearChainCRFGradNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LinearChainCRFGradNoNeedBufferVarsInferer,
                                     "Transition", "Emission");
 
 }  // namespace operators
@@ -357,7 +357,7 @@ REGISTER_OPERATOR(linear_chain_crf, ops::LinearChainCRFOp,
                   ops::LinearChainCRFGradMaker<paddle::framework::OpDesc>,
                   ops::LinearChainCRFGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp,
-                  ops::LinearChainCRFGradNoNeedBufferVarsInference);
+                  ops::LinearChainCRFGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf,
     ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, float>,
