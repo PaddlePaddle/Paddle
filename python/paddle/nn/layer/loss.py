@@ -117,7 +117,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                 print(output.numpy())
     """
 
-    def __init__(self, weight=None, reduction='mean', ignore_index=-100):
+    def __init__(self, weight=None, ignore_index=-100, reduction='mean'):
         super(CrossEntropyLoss, self).__init__()
         self.weight = weight
         self.reduction = reduction
