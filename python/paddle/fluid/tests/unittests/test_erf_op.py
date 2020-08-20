@@ -61,7 +61,7 @@ class TestErfLayer(unittest.TestCase):
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = paddle.nn.data('x', [3, 4])
+            x = paddle.static.data('x', [3, 4])
             y = paddle.erf(x, name='erf')
             self.assertTrue('erf' in y.name)
 
