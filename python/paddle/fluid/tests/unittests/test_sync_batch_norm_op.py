@@ -25,6 +25,7 @@ import six
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
+from paddle.fluid import Program, program_guard
 
 from op_test import OpTest, _set_use_system_allocator
 
@@ -200,6 +201,23 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-2
+
+
+class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
+    def test_errors(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        with program_guard(Program(), Program()):
+            my_sync_batch_norm = fluid.dygraph.SyncBatchNorm(10)
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CUDAPlace(0))
+            self.assertRaises(TypeError, my_sync_batch_norm, x1)
+
+            # the input dtype of SyncBatchNorm must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            self.assertRaises(TypeError, my_sync_batch_norm, x2)
 
 
 if __name__ == '__main__':

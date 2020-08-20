@@ -51,21 +51,22 @@ class PReluTest(OpTest):
         if self.attrs == {'mode': "all"}:
             alpha_np = np.random.uniform(-1, -0.5, (1))
         elif self.attrs == {'mode': "channel"}:
-            alpha_np = np.random.uniform(-1, -0.5, [1, self.x_shape[1]])
+            alpha_np = np.random.uniform(-1, -0.5, [1, self.x_shape[1], 1, 1])
         else:
             alpha_np = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
 
         self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
-        # NOTE(zhiqu): reshape inputs['Alpha'] from [1, 100] to [1, 100, 1, 1] since np operands could not be broadcast together with shapes (2,100,3,4) (1,100) 
+        # NOTE(zhiqu): reshape inputs['Alpha'] from [1, 100, 1, 1] to [1, 100] + [1]*len(x.shape[2:])
+        # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1) 	
+        reshaped_alpha = self.inputs['Alpha']
         if self.attrs == {'mode': "channel"}:
-            self.inputs['Alpha'] = np.reshape(
+            reshaped_alpha = np.reshape(
                 self.inputs['Alpha'],
                 [1, self.x_shape[1]] + [1] * len(self.x_shape[2:]))
 
         out_np = np.maximum(self.inputs['X'], 0.)
-        out_np = out_np + np.minimum(self.inputs['X'],
-                                     0.) * self.inputs['Alpha']
+        out_np = out_np + np.minimum(self.inputs['X'], 0.) * reshaped_alpha
         assert out_np is not self.inputs['X']
         self.outputs = {'Out': out_np}
 

@@ -35,8 +35,10 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
+from ...utils import deprecated
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
+from paddle.utils import deprecated
 
 __all__ = [
     'fc',
@@ -1189,10 +1191,6 @@ def chunk_eval(input,
 
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
-    :alias_main: paddle.nn.functional.softmax
-	:alias: paddle.nn.functional.softmax,paddle.nn.functional.activation.softmax
-	:old_api: paddle.fluid.layers.softmax
-
     This operator implements the softmax layer. The calculation process is as follows:
 
     1. The dimension :attr:`axis` of the ``input`` will be permuted to the last.
@@ -1306,8 +1304,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
     attrs = {"axis": axis, "use_cudnn": use_cudnn}
 
     helper = LayerHelper('softmax', **locals())
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'softmax')
+    check_variable_and_dtype(input, 'input/x',
+                             ['float16', 'float32', 'float64'], 'softmax')
 
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)
@@ -4400,12 +4398,9 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.mean")
 def reduce_mean(input, dim=None, keep_dim=False, name=None):
     """
-    :alias_main: paddle.reduce_mean
-	:alias: paddle.reduce_mean,paddle.tensor.reduce_mean,paddle.tensor.stat.reduce_mean
-	:old_api: paddle.fluid.layers.reduce_mean
-
     Computes the mean of the input tensor's elements along the given dimension.
 
     Args:
@@ -4454,31 +4449,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
 
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
-    if in_dygraph_mode():
-        reduce_all = True if dim == None or dim == [] or len(dim) == len(
-            input.shape) else False
-        dim = dim if dim != None and dim != [] else [0]
-        return core.ops.reduce_mean(input, 'dim', dim, 'keep_dim', keep_dim,
-                                    'reduce_all', reduce_all)
-    attrs = {
-        'dim': dim if dim != None and dim != [] else [0],
-        'keep_dim': keep_dim,
-        'reduce_all': True
-        if dim == None or dim == [] or len(dim) == len(input.shape) else False
-    }
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_mean')
-    helper = LayerHelper('reduce_mean', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='reduce_mean',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs=attrs)
-    return out
+    return paddle.mean(x=input, axis=dim, keepdim=keep_dim, name=name)
 
 
 def reduce_max(input, dim=None, keep_dim=False, name=None):
@@ -4624,7 +4595,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
     Args:
         input (Variable): The input variable which is a Tensor, the data type is float32,
             float64, int32, int64.
-        dim (list|int, optional): The dimensions along which the product is performed. If
+        dim (int|list|tuple, optional): The dimensions along which the product is performed. If
             :attr:`None`, multiply all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
@@ -4664,9 +4635,18 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
     helper = LayerHelper('reduce_prod', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
-        dim = [dim]
+        if isinstance(dim, tuple):
+            dim = list(dim)
+        elif isinstance(dim, int):
+            dim = [dim]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".
+                format(type(dim)))
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='reduce_prod',
         inputs={'X': input},
@@ -4871,7 +4851,7 @@ def split(input, num_or_sections, dim=-1, name=None):
 
         if isinstance(dim, Variable):
             dim = dim.numpy()
-            dim = dim[0]
+            dim = dim.item(0)
         dim = (len(input.shape) + dim) if dim < 0 else dim
         attrs += ('axis', dim)
 
@@ -4896,7 +4876,7 @@ def split(input, num_or_sections, dim=-1, name=None):
 
     check_variable_and_dtype(
         input, 'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'in64'], 'split')
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'split')
     check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
     check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):
@@ -5830,6 +5810,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     return loss
 
 
+@deprecated(since='2.0.0', update_to='paddle.nn.functional.one_hot')
 def one_hot(input, depth, allow_out_of_range=False):
     """
 
@@ -5915,7 +5896,7 @@ def one_hot(input, depth, allow_out_of_range=False):
             depth = depth.numpy()
             assert depth.shape == (
                 1, ), "depth of type Variable should have shape [1]"
-            depth = depth[0]
+            depth = depth.item(0)
         out = core.ops.one_hot(input, 'depth', depth, 'allow_out_of_range',
                                allow_out_of_range)
         out.stop_gradient = True
@@ -5993,7 +5974,6 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     """
     :alias_main: paddle.reshape
 	:alias: paddle.reshape,paddle.tensor.reshape,paddle.tensor.manipulation.reshape
-	:old_api: paddle.fluid.layers.reshape
 
     This operator changes the shape of ``x`` without changing its data.
 
@@ -6036,14 +6016,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         The parameter ``actual_shape`` will be deprecated in the future and only use ``shape`` instead to represent the target shape.
 
     Args:
-        x(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
-        shape(list|tuple|Variable): Define the target shape. At most one dimension of the target shape can be -1.
+        x(Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        shape(list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
                         The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
-                        If ``shape`` is an Variable, it should be an 1-D Tensor .
+                        If ``shape`` is an Tensor, it should be an 1-D Tensor .
         actual_shape(variable, optional): An 1-D ``Tensor`` or ``LoDTensor`` . The data type is ``int32`` . If provided, reshape
                                 according to this given shape rather than ``shape`` specifying shape.
                                 That is to say ``actual_shape`` has a higher priority
-                                than ``shape(list|tuple)`` but not ``shape(Variable)``. \
+                                than ``shape(list|tuple)`` but not ``shape(Tensor)``. \
                                 This argument ``actual_shape`` will be removed in a future version. \
                                 Instructions for updating: ``actual_shape`` will be removed in future versions and replaced by ``shape``.
         act (str, optional): The non-linear activation to be applied to the reshaped input. Default None.
@@ -6055,10 +6035,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``. It is a new tensor variable if ``inplace`` is ``False``, otherwise it is ``x``. If ``act`` is None, return the reshaped tensor variable, otherwise return the activated tensor variable.
+        Tensor: A reshaped Tensor with the same data type as ``x``. It is a new tensor variable if ``inplace`` is ``False``, otherwise it is ``x``. If ``act`` is None, return the reshaped tensor variable, otherwise return the activated tensor variable.
 
     Raises:
-        TypeError: If actual_shape is neither Variable nor None.
+        TypeError: If actual_shape is neither Tensor nor None.
         ValueError: If more than one elements of ``shape`` is -1.
         ValueError: If the element of ``shape`` is 0, the corresponding dimension should be less than or equal to the dimension of ``x``.
         ValueError: If the elements in ``shape`` is negative except -1.
@@ -6069,7 +6049,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             import paddle.fluid as fluid
 
             # example 1:
-            # attr shape is a list which doesn't contain tensor Variable.
+            # attr shape is a list which doesn't contain Tensors.
             data_1 = fluid.data(
               name='data_1', shape=[2, 4, 6], dtype='float32')
             reshaped_1 = fluid.layers.reshape(
@@ -6077,7 +6057,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             # the shape of reshaped_1 is [2,4,3,2].
 
             # example 2:
-            # attr shape is a list which contains tensor Variable.
+            # attr shape is a list which contains Tensors.
             data_2 = fluid.layers.fill_constant([2,25], "int32", 3)
             dim = fluid.layers.fill_constant([1], "int32", 5)
             reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
@@ -6097,7 +6077,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             )
         if isinstance(shape, (list, tuple)):
             shape = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
             out, _ = core.ops.reshape2(x, 'shape', shape)
@@ -6199,7 +6179,7 @@ def squeeze(input, axes, name=None):
             Out.shape = [1,3,5]
 
     Args:
-        input (Variable): The input Tensor. Support data type: float16, float32, float64, int8, int32, int64.
+        input (Variable): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
                           axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
                           Axes range is :math:`[-rank(input), rank(input))`.
                           If axes is negative, :math:`axes=axes+rank(input)`.
@@ -6225,8 +6205,9 @@ def squeeze(input, axes, name=None):
     helper = LayerHelper("squeeze", **locals())
     check_variable_and_dtype(
         input, 'input',
-        ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
-    check_type(axes, 'axes', (list, tuple), 'squeeze')
+        ['float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64'],
+        'squeeze')
+    check_type(axes, 'axis/axes', (list, tuple), 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -6253,12 +6234,12 @@ def unsqueeze(input, axes, name=None):
       then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
 
     Args:
-        input (Variable): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
+        input (Variable): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
         axes (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
         name (str|None): Name for this layer.
 
     Returns:
-        Variable: Output unsqueezed Tensor, with data type being float32, float64, int32, int64.
+        Variable: Unsqueezed Tensor, with the same data type as input.
 
     Examples:
         .. code-block:: python
@@ -6268,10 +6249,15 @@ def unsqueeze(input, axes, name=None):
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
-    if not isinstance(axes, (int, list, tuple, Variable)):
-        raise TypeError(
-            "The type of 'axes' in unsqueeze must be int, list, tuple or Variable, but "
-            "received %s." % (type(axes)))
+    if in_dygraph_mode():
+        out, _ = core.ops.unsqueeze2(input, 'axes', axes)
+        return out
+
+    check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
+    check_variable_and_dtype(
+        input, 'input',
+        ['float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64'],
+        'unsqueeze')
     helper = LayerHelper("unsqueeze2", **locals())
     inputs = {"X": input}
     attrs = {}
@@ -8667,11 +8653,9 @@ def relu(x, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.selu")
 def selu(x, scale=None, alpha=None, name=None):
     """
-    :alias_main: paddle.nn.functional.selu
-	:alias: paddle.nn.functional.selu,paddle.nn.functional.activation.selu
-	:old_api: paddle.fluid.layers.selu
 
     Selu Operator.
 
@@ -9328,12 +9312,9 @@ def elu(x, alpha=1.0, name=None):
     return out
 
 
-@templatedoc()
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.relu6")
 def relu6(x, threshold=6.0, name=None):
     """
-    :alias_main: paddle.nn.functional.relu6
-	:alias: paddle.nn.functional.relu6,paddle.nn.functional.activation.relu6
-	:old_api: paddle.fluid.layers.relu6
 
     ${comment}
 
@@ -9369,7 +9350,10 @@ def relu6(x, threshold=6.0, name=None):
         type='relu6',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold})
+        attrs={
+            'threshold': threshold,
+            'use_mkldnn': core.globals()["FLAGS_use_mkldnn"]
+        })
     return out
 
 
@@ -9661,7 +9645,8 @@ def prelu(x, mode, param_attr=None, name=None):
         ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
         #NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
         # To be consistent with Prelu, it is simplified.
-        alpha_shape = [1, x.shape[1]]
+        #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
+        alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
         assert len(
             x.shape
@@ -9911,7 +9896,7 @@ def flatten(x, axis=1, name=None):
     return out
 
 
-def stack(x, axis=0):
+def stack(x, axis=0, name=None):
     """
 
     This OP stacks all the inputs :code:`x` along axis.
@@ -9966,7 +9951,7 @@ def stack(x, axis=0):
                                      must be the same. Supposing input is N dims
                                      Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
                                      Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
-                                     Support data types: float32, float64, int32, int64.
+                                     Supported data types: float32, float64, int32, int64.
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`.
                               R is the first tensor of inputs. If ``axis`` < 0, :math:`axis=axis+rank(x[0])+1`.
                               The default value of axis is 0.
@@ -9991,15 +9976,16 @@ def stack(x, axis=0):
             data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
-
-    helper = LayerHelper('stack', **locals())
     axis = 0 if axis is None else axis
-
     if not isinstance(x, list) and not isinstance(x, tuple):
         x = [x]
+
+    if in_dygraph_mode():
+        return core.ops.stack(x, 'axis', axis)
+
+    helper = LayerHelper('stack', **locals())
     out = helper.create_variable_for_type_inference(x[0].dtype)
-    if not in_dygraph_mode() and \
-            x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
                             "number of the elements must be 1, but received %s." % len(x)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
@@ -10114,12 +10100,12 @@ def unstack(x, axis=0, num=None):
     raised.
 
     Args:
-        x (Variable): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
+        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
         axis (int): The axis along which the input is unstacked.
         num (int|None): The number of output variables.
 
     Returns:
-        list(Variable): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
+        list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
 
     Raises:
         ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
@@ -10128,7 +10114,7 @@ def unstack(x, axis=0, num=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
+            x = fluid.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
             y = fluid.layers.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
@@ -10215,7 +10201,7 @@ def expand(x, expand_times, name=None):
     if in_dygraph_mode():
         if isinstance(expand_times, (list, tuple)):
             expand_times = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in expand_times
             ]
 
@@ -10826,11 +10812,11 @@ def slice(input, axes, starts, ends):
         if isinstance(starts, (list, tuple)) and isinstance(ends,
                                                             (list, tuple)):
             starts = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in starts
             ]
             ends = [
-                item.numpy()[0] if isinstance(item, Variable) else item
+                item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in ends
             ]
 
@@ -11434,7 +11420,12 @@ Examples:
     """
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_add')
+            x,
+            y,
+            axis=axis,
+            act=act,
+            op_name='elementwise_add',
+            use_mkldnn=core.globals()["FLAGS_use_mkldnn"])
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
@@ -11615,6 +11606,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.multiply")
 def elementwise_mul(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_mul
@@ -11961,7 +11953,7 @@ for func in [
         ],
         skip_attrs_set={
             "x_data_format", "y_data_format", "axis", "use_quantizer",
-            "Scale_x", "Scale_y", "Scale_out"
+            "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
 
 for func in []:
@@ -12065,11 +12057,11 @@ def logical_and(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x_data = np.array([True, True, False, False], dtype=np.bool)
             y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.imperative.to_variable(x_data)
-            y = paddle.imperative.to_variable(y_data)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
             res = paddle.logical_and(x, y)
             print(res.numpy()) # [True False False False]
     """
@@ -12107,11 +12099,11 @@ def logical_or(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x_data = np.array([True, True, False, False], dtype=np.bool)
             y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.imperative.to_variable(x_data)
-            y = paddle.imperative.to_variable(y_data)
+            x = paddle.to_variable(x_data)
+            y = paddle.to_variable(y_data)
             res = paddle.logical_or(x, y)
             print(res.numpy()) # [True  True  True False]
     """
@@ -12149,11 +12141,11 @@ def logical_xor(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x_data = np.array([True, True, False, False], dtype=np.bool)
             y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.imperative.to_variable(x_data)
-            y = paddle.imperative.to_variable(y_data)
+            x = paddle.to_variable(x_data)
+            y = paddle.to_variable(y_data)
             res = paddle.logical_xor(x, y)
             print(res.numpy()) # [False  True  True False]
     """
@@ -12189,9 +12181,9 @@ def logical_not(x, out=None, name=None):
             import paddle
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
             x_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.imperative.to_variable(x_data)
+            x = paddle.to_variable(x_data)
             res = paddle.logical_not(x)
             print(res.numpy()) # [False  True False  True]
     """
@@ -12323,6 +12315,7 @@ def mean(x, name=None):
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
     """
+
     if in_dygraph_mode():
         return core.ops.mean(x)
 
