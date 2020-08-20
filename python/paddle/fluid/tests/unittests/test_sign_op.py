@@ -60,7 +60,7 @@ class TestSignAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             np_x = np.array([-1., 0., -0., 1.2, 1.5], dtype='float64')
             x = paddle.to_tensor(np_x)
-            z = paddle.tensor.math.sign(x)
+            z = paddle.sign(x)
             np_z = z.numpy()
             z_expected = np.sign(np_x)
             self.assertEqual((np_z == z_expected).all(), True)
@@ -79,7 +79,7 @@ class TestSignAPI(unittest.TestCase):
             self.assertRaises(TypeError, paddle.tensor.math.sign, input3)
             input4 = fluid.layers.data(
                 name='input4', shape=[4], dtype="float16")
-            paddle.tensor.math.sign(input4)
+            paddle.sign(input4)
 
 
 if __name__ == "__main__":

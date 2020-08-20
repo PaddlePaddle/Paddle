@@ -13986,6 +13986,7 @@ def where(condition):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.sign")
 def sign(x):
     """
     This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.

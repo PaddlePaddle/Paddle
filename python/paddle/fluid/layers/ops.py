@@ -138,12 +138,11 @@ Examples:
 
         import numpy as np
         import paddle
-        import paddle.nn.function as F
         paddle.disable_static()
 
         x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-        x = paddle.to_tensor(x_data)
-        out = F.tanh(x)
+        x = paddle.to_variable(x_data)
+        out = paddle.tanh(x)
         print(out.numpy())
         # [-0.37994896 -0.19737532  0.09966799  0.29131261]
 

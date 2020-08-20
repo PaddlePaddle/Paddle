@@ -90,30 +90,6 @@ class TestParameter(object):
             self.assertEqual(z, z_expected)
 
 
-class TestAPI(object):
-    def setUp(self):
-        self.api = "paddle.nn.functional"
-
-    def test_out_name(self):
-        with fluid.program_guard(fluid.Program()):
-            np_x = np.array([0.1])
-            data = fluid.layers.data(name="X", shape=[1])
-            out = eval("{}.{}(data, name='Y')".format(self.api, self.op_type))
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result, = exe.run(feed={"X": np_x}, fetch_list=[out])
-            expected = eval("np.%s(np_x)" % self.op_type)
-            self.assertEqual(result, expected)
-
-    def test_dygraph(self):
-        with fluid.dygraph.guard():
-            np_x = np.array([0.1])
-            x = paddle.to_tensor(np_x)
-            z = eval("{}.{}(x).numpy()".format(self.api, self.op_type))
-            z_expected = eval("np.%s(np_x)" % self.op_type)
-            self.assertEqual(z, z_expected)
-
-
 class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
@@ -193,10 +169,9 @@ class TestLogSigmoidAPI(unittest.TestCase):
             F.logsigmoid(x_fp16)
 
 
-class TestTanh(TestActivation, TestAPI):
+class TestTanh(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "tanh"
-        self.api = "paddle.nn.functional"
         self.init_dtype()
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.tanh(x)
@@ -214,6 +189,59 @@ class TestTanh(TestActivation, TestAPI):
         # when using and not using inplace. Therefore, set dtype as float32
         # for now.
         self.dtype = np.float32
+
+
+class TestTanhAPI(unittest.TestCase):
+    # test paddle.tanh, paddle.nn.tanh, paddle.nn.functional.tanh
+    def setUp(self):
+        self.dtype = 'float32'
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12], self.dtype)
+            out1 = F.tanh(x)
+            th = paddle.nn.Tanh()
+            out2 = th(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = np.tanh(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_variable(self.x_np)
+        out1 = F.tanh(x)
+        out2 = paddle.tanh(x)
+        th = paddle.nn.Tanh()
+        out3 = th(x)
+        out_ref = np.tanh(self.x_np)
+        for r in [out1, out2, out3]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', [10, 12], self.dtype)
+            out = fluid.layers.tanh(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = np.tanh(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.tanh, 1)
+            # The input dtype must be float16, float32.
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.tanh, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.tanh(x_fp16)
 
 
 class TestAtan(TestActivation, TestParameter):
