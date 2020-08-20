@@ -22,10 +22,16 @@ from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
 from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
 from ...fluid.dygraph import SyncBatchNorm  #DEFINE_ALIAS
 
+from ...fluid.dygraph import layers
+from ...fluid.framework import in_dygraph_mode
+
+from ...fluid.initializer import Constant
+from ...fluid.param_attr import ParamAttr
+from ...fluid import core, dygraph_utils
+
 __all__ = [
     'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'InstanceNorm',
-    'BatchNorm2d'
-    'SyncBatchNorm'
+    'BatchNorm2d', 'SyncBatchNorm'
 ]
 
 
@@ -125,14 +131,14 @@ class BatchNorm2d(layers.Layer):
             shape=param_shape,
             dtype=self._dtype,
             default_initializer=Constant(1.0))
-        self.weight.stop_gradient = self._weight_attr.learning_rate == 0.
+        self.weight.stop_gradient = self._weight_attr and self._weight_attr.learning_rate == 0.
 
         self.bias = self.create_parameter(
             attr=self._bias_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=True)
-        self.bias.stop_gradient = self._param_attr.learning_rate == 0.
+        self.bias.stop_gradient = self._bias_attr and self._bias_attr.learning_rate == 0.
 
         moving_mean_name = None
         moving_variance_name = None
@@ -160,6 +166,8 @@ class BatchNorm2d(layers.Layer):
             shape=param_shape,
             dtype=self._dtype)
         self._variance.stop_gradient = True
+
+        self._data_format = data_format
         self._in_place = True
         self._momentum = momentum
         self._epsilon = epsilon
