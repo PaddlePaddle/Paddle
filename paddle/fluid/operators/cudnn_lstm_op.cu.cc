@@ -56,8 +56,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int num_layers = ctx.Attr<int>("num_layers");
     bool is_test = ctx.Attr<bool>("is_test");
     int seed = ctx.Attr<int>("seed");
-    bool time_major = ctx.Attr<bool>("time_major");
-    auto is_seq_lengths = ctx.Attr<std::vector<int>>("sequence_length");
+    auto sequence_lengths = ctx.Attr<std::vector<int>>("sequence_lengths");
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
@@ -68,10 +67,8 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int weight_numel = w->numel();
     bool state_initialized = state_out->IsInitialized() ? true : false;
     int numDirections = is_bidirec ? 2 : 1;
-
-    //  cudnnDataType_t cudnn_type = platform::ToCudnnDataType(
-    //    framework::ToDataType(std::type_index(typeid(T))));
     cudnnDataType_t cudnn_type = platform::CudnnDataType<T>::type;
+
     // ------------------- cudnn x, y descriptors ---------------------
     cudnnTensorDescriptor_t *x_desc_ = new cudnnTensorDescriptor_t[seq_len];
     cudnnTensorDescriptor_t *y_desc_ = new cudnnTensorDescriptor_t[seq_len];
@@ -82,20 +79,25 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     std::vector<int> dims_y = {batch_size, hidden_size * numDirections, 1};
     std::vector<int> strides_y = {hidden_size * numDirections, 1, 1};
 
-      platform::ScopedTensorDescriptor x_desc;
-      platform::ScopedTensorDescriptor y_desc;
+    platform::ScopedTensorDescriptor x_desc;
+    platform::ScopedTensorDescriptor y_desc;
     for (int i = 0; i < seq_len; ++i) {
       x_desc_[i] = x_desc.descriptor<T>(dims_x, strides_x);
       y_desc_[i] = y_desc.descriptor<T>(dims_y, strides_y);
     }
 
     platform::ScopedRNNSeqTensorDescriptor x_seq_desc;
-    cudnnRNNDataDescriptor_t x_seq_desc_ = x_seq_desc.descriptor<T>(
-        input_size, batch_size, input_size, time_major, is_seq_lengths);
     platform::ScopedRNNSeqTensorDescriptor y_seq_desc;
-    cudnnRNNDataDescriptor_t y_seq_desc_ = y_seq_desc.descriptor<T>(
-        hidden_size * numDirections, batch_size, hidden_size * numDirections,
-        time_major, is_seq_lengths);
+    cudnnRNNDataDescriptor_t x_seq_desc_;
+    cudnnRNNDataDescriptor_t y_seq_desc_;
+
+    if (!sequence_lengths.empty()) {
+      x_seq_desc_ = x_seq_desc.descriptor<T>(seq_len, batch_size, input_size,
+                                             true, sequence_lengths);
+      y_seq_desc_ = y_seq_desc.descriptor<T>(seq_len, batch_size,
+                                             hidden_size * numDirections, true,
+                                             sequence_lengths);
+    }
 
     // ------------------- cudnn hx, hy, cx, cy descriptors----------
     std::vector<int> dims_hx = {num_layers * numDirections, batch_size,
@@ -167,8 +169,6 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
         platform::dynload::cudnnGetRNNTrainingReserveSize(
             handle, rnn_desc_, seq_len, x_desc_, &reserve_size));
 
-    // LOG(INFO) << "reserve_size" << reserve_size;
-
     framework::Tensor workspace_data_;
     workspace_data_.Resize({static_cast<int64_t>(workspace_size_)});
     workspace_data_.mutable_data<uint8_t>(ctx.GetPlace());
@@ -177,22 +177,42 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
         {static_cast<int64_t>(reserve_size)}, ctx.GetPlace());
 
     if (is_test) {
-      // for inference
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInferenceEx(
-          handle, rnn_desc_, x_seq_desc_, x_data, hx_desc_, init_h_data,
-          cx_desc_, init_c_data, w_desc_, w_data, x_seq_desc_, out_data,
-          hy_desc_, last_h_data, cy_desc_, last_c_data, nullptr, nullptr,
-          nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-          workspace_data_.data<uint8_t>(), workspace_size_));
+      if (sequence_lengths.empty()) {
+        // for inference
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInference(
+            handle, rnn_desc_, seq_len, x_desc_, x_data, hx_desc_, init_h_data,
+            cx_desc_, init_c_data, w_desc_, w_data, y_desc_, out_data, hy_desc_,
+            last_h_data, cy_desc_, last_c_data, workspace_data_.data<uint8_t>(),
+            workspace_size_));
+      } else {
+        // for inference
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::cudnnRNNForwardInferenceEx(
+                handle, rnn_desc_, x_seq_desc_, x_data, hx_desc_, init_h_data,
+                cx_desc_, init_c_data, w_desc_, w_data, y_seq_desc_, out_data,
+                hy_desc_, last_h_data, cy_desc_, last_c_data, nullptr, nullptr,
+                nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                workspace_data_.data<uint8_t>(), workspace_size_));
+      }
     } else {
-    //   for train
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardTrainingEx(
-          handle, rnn_desc_, x_seq_desc_, x_data, hx_desc_, init_h_data,
-          cx_desc_, init_c_data, w_desc_, w_data, y_seq_desc_, out_data,
-          hy_desc_, last_h_data, cy_desc_, last_c_data, nullptr, nullptr,
-          nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-          workspace_data_.data<uint8_t>(), workspace_size_,
-          const_cast<uint8_t *>(reserve_data), reserve_size));
+      if (sequence_lengths.empty()) {
+        //   for train
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardTraining(
+            handle, rnn_desc_, seq_len, x_desc_, x_data, hx_desc_, init_h_data,
+            cx_desc_, init_c_data, w_desc_, w_data, y_desc_, out_data, hy_desc_,
+            last_h_data, cy_desc_, last_c_data, workspace_data_.data<uint8_t>(),
+            workspace_size_, reserve_data, reserve_size));
+      } else {
+        //   for train
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::cudnnRNNForwardTrainingEx(
+                handle, rnn_desc_, x_seq_desc_, x_data, hx_desc_, init_h_data,
+                cx_desc_, init_c_data, w_desc_, w_data, y_seq_desc_, out_data,
+                hy_desc_, last_h_data, cy_desc_, last_c_data, nullptr, nullptr,
+                nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                workspace_data_.data<uint8_t>(), workspace_size_, reserve_data,
+                reserve_size));
+      }
     }
   }
 };
@@ -251,17 +271,13 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
     int seed = ctx.Attr<int>("seed");
-    bool time_major = ctx.Attr<bool>("time_major");
-    auto is_seq_lengths = ctx.Attr<std::vector<int>>("sequence_length");
+    auto sequence_lengths = ctx.Attr<std::vector<int>>("sequence_lengths");
 
     int seq_len = input_dims[0];
     int batch_size = input->dims()[1];
     int input_size = input->dims()[2];
     int weight_numel = weight->numel();
     int numDirections = is_bidirec ? 2 : 1;
-
-    //    cudnnDataType_t cudnn_type = platform::ToCudnnDataType(
-    //      framework::ToDataType(std::type_index(typeid(T))));
     cudnnDataType_t cudnn_type = platform::CudnnDataType<T>::type;
 
     // ------------------- cudnn x, y descriptors ---------------------
@@ -274,20 +290,25 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     std::vector<int> dims_y = {batch_size, hidden_size * numDirections, 1};
     std::vector<int> strides_y = {hidden_size * numDirections, 1, 1};
 
-      platform::ScopedTensorDescriptor x_desc;
-      platform::ScopedTensorDescriptor y_desc;
+    platform::ScopedTensorDescriptor x_desc;
+    platform::ScopedTensorDescriptor y_desc;
     for (int i = 0; i < seq_len; ++i) {
       x_desc_[i] = x_desc.descriptor<T>(dims_x, strides_x);
       y_desc_[i] = y_desc.descriptor<T>(dims_y, strides_y);
     }
 
     platform::ScopedRNNSeqTensorDescriptor x_seq_desc;
-    cudnnRNNDataDescriptor_t x_seq_desc_ = x_seq_desc.descriptor<T>(
-        input_size, batch_size, input_size, time_major, is_seq_lengths);
     platform::ScopedRNNSeqTensorDescriptor y_seq_desc;
-    cudnnRNNDataDescriptor_t y_seq_desc_ = y_seq_desc.descriptor<T>(
-        hidden_size * numDirections, batch_size, hidden_size * numDirections,
-        time_major, is_seq_lengths);
+    cudnnRNNDataDescriptor_t x_seq_desc_;
+    cudnnRNNDataDescriptor_t y_seq_desc_;
+
+    if (!sequence_lengths.empty()) {
+      x_seq_desc_ = x_seq_desc.descriptor<T>(seq_len, batch_size, input_size,
+                                             true, sequence_lengths);
+      y_seq_desc_ = y_seq_desc.descriptor<T>(seq_len, batch_size,
+                                             hidden_size * numDirections, true,
+                                             sequence_lengths);
+    }
 
     // ------------------- cudnn hx, hy, cx, cy descriptors----------
     std::vector<int> dims_hx = {num_layers * numDirections, batch_size,
@@ -359,28 +380,43 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
         platform::dynload::cudnnGetRNNTrainingReserveSize(
             handle, rnn_desc_, seq_len, x_desc_, &reserve_size));
 
-    LOG(INFO) << "reserve_size" << reserve_size;
-
     framework::Tensor workspace_data_;
     workspace_data_.Resize({static_cast<int64_t>(workspace_size_)});
     workspace_data_.mutable_data<uint8_t>(ctx.GetPlace());
     const uint8_t *reserve_data = reserve->data<uint8_t>();
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardDataEx(
-        handle, rnn_desc_, y_seq_desc_, out_data, y_seq_desc_, out_grad_data,
-        nullptr, nullptr, hy_desc_, last_h_grad_data, cy_desc_,
-        last_c_grad_data, w_desc_, weight_data, hx_desc_, init_h_data, cx_desc_,
-        init_c_data, x_seq_desc_, in_grad_data, hx_desc_, init_h_grad_data,
-        cx_desc_, nullptr, nullptr, init_c_grad_data,
-        workspace_data_.data<uint8_t>(), workspace_size_,
-        const_cast<uint8_t *>(reserve_data), reserve_size));
+    if (sequence_lengths.empty()) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardData(
+          handle, rnn_desc_, seq_len, y_desc_, out_data, y_desc_, out_grad_data,
+          hy_desc_, last_h_grad_data, cy_desc_, last_c_grad_data, w_desc_,
+          weight_data, hx_desc_, init_h_data, cx_desc_, init_c_data, x_desc_,
+          in_grad_data, hx_desc_, init_h_grad_data, cx_desc_, init_c_grad_data,
+          workspace_data_.data<uint8_t>(), workspace_size_,
+          const_cast<uint8_t *>(reserve_data), reserve_size));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeightsEx(
-        handle, rnn_desc_, x_seq_desc_, input->data<T>(), hx_desc_,
-        init_h->data<T>(), y_seq_desc_, out->data<T>(),
-        workspace_data_.data<uint8_t>(), workspace_size_, w_desc_,
-        weight_grad->data<T>(), const_cast<uint8_t *>(reserve_data),
-        reserve_size));
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeights(
+          handle, rnn_desc_, seq_len, x_desc_, input->data<T>(), hx_desc_,
+          init_h->data<T>(), y_desc_, out->data<T>(),
+          workspace_data_.data<uint8_t>(), workspace_size_, w_desc_,
+          weight_grad->data<T>(), const_cast<uint8_t *>(reserve_data),
+          reserve_size));
+    } else {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardDataEx(
+          handle, rnn_desc_, y_seq_desc_, out_data, y_seq_desc_, out_grad_data,
+          nullptr, nullptr, hy_desc_, last_h_grad_data, cy_desc_,
+          last_c_grad_data, w_desc_, weight_data, hx_desc_, init_h_data,
+          cx_desc_, init_c_data, x_seq_desc_, in_grad_data, hx_desc_,
+          init_h_grad_data, cx_desc_, init_c_grad_data, nullptr, nullptr,
+          workspace_data_.data<uint8_t>(), workspace_size_,
+          const_cast<uint8_t *>(reserve_data), reserve_size));
+
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeightsEx(
+          handle, rnn_desc_, x_seq_desc_, input->data<T>(), hx_desc_,
+          init_h->data<T>(), y_seq_desc_, out->data<T>(),
+          workspace_data_.data<uint8_t>(), workspace_size_, w_desc_,
+          weight_grad->data<T>(), const_cast<uint8_t *>(reserve_data),
+          reserve_size));
+    }
   }
 };
 
