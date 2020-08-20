@@ -378,14 +378,14 @@ class LeakyReLU(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        m = paddle.nn.LeakyReLU()
-        x = paddle.to_tensor(np.array([-2, 0, 1]))
-        out = m(x)  # [-0.02, 0., 1.]
+            m = paddle.nn.LeakyReLU()
+            x = paddle.to_tensor(np.array([-2, 0, 1]))
+            out = m(x)  # [-0.02, 0., 1.]
     """
 
     def __init__(self, negative_slope=0.01, name=None):
