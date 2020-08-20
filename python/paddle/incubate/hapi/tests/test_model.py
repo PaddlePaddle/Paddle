@@ -150,8 +150,8 @@ class TestModel(unittest.TestCase):
 
         cls.acc1 = dynamic_evaluate(dy_lenet, cls.val_loader)
 
-        cls.inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
-        cls.labels = [Input('label', [None, 1], 'int64')]
+        cls.inputs = [Input([-1, 1, 28, 28], 'float32', 'image')]
+        cls.labels = [Input([None, 1], 'int64', 'label')]
 
         cls.save_dir = tempfile.mkdtemp()
         cls.weight_path = os.path.join(cls.save_dir, 'lenet')
@@ -330,8 +330,8 @@ class TestModelFunction(unittest.TestCase):
             optim2 = fluid.optimizer.SGD(learning_rate=0.001,
                                          parameter_list=net.parameters())
 
-            inputs = [Input('x', [None, dim], 'float32')]
-            labels = [Input('label', [None, 1], 'int64')]
+            inputs = [Input([None, dim], 'float32', 'x')]
+            labels = [Input([None, 1], 'int64', 'label')]
             model = Model(net, inputs, labels)
             model.prepare(optim2, loss=CrossEntropyLoss(reduction="sum"))
             loss, = model.train_batch([data], [label])
@@ -358,7 +358,7 @@ class TestModelFunction(unittest.TestCase):
             fluid.enable_dygraph(device) if dynamic else None
             self.set_seed()
             net = MyModel()
-            inputs = [Input('x', [None, dim], 'float32')]
+            inputs = [Input([None, dim], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             out, = model.test_batch([data])
@@ -372,8 +372,8 @@ class TestModelFunction(unittest.TestCase):
             device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel(classifier_activation=None)
-            inputs = [Input('x', [None, 20], 'float32')]
-            labels = [Input('label', [None, 1], 'int64')]
+            inputs = [Input([None, 20], 'float32', 'x')]
+            labels = [Input([None, 1], 'int64', 'label')]
             optim = fluid.optimizer.SGD(learning_rate=0.001,
                                         parameter_list=net.parameters())
             model = Model(net, inputs, labels)
@@ -396,8 +396,8 @@ class TestModelFunction(unittest.TestCase):
         model.save(path + '/test')
         fluid.disable_dygraph()
 
-        inputs = [Input('x', [None, 20], 'float32')]
-        labels = [Input('label', [None, 1], 'int64')]
+        inputs = [Input([None, 20], 'float32', 'x')]
+        labels = [Input([None, 1], 'int64', 'label')]
         model = Model(MyModel(classifier_activation=None), inputs, labels)
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
@@ -409,8 +409,8 @@ class TestModelFunction(unittest.TestCase):
         path = tempfile.mkdtemp()
 
         net = MyModel(classifier_activation=None)
-        inputs = [Input('x', [None, 20], 'float32')]
-        labels = [Input('label', [None, 1], 'int64')]
+        inputs = [Input([None, 20], 'float32', 'x')]
+        labels = [Input([None, 1], 'int64', 'label')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
@@ -421,8 +421,8 @@ class TestModelFunction(unittest.TestCase):
         fluid.enable_dygraph(device)  #if dynamic else None
 
         net = MyModel(classifier_activation=None)
-        inputs = [Input('x', [None, 20], 'float32')]
-        labels = [Input('label', [None, 1], 'int64')]
+        inputs = [Input([None, 20], 'float32', 'x')]
+        labels = [Input([None, 1], 'int64', 'label')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
@@ -436,7 +436,7 @@ class TestModelFunction(unittest.TestCase):
             device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel()
-            inputs = [Input('x', [None, 20], 'float32')]
+            inputs = [Input([None, 20], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             params = model.parameters()
@@ -446,7 +446,7 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         net = LeNet()
-        inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
+        inputs = [Input([-1, 1, 28, 28], 'float32', 'image')]
         model = Model(net, inputs)
         model.prepare()
         save_dir = tempfile.mkdtemp()
@@ -472,6 +472,16 @@ class TestModelFunction(unittest.TestCase):
 
         np.testing.assert_allclose(results, ori_results, rtol=1e-6)
         shutil.rmtree(save_dir)
+
+
+class TestRaiseError(unittest.TestCase):
+    def test_input_without_name(self):
+        net = MyModel(classifier_activation=None)
+
+        inputs = [Input([None, 10], 'float32')]
+        labels = [Input([None, 1], 'int64', 'label')]
+        with self.assertRaises(ValueError):
+            model = Model(net, inputs, labels)
 
 
 if __name__ == '__main__':
