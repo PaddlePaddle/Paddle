@@ -49,7 +49,6 @@ from .decode import beam_search_decode  #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
 # from .decode import dynamic_decode        #DEFINE_ALIAS
 from .decode import gather_tree  #DEFINE_ALIAS
-from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 from .layer.activation import ELU
 from .layer.activation import GELU
