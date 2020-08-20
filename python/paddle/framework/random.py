@@ -44,5 +44,7 @@ def manual_seed(seed):
 
     fluid.default_main_program().random_seed = seed
     fluid.default_startup_program().random_seed = seed
+    program = fluid.Program()
+    program.global_seed(seed)
 
     return core.default_cpu_generator().manual_seed(seed)

@@ -26,6 +26,7 @@ namespace framework {
 const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   static auto default_cpu_generator =
       std::make_shared<Generator>(GetRandomSeed());
+  default_cpu_generator->is_init_py = true;
   return default_cpu_generator;
 }
 
