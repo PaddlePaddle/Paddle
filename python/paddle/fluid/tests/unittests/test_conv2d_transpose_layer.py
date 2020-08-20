@@ -29,6 +29,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                  num_filters=8,
                  filter_size=3,
                  output_size=None,
+                 output_padding=0,
                  padding=0,
                  stride=1,
                  dilation=1,
@@ -43,6 +44,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         self.spartial_shape = spartial_shape
         self.filter_size = filter_size
         self.output_size = output_size
+        self.output_padding = output_padding
 
         self.padding = padding
         self.stride = stride
@@ -89,6 +91,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                     bias_attr = False
                 else:
                     bias_attr = I.NumpyArrayInitializer(self.bias)
+
                 y_var = fluid.layers.conv2d_transpose(
                     x_var,
                     self.num_filters,
@@ -119,12 +122,19 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                     "weight", self.weight_shape, dtype=self.dtype)
                 b_var = fluid.data(
                     "bias", (self.num_filters, ), dtype=self.dtype)
+
+                if self.output_padding != 0:
+                    output_size = None
+                else:
+                    output_size = self.output_size
+
                 y_var = F.conv_transpose2d(
                     x_var,
                     w_var,
                     None if self.no_bias else b_var,
-                    output_size=self.output_size,
+                    output_size=output_size,
                     padding=self.padding,
+                    output_padding=self.output_padding,
                     stride=self.stride,
                     dilation=self.dilation,
                     groups=self.groups,
@@ -139,11 +149,18 @@ class Conv2DTransposeTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = dg.to_variable(self.input)
+
+        if self.output_padding != 0:
+            output_size = None
+        else:
+            output_size = self.output_size
+
         conv = nn.ConvTranspose2d(
             self.num_channels,
             self.num_filters,
             self.filter_size,
             padding=self.padding,
+            output_padding=self.output_padding,
             stride=self.stride,
             dilation=self.dilation,
             groups=self.groups,
@@ -152,7 +169,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
-        y_var = conv(x_var, self.output_size)
+        y_var = conv(x_var, output_size)
         y_np = y_var.numpy()
         return y_np
 
@@ -230,6 +247,18 @@ def add_cases(suite):
             num_channels=3,
             groups=3,
             padding="valid"))
+    suite.addTest(
+        Conv2DTransposeTestCase(
+            methodName='runTest',
+            num_filters=6,
+            num_channels=3,
+            spartial_shape=(7, 7),
+            filter_size=[5, 5],
+            groups=1,
+            padding=2,
+            stride=2,
+            output_size=[14, 14],
+            output_padding=[1, 1], ))
 
 
 def add_error_cases(suite):
