@@ -155,6 +155,7 @@ def prepare_qkv(query, key, value, num_heads, embed_dim, self_attention,
             v = np.concatenate((cache_dict["v"], v), axis=2)
     return (q, k, v, cache_dict)
 
+
 def add(x, y=None):
     fluid.enable_dygraph()
     with fluid.dygraph.guard():
@@ -165,9 +166,11 @@ def add(x, y=None):
         return x
     # print("print type(x) in add", type(x))
 
+
 def relu(x):
     compare = x > 0
     return x * compare
+
 
 def layer_norm(x, normalized_shape, norm, epsilon=1e-05, act=None):
     fluid.enable_dygraph()
@@ -190,6 +193,7 @@ def layer_norm(x, normalized_shape, norm, epsilon=1e-05, act=None):
         x_scaled_bias = x_scaled + bias
         x_scaled_bias = x_scaled_bias.reshape((batch_size, src_len, d_model))
     return x_scaled_bias
+
 
 def ffn(src, encoder_layer, ffn_fc1_act="relu"):
     assert ffn_fc1_act == "relu", "only relu is supported"
@@ -218,7 +222,7 @@ class TestTransformer(unittest.TestCase):
                         "attn", self_attention, False)
                     query, key, value, attn_mask, cache_dict = generate_query_key_value_cache(
                         self_attention, batch_size, num_heads, query_length,
-                        embed_dim, key_length, value_length, kdim, vdim, cache)    
+                        embed_dim, key_length, value_length, kdim, vdim, cache)
                     need_weight, param_attr, bias_attr = False, None, None
                     # call paddle's function
                     multi_head_attn = MultiheadAttention(
@@ -285,7 +289,7 @@ class TestTransformer(unittest.TestCase):
                     attn_dropout, act_dropout)
 
                 encoder_output = encoder_layer(
-                    paddle.to_variable(src)) # paddle.to_variable(src_mask))
+                    paddle.to_variable(src))  # paddle.to_variable(src_mask))
                 # 4.numpy:
                 # paddle self attention
                 self_attn = MultiheadAttention(
