@@ -17,8 +17,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-np.random.seed(0)
-
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     if isinstance(axis, int):
@@ -41,6 +39,7 @@ class TestLogsumexp(OpTest):
         self.reduce_all = False
         self.set_attrs()
 
+        np.random.seed(10)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = ref_logsumexp(x, self.axis, self.keepdim, self.reduce_all)
 
