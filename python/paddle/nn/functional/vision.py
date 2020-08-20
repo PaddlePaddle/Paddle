@@ -103,6 +103,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 
         x(Tensor): 4-D tensor, the data type should be float32 or float64.
         upscale_factor(int): factor to increase spatial resolution.
+        data_format (str): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
 
     Returns:

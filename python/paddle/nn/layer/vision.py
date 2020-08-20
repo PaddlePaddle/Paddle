@@ -37,6 +37,7 @@ class PixelShuffle(layers.Layer):
     Parameters:
 
         upscale_factor(int): factor to increase spatial resolution.
+        data_format (str): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
