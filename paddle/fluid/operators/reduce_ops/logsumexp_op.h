@@ -22,8 +22,9 @@ namespace operators {
 struct LogsumexpFunctor {
   template <typename DeviceContext, typename X, typename Y, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    auto x_max = x->maximum();
-    y->device(place) = (*x - x_max.broadcast(dim)).exp().sum() + x_max;
+    auto x_max = x->maximum(dim);
+    y->device(place) =
+        (*x - x_max.eval().broadcast(dim)).exp().sum(dim) + x_max;
   }
 };
 
