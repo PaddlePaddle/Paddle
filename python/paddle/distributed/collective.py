@@ -27,6 +27,7 @@ import paddle.fluid as fluid
 __all__ = [
     'broadcast',
     'all_reduce',
+    'reduce',
     'ReduceOp',
     'init_process_group',
 ]
@@ -187,13 +188,20 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0, async_op=False):
              out = data.numpy()
              # [[5, 7, 9], [5, 7, 9]]
     """
-    op_type = 'c_allreduce'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'all_reduce')
     if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
         raise ValueError("The op for all_reduce must be one of educeOp.PROD, "
                          "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
+    if op == ReduceOp.SUM:
+        op_type = 'c_allreduce_sum'
+    elif op == ReduceOp.MAX:
+        op_type = 'c_allreduce_max'
+    elif op == ReduceOp.MIN:
+        op_type = 'c_allreduce_min'
+    elif op == ReduceOp.PROD:
+        op_type = 'c_allreduce_prod'
     if not isinstance(group, int):
         raise ValueError("The type of 'group' for all_reduce should be int.")
     if not isinstance(async_op, bool):
