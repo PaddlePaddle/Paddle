@@ -19,7 +19,6 @@ import copy
 import collections
 
 import numpy as np
-
 from ...fluid import layers
 from ...fluid.param_attr import ParamAttr
 from ...fluid.dygraph import Layer, Linear, Dropout, LayerNorm, LayerList
@@ -182,7 +181,7 @@ class MultiheadAttention(Layer):
                 and their data types are same as inputs.
         """
         q = self.q_proj(query)
-        q = layers.reshape(x=q, shape=[0, 0, self.n_head, self.d_key])
+        q = layers.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
         q = layers.transpose(x=q, perm=[0, 2, 1, 3])
 
         if isinstance(cache, self.StaticCache):
@@ -231,7 +230,7 @@ class MultiheadAttention(Layer):
         v = layers.transpose(x=v, perm=[0, 2, 1, 3])
         return k, v
 
-    def gen_cache(self, key, value=None, type=MultiheadAttention.Cache):
+    def gen_cache(self, key, value=None, type=Cache):
         """
         Generates cache for `forward` usage in inference accroding to arguments.
         The generated cache is an instance of `MultiheadAttention.Cache` or an

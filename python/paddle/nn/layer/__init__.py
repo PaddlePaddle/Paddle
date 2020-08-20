@@ -21,6 +21,7 @@ from . import extension
 from . import activation
 from . import norm
 from . import distance
+from . import transformer
 
 from .activation import *
 from .loss import *
