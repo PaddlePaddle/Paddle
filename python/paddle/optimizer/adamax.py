@@ -74,7 +74,7 @@ class Adamax(Optimizer):
             The default value is None.
 
     **Notes**:
-        **Currently, AdamaxOptimizer doesn't support sparse parameter optimization.**
+        **Currently, Adamax doesn't support sparse parameter optimization.**
 
     Examples:
         .. code-block:: python
