@@ -443,7 +443,9 @@ def interpolate(input,
         elif isinstance(scale, float) or isinstance(scale, int):
             if scale <= 0:
                 raise ValueError("Attr(scale) should be greater than zero.")
-            scale = [scale, scale, scale]
+            scale_list = []
+            for i in range(len(input.shape) - 2):
+                scale_list.append(scale)
             attrs['scale'] = list(map(float, scale))
         elif isinstance(scale, list):
             if len(scale) != len(input.shape) - 2:
@@ -464,6 +466,7 @@ def interpolate(input,
         outputs={"Out": out},
         attrs=attrs)
     return out
+
 
 def upsample(input,
              size=None,
@@ -657,6 +660,7 @@ def upsample(input,
     """
     return interpolate(input, size, scale_factor, mode, align_corners,
                        align_mode, data_format)
+
 
 def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     """
