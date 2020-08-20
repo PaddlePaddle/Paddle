@@ -841,22 +841,22 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
     auto new_size = get_new_shape(list_new_shape_tensor);
     out_w = new_size[0];
   } else {
-    float scale;
+    float scale_w;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-      scale = scale_data[0];
+      scale_w = scale_data[0];
       PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
                                                "scale  of Op(interpolate) "
                                                "should be greater than 0."));
     } else {
-      scale = ctx.Attr<float>("scale_w");
+      scale_w = ctx.Attr<float>("scale_w");
       PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
                                                "scale  of Op(interpolate) "
                                                "should be greater than 0."));
     }
-    if (scale > 0) {
-      out_w = static_cast<int>(in_w * scale);
+    if (scale_w > 0) {
+      out_w = static_cast<int>(in_w * scale_w);
     }
     auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
@@ -1164,22 +1164,22 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
   int align_mode = ctx.Attr<int>("align_mode");
 
   int out_w = ctx.Attr<int>("out_w");
-  float scale;
+  float scale_w;
   auto scale_tensor = ctx.Input<Tensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-    scale = scale_data[0];
+    scale_w = scale_data[0];
     PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
                                              "scale  of Op(interpolate) "
                                              "should be greater than 0."));
   } else {
-    scale = ctx.Attr<float>("scale_w");
+    scale_w = ctx.Attr<float>("scale_w");
     PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
                                              "scale  of Op(interpolate) "
                                              "should be greater than 0."));
   }
-  if (scale > 0) {
-    out_w = static_cast<int>(in_w * scale);
+  if (scale_w > 0) {
+    out_w = static_cast<int>(in_w * scale_w);
   }
 
   auto out_size = ctx.Input<Tensor>("OutSize");

@@ -788,7 +788,7 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
     auto new_size = get_new_shape(list_new_size_tensor);
     out_w = new_size[0];
   } else {
-    float scale;
+    float scale_w;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
@@ -1064,7 +1064,7 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
   int align_mode = ctx.Attr<int>("align_mode");
 
   int out_w = ctx.Attr<int>("out_w");
-  float scale;
+  float scale_w;
   auto scale_tensor = ctx.Input<Tensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
