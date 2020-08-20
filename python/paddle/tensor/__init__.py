@@ -74,6 +74,7 @@ from .logic import equal_all  #DEFINE_ALIAS
 from .manipulation import cast  #DEFINE_ALIAS
 from .manipulation import concat  #DEFINE_ALIAS
 from .manipulation import expand  #DEFINE_ALIAS
+from .manipulation import broadcast_to  #DEFINE_ALIAS
 from .manipulation import expand_as  #DEFINE_ALIAS
 from .manipulation import tile  #DEFINE_ALIAS
 from .manipulation import flatten  #DEFINE_ALIAS
@@ -98,6 +99,7 @@ from .manipulation import unstack  #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 from .manipulation import unbind  #DEFINE_ALIAS
 from .manipulation import roll  #DEFINE_ALIAS
+from .manipulation import chunk  #DEFINE_ALIAS
 from .math import abs  #DEFINE_ALIAS
 from .math import acos  #DEFINE_ALIAS
 from .math import asin  #DEFINE_ALIAS
@@ -109,6 +111,7 @@ from .math import cumsum  #DEFINE_ALIAS
 from .math import elementwise_add  #DEFINE_ALIAS
 from .math import elementwise_div  #DEFINE_ALIAS
 from .math import elementwise_floordiv  #DEFINE_ALIAS
+from .math import elementwise_mul  #DEFINE_ALIAS
 from .math import elementwise_mod  #DEFINE_ALIAS
 from .math import elementwise_pow  #DEFINE_ALIAS
 from .math import elementwise_sub  #DEFINE_ALIAS

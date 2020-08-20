@@ -67,6 +67,7 @@ __all__ = [
     'sigmoid_cross_entropy_with_logits',
     'sigmoid_focal_loss',
     'smooth_l1',
+    'smooth_l1_loss',
     'softmax_with_cross_entropy',
     'square_error_cost',
     'ssd_loss',
@@ -220,6 +221,84 @@ def binary_cross_entropy_with_logits(logit,
     elif reduction == "mean":
         return paddle.mean(out, name=name)
     return out
+
+
+def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
+    """
+    This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
+    term if the absolute element-wise error falls below 1 and an L1 term otherwise.
+    In some cases it can prevent exploding gradients and it is more robust and less
+    sensitivity to outliers. Also known as the Huber loss:
+
+    .. math::
+
+         loss(x,y)=\\frac{1}{n}\\sum_{i}z_i
+
+
+    where z_i is given by:
+
+    .. math::
+
+         \\mathop{z_i}=\\left\\{\\begin{array}{rcl}
+        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\\\
+        delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
+        \\end{array} \\right.
+
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is
+            (N, C), where C is number of classes, and if shape is more than 2D, this
+            is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor, the data type is float32 or float64. The shape of label
+            is the same as the shape of input.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
+            Default is ``'mean'``.
+        delta (float, optional): Specifies the hyperparameter delta to be used.
+            The value determines how large the errors need to be to use L1. Errors
+            smaller than delta are minimized with L2. Parameter is ignored for
+            negative/zero values. Default = 1.0
+        name (str, optional): Name for the operation (optional, default is
+            None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        The tensor variable storing the smooth_l1_loss of input and label.
+
+    Return type: Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            input_data = np.random.rand(3,3).astype("float32")
+            label_data = np.random.rand(3,3).astype("float32")
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
+            output = paddle.nn.functioanl.smooth_l1_loss(input, label)
+            print(output.numpy())
+    """
+    fluid.data_feeder.check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'smooth_l1_loss')
+    fluid.data_feeder.check_variable_and_dtype(
+        label, 'label', ['float32', 'float64'], 'smooth_l1_loss')
+
+    out = huber_loss(input=input, label=label, delta=delta)
+
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in smooth_l1_loss should be 'sum', 'mean' or"
+            " 'none', but received %s, which is not allowed." % reduction)
+    if reduction == 'none':
+        return out
+    elif reduction == 'mean':
+        return fluid.layers.reduce_mean(out)
+    elif reduction == 'sum':
+        return fluid.layers.reduce_sum(out)
 
 
 def margin_ranking_loss(input,
