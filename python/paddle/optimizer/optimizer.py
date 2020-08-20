@@ -935,8 +935,7 @@ class Optimizer(object):
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
-
-            .. code-bloack:: python
+            .. code-block:: python
             
             import paddle
             import paddle.fluid as fluid
