@@ -40,6 +40,7 @@ from .creation import full_like  #DEFINE_ALIAS
 from .creation import triu  #DEFINE_ALIAS
 from .creation import tril  #DEFINE_ALIAS
 from .creation import meshgrid  #DEFINE_ALIAS
+from .creation import empty  #DEFINE_ALIAS
 from .io import save  #DEFINE_ALIAS
 from .io import load  #DEFINE_ALIAS
 from .linalg import matmul  #DEFINE_ALIAS

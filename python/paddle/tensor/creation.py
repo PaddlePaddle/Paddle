@@ -914,3 +914,105 @@ def meshgrid(*args, **kwargs):
         type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out})
 
     return out
+
+
+def empty(shape, dtype=None, name=None):
+    """
+	:alias_main: paddle.empty
+	:alias: paddle.tensor.empty, paddle.tensor.creation.empty
+
+    This Op return a Tensor with uninitialized which size is same as ``shape``.
+    
+    Args:
+        shape(list|tuple|Tensor): Shape of the Tensor to be created.
+                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+                the elements of it should be integers or Tensors with shape [1].
+                If ``shape`` is an Tensor, it should be an 1-D Tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output Tensor
+            which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
+            type of created Tensor is `float32`
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: Tensor which is created according to ``shape`` and ``dtype``, and is uninitialized.
+
+    Raises:
+        TypeError: The ``dtype`` must be one of None, bool, float16, float32, float64, int32 and int64.
+        TypeError: The ``shape`` must be one of Tensor, list and tuple. The data type of ``shape`` must
+            be int32 or int64 when the it's a Tensor
+    
+    Examples:
+        .. code-block:: python
+
+          import paddle
+
+          paddle.disable_static()  # Now we are in imperative mode
+          data1 = paddle.empty(shape=[2,1], dtype='int64') 
+          #[[0]
+          # [0]]
+
+          # attr shape is a list which contains Tensor.
+          positive_2 = paddle.fill_constant([1], "int32", 2)
+          data3 = paddle.full(shape=[1, positive_2], dtype='float32')
+          # [[1.5 1.5]]
+
+          # attr shape is a Tensor.
+          shape = paddle.fill_constant([2], "int32", 2)
+          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
+          # [[True True] 
+          #  [True True]]
+          
+          # attr fill_value is a Tensor.
+          val = paddle.fill_constant([1], "float32", 2.0)
+          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
+          # [[2.0] 
+          #  [2.0]]
+    """
+
+    if dtype is None:
+        dtype = 'float32'
+
+    # print('dtype: ', dtype)
+    dtype = convert_dtype(dtype)
+    # print('dtype: ', dtype)
+
+    if in_dygraph_mode():
+        shape = utils._convert_shape_to_list(shape)
+        # print('shape: ', shape)
+
+        out = _varbase_creator(dtype=dtype)
+
+        # print('out.dtype: ', out.dtype)
+        out = core.ops.empty('shape', shape, 'dtype', out.dtype)
+
+        out.stop_gradient = True
+
+        return out
+
+    helper = LayerHelper("empty", **locals())
+    inputs = {}
+
+    check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
+                'empty')
+    check_type(shape, 'shape', (Variable, list, tuple), 'empty')
+
+    if isinstance(shape, Variable):
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'empty')
+
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    attrs = {}
+    attrs['dtype'] = out.dtype
+    attrs['shape'] = shape
+
+    helper.append_op(
+        type='empty',
+        inputs=inputs,
+        outputs={'Out': [out]},
+        attrs=attrs,
+        stop_gradient=True)
+
+    out.stop_gradient = True
+
+    return out
