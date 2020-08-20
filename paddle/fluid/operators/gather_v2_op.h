@@ -122,7 +122,6 @@ void GatherV2GradFunction(const Tensor* input, const Tensor* index,
   auto* index_data = index->data<U>();
 
   int axis_size = axis->numel();
-  int index_size = index->numel();
   auto input_dim = input->dims();
   auto* input_data = input->data<T>();
 
@@ -131,14 +130,7 @@ void GatherV2GradFunction(const Tensor* input, const Tensor* index,
                     platform::errors::InvalidArgument(
                         "Axis size should be 1, but received %d", axis_size));
   int axis_index = axis_data[0];
-  int index_dim_size = input_dim[axis_index];
-  PADDLE_ENFORCE_LE(
-      index_size, index_dim_size,
-      platform::errors::InvalidArgument(
-          "The size that index should be less equal than the dim size of "
-          "input,"
-          "but received index size:%d, the dim size of input %d.",
-          axis_size, index_dim_size));
+  int input_index_dim_size = input_dim[axis_index];
 
   int inner_dim_size = 1;
   int outer_dim_size = 1;
@@ -152,14 +144,16 @@ void GatherV2GradFunction(const Tensor* input, const Tensor* index,
 
   auto* out_data = out->mutable_data<T>(place);
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto out_dim = out->dims();
+  int out_index_dim_size = out_dim[axis_index];
   operators::math::set_constant(*dev_ctx, out, 0.0);
 
-  for (int i = 0; i < index_size; i++) {
-    for (int j = 0; j < inner_dim_size; j++) {
+  for (int i = 0; i < inner_dim_size; i++) {
+    for (int j = 0; j < input_index_dim_size; j++) {
       for (int k = 0; k < outer_dim_size; k++) {
-        int index = k + index_data[i] * outer_dim_size +
-                    j * outer_dim_size * index_dim_size;
-        out_data[index] += input_data[i];
+        int index = k + index_data[j] * outer_dim_size +
+                    i * outer_dim_size * out_index_dim_size;
+        out_data[index] += input_data[j * outer_dim_size + k];
       }
     }
   }

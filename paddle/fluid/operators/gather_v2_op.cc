@@ -121,7 +121,7 @@ REGISTER_OP_CPU_KERNEL(gather_v2, ops::GatherV2OpKernel<float>,
                        ops::GatherV2OpKernel<int>,
                        ops::GatherV2OpKernel<uint8_t>,
                        ops::GatherV2OpKernel<int64_t>);
-REGISTER_OP_CPU_KERNEL(gather_grad_v2, ops::GatherV2GradientOpKernel<float>,
+REGISTER_OP_CPU_KERNEL(gather_v2_grad, ops::GatherV2GradientOpKernel<float>,
                        ops::GatherV2GradientOpKernel<double>,
                        ops::GatherV2GradientOpKernel<int>,
                        ops::GatherV2GradientOpKernel<uint8_t>,

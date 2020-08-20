@@ -26,15 +26,18 @@ using Tensor = framework::Tensor;
 template <typename T, typename U>
 __global__ void GatherGPUKernel(const T* input, const U* index, T* out,
                                 int outer_dim_size, int inner_dim_size,
-                                int index_dim_size, int size) {
+                                int index_dim_size, int input_index_dim_size,
+                                int size) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < size; idx += blockDim.x * gridDim.x) {
     int inner_dim_index = idx / (outer_dim_size * index_dim_size);
-    int out_dim_index = idx % outer_dim_size;
-    int input_dim_index = idx / outer_dim_size;
-    int input_index = inner_dim_index * (outer_dim_size * index_dim_size) +
-                      index[input_dim_index] * outer_dim_size + out_dim_index;
-    out[idx] = input[0];
+    int next_idx = idx % (outer_dim_size * index_dim_size);
+    int index_dim_index = next_idx / (outer_dim_size);
+    int out_dim_index = next_idx % outer_dim_size;
+    int input_index =
+        inner_dim_index * (outer_dim_size * input_index_dim_size) +
+        index[index_dim_index] * outer_dim_size + out_dim_index;
+    out[idx] = input[input_index];
   }
 }
 
@@ -105,7 +108,7 @@ void GatherV2CUDAFunction(const Tensor* input, const Tensor* index,
   auto stream = ctx.cuda_device_context().stream();
   GatherGPUKernel<T, U><<<grid, threads, 0, stream>>>(
       input_data, index_data, out_data, outer_dim_size, inner_dim_size,
-      index_dim_size, out_size);
+      index_size, index_dim_size, out_size);
 }
 
 template <typename T, typename U, typename V>

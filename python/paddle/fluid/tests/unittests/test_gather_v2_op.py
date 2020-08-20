@@ -41,16 +41,14 @@ class TestGatherOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    """
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-    """
+        self.check_grad(['X'], 'Y')
 
     def config(self):
         """
         For multi-dimension input
         """
-        self.x_shape = (10, 20, 10)
+        self.x_shape = (3, 20, 3)
         self.x_type = "float64"
         self.index = [1, 3, 5]
         self.index_type = "int32"
