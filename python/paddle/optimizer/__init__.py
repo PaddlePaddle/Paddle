@@ -32,3 +32,6 @@ from ..fluid.optimizer import  SGD, Momentum, Adagrad, Adam, Adamax, Dpsgd, Deca
             LarsMomentumOptimizer, DGCMomentumOptimizer, LambOptimizer, \
             ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, \
             RecomputeOptimizer
+
+from ..fluid import lr_scheduler
+from ..fluid.lr_scheduler import NoamLR, PiecewiseLR, NaturalExpLR, InverseTimeLR, PolynomialLR, LinearLrWarmup, ExponentialLR, MultiStepLR, StepLR, LambdaLR, ReduceLROnPlateau, CosineAnnealingLR
