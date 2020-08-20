@@ -49,17 +49,10 @@ class Conv1DTestCase(unittest.TestCase):
         self.groups = groups
         self.act = act
         self.no_bias = no_bias
-        self.use_cudnn = use_cudnn
         self.dtype = dtype
 
     def setUp(self):
-        self.channel_last = False
-        if self.channel_last:
-            input_shape = (self.batch_size, ) + self.spartial_shape + (
-                self.num_channels, )
-        else:
-            input_shape = (self.batch_size, self.num_channels
-                           ) + self.spartial_shape
+        input_shape = (self.batch_size, self.num_channels) + self.spartial_shape
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
@@ -76,44 +69,12 @@ class Conv1DTestCase(unittest.TestCase):
         else:
             self.bias = None
 
-    def fluid_layer(self, place):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
-                input_shape = (-1, -1, self.num_channels) \
-                    if self.channel_last else (-1, self.num_channels, -1)
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                weight_attr = I.NumpyArrayInitializer(self.weight)
-                if self.bias is None:
-                    bias_attr = False
-                else:
-                    bias_attr = I.NumpyArrayInitializer(self.bias)
-                y_var = fluid.layers.conv1d(
-                    x_var,
-                    self.num_filters,
-                    self.filter_size,
-                    padding=self.padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    param_attr=weight_attr,
-                    bias_attr=bias_attr,
-                    use_cudnn=self.use_cudnn,
-                    act=self.act)
-        feed_dict = {"input": self.input}
-        exe = fluid.Executor(place)
-        exe.run(start)
-        y_np, = exe.run(main, feed=feed_dict, fetch_list=[y_var])
-        return y_np
-
     def functional(self, place):
         main = fluid.Program()
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                input_shape = (-1, -1, self.num_channels) \
-                    if self.channel_last else (-1, self.num_channels, -1)
+                input_shape = (-1, self.num_channels, -1)
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
                 w_var = fluid.data(
                     "weight", self.weight_shape, dtype=self.dtype)
@@ -138,7 +99,7 @@ class Conv1DTestCase(unittest.TestCase):
         return y_np
 
     def paddle_nn_layer(self):
-        x_var = dg.to_variable(self.input)
+        x_var = paddle.to_tensor(self.input)
         conv = nn.Conv1D(
             self.num_channels,
             self.num_filters,
@@ -146,10 +107,7 @@ class Conv1DTestCase(unittest.TestCase):
             padding=self.padding,
             stride=self.stride,
             dilation=self.dilation,
-            groups=self.groups,
-            act=self.act,
-            use_cudnn=self.use_cudnn,
-            dtype=self.dtype)
+            groups=self.groups)
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
@@ -158,13 +116,10 @@ class Conv1DTestCase(unittest.TestCase):
         return y_np
 
     def _test_equivalence(self, place):
-        place = fluid.CPUPlace()
-        result1 = self.fluid_layer(place)
-        result2 = self.functional(place)
+        result1 = self.functional(place)
         with dg.guard(place):
-            result3 = self.paddle_nn_layer()
+            result2 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
-        np.testing.assert_array_almost_equal(result2, result3)
 
     def runTest(self):
         place = fluid.CPUPlace()
@@ -219,10 +174,14 @@ def add_cases(suite):
 def add_error_cases(suite):
     suite.addTest(
         Conv1DErrorTestCase(
-            methodName='runTest', use_cudnn="not_valid"))
+            methodName='runTest', num_channels=5, groups=2))
     suite.addTest(
         Conv1DErrorTestCase(
-            methodName='runTest', num_channels=5, groups=2))
+            methodName='runTest', num_filters=8, num_channels=15, groups=3))
+    suite.addTest(Conv1DErrorTestCase(methodName='runTest', num_channels=-4))
+    suite.addTest(
+        Conv1DErrorTestCase(
+            methodName='runTest', padding=[1, 2, 3, 4, 5]))
 
 
 def load_tests(loader, standard_tests, pattern):

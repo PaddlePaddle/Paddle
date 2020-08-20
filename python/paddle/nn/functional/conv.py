@@ -16,6 +16,7 @@ from __future__ import print_function
 __all__ = ['conv1d', 'conv2d', 'conv2d_transpose', 'conv3d', 'conv3d_transpose']
 
 import numpy as np
+from ...device import get_cudnn_version
 from ...fluid.framework import Variable, in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid.layers import nn, utils
@@ -94,13 +95,8 @@ def conv1d(input,
            stride=1,
            dilation=1,
            groups=1,
-           use_cudnn=True,
-           act=None,
            name=None):
     """
-	:alias_main: paddle.nn.functional.conv1d
-	:alias: paddle.nn.functional.conv1d,paddle.nn.functional.conv.conv1d
-
     The convolution1D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
     Output are in NCL format, where N is batch size, C is the number of
@@ -146,11 +142,11 @@ def conv1d(input,
             L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Args:
-        input (Variable): The input is 3-D Tensor with shape [N, C, L], the data type 
+        input (Tensor): The input is 3-D Tensor with shape [N, C, L], the data type 
             of input is float16 or float32 or float64.
-        weight (Variable): The convolution kernel with shape [M, C/g, kL], where M is
+        weight (Tensor): The convolution kernel with shape [M, C/g, kL], where M is
             the number of output channels, g is the number of groups, kL is the filter's size. 
-        bias (Variable, optional): The bias with shape [M,].
+        bias (Tensor, optional): The bias with shape [M,].
 
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
@@ -163,21 +159,17 @@ def conv1d(input,
             contain one integers, (stride_size). Default: 1.
         dilation (int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain one integer, (dilation_size). Default: 1.
-        groups (int, optional): The groups number of the Conv2d Layer. According to grouped
+        groups (int, optional): The groups number of the conv1d function. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: 1.
-        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True
-        act (str): Activation type, if it is set to None, activation is not appended.
-            Default: None
         name(str, optional): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
 
     Returns:
-        A Variable holding Tensor representing the conv1d, whose data type is the 
+        A tensor holding Tensor representing the conv1d, whose data type is the 
         same with input. If act is None, the tensor variable storing the convolution 
         result, and if act is not None, the tensor variable storing convolution 
         and non-linearity activation result.
@@ -197,28 +189,25 @@ def conv1d(input,
     Examples:
         .. code-block:: python
 
-          from paddle import fluid
+          import paddle
           import paddle.nn.functional as F
-          import paddle.fluid.dygraph as dg
           import numpy as np
 
           x = np.random.randn(2, 3, 8).astype(np.float32)
           w = np.random.randn(6, 3, 3).astype(np.float32)
-
-          place = fluid.CPUPlace()
-          with dg.guard(place):
-              x_var = dg.to_variable(x)
-              w_var = dg.to_variable(w)
-              y_var = F.conv2d(x_var, w_var, act="relu")
-              y_np = y_var.numpy()
+          paddle.disable_static()
+          x_var = paddle.to_tensor(x)
+          w_var = paddle.to_tensor(w)
+          y_var = F.conv1d(x_var, w_var)
+          y_np = y_var.numpy()
           print(y_np.shape)
 
           # (2, 6, 6)
     """
-    # entry checks
-    if not isinstance(use_cudnn, bool):
-        raise ValueError("Attr(use_cudnn) should be True or False. "
-                         "Received Attr(use_cudnn): {}.".format(use_cudnn))
+    if get_cudnn_version():
+        use_cudnn = True
+    else:
+        use_cudnn = False
 
     channel_dim = 1
     data_format = "NCHW"
@@ -278,13 +267,9 @@ def conv1d(input,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
                  'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
                  padding_algorithm, "data_format", data_format)
-        pre_bias = getattr(core.ops, l_type)(input, weight, *attrs)
+        out = getattr(core.ops, l_type)(input, weight, *attrs)
         if bias is not None:
-            pre_act = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-        else:
-            pre_act = pre_bias
-        out = dygraph_utils._append_activation_in_dygraph(
-            pre_act, act, use_cudnn=use_cudnn)
+            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
     else:
         inputs = {'Input': [input], 'Filter': [weight]}
         attrs = {
@@ -302,15 +287,12 @@ def conv1d(input,
                                  ['float16', 'float32', 'float64'], 'conv2d')
         helper = LayerHelper(l_type, **locals())
         dtype = helper.input_dtype()
-        pre_bias = helper.create_variable_for_type_inference(dtype)
-        outputs = {"Output": [pre_bias]}
+        out = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Output": [out]}
         helper.append_op(
             type=l_type, inputs=inputs, outputs=outputs, attrs=attrs)
         if bias is not None:
-            pre_act = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-        else:
-            pre_act = pre_bias
-        out = helper.append_activation(pre_act)
+            out = nn.elementwise_add(out, bias, axis=channel_dim)
     out = nn.squeeze(input=out, axes=[-1])
     return out
 

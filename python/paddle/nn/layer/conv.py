@@ -33,17 +33,14 @@ from ...fluid.layers import utils
 from ..functional.conv import _update_padding_nd
 
 
-def _get_default_param_initializer(num_channels, filter_size):
-    filter_elem_num = num_channels * np.prod(filter_size)
+def _get_default_param_initializer(in_channels, kernel_size):
+    filter_elem_num = in_channels * np.prod(kernel_size)
     std = (2.0 / filter_elem_num)**0.5
     return Normal(0.0, std, 0)
 
 
 class Conv1D(layers.Layer):
     """
-	:alias_main: paddle.nn.Conv1D
-	:alias: paddle.nn.Conv1D,paddle.nn.layer.Conv1D,paddle.nn.layer.conv.Conv1D
-
     This interface is used to construct a callable object of the ``Conv1D`` class.
     For more details, refer to code examples.
     The convolution1D layer calculates the output based on the input, filter
@@ -91,11 +88,11 @@ class Conv1D(layers.Layer):
             L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Parameters:
-        num_channels(int): The number of channels in the input image.
-        num_filters(int): The number of filter. It is as same as the output
+        in_channels(int): The number of channels in the input image.
+        out_channels(int): The number of filter. It is as same as the output
             feature map.
-        filter_size (int or tuple): The filter size. If filter_size is a tuple,
-            it must contain one integer, (filter_size).
+        kernel_size (int or tuple): The filter size. If kernel_size is a tuple,
+            it must contain one integer, (kernel_size).
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means the feature map is zero paded by size of `padding` on both sides.
@@ -122,70 +119,64 @@ class Conv1D(layers.Layer):
             If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True.
-        act (str, optional): Activation type, if it is set to None, activation is not appended.
-            Default: None.
-        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Attribute:
         **weight** (Parameter): the learnable weights of filter of this layer.
 
         **bias** (Parameter or None): the learnable bias of this layer.
 
-    Returns:
-        None
+    Shape:
+        - input: 3-D tensor with shape: (batch, in_channels, length), i.e.: HCL.
+        - input: 3-D tensor with shape: (batch, in_channels, new_length).
     
     Raises:
-        ValueError: if ``use_cudnn`` is not a bool value.
+        None
 
     Examples:
         .. code-block:: python
 
+          import paddle
           import numpy as np
-          from paddle import fluid
-          import paddle.fluid.dygraph as dg
           from paddle import nn
 
+          paddle.disable_static()
           x = np.random.uniform(-1, 1, (2, 4, 8)).astype('float32')
-          place = fluid.CPUPlace()
-          with dg.guard(place):
-              x_var = dg.to_variable(x)
-              conv = nn.Conv2D(4, 6, (3))
-              y_var = conv(x_var)
-              y_np = y_var.numpy()
-              print(y_np.shape)
+          place = paddle.CPUPlace()
+          x_var = paddle.to_tensor(x)
+          conv = nn.Conv1D(4, 6, (3))
+          y_var = conv(x_var)
+          y_np = y_var.numpy()
+          print(y_np.shape)
           
           # (2, 6, 6)
     """
 
     def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
                  padding=0,
                  stride=1,
                  dilation=1,
                  groups=1,
                  param_attr=None,
-                 bias_attr=None,
-                 use_cudnn=True,
-                 act=None,
-                 dtype='float32'):
+                 bias_attr=None):
         super(Conv1D, self).__init__()
         assert param_attr is not False, "param_attr should not be False here."
-        self._num_channels = num_channels
-        self._num_filters = num_filters
+        self._in_channels = in_channels
+        self._out_channels = out_channels
         self._groups = groups
-        if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
-        self._act = act
-        self._dtype = dtype
+        if in_channels % groups != 0:
+            raise ValueError("in_channels must be divisible by groups.")
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
-        self._use_cudnn = use_cudnn
 
-        self._filter_size = utils.convert_to_list(filter_size, 1, 'filter_size')
+        if check_cudnn_version():
+            self._use_cudnn = True
+        else:
+            self._use_cudnn = False
+
+        self._kernel_size = utils.convert_to_list(kernel_size, 1, 'kernel_size')
         self._stride = utils.convert_to_list(stride, 1, 'stride')
         self._dilation = utils.convert_to_list(dilation, 1, 'dilation')
         channel_last = False
@@ -194,20 +185,20 @@ class Conv1D(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
 
-        num_filter_channels = num_channels // groups
-        filter_shape = [self._num_filters, num_filter_channels
-                        ] + self._filter_size
+        num_filter_channels = in_channels // groups
+        filter_shape = [self._out_channels, num_filter_channels
+                        ] + self._kernel_size
 
         self.weight = self.create_parameter(
             attr=self._param_attr,
             shape=filter_shape,
-            dtype=self._dtype,
+            dtype=get_default_dtype(),
             default_initializer=_get_default_param_initializer(
-                self._num_channels, filter_shape))
+                self._in_channels, filter_shape))
         self.bias = self.create_parameter(
             attr=self._bias_attr,
-            shape=[self._num_filters],
-            dtype=self._dtype,
+            shape=[self._out_channels],
+            dtype=get_default_dtype(),
             is_bias=True)
 
     def forward(self, input):
@@ -218,9 +209,7 @@ class Conv1D(layers.Layer):
             padding=self._padding,
             stride=self._stride,
             dilation=self._dilation,
-            groups=self._groups,
-            use_cudnn=self._use_cudnn,
-            act=self._act)
+            groups=self._groups)
         return out
 
 
@@ -281,11 +270,11 @@ class Conv2D(layers.Layer):
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Parameters:
-        num_channels(int): The number of channels in the input image.
-        num_filters(int): The number of filter. It is as same as the output
+        in_channels(int): The number of channels in the input image.
+        out_channels(int): The number of filter. It is as same as the output
             feature map.
-        filter_size (int or tuple): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
+        kernel_size (int or tuple): The filter size. If kernel_size is a tuple,
+            it must contain two integers, (kernel_size_H, kernel_size_W).
             Otherwise, the filter will be a square.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
@@ -355,9 +344,9 @@ class Conv2D(layers.Layer):
     """
 
     def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
                  padding=0,
                  stride=1,
                  dilation=1,
@@ -370,11 +359,11 @@ class Conv2D(layers.Layer):
                  dtype='float32'):
         super(Conv2D, self).__init__()
         assert param_attr is not False, "param_attr should not be False here."
-        self._num_channels = num_channels
-        self._num_filters = num_filters
+        self._in_channels = in_channels
+        self._out_channels = out_channels
         self._groups = groups
-        if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
+        if in_channels % groups != 0:
+            raise ValueError("in_channels must be divisible by groups.")
         self._act = act
         self._data_format = data_format
         self._dtype = dtype
@@ -382,7 +371,7 @@ class Conv2D(layers.Layer):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
 
-        self._filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
+        self._kernel_size = utils.convert_to_list(kernel_size, 2, 'kernel_size')
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
         channel_last = (data_format == "NHWC")
@@ -391,19 +380,19 @@ class Conv2D(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
 
-        num_filter_channels = num_channels // groups
-        filter_shape = [self._num_filters, num_filter_channels
-                        ] + self._filter_size
+        num_filter_channels = in_channels // groups
+        filter_shape = [self._out_channels, num_filter_channels
+                        ] + self._kernel_size
 
         self.weight = self.create_parameter(
             attr=self._param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer(
-                self._num_channels, filter_shape))
+                self._in_channels, filter_shape))
         self.bias = self.create_parameter(
             attr=self._bias_attr,
-            shape=[self._num_filters],
+            shape=[self._out_channels],
             dtype=self._dtype,
             is_bias=True)
 
@@ -480,16 +469,16 @@ class Conv2DTranspose(layers.Layer):
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Parameters:
-        num_channels(int): The number of channels in the input image.
-        num_filters(int): The number of the filter. It is as same as the output
+        in_channels(int): The number of channels in the input image.
+        out_channels(int): The number of the filter. It is as same as the output
             feature map.
-        filter_size(int or tuple): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
+        kernel_size(int or tuple): The filter size. If kernel_size is a tuple,
+            it must contain two integers, (kernel_size_H, kernel_size_W).
             Otherwise, the filter will be a square.
         output_size(int or tuple, optional): The output image size. If output size is a
             tuple, it must contain two integers, (image_H, image_W). None if use
-            filter_size, padding, and stride to calculate output_size.
-            if output_size and filter_size are specified at the same time, They
+            kernel_size, padding, and stride to calculate output_size.
+            if output_size and kernel_size are specified at the same time, They
             should follow the formula above. Default: None.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
@@ -556,9 +545,9 @@ class Conv2DTranspose(layers.Layer):
     """
 
     def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
                  output_size=None,
                  padding=0,
                  stride=1,
@@ -576,15 +565,15 @@ class Conv2DTranspose(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
         self._groups = groups
-        self._num_channels = num_channels
-        self._num_filters = num_filters
+        self._in_channels = in_channels
+        self._out_channels = out_channels
         self._use_cudnn = use_cudnn
         self._data_format = data_format
         self._dtype = dtype
 
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
-        self._filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
+        self._kernel_size = utils.convert_to_list(kernel_size, 2, 'kernel_size')
         if output_size is None:
             self._output_size = output_size
         elif isinstance(output_size, (list, tuple, int)):
@@ -595,13 +584,13 @@ class Conv2DTranspose(layers.Layer):
                 "output_size should be int, ot list[int] or tuple[int]")
         self._padding = padding
 
-        filter_shape = [self._num_channels, num_filters // groups
-                        ] + self._filter_size
+        filter_shape = [self._in_channels, out_channels // groups
+                        ] + self._kernel_size
         self.weight = self.create_parameter(
             dtype=self._dtype, shape=filter_shape, attr=self._param_attr)
         self.bias = self.create_parameter(
             attr=self._bias_attr,
-            shape=[self._num_filters],
+            shape=[self._out_channels],
             dtype=self._dtype,
             is_bias=True)
 
@@ -673,12 +662,12 @@ class Conv3D(layers.Layer):
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Parameters:
-        num_channels(int): The number of channels in the input image.
-        num_filters(int): The number of filter. It is as same as the output image channel.
-        filter_size (int|tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square, filter_size_depth = filter_size_height
-            = filter_size_width = filter_size.
+        in_channels(int): The number of channels in the input image.
+        out_channels(int): The number of filter. It is as same as the output image channel.
+        kernel_size (int|tuple, optional): The filter size. If kernel_size is a tuple,
+            it must contain three integers, (kernel_size_D, kernel_size_H, kernel_size_W).
+            Otherwise, the filter will be a square, kernel_size_depth = kernel_size_height
+            = kernel_size_width = kernel_size.
         stride (int|tuple, optional): The stride size. If stride is a tuple, it must
             contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
             stride_D = stride_H = stride_W = stride. The default value is 1.
@@ -724,7 +713,7 @@ class Conv3D(layers.Layer):
         None.
 
     Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
+        ValueError: If the shapes of input, kernel_size, stride, padding and
                     groups mismatch.
 
     Examples:
@@ -748,9 +737,9 @@ class Conv3D(layers.Layer):
     """
 
     def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
                  padding=0,
                  stride=1,
                  dilation=1,
@@ -763,8 +752,8 @@ class Conv3D(layers.Layer):
                  dtype='float32'):
         super(Conv3D, self).__init__()
         assert param_attr is not False, "param_attr should not be False here."
-        self._num_channels = num_channels
-        self._num_filters = num_filters
+        self._in_channels = in_channels
+        self._out_channels = out_channels
         self._groups = groups
         self._act = act
         self._use_cudnn = use_cudnn
@@ -773,29 +762,29 @@ class Conv3D(layers.Layer):
 
         self._stride = utils.convert_to_list(stride, 3, 'stride')
         self._dilation = utils.convert_to_list(dilation, 3, 'dilation')
-        self._filter_size = utils.convert_to_list(filter_size, 3, 'filter_size')
+        self._kernel_size = utils.convert_to_list(kernel_size, 3, 'kernel_size')
         channel_last = (data_format == "NDHWC")
         self._padding = padding
 
         self._param_attr = param_attr
         self._bias_attr = bias_attr
 
-        if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
-        num_filter_channels = num_channels // groups
+        if in_channels % groups != 0:
+            raise ValueError("in_channels must be divisible by groups.")
+        num_filter_channels = in_channels // groups
 
-        filter_shape = [num_filters, num_filter_channels] + self._filter_size
+        filter_shape = [out_channels, num_filter_channels] + self._kernel_size
 
         self.weight = self.create_parameter(
             attr=self._param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer(
-                self._num_channels, self._filter_size))
+                self._in_channels, self._kernel_size))
 
         self.bias = self.create_parameter(
             attr=self._bias_attr,
-            shape=[self._num_filters],
+            shape=[self._out_channels],
             dtype=self._dtype,
             is_bias=True)
 
@@ -885,16 +874,16 @@ class Conv3DTranspose(layers.Layer):
 
 
     Parameters:
-        num_channels(int): The number of channels in the input image.
-        num_filters(int): The number of the filter. It is as same as the output
+        in_channels(int): The number of channels in the input image.
+        out_channels(int): The number of the filter. It is as same as the output
             image channel.
-        filter_size(int|tuple): The filter size. If filter_size is a tuple,
-            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
+        kernel_size(int|tuple): The filter size. If kernel_size is a tuple,
+            it must contain three integers, (kernel_size_D, kernel_size_H, kernel_size_W).
             Otherwise, the filter will be a square.
         output_size(int or tuple, optional): The output image size. If output size is a
             tuple, it must contain two integers, (image_H, image_W). None if use
-            filter_size, padding, and stride to calculate output_size.
-            if output_size and filter_size are specified at the same time, They
+            kernel_size, padding, and stride to calculate output_size.
+            if output_size and kernel_size are specified at the same time, They
             should follow the formula above. Default: None.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
@@ -941,7 +930,7 @@ class Conv3DTranspose(layers.Layer):
         None.
 
     Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
+        ValueError: If the shapes of input, kernel_size, stride, padding and
                     groups mismatch.
 
     Examples:
@@ -965,9 +954,9 @@ class Conv3DTranspose(layers.Layer):
     """
 
     def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
                  output_size=None,
                  padding=0,
                  stride=1,
@@ -983,8 +972,8 @@ class Conv3DTranspose(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
-        self._num_channels = num_channels
-        self._num_filters = num_filters
+        self._in_channels = in_channels
+        self._out_channels = out_channels
         self._groups = groups
         self._use_cudnn = use_cudnn
         self._act = act
@@ -993,7 +982,7 @@ class Conv3DTranspose(layers.Layer):
 
         self._stride = utils.convert_to_list(stride, 3, 'stride')
         self._dilation = utils.convert_to_list(dilation, 3, 'dilation')
-        self._filter_size = utils.convert_to_list(filter_size, 3, 'filter_size')
+        self._kernel_size = utils.convert_to_list(kernel_size, 3, 'kernel_size')
         channel_last = (data_format == "NDHWC")
         self._padding = padding
         if output_size is None:
@@ -1008,12 +997,12 @@ class Conv3DTranspose(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
 
-        filter_shape = [num_channels, num_filters // groups] + self._filter_size
+        filter_shape = [in_channels, out_channels // groups] + self._kernel_size
         self.weight = self.create_parameter(
             dtype=self._dtype, shape=filter_shape, attr=self._param_attr)
         self.bias = self.create_parameter(
             attr=self._bias_attr,
-            shape=[self._num_filters],
+            shape=[self._out_channels],
             dtype=self._dtype,
             is_bias=True)
 
