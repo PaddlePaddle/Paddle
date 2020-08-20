@@ -422,8 +422,6 @@ class Dropout(layers.Layer):
 
 class Dropout2D(layers.Layer):
     """
-    Dropout2D Layer.
-    This interface is used to construct a callable object of the `Dropout2D` class.
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
