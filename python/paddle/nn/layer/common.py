@@ -20,7 +20,6 @@ from ...fluid.dygraph import Linear  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
 from .. import functional as F
-from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
     'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
@@ -339,27 +338,24 @@ class Pad2D(layers.Layer):
 
 class AlphaDropout(layers.Layer):
     """
-    AlphaDropout Layer.
-    This interface is used to construct a callable object of the `AlphaDropout` class.
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
     zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
     standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
     activations to the negative saturation value.
 
     For more information, please refer to:
-    [Self-Normalizing Neural Networks](https://arxiv.org/abs/1706.02515)
-    `paddle.nn.functional.alpha_dropout`
+    `Self-Normalizing Neural Networks <https://arxiv.org/abs/1706.02515>`_
 
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float, optional): Probability of setting units to zero. Default: 0.5
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: N-D tensor.
         - output: N-D tensor, the same shape as input.
+
     Examples:
         .. code-block:: python
             import paddle
@@ -381,7 +377,6 @@ class AlphaDropout(layers.Layer):
     def __init__(self, p=0.5, name=None):
         super(AlphaDropout, self).__init__()
         self.p = p
-        self.training = _dygraph_tracer()._train_mode
         self.name = name
 
     def forward(self, input):

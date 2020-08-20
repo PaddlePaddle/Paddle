@@ -462,7 +462,6 @@ def interpolate(input,
 
 def alpha_dropout(x, p=0.5, training=True, name=None):
     """
-    alpha_dropout function.
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
     zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
     standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
@@ -470,12 +469,13 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     Args:
         x (Tensor): The input tensor. The data type is float32 or float64.
-        p (float): Probability of setting units to zero. Default 0.5.
+        p (float | int): Probability of setting units to zero. Default 0.5.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
-        A Tensor representing the dropout, has same shape and data type with `x`.
+        A Tensor representing the dropout, has same shape and data type as `x`.
+
     Examples:
         .. code-block:: python
             import paddle
@@ -485,7 +485,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
             x = np.array([[-1, 1], [-1, 1]]).astype('float32')
             x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
-            y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False) #test
+            y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False) 
             print(x.numpy())
             print(y_train.numpy())
             # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
