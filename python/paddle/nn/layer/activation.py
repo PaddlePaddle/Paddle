@@ -361,7 +361,7 @@ class PReLU(layers.Layer):
     """
     PReLU Activation.
 
-    .. math:
+    .. math::
 
         PReLU(x) = max(0, x) + weight * min(0, x)
 
@@ -428,7 +428,7 @@ class ReLU(layers.Layer):
     """
     ReLU Activation.
 
-    .. math:
+    .. math::
 
         ReLU(x) = max(x, 0)
 
@@ -545,7 +545,7 @@ class LogSigmoid(layers.Layer):
     """
     LogSigmoid Activation.
     
-    .. math:
+    .. math::
 
         LogSigmoid(x) = \\log \\frac{1}{1 + e^{-x}}
 

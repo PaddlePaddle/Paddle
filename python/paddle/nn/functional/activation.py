@@ -469,9 +469,9 @@ def prelu(x, weight, name=None):
 
 def relu(x, name=None):
     """
-    ReLU Activation.
+    relu activation.
 
-    .. math:
+    .. math::
 
         out = max(x, 0)
 
@@ -510,9 +510,9 @@ def logsigmoid(x, name=None):
     """
     logsigmoid activation.
 
-    .. math:
+    .. math::
 
-        logsigmoid(x) = \\log \\frac{1}{1 + e^{-x}}
+        logsigmoid(x) = log \\frac{1}{1 + e^{-x}}
     
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
