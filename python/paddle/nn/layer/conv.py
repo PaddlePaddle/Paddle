@@ -15,7 +15,7 @@
 # TODO: define classes of convolutional neural network
 
 __all__ = [
-    'Conv1DTranspose',
+    'ConvTranspose1D',
     'Conv2D',
     'Conv2DTranspose',
     'Conv3D',
@@ -26,6 +26,7 @@ __all__ = [
 
 import numpy as np
 
+from ...framework import get_default_dtype
 from ...fluid.dygraph import layers
 from ...fluid.initializer import Normal
 from .. import functional as F
@@ -156,7 +157,6 @@ class Conv2D(layers.Layer):
           from paddle import fluid
           import paddle.fluid.dygraph as dg
           from paddle import nn
-
           x = np.random.uniform(-1, 1, (2, 4, 8, 8)).astype('float32')
           place = fluid.CPUPlace()
           with dg.guard(place):
@@ -237,18 +237,13 @@ class Conv2D(layers.Layer):
         return out
 
 
-class Conv1DTranspose(layers.Layer):
+class ConvTranspose1D(layers.Layer):
     """
     This interface is used to construct a callable object of the ``Conv1DTranspose`` class.
     For more details, refer to code examples.
-
-
-
-
-
-    The convolution1D transpose layer calculates the output based on the input,
+    The 1-D convolution transpose layer calculates the output based on the input,
     filter, and dilation, stride, padding. Input(Input) and output(Output)
-    are in NCL format where N is batch size, C is the number of channels,
+    are in 'NCL' format or 'NLC' where N is batch size, C is the number of channels,
     L is the length of the feature. The details of convolution transpose
     layer, please refer to the following explanation and references
     `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
@@ -264,12 +259,12 @@ class Conv1DTranspose(layers.Layer):
 
     Where:
 
-    * :math:`X`: Input value, a 3-D Tensor with NCL format.
-    * :math:`W`: Filter value, a 3-D Tensor with MCL format.
+    * :math:`X`: Input value, a 3-D Tensor with 'NCL' format or 'NLC' format.
+    * :math:`W`: Kernel value, a 3-D Tensor with 'MCK' format.
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
-    * :math:`Out`: Output value, a 3-D Tensor with data format 'NCL', the shape of :math:`Out` and :math:`X` may be different.
+    * :math:`Out`: Output value, a 3-D Tensor with data format 'NCL' of 'NLC', the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
@@ -293,163 +288,141 @@ class Conv1DTranspose(layers.Layer):
     Note:
           The conv1d_transpose can be seen as the backward of the conv1d. For conv1d,
           when stride > 1, conv1d maps multiple input shape to the same output shape,
-          so for conv2d_transpose, when stride > 1, input shape maps multiple output shape.
+          so for conv1d_transpose, when stride > 1, input shape maps multiple output shape.
           If output_size is None, :math:`L_{out} = L^\prime_{out}`;
           else, the :math:`L_{out}` of the output size must between :math:`L^\prime_{out}`
-          and :math:`L^\prime_{out} + stride`. conv2d_transpose can compute the kernel size automatically.
-
-
-
-                 num_channels,
-                 num_filters,
-                 filter_size,
-                 output_size=None,
-                 padding=0,
-                 stride=1,
-                 dilation=1,
-                 groups=1,
-                 param_attr=None,
-                 bias_attr=None,
-                 use_cudnn=True,
-                 act=None,
-                 dtype='float32'):
-
-
+          and :math:`L^\prime_{out} + stride`. conv1d_transpose can compute the kernel size automatically.
 
     Args:
-        num_channels(int): The number of channels in the input image.
-        num_filters(int): The number of the filter. It is as same as the output
+        in_channels(int): The number of channels in the input image.
+        out_channels(int): The number of the filter. It is as same as the output
             feature map.
-        filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain one integers, (filter_size). None if
-            use output size to calculate filter_size. Default: None. filter_size and
+        kernel_size(int|tuple, optional): The filter size. If kernel_size is a tuple,
+            it must contain one integers, (kernel_size). None if
+            use output size to calculate kernel_size. Default: None. kernel_size and
             output_size should not be None at the same time.
-        output_size(int|tuple, optional): The output image size. If output size is a
-            tuple, it must contain one integer, (feature_length). None if use
-            filter_size, padding, and stride to calculate output_size.
-            If output_size and filter_size are specified at the same time, They
-            should follow the formula above. Default: None. output_size and filter_size
-            should not be None at the same time.
-        padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
-             `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a
-             string, either 'VALID' or 'SAME' supported, which is the padding algorithm.
-             If `padding` is a tuple or list, it could be in three forms:
-             `[pad]` or `[pad_top, pad_bottom]`, and `[[0,0], [0,0], [pad_height_top, pad_height_bottom],
-             [pad_width_left, pad_width_right]]`. Default: padding = 0.
         stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
             If stride is a tuple, it must contain one integer, (stride_size).
             Default: stride = 1.
-        dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
-            If dilation is a tuple, it must contain one integer, (dilation_size).
-            Default: dilation = 1.
+        padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
+             `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a
+             string, either 'VALID' or 'SAME' supported, which is the padding algorithm.
+             If `padding` is a tuple or list, it could be in two forms:
+             `[pad]` or `[pad_left, pad_right]`. Default: padding = 0.
+        output_padding(int|list|tuple, optional): The count of zeros to be added to tail of each dimension.
+             If it is a tuple, it must contain one integer. Default: 0.
         groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
-        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
-            of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
+        bias(bool, optional): Whether to use bias. Default: True.
+        dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
+            If dilation is a tuple, it must contain one integer, (dilation_size).
+            Default: dilation = 1.
+        weight_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
+            of conv1d_transpose. If it is set to None or one attribute of ParamAttr, conv1d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv2d_transpose.
+        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv1d_transpose.
             If it is set to False, no bias will be added to the output units.
-            If it is set to None or one attribute of ParamAttr, conv2d_transpose
+            If it is set to None or one attribute of ParamAttr, conv1d_transpose
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True.
-        act (str, optional): Activation type, if it is set to None, activation is not appended.
-            Default: None.
-        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Attribute:
         **weight** (Parameter): the learnable weights of filters of this layer.
         **bias** (Parameter or None): the learnable bias of this layer.
 
-    Returns:
-        None
+    Shape:
+        - x(Tensor): 3-D tensor with shape (batch, in_channels, length) when data_format is
+            "NCL" or shape (batch, length, in_channels) when data_format is "NLC".
+        - output_size(int|tuple, optional): The output image size. If output size is a
+            tuple, it must contain one integer, (feature_length). None if use
+            kernel_size, padding, output_padding and stride to calculate output_size.
+            If output_size and kernel_size are specified at the same time, They
+            should follow the formula above. Default: None. output_size and kernel_size
+            should not be None at the same time.
+        - output(Tensor): 3-D tensor with same shape as input x.
 
     Examples:
        .. code-block:: python
 
+          import paddle
+          from paddle.nn import ConvTranspose1D
           import numpy as np
-          from paddle import fluid
-          import paddle.fluid.dygraph as dg
-          from paddle import nn
-
-          x = np.random.uniform(-1, 1, (2, 4, 8)).astype('float32')
-          place = fluid.CPUPlace()
-          with dg.guard(place):
-              x_var = dg.to_variable(x)
-              conv = nn.Conv1DTranspose(4, 6, (3))
-              y_var = conv(x_var)
-              y_np = y_var.numpy()
-              print(y_np.shape)
           
-          # (2, 6, 10)
+          paddle.disable_static()
+          # shape: (1, 2, 4)
+          x=np.array([[[4, 0, 9, 7],
+                       [8, 0, 9, 2]]]).astype(np.float32)
+          # shape: (2, 1, 2)
+          y=np.array([[[7, 0]],
+                      [[4, 2]]]).astype(np.float32)
+          x_t = paddle.to_tensor(x)
+          conv = ConvTranspose1D(2, 1, 2)
+          conv.weight.set_value(y)
+          y_t = conv(x_t)
+          y_np = y_t.numpy()
+          print y_np
+          
+          # [[[60. 16. 99. 75.  4.]]]
     """
 
     def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
-                 output_size=None,
-                 padding=0,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
                  stride=1,
-                 dilation=1,
+                 padding=0,
+                 output_padding=0,
                  groups=1,
-                 param_attr=None,
+                 bias=True,
+                 dilation=1,
+                 weight_attr=None,
                  bias_attr=None,
-                 use_cudnn=True,
-                 act=None,
-                 dtype='float32'):
-        super(Conv1DTranspose, self).__init__()
-        assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
-        self._param_attr = param_attr
+                 data_format="NCL"):
+        super(ConvTranspose1D, self).__init__()
+        assert weight_attr is not False, "param_attr should not be False in ConvTranspose1D."
+        self._param_attr = weight_attr
         self._bias_attr = bias_attr
-        self._act = act
         self._groups = groups
-        self._num_channels = num_channels
-        self._num_filters = num_filters
-        self._use_cudnn = use_cudnn
-        self._dtype = dtype
+        self._in_channels = in_channels
+        self._out_channels = out_channels
+        self._output_padding = output_padding
+        self._data_format = data_format
+        self._bias = bias
 
         self._stride = utils.convert_to_list(stride, 1, 'stride')
         self._dilation = utils.convert_to_list(dilation, 1, 'dilation')
-        self._filter_size = utils.convert_to_list(filter_size, 1, 'filter_size')
-        if output_size is None:
-            self._output_size = output_size
-        elif isinstance(output_size, (list, tuple, int)):
-            self._output_size = utils.convert_to_list(output_size, 1,
-                                                      'output_size')
-        else:
-            raise ValueError(
-                "output_size should be int, ot list[int] or tuple[int]")
+        self._kernel_size = utils.convert_to_list(kernel_size, 1, 'kernel_size')
         self._padding = padding
 
-        filter_shape = [self._num_channels, num_filters // groups
-                        ] + self._filter_size
+        filter_shape = [self._in_channels, out_channels // groups
+                        ] + self._kernel_size
         self.weight = self.create_parameter(
-            dtype=self._dtype, shape=filter_shape, attr=self._param_attr)
+            dtype=get_default_dtype(),
+            shape=filter_shape,
+            attr=self._param_attr)
         self.bias = self.create_parameter(
             attr=self._bias_attr,
-            shape=[self._num_filters],
-            dtype=self._dtype,
-            is_bias=True)
+            shape=[self._out_channels],
+            dtype=get_default_dtype(),
+            is_bias=True) if self._bias else None
 
-    def forward(self, input):
-        out = F.conv1d_transpose(
-            input,
+    def forward(self, x, output_size=None):
+        out = F.conv_transpose1d(
+            x,
             self.weight,
             bias=self.bias,
-            output_size=self._output_size,
+            output_size=output_size,
+            output_padding=self._output_padding,
             padding=self._padding,
             stride=self._stride,
             dilation=self._dilation,
             groups=self._groups,
-            use_cudnn=self._use_cudnn,
-            act=self._act)
+            data_format=self._data_format)
         return out
 
 
