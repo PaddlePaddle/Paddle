@@ -16,20 +16,18 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
-#if defined(PADDLE_WITH_GLOO)
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace imperative {
 
-struct ParallelStrategy {
+struct GlooParallelStrategy {
   int rank{0};
-  int rank_num{0};
+  int rank_num{1};
   std::string iface;
   std::string prefix;
   int init_seconds{9999999};
@@ -39,30 +37,19 @@ struct ParallelStrategy {
   std::string fs_ugi;
 };
 
-class ParallelContext {
+#if defined(PADDLE_WITH_GLOO)
+class GlooParallelContext {
  public:
-  explicit ParallelContext(const ParallelStrategy& strategy)
+  explicit GlooParallelContext(const GlooParallelStrategy& strategy)
       : strategy_(strategy) {}
 
-  virtual ~ParallelContext() {}
+  virtual ~GlooParallelContext() {}
 
-  virtual void Init() = 0;
+  virtual void Init();
 
  protected:
-  ParallelStrategy strategy_;
-};
-
-#if defined(PADDLE_WITH_GLOO)
-class GLOOParallelContext : ParallelContext {
- public:
-  explicit GLOOParallelContext(const ParallelStrategy& strategy)
-      : ParallelContext(strategy) {}
-
-  ~GLOOParallelContext() {}
-
-  void Init() override;
+  GlooParallelStrategy strategy_;
 };
 #endif
-
 }  //  namespace imperative
 }  //  namespace paddle

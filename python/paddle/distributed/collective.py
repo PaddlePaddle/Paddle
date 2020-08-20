@@ -104,13 +104,17 @@ def init_process_group(backend,
     if backend == 'nccl':
         prepare_context()
     elif backend == 'gloo':
-        gloo = fluid.core.Gloo()
-        gloo.set_rank(rank)
-        gloo.set_size(rank_num)
-        gloo.set_prefix("")
-        gloo.set_iface('lo')
-        gloo.set_timeout_seconds(timeout, timeout)
-        gloo.set_hdfs_store('/tmp/tmp0', "", "")
+        strategy = fluid.core.GlooParallelstrategy()
+        strategy.rank = rank
+        strategy.rank_num = rank_num
+        strategy.prefix = ""
+        strategy.iface = "lo"
+        strategy.init_seconds = timeout
+        strategy.run_seconds = timeout
+        strategy.path = '/tmp/tmp0'
+        strategy.fs_name = ""
+        strategy.fs_ugi = ""
+        gloo = GlooParallelContext(strategy)
         gloo.init()
     else:
         raise ValueError("Unknow backend: %s" % backend)
@@ -381,3 +385,28 @@ def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
             'nranks': nranks,
             'use_calc_stream': False if async_op else True
         })
+
+
+def barrier(group=0, async_op=False):
+    """
+
+    Barrier among all participators in the group.
+
+    Args:
+        group (int): The id of the process group to work on.
+        async_op (bool): Whether the op is sync or async.
+
+    Returns:
+        None.
+
+    Examples:
+    """
+    op_type = 'barrier'
+    if not isinstance(group, int):
+        raise ValueError("The type of 'group' for barrier " "must be int.")
+    if not isinstance(async_op, bool):
+        raise ValueError(
+            "The type of 'async_op' for all_gather should be bool.")
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type, attrs={'use_calc_stream': False if async_op else True})
