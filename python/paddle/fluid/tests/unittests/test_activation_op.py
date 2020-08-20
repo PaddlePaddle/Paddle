@@ -369,21 +369,77 @@ class TestCoshOpError(unittest.TestCase):
             fluid.layers.cosh(x_fp16)
 
 
-class TestTanhShrink(TestActivation):
+def ref_tanhshrink(x):
+    out = x - np.tanh(x)
+    return out
+
+
+class TestTanhshrink(TestActivation):
     def setUp(self):
         self.op_type = "tanh_shrink"
         self.init_dtype()
 
-        x = np.random.uniform(0.1, 1, [10, 17]).astype(self.dtype)
-        out = x - np.tanh(x)
+        x = np.random.uniform(10, 20, [10, 17]).astype(self.dtype)
+        out = ref_tanhshrink(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestTanhshrinkAPI(unittest.TestCase):
+    # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink
+    def setUp(self):
+        self.x_np = np.random.uniform(10, 20, [10, 17]).astype(np.float64)
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
+            out1 = F.tanhshrink(x)
+            tanhshrink = paddle.nn.Tanhshrink()
+            out2 = tanhshrink(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_tanhshrink(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.tanhshrink(x)
+        tanhshrink = paddle.nn.Tanhshrink()
+        out2 = tanhshrink(x)
+        out_ref = ref_tanhshrink(self.x_np)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            out = fluid.layers.tanh_shrink(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_tanhshrink(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.tanhshrink, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.tanhshrink, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.tanhshrink(x_fp16)
 
 
 def ref_hardshrink(x, threshold):
@@ -526,19 +582,24 @@ class TestHardtanhAPI(unittest.TestCase):
             F.hardtanh(x_fp16)
 
 
-class TestSoftShrink(TestActivation):
+def ref_softshrink(x, threshold=0.5):
+    out = np.copy(x)
+    out = (out < -threshold) * (out + threshold) + (out > threshold) * (
+        out - threshold)
+    return out
+
+
+class TestSoftshrink(TestActivation):
     def setUp(self):
         self.op_type = "softshrink"
         self.init_dtype()
 
-        lambda_val = 0.1
-        x = np.random.uniform(0.25, 10, [10, 12]).astype(self.dtype)
-        out = np.copy(x)
-        out = (out < -lambda_val) * (out + lambda_val) + (out > lambda_val) * (
-            out - lambda_val)
+        threshold = 0.8
 
-        self.attrs = {'lambda': lambda_val}
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        x = np.random.uniform(0.25, 10, [10, 12]).astype(self.dtype)
+        out = ref_softshrink(x, threshold)
+        self.inputs = {'X': x}
+        self.attrs = {"lambda": threshold}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
@@ -547,17 +608,56 @@ class TestSoftShrink(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSoftShrinkOpError(unittest.TestCase):
+class TestSoftshrinkAPI(unittest.TestCase):
+    # test paddle.nn.Softshrink, paddle.nn.functional.softshrink
+    def setUp(self):
+        self.threshold = 0.8
+        self.x_np = np.random.uniform(0.25, 10, [10, 12]).astype(np.float64)
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
+            out1 = F.softshrink(x, self.threshold)
+            softshrink = paddle.nn.Softshrink(self.threshold)
+            out2 = softshrink(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_softshrink(self.x_np, self.threshold)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.softshrink(x, self.threshold)
+        softshrink = paddle.nn.Softshrink(self.threshold)
+        out2 = softshrink(x)
+        out_ref = ref_softshrink(self.x_np, self.threshold)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            out = fluid.layers.softshrink(x, self.threshold)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_softshrink(self.x_np, self.threshold)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
     def test_errors(self):
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.softshrink, 1)
+            self.assertRaises(TypeError, F.softshrink, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.softshrink, x_int32)
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.softshrink, x_int32)
             # support the input dtype is float16
-            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.softshrink(x_fp16)
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.softshrink(x_fp16)
 
 
 class TestSqrt(TestActivation, TestParameter):
@@ -960,20 +1060,24 @@ class TestBReluOpError(unittest.TestCase):
             fluid.layers.brelu(x_fp16)
 
 
+def ref_relu6(x, threshold=6.0):
+    out = np.copy(x)
+    out[np.abs(x - threshold) < 0.005] = threshold + 0.02
+    out = np.minimum(np.maximum(x, 0), threshold)
+    return out
+
+
 class TestRelu6(TestActivation):
     def setUp(self):
         self.op_type = "relu6"
         self.init_dtype()
 
         x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
-        threshold = 6.0
-        # The same with TestAbs
         x[np.abs(x) < 0.005] = 0.02
-        x[np.abs(x - threshold) < 0.005] = threshold + 0.02
-        out = np.minimum(np.maximum(x, 0), threshold)
+        out = ref_relu6(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {'threshold': threshold}
+        self.inputs = {'X': x}
+        self.attrs = {'threshold': 6.0}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
@@ -982,17 +1086,56 @@ class TestRelu6(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestRelu6OpError(unittest.TestCase):
+class TestRelu6API(unittest.TestCase):
+    # test paddle.nn.ReLU6, paddle.nn.functional.relu6
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 10, [10, 12]).astype(np.float64)
+        self.x_np[np.abs(self.x_np) < 0.005] = 0.02
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
+            out1 = F.relu6(x)
+            relu6 = paddle.nn.ReLU6()
+            out2 = relu6(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_relu6(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.relu6(x)
+        relu6 = paddle.nn.ReLU6()
+        out2 = relu6(x)
+        out_ref = ref_relu6(self.x_np)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            out = fluid.layers.relu6(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_relu6(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
     def test_errors(self):
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.relu6, 1)
+            self.assertRaises(TypeError, F.relu6, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.relu6, x_int32)
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.relu6, x_int32)
             # support the input dtype is float16
-            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.relu6(x_fp16)
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.relu6(x_fp16)
 
 
 class TestHardSwish(TestActivation):
@@ -1375,22 +1518,89 @@ class TestSTanhOpError(unittest.TestCase):
             fluid.layers.stanh(x_fp16)
 
 
+def ref_softplus(x, beta=1, threshold=20):
+    x_beta = beta * x
+    out = np.select([x_beta <= threshold, x_beta > threshold],
+                    [np.log(1 + np.exp(x_beta)) / beta, x])
+    return out
+
+
 class TestSoftplus(TestActivation):
     def setUp(self):
         self.op_type = "softplus"
         self.init_dtype()
-        self.dtype = np.float64
 
-        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        out = np.log(1 + np.exp(x))
+        beta = 2
+        threshold = 15
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
+        out = ref_softplus(x, beta, threshold)
+        self.inputs = {'X': x}
+        self.attrs = {'beta': beta, "threshold": threshold}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestSoftplusAPI(unittest.TestCase):
+    # test paddle.nn.Softplus, paddle.nn.functional.softplus
+    def setUp(self):
+        self.beta = 2
+        self.threshold = 15
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
+            out1 = F.softplus(x, self.beta, self.threshold)
+            softplus = paddle.nn.Softplus(self.beta, self.threshold)
+            out2 = softplus(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_softplus(self.x_np, self.beta, self.threshold)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.softplus(x, self.beta, self.threshold)
+        softplus = paddle.nn.Softplus(self.beta, self.threshold)
+        out2 = softplus(x)
+        out_ref = ref_softplus(self.x_np, self.beta, self.threshold)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            out = fluid.layers.softplus(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_softplus(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.softplus, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.softplus, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.softplus(x_fp16)
+
+
+def ref_softsign(x):
+    out = np.divide(x, 1 + np.abs(x))
+    return out
 
 
 class TestSoftsign(TestActivation):
@@ -1398,16 +1608,66 @@ class TestSoftsign(TestActivation):
         self.op_type = "softsign"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        out = np.divide(x, 1 + np.abs(x))
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
+        out = ref_softsign(x)
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestSoftsignAPI(unittest.TestCase):
+    # test paddle.nn.Softsign, paddle.nn.functional.softsign
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
+            out1 = F.softsign(x)
+            softsign = paddle.nn.Softsign()
+            out2 = softsign(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_softsign(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.softsign(x)
+        softsign = paddle.nn.Softsign()
+        out2 = softsign(x)
+        out_ref = ref_softsign(self.x_np)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            out = fluid.layers.softsign(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_softsign(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.softsign, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.softsign, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.softsign(x_fp16)
 
 
 class TestThresholdedRelu(TestActivation):
@@ -1605,9 +1865,9 @@ create_test_act_fp16_class(TestActivation)
 create_test_act_fp16_class(TestSigmoid)
 create_test_act_fp16_class(TestLogSigmoid)
 create_test_act_fp16_class(TestTanh)
-create_test_act_fp16_class(TestTanhShrink)
+create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
-create_test_act_fp16_class(TestSoftShrink)
+create_test_act_fp16_class(TestSoftshrink)
 create_test_act_fp16_class(TestSqrt)
 create_test_act_fp16_class(TestAbs)
 create_test_act_fp16_class(TestCeil, grad_check=False)

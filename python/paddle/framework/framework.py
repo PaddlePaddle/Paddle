@@ -15,6 +15,7 @@
 # TODO: define framework api 
 from paddle.fluid.layer_helper_base import LayerHelperBase
 from paddle.fluid.data_feeder import convert_dtype
+import numpy as np
 
 __all__ = ['set_default_dtype', 'get_default_dtype']
 
@@ -24,7 +25,8 @@ def set_default_dtype(d):
     Set default dtype. The default dtype is initially float32
 
     Args:
-        d(string|np.dtype): the dtype to make the default
+        d(string|np.dtype): the dtype to make the default. It only
+                            supports float16, float32 and float64.
 
     Returns:
         None.
@@ -36,13 +38,35 @@ def set_default_dtype(d):
             paddle.set_default_dtype("float32")
 
     """
-    d = convert_dtype(d)
+    if isinstance(d, type):
+        if d in [np.float16, np.float32, np.float64]:
+            d = d.__name__
+        else:
+            raise TypeError(
+                "set_default_dtype only supports [float16, float32, float64] "
+                ", but received %s" % d.__name__)
+    else:
+        if d in [
+                'float16', 'float32', 'float64', u'float16', u'float32',
+                u'float64'
+        ]:
+            # this code is a little bit dangerous, since error could happen
+            # when casting no-ascii code to str in python2.
+            # but since the set itself is limited, so currently, it is good.
+            # however, jointly supporting python2 and python3, (as well as python4 maybe)
+            # may still be a long-lasting problem.
+            d = str(d)
+        else:
+            raise TypeError(
+                "set_default_dtype only supports [float16, float32, float64] "
+                ", but received %s" % str(d))
+
     LayerHelperBase.set_default_dtype(d)
 
 
 def get_default_dtype():
     """
-    Get the current default dtype. The default dtype is initially float32
+    Get the current default dtype. The default dtype is initially float32.
 
     Args:
         None.
