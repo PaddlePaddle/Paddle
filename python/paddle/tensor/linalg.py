@@ -41,24 +41,30 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     the complete broadcast rules, 
     and its behavior is consistent with `np.matmul`.
 
-    Currently, the input tensors' rank can be any, `matmul` can be used to
+    Currently, the input tensors' number of dimensions can be any, `matmul` can be used to
     achieve the `dot`, `matmul` and `batchmatmul`.
 
     The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
     flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
 
     - If a transpose flag is specified, the last two dimensions of the tensor
-      are transposed. If the tensor is rank-1 of shape, the transpose is invalid.
+      are transposed. If the tensor is ndim-1 of shape, the transpose is invalid. If the tensor 
+      is ndim-1 of shape :math:`[D]`, then for :math:`x` it is treated as :math:`[1, D]`, whereas 
+      for :math:`y` it is the opposite: It is treated as :math:`[D, 1]`.
 
     The multiplication behavior depends on the dimensions of `x` and `y`. Specifically:
 
     - If both tensors are 1-dimensional, the dot product result is obtained.
+
     - If both tensors are 2-dimensional, the matrix-matrix product is obtained.
+
     - If the `x` is 1-dimensional and the `y` is 2-dimensional, 
       a `1` is prepended to its dimension in order to conduct the matrix multiply. 
       After the matrix multiply, the prepended dimension is removed.
+      
     - If the `x` is 2-dimensional and `y` is 1-dimensional, 
       the matrix-vector product is obtained.
+
     - If both arguments are at least 1-dimensional and at least one argument 
       is N-dimensional (where N > 2), then a batched matrix multiply is obtained. 
       If the first argument is 1-dimensional, a 1 is prepended to its dimension 
@@ -71,8 +77,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
       out will be a (j, k, n, p) tensor.
 
     Args:
-        x (Tensor): The input tensor which is a Tensor or LoDTensor.
-        y (Tensor): The input tensor which is a Tensor or LoDTensor.
+        x (Tensor): The input tensor which is a Tensor.
+        y (Tensor): The input tensor which is a Tensor.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -89,7 +95,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         import numpy as np
 
         paddle.disable_static()
-        # vector x vector
+        # vector * vector
         x_data = np.random.random([10]).astype(np.float32)
         y_data = np.random.random([10]).astype(np.float32)
         x = paddle.to_tensor(x_data)
@@ -98,7 +104,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         print(z.numpy().shape)
         # [1]
 
-        # matrix x vector
+        # matrix * vector
         x_data = np.random.random([10, 5]).astype(np.float32)
         y_data = np.random.random([5]).astype(np.float32)
         x = paddle.to_tensor(x_data)
@@ -107,7 +113,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         print(z.numpy().shape)
         # [10]
 
-        # batched matrix x broadcasted vector
+        # batched matrix * broadcasted vector
         x_data = np.random.random([10, 5, 2]).astype(np.float32)
         y_data = np.random.random([2]).astype(np.float32)
         x = paddle.to_tensor(x_data)
@@ -116,7 +122,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         print(z.numpy().shape)
         # [10, 5]
 
-        # batched matrix x batched matrix
+        # batched matrix * batched matrix
         x_data = np.random.random([10, 5, 2]).astype(np.float32)
         y_data = np.random.random([10, 2, 5]).astype(np.float32)
         x = paddle.to_tensor(x_data)
@@ -125,7 +131,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         print(z.numpy().shape)
         # [10, 5, 5]
 
-        # batched matrix x broadcasted matrix
+        # batched matrix * broadcasted matrix
         x_data = np.random.random([10, 1, 5, 2]).astype(np.float32)
         y_data = np.random.random([1, 3, 2, 5]).astype(np.float32)
         x = paddle.to_tensor(x_data)

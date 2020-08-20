@@ -5024,6 +5024,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.matmul")
 def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
     Applies matrix multiplication to two tensors.
