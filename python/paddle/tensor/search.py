@@ -175,11 +175,11 @@ def argmax(x, axis=None, dtype=None, keepdim=False, name=None):
     if in_dygraph_mode():
         if dtype != None:
             var_dtype = convert_np_dtype_to_dtype_(dtype)
-            out = core.ops.arg_max_v2(x, 'axis', axis, 'dtype', var_dtype,
-                                      'keepdim', keepdim, 'flatten', flatten)
+            out = core.ops.arg_max(x, 'axis', axis, 'dtype', var_dtype,
+                                   'keepdim', keepdim, 'flatten', flatten)
         else:
-            out = core.ops.arg_max_v2(x, 'axis', axis, 'keepdim', keepdim,
-                                      'flatten', flatten)
+            out = core.ops.arg_max(x, 'axis', axis, 'keepdim', keepdim,
+                                   'flatten', flatten)
         return out
 
     helper = LayerHelper("argmax", **locals())
@@ -203,7 +203,7 @@ def argmax(x, axis=None, dtype=None, keepdim=False, name=None):
     attrs['axis'] = axis
     attrs['flatten'] = flatten
     helper.append_op(
-        type='arg_max_v2', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs)
+        type='arg_max', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs)
     out.stop_gradient = True
     return out
 
@@ -258,11 +258,11 @@ def argmin(x, axis=None, dtype=None, keepdim=False, name=None):
     if in_dygraph_mode():
         if dtype != None:
             var_dtype = convert_np_dtype_to_dtype_(dtype)
-            out = core.ops.arg_min_v2(x, 'axis', axis, 'dtype', var_dtype,
-                                      'keepdim', keepdim, 'flatten', flatten)
+            out = core.ops.arg_min(x, 'axis', axis, 'dtype', var_dtype,
+                                   'keepdim', keepdim, 'flatten', flatten)
         else:
-            out = core.ops.arg_min_v2(x, 'axis', axis, 'keepdim', keepdim,
-                                      'flatten', flatten)
+            out = core.ops.arg_min(x, 'axis', axis, 'keepdim', keepdim,
+                                   'flatten', flatten)
         return out
 
     helper = LayerHelper("argmin", **locals())
@@ -286,7 +286,7 @@ def argmin(x, axis=None, dtype=None, keepdim=False, name=None):
     attrs['axis'] = axis
     attrs['flatten'] = flatten
     helper.append_op(
-        type='arg_min_v2', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs)
+        type='arg_min', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs)
     out.stop_gradient = True
     return out
 

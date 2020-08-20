@@ -145,8 +145,7 @@ def create_kernel_case(op_type, numpy_op_type):
     globals()[cls_name] = ArgMinMaxKernelCase6
 
 
-for op_type, numpy_op_type in zip(['arg_max_v2', 'arg_min_v2'],
-                                  ['argmax', 'argmin']):
+for op_type, numpy_op_type in zip(['arg_max', 'arg_min'], ['argmax', 'argmin']):
     create_kernel_case(op_type, numpy_op_type)
 
 
