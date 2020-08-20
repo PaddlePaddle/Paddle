@@ -41,7 +41,8 @@ class TopkV2Op : public framework::OperatorWithKernel {
 
     if (axis < 0) axis += dim_size;
 
-    PADDLE_ENFORCE_GE(k, 1, "the attribute of k in the topk must >= 1");
+    PADDLE_ENFORCE_GE(
+        k, 1, "the attribute of k in the topk must >= 1, but received %d .", k);
     PADDLE_ENFORCE_GE(input_dims.size(), 1,
                       "input of topk must have >= 1d shape");
 
