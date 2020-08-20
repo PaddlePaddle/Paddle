@@ -41,9 +41,9 @@ class ELU(layers.Layer):
     """
     ELU Activation.
 
-    ..  math::
+    .. math::
     
-        ELU(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
+        ELU(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
@@ -84,15 +84,15 @@ class GELU(layers.Layer):
 
     If approximate is True
 
-    ..  math::
+    .. math::
 
-        GELU(x) = 0.5 * x * (1 + tanh(\sqrt{\frac{2}{\pi}} * (x + 0.044715x^{3})))
+        GELU(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
 
     else
 
-    ..  math::
+    .. math::
 
-        GELU(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
+        GELU(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
 
     Parameters:
         approximate (bool, optional): Wether to enable approximation. Default is False.
@@ -182,14 +182,11 @@ class HardTanh(layers.Layer):
 
     .. math::
 
-        HardTanh(x)=
-            \left\{
-            \begin{aligned}
-            &max, & & if \ x > max \\
-            &min, & & if \ x < min \\
-            &x, & & if \ others
-            \end{aligned}
-            \right.
+        HardTanh(x)= \\begin{cases}
+                        max, \\text{if } x > max \\\\
+                        min, \\text{if } x < min \\\\
+                        x,  \\text{otherwise}
+                      \\end{cases}
 
     Parameters:
         min (float, optional): The value of min for HardTanh. Default is -1.
@@ -550,7 +547,7 @@ class LogSigmoid(layers.Layer):
     
     .. math:
 
-        LogSigmoid(x) = \log \frac{1}{1 + e^{-x}}
+        LogSigmoid(x) = \\log \\frac{1}{1 + e^{-x}}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, or float64.
@@ -609,7 +606,7 @@ class Softmax(layers.Layer):
 
     .. math::
 
-        Softmax[i, j] = \frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+        Softmax[i, j] = \\frac{\\exp(x[i, j])}{\\sum_j(exp(x[i, j])}
 
     Parameters:
         x (Tensor): The input multi-dimension Tensor with data type float32, float64.

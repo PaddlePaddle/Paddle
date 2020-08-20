@@ -71,9 +71,9 @@ def elu(x, alpha=1.0, name=None):
     """
     elu activation.
 
-    ..  math::
+    .. math::
 
-        elu(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
+        elu(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -87,16 +87,16 @@ def elu(x, alpha=1.0, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
-        out = F.elu(x, alpha=0.2) 
-        # [[-0.12642411  6.        ]
-        #  [ 1.          15.6      ]]
+            x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
+            out = F.elu(x, alpha=0.2) 
+            # [[-0.12642411  6.        ]
+            #  [ 1.          15.6      ]]
     """
 
     if in_dygraph_mode():
@@ -118,11 +118,16 @@ def gelu(x, approximate=False, name=None):
     gelu activation.
 
     if approximate is True
-    ..  math::
-        gelu(x) = 0.5 * x * (1 + tanh(\sqrt{\frac{2}{\pi}} * (x + 0.044715x^{3})))
+
+    .. math::
+
+        gelu(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+
     else
-    ..  math::
-        gelu(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
+
+    .. math::
+
+        gelu(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
     
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -136,15 +141,15 @@ def gelu(x, approximate=False, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
-        out1 = F.gelu(x) # [-0.158655 0.345731 0.841345 1.39979]
-        out2 = F.gelu(x, True) # [-0.158808 0.345714 0.841192 1.39957]
+            x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
+            out1 = F.gelu(x) # [-0.158655 0.345731 0.841345 1.39979]
+            out2 = F.gelu(x, True) # [-0.158808 0.345714 0.841192 1.39957]
     """
 
     if in_dygraph_mode():
@@ -186,17 +191,16 @@ def hardshrink(x, threshold=0.5, name=None):
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
-        out = F.hardshrink(x) # [-1., 0., 2.5]
+            x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
+            out = F.hardshrink(x) # [-1., 0., 2.5]
 
     """
     if in_dygraph_mode():
@@ -220,14 +224,11 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 
     .. math::
 
-        hardtanh(x)=
-            \left\{
-            \begin{aligned}
-            &max, & & if \ x > max \\
-            &min, & & if \ x < min \\
-            &x, & & if \ others
-            \end{aligned}
-            \right.
+        hardtanh(x)= \\begin{cases}
+                        max, \\text{if } x > max \\\\
+                        min, \\text{if } x < min \\\\
+                        x,  \\text{otherwise}
+                      \\end{cases}
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -240,17 +241,16 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
+        .. code-block:: python
 
-    .. code-block:: python
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            paddle.disable_static()
 
-        paddle.disable_static()
-
-        x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
-        out = F.hardtanh(x) # [-1., 0.3, 1.]
+            x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
+            out = F.hardtanh(x) # [-1., 0.3, 1.]
     """
 
     if in_dygraph_mode():
@@ -327,7 +327,6 @@ def hsigmoid(input,
         Variable: A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as :attr:`input`.
 
     Examples:
-
         .. code-block:: python
 
             from paddle import fluid, nn
@@ -414,27 +413,27 @@ def prelu(x, weight, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
-                        [ 3.0, -4.0,  5.0, -6.0],
-                        [-7.0, -8.0,  8.0,  9.0]],
-                        [[ 1.0, -2.0, -3.0,  4.0],
-                        [-5.0,  6.0,  7.0, -8.0],
-                        [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
-        x = paddle.to_tensor(data)
-        w = paddle.to_tensor(np.array([0.25]).astype('float32'))
-        out = F.prelu(x, w)
-        # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
-        #    [ 3.  , -1.  ,  5.  , -1.5 ],
-        #    [-1.75, -2.  ,  8.  ,  9.  ]],
-        #   [[ 1.  , -0.5 , -0.75,  4.  ],
-        #    [-1.25,  6.  ,  7.  , -2.  ],
-        #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
+            data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
+                            [ 3.0, -4.0,  5.0, -6.0],
+                            [-7.0, -8.0,  8.0,  9.0]],
+                            [[ 1.0, -2.0, -3.0,  4.0],
+                            [-5.0,  6.0,  7.0, -8.0],
+                            [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
+            x = paddle.to_tensor(data)
+            w = paddle.to_tensor(np.array([0.25]).astype('float32'))
+            out = F.prelu(x, w)
+            # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
+            #    [ 3.  , -1.  ,  5.  , -1.5 ],
+            #    [-1.75, -2.  ,  8.  ,  9.  ]],
+            #   [[ 1.  , -0.5 , -0.75,  4.  ],
+            #    [-1.25,  6.  ,  7.  , -2.  ],
+            #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
     """
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
     check_variable_and_dtype(weight, 'weight',
@@ -487,14 +486,14 @@ def relu(x, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
-        out = F.relu(x) # [0., 0., 1.]
+            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+            out = F.relu(x) # [0., 0., 1.]
     """
 
     if in_dygraph_mode():
@@ -513,7 +512,7 @@ def logsigmoid(x, name=None):
 
     .. math:
 
-        logsigmoid(x) = \log \frac{1}{1 + e^{-x}}
+        logsigmoid(x) = \\log \\frac{1}{1 + e^{-x}}
     
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -526,14 +525,14 @@ def logsigmoid(x, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
-        out = F.logsigmoid(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+            x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
+            out = F.logsigmoid(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
     if in_dygraph_mode():
@@ -574,7 +573,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
     .. math::
 
-        softmax[i, j] = \frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+        softmax[i, j] = \\frac{\\exp(x[i, j])}{\\sum_j(exp(x[i, j])}
 
     Example:
 
@@ -643,32 +642,31 @@ def softmax(x, axis=-1, dtype=None, name=None):
         specified) as x.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = np.array([[[2.0, 3.0, 4.0, 5.0],
-                       [3.0, 4.0, 5.0, 6.0],
-                       [7.0, 8.0, 8.0, 9.0]],
-                      [[1.0, 2.0, 3.0, 4.0],
-                       [5.0, 6.0, 7.0, 8.0],
-                       [6.0, 7.0, 8.0, 9.0]]], 'float32')
-        x = paddle.to_tensor(x)
-        out1 = F.softmax(x)
-        out2 = F.softmax(x, dtype='float64')
-        # out1's data type is float32; out2's data type is float64
-        # out1 and out2's value is as follows:
-        # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-        #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
-        # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+            x = np.array([[[2.0, 3.0, 4.0, 5.0],
+                        [3.0, 4.0, 5.0, 6.0],
+                        [7.0, 8.0, 8.0, 9.0]],
+                        [[1.0, 2.0, 3.0, 4.0],
+                        [5.0, 6.0, 7.0, 8.0],
+                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
+            x = paddle.to_tensor(x)
+            out1 = F.softmax(x)
+            out2 = F.softmax(x, dtype='float64')
+            # out1's data type is float32; out2's data type is float64
+            # out1 and out2's value is as follows:
+            # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+            #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+            # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
     """
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
@@ -741,29 +739,29 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = np.array([[[-2.0, 3.0, -4.0, 5.0],
-                        [3.0, -4.0, 5.0, -6.0],
-                        [-7.0, -8.0, 8.0, 9.0]],
-                        [[1.0, -2.0, -3.0, 4.0],
-                        [-5.0, 6.0, 7.0, -8.0],
-                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
-        x = paddle.to_tensor(x)
-        out1 = F.log_softmax(x)
-        out2 = F.log_softmax(x, dtype='float64')
-        # out1's data type is float32; out2's data type is float64
-        # out1 and out2's value is as follows:
-        # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
-        #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
-        #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
-        #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
-        #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
-        #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
+            x = np.array([[[-2.0, 3.0, -4.0, 5.0],
+                            [3.0, -4.0, 5.0, -6.0],
+                            [-7.0, -8.0, 8.0, 9.0]],
+                            [[1.0, -2.0, -3.0, 4.0],
+                            [-5.0, 6.0, 7.0, -8.0],
+                            [6.0, 7.0, 8.0, 9.0]]], 'float32')
+            x = paddle.to_tensor(x)
+            out1 = F.log_softmax(x)
+            out2 = F.log_softmax(x, dtype='float64')
+            # out1's data type is float32; out2's data type is float64
+            # out1 and out2's value is as follows:
+            # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
+            #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
+            #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
+            #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
+            #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
+            #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
     """
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
