@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from optimizer import Optimizer
+from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
