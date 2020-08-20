@@ -12,10 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define input placeholders of neural network  
-from ..fluid import data  #DEFINE_ALIAS
-
-__all__ = [
-    'data',
-    #       'Input'
-]
+from . import weight_norm_hook
+from .weight_norm_hook import weight_norm, remove_weight_norm

@@ -111,6 +111,7 @@ from .math import cumsum  #DEFINE_ALIAS
 from .math import elementwise_add  #DEFINE_ALIAS
 from .math import elementwise_div  #DEFINE_ALIAS
 from .math import elementwise_floordiv  #DEFINE_ALIAS
+from .math import elementwise_mul  #DEFINE_ALIAS
 from .math import elementwise_mod  #DEFINE_ALIAS
 from .math import elementwise_pow  #DEFINE_ALIAS
 from .math import elementwise_sub  #DEFINE_ALIAS
@@ -159,6 +160,7 @@ from .math import kron  #DEFINE_ALIAS
 from .math import isfinite  #DEFINE_ALIAS
 from .math import isinf  #DEFINE_ALIAS
 from .math import isnan  #DEFINE_ALIAS
+from .math import prod  #DEFINE_ALIAS
 # from .random import gaussin        #DEFINE_ALIAS
 # from .random import uniform        #DEFINE_ALIAS
 from .random import shuffle  #DEFINE_ALIAS

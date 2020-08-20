@@ -63,6 +63,7 @@ from ..fluid.layers import tanh    #DEFINE_ALIAS
 from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
 from ..fluid.layers import sums    #DEFINE_ALIAS
+from ..fluid import layers
 
 __all__ = [
         'abs',
@@ -85,6 +86,7 @@ __all__ = [
         'log',
         'mul',
         'multiplex',
+        'prod',
         'pow',
         'reciprocal',
         'reduce_max',
@@ -535,75 +537,84 @@ for func in [
         }) + """\n""" + str(func.__doc__)
 
 
-def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
+def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
-	:alias_main: paddle.sum
-	:alias: paddle.sum,paddle.tensor.sum,paddle.tensor.math.sum
-
     Computes the sum of tensor elements over the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor, the data type is float32,
-            float64, int32, int64.
-        dim (list|int, optional): The dimensions along which the sum is performed. If
-            :attr:`None`, sum all elements of :attr:`input` and return a
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`x` and return a
             Tensor variable with a single element, otherwise must be in the
-            range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
-            the dimension to reduce is :math:`rank + dim[i]`.
-        dtype(str, optional): The dtype of output tensor. The default value is None, the dtype
-            of output is the same as input tensor.
-        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        dtype (str, optional): The dtype of output Tensor. The default value is None, the dtype
+            of output is the same as input Tensor `x`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
+        name (str, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: Tensor, results of summation operation on the specified dim of input tensor,
-        it's data type is the same as input's Tensor.
+        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
+        it's data type is the same as `x`.
 
     Raises:
-        ValueError, the :attr:`dtype` must be float64 or int64.
+        ValueError: The :attr:`dtype` must be float64 or int64.
+        TypeError: The type of :attr:`axis` must be int, list or tuple.
 
     Examples:
         .. code-block:: python
 
+            import numpy as np
             import paddle
-            import paddle.fluid as fluid
+            paddle.disable_static()
+
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
+            x_data = np.array([[0.2, 0.3, 0.5, 0.9],[0.1, 0.2, 0.6, 0.7]]).astype('float32')
+            x = paddle.to_variable(x_data)
             out1 = paddle.sum(x)  # [3.5]
-            out2 = paddle.sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
-            out3 = paddle.sum(x, dim=-1)  # [1.9, 1.6]
-            out4 = paddle.sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
+            out2 = paddle.sum(x, axis=0)  # [0.3, 0.5, 1.1, 1.6]
+            out3 = paddle.sum(x, axis=-1)  # [1.9, 1.6]
+            out4 = paddle.sum(x, axis=1, keepdim=True)  # [[1.9], [1.6]]
 
             # y is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            out5 = paddle.sum(y, dim=[1, 2]) # [10, 26]
-            out6 = paddle.sum(y, dim=[0, 1]) # [16, 20]
-
+            y_data = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]).astype('float32')
+            y = paddle.to_variable(y_data)
+            out5 = paddle.sum(y, axis=[1, 2]) # [10, 26]
+            out6 = paddle.sum(y, axis=[0, 1]) # [16, 20]
     """
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
+    if axis is not None and not isinstance(axis, (list, tuple)):
+        axis = [axis]
+
+    if not axis:
+        reduce_all_flag = True
+    else:
+        if len(axis) == len(x.shape):
+            reduce_all_flag = True
+        else:
+            reduce_all_flag = False
+
     attrs = {
-        'dim': dim if dim != None and dim != [] else [0],
-        'keep_dim': keep_dim,
-        'reduce_all': True if dim == None or dim == [] else False,
+        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'keep_dim': keepdim,
+        'reduce_all': reduce_all_flag
     }
     dtype_flag = False
     if dtype is not None:
         if dtype in ['float64', 'int64']:
-            if (convert_dtype(input.dtype) == "float32" and dtype == "float64") or \
-               (convert_dtype(input.dtype) == "int32" and dtype == "int64"):
+            if (convert_dtype(x.dtype) == "float32" and dtype == "float64") or \
+               (convert_dtype(x.dtype) == "int32" and dtype == "int64"):
                 attrs.update({
-                    'in_dtype': input.dtype,
+                    'in_dtype': x.dtype,
                     'out_dtype': convert_np_dtype_to_dtype_(dtype)
                 })
                 dtype_flag = True
@@ -613,27 +624,28 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
                 format(dtype))
 
     if in_dygraph_mode():
-        reduce_all = True if dim == None or dim == [] else False
-        dim = dim if dim != None and dim != [] else [0]
+        axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
-            return core.ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
-                                       'reduce_all', reduce_all, 'in_dtype',
-                                       input.dtype, 'out_dtype',
+            return core.ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag, 'in_dtype',
+                                       x.dtype, 'out_dtype',
                                        convert_np_dtype_to_dtype_(dtype))
         else:
-            return core.ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
-                                       'reduce_all', reduce_all)
+            return core.ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag)
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sum')
+    check_type(axis, 'axis', (int, list, tuple, type(None)), 'sum')
+
     helper = LayerHelper('sum', **locals())
     if dtype_flag:
         out = helper.create_variable_for_type_inference(
             dtype=convert_np_dtype_to_dtype_(dtype))
     else:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='reduce_sum',
-        inputs={'X': input},
+        inputs={'X': x},
         outputs={'Out': out},
         attrs=attrs)
     return out
@@ -1718,3 +1730,86 @@ def isnan(x, name=None):
     out = helper.create_variable_for_type_inference(dtype='bool')
     helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
     return out
+
+
+def prod(x, axis=None, keepdim=False, dtype=None, name=None):
+    """
+    Compute the product of tensor elements over the given axis.
+
+    Args:
+        x(Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
+            multiply all elements of `x` and return a Tensor with a single element, 
+            otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
+            the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
+        dtype(str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
+            int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
+            This is very useful for avoiding data type overflows. The default value is None, the dtype 
+            of output is the same as input Tensor `x`.
+        keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
+            tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
+        name(string, optional): The default value is None. Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor, result of product on the specified dim of input tensor.
+
+    Raises:
+        ValueError: The :attr:`dtype` must be float32, float64, int32 or int64.
+        TypeError: The type of :attr:`axis` must be int, list or tuple.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            # the axis is a int element
+            data_x = np.array([[0.2, 0.3, 0.5, 0.9],
+                         [0.1, 0.2, 0.6, 0.7]]).astype(np.float32)
+            x = paddle.to_tensor(data_x)
+            out1 = paddle.prod(x)
+            print(out1.numpy())
+            # [0.0002268]
+
+            out2 = paddle.prod(x, -1)
+            print(out2.numpy())
+            # [0.027  0.0084]
+
+            out3 = paddle.prod(x, 0)
+            print(out3.numpy())
+            # [0.02 0.06 0.3  0.63]
+            print(out3.numpy().dtype)
+            # float32
+
+            out4 = paddle.prod(x, 0, keepdim=True)
+            print(out4.numpy())
+            # [[0.02 0.06 0.3  0.63]]
+
+            out5 = paddle.prod(x, 0, dtype='int64')
+            print(out5.numpy())
+            # [0 0 0 0]
+            print(out5.numpy().dtype)
+            # int64
+
+            # the axis is list
+            data_y = np.array([[[1.0, 2.0], [3.0, 4.0]],
+                               [[5.0, 6.0], [7.0, 8.0]]])
+            y = paddle.to_tensor(data_y)
+            out6 = paddle.prod(y, [0, 1])
+            print(out6.numpy())
+            # [105. 384.]
+
+            out7 = paddle.prod(y, (1, 2))
+            print(out7.numpy())
+            # [  24. 1680.]
+
+    """
+    if dtype is not None:
+        check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'prod')
+        if x.dtype != convert_np_dtype_to_dtype_(dtype):
+            x = layers.cast(x, dtype)
+
+    return layers.reduce_prod(input=x, dim=axis, keep_dim=keepdim, name=name)
