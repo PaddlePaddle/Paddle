@@ -201,14 +201,14 @@ class Hardtanh(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
-        m = paddle.nn.Hardtanh()
-        out = m(x) # # [-1., 0.3, 1.]
+            x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
+            m = paddle.nn.Hardtanh()
+            out = m(x) # # [-1., 0.3, 1.]
     """
 
     def __init__(self, min=-1.0, max=1.0, name=None):
