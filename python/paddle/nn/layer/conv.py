@@ -38,13 +38,13 @@ def _get_default_param_initializer(num_channels, filter_size):
     return Normal(0.0, std, 0)
 
 
-def _reverse_repeat_tuple(t, n):
+def _reverse_repeat_list(t, n):
     """Reverse the order of `t` and repeat each element for `n` times.
 
     This can be used to translate padding arg used by Conv and Pooling modules
     to the ones used by `F.pad`.
     """
-    return tuple(x for x in reversed(t) for _ in range(n))
+    return list(x for x in reversed(t) for _ in range(n))
 
 
 class Conv2d(layers.Layer):
@@ -211,7 +211,7 @@ class Conv2d(layers.Layer):
 
         if padding_mode in {'reflect', 'replicate', 'circular'}:
             _paired_padding = utils.convert_to_list(padding, 2, 'padding')
-            self._reversed_padding_repeated_twice = _reverse_repeat_tuple(
+            self._reversed_padding_repeated_twice = _reverse_repeat_list(
                 _paired_padding, 2)
 
         channel_last = (data_format == "NHWC")
@@ -238,9 +238,18 @@ class Conv2d(layers.Layer):
 
     def forward(self, x):
         if self._padding_mode != 'zeros':
-            pass
-            # TODO: when pad is ready
-            # F.pad(input, self._reversed_padding_repeated_twice, mode=self._padding_mode)
+            x = F.pad(x,
+                      self._reversed_padding_repeated_twice,
+                      mode=self._padding_mode,
+                      data_format=self._data_format)
+            return F.conv2d(
+                x,
+                self.weight,
+                bias=self.bias,
+                stride=self._stride,
+                dilation=self._dilation,
+                groups=self._groups,
+                data_format=self._data_format)
 
         out = F.conv2d(
             x,
@@ -604,7 +613,7 @@ class Conv3d(layers.Layer):
 
         if padding_mode in {'reflect', 'replicate', 'circular'}:
             _paired_padding = utils.convert_to_list(padding, 2, 'padding')
-            self._reversed_padding_repeated_twice = _reverse_repeat_tuple(
+            self._reversed_padding_repeated_twice = _reverse_repeat_list(
                 _paired_padding, 2)
 
         channel_last = (data_format == "NDHWC")
@@ -636,9 +645,19 @@ class Conv3d(layers.Layer):
 
     def forward(self, x):
         if self._padding_mode != 'zeros':
-            pass
-            # TODO: when pad is ready
-            # F.pad(x, self._reversed_padding_repeated_twice, mode=self._padding_mode)
+            x = F.pad(x,
+                      self._reversed_padding_repeated_twice,
+                      mode=self._padding_mode,
+                      data_format=self._data_format)
+            return F.conv3d(
+                x,
+                self.weight,
+                bias=self.bias,
+                stride=self._stride,
+                dilation=self._dilation,
+                groups=self._groups,
+                data_format=self._data_format)
+
         out = F.conv3d(
             x,
             self.weight,
