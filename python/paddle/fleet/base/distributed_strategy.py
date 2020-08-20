@@ -107,7 +107,7 @@ class DistributedStrategy(object):
             strategy = fleet.DistributedStrategy()
             strategy.dgc = True
             strategy.recompute = True
-            strategy.recompute_configs = {"checkpoint": ["x"]}
+            strategy.recompute_configs = {"checkpoints": ["x"]}
             strategy.save_to_prototxt("dist_strategy.prototxt")
         """
         with open(output, "w") as fout:
