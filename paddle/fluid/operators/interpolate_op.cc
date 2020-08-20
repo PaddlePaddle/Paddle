@@ -71,6 +71,9 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   } else {
     if (ctx->HasInput("scale")) {
       float scale_w = ctx->Attrs().Get<std::vector<float>>("scale")[0];
+      PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
+                                               "scale  of Op(interpolate) "
+                                               "should be greater than 0."));
       if (scale_w > 0.) {
         // round down
         out_w = (data_layout == DataLayout::kNCHW
@@ -160,6 +163,10 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     if (ctx->HasInput("scale")) {
       float scale_h = ctx->Attrs().Get<std::vector<float>>("scale")[0];
       float scale_w = ctx->Attrs().Get<std::vector<float>>("scale")[1];
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0 && scale_h > 0, true,
+          platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                            "should be greater than 0."));
       if (scale_h > 0. && scale_w > 0.) {
         // round down
         out_h = (data_layout == DataLayout::kNCHW
@@ -260,6 +267,10 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
       float scale_d = ctx->Attrs().Get<std::vector<float>>("scale")[0];
       float scale_h = ctx->Attrs().Get<std::vector<float>>("scale")[1];
       float scale_w = ctx->Attrs().Get<std::vector<float>>("scale")[2];
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0 && scale_h > 0 && scale_d > 0, true,
+          platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                            "should be greater than 0."));
       if (scale_d > 0. && scale_h > 0. && scale_w > 0.) {
         // round down
         out_d = (data_layout == DataLayout::kNCHW

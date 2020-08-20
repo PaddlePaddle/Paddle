@@ -841,15 +841,21 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
     auto new_size = get_new_shape(list_new_shape_tensor);
     out_w = new_size[0];
   } else {
-    float scale_w = -1.0;
+    float scale_w;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale_w = scale_data[0];
+      PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
+                                               "scale  of Op(interpolate) "
+                                               "should be greater than 0."));
     } else {
       if (scale.size() > 0) {
         scale_w = scale[0];
+        PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
+                                                 "scale  of Op(interpolate) "
+                                                 "should be greater than 0."));
       }
     }
     if (scale_w > 0.) {
@@ -924,8 +930,8 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
     out_h = new_size[0];
     out_w = new_size[1];
   } else {
-    float scale_h = -1.0;
-    float scale_w = -1.0;
+    float scale_h;
+    float scale_w;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
@@ -937,10 +943,18 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
         scale_h = scale_data[0];
         scale_w = scale_data[0];
       }
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0 && scale_h > 0, true,
+          platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                            "should be greater than 0."));
     } else {
       if (scale.size() > 1) {
         scale_w = scale[1];
         scale_h = scale[0];
+        PADDLE_ENFORCE_EQ(
+            scale_w > 0 && scale_h > 0, true,
+            platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                              "should be greater than 0."));
       }
     }
     if (scale_w > 0. && scale_h > 0.) {
@@ -1041,9 +1055,9 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
     out_h = new_size[1];
     out_w = new_size[2];
   } else {
-    float scale_d = -1.;
-    float scale_h = -1.;
-    float scale_w = -1.;
+    float scale_d;
+    float scale_h;
+    float scale_w;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
@@ -1057,11 +1071,20 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
         scale_h = scale_data[0];
         scale_w = scale_data[0];
       }
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0 && scale_h > 0 && scale_d > 0, true,
+          platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                            "should be greater than 0."));
     } else {
       if (scale.size() > 1) {
         scale_d = scale[0];
         scale_h = scale[1];
         scale_w = scale[2];
+
+        PADDLE_ENFORCE_EQ(
+            scale_w > 0 && scale_h > 0 && scale_d > 0, true,
+            platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                              "should be greater than 0."));
       }
     }
     if (scale_d > 0. && scale_h > 0. && scale_w > 0.) {
@@ -1151,15 +1174,22 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
   int align_mode = ctx.Attr<int>("align_mode");
 
   int out_w = ctx.Attr<int>("out_w");
-  float scale_w = -1.;
+  float scale_w;
   auto scale_tensor = ctx.Input<Tensor>("Scale");
   auto scale = ctx.Attr<std::vector<float>>("scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale_w = scale_data[0];
+    PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
+                                             "scale  of Op(interpolate) "
+                                             "should be greater than 0."));
   } else {
     if (scale.size() > 0) {
       scale_w = scale[0];
+
+      PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
+                                               "scale  of Op(interpolate) "
+                                               "should be greater than 0."));
     }
   }
   if (scale_w > 0.) {
@@ -1233,8 +1263,8 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
 
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale_h = -1.;
-  float scale_w = -1.;
+  float scale_h;
+  float scale_w;
   auto scale_tensor = ctx.Input<Tensor>("Scale");
   auto scale = ctx.Attr<std::vector<float>>("scale");
   if (scale_tensor != nullptr) {
@@ -1246,10 +1276,19 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
       scale_h = scale_data[0];
       scale_w = scale_data[0];
     }
+    PADDLE_ENFORCE_EQ(
+        scale_w > 0 && scale_h > 0, true,
+        platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                          "should be greater than 0."));
   } else {
     if (scale.size() > 1) {
       scale_w = scale[1];
       scale_h = scale[0];
+
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0 && scale_h > 0, true,
+          platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                            "should be greater than 0."));
     }
   }
   if (scale_w > 0. && scale_h > 0.) {
@@ -1348,9 +1387,9 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
   int out_d = ctx.Attr<int>("out_d");
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale_d = -1.;
-  float scale_h = -1.;
-  float scale_w = -1.;
+  float scale_d;
+  float scale_h;
+  float scale_w;
   auto scale_tensor = ctx.Input<Tensor>("Scale");
   auto scale = ctx.Attr<std::vector<float>>("scale");
   if (scale_tensor != nullptr) {
@@ -1364,11 +1403,20 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
       scale_h = scale_data[0];
       scale_w = scale_data[0];
     }
+    PADDLE_ENFORCE_EQ(
+        scale_w > 0 && scale_h > 0 && scale_d > 0, true,
+        platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                          "should be greater than 0."));
   } else {
     if (scale.size() > 1) {
       scale_d = scale[0];
       scale_h = scale[1];
       scale_w = scale[2];
+
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0 && scale_h > 0 && scale_d > 0, true,
+          platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                            "should be greater than 0."));
     }
   }
   if (scale_d > 0. && scale_h > 0. && scale_w > 0.) {
