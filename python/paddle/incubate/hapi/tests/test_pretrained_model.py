@@ -28,7 +28,7 @@ class TestPretrainedModel(unittest.TestCase):
             fluid.enable_dygraph()
 
         net = models.__dict__[arch](pretrained=True, classifier_activation=None)
-        inputs = [Input('image', [None, 3, 224, 224], 'float32')]
+        inputs = [Input([None, 3, 224, 224], 'float32', 'image')]
         model = Model(network=net, inputs=inputs)
         model.prepare()
         res = model.test_batch(x)

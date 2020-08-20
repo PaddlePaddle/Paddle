@@ -645,6 +645,7 @@ __all__ += ['gelu']
 _gelu_ = generate_layer_fn('gelu')
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.gelu")
 def gelu(x, approximate=False):
     locals_var = locals().copy()
     kwargs = dict()
@@ -655,10 +656,6 @@ def gelu(x, approximate=False):
 
 
 gelu.__doc__ = """
-	:alias_main: paddle.nn.functional.gelu
-	:alias: paddle.nn.functional.gelu,paddle.nn.functional.activation.gelu
-	:old_api: paddle.fluid.layers.gelu
-
 :strong:`GeLU Activation Operator`
 For more details, see [Gaussian Error Linear Units](https://arxiv.org/abs/1606.08415).
 
@@ -733,7 +730,7 @@ __all__ += ['erf']
 _erf_ = generate_layer_fn('erf')
 
 
-def erf(x):
+def erf(x, name=None):
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -743,10 +740,6 @@ def erf(x):
 
 
 erf.__doc__ = """
-	:alias_main: paddle.erf
-	:alias: paddle.erf,paddle.tensor.erf,paddle.tensor.math.erf,paddle.nn.functional.erf,paddle.nn.functional.activation.erf
-	:old_api: paddle.fluid.layers.erf
-
 :strong:`Erf Operator`
 For more details, see [Error function](https://en.wikipedia.org/wiki/Error_function).
 
@@ -756,57 +749,22 @@ Equation:
 
 Args:
 
-    x(Variable): The input of Erf op, Tensor or LoDTensor, dtype: float32 or float64.
+    x (Tensor): The input tensor, it's data type should be float32, float64.
 
 Returns:
 
-    Variable: The output of Erf op, Tensor or LoDTensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
+    Tensor: The output of Erf op, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
     
     .. code-block:: python
     
-        # declarative mode
         import numpy as np
-        from paddle import fluid
-        
-        x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
-        y = fluid.layers.erf(x)
-        
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        start = fluid.default_startup_program()
-        main = fluid.default_main_program()
-        
-        data = np.random.randn(2, 3).astype("float32")
-        exe.run(start)
-        
-        y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
-        
-        data
-        # array([[ 0.4643714 , -1.1509596 ,  1.2538221 ],
-        #        [ 0.34369683,  0.27478245,  1.1805398 ]], dtype=float32)
-        y_np
-        # array([[ 0.48863927, -0.8964121 ,  0.9237998 ],
-        #        [ 0.37307587,  0.30242872,  0.9049887 ]], dtype=float32)
-
-    .. code-block:: python
-    
-        # imperative mode
-        import numpy as np
-        from paddle import fluid
-        import paddle.fluid.dygraph as dg
-        
-        data = np.random.randn(2, 3).astype("float32")
-        place = fluid.CPUPlace()
-        with dg.guard(place) as g:
-            x = dg.to_variable(data)
-            y = fluid.layers.erf(x)
-            y_np = y.numpy()
-        data
-        # array([[ 0.4643714 , -1.1509596 ,  1.2538221 ],
-        #        [ 0.34369683,  0.27478245,  1.1805398 ]], dtype=float32)
-        y_np
-        # array([[ 0.48863927, -0.8964121 ,  0.9237998 ],
-        #        [ 0.37307587,  0.30242872,  0.9049887 ]], dtype=float32)
+        import paddle
+        paddle.disable_static()
+        x_data = np.array([-0.4, -0.2, 0.1, 0.3])
+        x = paddle.to_tensor(x_data)
+        out = paddle.erf(x)
+        print(out.numpy())
+        # [-0.42839236 -0.22270259  0.11246292  0.32862676]
 """
