@@ -437,22 +437,6 @@ class TestFunctionalConv3DTransposeErrorCase5(
         self.data_format = "NCDHW"
 
 
-# class TestFunctionalConv3DTransposeErrorCase6(
-#         TestFunctionalConv3DTransposeError):
-#     def setUp(self):
-#         self.in_channels = 4
-#         self.out_channels = 5
-#         self.filter_shape = 3
-#         self.padding = 0
-#         self.stride = 1
-#         self.dilation = 1
-#         self.groups = 1
-#         self.no_bias = False
-#         self.act = "sigmoid"
-#         self.use_cudnn = "not_valid"
-#         self.data_format = "NCDHW"
-
-
 class TestFunctionalConv3DTransposeErrorCase7(
         TestFunctionalConv3DTransposeError):
     def setUp(self):

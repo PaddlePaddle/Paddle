@@ -502,7 +502,6 @@ def conv_transpose2d(x,
 
     cudnn_version = get_cudnn_version()
 
-    #TODO(LielinJiang): whether to use cudnn according to the version of cudnn
     use_cudnn = True if (core.is_compiled_with_cuda() and
                          cudnn_version is not None) else False
 
@@ -531,8 +530,9 @@ def conv_transpose2d(x,
 
     op_type = 'conv2d_transpose'
     num_filters = weight.shape[1]
-    if (num_channels == groups and num_filters == 1 and not use_cudnn):
+    if (num_channels == groups and num_filters == 1):
         op_type = 'depthwise_conv2d_transpose'
+        use_cudnn = False
 
     if in_dygraph_mode():
         attrs = ('output_padding', output_padding, 'output_size', output_size,
