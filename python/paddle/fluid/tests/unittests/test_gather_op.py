@@ -157,12 +157,25 @@ class TestGatherOp2(TestGatherOp1):
         self.axis_type = "int32"
 
 
-class TestGatherOp2(TestGatherOp1):
+class TestGatherOp3(TestGatherOp1):
     def config(self):
         """
         For multi-dimension input
         """
-        self.x_shape = (3, 88, 10)
+        self.x_shape = (10, 88, 10)
+        self.x_type = "float64"
+        self.index = [1, 3, 5]
+        self.index_type = "int64"
+        self.axis = [2]
+        self.axis_type = "int32"
+
+
+class TestGatherOp4(TestGatherOp1):
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (3, 100, 10)
         self.x_type = "float64"
         self.index = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         self.index_type = "int64"
@@ -171,11 +184,11 @@ class TestGatherOp2(TestGatherOp1):
 
 
 class API_TestGather(unittest.TestCase):
-    def test_out(self):
+    def test_out1(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float64')
-            index = fluid.layers.data('index', shape=[-1, 1], dtype='float64')
-            out = paddle.gather(data1, index)
+            index = fluid.layers.data('index', shape=[-1, 1], dtype='int32')
+            out = paddle.fluid.layers.gather(data1, index)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])
@@ -186,18 +199,39 @@ class API_TestGather(unittest.TestCase):
             expected_output = np.array([[3, 4], [5, 6]])
         self.assertTrue(np.allclose(result, expected_output))
 
+    def test_out2(self):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            x = paddle.data('x', shape=[-1, 2], dtype='float64')
+            index = paddle.data('index', shape=[-1, 1], dtype='int32')
+            axis = paddle.data('axis', shape=[1], dtype='int32')
+            out = paddle.gather(x, index, axis)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            x_np = np.array([[1, 2], [3, 4], [5, 6]]).astype('float64')
+            index_np = np.array([1, 1]).astype('int32')
+            axis_np = np.array([1]).astype('int32')
+            result, = exe.run(
+                feed={"x": x_np,
+                      "index": index_np,
+                      'axis': axis_np},
+                fetch_list=[out])
+            expected_output = gather_numpy(x_np, index_np, axis_np)
+        self.assertTrue(np.allclose(result, expected_output))
+
 
 class API_TestDygraphGather(unittest.TestCase):
     def test_out(self):
-        with fluid.dygraph.guard():
-            input_1 = np.array([[1, 2], [3, 4], [5, 6]])
-            index_1 = np.array([1, 2])
-            input = fluid.dygraph.to_variable(input_1)
-            index = fluid.dygraph.to_variable(index_1)
-            output = paddle.fluid.layers.gather(input, index)
-            output_np = output.numpy()
-            expected_output = np.array([[3, 4], [5, 6]])
+        paddle.disable_static()
+        input_1 = np.array([[1, 2], [3, 4], [5, 6]])
+        index_1 = np.array([1, 2])
+        input = paddle.to_tensor(input_1)
+        index = paddle.to_tensor(index_1)
+        output = paddle.fluid.layers.gather(input, index)
+        output_np = output.numpy()
+        expected_output = np.array([[3, 4], [5, 6]])
         self.assertTrue(np.allclose(output_np, expected_output))
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

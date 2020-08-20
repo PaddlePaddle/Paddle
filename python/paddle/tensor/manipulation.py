@@ -676,24 +676,28 @@ def gather(x, index, axis=None, name=None):
 
                 Given:
 
-                X = [[1, 2],
+                x = [[1, 2],
                      [3, 4],
                      [5, 6]]
 
-                Index = [1, 2]
+                index = [1, 2]
+                axis=[0]
 
                 Then:
 
-                Out = [[3, 4],
+                out = [[3, 4],
                        [5, 6]]
     Args:
-        input (Tensor): The source input tensor with rank>=1. Supported data type is
+        x (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
         index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
+        axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. Default: if None, the axis is 0.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        output (Tensor): The output is a tensor with the same rank as input.
+        output (Tensor): The output is a tensor with the same rank as ``x``.
 
     Examples:
 
@@ -701,19 +705,32 @@ def gather(x, index, axis=None, name=None):
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
-
-            with fluid.dygraph.guard():
-                input_1 = np.array([[1,2],[3,4],[5,6]])
-                index_1 = np.array([0,1])
-                input = fluid.dygraph.to_variable(input_1)
-                index = fluid.dygraph.to_variable(index_1)
-                output = paddle.gather(input, index)
-                # expected output: [[1,2],[3,4]]
+            paddle.disable_static()
+            input_1 = np.array([[1,2],[3,4],[5,6]])
+            index_1 = np.array([0,1])
+            input = fluid.to_tensor(input_1)
+            index = fluid.to_tensor(index_1)
+            output = paddle.gather(input, index, axis=0)
+            # expected output: [[1,2],[3,4]]
     """
+    if axis is None:
+        axis = 0
+    axis_tensor = axis
+    if not isinstance(axis, Variable):
+        axis_tensor = fill_constant(shape=[1], dtype='int64', value=axis)
     if in_dygraph_mode():
-        return core.ops.gather(x, index, axis)
+        return core.ops.gather(x, index, axis_tensor)
+
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        'gather')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
+    if isinstance(axis, Variable):
+        check_variable_and_dtype(axis, 'axis', ['int32', 'int64'], 'gather')
+    else:
+        check_type(axis, 'axis', (int), 'gather')
+
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
@@ -721,7 +738,7 @@ def gather(x, index, axis=None, name=None):
         type="gather",
         inputs={"X": x,
                 "Index": index,
-                "Axis": axis},
+                "Axis": axis_tensor},
         outputs={"Out": out})
     return out
 
