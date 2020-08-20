@@ -25,7 +25,8 @@ from .fluid.layers import control_flow
 from .fluid.layers import tensor
 from .fluid.layers import ops
 from .fluid.layers import nn
-from .fluid.framework import in_dygraph_mode
+from .fluid import core
+from .fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from .tensor.math import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
 import math
 import numpy as np
@@ -134,7 +135,7 @@ class Uniform(Distribution):
 
     Mathematical Details
 
-    The probability density function (pdf) is,
+    The probability density function (pdf) is
 
     .. math::
 
@@ -154,8 +155,8 @@ class Uniform(Distribution):
     For more information, please refer to :ref:`_user_guide_broadcasting`.
 
     Args:
-        low(int|float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is float32 or int
-        high(int|float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is float32 or int
+        low(int|float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is int, float32, list, numpy.ndarray or Tensor
+        high(int|float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is int, float32, list, numpy.ndarray or Tensor
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -272,10 +273,14 @@ class Uniform(Distribution):
         if in_dygraph_mode():
             lb_bool = self.low < value
             ub_bool = value < self.high
-            lb = tensor.cast(lb_bool, dtype=value.dtype)
-            ub = tensor.cast(ub_bool, dtype=value.dtype)
-            return elementwise_sub(
-                nn.log(lb * ub), nn.log(self.high - self.low), name=name)
+
+            if not isinstance(value.dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(value.dtype)
+            lb = core.ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
+                               dtype)
+            ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
+                               dtype)
+            return nn.log(lb * ub) - nn.log(self.high - self.low)
 
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                  'log_prob')
@@ -301,9 +306,13 @@ class Uniform(Distribution):
         if in_dygraph_mode():
             lb_bool = self.low < value
             ub_bool = value < self.high
-            lb = tensor.cast(lb_bool, dtype=value.dtype)
-            ub = tensor.cast(ub_bool, dtype=value.dtype)
-            return elementwise_div((lb * ub), (self.high - self.low), name=name)
+            if not isinstance(value.dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(value.dtype)
+            lb = core.ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
+                               dtype)
+            ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
+                               dtype)
+            return (lb * ub) / (self.high - self.low)
 
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                  'log_prob')
