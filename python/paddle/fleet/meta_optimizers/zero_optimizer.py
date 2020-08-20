@@ -433,7 +433,17 @@ class ZeroOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         self._nrings = 10
 
-        optimizer = fluid.contrib.mixed_precision.decorate(self.inner_opt)
+        ckpts = list(self.user_defined_strategy.recompute_configs[
+            "checkpoints"])
+        optimizer = self.inner_opt
+        if len(ckpts) > 0:
+            print("add recompute")
+            print(ckpts)
+            optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
+            optimizer._set_checkpoints(ckpts)
+
+        optimizer = fluid.contrib.mixed_precision.decorate(optimizer)
+        print("doing amp optimize...")
         optimize_ops, params_grads = optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
