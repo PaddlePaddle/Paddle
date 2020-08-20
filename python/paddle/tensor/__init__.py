@@ -154,7 +154,6 @@ from .math import addmm  #DEFINE_ALIAS
 from .math import clamp  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
 from .math import kron  #DEFINE_ALIAS
-# from .random import gaussin        #DEFINE_ALIAS
 # from .random import uniform        #DEFINE_ALIAS
 from .random import standard_normal
 from .random import normal
