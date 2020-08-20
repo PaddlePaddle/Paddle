@@ -2285,7 +2285,7 @@ def lstm(input,
     weight_size = 0
     for i in range(num_layers):
         if i == 0:
-            input_weight_size =gate_size * input_size
+            input_weight_size = gate_size * input_size
         else:
             input_weight_size = gate_size * hidden_size * n_direction
 
@@ -2308,6 +2308,22 @@ def lstm(input,
     state_out = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
     state_out.persistable = True
+    weight_ih = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(num_layers * n_direction)
+    ]
+    weight_hh = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(num_layers * n_direction)
+    ]
+    bias_ih = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(num_layers * n_direction)
+    ]
+    bias_hh = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(num_layers * n_direction)
+    ]
 
     helper.append_op(
         type='cudnn_lstm',
@@ -2321,6 +2337,10 @@ def lstm(input,
             'Out': out,
             'LastH': last_h,
             'LastC': last_c,
+            'WeightIh': weight_ih,
+            'WeightHh': weight_hh,
+            'BiasIh': bias_ih,
+            'BiasHh': bias_hh,
             'Reserve': reserve,
             'StateOut': state_out,
         },

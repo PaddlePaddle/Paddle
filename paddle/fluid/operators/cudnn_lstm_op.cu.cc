@@ -52,6 +52,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     float dropout_prob = ctx.Attr<float>("dropout_prob");
     bool is_bidirec = ctx.Attr<bool>("is_bidirec");
     int hidden_size = ctx.Attr<int>("hidden_size");
+    int input_size = ctx.Attr<int>("input_size");
     int num_layers = ctx.Attr<int>("num_layers");
     bool is_test = ctx.Attr<bool>("is_test");
     int seed = ctx.Attr<int>("seed");
@@ -69,23 +70,31 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int n_direct = is_bidirec ? 2 : 1;
     for (int i = 0; i < num_layers; ++i) {
       for (int j = 0; j < n_direct; ++j) {
-        int weight_num = i * 4 + j;
+        int num = i * n_direct + j;
         int size = 0;
         size = gate_size * input_size;
-        weight_ih[weight_num]=w->Slice(offset,size);
+        LOG(INFO) << "offset 1" << offset << "size" << size;
+        weight_ih[num]->ShareDataWith(w->Slice(offset, offset + size));
         offset += size;
+        LOG(INFO) << "offset 2" << offset << "size" << size;
 
         size = gate_size * hidden_size * n_direct;
-        weight_hh[weight_num]=w->Slice(offset,size);
+        LOG(INFO) << "offset 3" << offset << "size" << size;
+        weight_hh[num]->ShareDataWith(w->Slice(offset, offset + size));
         offset += size;
+        LOG(INFO) << "offset 4" << offset << "size" << size;
 
         size = gate_size * hidden_size;
-        bias_ih[weight_num]=w->Slice(offset,size);
+        LOG(INFO) << "offset 5" << offset << "size" << size;
+        bias_ih[num]->ShareDataWith(w->Slice(offset, offset + size));
         offset += size;
+        LOG(INFO) << "offset 6" << offset << "size" << size;
 
         size = gate_size;
-        bias_hh[weight_num]=w->Slice(offset,size);
+        LOG(INFO) << "offset 7" << offset << "size" << size;
+        bias_hh[num]->ShareDataWith(w->Slice(offset, offset + size));
         offset += size;
+        LOG(INFO) << "offset 8" << offset << "size" << size;
       }
     }
 

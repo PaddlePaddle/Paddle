@@ -150,7 +150,7 @@ class TestCUDNNLstmOp(OpTest):
             'InitC': init_c
         }
         self.attrs = {
-            'dropout_prob': 0.0,
+            'dropout_prob': 0.1,
             'is_bidirec': False,
             'input_size': hidden_size,
             'hidden_size': hidden_size,
@@ -161,14 +161,22 @@ class TestCUDNNLstmOp(OpTest):
             "LastH": last_hidden,
             'LastC': last_cell,
             'Reserve': np.ndarray((400)).astype("uint8"),
-            'StateOut': state_out
+            'StateOut': state_out,
+            'WeightIh': [('WeightIh%d' % i, state_out) for i in range(1)],
+            'WeightHh': [('WeightHh%d' % i, state_out) for i in range(1)],
+            'BiasIh': [('BiasIh%d' % i, state_out) for i in range(1)],
+            'BiasHh': [('BiasHh%d' % i, state_out) for i in range(1)]
         }
 
     def test_output_with_place(self):
         # depend on the scope structure
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, no_check_set=['Reserve', 'StateOut'])
+            place,
+            no_check_set=[
+                'Reserve', 'StateOut', 'WeightIh', 'WeightHh', 'BiasIh',
+                'BiasHh'
+            ])
 
     def test_grad_with_place(self):
         # depend on the scope structure
