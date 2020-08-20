@@ -844,7 +844,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
             
             x = paddle.to_tensor(x_data)
             index = paddle.to_tensor(index_data)
-            updates = paddle.to_tensor(update_data)
+            updates = paddle.to_tensor(updates_data)
   
             output1 = paddle.scatter(x, index, updates, overwrite=False)
             # [[3., 3.],
