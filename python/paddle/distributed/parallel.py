@@ -16,11 +16,11 @@ import os
 import six
 
 from paddle import compat as cpt
-from paddle.distributed.launch import _parse_args, get_cluster_and_pod, _print_arguments
+from paddle.distributed.launch import get_cluster_and_pod, _print_arguments
 
 # deprecated module import
 from paddle.fluid import core
-from paddle.fluid.framework import _switch_current_place
+from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
@@ -212,7 +212,7 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
         # they need to call a function to change default place,
         # here just set correctly place to users
         place = core.CUDAPlace(ParallelEnv().dev_id)
-        _switch_current_place(place)
+        _set_expected_place(place)
 
         # init nccl context
         parallel_helper._set_parallel_ctx(

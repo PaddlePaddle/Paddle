@@ -18,7 +18,6 @@ import numpy as np
 import warnings
 from collections import OrderedDict
 
-from paddle import compat as cpt
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
