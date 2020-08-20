@@ -265,6 +265,8 @@ LIST(REMOVE_ITEM TEST_OPS test_auto_pruning)
 LIST(REMOVE_ITEM TEST_OPS test_filter_pruning)
 
 # setting timeout value for old unittests
+py_test_modules(test_post_training_quantization_mobilenetv1 MODULES test_post_training_quantization_mobilenetv1)
+py_test_modules(test_post_training_quantization_resnet50 MODULES test_post_training_quantization_resnet50)
 set_tests_properties(test_post_training_quantization_mobilenetv1 PROPERTIES TIMEOUT 200)
 set_tests_properties(test_post_training_quantization_resnet50 PROPERTIES TIMEOUT 200)
 

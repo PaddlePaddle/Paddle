@@ -271,6 +271,13 @@ list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
 
 # setting timeout value for old unittests
+py_test_modules(test_affine_channel_op MODULES test_affine_channel_op)
+py_test_modules(test_dist_fleet_sparse_embedding_ctr MODULES test_dist_fleet_sparse_embedding_ctr)
+py_test_modules(test_fused_elemwise_activation_op MODULES test_fused_elemwise_activation_op)
+py_test_modules(test_gru_op MODULES test_gru_op)
+py_test_modules(test_layer_norm_op MODULES test_layer_norm_op)
+py_test_modules(test_pool3d_op MODULES test_pool3d_op)
+py_test_modules(test_regularizer MODULES test_regularizer)
 set_tests_properties(test_affine_channel_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
 set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 150)
