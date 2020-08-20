@@ -197,6 +197,43 @@ class OperatorBase {
     return place;
   }
 
+  const std::vector<std::string>& OrderedInputNames() const {
+    return input_names_;
+  }
+
+  const std::vector<std::string>& OrderedOutputNames() const {
+    return output_names_;
+  }
+
+  void SetOrderedInputNames(const std::vector<std::string>& input_names) {
+    input_names_ = input_names;
+  }
+
+  void SetOrderedOutputNames(const std::vector<std::string>& output_names) {
+    output_names_ = output_names;
+  }
+
+  void InitOrderedInputOutputNamesForForwardOp();
+
+  std::string GetInputNameByIdx(size_t idx) const {
+    PADDLE_ENFORCE_LT(idx, input_names_.size(),
+                      platform::errors::OutOfRange(
+                          "The index should be less than the size of inputs of "
+                          "operator %s, but got index is %d and size is %d",
+                          Type(), idx, input_names_.size()));
+    return input_names_[idx];
+  }
+
+  std::string GetOutputNameByIdx(size_t idx) const {
+    PADDLE_ENFORCE_LT(
+        idx, output_names_.size(),
+        platform::errors::OutOfRange(
+            "The index should be less than the size of outputs of "
+            "operator %s, but got index is %d and size is %d",
+            Type(), idx, output_names_.size()));
+    return output_names_[idx];
+  }
+
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -215,6 +252,10 @@ class OperatorBase {
 
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
+
+  // keep input/output order, so we can get name by idx
+  std::vector<std::string> input_names_;
+  std::vector<std::string> output_names_;
 
  private:
   void GenerateTemporaryNames();
@@ -299,26 +340,11 @@ class ExecutionContext {
   }
 
   virtual std::string GetInputNameByIdx(size_t idx) const {
-    auto& op_proto =
-        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
-                      platform::errors::OutOfRange(
-                          "The index should be less than the size of inputs of "
-                          "operator %s, but got index is %d and size is %d",
-                          op_.Type(), idx, op_proto->inputs().size()));
-    return op_proto->inputs()[idx].name();
+    return op_.GetInputNameByIdx(idx);
   }
 
   virtual std::string GetOutputNameByIdx(size_t idx) const {
-    auto& op_proto =
-        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-    PADDLE_ENFORCE_LT(
-        idx, op_proto->outputs().size(),
-        platform::errors::OutOfRange(
-            "The index should be less than the size of outputs of "
-            "operator %s, but got index is %d and size is %d",
-            op_.Type(), idx, op_proto->outputs().size()));
-    return op_proto->outputs()[idx].name();
+    return op_.GetOutputNameByIdx(idx);
   }
 
   virtual std::vector<std::string> InNameList() const {

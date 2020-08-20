@@ -72,8 +72,6 @@ class UnaryGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     // NOTE(zhiqiu): only supports Tensor now
-    std::cout << ctx.GetInputNameByIdx(0) << std::endl;
-    std::cout << ctx.GetOutputNameByIdx(0) << std::endl;
     auto *dout = ctx.Input<Tensor>(ctx.GetInputNameByIdx(0));
     auto *dx = ctx.Output<Tensor>(ctx.GetOutputNameByIdx(0));
     dx->mutable_data<T>(ctx.GetPlace());

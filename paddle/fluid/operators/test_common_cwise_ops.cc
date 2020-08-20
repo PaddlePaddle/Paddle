@@ -62,6 +62,9 @@ REGISTER_OP_KERNEL_4(test_neg, ops::UnaryOpKernel, CPU, functors::Neg, int,
                      int64_t, float, double);
 REGISTER_OP_KERNEL_4(test_neg_grad, ops::UnaryGradOpKernel, CPU, functors::Neg,
                      int, int64_t, float, double);
+
+USE_OP(test_neg);
+
 namespace paddle {
 namespace operators {
 
@@ -69,8 +72,8 @@ TEST(test_neg, test_run) {
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
-  auto op = framework::OpRegistry::CreateOp("test_neg", {{"X", {"X"}}},
-                                            {{"Out", {"Out"}}}, {});
+  auto op = framework::OpRegistry::CreateOp(
+      "test_neg", {{"X", {"X"}}}, {{"Out", {"Out"}}}, {}, {"X"}, {"Out"});
 
   auto in_tensor = scope.Var("X")->GetMutable<framework::LoDTensor>();
   in_tensor->Resize({2, 10});
@@ -96,8 +99,9 @@ TEST(test_neg_grad, test_run) {
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
-  auto op = framework::OpRegistry::CreateOp(
-      "test_neg_grad", {{"DOut", {"DOut"}}}, {{"DX", {"DX"}}}, {});
+  auto op =
+      framework::OpRegistry::CreateOp("test_neg_grad", {{"DOut", {"DOut"}}},
+                                      {{"DX", {"DX"}}}, {}, {"DOut"}, {"DX"});
 
   auto in_tensor = scope.Var("DOut")->GetMutable<framework::LoDTensor>();
   in_tensor->Resize({2, 10});
@@ -112,10 +116,8 @@ TEST(test_neg_grad, test_run) {
     in_data[i] = dist(engine);
     expected_out[i] = -in_data[i];
   }
-  std::cout << "here" << std::endl;
   auto out_tensor = scope.Var("DX")->GetMutable<framework::LoDTensor>();
   op->Run(scope, cpu_place);
-  std::cout << "here2" << std::endl;
   auto out_data = out_tensor->data<float>();
   auto is_equal = std::equal(out_data, out_data + numel, expected_out.data());
   ASSERT_TRUE(is_equal);

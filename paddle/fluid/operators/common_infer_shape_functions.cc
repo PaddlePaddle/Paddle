@@ -77,7 +77,6 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
 void UnaryOpUnchangedInferShape(framework::InferShapeContext *ctx) {
   auto x_name = ctx->GetInputNameByIdx(0);
   auto out_name = ctx->GetOutputNameByIdx(0);
-  std::cout << x_name << " " << out_name << std::endl;
   ctx->ShareDim(x_name, /*->*/ out_name);
   ctx->ShareLoD(x_name, /*->*/ out_name);
 }

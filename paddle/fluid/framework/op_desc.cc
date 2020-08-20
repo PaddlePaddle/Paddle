@@ -54,26 +54,24 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   std::vector<std::string> Outputs(const std::string &name) const override;
 
   std::string GetInputNameByIdx(size_t idx) const override {
-    auto &op_proto =
-        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
+    auto input_names = op_.OrderedInputNames();
+    PADDLE_ENFORCE_LT(idx, input_names.size(),
                       platform::errors::OutOfRange(
                           "The index should be less than the size of inputs of "
                           "operator %s, but got index is %d and size is %d",
-                          op_.Type(), idx, op_proto->inputs().size()));
-    return op_proto->inputs()[idx].name();
+                          op_.Type(), idx, input_names.size()));
+    return input_names[idx];
   }
 
   std::string GetOutputNameByIdx(size_t idx) const override {
-    auto &op_proto =
-        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
+    auto output_names = op_.OrderedOutputNames();
     PADDLE_ENFORCE_LT(
-        idx, op_proto->outputs().size(),
+        idx, output_names.size(),
         platform::errors::OutOfRange(
             "The index should be less than the size of outputs of "
             "operator %s, but got index is %d and size is %d",
-            op_.Type(), idx, op_proto->outputs().size()));
-    return op_proto->outputs()[idx].name();
+            op_.Type(), idx, output_names.size()));
+    return output_names[idx];
   }
 
   void ShareDim(const std::string &in, const std::string &out, size_t i = 0,
@@ -303,7 +301,7 @@ OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
   outputs_ = outputs;
   attrs_ = attrs;
   need_update_ = true;
-  // TODO(zhiqiu): set input_names_ and output_names_ properly here
+  InitOrderedInputOutputNamesForForwardOp();
   block_ = nullptr;
 }
 
@@ -358,6 +356,7 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     }
   }
   this->block_ = block;
+  InitOrderedInputOutputNamesForForwardOp();
 }
 
 proto::OpDesc *OpDesc::Proto() {
@@ -384,7 +383,11 @@ void OpDesc::SetInput(const std::string &param_name,
                       const std::vector<std::string> &args) {
   need_update_ = true;
   inputs_[param_name] = args;
-  input_names_.emplace_back(param_name);
+  // Only add input_names_ for grad op
+  // For forward op, use the input names in its proto directly
+  if (!IsOpInfoHasProto(Type())) {
+    input_names_.emplace_back(param_name);
+  }
 }
 
 const std::vector<std::string> &OpDesc::Output(const std::string &name) const {
@@ -410,7 +413,11 @@ void OpDesc::SetOutput(const std::string &param_name,
                        const std::vector<std::string> &args) {
   need_update_ = true;
   this->outputs_[param_name] = args;
-  output_names_.emplace_back(param_name);
+  // Only add output_names_ for grad op
+  // For forward op, use the output names in its proto directly
+  if (!IsOpInfoHasProto(Type())) {
+    output_names_.emplace_back(param_name);
+  }
 }
 
 bool OpDesc::HasProtoAttr(const std::string &name) const {
