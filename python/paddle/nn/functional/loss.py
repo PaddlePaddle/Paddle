@@ -65,11 +65,90 @@ __all__ = [
     'sigmoid_cross_entropy_with_logits',
     'sigmoid_focal_loss',
     'smooth_l1',
+    'smooth_l1_loss',
     'softmax_with_cross_entropy',
     'square_error_cost',
     'ssd_loss',
     'teacher_student_sigmoid_loss'
 ]
+
+
+def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
+    """
+    This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
+    term if the absolute element-wise error falls below 1 and an L1 term otherwise.
+    In some cases it can prevent exploding gradients and it is more robust and less
+    sensitivity to outliers. Also known as the Huber loss:
+
+    .. math::
+
+         loss(x,y)=\\frac{1}{n}\\sum_{i}z_i
+
+
+    where z_i is given by:
+
+    .. math::
+
+         \\mathop{z_i}=\\left\\{\\begin{array}{rcl}
+        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\\\
+        delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
+        \\end{array} \\right.
+
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is
+            (N, C), where C is number of classes, and if shape is more than 2D, this
+            is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor, the data type is float32 or float64. The shape of label
+            is the same as the shape of input.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
+            Default is ``'mean'``.
+        delta (float, optional): Specifies the hyperparameter delta to be used. 
+            The value determines how large the errors need to be to use L1. Errors
+            smaller than delta are minimized with L2. Parameter is ignored for
+            negative/zero values. Default = 1.0
+        name (str, optional): Name for the operation (optional, default is
+            None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        The tensor variable storing the smooth_l1_loss of input and label.
+
+    Return type: Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            input_data = np.random.rand(3,3).astype("float32")
+            label_data = np.random.rand(3,3).astype("float32")
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
+            output = paddle.nn.functioanl.smooth_l1_loss(input, label)
+            print(output.numpy())
+    """
+    fluid.data_feeder.check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'smooth_l1_loss')
+    fluid.data_feeder.check_variable_and_dtype(
+        label, 'label', ['float32', 'float64'], 'smooth_l1_loss')
+
+    out = huber_loss(input=input, label=label, delta=delta)
+
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in smooth_l1_loss should be 'sum', 'mean' or"
+            " 'none', but received %s, which is not allowed." % reduction)
+    if reduction == 'none':
+        return out
+    elif reduction == 'mean':
+        return fluid.layers.reduce_mean(out)
+    elif reduction == 'sum':
+        return fluid.layers.reduce_sum(out)
 
 
 def margin_ranking_loss(input,
@@ -176,61 +255,61 @@ def margin_ranking_loss(input,
         return result_out
 
 
-def l1_loss(x, label, reduction='mean', name=None):
+def l1_loss(input, label, reduction='mean', name=None):
     """
-    This operator computes the L1 Loss of Tensor ``x`` and ``label`` as follows.
+    This operator computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
 
-    If :attr:`reduction` set to ``'none'``, the loss is:
-
-    .. math::
-        Out = \lvert x - label\rvert
-
-    If :attr:`reduction` set to ``'mean'``, the loss is:
+    If `reduction` set to ``'none'``, the loss is:
 
     .. math::
-        Out = MEAN(\lvert x - label\rvert)
+        Out = \lvert input - label\rvert
 
-    If :attr:`reduction` set to ``'sum'``, the loss is:
+    If `reduction` set to ``'mean'``, the loss is:
 
     .. math::
-        Out = SUM(\lvert x - label\rvert)
+        Out = MEAN(\lvert input - label\rvert)
+
+    If `reduction` set to ``'sum'``, the loss is:
+
+    .. math::
+        Out = SUM(\lvert input - label\rvert)
 
     
     Parameters:
-        x (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
-        label (Tensor): label. The shapes is [N, *], same shape as ``x`` . It's data type should be float32, float64, int32, int64.
+        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
+        label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
         reduction (str, optional): Indicate the reduction to apply to the loss, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'none'``, the unreduced loss is returned; 
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. 
-            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. 
+            If `reduction` is ``'none'``, the unreduced loss is returned; 
+            If `reduction` is ``'mean'``, the reduced mean loss is returned. 
+            If `reduction` is ``'sum'``, the reduced sum loss is returned. 
             Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor, the L1 Loss of Tensor ``x`` and ``label``.
-            If :attr:`reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``x`` .
-            If :attr:`reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1], which means the output is a scalar.
+        Tensor, the L1 Loss of Tensor ``input`` and ``label``.
+            If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
+            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
     Examples:
         .. code-block:: python
             import paddle
             import numpy as np
             
             paddle.disable_static()
-            x_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
+            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
             label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            x = paddle.to_variable(x_data)
+            input = paddle.to_variable(input_data)
             label = paddle.to_variable(label_data)
 
-            l1_loss = paddle.nn.functional.l1_loss(x, label)
+            l1_loss = paddle.nn.functional.l1_loss(input, label)
             print(l1_loss.numpy())  
             # [0.35]
 
-            l1_loss = paddle.nn.functional.l1_loss(x, label, reduction='none')
+            l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
             print(l1_loss.numpy())  
             # [[0.20000005 0.19999999]
             # [0.2        0.79999995]]
 
-            l1_loss = paddle.nn.functional.l1_loss(x, label, reduction='sum')
+            l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
             print(l1_loss.numpy())  
             # [1.4]
     """
@@ -241,7 +320,7 @@ def l1_loss(x, label, reduction='mean', name=None):
 
     if in_dygraph_mode():
         unreduced = _elementwise_op_in_dygraph(
-            x, label, axis=-1, act='abs', op_name='elementwise_sub')
+            input, label, axis=-1, act='abs', op_name='elementwise_sub')
         if reduction == 'mean':
             return core.ops.mean(unreduced)
         elif reduction == 'sum':
@@ -251,18 +330,18 @@ def l1_loss(x, label, reduction='mean', name=None):
             return unreduced
 
     fluid.data_feeder.check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
 
     if reduction == 'sum':
-        unreduced = paddle.elementwise_sub(x, label, act='abs')
+        unreduced = paddle.elementwise_sub(input, label, act='abs')
         return paddle.sum(unreduced, name=name)
     elif reduction == 'mean':
-        unreduced = paddle.elementwise_sub(x, label, act='abs')
+        unreduced = paddle.elementwise_sub(input, label, act='abs')
         return paddle.mean(unreduced, name=name)
     else:
-        return paddle.elementwise_sub(x, label, act='abs', name=name)
+        return paddle.elementwise_sub(input, label, act='abs', name=name)
 
 
 def nll_loss(input,

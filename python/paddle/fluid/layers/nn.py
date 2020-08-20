@@ -35,6 +35,7 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
+from ...utils import deprecated
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
 from paddle.utils import deprecated
@@ -6066,6 +6067,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     return loss
 
 
+@deprecated(since='2.0.0', update_to='paddle.nn.functional.one_hot')
 def one_hot(input, depth, allow_out_of_range=False):
     """
 
@@ -11680,7 +11682,12 @@ Examples:
     """
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_add')
+            x,
+            y,
+            axis=axis,
+            act=act,
+            op_name='elementwise_add',
+            use_mkldnn=core.globals()["FLAGS_use_mkldnn"])
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
